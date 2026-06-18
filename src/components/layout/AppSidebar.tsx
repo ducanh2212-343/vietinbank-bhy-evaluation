@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, UserPlus, Shield, LogOut, Target,
   User, BookOpen, PlusCircle, Brain, Heart, UsersRound, Star,
   Upload, Settings as SettingsIcon, BarChart3, Image, FileText,
-  ChevronDown, ChevronRight, UserCheck, Sparkles, GraduationCap, ClipboardList
+  ChevronDown, ChevronRight, UserCheck, Sparkles, GraduationCap, ClipboardList, KeyRound
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useState } from 'react';
@@ -22,6 +22,7 @@ const navGroups: NavGroup[] = [
     items: [
       { label: 'Tổng quan', icon: LayoutDashboard, path: '/tong-quan' },
       { label: 'Hồ sơ cá nhân', icon: User, path: '/ho-so-ca-nhan' },
+      { label: 'Đổi mật khẩu', icon: KeyRound, path: '/doi-mat-khau' },
       { label: 'Skill lõi theo vị trí', icon: Target, path: '/skill-loi-theo-vi-tri' },
       { label: 'Skill bổ sung', icon: PlusCircle, path: '/skill-bo-sung' },
       { label: 'Tự đánh giá', icon: FileText, path: '/tu-danh-gia' },

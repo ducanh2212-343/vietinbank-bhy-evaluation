@@ -59,6 +59,7 @@ const ApproveRegistrations = lazyWithRetry(() => import("./pages/ApproveRegistra
 const AIPromptsAdmin = lazyWithRetry(() => import("./pages/AIPromptsAdmin"));
 const VtbCoursesAdminPage = lazyWithRetry(() => import("./pages/VtbCoursesAdminPage"));
 const PersonalKanbanPage = lazyWithRetry(() => import("./pages/PersonalKanbanPage"));
+const ChangePassword = lazyWithRetry(() => import("./pages/ChangePassword"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 
 
@@ -96,6 +97,7 @@ const App = () => (
               <Route path="/tong-quan" element={<Overview />} />
               <Route path="/ho-so-ca-nhan" element={<PersonalProfile />} />
               <Route path="/ho-so-ca-nhan/sua" element={<EditMyProfile />} />
+              <Route path="/doi-mat-khau" element={<ChangePassword />} />
               <Route path="/ho-so-ca-nhan/:id" element={<PersonalProfile />} />
               <Route path="/skill-loi-theo-vi-tri" element={<CoreSkillsByPosition />} />
               <Route path="/skill-bo-sung" element={<ExtraSkillsPage />} />

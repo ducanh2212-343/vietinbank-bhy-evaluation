@@ -22,12 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
 # Environment variables
 .env
 .env.*
 !.env.example
 
-# Build output
-dist
-node_modules
