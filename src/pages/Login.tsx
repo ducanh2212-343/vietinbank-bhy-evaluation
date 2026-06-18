@@ -4,7 +4,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import vtbLogo from '@/assets/vietinbank-bhy-logo.png';
 import { useToast } from '@/hooks/use-toast';
 
 export default function Login() {
@@ -33,15 +32,15 @@ export default function Login() {
       <div className="relative w-full max-w-md rounded-2xl border bg-card shadow-2xl p-8">
         <div className="text-center space-y-4">
           <div className="flex justify-center">
-            <div className="bg-white rounded-2xl p-3 shadow-lg">
-              <img src={vtbLogo} alt="VietinBank Bắc Hưng Yên" className="h-28 md:h-32 w-auto object-contain" />
+            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg">
+              <span className="text-2xl font-bold">343</span>
             </div>
           </div>
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground">
             343 Phát triển nhân sự
           </h1>
           <p className="text-sm text-muted-foreground">
-            Hệ thống quản trị năng lực nhân sự — VietinBank Bắc Hưng Yên
+            Hệ thống nội bộ quản trị năng lực nhân sự
           </p>
         </div>
 
@@ -76,7 +75,7 @@ export default function Login() {
         </form>
 
         <div className="mt-4 text-center text-sm text-muted-foreground">
-          Tài khoản do quản trị viên cấp. Vui lòng liên hệ quản trị viên nếu bạn cần hỗ trợ đăng nhập.
+          Tài khoản do quản trị viên cấp. Hệ thống chỉ dành cho cán bộ được phân quyền; không dành cho khách hàng và không yêu cầu thông tin thẻ, tài khoản ngân hàng hoặc thông tin thanh toán.
         </div>
       </div>
     </div>
