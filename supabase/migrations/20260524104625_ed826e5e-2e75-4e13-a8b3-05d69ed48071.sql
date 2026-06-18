@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS director_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL;

@@ -1,0 +1,1 @@
+ALTER TABLE public.form_previous_action_reviews ADD COLUMN IF NOT EXISTS self_status text NOT NULL DEFAULT 'planned';

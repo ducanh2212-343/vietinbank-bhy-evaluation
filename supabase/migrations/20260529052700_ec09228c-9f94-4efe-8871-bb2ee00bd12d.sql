@@ -1,0 +1,1 @@
+ALTER TABLE public.attitude_dimensions_catalog ADD COLUMN IF NOT EXISTS outstanding_behaviors text;

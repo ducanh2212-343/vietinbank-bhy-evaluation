@@ -1,0 +1,190 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* iOS 26 Liquid Glass — light, airy, soft */
+    --background: 214 32% 96%;
+    --foreground: 220 40% 13%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 40% 13%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 40% 13%;
+
+    /* VietinBank navy — slightly softened */
+    --primary: 212 78% 36%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 212 28% 94%;
+    --secondary-foreground: 212 78% 24%;
+
+    --muted: 214 28% 95%;
+    --muted-foreground: 215 14% 46%;
+
+    --accent: 210 60% 94%;
+    --accent-foreground: 212 78% 24%;
+
+    --destructive: 0 72% 52%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 24% 90%;
+    --input: 214 24% 90%;
+    --ring: 212 78% 36%;
+
+    /* Larger radius for iOS feel */
+    --radius: 1rem;
+
+    /* Soft shadows — single layer */
+    --shadow-soft: 0 1px 2px 0 hsl(220 40% 13% / 0.04), 0 4px 16px -6px hsl(220 40% 13% / 0.08);
+    --shadow-glass: 0 1px 0 0 hsl(0 0% 100% / 0.6) inset, 0 8px 28px -10px hsl(220 40% 13% / 0.12);
+    --shadow-lift: 0 12px 36px -12px hsl(220 40% 13% / 0.18);
+
+    /* Glass surfaces */
+    --glass-bg: 0 0% 100% / 0.72;
+    --glass-bg-strong: 0 0% 100% / 0.85;
+    --glass-border: 0 0% 100% / 0.7;
+
+    /* Level colors */
+    --level-1: 200 15% 55%;
+    --level-2: 210 80% 50%;
+    --level-3: 38 90% 50%;
+    --level-4: 270 55% 50%;
+
+    --level-1-bg: 200 25% 94%;
+    --level-2-bg: 210 80% 95%;
+    --level-3-bg: 38 90% 94%;
+    --level-4-bg: 270 55% 95%;
+
+    /* Star groups */
+    --star-mai: 45 90% 50%;
+    --star-mai-bg: 45 90% 94%;
+    --star-khue: 145 55% 42%;
+    --star-khue-bg: 145 55% 94%;
+    --star-bang: 25 85% 55%;
+    --star-bang-bg: 25 85% 94%;
+    --star-hom: 0 55% 48%;
+    --star-hom-bg: 0 55% 94%;
+
+    /* Sidebar — VietinBank navy with a softer top */
+    --sidebar-background: 212 70% 20%;
+    --sidebar-foreground: 210 35% 90%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 212 78% 22%;
+    --sidebar-accent: 212 60% 30%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 212 50% 28%;
+    --sidebar-ring: 210 80% 60%;
+    --sidebar-muted: 212 30% 72%;
+  }
+}
+
+@layer base {
+  html, body {
+    @apply overflow-x-hidden;
+  }
+  /* Chống iOS auto-zoom khi focus input trên mobile */
+  @media (max-width: 767px) {
+    input, textarea, select {
+      font-size: 16px;
+    }
+  }
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    background-color: hsl(var(--background));
+    background-image:
+      radial-gradient(1200px 600px at 0% -10%, hsl(210 80% 95% / 0.7), transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, hsl(220 60% 96% / 0.7), transparent 55%);
+    background-attachment: fixed;
+  }
+}
+
+@layer utilities {
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .table-bleed {
+    @apply -mx-4 sm:mx-0;
+  }
+  .sticky-action-bar {
+    @apply sticky bottom-0 left-0 right-0 z-20 -mx-4 mt-4 flex gap-2 border-t bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none;
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  }
+
+  /* === Liquid Glass utilities (use sparingly) === */
+  .glass {
+    background-color: hsl(var(--glass-bg));
+    border: 1px solid hsl(var(--glass-border));
+    backdrop-filter: saturate(180%) blur(14px);
+    -webkit-backdrop-filter: saturate(180%) blur(14px);
+    box-shadow: var(--shadow-glass);
+  }
+  .glass-strong {
+    background-color: hsl(var(--glass-bg-strong));
+    border: 1px solid hsl(var(--glass-border));
+    backdrop-filter: saturate(180%) blur(18px);
+    -webkit-backdrop-filter: saturate(180%) blur(18px);
+    box-shadow: var(--shadow-glass);
+  }
+  .glass-subtle {
+    background-color: hsl(0 0% 100% / 0.6);
+    border: 1px solid hsl(214 24% 92% / 0.8);
+  }
+  .shadow-soft { box-shadow: var(--shadow-soft); }
+  .shadow-lift { box-shadow: var(--shadow-lift); }
+}
+
+@layer components {
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-150 cursor-pointer;
+    color: hsl(var(--sidebar-foreground));
+  }
+  .nav-item:hover {
+    background: hsl(0 0% 100% / 0.08);
+    color: hsl(var(--sidebar-primary));
+  }
+  .nav-item.active {
+    background: hsl(0 0% 100% / 0.16);
+    color: hsl(var(--sidebar-primary));
+    font-weight: 600;
+    box-shadow: 0 1px 0 0 hsl(0 0% 100% / 0.12) inset;
+  }
+  .level-badge {
+    @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold;
+  }
+  .level-0 { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+  .level-1 { background: hsl(var(--level-1-bg)); color: hsl(var(--level-1)); }
+  .level-2 { background: hsl(var(--level-2-bg)); color: hsl(var(--level-2)); }
+  .level-3 { background: hsl(var(--level-3-bg)); color: hsl(var(--level-3)); }
+  .level-4 { background: hsl(var(--level-4-bg)); color: hsl(var(--level-4)); }
+
+  .star-mai { background: hsl(var(--star-mai-bg)); color: hsl(var(--star-mai)); }
+  .star-khue { background: hsl(var(--star-khue-bg)); color: hsl(var(--star-khue)); }
+  .star-bang { background: hsl(var(--star-bang-bg)); color: hsl(var(--star-bang)); }
+  .star-hom { background: hsl(var(--star-hom-bg)); color: hsl(var(--star-hom)); }
+
+  .stat-card {
+    @apply bg-card rounded-2xl border p-5 transition-all duration-200;
+    box-shadow: var(--shadow-soft);
+  }
+  .stat-card:hover {
+    box-shadow: var(--shadow-lift);
+  }
+
+  .page-header {
+    @apply text-2xl font-bold tracking-tight text-foreground mb-1;
+    letter-spacing: -0.01em;
+  }
+  .page-subtitle {
+    @apply text-sm text-muted-foreground;
+  }
+}

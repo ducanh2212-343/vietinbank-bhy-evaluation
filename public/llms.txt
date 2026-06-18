@@ -1,0 +1,3 @@
+# 343 Phát triển nhân sự
+
+> Hệ thống quản trị năng lực nhân sự — VietinBank Chi nhánh Bắc Hưng Yên. Hỗ trợ đánh giá kỹ năng, thái độ, lập kế hoạch phát triển cá nhân (IDP) và quản lý tiềm năng cán bộ nhân viên.
