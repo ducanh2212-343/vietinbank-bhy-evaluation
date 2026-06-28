@@ -5,11 +5,32 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Info, ShieldAlert, KeyRound, Copy, CheckCircle2 } from 'lucide-react';
+
+// Vai trò trên hệ thống — nhãn dễ hiểu cho người dùng nghiệp vụ.
+const ROLE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'employee', label: 'Cán bộ' },
+  { value: 'manager', label: 'Trưởng phòng/Trưởng đơn vị' },
+  { value: 'pgd', label: 'PGĐ phụ trách' },
+  { value: 'tcth_admin', label: 'TCTH/Admin' },
+  { value: 'bgd', label: 'Ban Giám đốc' },
+  { value: 'system_admin', label: 'Quản trị hệ thống' },
+];
+
+interface CreateResult {
+  user_id: string;
+  profile_id: string;
+  created_new: boolean;
+  email_sent: boolean;
+  temp_password: string | null;
+  message: string;
+}
 
 export default function AddStaff() {
   const { isAdmin } = useAuth();
@@ -19,11 +40,13 @@ export default function AddStaff() {
   const [positions, setPositions] = useState<{ id: string; name: string; department_id: string }[]>([]);
   const [managers, setManagers] = useState<{ id: string; full_name: string }[]>([]);
   const [saving, setSaving] = useState(false);
+  const [result, setResult] = useState<CreateResult | null>(null);
 
   const [form, setForm] = useState({
     employee_code: '', full_name: '', email: '', phone: '',
-    department_id: '', position_id: '', manager_id: '', pgd_id: '', director_id: '',
-    status: 'active', note: '',
+    department_id: '', position_id: '', role: 'employee',
+    manager_id: '', pgd_id: '', director_id: '',
+    status: 'active', note: '', send_password_email: false,
   });
 
   useEffect(() => {
@@ -31,7 +54,7 @@ export default function AddStaff() {
       const [d, pos, p] = await Promise.all([
         supabase.from('departments').select('id, name').eq('is_active', true).order('name'),
         supabase.from('positions').select('id, name, department_id').eq('is_active', true).order('sort_order'),
-        supabase.from('profiles').select('id, full_name'),
+        supabase.from('profiles').select('id, full_name').order('full_name'),
       ]);
       setDepartments(d.data || []);
       setPositions(pos.data || []);
@@ -44,71 +67,137 @@ export default function AddStaff() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.full_name) { toast({ title: 'Vui lòng nhập họ tên', variant: 'destructive' }); return; }
+    if (!form.full_name.trim()) { toast({ title: 'Vui lòng nhập họ tên', variant: 'destructive' }); return; }
+    if (!form.email.trim()) { toast({ title: 'Vui lòng nhập email đăng nhập', variant: 'destructive' }); return; }
+    if (!form.employee_code.trim()) { toast({ title: 'Vui lòng nhập mã cán bộ', variant: 'destructive' }); return; }
+
+    if (form.role === 'system_admin') {
+      const ok = window.confirm(
+        'Bạn đang cấp quyền "Quản trị hệ thống" — quyền cao nhất, toàn quyền hệ thống. Bạn có chắc chắn?'
+      );
+      if (!ok) return;
+    }
+
     setSaving(true);
-
-    const placeholderUserId = crypto.randomUUID();
-    const selectedPosition = positions.find(p => p.id === form.position_id);
-
-    const { data: inserted, error } = await supabase.from('profiles').insert({
-      user_id: placeholderUserId,
-      employee_code: form.employee_code || null,
-      full_name: form.full_name,
-      email: form.email || null,
-      phone: form.phone || null,
-      department_id: form.department_id || null,
-      position_id: form.position_id || null,
-      position: selectedPosition?.name || null,
-      manager_id: form.manager_id || null,
-      pgd_id: form.pgd_id || null,
-      director_id: form.director_id || null,
-      status: form.status,
-      note: form.note || null,
-    }).select('id').single();
-
+    const { data, error } = await supabase.functions.invoke('create-staff-user', {
+      body: {
+        employee_code: form.employee_code,
+        full_name: form.full_name,
+        email: form.email,
+        phone: form.phone,
+        department_id: form.department_id || null,
+        position_id: form.position_id || null,
+        role: form.role,
+        manager_id: form.manager_id || null,
+        pgd_id: form.pgd_id || null,
+        director_id: form.director_id || null,
+        status: form.status,
+        note: form.note,
+        send_password_email: form.send_password_email,
+      },
+    });
     setSaving(false);
+
     if (error) {
-      toast({ title: 'Lỗi khi thêm cán bộ', description: error.message, variant: 'destructive' });
+      let message = error.message;
+      try {
+        const ctx = (error as { context?: Response }).context;
+        const body = ctx ? await ctx.json() : null;
+        if (body?.error) message = body.error;
+      } catch { /* keep default */ }
+      toast({ title: 'Không tạo được tài khoản', description: message, variant: 'destructive' });
+      return;
+    }
+    if (data?.error) {
+      toast({ title: 'Không tạo được tài khoản', description: data.error, variant: 'destructive' });
+      return;
+    }
+
+    toast({ title: 'Đã tạo tài khoản cán bộ thành công' });
+    // If a temp password must be relayed manually, keep the admin on-screen to copy it.
+    if (data?.temp_password) {
+      setResult(data as CreateResult);
     } else {
-      toast({ title: 'Đã thêm cán bộ thành công' });
-      if (inserted?.id) {
-        navigate(`/chi-tiet-can-bo/${inserted.id}`);
-      } else {
-        navigate('/danh-sach-can-bo');
-      }
+      navigate(`/chi-tiet-can-bo/${data.profile_id}`);
     }
   };
 
   if (!isAdmin) return <div className="p-6 text-muted-foreground">Bạn không có quyền truy cập.</div>;
 
-  const set = (key: string, val: string) => setForm((p) => ({ ...p, [key]: val }));
+  const set = (key: string, val: string | boolean) => setForm((p) => ({ ...p, [key]: val }));
+
+  // Success screen with temporary password to relay (fallback when no email sent).
+  if (result) {
+    return (
+      <div className="max-w-2xl space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-green-600" /> Đã tạo tài khoản cán bộ
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">{result.message}</p>
+            <Alert>
+              <KeyRound className="h-4 w-4" />
+              <AlertDescription className="space-y-2">
+                <p className="font-medium">Mật khẩu tạm thời (phương án tạm thời — hãy gửi riêng cho cán bộ và yêu cầu đổi ngay khi đăng nhập):</p>
+                <div className="flex items-center gap-2">
+                  <code className="px-2 py-1 rounded bg-muted font-mono text-sm select-all">{result.temp_password}</code>
+                  <Button type="button" size="sm" variant="outline" onClick={() => {
+                    navigator.clipboard?.writeText(result.temp_password || '');
+                    toast({ title: 'Đã sao chép mật khẩu tạm' });
+                  }}>
+                    <Copy className="w-4 h-4 mr-1" /> Sao chép
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">Không lưu mật khẩu này vào file Excel hay nơi không an toàn.</p>
+              </AlertDescription>
+            </Alert>
+            <div className="flex gap-3 justify-end">
+              <Button variant="outline" onClick={() => { setResult(null); setForm((p) => ({ ...p, employee_code: '', full_name: '', email: '', phone: '', note: '' })); }}>
+                Tạo cán bộ khác
+              </Button>
+              <Button onClick={() => navigate(`/chi-tiet-can-bo/${result.profile_id}`)}>Xem chi tiết cán bộ</Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl space-y-4">
       <Button variant="ghost" onClick={() => navigate(-1)}><ArrowLeft className="w-4 h-4 mr-2" /> Quay lại</Button>
       <Card>
-        <CardHeader><CardTitle>Thêm cán bộ mới</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Tạo tài khoản cán bộ</CardTitle></CardHeader>
         <CardContent>
+          <Alert className="mb-4">
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              Tài khoản sau khi tạo sẽ có thể đăng nhập vào hệ thống 343skill.com theo vai trò được cấp. Mỗi cán bộ cần có email đăng nhập duy nhất.
+            </AlertDescription>
+          </Alert>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Mã cán bộ</Label>
-                <Input value={form.employee_code} onChange={(e) => set('employee_code', e.target.value)} placeholder="VTB-XXX" />
+                <Label>Mã cán bộ *</Label>
+                <Input value={form.employee_code} onChange={(e) => set('employee_code', e.target.value)} placeholder="VTB-XXX" required />
               </div>
               <div className="space-y-2">
                 <Label>Họ tên *</Label>
                 <Input value={form.full_name} onChange={(e) => set('full_name', e.target.value)} required />
               </div>
               <div className="space-y-2">
-                <Label>Email</Label>
-                <Input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} />
+                <Label>Email đăng nhập *</Label>
+                <Input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} required />
               </div>
               <div className="space-y-2">
                 <Label>Số điện thoại</Label>
                 <Input value={form.phone} onChange={(e) => set('phone', e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Phòng ban *</Label>
+                <Label>Phòng ban</Label>
                 <Select value={form.department_id} onValueChange={(v) => { set('department_id', v); set('position_id', ''); }}>
                   <SelectTrigger><SelectValue placeholder="Chọn phòng ban" /></SelectTrigger>
                   <SelectContent>
@@ -126,6 +215,15 @@ export default function AddStaff() {
                 </Select>
               </div>
               <div className="space-y-2">
+                <Label>Vai trò trên hệ thống *</Label>
+                <Select value={form.role} onValueChange={(v) => set('role', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {ROLE_OPTIONS.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <Label>Quản lý trực tiếp</Label>
                 <Select value={form.manager_id} onValueChange={(v) => set('manager_id', v)}>
                   <SelectTrigger><SelectValue placeholder="Chọn quản lý" /></SelectTrigger>
@@ -135,18 +233,18 @@ export default function AddStaff() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Ban giám đốc Phụ trách</Label>
+                <Label>PGĐ phụ trách</Label>
                 <Select value={form.pgd_id} onValueChange={(v) => set('pgd_id', v)}>
-                  <SelectTrigger><SelectValue placeholder="Chọn thành viên Ban giám đốc" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Chọn PGĐ phụ trách" /></SelectTrigger>
                   <SelectContent>
                     {managers.map((m) => <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Giám đốc Chi nhánh</Label>
+                <Label>Giám đốc phụ trách</Label>
                 <Select value={form.director_id} onValueChange={(v) => set('director_id', v)}>
-                  <SelectTrigger><SelectValue placeholder="Chọn Giám đốc Chi nhánh" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Chọn Giám đốc phụ trách" /></SelectTrigger>
                   <SelectContent>
                     {managers.map((m) => <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>)}
                   </SelectContent>
@@ -167,9 +265,29 @@ export default function AddStaff() {
               <Label>Ghi chú</Label>
               <Textarea value={form.note} onChange={(e) => set('note', e.target.value)} rows={3} />
             </div>
+
+            {form.role === 'system_admin' && (
+              <Alert variant="destructive">
+                <ShieldAlert className="h-4 w-4" />
+                <AlertDescription>
+                  Bạn đang cấp quyền <strong>Quản trị hệ thống</strong> — quyền cao nhất. Chỉ cấp khi thật sự cần thiết.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div className="space-y-0.5">
+                <Label>Gửi email đặt mật khẩu cho cán bộ</Label>
+                <p className="text-xs text-muted-foreground">
+                  Nếu bật, hệ thống gửi email để cán bộ tự đặt mật khẩu. Nếu tắt, mật khẩu tạm sẽ hiển thị để bạn gửi riêng.
+                </p>
+              </div>
+              <Switch checked={form.send_password_email} onCheckedChange={(v) => set('send_password_email', v)} />
+            </div>
+
             <div className="flex gap-3 justify-end">
               <Button type="button" variant="outline" onClick={() => navigate(-1)}>Hủy</Button>
-              <Button type="submit" disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu cán bộ'}</Button>
+              <Button type="submit" disabled={saving}>{saving ? 'Đang tạo...' : 'Tạo tài khoản'}</Button>
             </div>
           </form>
         </CardContent>
