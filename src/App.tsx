@@ -9,7 +9,6 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { AdminRoute, ManagerOrAboveRoute } from "@/components/AdminRoute";
 
 import Login from "./pages/Login";
-import Register from "./pages/Register";
 import Unsubscribe from "./pages/Unsubscribe";
 
 // Retry dynamic import once on failure (handles stale chunk hashes after redeploys).
@@ -88,7 +87,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/dang-nhap" element={<LoginRoute />} />
-            <Route path="/dang-ky-tai-khoan" element={<Register />} />
+            <Route path="/dang-ky-tai-khoan" element={<Navigate to="/dang-nhap" replace />} />
             <Route path="/unsubscribe" element={<Unsubscribe />} />
             <Route element={<ProtectedRoutes />}>
               <Route path="/" element={<Navigate to="/tong-quan" replace />} />
