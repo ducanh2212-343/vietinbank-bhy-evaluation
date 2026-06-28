@@ -1,0 +1,309 @@
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { isValidRole } from "./roles.ts";
+
+/** Validation error for a single staff row — never aborts a bulk run. */
+export class ValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ValidationError";
+  }
+}
+
+export interface StaffInput {
+  employee_code?: string | null;
+  full_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  department_id?: string | null;
+  position_id?: string | null;
+  role?: string | null;
+  // Direct profile ids (single-create form). Bulk resolves emails into these.
+  manager_id?: string | null;
+  pgd_id?: string | null;
+  director_id?: string | null;
+  status?: string | null;
+  note?: string | null;
+  send_password_email?: boolean;
+}
+
+export interface StaffContext {
+  adminClient: SupabaseClient;
+  callerUserId: string;
+  siteUrl: string;
+  // Optional pre-loaded validation sets (bulk loads these once).
+  validDeptIds?: Set<string>;
+  validPositionIds?: Set<string>;
+  positionNames?: Map<string, string>;
+}
+
+export interface StaffResult {
+  success: true;
+  user_id: string;
+  profile_id: string;
+  created_new: boolean;
+  role_assigned: string;
+  email_sent: boolean;
+  temp_password: string | null;
+  message: string;
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Cryptographically strong temporary password (mixed case + digits + symbol). */
+export function generatePassword(length = 16): string {
+  const chars =
+    "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*";
+  const arr = new Uint32Array(length);
+  crypto.getRandomValues(arr);
+  return Array.from(arr, (n) => chars[n % chars.length]).join("");
+}
+
+function clean(v: string | null | undefined): string | null {
+  if (v === undefined || v === null) return null;
+  const t = String(v).trim();
+  return t === "" ? null : t;
+}
+
+/** Locate an existing auth user id by email — profiles first, then auth list. */
+async function findExistingUserId(
+  adminClient: SupabaseClient,
+  email: string,
+): Promise<string | null> {
+  const { data: prof } = await adminClient
+    .from("profiles")
+    .select("user_id")
+    .eq("email", email)
+    .maybeSingle();
+  if (prof?.user_id) return prof.user_id as string;
+  return null;
+}
+
+/** Page through auth.users to locate an email (used only on create conflict). */
+async function searchAuthByEmail(
+  adminClient: SupabaseClient,
+  email: string,
+): Promise<string | null> {
+  const target = email.toLowerCase();
+  for (let page = 1; page <= 50; page++) {
+    const { data, error } = await adminClient.auth.admin.listUsers({
+      page,
+      perPage: 1000,
+    });
+    if (error || !data) return null;
+    const found = data.users.find((u) => (u.email ?? "").toLowerCase() === target);
+    if (found) return found.id;
+    if (data.users.length < 1000) break;
+  }
+  return null;
+}
+
+/**
+ * Create (or reuse) an Auth user, upsert their profile and role, and write an
+ * audit log. Idempotent on email: an existing auth user is reused, an existing
+ * profile (matched by user_id or email) is updated rather than duplicated.
+ */
+export async function createOrUpdateStaffUser(
+  input: StaffInput,
+  ctx: StaffContext,
+): Promise<StaffResult> {
+  const { adminClient, callerUserId, siteUrl } = ctx;
+
+  // ---- Validate ----------------------------------------------------------
+  const email = clean(input.email)?.toLowerCase() ?? null;
+  const fullName = clean(input.full_name);
+  const employeeCode = clean(input.employee_code);
+  const role = clean(input.role) ?? "employee";
+
+  if (!email) throw new ValidationError("Thiếu email đăng nhập");
+  if (!EMAIL_RE.test(email)) throw new ValidationError("Email không hợp lệ");
+  if (!fullName) throw new ValidationError("Thiếu họ tên");
+  if (!employeeCode) throw new ValidationError("Thiếu mã cán bộ");
+  if (!isValidRole(role)) throw new ValidationError(`Vai trò không hợp lệ: ${role}`);
+
+  const departmentId = clean(input.department_id);
+  const positionId = clean(input.position_id);
+
+  if (departmentId && ctx.validDeptIds && !ctx.validDeptIds.has(departmentId)) {
+    throw new ValidationError("Không tìm thấy phòng ban (department_id)");
+  }
+  if (positionId && ctx.validPositionIds && !ctx.validPositionIds.has(positionId)) {
+    throw new ValidationError("Không tìm thấy vị trí (position_id)");
+  }
+
+  // ---- Resolve / create the Auth user ------------------------------------
+  let userId = await findExistingUserId(adminClient, email);
+  let createdNew = false;
+  let tempPassword: string | null = null;
+
+  if (!userId) {
+    tempPassword = generatePassword();
+    const { data, error } = await adminClient.auth.admin.createUser({
+      email,
+      password: tempPassword,
+      email_confirm: true,
+      user_metadata: { full_name: fullName, must_change_password: true },
+    });
+    if (error) {
+      // Auth user may already exist without a profile row — recover its id.
+      if (/registered|already|exists/i.test(error.message)) {
+        userId = await searchAuthByEmail(adminClient, email);
+        tempPassword = null;
+        if (!userId) {
+          throw new ValidationError(`Không tạo được tài khoản: ${error.message}`);
+        }
+      } else {
+        throw new ValidationError(`Không tạo được tài khoản: ${error.message}`);
+      }
+    } else {
+      userId = data.user.id;
+      createdNew = true;
+    }
+  }
+
+  // ---- Resolve position display name -------------------------------------
+  let positionName: string | null = null;
+  if (positionId) {
+    positionName = ctx.positionNames?.get(positionId) ?? null;
+    if (!positionName) {
+      const { data: posData } = await adminClient
+        .from("positions")
+        .select("name")
+        .eq("id", positionId)
+        .maybeSingle();
+      positionName = posData?.name ?? null;
+    }
+  }
+
+  // ---- Upsert the profile (match by user_id, then by email) --------------
+  let existingProfile:
+    | { id: string; user_id: string | null }
+    | null = null;
+  {
+    const { data } = await adminClient
+      .from("profiles")
+      .select("id, user_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    existingProfile = data as typeof existingProfile;
+  }
+  if (!existingProfile) {
+    const { data } = await adminClient
+      .from("profiles")
+      .select("id, user_id")
+      .eq("email", email)
+      .maybeSingle();
+    existingProfile = data as typeof existingProfile;
+  }
+
+  const profileFields = {
+    user_id: userId,
+    employee_code: employeeCode,
+    full_name: fullName,
+    email,
+    phone: clean(input.phone),
+    department_id: departmentId,
+    position_id: positionId,
+    position: positionName,
+    manager_id: clean(input.manager_id),
+    pgd_id: clean(input.pgd_id),
+    director_id: clean(input.director_id),
+    status: clean(input.status) ?? "active",
+    note: clean(input.note),
+  };
+
+  let profileId: string;
+  if (existingProfile) {
+    const { data, error } = await adminClient
+      .from("profiles")
+      .update(profileFields)
+      .eq("id", existingProfile.id)
+      .select("id")
+      .single();
+    if (error) throw new ValidationError(`Lỗi cập nhật hồ sơ: ${error.message}`);
+    profileId = data.id;
+  } else {
+    const { data, error } = await adminClient
+      .from("profiles")
+      .insert(profileFields)
+      .select("id")
+      .single();
+    if (error) throw new ValidationError(`Lỗi tạo hồ sơ: ${error.message}`);
+    profileId = data.id;
+  }
+
+  // ---- Assign role (insert if the user does not already hold it) ---------
+  const { data: existingRoles } = await adminClient
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId);
+  const hasRole = (existingRoles ?? []).some(
+    (r: { role: string }) => r.role === role,
+  );
+  if (!hasRole) {
+    const { error: roleError } = await adminClient
+      .from("user_roles")
+      .insert({ user_id: userId, role });
+    if (roleError) {
+      throw new ValidationError(`Lỗi gán vai trò: ${roleError.message}`);
+    }
+  }
+
+  // ---- Optional password-reset email -------------------------------------
+  let emailSent = false;
+  if (input.send_password_email) {
+    try {
+      const { error: mailError } = await adminClient.auth.resetPasswordForEmail(
+        email,
+        { redirectTo: `${siteUrl}/doi-mat-khau` },
+      );
+      emailSent = !mailError;
+    } catch (_e) {
+      emailSent = false;
+    }
+  }
+
+  return {
+    success: true,
+    user_id: userId!,
+    profile_id: profileId,
+    created_new: createdNew,
+    role_assigned: role,
+    email_sent: emailSent,
+    temp_password: createdNew && !emailSent ? tempPassword : null,
+    message: createdNew
+      ? "Đã tạo tài khoản mới"
+      : "Tài khoản đã tồn tại — đã cập nhật hồ sơ",
+  };
+}
+
+/** Write an audit log entry. Best-effort: failures are swallowed. */
+export async function writeAuditLog(
+  adminClient: SupabaseClient,
+  params: {
+    callerUserId: string;
+    action: string;
+    entityId: string | null;
+    metadata: Record<string, unknown>;
+  },
+): Promise<void> {
+  try {
+    await adminClient.from("audit_logs").insert({
+      user_id: params.callerUserId,
+      action: params.action,
+      entity_type: "staff_account",
+      entity_id: params.entityId,
+      new_data: params.metadata,
+    });
+  } catch (e) {
+    console.error("audit_logs insert failed:", e);
+  }
+}
+
+/** Resolve the public site URL for password-reset redirects. */
+export function resolveSiteUrl(req: Request): string {
+  const fromEnv = Deno.env.get("SITE_URL");
+  if (fromEnv) return fromEnv.replace(/\/$/, "");
+  const origin = req.headers.get("origin");
+  if (origin) return origin.replace(/\/$/, "");
+  return "https://343skill.com";
+}
