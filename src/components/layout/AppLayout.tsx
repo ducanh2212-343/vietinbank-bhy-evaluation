@@ -2,7 +2,7 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import { AppSidebar } from './AppSidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/input';
-import { Search, Menu, X, LogOut, User, ChevronDown } from 'lucide-react';
+import { Search, Menu, X, LogOut, User, ChevronDown, KeyRound } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
 export function AppLayout() {
@@ -89,6 +89,13 @@ export function AppLayout() {
                 >
                   <User className="w-4 h-4" />
                   Hồ sơ cá nhân
+                </button>
+                <button
+                  onClick={() => { navigate('/doi-mat-khau'); setUserMenuOpen(false); }}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-muted transition-colors"
+                >
+                  <KeyRound className="w-4 h-4" />
+                  Đổi mật khẩu
                 </button>
                 <div className="border-t my-1" />
                 <button
