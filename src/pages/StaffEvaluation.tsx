@@ -28,6 +28,7 @@ import { EvalSectionG } from '@/components/evaluation/EvalSectionG';
 import { EvalSectionReviewer } from '@/components/evaluation/EvalSectionReviewer';
 import { EvalSectionPGD } from '@/components/evaluation/EvalSectionPGD';
 import { ATTITUDE_DIMENSIONS } from '@/components/bm/AttitudeConstants';
+import { STATUS_FROM_DB, STATUS_TO_DB, sanitizeRating } from '@/components/evaluation/attitudeFocusOptions';
 import {
   filterQuarterCycles,
   getQuarterFormSubmission,
@@ -108,6 +109,24 @@ export default function StaffEvaluation() {
     profile ? { id: profile.id, manager_id: profile.manager_id, pgd_id: profile.pgd_id, director_id: profile.director_id } : null,
   );
   const reviewField = reviewerLevel ? getOverallReviewField(reviewerLevel) : null;
+
+  // Phân quyền rõ theo cấp duyệt:
+  // - Chỉ Trưởng phòng TRỰC TIẾP được sửa cột đánh giá của lãnh đạo (B/C), và chỉ khi
+  //   phiếu đang chờ TP xử lý (submitted, hoặc PGĐ trả lại cho TP).
+  // - PGĐ chỉ xem + duyệt/trả lại; admin không sửa B/C.
+  const isDirectManagerReviewer = reviewerLevel === 'manager';
+  const isPgdReviewer = reviewerLevel === 'pgd';
+  const isDirectorViewer = reviewerLevel === 'director';
+  const canEditManagerAssessment =
+    isDirectManagerReviewer &&
+    (formStatus === 'submitted' ||
+      (formStatus === 'returned' && formMeta.return_target === 'manager') ||
+      formMeta.return_target === 'manager');
+
+  // Cán bộ tự mở phiếu của mình: chỉ sửa khi nháp hoặc bị trả lại
+  const canEmployeeEditSelf = isSelfEval && (formStatus === 'draft' || formStatus === 'returned');
+  // Ai được bấm "Lưu nháp" phiếu này
+  const canSaveForm = isSelfEval ? canEmployeeEditSelf : (canEditManagerAssessment || isAdmin);
 
   // Can the manager confirm review? Needs all core skills graded, all 6 attitudes graded,
   // and at least one of overallReview / remark / managerConclusion filled.
@@ -211,12 +230,23 @@ export default function StaffEvaluation() {
       };
     });
 
-    // Build initial attitude assessments
+    // Build initial attitude assessments (đủ field model mới + legacy, đồng bộ với SelfAssessmentPage)
     const initialAttitudes: AttitudeAssessment[] = ATTITUDE_DIMENSIONS.map(d => ({
       attitude_dimension_id: d.id,
       attitude_name: d.name,
       self_status: '',
       manager_status: '',
+      evidence_text: '',
+      improvement_required: false,
+      improvement_focus: [],
+      improvement_focus_other: '',
+      improvement_action: '',
+      improvement_deadline: '',
+      expected_evidence: '',
+      support_needed: '',
+      improvement_status: 'not_started',
+      progress_note: '',
+      // legacy
       current_status: '',
       issue_summary: '',
       desired_status: '',
@@ -301,14 +331,16 @@ export default function StaffEvaluation() {
         resolvedCoreAssessments = merged.core;
         resolvedSuppAssessments = merged.supplementary;
 
-        // Merge attitude assessments
+        // Merge attitude assessments — hydrate cả model mới lẫn legacy (đồng bộ với SelfAssessmentPage)
         if (apRes.data?.length) {
           const apMap = new Map(apRes.data.map((a: any) => [a.attitude_dimension_id, a]));
           initialAttitudes.forEach(ia => {
-            const saved = apMap.get(ia.attitude_dimension_id);
+            const saved: any = apMap.get(ia.attitude_dimension_id);
             if (saved) {
-              ia.self_status = saved.self_status || '';
-              ia.manager_status = saved.manager_status || '';
+              ia.self_status = sanitizeRating(saved.self_status);
+              ia.manager_status = sanitizeRating(saved.manager_status);
+              ia.evidence_text = saved.evidence || '';
+              // legacy
               ia.current_status = saved.current_status || '';
               ia.issue_summary = saved.issue_summary || '';
               ia.desired_status = saved.desired_status || '';
@@ -316,8 +348,56 @@ export default function StaffEvaluation() {
               ia.improvement_goal = saved.improvement_goal || '';
               ia.employee_comment = saved.employee_comment || '';
               ia.manager_comment = saved.manager_comment || '';
+              // parse focus payload từ issue_summary: ưu tiên JSON, fallback format pipe cũ
+              const raw = saved.issue_summary || '';
+              if (raw) {
+                let parsedFocus: string[] | null = null;
+                let parsedOther = '';
+                try {
+                  const parsed = JSON.parse(raw);
+                  if (parsed && Array.isArray(parsed.focus)) {
+                    parsedFocus = parsed.focus;
+                    parsedOther = parsed.other || '';
+                  }
+                } catch {
+                  // legacy pipe format: "1a|1b|other:xxx"
+                  const parts = raw.split('|').filter(Boolean);
+                  const focusCodes: string[] = [];
+                  parts.forEach((p: string) => {
+                    if (p.startsWith('other:')) {
+                      parsedOther = p.slice('other:'.length);
+                      focusCodes.push('other');
+                    } else {
+                      focusCodes.push(p);
+                    }
+                  });
+                  if (focusCodes.length) parsedFocus = focusCodes;
+                }
+                if (parsedFocus) ia.improvement_focus = parsedFocus;
+                if (parsedOther) ia.improvement_focus_other = parsedOther;
+              }
+              ia.improvement_action = saved.improvement_goal || '';
+              ia.improvement_status = STATUS_FROM_DB[saved.status] || 'not_started';
+              ia.improvement_required = !!(saved.improvement_goal || (ia.improvement_focus && ia.improvement_focus.length));
             }
           });
+
+          // Hydrate field kế hoạch từ form_attitude_actions (deadline, minh chứng, hỗ trợ, tiến độ)
+          if (aActRes.data?.length) {
+            const apIdToDim = new Map<string, number>(apRes.data.map((p: any) => [p.id, p.attitude_dimension_id]));
+            aActRes.data.forEach((act: any) => {
+              const dimId = apIdToDim.get(act.attitude_priority_id);
+              if (!dimId) return;
+              const ia = initialAttitudes.find(x => x.attitude_dimension_id === dimId);
+              if (!ia) return;
+              if (act.action_text && act.action_text !== 'Chưa nhập') ia.improvement_action = act.action_text;
+              if (act.deadline) ia.improvement_deadline = act.deadline;
+              if (act.expected_evidence) ia.expected_evidence = act.expected_evidence;
+              if (act.requested_support) ia.support_needed = act.requested_support;
+              if (act.actual_result) ia.progress_note = act.actual_result;
+              if (act.status) ia.improvement_status = STATUS_FROM_DB[act.status] || ia.improvement_status;
+            });
+          }
         }
 
         if (spRes.data?.length) {
@@ -413,6 +493,14 @@ export default function StaffEvaluation() {
 
   const handleSave = async (submit = false) => {
     if (!id || !cycleId) return;
+    if (!canSaveForm) {
+      toast({
+        title: 'Bạn không có quyền lưu phiếu này',
+        description: 'Chỉ Trưởng phòng trực tiếp (khi phiếu chờ rà soát) hoặc cán bộ (khi phiếu nháp/bị trả lại) được chỉnh sửa.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setSaving(true);
 
     try {
@@ -420,7 +508,7 @@ export default function StaffEvaluation() {
         employeeId: id,
         cycleId,
         createIfMissing: true,
-        reviewerId: isManagerMode ? profileId : null,
+        reviewerId: isDirectManagerReviewer ? profileId : null,
       });
       const fId = form?.id || null;
       setFormId(fId);
@@ -439,9 +527,12 @@ export default function StaffEvaluation() {
 
       const formPayload: any = {
         status: nextStatus,
-        submitted_at: submit ? new Date().toISOString() : null,
         manager_comment: managerConclusion || null,
       };
+      // Chỉ ghi submitted_at khi thực sự nộp — lưu nháp không được xóa mốc thời gian nộp
+      if (submit && nextStatus === 'submitted') {
+        formPayload.submitted_at = new Date().toISOString();
+      }
       if (isManagerMode) {
         if (oneOnOneEnabled || hasEmployeeAnswers) {
           formPayload.one_on_one_enabled = true;
@@ -451,14 +542,15 @@ export default function StaffEvaluation() {
         formPayload.one_on_one_enabled = oneOnOneEnabled || hasEmployeeAnswers;
         formPayload.one_on_one_answers = oneOnOneAnswers as any;
       }
-      // CB nộp lại sau khi bị trả → bật cờ cần TP cập nhật
+      // CB nộp lại sau khi bị trả → bật cờ cần TP cập nhật, xóa thông tin trả lại cũ
       if (submit && formStatus === 'returned' && isSelfEval) {
         formPayload.needs_manager_review_update = true;
+        formPayload.returned_by = null;
+        formPayload.returned_at = null;
+        formPayload.return_reason = null;
+        formPayload.return_target = null;
       }
-      // TP lưu nháp/đụng phiếu → tắt cờ
-      if (!submit && isManagerMode && formMeta.needs_manager_review_update) {
-        formPayload.needs_manager_review_update = false;
-      }
+      // Cờ needs_manager_review_update chỉ tắt khi TP bấm "Xác nhận rà soát" (xem handleConfirmReview)
 
       const { error: formError } = await supabase.from('form_submissions').update(formPayload).eq('id', fId);
       if (formError) throw formError;
@@ -466,42 +558,103 @@ export default function StaffEvaluation() {
       // Save core skill assessments
       await replaceCoreSkillAssessments(fId, coreAssessments, suppAssessments);
 
-      // Save attitudes
+      // Save attitudes — model mới (đồng bộ SelfAssessmentPage), giữ dữ liệu legacy, không làm mất dữ liệu cũ
       await supabase.from('form_attitude_actions').delete().eq('form_id', fId);
       await supabase.from('form_attitude_priorities').delete().eq('form_id', fId);
 
+      // Map id mới theo CẢ dimension id lẫn id priority cũ (để remap action + AI action)
       const insertedAttPriorities: Record<string, string> = {};
-      for (let i = 0; i < attitudeAssessments.length; i++) {
-        const aa = attitudeAssessments[i];
+      for (const aa of attitudeAssessments) {
         const improvementP = attitudePriorities.find(p => p.attitude_dimension_id === aa.attitude_dimension_id);
-        const { data } = await supabase.from('form_attitude_priorities').insert({
+        const hasFocus = (aa.improvement_focus && aa.improvement_focus.length) || !!aa.improvement_focus_other;
+        const focusPayload = hasFocus
+          ? JSON.stringify({ focus: aa.improvement_focus || [], other: aa.improvement_focus_other || '' })
+          : null;
+        // Giữ issue_summary legacy dạng text; payload focus JSON cũ thì bỏ (đã bỏ chọn focus)
+        const legacyIssueSummary = (() => {
+          const raw = aa.issue_summary || '';
+          if (!raw) return null;
+          try {
+            const parsed = JSON.parse(raw);
+            if (parsed && Array.isArray(parsed.focus)) return null;
+          } catch { /* text thường → giữ lại */ }
+          return raw;
+        })();
+        const { data, error: attPrErr } = await supabase.from('form_attitude_priorities').insert({
           form_id: fId,
           attitude_dimension_id: aa.attitude_dimension_id,
           attitude_name: aa.attitude_name,
           self_status: aa.self_status || null,
           manager_status: aa.manager_status || null,
-          current_status: aa.self_status || null,
+          current_status: aa.current_status || null,
           desired_status: aa.desired_status || null,
-          issue_summary: aa.issue_summary || null,
-          improvement_goal: improvementP?.improvement_goal || null,
-          evidence: aa.evidence || null,
+          issue_summary: focusPayload ?? legacyIssueSummary,
+          improvement_goal: aa.improvement_action || aa.improvement_goal || improvementP?.improvement_goal || null,
+          evidence: aa.evidence_text || aa.evidence || null,
           employee_comment: aa.employee_comment || null,
           manager_comment: aa.manager_comment || null,
-          priority_order: i + 1,
-          status: improvementP?.status || 'planned',
+          priority_order: aa.attitude_dimension_id,
+          status: STATUS_TO_DB[aa.improvement_status || 'not_started'] || improvementP?.status || 'planned',
         }).select('id').single();
-        if (data) insertedAttPriorities[aa.attitude_dimension_id.toString()] = data.id;
+        if (attPrErr) throw attPrErr;
+        if (data) {
+          insertedAttPriorities[String(aa.attitude_dimension_id)] = data.id;
+          if (improvementP?.id) insertedAttPriorities[improvementP.id] = data.id;
+        }
       }
 
-      if (attitudeActions.length > 0) {
-        const aaRows = attitudeActions.map(a => ({
-          form_id: fId!, attitude_priority_id: insertedAttPriorities[a.attitude_priority_id] || a.attitude_priority_id,
-          row_no: a.row_no, action_text: a.action_text || 'Chưa nhập',
-          expected_evidence: a.expected_evidence || null, deadline: a.deadline || null,
-          requested_support: a.requested_support || null, status: a.status,
-          actual_result: a.actual_result || null, manager_review: a.manager_review || null,
-        }));
-        await supabase.from('form_attitude_actions').insert(aaRows);
+      // Hàng động cải thiện: dòng 1 sinh từ mục C; các dòng bổ sung (khối E) remap sang priority mới.
+      const attActionRows: any[] = [];
+      const seenAttActionKey = new Set<string>();
+      const pushAttActionRow = (row: any) => {
+        const key = `${row.attitude_priority_id}|${(row.action_text || '').trim().toLowerCase()}`;
+        if (seenAttActionKey.has(key)) return;
+        seenAttActionKey.add(key);
+        attActionRows.push(row);
+      };
+      for (const aa of attitudeAssessments) {
+        const newPid = insertedAttPriorities[String(aa.attitude_dimension_id)];
+        if (!newPid) continue;
+        const oldP = attitudePriorities.find(p => p.attitude_dimension_id === aa.attitude_dimension_id);
+        const loadedRows = oldP?.id ? attitudeActions.filter(x => x.attitude_priority_id === oldP.id) : [];
+        const planActive = aa.self_status === 'can_cai_thien' || aa.manager_status === 'can_cai_thien' || !!aa.improvement_required;
+        const hasActionFields = !!(aa.improvement_action || aa.improvement_deadline || aa.expected_evidence || aa.support_needed || aa.progress_note);
+        let rowNo = 1;
+        if (planActive && hasActionFields) {
+          pushAttActionRow({
+            form_id: fId, attitude_priority_id: newPid, row_no: rowNo++,
+            action_text: aa.improvement_action || 'Chưa nhập',
+            expected_evidence: aa.expected_evidence || null,
+            deadline: aa.improvement_deadline || null,
+            requested_support: aa.support_needed || null,
+            status: STATUS_TO_DB[aa.improvement_status || 'not_started'] || 'planned',
+            actual_result: aa.progress_note || null,
+            manager_review: loadedRows[0]?.manager_review || null,
+          });
+          loadedRows.slice(1).forEach(r => pushAttActionRow({
+            form_id: fId, attitude_priority_id: newPid, row_no: rowNo++,
+            action_text: r.action_text || 'Chưa nhập',
+            expected_evidence: r.expected_evidence || null,
+            deadline: r.deadline || null,
+            requested_support: r.requested_support || null,
+            status: r.status, actual_result: r.actual_result || null,
+            manager_review: r.manager_review || null,
+          }));
+        } else {
+          loadedRows.forEach(r => pushAttActionRow({
+            form_id: fId, attitude_priority_id: newPid, row_no: rowNo++,
+            action_text: r.action_text || 'Chưa nhập',
+            expected_evidence: r.expected_evidence || null,
+            deadline: r.deadline || null,
+            requested_support: r.requested_support || null,
+            status: r.status, actual_result: r.actual_result || null,
+            manager_review: r.manager_review || null,
+          }));
+        }
+      }
+      if (attActionRows.length > 0) {
+        const { error: attActErr } = await supabase.from('form_attitude_actions').insert(attActionRows);
+        if (attActErr) throw attActErr;
       }
 
       // Save skill priorities + actions
@@ -510,11 +663,12 @@ export default function StaffEvaluation() {
 
       const insertedSkillPriorities: Record<string, string> = {};
       for (const sp of skillPriorities) {
-        const { data } = await supabase.from('form_skill_priorities').insert({
+        const { data, error: spErr } = await supabase.from('form_skill_priorities').insert({
           form_id: fId, skill_id: sp.skill_id, current_level: sp.current_level,
           target_level: sp.target_level, priority_order: sp.priority_order,
           reason_text: sp.reason_text || null, source_type: sp.source_type, status: sp.status,
         }).select('id').single();
+        if (spErr) throw spErr;
         if (data) insertedSkillPriorities[sp.id || sp.skill_id] = data.id;
       }
 
@@ -526,7 +680,8 @@ export default function StaffEvaluation() {
           requested_support: a.requested_support || null, evidence_expected: a.evidence_expected || null,
           status: a.status, actual_result: a.actual_result || null, manager_review: a.manager_review || null,
         }));
-        await supabase.from('form_skill_actions').insert(saRows);
+        const { error: saErr } = await supabase.from('form_skill_actions').insert(saRows);
+        if (saErr) throw saErr;
       }
 
       // Save AI actions
@@ -541,7 +696,8 @@ export default function StaffEvaluation() {
           status: a.status, actual_result: a.actual_result || null,
           manager_review: a.manager_review || null, unlinked_reason: a.unlinked_reason || null,
         }));
-        await supabase.from('form_ai_actions_v2').insert(aiRows);
+        const { error: aiErr } = await supabase.from('form_ai_actions_v2').insert(aiRows);
+        if (aiErr) throw aiErr;
       }
 
       // Save classification/remark
@@ -614,7 +770,6 @@ export default function StaffEvaluation() {
       status: 'approved' as any,
       pgd_review_status: 'approved',
       pgd_reviewed_at: new Date().toISOString(),
-      pgd_comment: managerConclusion || null,
       returned_by: null,
       returned_at: null,
       return_reason: null,
@@ -820,19 +975,19 @@ export default function StaffEvaluation() {
         </div>
       )}
 
-      {/* B */}
+      {/* B — chỉ Trưởng phòng trực tiếp được sửa cột đánh giá của lãnh đạo, đúng giai đoạn */}
       <EvalSectionB
         assessments={coreAssessments}
         onChange={setCoreAssessments}
-        isManager={isManagerMode}
+        isManager={canEditManagerAssessment}
         role={profile?.pos_name}
         supplementary={suppAssessments}
         onSupplementaryChange={setSuppAssessments}
         allSkills={allSkills}
       />
 
-      {/* C */}
-      <EvalSectionC assessments={attitudeAssessments} onChange={setAttitudeAssessments} isManager={isManagerMode} />
+      {/* C — như trên */}
+      <EvalSectionC assessments={attitudeAssessments} onChange={setAttitudeAssessments} isManager={canEditManagerAssessment} />
 
       <AICompetencyPortrait
         profile={profile}
@@ -875,14 +1030,14 @@ export default function StaffEvaluation() {
       {/* F */}
       <AIActionsBlock aiActions={aiActions} onChange={setAiActions} skillPriorities={skillPriorities} attitudePriorities={attitudePriorities} quarterLabel="quý này" />
 
-      {/* G */}
+      {/* G — kết luận chỉ Trưởng phòng trực tiếp được sửa; PGĐ chỉ duyệt/trả lại */}
       <EvalSectionG
         classification={classification}
         remark={remark}
         managerConclusion={managerConclusion}
         formStatus={formStatus}
         evaluatorLevel={isManagerMode ? reviewerLevel : null}
-        isManager={isManagerMode}
+        isManager={canEditManagerAssessment}
         isAdmin={isAdmin}
         canConfirmReview={canConfirmReview}
         actionLoading={actionLoading}
@@ -947,12 +1102,9 @@ export default function StaffEvaluation() {
 
       {/* Sticky bottom bar */}
       {(() => {
-        const isManagerReviewer = isManagerMode && reviewerLevel === 'manager';
-        const tpCanAct =
-          isManagerReviewer &&
-          (formStatus === 'submitted' || (formStatus === 'returned' && formMeta.return_target === 'manager'));
+        const tpCanAct = canEditManagerAssessment;
         const tpWaitingEmployee =
-          isManagerReviewer && formStatus === 'returned' && formMeta.return_target === 'employee';
+          isDirectManagerReviewer && formStatus === 'returned' && formMeta.return_target === 'employee';
 
         return (
           <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-3 z-50">
@@ -969,12 +1121,23 @@ export default function StaffEvaluation() {
                 </div>
               )}
               <div className="flex gap-3 flex-wrap">
-                <Button onClick={() => handleSave(false)} disabled={saving} className="flex-1 min-w-[140px]">
+                <Button
+                  onClick={() => handleSave(false)}
+                  disabled={saving || !canSaveForm}
+                  title={!canSaveForm ? 'Phiếu ở trạng thái hiện tại không cho phép bạn chỉnh sửa' : undefined}
+                  className="flex-1 min-w-[140px]"
+                >
                   {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                   Lưu nháp
                 </Button>
                 {isSelfEval && (
-                  <Button variant="outline" onClick={() => handleSave(true)} disabled={saving} className="flex-1 min-w-[140px]">
+                  <Button
+                    variant="outline"
+                    onClick={() => handleSave(true)}
+                    disabled={saving || !canEmployeeEditSelf}
+                    title={!canEmployeeEditSelf ? 'Phiếu đã nộp/duyệt — không thể nộp lại' : undefined}
+                    className="flex-1 min-w-[140px]"
+                  >
                     <Send className="w-4 h-4 mr-2" />
                     {formStatus === 'returned' ? 'Nộp lại đánh giá' : 'Nộp đánh giá'}
                   </Button>

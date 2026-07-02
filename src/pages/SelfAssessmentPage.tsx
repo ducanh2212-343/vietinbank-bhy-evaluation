@@ -398,6 +398,16 @@ export default function SelfAssessmentPage() {
       const focusPayload = hasFocus
         ? JSON.stringify({ focus: aa.improvement_focus || [], other: aa.improvement_focus_other || '' })
         : null;
+      // Giữ issue_summary legacy dạng text; payload focus JSON cũ thì bỏ (CB đã bỏ chọn focus)
+      const legacyIssueSummary = (() => {
+        const raw = aa.issue_summary || '';
+        if (!raw) return null;
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed && Array.isArray(parsed.focus)) return null;
+        } catch { /* text thường → giữ lại */ }
+        return raw;
+      })();
       const planActive = aa.self_status === 'can_cai_thien' || aa.manager_status === 'can_cai_thien' || !!aa.improvement_required;
       const { data, error } = await supabase.from('form_attitude_priorities').insert({
         form_id: fId,
@@ -405,13 +415,14 @@ export default function SelfAssessmentPage() {
         attitude_name: aa.attitude_name,
         self_status: aa.self_status || null,
         manager_status: aa.manager_status || null,
-        current_status: null,
-        desired_status: null,
-        issue_summary: focusPayload,
-        improvement_goal: aa.improvement_action || null,
-        evidence: aa.evidence_text || null,
-        employee_comment: null,
-        manager_comment: null,
+        // Giữ dữ liệu legacy đã load — không ghi đè null làm mất nhận xét của TP
+        current_status: aa.current_status || null,
+        desired_status: aa.desired_status || null,
+        issue_summary: focusPayload ?? legacyIssueSummary,
+        improvement_goal: aa.improvement_action || aa.improvement_goal || null,
+        evidence: aa.evidence_text || aa.evidence || null,
+        employee_comment: aa.employee_comment || null,
+        manager_comment: aa.manager_comment || null,
         priority_order: aa.attitude_dimension_id,
         status: (aa.improvement_status === 'in_progress' ? 'in_progress'
               : aa.improvement_status === 'completed' ? 'completed' : 'planned'),
@@ -480,9 +491,16 @@ export default function SelfAssessmentPage() {
     }
   };
 
+  // Cán bộ chỉ được sửa khi phiếu ở trạng thái nháp hoặc bị trả lại
+  const canEmployeeEdit = formStatus === 'draft' || formStatus === 'returned';
+
   const handleSave = async (submit = false, reviewerIdOverride?: string) => {
     if (!profileId || !cycleId) {
       toast.error('Thiếu thông tin kỳ đánh giá hoặc hồ sơ cán bộ');
+      return;
+    }
+    if (!canEmployeeEdit) {
+      toast.error('Phiếu đã được nộp hoặc đã duyệt — không thể chỉnh sửa. Liên hệ Trưởng phòng nếu cần trả lại phiếu.');
       return;
     }
 
@@ -514,18 +532,27 @@ export default function SelfAssessmentPage() {
       const oneOnOneEnabledPayload = oneOnOneEnabled || hasOneOnOneAnswers;
 
       if (submit) {
-        const { error } = await supabase.from('form_submissions').update({
+        const submitPayload: any = {
           status: 'submitted', submitted_at: new Date().toISOString(),
           reviewer_id: reviewerId,
           one_on_one_enabled: oneOnOneEnabledPayload,
           one_on_one_answers: oneOnOneAnswers as any,
-        }).eq('id', fId);
+        };
+        // Nộp lại sau khi bị trả → bật cờ để Trưởng phòng rà soát lại, xóa thông tin trả lại cũ
+        if (formStatus === 'returned') {
+          submitPayload.needs_manager_review_update = true;
+          submitPayload.returned_by = null;
+          submitPayload.returned_at = null;
+          submitPayload.return_reason = null;
+          submitPayload.return_target = null;
+        }
+        const { error } = await supabase.from('form_submissions').update(submitPayload).eq('id', fId);
         if (error) throw error;
         setFormStatus('submitted');
         toast.success('Đã nộp tự đánh giá');
       } else {
+        // Lưu nháp: KHÔNG đổi trạng thái (draft giữ draft, returned giữ returned)
         const { error } = await supabase.from('form_submissions').update({
-          status: 'draft',
           one_on_one_enabled: oneOnOneEnabledPayload,
           one_on_one_answers: oneOnOneAnswers as any,
         }).eq('id', fId);
@@ -544,6 +571,10 @@ export default function SelfAssessmentPage() {
   };
 
   const onSubmitClick = () => {
+    if (!canEmployeeEdit) {
+      toast.error('Phiếu đã được nộp hoặc đã duyệt — không thể nộp lại.');
+      return;
+    }
     const errors = validateSubmission({
       coreAssessments, attitudeAssessments,
       skillPriorities, skillActions,
@@ -721,19 +752,24 @@ export default function SelfAssessmentPage() {
         }} disabled={isBusy} title="Xuất biểu mẫu Word">
           <FileDown className="w-4 h-4" />
         </Button>
-        <Button onClick={() => handleSave(false)} disabled={isBusy} className="flex-1">
+        <Button
+          onClick={() => handleSave(false)}
+          disabled={isBusy || !canEmployeeEdit}
+          title={!canEmployeeEdit ? 'Phiếu đã nộp/duyệt — chỉ xem' : undefined}
+          className="flex-1"
+        >
           {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
           {saving ? 'Đang lưu...' : 'Lưu nháp'}
         </Button>
         <Button
           variant="default"
           onClick={onSubmitClick}
-          disabled={isBusy || !checklist.canSubmit}
-          title={!checklist.canSubmit ? 'Hoàn tất các mục còn thiếu để nộp' : undefined}
+          disabled={isBusy || !canEmployeeEdit || !checklist.canSubmit}
+          title={!canEmployeeEdit ? 'Phiếu đã nộp/duyệt — chỉ xem' : !checklist.canSubmit ? 'Hoàn tất các mục còn thiếu để nộp' : undefined}
           className="flex-1 bg-green-600 hover:bg-green-700"
         >
           {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
-          {submitting ? 'Đang nộp...' : 'Nộp tự đánh giá'}
+          {submitting ? 'Đang nộp...' : formStatus === 'returned' ? 'Nộp lại tự đánh giá' : 'Nộp tự đánh giá'}
         </Button>
       </div>
 

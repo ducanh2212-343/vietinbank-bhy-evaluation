@@ -75,7 +75,7 @@ export function SubmissionChecklist(props: Props) {
   const {
     canSubmit,
     coreTotal, coreMissing,
-    attitudeTotal, attitudeMissing,
+    attitudeTotal, attitudeRatingMissing, attitudeEvidenceMissing,
     gappedTotal,
     needsImprovementTotal, needsImprovementWithoutPlan,
   } = props;
@@ -97,56 +97,50 @@ export function SubmissionChecklist(props: Props) {
         anchor: 'section-b',
       };
 
-  // Card 2 — 6 nhóm thái độ đầy đủ
-  const attDone = attitudeMissing.length === 0;
-  const card2: CardProps = attDone
+  // Card 2 — 6 nhóm thái độ đã chọn mức đánh giá
+  const ratingDone = attitudeRatingMissing.length === 0;
+  const card2: CardProps = ratingDone
     ? {
         state: 'pass',
-        title: '6 nhóm thái độ đã đánh giá đầy đủ',
+        title: '6 nhóm thái độ đã chọn mức đánh giá',
         statusLabel: `Đã đủ ${attitudeTotal}/${attitudeTotal}`,
       }
     : {
         state: 'fail',
-        title: '6 nhóm thái độ đã đánh giá đầy đủ',
-        statusLabel: `Còn thiếu ${attitudeMissing.length} nhóm`,
-        missingLabels: attitudeMissing.map((a) => {
-          const tag = a.reason === 'rating' ? 'thiếu mức đánh giá'
-            : a.reason === 'evidence' ? 'thiếu minh chứng'
-            : 'thiếu mức đánh giá & minh chứng';
-          return `${a.name} (${tag})`;
-        }),
-        warning: 'Mỗi nhóm thái độ cần có mức tự đánh giá (Nổi bật / Đạt mong đợi / Cần cải thiện) và minh chứng/biểu hiện hiện tại.',
+        title: '6 nhóm thái độ đã chọn mức đánh giá',
+        statusLabel: `Còn thiếu ${attitudeRatingMissing.length} nhóm`,
+        missingLabels: attitudeRatingMissing.map((a) => `${a.name} (thiếu mức tự đánh giá)`),
+        warning: 'Mỗi nhóm thái độ cần chọn mức tự đánh giá (Nổi bật / Đạt mong đợi / Cần cải thiện). Nhóm "Đạt mong đợi" không bắt buộc minh chứng.',
         anchor: 'section-c',
       };
 
-  // Card 3 — Thái độ cần cải thiện có kế hoạch
+  // Card 3 — Minh chứng/Kế hoạch cho nhóm nổi bật hoặc cần cải thiện
+  const card3Title = 'Minh chứng/Kế hoạch cho thái độ nổi bật hoặc cần cải thiện';
+  const evidenceMissingLabels = attitudeEvidenceMissing.map((a) => `${a.name} (thiếu minh chứng)`);
+  const planMissingLabels = needsImprovementWithoutPlan.map((a) => `${a.attitude_name || 'Thái độ'} (thiếu kế hoạch cải thiện)`);
+  const card3MissingLabels = [...evidenceMissingLabels, ...planMissingLabels];
+
   let card3: CardProps;
-  if (!attDone) {
+  if (!ratingDone) {
     card3 = {
       state: 'waiting',
-      title: 'Thái độ cần cải thiện đã có kế hoạch cải thiện',
-      statusLabel: 'Chờ hoàn tất đánh giá thái độ',
+      title: card3Title,
+      statusLabel: 'Chờ chọn đủ mức đánh giá thái độ',
     };
-  } else if (needsImprovementTotal === 0) {
-    card3 = {
-      state: 'pass',
-      title: 'Thái độ cần cải thiện đã có kế hoạch cải thiện',
-      statusLabel: 'Không có',
-    };
-  } else if (needsImprovementWithoutPlan.length > 0) {
+  } else if (card3MissingLabels.length > 0) {
     card3 = {
       state: 'fail',
-      title: 'Thái độ cần cải thiện đã có kế hoạch cải thiện',
-      statusLabel: 'Chưa có kế hoạch cải thiện',
-      missingLabels: needsImprovementWithoutPlan.map((a) => a.attitude_name || 'Thái độ'),
-      warning: 'Có nhóm thái độ cần cải thiện nhưng chưa có kế hoạch cải thiện. Vui lòng bổ sung hành động cải thiện trước khi gửi cấp trên.',
+      title: card3Title,
+      statusLabel: `Còn thiếu ${card3MissingLabels.length} mục`,
+      missingLabels: card3MissingLabels,
+      warning: 'Nhóm chọn "Nổi bật" hoặc "Cần cải thiện" phải có minh chứng; nhóm cần cải thiện phải có kế hoạch (điểm cần cải thiện, hành động, thời hạn).',
       anchor: 'section-c',
     };
   } else {
     card3 = {
       state: 'pass',
-      title: 'Thái độ cần cải thiện đã có kế hoạch cải thiện',
-      statusLabel: 'Đã có kế hoạch cải thiện',
+      title: card3Title,
+      statusLabel: needsImprovementTotal > 0 ? 'Đã đầy đủ minh chứng/kế hoạch' : 'Đã đầy đủ',
     };
   }
 
