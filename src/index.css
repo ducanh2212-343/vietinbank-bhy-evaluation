@@ -1,53 +1,58 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    /* iOS 26 Liquid Glass — light, airy, soft */
-    --background: 214 32% 96%;
-    --foreground: 220 40% 13%;
+    /*
+     * Design system: "Banking / Traditional Finance" (UI/UX Pro Max)
+     * Minimalism & Swiss — navy tin cậy + điểm nhấn gold, WCAG AA/AAA.
+     */
+    --background: 210 40% 98%;      /* #F8FAFC */
+    --foreground: 222 47% 9%;        /* near #0B1220 */
 
     --card: 0 0% 100%;
-    --card-foreground: 220 40% 13%;
+    --card-foreground: 222 47% 9%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 40% 13%;
+    --popover-foreground: 222 47% 9%;
 
-    /* VietinBank navy — slightly softened */
-    --primary: 212 78% 36%;
+    /* Royal navy — màu hành động chính của tổ chức tài chính */
+    --primary: 224 64% 33%;          /* #1E3A8A */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 212 28% 94%;
-    --secondary-foreground: 212 78% 24%;
+    --secondary: 214 32% 94%;
+    --secondary-foreground: 224 64% 25%;
 
-    --muted: 214 28% 95%;
-    --muted-foreground: 215 14% 46%;
+    --muted: 213 27% 93%;            /* #E8ECF1 */
+    --muted-foreground: 215 16% 40%; /* đậm hơn #64748B để đạt 4.5:1 trên nền muted */
 
-    --accent: 210 60% 94%;
-    --accent-foreground: 212 78% 24%;
+    --accent: 216 45% 94%;
+    --accent-foreground: 224 64% 27%;
 
-    --destructive: 0 72% 52%;
+    --destructive: 0 72% 46%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 24% 90%;
-    --input: 214 24% 90%;
-    --ring: 212 78% 36%;
+    --border: 214 32% 89%;
+    --input: 214 32% 85%;
+    --ring: 224 64% 33%;
 
-    /* Larger radius for iOS feel */
-    --radius: 1rem;
+    /* Gold điểm nhấn (dùng tiết chế: chỉ báo active, huy hiệu) */
+    --gold: 41 88% 33%;              /* #A16207 */
+    --gold-bg: 45 90% 94%;
 
-    /* Soft shadows — single layer */
-    --shadow-soft: 0 1px 2px 0 hsl(220 40% 13% / 0.04), 0 4px 16px -6px hsl(220 40% 13% / 0.08);
-    --shadow-glass: 0 1px 0 0 hsl(0 0% 100% / 0.6) inset, 0 8px 28px -10px hsl(220 40% 13% / 0.12);
-    --shadow-lift: 0 12px 36px -12px hsl(220 40% 13% / 0.18);
+    /* Bo góc vừa phải — nghiêm túc, Swiss */
+    --radius: 0.5rem;
 
-    /* Glass surfaces */
-    --glass-bg: 0 0% 100% / 0.72;
-    --glass-bg-strong: 0 0% 100% / 0.85;
-    --glass-border: 0 0% 100% / 0.7;
+    /* Đổ bóng gọn, sắc — không "bồng bềnh" */
+    --shadow-soft: 0 1px 2px 0 hsl(222 47% 11% / 0.05), 0 2px 8px -2px hsl(222 47% 11% / 0.06);
+    --shadow-glass: 0 1px 3px 0 hsl(222 47% 11% / 0.07), 0 4px 12px -4px hsl(222 47% 11% / 0.08);
+    --shadow-lift: 0 6px 20px -8px hsl(222 47% 11% / 0.16);
+
+    /* Bề mặt panel — gần đặc, viền rõ (thay glass mờ ảo) */
+    --glass-bg: 0 0% 100% / 0.92;
+    --glass-bg-strong: 0 0% 100% / 0.97;
+    --glass-border: 214 32% 89% / 0.9;
 
     /* Level colors */
     --level-1: 200 15% 55%;
@@ -70,16 +75,16 @@
     --star-hom: 0 55% 48%;
     --star-hom-bg: 0 55% 94%;
 
-    /* Sidebar — VietinBank navy with a softer top */
-    --sidebar-background: 212 70% 20%;
-    --sidebar-foreground: 210 35% 90%;
+    /* Sidebar — navy tin cậy đậm (#0F172A), phong cách định chế tài chính */
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 214 32% 86%;
     --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 212 78% 22%;
-    --sidebar-accent: 212 60% 30%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 223 47% 20%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 212 50% 28%;
-    --sidebar-ring: 210 80% 60%;
-    --sidebar-muted: 212 30% 72%;
+    --sidebar-border: 223 40% 22%;
+    --sidebar-ring: 216 80% 62%;
+    --sidebar-muted: 218 20% 62%;
   }
 }
 
@@ -98,13 +103,22 @@
   }
   body {
     @apply text-foreground;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     background-color: hsl(var(--background));
-    background-image:
-      radial-gradient(1200px 600px at 0% -10%, hsl(210 80% 95% / 0.7), transparent 60%),
-      radial-gradient(900px 500px at 100% 0%, hsl(220 60% 96% / 0.7), transparent 55%);
-    background-attachment: fixed;
+  }
+  /* Giảm delay 300ms khi chạm trên mobile */
+  button, a, [role="button"] {
+    touch-action: manipulation;
+  }
+  /* Tôn trọng người dùng tắt hiệu ứng chuyển động */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
@@ -136,8 +150,8 @@
     box-shadow: var(--shadow-glass);
   }
   .glass-subtle {
-    background-color: hsl(0 0% 100% / 0.6);
-    border: 1px solid hsl(214 24% 92% / 0.8);
+    background-color: hsl(0 0% 100% / 0.85);
+    border: 1px solid hsl(214 32% 90% / 0.9);
   }
   .shadow-soft { box-shadow: var(--shadow-soft); }
   .shadow-lift { box-shadow: var(--shadow-lift); }
@@ -145,18 +159,20 @@
 
 @layer components {
   .nav-item {
-    @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-150 cursor-pointer;
+    /* min-h 44px: chuẩn touch target cho mobile/tablet */
+    @apply flex items-center gap-3 px-3 py-2.5 min-h-[44px] rounded-lg text-[13px] font-medium transition-colors duration-200 cursor-pointer;
     color: hsl(var(--sidebar-foreground));
   }
   .nav-item:hover {
-    background: hsl(0 0% 100% / 0.08);
+    background: hsl(0 0% 100% / 0.07);
     color: hsl(var(--sidebar-primary));
   }
   .nav-item.active {
-    background: hsl(0 0% 100% / 0.16);
+    background: hsl(0 0% 100% / 0.12);
     color: hsl(var(--sidebar-primary));
     font-weight: 600;
-    box-shadow: 0 1px 0 0 hsl(0 0% 100% / 0.12) inset;
+    /* Vạch gold bên trái — dấu hiệu vị trí hiện tại, phong cách định chế tài chính */
+    box-shadow: inset 3px 0 0 0 hsl(43 74% 49%);
   }
   .level-badge {
     @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold;
@@ -181,7 +197,7 @@
   }
 
   .page-header {
-    @apply text-2xl font-bold tracking-tight text-foreground mb-1;
+    @apply text-xl sm:text-2xl font-bold tracking-tight text-foreground mb-1;
     letter-spacing: -0.01em;
   }
   .page-subtitle {
