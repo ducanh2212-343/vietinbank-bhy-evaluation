@@ -9,6 +9,7 @@ import { ApprovedFormDetail } from '@/components/profile/ApprovedFormDetail';
 import { StatusBadge, StatusNoteBanner } from '@/components/profile/StatusBadge';
 import { ReviewerActionAlert } from '@/components/evaluation-tracking/ReviewerActionAlert';
 import { PersonalKanbanMini } from '@/components/kanban/PersonalKanbanMini';
+import { AnniversaryBanner } from '@/components/branding/AnniversaryBanner';
 
 
 function OverviewSelf({ profileId }: { profileId: string }) {
@@ -62,6 +63,8 @@ function OverviewSelf({ profileId }: { profileId: string }) {
         <h1 className="page-header">Tổng quan của tôi</h1>
         <p className="page-subtitle">Kết quả đánh giá kỳ gần nhất</p>
       </div>
+
+      <AnniversaryBanner />
 
       <ReviewerActionAlert />
 
@@ -199,6 +202,8 @@ export default function Overview() {
         <h1 className="page-header">Tổng quan năng lực & phát triển</h1>
         <p className="page-subtitle">Phạm vi: {scopeLabel}</p>
       </div>
+
+      <AnniversaryBanner />
 
       <ReviewerActionAlert />
 
