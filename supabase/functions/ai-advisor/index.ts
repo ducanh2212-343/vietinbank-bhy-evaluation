@@ -10,6 +10,96 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const DEFAULT_MODEL = 'google/gemini-2.5-flash';
 
+// ============ Nhà cung cấp AI (BYOK — cấu hình trong ai_settings, admin chỉnh qua UI) ============
+type AiProvider = 'lovable' | 'gemini' | 'openai' | 'custom';
+
+interface ProviderConfig {
+  provider: AiProvider;
+  endpoint: string;
+  apiKey: string | null;
+  /** Lỗi cấu hình (thiếu key/base URL) — trả về cho client để admin biết đường sửa */
+  configError: string | null;
+}
+
+/**
+ * Model trong ai_prompts lưu theo dạng gateway ('google/gemini-2.5-flash', 'openai/gpt-5-mini').
+ * Khi gọi API trực tiếp phải bỏ prefix; đồng thời chặn model không thuộc provider.
+ */
+function normalizeModel(provider: AiProvider, model: string): { model?: string; error?: string } {
+  const m = model.trim();
+  if (provider === 'lovable' || provider === 'custom') return { model: m };
+  if (provider === 'gemini') {
+    if (m.startsWith('google/')) return { model: m.slice('google/'.length) };
+    if (m.startsWith('openai/')) {
+      return { error: `Model "${m}" không dùng được với nhà cung cấp Google Gemini. Vào Quản trị AI chọn model Gemini cho tác vụ này.` };
+    }
+    return { model: m }; // đã là tên Gemini thuần (gemini-2.5-flash)
+  }
+  // openai
+  if (m.startsWith('openai/')) return { model: m.slice('openai/'.length) };
+  if (m.startsWith('google/')) {
+    return { error: `Model "${m}" không dùng được với nhà cung cấp OpenAI. Vào Quản trị AI chọn model GPT cho tác vụ này.` };
+  }
+  return { model: m };
+}
+
+/** Đọc cấu hình provider từ ai_settings (id=1). Mặc định: Lovable gateway + LOVABLE_API_KEY env. */
+async function resolveProvider(adminCli: any): Promise<ProviderConfig> {
+  let provider: AiProvider = 'lovable';
+  let dbKey: string | null = null;
+  let baseUrl: string | null = null;
+  try {
+    const { data } = await adminCli
+      .from('ai_settings')
+      .select('provider, api_key, api_base_url')
+      .eq('id', 1)
+      .maybeSingle();
+    if (data) {
+      if (['lovable', 'gemini', 'openai', 'custom'].includes(data.provider)) provider = data.provider;
+      dbKey = (data.api_key || '').trim() || null;
+      baseUrl = (data.api_base_url || '').trim() || null;
+    }
+  } catch (e) {
+    console.warn('ai_settings unavailable, falling back to lovable:', e);
+  }
+
+  if (provider === 'gemini') {
+    return {
+      provider,
+      endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+      apiKey: dbKey,
+      configError: dbKey ? null : 'Chưa cấu hình API key Google Gemini. Vào Quản trị AI → Nhà cung cấp AI để thêm.',
+    };
+  }
+  if (provider === 'openai') {
+    return {
+      provider,
+      endpoint: 'https://api.openai.com/v1/chat/completions',
+      apiKey: dbKey,
+      configError: dbKey ? null : 'Chưa cấu hình API key OpenAI. Vào Quản trị AI → Nhà cung cấp AI để thêm.',
+    };
+  }
+  if (provider === 'custom') {
+    const endpoint = baseUrl ? `${baseUrl.replace(/\/$/, '')}/chat/completions` : '';
+    return {
+      provider,
+      endpoint,
+      apiKey: dbKey,
+      configError: !baseUrl
+        ? 'Chưa cấu hình Base URL cho nhà cung cấp tùy chỉnh. Vào Quản trị AI → Nhà cung cấp AI để thêm.'
+        : dbKey ? null : 'Chưa cấu hình API key cho nhà cung cấp tùy chỉnh. Vào Quản trị AI → Nhà cung cấp AI để thêm.',
+    };
+  }
+  // lovable: ưu tiên key admin nhập, fallback secret LOVABLE_API_KEY
+  const key = dbKey || LOVABLE_API_KEY || null;
+  return {
+    provider: 'lovable',
+    endpoint: 'https://ai.gateway.lovable.dev/v1/chat/completions',
+    apiKey: key,
+    configError: key ? null : 'Chưa cấu hình API key AI (Lovable). Vào Quản trị AI → Nhà cung cấp AI để thêm, hoặc đặt secret LOVABLE_API_KEY.',
+  };
+}
+
 // Giới hạn sử dụng để kiểm soát chi phí credit
 const RATE_LIMIT_PER_HOUR = 40; // số lượt gọi AI tối đa / user / giờ (mọi tác vụ cộng lại)
 const MAX_CHAT_MESSAGES = 16; // số message hội thoại tối đa gửi lên model
@@ -164,12 +254,6 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: 'LOVABLE_API_KEY chưa cấu hình' }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
     // Require an authenticated end-user (not just a valid anon JWT) to prevent
     // anonymous internet users from consuming AI credits.
     const authHeader = req.headers.get('Authorization') || '';
@@ -190,6 +274,55 @@ Deno.serve(async (req) => {
     const stream: boolean = mode === 'chat';
 
     const adminCli = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // ============ Nhà cung cấp AI (BYOK) ============
+    const providerCfg = await resolveProvider(adminCli);
+    if (providerCfg.configError) {
+      return new Response(JSON.stringify({ error: providerCfg.configError }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ============ Mode test_connection — chỉ admin, kiểm tra key/provider hoạt động ============
+    if (mode === 'test_connection') {
+      const { data: roleRows } = await adminCli
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+      const roles = (roleRows || []).map((r: any) => r.role);
+      const isAdminCaller = roles.some((r: string) => ['system_admin', 'bgd', 'tcth_admin'].includes(r));
+      if (!isAdminCaller) {
+        return new Response(JSON.stringify({ error: 'Chỉ quản trị viên được kiểm tra kết nối AI.' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const testModelRaw = (typeof body.model === 'string' && body.model.trim()) || DEFAULT_MODEL;
+      const norm = normalizeModel(providerCfg.provider, testModelRaw);
+      if (norm.error) {
+        return new Response(JSON.stringify({ ok: false, error: norm.error }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const testRes = await fetch(providerCfg.endpoint, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${providerCfg.apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: norm.model,
+          messages: [{ role: 'user', content: 'Trả lời đúng một từ: OK' }],
+        }),
+      });
+      if (!testRes.ok) {
+        const t = (await testRes.text()).slice(0, 500);
+        return new Response(JSON.stringify({ ok: false, provider: providerCfg.provider, model: norm.model, status: testRes.status, error: t }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const testData = await testRes.json();
+      const reply = testData.choices?.[0]?.message?.content || '';
+      return new Response(JSON.stringify({ ok: true, provider: providerCfg.provider, model: norm.model, reply }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // ============ Rate limit theo user (kiểm soát chi phí) ============
     // Soft-fail: nếu bảng ai_usage_log chưa được tạo thì bỏ qua, không chặn tính năng.
@@ -228,8 +361,17 @@ Deno.serve(async (req) => {
     }
 
     const systemPrompt = (sysRow?.is_active !== false && sysRow?.content?.trim()) || FALLBACK_SYSTEM;
-    const model = (cfg?.model?.trim()) || DEFAULT_MODEL;
+    const configuredModel = (cfg?.model?.trim()) || DEFAULT_MODEL;
     const tpl = cfg?.content?.trim() || '';
+
+    // Chuẩn hóa tên model theo provider (bỏ prefix google/, openai/ khi gọi API trực tiếp)
+    const normModel = normalizeModel(providerCfg.provider, configuredModel);
+    if (normModel.error) {
+      return new Response(JSON.stringify({ error: normModel.error }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const model = normModel.model!;
 
     // ============ Ẩn danh hóa PII trước khi gửi ra gateway bên ngoài ============
     // Model không cần tên/mã cán bộ để tư vấn — chỉ cần vị trí, phòng ban, dữ liệu năng lực.
@@ -356,9 +498,9 @@ Hãy gọi tool select_courses để trả về tất cả khóa phù hợp, s�
         },
       }];
 
-      const aiRes2 = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      const aiRes2 = await fetch(providerCfg.endpoint, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
+        headers: { Authorization: `Bearer ${providerCfg.apiKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model,
           messages: [{ role: 'system', content: sysMsg }, { role: 'user', content: userMsg }],
@@ -368,7 +510,8 @@ Hãy gọi tool select_courses để trả về tất cả khóa phù hợp, s�
       });
       if (!aiRes2.ok) {
         if (aiRes2.status === 429) return new Response(JSON.stringify({ error: 'Quá nhiều yêu cầu, thử lại sau.' }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-        if (aiRes2.status === 402) return new Response(JSON.stringify({ error: 'Hết credit AI.' }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        if (aiRes2.status === 402) return new Response(JSON.stringify({ error: 'Hết hạn mức/credit của nhà cung cấp AI. Vui lòng kiểm tra billing.' }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        if (aiRes2.status === 401 || aiRes2.status === 403) return new Response(JSON.stringify({ error: 'API key AI không hợp lệ hoặc hết hạn. Vào Quản trị AI → Nhà cung cấp AI để cập nhật.' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         const t = await aiRes2.text();
         console.error('AI error vtb:', aiRes2.status, t);
         return new Response(JSON.stringify({ error: 'AI gateway lỗi' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -446,15 +589,16 @@ Hãy gọi tool select_courses để trả về tất cả khóa phù hợp, s�
       messages.push({ role: 'user', content: userContent });
     }
 
-    const aiRes = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const aiRes = await fetch(providerCfg.endpoint, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${providerCfg.apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ model, messages, stream }),
     });
 
     if (!aiRes.ok) {
       if (aiRes.status === 429) return new Response(JSON.stringify({ error: 'Quá nhiều yêu cầu, vui lòng thử lại sau.' }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      if (aiRes.status === 402) return new Response(JSON.stringify({ error: 'Hết credit AI. Vui lòng nạp thêm trong Cài đặt Workspace.' }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (aiRes.status === 402) return new Response(JSON.stringify({ error: 'Hết hạn mức/credit của nhà cung cấp AI. Vui lòng kiểm tra billing.' }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (aiRes.status === 401 || aiRes.status === 403) return new Response(JSON.stringify({ error: 'API key AI không hợp lệ hoặc hết hạn. Vào Quản trị AI → Nhà cung cấp AI để cập nhật.' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       const t = await aiRes.text();
       console.error('AI gateway error:', aiRes.status, t);
       return new Response(JSON.stringify({ error: 'AI gateway lỗi' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });

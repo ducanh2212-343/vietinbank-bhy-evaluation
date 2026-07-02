@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from '@/hooks/use-toast';
-import { Loader2, Save, Sparkles, RotateCcw, Coins } from 'lucide-react';
+import { Loader2, Save, Sparkles, RotateCcw, Coins, KeyRound, PlugZap } from 'lucide-react';
 
 interface AIPrompt {
   mode: string;
@@ -70,6 +70,37 @@ const MODE_RECOMMENDED_MODEL: Record<string, string> = {
   suggest_vtb_courses: 'google/gemini-2.5-flash-lite',
 };
 
+// Nhà cung cấp AI — BYOK: admin tự nhập API key, không phụ thuộc Lovable.
+const PROVIDER_OPTIONS: { value: string; label: string; hint: string; keyUrl?: string }[] = [
+  {
+    value: 'lovable',
+    label: 'Lovable AI Gateway',
+    hint: 'Gateway mặc định của Lovable — dùng được cả model Gemini lẫn GPT. Key lấy từ workspace Lovable (hoặc để trống nếu đã đặt secret LOVABLE_API_KEY).',
+  },
+  {
+    value: 'gemini',
+    label: 'Google Gemini (API trực tiếp)',
+    hint: 'Gọi thẳng Google AI — chủ động chi phí, chỉ dùng được model Gemini. Lấy key tại aistudio.google.com/apikey.',
+  },
+  {
+    value: 'openai',
+    label: 'OpenAI (API trực tiếp)',
+    hint: 'Gọi thẳng OpenAI — chỉ dùng được model GPT. Lấy key tại platform.openai.com/api-keys.',
+  },
+  {
+    value: 'custom',
+    label: 'Gateway tùy chỉnh (OpenAI-compatible)',
+    hint: 'Gateway nội bộ hoặc bên thứ ba theo chuẩn OpenAI chat/completions. Cần nhập Base URL (ví dụ https://gateway.noibo.vn/v1).',
+  },
+];
+
+interface ProviderSettings {
+  provider: string;
+  api_base_url: string;
+  hasKey: boolean;
+  keyLast4: string;
+}
+
 export default function AIPromptsAdmin() {
   const { isAdmin } = useAuth();
   const [prompts, setPrompts] = useState<AIPrompt[]>([]);
@@ -78,6 +109,15 @@ export default function AIPromptsAdmin() {
   const [drafts, setDrafts] = useState<Record<string, AIPrompt>>({});
   // Bật ô nhập model tùy chỉnh cho từng mode (khi model không nằm trong danh sách gợi ý)
   const [customModel, setCustomModel] = useState<Record<string, boolean>>({});
+
+  // Nhà cung cấp AI (BYOK)
+  const [providerSettings, setProviderSettings] = useState<ProviderSettings>({
+    provider: 'lovable', api_base_url: '', hasKey: false, keyLast4: '',
+  });
+  const [newApiKey, setNewApiKey] = useState('');
+  const [newBaseUrl, setNewBaseUrl] = useState('');
+  const [savingProvider, setSavingProvider] = useState(false);
+  const [testingConn, setTestingConn] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -94,12 +134,80 @@ export default function AIPromptsAdmin() {
       list.forEach((p) => (map[p.mode] = { ...p }));
       setDrafts(map);
     }
+
+    // Cấu hình nhà cung cấp AI — chỉ admin đọc được (RLS)
+    const { data: settingsRow } = await (supabase as any)
+      .from('ai_settings')
+      .select('provider, api_key, api_base_url')
+      .eq('id', 1)
+      .maybeSingle();
+    if (settingsRow) {
+      const key = (settingsRow.api_key || '').trim();
+      setProviderSettings({
+        provider: settingsRow.provider || 'lovable',
+        api_base_url: settingsRow.api_base_url || '',
+        hasKey: key.length > 0,
+        keyLast4: key.length > 4 ? key.slice(-4) : '',
+      });
+      setNewBaseUrl(settingsRow.api_base_url || '');
+    }
     setLoading(false);
   };
 
   useEffect(() => {
     load();
   }, []);
+
+  const saveProviderSettings = async () => {
+    setSavingProvider(true);
+    const patch: any = {
+      provider: providerSettings.provider,
+      api_base_url: providerSettings.provider === 'custom' ? (newBaseUrl.trim() || null) : null,
+    };
+    // Chỉ ghi đè key khi admin nhập key mới — để trống là giữ key cũ
+    if (newApiKey.trim()) patch.api_key = newApiKey.trim();
+    const { error } = await (supabase as any)
+      .from('ai_settings')
+      .update(patch)
+      .eq('id', 1);
+    setSavingProvider(false);
+    if (error) {
+      toast({ title: 'Lưu cấu hình thất bại', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Đã lưu nhà cung cấp AI', description: 'Áp dụng ngay cho các lượt gọi AI tiếp theo.' });
+    setNewApiKey('');
+    load();
+  };
+
+  const testConnection = async () => {
+    setTestingConn(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-advisor', {
+        body: { mode: 'test_connection' },
+      });
+      if (error) throw error;
+      if (data?.ok) {
+        toast({ title: '✅ Kết nối AI thành công', description: `Provider: ${data.provider} · Model: ${data.model}` });
+      } else {
+        toast({
+          title: 'Kết nối AI thất bại',
+          description: data?.error ? String(data.error).slice(0, 300) : 'Không rõ nguyên nhân',
+          variant: 'destructive',
+        });
+      }
+    } catch (e: any) {
+      let msg = e?.message || 'Lỗi không xác định';
+      try {
+        const ctx = (e as { context?: Response }).context;
+        const body = ctx ? await ctx.json() : null;
+        if (body?.error) msg = body.error;
+      } catch { /* giữ msg */ }
+      toast({ title: 'Kết nối AI thất bại', description: msg, variant: 'destructive' });
+    } finally {
+      setTestingConn(false);
+    }
+  };
 
   const updateDraft = (mode: string, patch: Partial<AIPrompt>) => {
     setDrafts((d) => ({ ...d, [mode]: { ...d[mode], ...patch } }));
@@ -182,6 +290,88 @@ export default function AIPromptsAdmin() {
           </p>
         </AlertDescription>
       </Alert>
+
+      {/* Nhà cung cấp AI & API key — BYOK, không phụ thuộc Lovable */}
+      <Card className="p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <KeyRound className="w-4 h-4 text-primary" />
+          <h2 className="text-lg font-semibold">Nhà cung cấp AI & API key</h2>
+          <Badge variant="outline" className="text-xs">
+            Đang dùng: {PROVIDER_OPTIONS.find((p) => p.value === providerSettings.provider)?.label || providerSettings.provider}
+          </Badge>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Chọn nơi hệ thống gọi AI và tự nhập API key của đơn vị — có thể chuyển sang Google Gemini hoặc OpenAI trực tiếp để chủ động chi phí, không phụ thuộc Lovable.
+        </p>
+
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Nhà cung cấp</Label>
+            <Select
+              value={providerSettings.provider}
+              onValueChange={(v) => setProviderSettings((s) => ({ ...s, provider: v }))}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {PROVIDER_OPTIONS.map((p) => (
+                  <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-muted-foreground">
+              {PROVIDER_OPTIONS.find((p) => p.value === providerSettings.provider)?.hint}
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">
+              API key {providerSettings.hasKey
+                ? <span className="text-muted-foreground font-normal">(đã lưu ••••{providerSettings.keyLast4} — nhập để thay)</span>
+                : <span className="text-destructive font-normal">(chưa có)</span>}
+            </Label>
+            <Input
+              type="password"
+              value={newApiKey}
+              onChange={(e) => setNewApiKey(e.target.value)}
+              placeholder={providerSettings.hasKey ? 'Nhập API key mới nếu muốn thay' : 'Dán API key vào đây'}
+              autoComplete="off"
+              className="font-mono text-xs"
+            />
+            {providerSettings.provider === 'custom' && (
+              <>
+                <Label className="text-xs mt-2 block">Base URL (OpenAI-compatible)</Label>
+                <Input
+                  value={newBaseUrl}
+                  onChange={(e) => setNewBaseUrl(e.target.value)}
+                  placeholder="https://gateway.noibo.vn/v1"
+                  className="font-mono text-xs"
+                />
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground space-y-1">
+          <p>
+            <strong>Lưu ý model theo nhà cung cấp:</strong> danh sách model bên dưới giữ nguyên tên dạng <code>google/…</code> / <code>openai/…</code> —
+            hệ thống tự bỏ tiền tố khi gọi API trực tiếp.
+          </p>
+          <p>
+            Chọn <strong>Google Gemini</strong> thì chỉ các model Gemini hoạt động; chọn <strong>OpenAI</strong> thì chỉ model GPT hoạt động.
+            Tác vụ đang gán model không thuộc nhà cung cấp sẽ báo lỗi rõ để đổi model.
+          </p>
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={testConnection} disabled={testingConn || savingProvider}>
+            {testingConn ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <PlugZap className="w-3.5 h-3.5 mr-1" />}
+            Kiểm tra kết nối
+          </Button>
+          <Button size="sm" onClick={saveProviderSettings} disabled={savingProvider}>
+            {savingProvider ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1" />}
+            Lưu nhà cung cấp
+          </Button>
+        </div>
+      </Card>
 
       {loading ? (
         <div className="flex items-center gap-2 text-muted-foreground p-8">
