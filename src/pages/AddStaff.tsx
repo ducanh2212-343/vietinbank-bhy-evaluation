@@ -70,6 +70,8 @@ export default function AddStaff() {
     if (!form.full_name.trim()) { toast({ title: 'Vui lòng nhập họ tên', variant: 'destructive' }); return; }
     if (!form.email.trim()) { toast({ title: 'Vui lòng nhập email đăng nhập', variant: 'destructive' }); return; }
     if (!form.employee_code.trim()) { toast({ title: 'Vui lòng nhập mã cán bộ', variant: 'destructive' }); return; }
+    if (!form.department_id) { toast({ title: 'Vui lòng chọn phòng ban', variant: 'destructive' }); return; }
+    if (!form.position_id) { toast({ title: 'Vui lòng chọn chức vụ/vị trí', variant: 'destructive' }); return; }
 
     if (form.role === 'system_admin') {
       const ok = window.confirm(
@@ -85,8 +87,8 @@ export default function AddStaff() {
         full_name: form.full_name,
         email: form.email,
         phone: form.phone,
-        department_id: form.department_id || null,
-        position_id: form.position_id || null,
+        department_id: form.department_id,
+        position_id: form.position_id,
         role: form.role,
         manager_id: form.manager_id || null,
         pgd_id: form.pgd_id || null,
@@ -197,7 +199,7 @@ export default function AddStaff() {
                 <Input value={form.phone} onChange={(e) => set('phone', e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Phòng ban</Label>
+                <Label>Phòng ban *</Label>
                 <Select value={form.department_id} onValueChange={(v) => { set('department_id', v); set('position_id', ''); }}>
                   <SelectTrigger><SelectValue placeholder="Chọn phòng ban" /></SelectTrigger>
                   <SelectContent>
@@ -206,7 +208,7 @@ export default function AddStaff() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Chức vụ / Vị trí</Label>
+                <Label>Chức vụ / Vị trí *</Label>
                 <Select value={form.position_id} onValueChange={(v) => set('position_id', v)} disabled={!form.department_id}>
                   <SelectTrigger><SelectValue placeholder={form.department_id ? "Chọn vị trí" : "Chọn phòng ban trước"} /></SelectTrigger>
                   <SelectContent>

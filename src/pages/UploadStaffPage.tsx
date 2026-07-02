@@ -92,13 +92,28 @@ function normalizeRole(v: string | null): string | null {
   return ROLE_ALIASES[lower] ?? lower; // returns unrecognized as-is so validation flags it
 }
 
+/** Chuẩn hóa tên để so khớp: trim, lowercase, bỏ dấu tiếng Việt, gộp khoảng trắng. */
+function normalizeName(s: string | null | undefined): string {
+  return (s || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'd')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+interface DeptRef { id: string; name: string }
+interface PosRef { id: string; name: string; department_id: string | null }
+
 export default function UploadStaffPage() {
   const { isAdmin } = useAuth();
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [deptIds, setDeptIds] = useState<Set<string>>(new Set());
-  const [posIds, setPosIds] = useState<Set<string>>(new Set());
+  const [departments, setDepartments] = useState<DeptRef[]>([]);
+  const [positions, setPositions] = useState<PosRef[]>([]);
   const [profileEmails, setProfileEmails] = useState<Set<string>>(new Set());
   const [employeeCodes, setEmployeeCodes] = useState<Set<string>>(new Set());
 
@@ -109,12 +124,12 @@ export default function UploadStaffPage() {
   useEffect(() => {
     const load = async () => {
       const [d, p, pr] = await Promise.all([
-        supabase.from('departments').select('id'),
-        supabase.from('positions').select('id'),
+        supabase.from('departments').select('id, name').eq('is_active', true).order('name'),
+        supabase.from('positions').select('id, name, department_id').eq('is_active', true).order('sort_order'),
         supabase.from('profiles').select('email, employee_code'),
       ]);
-      setDeptIds(new Set((d.data || []).map((x) => x.id)));
-      setPosIds(new Set((p.data || []).map((x) => x.id)));
+      setDepartments((d.data || []) as DeptRef[]);
+      setPositions((p.data || []) as PosRef[]);
       setProfileEmails(new Set((pr.data || []).map((x) => (x.email || '').toLowerCase()).filter(Boolean)));
       setEmployeeCodes(new Set((pr.data || []).map((x) => x.employee_code || '').filter(Boolean)));
     };
@@ -123,13 +138,19 @@ export default function UploadStaffPage() {
 
   if (!isAdmin) return <div className="p-6 text-muted-foreground">Bạn không có quyền truy cập.</div>;
 
+  const deptById = new Map(departments.map((d) => [d.id, d]));
+  const posById = new Map(positions.map((p) => [p.id, p]));
+  const deptByName = new Map(departments.map((d) => [normalizeName(d.name), d]));
+
   const validateRow = (raw: Record<string, unknown>, index: number): ParsedRow => {
     const email = pick(raw, 'email')?.toLowerCase() ?? null;
     const fullName = pick(raw, 'full_name', 'họ tên', 'ho ten');
     const employeeCode = pick(raw, 'employee_code', 'mã cán bộ', 'ma can bo', 'mã cb');
     const role = normalizeRole(pick(raw, 'role', 'vai trò', 'vai tro'));
-    const departmentId = pick(raw, 'department_id');
-    const positionId = pick(raw, 'position_id');
+    const departmentIdRaw = pick(raw, 'department_id');
+    const departmentName = pick(raw, 'department_name', 'phòng ban', 'phong ban');
+    const positionIdRaw = pick(raw, 'position_id');
+    const positionName = pick(raw, 'position_name', 'vị trí', 'vi tri', 'chức vụ', 'chuc vu');
     const managerEmail = pick(raw, 'manager_email')?.toLowerCase() ?? null;
     const pgdEmail = pick(raw, 'pgd_email')?.toLowerCase() ?? null;
     const directorEmail = pick(raw, 'director_email')?.toLowerCase() ?? null;
@@ -143,8 +164,42 @@ export default function UploadStaffPage() {
     if (!employeeCode) errors.push('Thiếu mã cán bộ');
     if (!role) errors.push('Thiếu vai trò');
     else if (!VALID_ROLES.includes(role)) errors.push(`Vai trò không hợp lệ: ${role}`);
-    if (departmentId && !deptIds.has(departmentId)) errors.push('Không tìm thấy department_id');
-    if (positionId && !posIds.has(positionId)) errors.push('Không tìm thấy position_id');
+
+    // Phòng ban: BẮT BUỘC — ưu tiên department_id, fallback khớp tên đã chuẩn hóa
+    let departmentId: string | null = null;
+    if (departmentIdRaw) {
+      if (deptById.has(departmentIdRaw)) departmentId = departmentIdRaw;
+      else errors.push('Không tìm thấy department_id');
+    } else if (departmentName) {
+      const d = deptByName.get(normalizeName(departmentName));
+      if (d) departmentId = d.id;
+      else errors.push(`Không tìm thấy phòng ban theo tên: ${departmentName}`);
+    } else {
+      errors.push('Thiếu phòng ban (department_id hoặc department_name)');
+    }
+
+    // Vị trí: BẮT BUỘC — ưu tiên position_id, fallback khớp tên trong phòng ban đã chọn
+    let positionId: string | null = null;
+    if (positionIdRaw) {
+      if (posById.has(positionIdRaw)) positionId = positionIdRaw;
+      else errors.push('Không tìm thấy position_id');
+    } else if (positionName) {
+      const matched = positions.filter((p) => normalizeName(p.name) === normalizeName(positionName));
+      const scoped = departmentId ? matched.filter((p) => p.department_id === departmentId) : matched;
+      if (scoped.length === 1) positionId = scoped[0].id;
+      else if (scoped.length > 1) errors.push(`Tên vị trí "${positionName}" trùng nhiều vị trí — vui lòng dùng position_id (xem sheet DanhMuc)`);
+      else errors.push(`Không tìm thấy vị trí "${positionName}"${departmentId ? ' trong phòng ban đã chọn' : ''} (xem sheet DanhMuc)`);
+    } else {
+      errors.push('Thiếu vị trí (position_id hoặc position_name)');
+    }
+
+    // Vị trí phải thuộc đúng phòng ban
+    if (departmentId && positionId) {
+      const p = posById.get(positionId);
+      if (p?.department_id && p.department_id !== departmentId) {
+        errors.push('Vị trí không thuộc phòng ban đã chọn');
+      }
+    }
 
     if (managerEmail && !profileEmails.has(managerEmail)) warnings.push('Không tìm thấy manager_email');
     if (pgdEmail && !profileEmails.has(pgdEmail)) warnings.push('Không tìm thấy pgd_email');
@@ -173,7 +228,8 @@ export default function UploadStaffPage() {
       const XLSX = await import('xlsx');
       const data = await file.arrayBuffer();
       const wb = XLSX.read(data);
-      const ws = wb.Sheets[wb.SheetNames[0]];
+      // Ưu tiên sheet CanBo (file mẫu có thêm sheet DanhMuc)
+      const ws = wb.Sheets['CanBo'] ?? wb.Sheets[wb.SheetNames[0]];
       const json = XLSX.utils.sheet_to_json(ws, { defval: '' }) as Record<string, unknown>[];
       setRows(json.map((r, i) => validateRow(r, i)));
     } catch {
@@ -185,15 +241,35 @@ export default function UploadStaffPage() {
 
   const downloadTemplate = async () => {
     const XLSX = await import('xlsx');
+    const firstPos = positions[0];
+    const firstDept = firstPos ? deptById.get(firstPos.department_id || '') : departments[0];
     const example = {
       employee_code: 'VTB-001', full_name: 'Nguyễn Văn A', email: 'a@vietinbank.vn', phone: '0901234567',
-      department_id: '', department_name: 'Phòng Khách hàng', position_id: '', position_name: 'Chuyên viên',
+      department_id: firstDept?.id ?? '', department_name: firstDept?.name ?? 'Phòng Khách hàng',
+      position_id: firstPos?.id ?? '', position_name: firstPos?.name ?? 'Chuyên viên',
       role: 'employee', manager_email: 'truongphong@vietinbank.vn', pgd_email: '', director_email: '',
       status: 'active', note: '', send_password_email: 'no',
     };
     const ws = XLSX.utils.json_to_sheet([example], { header: SAMPLE_HEADERS });
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'CanBo');
+
+    // Sheet DanhMuc: danh sách phòng ban/vị trí thực tế từ hệ thống để copy id chính xác
+    const catalogRows = positions.map((p) => ({
+      department_id: p.department_id ?? '',
+      department_name: deptById.get(p.department_id || '')?.name ?? '',
+      position_id: p.id,
+      position_name: p.name,
+    }));
+    const deptsWithoutPositions = departments.filter((d) => !positions.some((p) => p.department_id === d.id));
+    deptsWithoutPositions.forEach((d) => {
+      catalogRows.push({ department_id: d.id, department_name: d.name, position_id: '', position_name: '' });
+    });
+    const wsCat = XLSX.utils.json_to_sheet(
+      catalogRows.length ? catalogRows : [{ department_id: '', department_name: '', position_id: '', position_name: '' }],
+      { header: ['department_id', 'department_name', 'position_id', 'position_name'] },
+    );
+    XLSX.utils.book_append_sheet(wb, wsCat, 'DanhMuc');
     XLSX.writeFile(wb, 'mau_tao_tai_khoan_can_bo.xlsx');
   };
 
@@ -272,7 +348,8 @@ export default function UploadStaffPage() {
           <ul className="list-disc pl-5 text-sm text-muted-foreground">
             <li>Không nhập mật khẩu trong file Excel.</li>
             <li>Mỗi cán bộ cần có email đăng nhập duy nhất.</li>
-            <li>Nên dùng <code>department_id</code> và <code>position_id</code> để tránh nhầm tên phòng ban/vị trí.</li>
+            <li>Phòng ban và vị trí là <strong>bắt buộc</strong> — dòng thiếu sẽ không được tạo tài khoản.</li>
+            <li>Nên dùng <code>department_id</code> và <code>position_id</code> (copy từ sheet <strong>DanhMuc</strong> trong file mẫu). Nếu nhập tên, hệ thống tự khớp không phân biệt hoa/thường/dấu.</li>
           </ul>
         </AlertDescription>
       </Alert>

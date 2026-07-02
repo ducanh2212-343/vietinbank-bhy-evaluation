@@ -87,8 +87,15 @@ function planComplete(a: AttitudeAssessment): boolean {
   return focusOk && !!a.improvement_action?.trim() && !!a.improvement_deadline;
 }
 
+/** Minh chứng chỉ bắt buộc khi Nổi bật / Cần cải thiện / đã đưa vào KH cải thiện. */
+function needsEvidence(a: AttitudeAssessment): boolean {
+  return a.self_status === 'noi_bat' || a.self_status === 'can_cai_thien' || !!a.improvement_required;
+}
+
 function isComplete(a: AttitudeAssessment): boolean {
-  return !!(a.self_status && (a.evidence_text || '').trim()) && planComplete(a);
+  if (!a.self_status) return false;
+  if (needsEvidence(a) && !(a.evidence_text || '').trim()) return false;
+  return planComplete(a);
 }
 
 /* ── Component ── */
@@ -305,9 +312,11 @@ export function EvalSectionC({ assessments, onChange, isManager }: Props) {
                       )}
                     </div>
 
-                    {/* Evidence */}
+                    {/* Evidence — bắt buộc khi Nổi bật / Cần cải thiện / có KH cải thiện */}
                     <div>
-                      <label className="text-xs font-medium text-foreground block mb-1">Minh chứng/biểu hiện hiện tại *</label>
+                      <label className="text-xs font-medium text-foreground block mb-1">
+                        Minh chứng/biểu hiện hiện tại {needsEvidence(a) ? '*' : <span className="text-muted-foreground font-normal">(không bắt buộc)</span>}
+                      </label>
                       <p className="text-[10px] text-muted-foreground mb-1.5">Nêu 1 tình huống, hành vi hoặc kết quả cụ thể trong kỳ đánh giá thể hiện mức anh/chị đã chọn.</p>
                       <Textarea
                         value={a.evidence_text || ''}

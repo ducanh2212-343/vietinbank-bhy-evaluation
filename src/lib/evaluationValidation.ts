@@ -12,25 +12,31 @@ export interface SubmitValidationInput {
 }
 
 /**
- * Quy tắc chặn nộp (đã cập nhật cho mục C/E mới + IDP quét theo skill lõi):
+ * Quy tắc chặn nộp (mục C thái độ):
  *  1. Tất cả skill lõi phải có self_assessed_level.
- *  2. Cả 6 nhóm thái độ phải có self_status (3 mức mới) và evidence_text.
- *  3. Mỗi skill lõi có self_assessed_level < minimum_level (còn GAP so với chuẩn vị trí)
- *     phải có ≥1 hành động phát triển trong mục D (skillPriorities + skillActions).
- *  4. Mỗi nhóm thái độ có kế hoạch cải thiện (self/manager = "Cần cải thiện" HOẶC
- *     improvement_required) phải có: focus ≥1 item (hoặc 'other' + text), action không rỗng, deadline.
+ *  2. Cả 6 nhóm thái độ phải có self_status (Nổi bật / Đạt mong đợi / Cần cải thiện).
+ *  3. Minh chứng (evidence_text) CHỈ bắt buộc khi:
+ *     - self_status = 'noi_bat', HOẶC
+ *     - self_status = 'can_cai_thien', HOẶC
+ *     - improvement_required = true.
+ *     Nhóm chọn "Đạt mong đợi" không bắt buộc minh chứng.
+ *  4. Nhóm có kế hoạch cải thiện (self_status = 'can_cai_thien' hoặc improvement_required)
+ *     phải có: focus ≥1 lựa chọn (nếu chọn 'other' thì phải nhập nội dung),
+ *     hành động cải thiện không rỗng, thời hạn không rỗng.
  */
 export function validateSubmission(input: SubmitValidationInput): string[] {
   const d = validateSubmissionDetailed(input);
   return d.errors;
 }
 
-function hasPlan(a: AttitudeAssessment): boolean {
-  return !!(
-    a.self_status === 'can_cai_thien' ||
-    a.manager_status === 'can_cai_thien' ||
-    a.improvement_required
-  );
+/** Nhóm thái độ có kế hoạch cải thiện bắt buộc? */
+export function attitudeNeedsPlan(a: AttitudeAssessment): boolean {
+  return a.self_status === 'can_cai_thien' || !!a.improvement_required;
+}
+
+/** Nhóm thái độ bắt buộc minh chứng? */
+export function attitudeNeedsEvidence(a: AttitudeAssessment): boolean {
+  return a.self_status === 'noi_bat' || a.self_status === 'can_cai_thien' || !!a.improvement_required;
 }
 
 function planComplete(a: AttitudeAssessment): boolean {
@@ -47,13 +53,21 @@ export interface GappedSkillIssue {
   missing_fields: GappedSkillMissingField[];
 }
 
+export interface AttitudeItemRef {
+  id: number;
+  name: string;
+}
+
 export interface DetailedValidation {
   canSubmit: boolean;
   errors: string[];
   coreTotal: number;
   coreMissing: CoreSkillAssessment[];
   attitudeTotal: number;
-  attitudeMissing: { id: number; name: string; reason: 'rating' | 'evidence' | 'both' }[];
+  /** Nhóm chưa chọn mức tự đánh giá */
+  attitudeRatingMissing: AttitudeItemRef[];
+  /** Nhóm bắt buộc minh chứng (nổi bật / cần cải thiện / có KH cải thiện) nhưng chưa nhập */
+  attitudeEvidenceMissing: AttitudeItemRef[];
   gappedTotal: number;
   gappedSkillsWithoutAction: CoreSkillAssessment[];
   gappedSkillIssues: GappedSkillIssue[];
@@ -73,22 +87,28 @@ export function validateSubmissionDetailed(input: SubmitValidationInput): Detail
     errors.push(`Còn ${coreMissing.length} skill lõi chưa tự đánh giá: ${coreMissing.slice(0, 3).map(c => c.skill_name).join(', ')}${coreMissing.length > 3 ? '…' : ''}`);
   }
 
-  // 2. Thái độ — đủ 6 nhóm có self_status + evidence_text
-  type AttMissing = { id: number; name: string; reason: 'rating' | 'evidence' | 'both' };
-  const attitudeMissing: AttMissing[] = [];
+  // 2. Thái độ — đủ 6 nhóm có mức tự đánh giá (self_status)
+  const attitudeRatingMissing: AttitudeItemRef[] = [];
+  const attitudeEvidenceMissing: AttitudeItemRef[] = [];
   for (const d of ATTITUDE_DIMENSIONS) {
     const a = attitudeAssessments.find(x => x.attitude_dimension_id === d.id);
-    const noRating = !a?.self_status;
-    const noEvidence = !(a?.evidence_text || '').trim();
-    if (!noRating && !noEvidence) continue;
-    const reason: AttMissing['reason'] = noRating && noEvidence ? 'both' : noRating ? 'rating' : 'evidence';
-    attitudeMissing.push({ id: d.id, name: d.name, reason });
+    if (!a?.self_status) {
+      attitudeRatingMissing.push({ id: d.id, name: d.name });
+      continue;
+    }
+    // 3. Minh chứng chỉ bắt buộc với nhóm nổi bật / cần cải thiện / có KH cải thiện
+    if (attitudeNeedsEvidence(a) && !(a.evidence_text || '').trim()) {
+      attitudeEvidenceMissing.push({ id: d.id, name: d.name });
+    }
   }
-  if (attitudeMissing.length > 0) {
-    errors.push(`Còn ${attitudeMissing.length}/6 nhóm thái độ chưa hoàn tất (thiếu mức tự đánh giá hoặc minh chứng): ${attitudeMissing.map(d => d.name).join(', ')}`);
+  if (attitudeRatingMissing.length > 0) {
+    errors.push(`Còn ${attitudeRatingMissing.length}/6 nhóm thái độ chưa chọn mức tự đánh giá: ${attitudeRatingMissing.map(d => d.name).join(', ')}`);
+  }
+  if (attitudeEvidenceMissing.length > 0) {
+    errors.push(`Còn ${attitudeEvidenceMissing.length} nhóm thái độ (Nổi bật/Cần cải thiện) chưa nhập minh chứng: ${attitudeEvidenceMissing.map(d => d.name).join(', ')}`);
   }
 
-  // 3. Skill lõi còn GAP — chỉ tính để hiển thị gợi ý, KHÔNG chặn nộp.
+  // 4. Skill lõi còn GAP — chỉ tính để hiển thị gợi ý, KHÔNG chặn nộp.
   //    Cán bộ tự chọn skill up kỳ này theo thực tiễn công việc.
   void skillPriorities; void skillActions;
   const gappedCoreSkills = coreAssessments.filter(c => {
@@ -100,13 +120,11 @@ export function validateSubmissionDetailed(input: SubmitValidationInput): Detail
   const gappedSkillsWithoutAction: CoreSkillAssessment[] = [];
   const gappedSkillIssues: GappedSkillIssue[] = [];
 
-
-
-  // 4. Thái độ có kế hoạch cải thiện — phải đầy đủ focus + action + deadline
-  const needsImprovement = attitudeAssessments.filter(hasPlan);
+  // 5. Thái độ có kế hoạch cải thiện — phải đầy đủ focus + hành động + thời hạn
+  const needsImprovement = attitudeAssessments.filter(attitudeNeedsPlan);
   const needsImprovementWithoutPlan = needsImprovement.filter(a => !planComplete(a));
   if (needsImprovementWithoutPlan.length > 0) {
-    errors.push(`Còn ${needsImprovementWithoutPlan.length} nhóm thái độ có kế hoạch cải thiện nhưng chưa nhập đủ (điểm cần cải thiện / hành động / thời hạn): ${needsImprovementWithoutPlan.map(a => a.attitude_name).join(', ')}`);
+    errors.push(`Còn ${needsImprovementWithoutPlan.length} nhóm thái độ cần cải thiện nhưng chưa nhập đủ kế hoạch (điểm cần cải thiện / hành động / thời hạn): ${needsImprovementWithoutPlan.map(a => a.attitude_name).join(', ')}`);
   }
 
   return {
@@ -115,7 +133,8 @@ export function validateSubmissionDetailed(input: SubmitValidationInput): Detail
     coreTotal: coreAssessments.length,
     coreMissing,
     attitudeTotal: ATTITUDE_DIMENSIONS.length,
-    attitudeMissing,
+    attitudeRatingMissing,
+    attitudeEvidenceMissing,
     gappedTotal: gappedCoreSkills.length,
     gappedSkillIssues,
     gappedSkillsWithoutAction,

@@ -34,6 +34,8 @@ export interface StaffContext {
   validDeptIds?: Set<string>;
   validPositionIds?: Set<string>;
   positionNames?: Map<string, string>;
+  /** position_id -> department_id (kiểm tra vị trí thuộc đúng phòng ban) */
+  positionDepartments?: Map<string, string | null>;
 }
 
 export interface StaffResult {
@@ -123,11 +125,49 @@ export async function createOrUpdateStaffUser(
   const departmentId = clean(input.department_id);
   const positionId = clean(input.position_id);
 
-  if (departmentId && ctx.validDeptIds && !ctx.validDeptIds.has(departmentId)) {
-    throw new ValidationError("Không tìm thấy phòng ban (department_id)");
+  // Phòng ban + vị trí là BẮT BUỘC — hồ sơ thiếu vị trí sẽ không tự đánh giá được.
+  if (!departmentId) throw new ValidationError("Vui lòng chọn phòng ban (thiếu department_id)");
+  if (!positionId) throw new ValidationError("Vui lòng chọn chức vụ/vị trí (thiếu position_id)");
+
+  // Kiểm tra phòng ban tồn tại (dùng set preload của bulk nếu có, không thì query trực tiếp)
+  if (ctx.validDeptIds) {
+    if (!ctx.validDeptIds.has(departmentId)) {
+      throw new ValidationError("Không tìm thấy phòng ban (department_id)");
+    }
+  } else {
+    const { data: dept } = await adminClient
+      .from("departments")
+      .select("id")
+      .eq("id", departmentId)
+      .maybeSingle();
+    if (!dept) throw new ValidationError("Không tìm thấy phòng ban (department_id)");
   }
-  if (positionId && ctx.validPositionIds && !ctx.validPositionIds.has(positionId)) {
-    throw new ValidationError("Không tìm thấy vị trí (position_id)");
+
+  // Kiểm tra vị trí tồn tại + thuộc đúng phòng ban, đồng thời resolve tên vị trí
+  // (làm TRƯỚC khi tạo Auth user để không tạo tài khoản mồ côi khi dữ liệu sai).
+  let positionName: string | null = null;
+  let positionDeptId: string | null = null;
+  if (ctx.validPositionIds && ctx.positionNames && ctx.positionDepartments) {
+    if (!ctx.validPositionIds.has(positionId)) {
+      throw new ValidationError("Không tìm thấy vị trí (position_id)");
+    }
+    positionName = ctx.positionNames.get(positionId) ?? null;
+    positionDeptId = ctx.positionDepartments.get(positionId) ?? null;
+  } else {
+    const { data: posData } = await adminClient
+      .from("positions")
+      .select("name, department_id")
+      .eq("id", positionId)
+      .maybeSingle();
+    if (!posData) throw new ValidationError("Không tìm thấy vị trí (position_id)");
+    positionName = (posData as { name: string | null }).name ?? null;
+    positionDeptId = (posData as { department_id: string | null }).department_id ?? null;
+  }
+  if (positionDeptId && positionDeptId !== departmentId) {
+    throw new ValidationError("Vị trí không thuộc phòng ban đã chọn");
+  }
+  if (!positionName) {
+    throw new ValidationError("Vị trí chưa có tên hiển thị — vui lòng kiểm tra danh mục vị trí");
   }
 
   // ---- Resolve / create the Auth user ------------------------------------
@@ -157,20 +197,6 @@ export async function createOrUpdateStaffUser(
     } else {
       userId = data.user.id;
       createdNew = true;
-    }
-  }
-
-  // ---- Resolve position display name -------------------------------------
-  let positionName: string | null = null;
-  if (positionId) {
-    positionName = ctx.positionNames?.get(positionId) ?? null;
-    if (!positionName) {
-      const { data: posData } = await adminClient
-        .from("positions")
-        .select("name")
-        .eq("id", positionId)
-        .maybeSingle();
-      positionName = posData?.name ?? null;
     }
   }
 

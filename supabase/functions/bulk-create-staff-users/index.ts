@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
     // Pre-load reference data once for validation + lookups.
     const [deptRes, posRes, profRes] = await Promise.all([
       adminClient.from("departments").select("id"),
-      adminClient.from("positions").select("id, name"),
+      adminClient.from("positions").select("id, name, department_id"),
       adminClient.from("profiles").select("id, email"),
     ]);
 
@@ -72,6 +72,11 @@ Deno.serve(async (req) => {
     );
     const positionNames = new Map(
       (posRes.data ?? []).map((p: { id: string; name: string }) => [p.id, p.name]),
+    );
+    const positionDepartments = new Map(
+      (posRes.data ?? []).map(
+        (p: { id: string; department_id: string | null }) => [p.id, p.department_id ?? null],
+      ),
     );
     const profileByEmail = new Map<string, string>();
     for (const p of (profRes.data ?? []) as { id: string; email: string | null }[]) {
@@ -118,6 +123,7 @@ Deno.serve(async (req) => {
           validDeptIds,
           validPositionIds,
           positionNames,
+          positionDepartments,
         });
 
         if (result.created_new) created++;
