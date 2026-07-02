@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, UserPlus, Shield, LogOut, Target,
-  User, BookOpen, PlusCircle, Brain, Heart, UsersRound, Star,
+  User, UsersRound, Star,
   Upload, Settings as SettingsIcon, BarChart3, Image, FileText,
   ChevronDown, ChevronRight, UserCheck, Sparkles, GraduationCap, ClipboardList, KeyRound
 } from 'lucide-react';
@@ -16,24 +16,22 @@ interface NavGroup {
   items: { label: string; icon: any; path: string; minRole?: MinRole }[];
 }
 
+// Menu tinh gọn theo thực tế sử dụng của cán bộ.
+// Các trang sau bị BỎ KHỎI MENU (route vẫn hoạt động để không gãy link cũ):
+// - /skill-bo-sung, /thai-do-tu-duy: placeholder trống — nội dung thật nằm trong Tự đánh giá (mục B/C)
+// - /ke-hoach-phat-trien: đọc đường dữ liệu cũ (admin_evaluations) không còn được ghi — IDP thật ở mục D
+// - /ung-dung-ai: dữ liệu demo hard-code
+// - /bieu-mau-01|02|03: kênh nhập trùng với Tự đánh giá, dễ phá trạng thái phiếu duyệt
 const navGroups: NavGroup[] = [
   {
     label: 'Cá nhân / Năng lực',
     items: [
       { label: 'Tổng quan', icon: LayoutDashboard, path: '/tong-quan' },
+      { label: 'Tự đánh giá', icon: FileText, path: '/tu-danh-gia' },
+      { label: 'Hành động phát triển', icon: ClipboardList, path: '/hanh-dong-phat-trien' },
+      { label: 'Skill lõi theo vị trí', icon: Target, path: '/skill-loi-theo-vi-tri' },
       { label: 'Hồ sơ cá nhân', icon: User, path: '/ho-so-ca-nhan' },
       { label: 'Đổi mật khẩu', icon: KeyRound, path: '/doi-mat-khau' },
-      { label: 'Skill lõi theo vị trí', icon: Target, path: '/skill-loi-theo-vi-tri' },
-      { label: 'Skill bổ sung', icon: PlusCircle, path: '/skill-bo-sung' },
-      { label: 'Tự đánh giá', icon: FileText, path: '/tu-danh-gia' },
-      { label: 'Kế hoạch phát triển', icon: BookOpen, path: '/ke-hoach-phat-trien' },
-      { label: 'Hành động phát triển', icon: ClipboardList, path: '/hanh-dong-phat-trien' },
-
-      { label: 'Ứng dụng AI', icon: Brain, path: '/ung-dung-ai' },
-      { label: 'Thái độ & tư duy', icon: Heart, path: '/thai-do-tu-duy' },
-      { label: 'BM01 - Q1→Q2', icon: FileText, path: '/bieu-mau-01' },
-      { label: 'BM02 - Q2→Q3', icon: FileText, path: '/bieu-mau-02' },
-      { label: 'BM03 - Q3→Q4', icon: FileText, path: '/bieu-mau-03' },
     ],
   },
   {
