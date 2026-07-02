@@ -28,20 +28,42 @@ export function AICompetencyPortrait({
   const [generatedAt, setGeneratedAt] = useState<string>('');
   const [loading, setLoading] = useState(false);
 
+  // Ưu tiên bản đã lưu trong DB (chia sẻ giữa CB/TP, không tốn credit sinh lại);
+  // fallback cache localStorage cho các bản sinh trước đây hoặc khi chưa được phép ghi DB.
   useEffect(() => {
-    if (!cacheKey) return;
-    try {
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        setResult(parsed.text || '');
-        setGeneratedAt(parsed.at || '');
-      } else {
-        setResult('');
-        setGeneratedAt('');
-      }
-    } catch { /* ignore */ }
-  }, [cacheKey]);
+    setResult('');
+    setGeneratedAt('');
+    if (!formId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await (supabase as any)
+          .from('form_submissions')
+          .select('ai_portrait, ai_portrait_generated_at')
+          .eq('id', formId)
+          .maybeSingle();
+        if (cancelled) return;
+        if (data?.ai_portrait) {
+          setResult(data.ai_portrait);
+          setGeneratedAt(
+            data.ai_portrait_generated_at
+              ? new Date(data.ai_portrait_generated_at).toLocaleString('vi-VN')
+              : '',
+          );
+          return;
+        }
+      } catch { /* cột chưa có trong DB → dùng cache local */ }
+      try {
+        const cached = cacheKey ? localStorage.getItem(cacheKey) : null;
+        if (cached && !cancelled) {
+          const parsed = JSON.parse(cached);
+          setResult(parsed.text || '');
+          setGeneratedAt(parsed.at || '');
+        }
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, [formId, cacheKey]);
 
   const assessed = coreAssessments.filter(c => c.self_assessed_level != null);
   const canRun = assessed.length > 0 && !loading;
@@ -50,14 +72,12 @@ export function AICompetencyPortrait({
     if (!canRun) return;
     setLoading(true);
     try {
+      // Không gửi tên/mã cán bộ/tên quản lý ra gateway AI bên ngoài —
+      // model chỉ cần vị trí, phòng ban và dữ liệu năng lực để tư vấn.
       const payload = {
         employee: {
-          name: profile?.full_name || '',
-          employee_code: profile?.employee_code || '',
           position: profile?.pos_name || profile?.position || '',
           department: profile?.dept_name || '',
-          manager_name: profile?.manager_name || '',
-          pgd_name: profile?.pgd_name || '',
           join_date: profile?.join_date || '',
         },
         core_skills: coreAssessments.map(c => ({
@@ -107,7 +127,23 @@ export function AICompetencyPortrait({
       const at = new Date().toLocaleString('vi-VN');
       setResult(text);
       setGeneratedAt(at);
-      if (cacheKey) localStorage.setItem(cacheKey, JSON.stringify({ text, at }));
+
+      // Lưu vào DB để CB/TP dùng chung và có vết khi duyệt; nếu RLS không cho ghi
+      // (ví dụ CB xem phiếu đã duyệt) thì fallback cache local.
+      let persisted = false;
+      if (formId) {
+        try {
+          const { data: saved } = await (supabase as any)
+            .from('form_submissions')
+            .update({ ai_portrait: text, ai_portrait_generated_at: new Date().toISOString() })
+            .eq('id', formId)
+            .select('id');
+          persisted = !!(saved && saved.length);
+        } catch { /* cột chưa có → fallback local */ }
+      }
+      if (!persisted && cacheKey) {
+        localStorage.setItem(cacheKey, JSON.stringify({ text, at }));
+      }
     } catch (e: any) {
       console.error(e);
       toast.error(e.message || 'Lỗi khi gọi AI');

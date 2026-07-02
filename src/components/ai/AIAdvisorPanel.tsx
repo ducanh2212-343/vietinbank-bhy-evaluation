@@ -6,23 +6,35 @@ import { Textarea } from '@/components/ui/textarea';
 import { Sparkles, Send, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 
 const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-advisor`;
+// Chỉ gửi các lượt gần nhất để tiết kiệm token (backend cũng tự cắt)
+const MAX_HISTORY_MESSAGES = 12;
 
 async function streamChat(messages: Msg[], onDelta: (s: string) => void) {
+  // Bắt buộc dùng token phiên đăng nhập của người dùng — anon key sẽ bị backend từ chối (401)
+  const { data: { session } } = await supabase.auth.getSession();
+  const accessToken = session?.access_token;
+  if (!accessToken) throw new Error('Bạn cần đăng nhập để sử dụng AI tư vấn.');
   const resp = await fetch(FN_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      Authorization: `Bearer ${accessToken}`,
+      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
     },
-    body: JSON.stringify({ mode: 'chat', messages }),
+    body: JSON.stringify({ mode: 'chat', messages: messages.slice(-MAX_HISTORY_MESSAGES) }),
   });
   if (!resp.ok || !resp.body) {
-    const t = await resp.text();
-    throw new Error(t || `HTTP ${resp.status}`);
+    let msg = `HTTP ${resp.status}`;
+    try {
+      const j = await resp.json();
+      if (j?.error) msg = j.error;
+    } catch { /* giữ mã HTTP */ }
+    throw new Error(msg);
   }
   const reader = resp.body.getReader();
   const dec = new TextDecoder();

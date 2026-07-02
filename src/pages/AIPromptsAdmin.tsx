@@ -7,10 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from '@/hooks/use-toast';
-import { Loader2, Save, Sparkles, RotateCcw } from 'lucide-react';
+import { Loader2, Save, Sparkles, RotateCcw, Coins } from 'lucide-react';
 
 interface AIPrompt {
   mode: string;
@@ -21,26 +22,52 @@ interface AIPrompt {
   updated_at: string;
 }
 
-const MODELS = [
-  { value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash (mặc định, nhanh)' },
-  { value: 'google/gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite (rẻ nhất)' },
-  { value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro (mạnh nhất Gemini)' },
-  { value: 'google/gemini-3-flash-preview', label: 'Gemini 3 Flash (preview)' },
-  { value: 'google/gemini-3.5-flash', label: 'Gemini 3.5 Flash' },
-  { value: 'openai/gpt-5-nano', label: 'GPT-5 Nano (rẻ, nhanh)' },
-  { value: 'openai/gpt-5-mini', label: 'GPT-5 Mini' },
-  { value: 'openai/gpt-5', label: 'GPT-5 (mạnh, đắt)' },
+// Model nhóm theo bậc chi phí — giúp admin chọn linh hoạt theo ngân sách credit.
+const MODEL_TIERS: { tier: string; hint: string; models: { value: string; label: string }[] }[] = [
+  {
+    tier: '💰 Tiết kiệm',
+    hint: 'Rẻ nhất — phù hợp tác vụ ngắn, khối lượng lớn',
+    models: [
+      { value: 'google/gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
+      { value: 'openai/gpt-5-nano', label: 'GPT-5 Nano' },
+    ],
+  },
+  {
+    tier: '💰💰 Cân bằng',
+    hint: 'Chất lượng/chi phí tốt — khuyến nghị cho hầu hết tác vụ',
+    models: [
+      { value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash (mặc định)' },
+      { value: 'google/gemini-3-flash-preview', label: 'Gemini 3 Flash (preview)' },
+      { value: 'google/gemini-3.5-flash', label: 'Gemini 3.5 Flash' },
+      { value: 'openai/gpt-5-mini', label: 'GPT-5 Mini' },
+    ],
+  },
+  {
+    tier: '💰💰💰 Chất lượng cao (đắt)',
+    hint: 'Chỉ dùng khi cần phân tích sâu — tốn credit đáng kể',
+    models: [
+      { value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+      { value: 'openai/gpt-5', label: 'GPT-5' },
+    ],
+  },
 ];
+const ALL_MODEL_VALUES = new Set(MODEL_TIERS.flatMap((t) => t.models.map((m) => m.value)));
+const CUSTOM_MODEL = '__custom__';
 
 const MODE_LABELS: Record<string, string> = {
   system_base: 'System prompt mặc định (áp dụng cho mọi tác vụ)',
   chat: 'Trợ lý hội thoại (chat AI)',
-  suggest_evidence: 'Gợi ý minh chứng cho skill',
   coach_skill: 'Tư vấn 1 dòng skill (toàn diện)',
-  suggest_idp_plan: 'Lập kế hoạch IDP 70/20/10',
-  suggest_attitude_action: 'Gợi ý cải thiện thái độ',
-  summarize_assessment: 'Tóm tắt phiếu đánh giá',
   competency_portrait: 'Chân dung năng lực tổng thể',
+  suggest_vtb_courses: 'Gợi ý khóa học Trường ĐT VietinBank',
+};
+
+// Khuyến nghị model theo tác vụ để cân đối chi phí
+const MODE_RECOMMENDED_MODEL: Record<string, string> = {
+  chat: 'google/gemini-2.5-flash',
+  coach_skill: 'google/gemini-2.5-flash',
+  competency_portrait: 'google/gemini-2.5-flash',
+  suggest_vtb_courses: 'google/gemini-2.5-flash-lite',
 };
 
 export default function AIPromptsAdmin() {
@@ -49,6 +76,8 @@ export default function AIPromptsAdmin() {
   const [loading, setLoading] = useState(true);
   const [savingMode, setSavingMode] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, AIPrompt>>({});
+  // Bật ô nhập model tùy chỉnh cho từng mode (khi model không nằm trong danh sách gợi ý)
+  const [customModel, setCustomModel] = useState<Record<string, boolean>>({});
 
   const load = async () => {
     setLoading(true);
@@ -139,6 +168,21 @@ export default function AIPromptsAdmin() {
         </div>
       </div>
 
+      <Alert>
+        <Coins className="h-4 w-4" />
+        <AlertDescription className="space-y-1 text-sm">
+          <p className="font-medium">Chọn model theo chi phí — mỗi tác vụ dùng model riêng:</p>
+          <ul className="list-disc pl-5 text-muted-foreground">
+            <li><strong>💰 Tiết kiệm</strong> (Flash Lite, GPT-5 Nano): tác vụ ngắn, gọi nhiều — ví dụ gợi ý khóa học.</li>
+            <li><strong>💰💰 Cân bằng</strong> (Gemini Flash, GPT-5 Mini): chat tư vấn, tư vấn skill, chân dung năng lực — khuyến nghị mặc định.</li>
+            <li><strong>💰💰💰 Chất lượng cao</strong> (Gemini Pro, GPT-5): chỉ bật khi cần phân tích sâu; tốn credit đáng kể.</li>
+          </ul>
+          <p className="text-muted-foreground">
+            Tắt công tắc "Bật" sẽ chặn hẳn tác vụ AI đó. Hệ thống cũng giới hạn 40 lượt AI/giờ/người dùng để kiểm soát chi phí.
+          </p>
+        </AlertDescription>
+      </Alert>
+
       {loading ? (
         <div className="flex items-center gap-2 text-muted-foreground p-8">
           <Loader2 className="w-4 h-4 animate-spin" /> Đang tải...
@@ -173,18 +217,55 @@ export default function AIPromptsAdmin() {
 
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Model AI</Label>
-                    <Select
-                      value={d.model}
-                      onValueChange={(v) => updateDraft(p.mode, { model: v })}
-                    >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {MODELS.map((m) => (
-                          <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label className="text-xs">Model AI (chọn theo bậc chi phí)</Label>
+                    {(() => {
+                      const isCustom = customModel[p.mode] || (!!d.model && !ALL_MODEL_VALUES.has(d.model));
+                      const recommended = MODE_RECOMMENDED_MODEL[p.mode];
+                      return (
+                        <>
+                          <Select
+                            value={isCustom ? CUSTOM_MODEL : d.model}
+                            onValueChange={(v) => {
+                              if (v === CUSTOM_MODEL) {
+                                setCustomModel((c) => ({ ...c, [p.mode]: true }));
+                              } else {
+                                setCustomModel((c) => ({ ...c, [p.mode]: false }));
+                                updateDraft(p.mode, { model: v });
+                              }
+                            }}
+                          >
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {MODEL_TIERS.map((tier) => (
+                                <SelectGroup key={tier.tier}>
+                                  <SelectLabel className="text-[11px]">{tier.tier} — {tier.hint}</SelectLabel>
+                                  {tier.models.map((m) => (
+                                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                                  ))}
+                                </SelectGroup>
+                              ))}
+                              <SelectGroup>
+                                <SelectLabel className="text-[11px]">Khác</SelectLabel>
+                                <SelectItem value={CUSTOM_MODEL}>Nhập model tùy chỉnh…</SelectItem>
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                          {isCustom && (
+                            <Input
+                              value={d.model}
+                              onChange={(e) => updateDraft(p.mode, { model: e.target.value })}
+                              placeholder="ví dụ: google/gemini-2.5-flash"
+                              className="h-8 text-xs font-mono"
+                            />
+                          )}
+                          {recommended && d.model !== recommended && (
+                            <p className="text-[10px] text-muted-foreground">
+                              Khuyến nghị cho tác vụ này: <code>{recommended}</code>
+                            </p>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Ghi chú / mô tả</Label>
