@@ -12,7 +12,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['IBM Plex Sans', 'system-ui', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -68,6 +68,10 @@ export default {
           "3-bg": "hsl(var(--level-3-bg))",
           4: "hsl(var(--level-4))",
           "4-bg": "hsl(var(--level-4-bg))",
+        },
+        gold: {
+          DEFAULT: "hsl(var(--gold))",
+          bg: "hsl(var(--gold-bg))",
         },
         star: {
           mai: "hsl(var(--star-mai))",

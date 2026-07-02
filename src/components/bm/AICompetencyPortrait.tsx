@@ -157,7 +157,7 @@ export function AICompetencyPortrait({
       <CardHeader className="pb-3 px-3 sm:px-6">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <CardTitle className="text-sm sm:text-base flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-violet-600" />
+            <Sparkles className="w-4 h-4 text-primary" />
             Chân dung năng lực bằng AI
           </CardTitle>
           <Badge variant="outline" className="text-[10px]">Tổng hợp tự động</Badge>
@@ -173,7 +173,7 @@ export function AICompetencyPortrait({
             type="button"
             onClick={run}
             disabled={!canRun}
-            className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             {loading ? (
               <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> AI đang phân tích…</>
