@@ -1107,10 +1107,7 @@ export default function StaffEvaluation() {
           isDirectManagerReviewer && formStatus === 'returned' && formMeta.return_target === 'employee';
 
         return (
-          <div
-            className="fixed bottom-0 left-0 right-0 bg-background border-t p-3 z-50"
-            style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
-          >
+          <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-3 z-50">
             <div className="max-w-4xl mx-auto flex flex-col gap-2">
               {tpWaitingEmployee && (
                 <div className="text-xs text-muted-foreground flex items-center gap-1">
