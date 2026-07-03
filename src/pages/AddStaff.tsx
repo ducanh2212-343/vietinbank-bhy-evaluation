@@ -274,7 +274,8 @@ export default function AddStaff() {
               <div className="space-y-0.5">
                 <Label>Gửi email đặt mật khẩu cho cán bộ</Label>
                 <p className="text-xs text-muted-foreground">
-                  Nếu bật, hệ thống gửi email để cán bộ tự đặt mật khẩu. Nếu tắt, mật khẩu tạm sẽ hiển thị để bạn gửi riêng.
+                  Khuyến nghị <strong>tắt</strong>: hệ thống hiển thị mật khẩu tạm kèm tin nhắn bàn giao để bạn gửi riêng cho cán bộ.
+                  Chỉ bật khi đã cấu hình email tên miền 343skill.com — khi bật, mật khẩu tạm sẽ không hiển thị mà gửi qua email đặt lại mật khẩu.
                 </p>
               </div>
               <Switch checked={form.send_password_email} onCheckedChange={(v) => set('send_password_email', v)} />

@@ -278,9 +278,11 @@ export async function createOrUpdateStaffUser(
   let emailSent = false;
   if (input.send_password_email) {
     try {
+      // Link email khôi phục phải trỏ về trang đặt-lại-mật-khẩu (không hỏi mật
+      // khẩu cũ) — cán bộ mới chưa có mật khẩu hiện tại để nhập.
       const { error: mailError } = await adminClient.auth.resetPasswordForEmail(
         email,
-        { redirectTo: `${siteUrl}/doi-mat-khau` },
+        { redirectTo: `${siteUrl}/dat-lai-mat-khau` },
       );
       emailSent = !mailError;
     } catch (_e) {
