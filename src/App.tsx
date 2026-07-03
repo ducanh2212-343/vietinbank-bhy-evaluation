@@ -1,6 +1,6 @@
 import { lazy, Suspense, ComponentType } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate, useLocation } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -59,15 +59,22 @@ const AIPromptsAdmin = lazyWithRetry(() => import("./pages/AIPromptsAdmin"));
 const VtbCoursesAdminPage = lazyWithRetry(() => import("./pages/VtbCoursesAdminPage"));
 const PersonalKanbanPage = lazyWithRetry(() => import("./pages/PersonalKanbanPage"));
 const ChangePassword = lazyWithRetry(() => import("./pages/ChangePassword"));
+const ForgotPassword = lazyWithRetry(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 
 
 const queryClient = new QueryClient();
 
 function ProtectedRoutes() {
-  const { user, loading } = useAuth();
+  const { user, loading, mustChangePassword } = useAuth();
+  const location = useLocation();
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Đang tải...</div>;
   if (!user) return <Navigate to="/dang-nhap" replace />;
+  // Đang dùng mật khẩu tạm: chặn mọi trang, ép về trang đổi mật khẩu trước.
+  if (mustChangePassword && location.pathname !== '/doi-mat-khau') {
+    return <Navigate to="/doi-mat-khau" replace />;
+  }
   return <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-muted-foreground">Đang tải...</div>}><AppLayout /></Suspense>;
 }
 
@@ -88,6 +95,8 @@ const App = () => (
           <Routes>
             <Route path="/dang-nhap" element={<LoginRoute />} />
             <Route path="/dang-ky-tai-khoan" element={<Navigate to="/dang-nhap" replace />} />
+            <Route path="/quen-mat-khau" element={<Suspense fallback={null}><ForgotPassword /></Suspense>} />
+            <Route path="/dat-lai-mat-khau" element={<Suspense fallback={null}><ResetPassword /></Suspense>} />
             <Route path="/unsubscribe" element={<Unsubscribe />} />
             <Route element={<ProtectedRoutes />}>
               <Route path="/" element={<Navigate to="/tong-quan" replace />} />

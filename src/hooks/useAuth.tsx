@@ -12,6 +12,8 @@ interface AuthState {
   profileId: string | null;
   departmentId: string | null;
   loading: boolean;
+  /** True khi tài khoản đang dùng mật khẩu tạm và phải đổi trước khi dùng hệ thống */
+  mustChangePassword: boolean;
   isAdmin: boolean;
   isManager: boolean;
   isPgd: boolean;
@@ -29,6 +31,7 @@ const AuthContext = createContext<AuthState>({
   profileId: null,
   departmentId: null,
   loading: true,
+  mustChangePassword: false,
   isAdmin: false,
   isManager: false,
   isPgd: false,
@@ -167,6 +170,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isPgd = roles.includes('pgd');
   const isManager = roles.includes('manager');
 
+  // Cờ được gắn khi admin cấp tài khoản/mật khẩu tạm; xóa sau khi đổi mật khẩu thành công.
+  const mcp = user?.user_metadata?.must_change_password;
+  const mustChangePassword = mcp === true || mcp === 'true';
+
   const scope: AuthScope = isAdmin ? 'all' : isPgd ? 'block' : isManager ? 'department' : 'self';
 
   const canManageProfile = useMemo(() => {
@@ -191,7 +198,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{
-      user, roles, profileId, departmentId, loading,
+      user, roles, profileId, departmentId, loading, mustChangePassword,
       isAdmin, isManager, isPgd, scope, visibleDeptIds,
       canManageProfile, signOut,
     }}>

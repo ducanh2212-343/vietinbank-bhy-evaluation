@@ -7,7 +7,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Upload, Download, Info, FileSpreadsheet } from 'lucide-react';
+import { buildHandoverMessage } from '@/lib/handoverMessage';
+import { Upload, Download, Info, FileSpreadsheet, MessageSquareText, Copy } from 'lucide-react';
 
 const VALID_ROLES = ['employee', 'manager', 'pgd', 'tcth_admin', 'system_admin', 'bgd'];
 const ROLE_ALIASES: Record<string, string> = {
@@ -311,6 +312,32 @@ export default function UploadStaffPage() {
     toast({ title: `Hoàn tất: ${data.created} tạo mới, ${data.updated} cập nhật, ${data.errors} lỗi` });
   };
 
+  // Soạn tin nhắn bàn giao theo mẫu cho một dòng kết quả có mật khẩu tạm.
+  const rowMessage = (r: RowResult): string | null => {
+    if (!r.temp_password || !r.email) return null;
+    const fullName = rows.find((x) => x.row_number === r.row_number)?.full_name ?? null;
+    return buildHandoverMessage({ fullName, email: r.email, tempPassword: r.temp_password });
+  };
+
+  const copyText = async (text: string, title: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({ title });
+    } catch {
+      toast({ title: 'Không sao chép được', description: 'Vui lòng copy thủ công.', variant: 'destructive' });
+    }
+  };
+
+  const copyAllMessages = () => {
+    if (!response) return;
+    const messages = response.results.map(rowMessage).filter((m): m is string => !!m);
+    if (messages.length === 0) {
+      toast({ title: 'Không có tin nhắn nào để sao chép', description: 'Chỉ các dòng tạo mới có mật khẩu tạm mới có tin nhắn.' });
+      return;
+    }
+    void copyText(messages.join('\n\n----------\n\n'), `Đã sao chép ${messages.length} tin nhắn bàn giao`);
+  };
+
   const downloadResult = async () => {
     if (!response) return;
     const XLSX = await import('xlsx');
@@ -417,7 +444,12 @@ export default function UploadStaffPage() {
           <CardHeader>
             <CardTitle className="text-base flex items-center justify-between flex-wrap gap-2">
               <span className="flex items-center gap-2"><FileSpreadsheet className="w-4 h-4" /> Kết quả import</span>
-              <Button variant="outline" onClick={downloadResult}><Download className="w-4 h-4 mr-2" /> Tải kết quả import</Button>
+              <span className="flex gap-2 flex-wrap">
+                <Button variant="outline" onClick={copyAllMessages}>
+                  <MessageSquareText className="w-4 h-4 mr-2" /> Sao chép tất cả tin nhắn bàn giao
+                </Button>
+                <Button variant="outline" onClick={downloadResult}><Download className="w-4 h-4 mr-2" /> Tải kết quả import</Button>
+              </span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -436,29 +468,47 @@ export default function UploadStaffPage() {
                     <TableHead>Email</TableHead>
                     <TableHead>Kết quả</TableHead>
                     <TableHead>Thông báo</TableHead>
+                    <TableHead>Bàn giao</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {response.results.map((r) => (
-                    <TableRow key={r.row_number}>
-                      <TableCell>{r.row_number}</TableCell>
-                      <TableCell className="text-sm">{r.employee_code}</TableCell>
-                      <TableCell className="text-sm">{r.email}</TableCell>
-                      <TableCell>
-                        {r.status === 'created'
-                          ? <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Tạo mới</Badge>
-                          : r.status === 'updated'
-                            ? <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">Cập nhật</Badge>
-                            : <Badge variant="destructive">Lỗi</Badge>}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{r.message}</TableCell>
-                    </TableRow>
-                  ))}
+                  {response.results.map((r) => {
+                    const message = rowMessage(r);
+                    return (
+                      <TableRow key={r.row_number}>
+                        <TableCell>{r.row_number}</TableCell>
+                        <TableCell className="text-sm">{r.employee_code}</TableCell>
+                        <TableCell className="text-sm">{r.email}</TableCell>
+                        <TableCell>
+                          {r.status === 'created'
+                            ? <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Tạo mới</Badge>
+                            : r.status === 'updated'
+                              ? <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">Cập nhật</Badge>
+                              : <Badge variant="destructive">Lỗi</Badge>}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{r.message}</TableCell>
+                        <TableCell>
+                          {message && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => copyText(message, `Đã sao chép tin nhắn bàn giao cho ${r.email}`)}
+                            >
+                              <Copy className="w-3.5 h-3.5 mr-1" /> Tin nhắn
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
             <p className="text-xs text-muted-foreground">
-              Mật khẩu tạm (nếu có) nằm trong file "Tải kết quả import". Hãy gửi riêng cho cán bộ và yêu cầu đổi ngay khi đăng nhập.
+              Dùng nút "Tin nhắn" ở từng dòng (hoặc "Sao chép tất cả tin nhắn bàn giao") để copy tin nhắn soạn sẵn kèm mật khẩu tạm
+              và gửi riêng cho từng cán bộ qua Zalo/SMS. Hệ thống sẽ bắt buộc cán bộ đổi mật khẩu ở lần đăng nhập đầu tiên.
+              Nếu tải file kết quả, hãy xóa file sau khi bàn giao xong.
             </p>
           </CardContent>
         </Card>

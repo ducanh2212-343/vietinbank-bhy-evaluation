@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -116,6 +116,11 @@ export default function Login() {
               <Button type="submit" className="w-full h-11" disabled={loading}>
                 {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
               </Button>
+              <div className="text-center">
+                <Link to="/quen-mat-khau" className="text-sm text-primary hover:underline">
+                  Quên mật khẩu?
+                </Link>
+              </div>
             </form>
 
             <div className="mt-4 text-center text-xs sm:text-sm text-muted-foreground">
