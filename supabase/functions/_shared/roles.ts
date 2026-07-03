@@ -24,6 +24,6 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   system_admin: "Quản trị hệ thống",
 };
 
-// Roles permitted to create staff accounts. Phase 1: system_admin only.
-// tcth_admin can be added here later without any frontend change.
-export const STAFF_CREATOR_ROLES: AppRole[] = ["system_admin"];
+// Roles permitted to create/reset staff accounts. system_admin + TCTH.
+// Both already pass the frontend AdminRoute guard, so no UI change is needed.
+export const STAFF_CREATOR_ROLES: AppRole[] = ["system_admin", "tcth_admin"];
