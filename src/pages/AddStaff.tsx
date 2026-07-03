@@ -11,7 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { ArrowLeft, Info, ShieldAlert, KeyRound, Copy, CheckCircle2 } from 'lucide-react';
+import { TempPasswordHandover } from '@/components/staff/TempPasswordHandover';
+import { ArrowLeft, Info, ShieldAlert, CheckCircle2 } from 'lucide-react';
 
 // Vai trò trên hệ thống — nhãn dễ hiểu cho người dùng nghiệp vụ.
 const ROLE_OPTIONS: { value: string; label: string }[] = [
@@ -30,6 +31,9 @@ interface CreateResult {
   email_sent: boolean;
   temp_password: string | null;
   message: string;
+  // Giữ lại từ form để soạn tin nhắn bàn giao.
+  full_name: string;
+  email: string;
 }
 
 export default function AddStaff() {
@@ -118,7 +122,7 @@ export default function AddStaff() {
     toast({ title: 'Đã tạo tài khoản cán bộ thành công' });
     // If a temp password must be relayed manually, keep the admin on-screen to copy it.
     if (data?.temp_password) {
-      setResult(data as CreateResult);
+      setResult({ ...(data as CreateResult), full_name: form.full_name, email: form.email });
     } else {
       navigate(`/chi-tiet-can-bo/${data.profile_id}`);
     }
@@ -140,22 +144,11 @@ export default function AddStaff() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">{result.message}</p>
-            <Alert>
-              <KeyRound className="h-4 w-4" />
-              <AlertDescription className="space-y-2">
-                <p className="font-medium">Mật khẩu tạm thời (phương án tạm thời — hãy gửi riêng cho cán bộ và yêu cầu đổi ngay khi đăng nhập):</p>
-                <div className="flex items-center gap-2">
-                  <code className="px-2 py-1 rounded bg-muted font-mono text-sm select-all">{result.temp_password}</code>
-                  <Button type="button" size="sm" variant="outline" onClick={() => {
-                    navigator.clipboard?.writeText(result.temp_password || '');
-                    toast({ title: 'Đã sao chép mật khẩu tạm' });
-                  }}>
-                    <Copy className="w-4 h-4 mr-1" /> Sao chép
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">Không lưu mật khẩu này vào file Excel hay nơi không an toàn.</p>
-              </AlertDescription>
-            </Alert>
+            <TempPasswordHandover
+              fullName={result.full_name}
+              email={result.email}
+              tempPassword={result.temp_password || ''}
+            />
             <div className="flex gap-3 justify-end">
               <Button variant="outline" onClick={() => { setResult(null); setForm((p) => ({ ...p, employee_code: '', full_name: '', email: '', phone: '', note: '' })); }}>
                 Tạo cán bộ khác

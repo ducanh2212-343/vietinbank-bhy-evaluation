@@ -10,7 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { ArrowLeft, AlertTriangle } from 'lucide-react';
+import { TempPasswordHandover } from '@/components/staff/TempPasswordHandover';
+import { ArrowLeft, AlertTriangle, KeyRound } from 'lucide-react';
 
 type ProfileLite = { id: string; full_name: string; position: string | null; department_id: string | null; status: string | null };
 
@@ -86,6 +87,8 @@ export default function EditStaff() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<any>({});
+  const [resetting, setResetting] = useState(false);
+  const [resetResult, setResetResult] = useState<{ email: string; full_name: string | null; temp_password: string } | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -193,6 +196,30 @@ export default function EditStaff() {
       toast({ title: 'Đã cập nhật thành công' });
       navigate(`/chi-tiet-can-bo/${id}`);
     }
+  };
+
+  const handleResetPassword = async () => {
+    const ok = window.confirm(
+      `Cấp lại mật khẩu tạm cho "${form.full_name}"?\nMật khẩu hiện tại của cán bộ sẽ mất hiệu lực ngay lập tức.`,
+    );
+    if (!ok) return;
+    setResetting(true);
+    const { data, error } = await supabase.functions.invoke('reset-staff-password', {
+      body: { profile_id: id },
+    });
+    setResetting(false);
+    if (error || data?.error) {
+      let message = data?.error || error?.message || 'Lỗi không xác định';
+      try {
+        const ctx = (error as { context?: Response } | null)?.context;
+        const body = ctx ? await ctx.json() : null;
+        if (body?.error) message = body.error;
+      } catch { /* keep default */ }
+      toast({ title: 'Không cấp lại được mật khẩu', description: message, variant: 'destructive' });
+      return;
+    }
+    setResetResult({ email: data.email, full_name: data.full_name, temp_password: data.temp_password });
+    toast({ title: 'Đã cấp lại mật khẩu tạm' });
   };
 
   if (!isAdmin) return <div className="p-6 text-muted-foreground">Bạn không có quyền truy cập.</div>;
@@ -325,6 +352,40 @@ export default function EditStaff() {
               <Button type="submit" disabled={saving}>{saving ? 'Đang lưu...' : 'Cập nhật'}</Button>
             </div>
           </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <KeyRound className="w-4 h-4" /> Cấp lại mật khẩu tạm
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {resetResult ? (
+            <TempPasswordHandover
+              fullName={resetResult.full_name}
+              email={resetResult.email}
+              tempPassword={resetResult.temp_password}
+              variant="reset"
+            />
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Dùng khi cán bộ quên mật khẩu. Hệ thống sinh mật khẩu tạm mới, mật khẩu cũ mất hiệu lực ngay,
+                và cán bộ sẽ bị bắt buộc đổi mật khẩu ở lần đăng nhập kế tiếp.
+                Tin nhắn bàn giao soạn sẵn sẽ hiển thị để bạn copy gửi qua Zalo/SMS.
+              </p>
+              <Button type="button" variant="outline" onClick={handleResetPassword} disabled={resetting || !form.user_id}>
+                {resetting ? 'Đang cấp lại...' : 'Cấp lại mật khẩu tạm'}
+              </Button>
+              {!form.user_id && (
+                <p className="text-xs text-muted-foreground">
+                  Cán bộ này chưa có tài khoản đăng nhập — hãy tạo tài khoản trước (menu Thêm cán bộ).
+                </p>
+              )}
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

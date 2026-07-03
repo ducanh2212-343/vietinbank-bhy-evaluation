@@ -1,15 +1,18 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { KeyRound, ShieldCheck } from 'lucide-react';
+import { KeyRound, ShieldCheck, ShieldAlert } from 'lucide-react';
 
 export default function ChangePassword() {
-  const { user } = useAuth();
+  const { user, mustChangePassword } = useAuth();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -78,7 +81,11 @@ export default function ChangePassword() {
       return;
     }
 
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    // Đổi mật khẩu + xóa cờ "bắt buộc đổi mật khẩu" trong cùng một lần cập nhật.
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+      data: { must_change_password: false },
+    });
     setSaving(false);
 
     if (error) {
@@ -97,6 +104,7 @@ export default function ChangePassword() {
       title: 'Đã đổi mật khẩu thành công',
       description: 'Từ lần đăng nhập sau, vui lòng dùng mật khẩu mới.',
     });
+    if (mustChangePassword) navigate('/tong-quan', { replace: true });
   };
 
   return (
@@ -110,6 +118,16 @@ export default function ChangePassword() {
           Cập nhật mật khẩu đăng nhập cá nhân của bạn.
         </p>
       </div>
+
+      {mustChangePassword && (
+        <Alert variant="destructive">
+          <ShieldAlert className="h-4 w-4" />
+          <AlertDescription>
+            Bạn đang đăng nhập bằng <strong>mật khẩu tạm</strong>. Vui lòng đổi mật khẩu để tiếp tục sử dụng hệ thống —
+            ô "Mật khẩu hiện tại" chính là mật khẩu tạm vừa được cấp.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Card>
         <CardHeader>
