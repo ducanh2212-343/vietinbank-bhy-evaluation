@@ -134,6 +134,8 @@ const App = () => (
                 <Route path="/danh-gia/:id" element={<StaffEvaluation />} />
                 <Route path="/danh-gia-can-bo" element={<EvaluationTrackingPage />} />
                 <Route path="/bao-cao" element={<ReportsPage />} />
+                {/* Trang tự kiểm soát phạm vi: GĐ/PGĐ thấy phòng phụ trách; TCTH lead + admin thấy full */}
+                <Route path="/bao-cao-nop-bieu-mau" element={<SubmissionTimeReportPage />} />
               </Route>
 
               {/* Admin-only routes */}
@@ -149,7 +151,6 @@ const App = () => (
                 <Route path="/quan-tri-ai" element={<AIPromptsAdmin />} />
                 <Route path="/quan-tri-khoa-hoc-vtb" element={<VtbCoursesAdminPage />} />
                 <Route path="/quan-ly-ky-danh-gia" element={<CycleManagementPage />} />
-                <Route path="/bao-cao-nop-bieu-mau" element={<SubmissionTimeReportPage />} />
               </Route>
 
             </Route>

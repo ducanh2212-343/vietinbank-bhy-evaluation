@@ -4,7 +4,7 @@ import {
   Bar, BarChart, CartesianGrid, Legend, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useSubmissionReportAccess } from '@/hooks/useSubmissionReportAccess';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -108,7 +108,7 @@ const approveMilestone = (sub: SubInfo | null): string | null => {
 };
 
 export default function SubmissionTimeReportPage() {
-  const { isAdmin } = useAuth();
+  const access = useSubmissionReportAccess();
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [cycles, setCycles] = useState<CycleInfo[]>([]);
@@ -160,6 +160,19 @@ export default function SubmissionTimeReportPage() {
 
   const selectedCycle = useMemo(() => cycles.find((c) => c.id === cycleId) || null, [cycles, cycleId]);
 
+  // Phạm vi hiển thị: GĐ/PGĐ chỉ thấy các phòng mình phụ trách; TCTH/system admin + lãnh đạo Phòng TCTH thấy toàn chi nhánh
+  const visibleProfiles = useMemo(
+    () => access.fullBranch
+      ? profiles
+      : profiles.filter((p) => p.department_id && access.scopeDeptIds.includes(p.department_id)),
+    [profiles, access.fullBranch, access.scopeDeptIds],
+  );
+
+  const visibleDeptEntries = useMemo(
+    () => [...deptMap.entries()].filter(([id]) => access.fullBranch || access.scopeDeptIds.includes(id)),
+    [deptMap, access.fullBranch, access.scopeDeptIds],
+  );
+
   // Bản ghi nộp mới nhất theo (cán bộ × kỳ)
   const subMap = useMemo(() => {
     const m = new Map<string, SubInfo>();
@@ -173,7 +186,7 @@ export default function SubmissionTimeReportPage() {
 
   const rowsForCycle = useCallback((cycle: CycleInfo): StaffTimingRow[] => {
     const now = new Date();
-    return profiles.map((p) => {
+    return visibleProfiles.map((p) => {
       const sub = subMap.get(`${p.id}|${cycle.id}`) || null;
       const approvedAt = approveMilestone(sub);
       return {
@@ -191,7 +204,7 @@ export default function SubmissionTimeReportPage() {
         timing: computeSubmissionTiming(approvedAt, cycle, now),
       };
     });
-  }, [profiles, subMap, deptMap, posMap]);
+  }, [visibleProfiles, subMap, deptMap, posMap]);
 
   const cycleRows = useMemo(
     () => (selectedCycle ? rowsForCycle(selectedCycle) : []),
@@ -260,7 +273,7 @@ export default function SubmissionTimeReportPage() {
   const summary = useMemo(() => {
     const now = new Date();
     const perCycleRows = cycles.map((c) => ({ cycle: c, deadline: getEffectiveDeadline(c) }));
-    const rows = profiles.map((p) => {
+    const rows = visibleProfiles.map((p) => {
       const cells = perCycleRows.map(({ cycle, deadline }) => {
         // Cán bộ được thêm vào hệ thống sau mốc của kỳ → không tính kỳ đó
         if (new Date(p.created_at) > deadline) return { cycleId: cycle.id, na: true as const, timing: null };
@@ -279,7 +292,7 @@ export default function SubmissionTimeReportPage() {
       };
     });
     return rows.sort((a, b) => b.totalPenalty - a.totalPenalty || a.fullName.localeCompare(b.fullName, 'vi'));
-  }, [cycles, profiles, subMap, deptMap]);
+  }, [cycles, visibleProfiles, subMap, deptMap]);
 
   const exportExcel = async () => {
     if (!selectedCycle) return;
@@ -309,7 +322,7 @@ export default function SubmissionTimeReportPage() {
       const ws = XLSX.utils.aoa_to_sheet([
         [`BÁO CÁO THỜI GIAN NỘP BIỂU MẪU ĐÁNH GIÁ — ${selectedCycle.name}`],
         [`Mốc nộp: ${fmtDateTime(deadline.toISOString())}${selectedCycle.submission_deadline ? '' : ' (mặc định theo ngày kết thúc kỳ)'} — Điểm KPI trừ mỗi kỳ chậm: ${selectedCycle.late_penalty_points} — Thời gian nộp cuối cùng tính theo thời điểm PGĐ duyệt`],
-        [`Xuất lúc: ${fmtDateTime(new Date().toISOString())}`],
+        [`Phạm vi: ${access.fullBranch ? 'Toàn chi nhánh' : 'Các phòng người xem phụ trách'} — Xuất lúc: ${fmtDateTime(new Date().toISOString())}`],
         [],
       ]);
       XLSX.utils.sheet_add_json(ws, detailRows, { origin: 'A5' });
@@ -344,8 +357,15 @@ export default function SubmissionTimeReportPage() {
     }
   };
 
-  if (!isAdmin) {
-    return <div className="p-6 text-sm text-muted-foreground">Trang này dành cho Phòng Tổ chức Tổng hợp và Ban Giám đốc.</div>;
+  if (access.loading) {
+    return <div className="p-6 text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Đang kiểm tra quyền truy cập…</div>;
+  }
+  if (!access.allowed) {
+    return (
+      <div className="p-6 text-sm text-muted-foreground">
+        Trang này dành cho Ban Giám đốc, Phó giám đốc phụ trách, lãnh đạo Phòng Tổ chức Tổng hợp và TCTH Admin.
+      </div>
+    );
   }
 
   const Tile = ({ label, value, k, tone }: { label: string; value: number | string; k?: 'all' | SubmissionTimingStatus; tone?: string }) => (
@@ -371,7 +391,15 @@ export default function SubmissionTimeReportPage() {
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Theo dõi 3 mốc: cán bộ đẩy lên → lãnh đạo duyệt → Phó giám đốc duyệt. <strong>Thời gian nộp cuối cùng = thời điểm PGĐ duyệt</strong>,
-            so với mốc của kỳ để tính điểm KPI — dành cho Phòng Tổ chức Tổng hợp và Ban Giám đốc.
+            so với mốc của kỳ để tính điểm KPI.
+          </p>
+          <p className="text-xs mt-1">
+            <Badge variant="outline" className="text-[10px]">
+              Phạm vi: {access.fullBranch ? 'Toàn chi nhánh' : `Các phòng bạn phụ trách (${visibleDeptEntries.length} phòng)`}
+            </Badge>
+            {!access.fullBranch && visibleDeptEntries.length === 0 && (
+              <span className="text-amber-600 ml-2">Chưa có phòng/cán bộ nào được gán cho bạn phụ trách (pgd_id / director_id).</span>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -385,7 +413,7 @@ export default function SubmissionTimeReportPage() {
             <SelectTrigger className="w-[190px] h-9"><SelectValue placeholder="Phòng ban" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tất cả phòng ban</SelectItem>
-              {[...deptMap.entries()].map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
+              {visibleDeptEntries.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
             </SelectContent>
           </Select>
           <Button size="sm" onClick={exportExcel} disabled={exporting || !selectedCycle}>
