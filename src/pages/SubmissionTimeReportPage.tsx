@@ -60,6 +60,8 @@ interface SubInfo extends SubmissionRow {
   employee_id: string;
   cycle_id: string;
   first_submitted_at: string | null;
+  first_reviewed_at: string | null;
+  first_approved_at: string | null;
   updated_at: string;
 }
 
@@ -71,7 +73,12 @@ interface StaffTimingRow {
   deptName: string;
   positionName: string;
   sub: SubInfo | null;
-  firstSubmittedAt: string | null;
+  /** Mốc 1: cán bộ đẩy biểu mẫu lên */
+  submittedAt: string | null;
+  /** Mốc 2: lãnh đạo (TP/người đánh giá) duyệt */
+  reviewedAt: string | null;
+  /** Mốc 3: Phó giám đốc duyệt — thời gian nộp cuối cùng, dùng tính KPI */
+  approvedAt: string | null;
   timing: SubmissionTiming;
 }
 
@@ -84,8 +91,21 @@ const dayLabel = (key: string) => {
   return `${d}/${m}`;
 };
 
-/** Thời điểm nộp lấy theo lần nộp đầu tiên; fallback submitted_at cho dữ liệu cũ. */
-const firstSubmitOf = (sub: SubInfo | null): string | null => sub?.first_submitted_at || sub?.submitted_at || null;
+/** Mốc 1 — CB đẩy lên lần đầu; fallback submitted_at cho dữ liệu cũ. */
+const submitMilestone = (sub: SubInfo | null): string | null => sub?.first_submitted_at || sub?.submitted_at || null;
+
+/** Mốc 2 — lãnh đạo duyệt lần đầu. */
+const reviewMilestone = (sub: SubInfo | null): string | null => sub?.first_reviewed_at || sub?.reviewed_at || null;
+
+/** Mốc 3 — PGĐ duyệt lần đầu (thời gian nộp cuối cùng); fallback cho dữ liệu cũ đã approved. */
+const approveMilestone = (sub: SubInfo | null): string | null => {
+  if (!sub) return null;
+  if (sub.first_approved_at) return sub.first_approved_at;
+  if (sub.status === 'approved' || sub.status === 'closed') {
+    return sub.pgd_reviewed_at || sub.reviewed_at || null;
+  }
+  return null;
+};
 
 export default function SubmissionTimeReportPage() {
   const { isAdmin } = useAuth();
@@ -116,7 +136,7 @@ export default function SubmissionTimeReportPage() {
       supabase.from('positions').select('id, name').eq('is_active', true),
       supabase
         .from('form_submissions')
-        .select('id, employee_id, cycle_id, status, return_target, needs_manager_review_update, submitted_at, first_submitted_at, reviewed_at, returned_at, pgd_reviewed_at, updated_at'),
+        .select('id, employee_id, cycle_id, status, return_target, needs_manager_review_update, submitted_at, first_submitted_at, first_reviewed_at, first_approved_at, reviewed_at, returned_at, pgd_reviewed_at, updated_at'),
     ]);
 
     const err = cyclesRes.error || profilesRes.error || deptsRes.error || posRes.error || subsRes.error;
@@ -155,7 +175,7 @@ export default function SubmissionTimeReportPage() {
     const now = new Date();
     return profiles.map((p) => {
       const sub = subMap.get(`${p.id}|${cycle.id}`) || null;
-      const first = firstSubmitOf(sub);
+      const approvedAt = approveMilestone(sub);
       return {
         profileId: p.id,
         fullName: p.full_name,
@@ -164,8 +184,11 @@ export default function SubmissionTimeReportPage() {
         deptName: p.department_id ? deptMap.get(p.department_id) || '—' : '—',
         positionName: p.position_id ? posMap.get(p.position_id) || '—' : '—',
         sub,
-        firstSubmittedAt: first,
-        timing: computeSubmissionTiming(first, cycle, now),
+        submittedAt: submitMilestone(sub),
+        reviewedAt: reviewMilestone(sub),
+        approvedAt,
+        // KPI tính theo thời điểm PGĐ duyệt — thời gian nộp cuối cùng
+        timing: computeSubmissionTiming(approvedAt, cycle, now),
       };
     });
   }, [profiles, subMap, deptMap, posMap]);
@@ -205,25 +228,26 @@ export default function SubmissionTimeReportPage() {
     return [...byDept.values()].sort((a, b) => a.dept.localeCompare(b.dept, 'vi'));
   }, [cycleRows]);
 
-  // Dữ liệu chart: số lượt nộp theo ngày quanh mốc
+  // Dữ liệu chart: số lượt CB đẩy lên / PGĐ duyệt theo ngày quanh mốc
   const timelineData = useMemo(() => {
-    if (!selectedCycle) return [] as { day: string; count: number }[];
+    if (!selectedCycle) return [] as { day: string; submitted: number; approved: number }[];
     const deadline = getEffectiveDeadline(selectedCycle);
-    const submitted = cycleRows.map((r) => r.firstSubmittedAt).filter(Boolean).map((s) => new Date(s as string));
-    if (!submitted.length) return [];
-    const min = new Date(Math.min(...submitted.map((d) => d.getTime()), deadline.getTime() - 3 * 86400000));
-    const max = new Date(Math.max(...submitted.map((d) => d.getTime()), deadline.getTime() + 2 * 86400000));
-    const counts = new Map<string, number>();
-    submitted.forEach((d) => {
-      const k = dayKey(d);
-      counts.set(k, (counts.get(k) || 0) + 1);
-    });
-    const out: { day: string; count: number }[] = [];
+    const submitted = cycleRows.map((r) => r.submittedAt).filter(Boolean).map((s) => new Date(s as string));
+    const approved = cycleRows.map((r) => r.approvedAt).filter(Boolean).map((s) => new Date(s as string));
+    const all = [...submitted, ...approved];
+    if (!all.length) return [];
+    const min = new Date(Math.min(...all.map((d) => d.getTime()), deadline.getTime() - 3 * 86400000));
+    const max = new Date(Math.max(...all.map((d) => d.getTime()), deadline.getTime() + 2 * 86400000));
+    const subCounts = new Map<string, number>();
+    submitted.forEach((d) => { const k = dayKey(d); subCounts.set(k, (subCounts.get(k) || 0) + 1); });
+    const apprCounts = new Map<string, number>();
+    approved.forEach((d) => { const k = dayKey(d); apprCounts.set(k, (apprCounts.get(k) || 0) + 1); });
+    const out: { day: string; submitted: number; approved: number }[] = [];
     const cur = new Date(min.getFullYear(), min.getMonth(), min.getDate());
     let guard = 0;
     while (cur <= max && guard < 120) {
       const k = dayKey(cur);
-      out.push({ day: k, count: counts.get(k) || 0 });
+      out.push({ day: k, submitted: subCounts.get(k) || 0, approved: apprCounts.get(k) || 0 });
       cur.setDate(cur.getDate() + 1);
       guard++;
     }
@@ -241,7 +265,7 @@ export default function SubmissionTimeReportPage() {
         // Cán bộ được thêm vào hệ thống sau mốc của kỳ → không tính kỳ đó
         if (new Date(p.created_at) > deadline) return { cycleId: cycle.id, na: true as const, timing: null };
         const sub = subMap.get(`${p.id}|${cycle.id}`) || null;
-        return { cycleId: cycle.id, na: false as const, timing: computeSubmissionTiming(firstSubmitOf(sub), cycle, now) };
+        return { cycleId: cycle.id, na: false as const, timing: computeSubmissionTiming(approveMilestone(sub), cycle, now) };
       });
       const lateCount = cells.filter((c) => !c.na && (c.timing!.status === 'late' || c.timing!.status === 'missing_overdue')).length;
       const totalPenalty = cells.reduce((acc, c) => acc + (c.na ? 0 : c.timing!.penalty), 0);
@@ -273,8 +297,10 @@ export default function SubmissionTimeReportPage() {
           'Phòng ban': r.deptName,
           'Vị trí': r.positionName,
           'Trạng thái biểu mẫu': STATUS_LABEL[toDisplayStatus(r.sub)],
-          'Thời điểm nộp lần đầu': fmtDateTime(r.firstSubmittedAt),
-          'So với mốc': r.firstSubmittedAt ? formatVsDeadline(r.firstSubmittedAt, r.timing.deadline) : '—',
+          'CB đẩy lên': fmtDateTime(r.submittedAt),
+          'Lãnh đạo duyệt': fmtDateTime(r.reviewedAt),
+          'PGĐ duyệt (nộp cuối cùng)': fmtDateTime(r.approvedAt),
+          'So với mốc': r.approvedAt ? formatVsDeadline(r.approvedAt, r.timing.deadline) : '—',
           'Kết quả': TIMING_LABEL[r.timing.status],
           'Số ngày trễ': r.timing.daysLate || 0,
           'Điểm KPI trừ': r.timing.penalty,
@@ -282,7 +308,7 @@ export default function SubmissionTimeReportPage() {
 
       const ws = XLSX.utils.aoa_to_sheet([
         [`BÁO CÁO THỜI GIAN NỘP BIỂU MẪU ĐÁNH GIÁ — ${selectedCycle.name}`],
-        [`Mốc nộp: ${fmtDateTime(deadline.toISOString())}${selectedCycle.submission_deadline ? '' : ' (mặc định theo ngày kết thúc kỳ)'} — Điểm KPI trừ mỗi kỳ chậm: ${selectedCycle.late_penalty_points}`],
+        [`Mốc nộp: ${fmtDateTime(deadline.toISOString())}${selectedCycle.submission_deadline ? '' : ' (mặc định theo ngày kết thúc kỳ)'} — Điểm KPI trừ mỗi kỳ chậm: ${selectedCycle.late_penalty_points} — Thời gian nộp cuối cùng tính theo thời điểm PGĐ duyệt`],
         [`Xuất lúc: ${fmtDateTime(new Date().toISOString())}`],
         [],
       ]);
@@ -344,7 +370,8 @@ export default function SubmissionTimeReportPage() {
             <Timer className="w-5 h-5 text-primary" /> Báo cáo thời gian nộp biểu mẫu
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Tổng hợp thời điểm cán bộ gửi biểu mẫu đánh giá so với mốc thời gian của kỳ — dành cho Phòng Tổ chức Tổng hợp và Ban Giám đốc.
+            Theo dõi 3 mốc: cán bộ đẩy lên → lãnh đạo duyệt → Phó giám đốc duyệt. <strong>Thời gian nộp cuối cùng = thời điểm PGĐ duyệt</strong>,
+            so với mốc của kỳ để tính điểm KPI — dành cho Phòng Tổ chức Tổng hợp và Ban Giám đốc.
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -379,7 +406,7 @@ export default function SubmissionTimeReportPage() {
             <span>
               Mốc nộp biểu mẫu {selectedCycle.name}: <strong>{fmtDateTime(getEffectiveDeadline(selectedCycle).toISOString())}</strong>
               {!deadlineSet && ' (chưa thiết đặt — tạm dùng 23:59 ngày kết thúc kỳ)'}
-              {' '}· Nộp chậm bị trừ <strong>{selectedCycle.late_penalty_points}</strong> điểm KPI.
+              {' '}· Biểu mẫu được PGĐ duyệt sau mốc bị trừ <strong>{selectedCycle.late_penalty_points}</strong> điểm KPI.
             </span>
             <Link to="/quan-ly-ky-danh-gia" className="text-primary underline underline-offset-2 text-xs ml-auto">
               Thiết đặt mốc thời gian
@@ -432,7 +459,7 @@ export default function SubmissionTimeReportPage() {
 
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Số lượt nộp theo ngày quanh mốc</CardTitle>
+                    <CardTitle className="text-sm">Diễn biến theo ngày quanh mốc (CB đẩy lên / PGĐ duyệt)</CardTitle>
                   </CardHeader>
                   <CardContent>
                     {timelineData.length === 0 ? (
@@ -444,14 +471,16 @@ export default function SubmissionTimeReportPage() {
                             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                             <XAxis dataKey="day" tickFormatter={dayLabel} tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                             <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                            <Tooltip labelFormatter={(l) => `Ngày ${dayLabel(String(l))}`} formatter={(v: number) => [v, 'Lượt nộp']} />
+                            <Tooltip labelFormatter={(l) => `Ngày ${dayLabel(String(l))}`} />
+                            <Legend wrapperStyle={{ fontSize: 12 }} />
                             <ReferenceLine
                               x={deadlineDayKey}
                               stroke={TIMING_COLOR.missing_overdue}
                               strokeDasharray="4 4"
                               label={{ value: 'Mốc nộp', fill: TIMING_COLOR.missing_overdue, fontSize: 11, position: 'top' }}
                             />
-                            <Bar dataKey="count" name="Lượt nộp" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} />
+                            <Bar dataKey="submitted" name="CB đẩy lên" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} />
+                            <Bar dataKey="approved" name="PGĐ duyệt" fill="#1baf7a" radius={[3, 3, 0, 0]} />
                           </BarChart>
                         </ResponsiveContainer>
                       </div>
@@ -467,14 +496,15 @@ export default function SubmissionTimeReportPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="overflow-x-auto">
-                  <table className="w-full text-sm min-w-[880px]">
+                  <table className="w-full text-sm min-w-[1020px]">
                     <thead>
                       <tr className="text-left text-xs text-muted-foreground border-b">
                         <th className="py-2 pr-3 font-medium">Cán bộ</th>
                         <th className="py-2 pr-3 font-medium">Phòng ban</th>
-                        <th className="py-2 pr-3 font-medium">Vị trí</th>
                         <th className="py-2 pr-3 font-medium">Trạng thái biểu mẫu</th>
-                        <th className="py-2 pr-3 font-medium">Nộp lần đầu</th>
+                        <th className="py-2 pr-3 font-medium">① CB đẩy lên</th>
+                        <th className="py-2 pr-3 font-medium">② Lãnh đạo duyệt</th>
+                        <th className="py-2 pr-3 font-medium">③ PGĐ duyệt (nộp cuối)</th>
                         <th className="py-2 pr-3 font-medium">So với mốc</th>
                         <th className="py-2 pr-3 font-medium">Kết quả</th>
                         <th className="py-2 pr-0 font-medium text-right">Điểm KPI trừ</th>
@@ -488,15 +518,17 @@ export default function SubmissionTimeReportPage() {
                             <td className="py-2.5 pr-3">
                               <div className="font-medium">{r.fullName}</div>
                               {r.employeeCode && <div className="text-[11px] text-muted-foreground">{r.employeeCode}</div>}
+                              <div className="text-[11px] text-muted-foreground">{r.positionName}</div>
                             </td>
                             <td className="py-2.5 pr-3 text-xs">{r.deptName}</td>
-                            <td className="py-2.5 pr-3 text-xs">{r.positionName}</td>
                             <td className="py-2.5 pr-3">
                               <Badge variant="outline" className={`text-[10px] ${STATUS_TONE[display]}`}>{STATUS_LABEL[display]}</Badge>
                             </td>
-                            <td className="py-2.5 pr-3 text-xs">{fmtDateTime(r.firstSubmittedAt)}</td>
+                            <td className="py-2.5 pr-3 text-xs">{fmtDateTime(r.submittedAt)}</td>
+                            <td className="py-2.5 pr-3 text-xs">{fmtDateTime(r.reviewedAt)}</td>
+                            <td className={`py-2.5 pr-3 text-xs ${r.approvedAt ? 'font-medium' : 'text-muted-foreground'}`}>{fmtDateTime(r.approvedAt)}</td>
                             <td className={`py-2.5 pr-3 text-xs ${r.timing.status === 'late' ? 'text-orange-700 font-medium' : 'text-muted-foreground'}`}>
-                              {r.firstSubmittedAt ? formatVsDeadline(r.firstSubmittedAt, r.timing.deadline) : '—'}
+                              {r.approvedAt ? formatVsDeadline(r.approvedAt, r.timing.deadline) : '—'}
                             </td>
                             <td className="py-2.5 pr-3">
                               <Badge variant="outline" className={`text-[10px] ${TIMING_BADGE_CLS[r.timing.status]}`}>{TIMING_LABEL[r.timing.status]}</Badge>
@@ -508,7 +540,7 @@ export default function SubmissionTimeReportPage() {
                         );
                       })}
                       {filteredRows.length === 0 && (
-                        <tr><td colSpan={8} className="py-6 text-center text-xs text-muted-foreground">Không có cán bộ nào khớp bộ lọc.</td></tr>
+                        <tr><td colSpan={9} className="py-6 text-center text-xs text-muted-foreground">Không có cán bộ nào khớp bộ lọc.</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -521,7 +553,8 @@ export default function SubmissionTimeReportPage() {
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm">Tổng hợp đúng hạn / chậm và điểm KPI trừ qua các kỳ</CardTitle>
                   <p className="text-xs text-muted-foreground">
-                    Mỗi kỳ nộp chậm so với mốc (hoặc chưa nộp khi đã quá mốc) bị trừ số điểm KPI thiết đặt cho kỳ đó. "—" = cán bộ chưa vào hệ thống ở kỳ tương ứng.
+                    Thời gian nộp cuối cùng của mỗi kỳ = thời điểm PGĐ duyệt. Mỗi kỳ được duyệt sau mốc (hoặc chưa duyệt xong khi đã quá mốc)
+                    bị trừ số điểm KPI thiết đặt cho kỳ đó. "—" = cán bộ chưa vào hệ thống ở kỳ tương ứng.
                   </p>
                 </CardHeader>
                 <CardContent className="overflow-x-auto">

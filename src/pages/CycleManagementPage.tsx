@@ -193,8 +193,9 @@ export default function CycleManagementPage() {
           <CalendarClock className="w-5 h-5 text-primary" /> Quản lý kỳ đánh giá
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Tạo kỳ đánh giá theo quý, thiết đặt <strong>mốc thời gian nộp biểu mẫu</strong> và số điểm KPI bị trừ khi nộp chậm.
-          Cán bộ nộp sau mốc (hoặc chưa nộp khi đã quá mốc) sẽ bị tính chậm trong "Báo cáo nộp biểu mẫu".
+          Tạo kỳ đánh giá theo quý, thiết đặt <strong>mốc thời gian nộp biểu mẫu</strong> và số điểm KPI bị trừ khi chậm.
+          Thời gian nộp cuối cùng tính theo thời điểm <strong>Phó giám đốc duyệt</strong>: biểu mẫu được duyệt sau mốc
+          (hoặc chưa duyệt xong khi đã quá mốc) sẽ bị tính chậm trong "Báo cáo nộp biểu mẫu".
         </p>
       </div>
 

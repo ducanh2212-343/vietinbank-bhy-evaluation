@@ -1,6 +1,10 @@
 /**
- * Tính đúng hạn / chậm nộp biểu mẫu theo mốc thời gian của kỳ đánh giá,
- * và điểm KPI bị trừ (mỗi kỳ nộp chậm so với mốc bị trừ điểm một lần).
+ * Tính đúng hạn / chậm theo mốc thời gian của kỳ đánh giá,
+ * và điểm KPI bị trừ (mỗi kỳ chậm so với mốc bị trừ điểm một lần).
+ *
+ * "Thời gian nộp cuối cùng" của một biểu mẫu là thời điểm Phó giám đốc duyệt
+ * (first_approved_at); các mốc trung gian (CB đẩy lên, lãnh đạo duyệt) được
+ * lưu riêng để theo dõi.
  */
 
 export interface CycleDeadlineSource {
@@ -10,10 +14,10 @@ export interface CycleDeadlineSource {
 }
 
 export type SubmissionTimingStatus =
-  | 'ontime' // đã nộp, trước hoặc đúng mốc
-  | 'late' // đã nộp, sau mốc
-  | 'missing_overdue' // chưa nộp, đã quá mốc
-  | 'pending'; // chưa nộp, chưa tới mốc
+  | 'ontime' // hoàn thành (PGĐ duyệt) trước hoặc đúng mốc
+  | 'late' // hoàn thành sau mốc
+  | 'missing_overdue' // chưa hoàn thành, đã quá mốc
+  | 'pending'; // chưa hoàn thành, chưa tới mốc
 
 export interface SubmissionTiming {
   deadline: Date;
@@ -35,16 +39,20 @@ export function getEffectiveDeadline(cycle: CycleDeadlineSource): Date {
   return new Date(y, (m || 1) - 1, d || 1, 23, 59, 59, 999);
 }
 
+/**
+ * @param completedAt thời điểm hoàn thành để so với mốc — với biểu mẫu đánh giá
+ *   là thời điểm PGĐ duyệt lần đầu (first_approved_at).
+ */
 export function computeSubmissionTiming(
-  firstSubmittedAt: string | null | undefined,
+  completedAt: string | null | undefined,
   cycle: CycleDeadlineSource,
   now: Date = new Date(),
 ): SubmissionTiming {
   const deadline = getEffectiveDeadline(cycle);
   const penaltyPoints = Number(cycle.late_penalty_points ?? 1) || 0;
 
-  if (firstSubmittedAt) {
-    const submitted = new Date(firstSubmittedAt);
+  if (completedAt) {
+    const submitted = new Date(completedAt);
     const lateMs = Math.max(0, submitted.getTime() - deadline.getTime());
     if (lateMs === 0) {
       return { deadline, status: 'ontime', lateMs: 0, daysLate: 0, penalty: 0 };
@@ -72,10 +80,10 @@ export function computeSubmissionTiming(
 }
 
 export const TIMING_LABEL: Record<SubmissionTimingStatus, string> = {
-  ontime: 'Đúng hạn',
-  late: 'Nộp muộn',
-  missing_overdue: 'Chưa nộp (quá hạn)',
-  pending: 'Chưa nộp',
+  ontime: 'Duyệt đúng hạn',
+  late: 'Duyệt sau mốc',
+  missing_overdue: 'Chưa duyệt xong (quá hạn)',
+  pending: 'Chưa duyệt xong',
 };
 
 /** Diễn giải khoảng trễ/sớm, ví dụ "muộn 2 ngày 3 giờ" hoặc "sớm 5 giờ". */

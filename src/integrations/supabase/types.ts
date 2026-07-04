@@ -1004,6 +1004,8 @@ export type Database = {
           director_overall_review: Json | null
           employee_comment: string | null
           employee_id: string
+          first_approved_at: string | null
+          first_reviewed_at: string | null
           first_submitted_at: string | null
           id: string
           manager_comment: string | null
@@ -1032,6 +1034,8 @@ export type Database = {
           director_overall_review?: Json | null
           employee_comment?: string | null
           employee_id: string
+          first_approved_at?: string | null
+          first_reviewed_at?: string | null
           first_submitted_at?: string | null
           id?: string
           manager_comment?: string | null
@@ -1060,6 +1064,8 @@ export type Database = {
           director_overall_review?: Json | null
           employee_comment?: string | null
           employee_id?: string
+          first_approved_at?: string | null
+          first_reviewed_at?: string | null
           first_submitted_at?: string | null
           id?: string
           manager_comment?: string | null
