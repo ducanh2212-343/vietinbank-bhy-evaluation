@@ -1,4 +1,6 @@
-// Xuất biểu mẫu BM01 tự đánh giá ra Word
+// Xuất biểu mẫu đánh giá năng lực ra Word — dạng MẪU IN đầy đủ theo quy trình:
+// luôn hiển thị đủ các mục (trống thì chừa chỗ ghi tay), trường văn bản dài
+// được bố trí khối rộng toàn trang thay vì cột hẹp.
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, AlignmentType, HeadingLevel, WidthType, BorderStyle, ShadingType, PageOrientation } from 'docx';
 import { saveAs } from 'file-saver';
 import type { CoreSkillAssessment } from '@/components/evaluation/EvalSectionB';
@@ -7,6 +9,8 @@ import { ATTITUDE_FOCUS_OPTIONS } from '@/components/evaluation/attitudeFocusOpt
 
 const border = { style: BorderStyle.SINGLE, size: 4, color: 'BFBFBF' };
 const cellBorders = { top: border, bottom: border, left: border, right: border };
+
+const PAGE_W = 14360; // vùng nội dung landscape A4 (DXA)
 
 const ONE_ON_ONE_QUESTIONS_EXPORT: { key: string; text: string }[] = [
   { key: 'q1', text: 'Đâu là công việc bạn đã làm tốt nhất từ đầu năm đến nay?' },
@@ -42,20 +46,49 @@ function focusLabels(dimId: number, codes: string[] | undefined, other: string |
     .join(' • ');
 }
 
-function p(text: string, opts: { bold?: boolean; size?: number; align?: any } = {}) {
+function p(text: string, opts: { bold?: boolean; italics?: boolean; size?: number; align?: (typeof AlignmentType)[keyof typeof AlignmentType] } = {}) {
   return new Paragraph({
     alignment: opts.align,
-    children: [new TextRun({ text: text || '', bold: opts.bold, size: opts.size ?? 22 })],
+    children: [new TextRun({ text: text || '', bold: opts.bold, italics: opts.italics, size: opts.size ?? 22 })],
   });
 }
 
-function cell(text: string, opts: { bold?: boolean; shade?: string; width?: number; align?: any } = {}) {
+function cell(text: string, opts: { bold?: boolean; shade?: string; width?: number; align?: (typeof AlignmentType)[keyof typeof AlignmentType]; columnSpan?: number } = {}) {
   return new TableCell({
     borders: cellBorders,
     width: opts.width ? { size: opts.width, type: WidthType.DXA } : undefined,
     shading: opts.shade ? { fill: opts.shade, type: ShadingType.CLEAR } : undefined,
     margins: { top: 80, bottom: 80, left: 120, right: 120 },
+    columnSpan: opts.columnSpan,
     children: [p(text, { bold: opts.bold, align: opts.align })],
+  });
+}
+
+/** Dòng "Nhãn: giá trị" — giá trị trống thì chừa 1 dòng trống để ghi tay */
+function labeledParas(label: string, value: string | undefined | null): Paragraph[] {
+  const v = (value || '').trim();
+  const head = new Paragraph({
+    children: [
+      new TextRun({ text: `${label}: `, bold: true, size: 22 }),
+      new TextRun({ text: v, size: 22 }),
+    ],
+  });
+  return v ? [head] : [head, p('')];
+}
+
+/** Ô giá trị thuần: có nội dung thì in, trống thì chừa 2 dòng để ghi tay */
+const valueParas = (value: string | undefined | null): Paragraph[] =>
+  (value || '').trim() ? [p((value || '').trim())] : [p(''), p('')];
+
+/** Ô khối văn bản rộng (columnSpan) chứa nhiều dòng nhãn */
+function detailCell(paras: Paragraph[], columnSpan: number, width: number, shade?: string) {
+  return new TableCell({
+    borders: cellBorders,
+    columnSpan,
+    width: { size: width, type: WidthType.DXA },
+    shading: shade ? { fill: shade, type: ShadingType.CLEAR } : undefined,
+    margins: { top: 80, bottom: 80, left: 120, right: 120 },
+    children: paras.length ? paras : [p('')],
   });
 }
 
@@ -143,180 +176,173 @@ function signatureCell(title: string, sig: SignatureInfo | undefined, systemLabe
   });
 }
 
+const spacer = () => new Paragraph({ children: [new TextRun({ text: '' })] });
+
 export async function exportBM01ToWord(data: BM01ExportData) {
   const { profile, cycleName, coreAssessments, attitudeAssessments } = data;
   const supplementaryAssessments = data.supplementaryAssessments || [];
-
-  const skillRows = [
-    new TableRow({
-      tableHeader: true,
-      children: [
-        cell('TT', { bold: true, shade: 'E7E6E6', width: 500, align: AlignmentType.CENTER }),
-        cell('Skill lõi', { bold: true, shade: 'E7E6E6', width: 3200 }),
-        cell('L_min', { bold: true, shade: 'E7E6E6', width: 700, align: AlignmentType.CENTER }),
-        cell('L_adv', { bold: true, shade: 'E7E6E6', width: 700, align: AlignmentType.CENTER }),
-        cell('Tự ĐG', { bold: true, shade: 'E7E6E6', width: 800, align: AlignmentType.CENTER }),
-        cell('QL ĐG', { bold: true, shade: 'E7E6E6', width: 800, align: AlignmentType.CENTER }),
-        cell('Minh chứng', { bold: true, shade: 'E7E6E6', width: 2560 }),
-        cell('Nhận xét NV', { bold: true, shade: 'E7E6E6', width: 2550 }),
-        cell('Nhận xét QL', { bold: true, shade: 'E7E6E6', width: 2550 }),
-      ],
-    }),
-    ...coreAssessments.map((a, i) => new TableRow({
-      children: [
-        cell(String(i + 1), { align: AlignmentType.CENTER }),
-        cell(`${a.skill_code ? a.skill_code + '. ' : ''}${a.skill_name}`),
-        cell(`L${a.minimum_level}`, { align: AlignmentType.CENTER }),
-        cell(`L${a.advanced_level}`, { align: AlignmentType.CENTER }),
-        cell(a.self_assessed_level == null ? '—' : `L${a.self_assessed_level}`, { align: AlignmentType.CENTER }),
-        cell(a.manager_assessed_level == null ? '—' : `L${a.manager_assessed_level}`, { align: AlignmentType.CENTER }),
-        cell(a.evidence || ''),
-        cell(a.employee_comment || ''),
-        cell(a.manager_note || ''),
-      ],
-    })),
-  ];
-
-  const suppRows = supplementaryAssessments.length ? [
-    new TableRow({
-      tableHeader: true,
-      children: [
-        cell('TT', { bold: true, shade: 'EDE7F6', width: 500, align: AlignmentType.CENTER }),
-        cell('Skill bổ trợ (ngoài chuẩn vị trí)', { bold: true, shade: 'EDE7F6', width: 3800 }),
-        cell('Tự ĐG', { bold: true, shade: 'EDE7F6', width: 800, align: AlignmentType.CENTER }),
-        cell('QL ĐG', { bold: true, shade: 'EDE7F6', width: 800, align: AlignmentType.CENTER }),
-        cell('Minh chứng', { bold: true, shade: 'EDE7F6', width: 3000 }),
-        cell('Nhận xét NV', { bold: true, shade: 'EDE7F6', width: 2730 }),
-        cell('Nhận xét QL', { bold: true, shade: 'EDE7F6', width: 2730 }),
-      ],
-    }),
-    ...supplementaryAssessments.map((a, i) => new TableRow({
-      children: [
-        cell(String(i + 1), { align: AlignmentType.CENTER }),
-        cell(`${a.skill_code ? a.skill_code + '. ' : ''}${a.skill_name}`),
-        cell(a.self_assessed_level == null ? '—' : `L${a.self_assessed_level}`, { align: AlignmentType.CENTER }),
-        cell(a.manager_assessed_level == null ? '—' : `L${a.manager_assessed_level}`, { align: AlignmentType.CENTER }),
-        cell(a.evidence || ''),
-        cell(a.employee_comment || ''),
-        cell(a.manager_note || ''),
-      ],
-    })),
-  ] : [];
-
-
-  const attitudeRows = [
-    new TableRow({
-      tableHeader: true,
-      children: [
-        cell('TT', { bold: true, shade: 'E7E6E6', width: 500, align: AlignmentType.CENTER }),
-        cell('Nhóm thái độ', { bold: true, shade: 'E7E6E6', width: 2400 }),
-        cell('Tự ĐG', { bold: true, shade: 'E7E6E6', width: 1000, align: AlignmentType.CENTER }),
-        cell('QL ĐG', { bold: true, shade: 'E7E6E6', width: 1000, align: AlignmentType.CENTER }),
-        cell('Minh chứng / biểu hiện hiện tại', { bold: true, shade: 'E7E6E6', width: 2600 }),
-        cell('Điểm cần cải thiện chính', { bold: true, shade: 'E7E6E6', width: 2000 }),
-        cell('Hành động cải thiện', { bold: true, shade: 'E7E6E6', width: 2200 }),
-        cell('Thời hạn', { bold: true, shade: 'E7E6E6', width: 800, align: AlignmentType.CENTER }),
-        cell('Kết quả/Bằng chứng', { bold: true, shade: 'E7E6E6', width: 1860 }),
-      ],
-    }),
-    ...attitudeAssessments.map((a, i) => new TableRow({
-      children: [
-        cell(String(i + 1), { align: AlignmentType.CENTER }),
-        cell(a.attitude_name),
-        cell(ATTITUDE_LABEL[a.self_status] || '—', { align: AlignmentType.CENTER }),
-        cell(ATTITUDE_LABEL[a.manager_status] || '—', { align: AlignmentType.CENTER }),
-        cell(a.evidence_text || a.current_status || ''),
-        cell(focusLabels(a.attitude_dimension_id, a.improvement_focus, a.improvement_focus_other)),
-        cell(a.improvement_action || a.improvement_goal || ''),
-        cell(a.improvement_deadline || '', { align: AlignmentType.CENTER }),
-        cell([
-          a.expected_evidence || '',
-          a.support_needed ? `Hỗ trợ: ${a.support_needed}` : '',
-          a.improvement_status ? `Trạng thái: ${IMPROVEMENT_STATUS_LABEL[a.improvement_status] || a.improvement_status}` : '',
-        ].filter(Boolean).join('\n')),
-      ],
-    })),
-  ];
-
-
   const extras = data.extras;
 
-  // C. Rà soát kế hoạch hành động kỳ trước
-  const previousActionChildren: (Paragraph | Table)[] = [];
-  if (extras?.previousActions?.items.length) {
-    const pa = extras.previousActions;
-    previousActionChildren.push(
-      p(`C. RÀ SOÁT KẾ HOẠCH HÀNH ĐỘNG KỲ TRƯỚC${pa.cycleName ? ` (${pa.cycleName})` : ''}`, { bold: true, size: 24 }),
-      new Table({
-        width: { size: 14360, type: WidthType.DXA },
-        columnWidths: [500, 900, 3000, 2100, 2900, 1000, 1000, 2960],
-        rows: [
-          new TableRow({
-            tableHeader: true,
-            children: [
-              cell('TT', { bold: true, shade: 'E7E6E6', width: 500, align: AlignmentType.CENTER }),
-              cell('Loại', { bold: true, shade: 'E7E6E6', width: 900, align: AlignmentType.CENTER }),
-              cell('Hành động đã cam kết', { bold: true, shade: 'E7E6E6', width: 3000 }),
-              cell('Kết quả mong đợi', { bold: true, shade: 'E7E6E6', width: 2100 }),
-              cell('Kết quả thực tế / bằng chứng', { bold: true, shade: 'E7E6E6', width: 2900 }),
-              cell('Tự ĐG', { bold: true, shade: 'E7E6E6', width: 1000, align: AlignmentType.CENTER }),
-              cell('CBQL ĐG', { bold: true, shade: 'E7E6E6', width: 1000, align: AlignmentType.CENTER }),
-              cell('Nhận xét CBQL', { bold: true, shade: 'E7E6E6', width: 2960 }),
-            ],
-          }),
-          ...pa.items.map((it, i) => new TableRow({
-            children: [
-              cell(String(i + 1), { align: AlignmentType.CENTER }),
-              cell(it.typeLabel, { align: AlignmentType.CENTER }),
-              cell(it.actionText),
-              cell(it.expectedResult),
-              cell([it.actualResult, it.evidence ? `Bằng chứng: ${it.evidence}` : '', it.employeeNote ? `Ghi chú CB: ${it.employeeNote}` : ''].filter(Boolean).join('\n')),
-              cell(it.selfStatusLabel, { align: AlignmentType.CENTER }),
-              cell(it.managerStatusLabel, { align: AlignmentType.CENTER }),
-              cell(it.managerNote),
-            ],
-          })),
+  // ===== A. Kỹ năng: mỗi kỹ năng = 1 dòng mức điểm + 1 khối chữ rộng =====
+  // Grid: TT 700 | Kỹ năng 7660 | L_min 1500 | L_adv 1500 | Tự ĐG 1500 | QL ĐG 1500
+  const SKILL_GRID = [700, 7660, 1500, 1500, 1500, 1500];
+  const skillHeader = new TableRow({
+    tableHeader: true,
+    children: [
+      cell('TT', { bold: true, shade: 'E7E6E6', width: 700, align: AlignmentType.CENTER }),
+      cell('Kỹ năng', { bold: true, shade: 'E7E6E6', width: 7660 }),
+      cell('L_min', { bold: true, shade: 'E7E6E6', width: 1500, align: AlignmentType.CENTER }),
+      cell('L_adv', { bold: true, shade: 'E7E6E6', width: 1500, align: AlignmentType.CENTER }),
+      cell('Tự ĐG', { bold: true, shade: 'E7E6E6', width: 1500, align: AlignmentType.CENTER }),
+      cell('Lãnh đạo ĐG', { bold: true, shade: 'E7E6E6', width: 1500, align: AlignmentType.CENTER }),
+    ],
+  });
+  const skillRowsOf = (list: CoreSkillAssessment[], hasLevels: boolean) =>
+    list.flatMap((a, i) => [
+      new TableRow({
+        children: [
+          cell(String(i + 1), { align: AlignmentType.CENTER }),
+          cell(`${a.skill_code ? a.skill_code + '. ' : ''}${a.skill_name}`, { bold: true }),
+          cell(hasLevels ? `L${a.minimum_level}` : '—', { align: AlignmentType.CENTER }),
+          cell(hasLevels ? `L${a.advanced_level}` : '—', { align: AlignmentType.CENTER }),
+          cell(a.self_assessed_level == null ? '' : `L${a.self_assessed_level}`, { align: AlignmentType.CENTER }),
+          cell(a.manager_assessed_level == null ? '' : `L${a.manager_assessed_level}`, { align: AlignmentType.CENTER }),
         ],
       }),
-      new Paragraph({ children: [new TextRun({ text: '' })] }),
-    );
-  }
+      new TableRow({
+        children: [
+          cell('', { width: 700 }),
+          detailCell([
+            ...labeledParas('Minh chứng', a.evidence),
+            ...labeledParas('Nhận xét của cán bộ', a.employee_comment),
+            ...labeledParas('Nhận xét của lãnh đạo', a.manager_note),
+          ], 5, PAGE_W - 700),
+        ],
+      }),
+    ]);
 
-  // D. Nhận xét chung & đánh giá tổng thể của lãnh đạo
-  const reviewChildren: (Paragraph | Table)[] = [];
+  // ===== B. Thái độ: dòng chấm + khối kế hoạch cải thiện rộng =====
+  const ATT_GRID = [700, 9660, 2000, 2000];
+  const attitudeHeader = new TableRow({
+    tableHeader: true,
+    children: [
+      cell('TT', { bold: true, shade: 'E7E6E6', width: 700, align: AlignmentType.CENTER }),
+      cell('Nhóm thái độ', { bold: true, shade: 'E7E6E6', width: 9660 }),
+      cell('Tự ĐG', { bold: true, shade: 'E7E6E6', width: 2000, align: AlignmentType.CENTER }),
+      cell('Lãnh đạo ĐG', { bold: true, shade: 'E7E6E6', width: 2000, align: AlignmentType.CENTER }),
+    ],
+  });
+  const attitudeRows = attitudeAssessments.flatMap((a, i) => [
+    new TableRow({
+      children: [
+        cell(String(i + 1), { align: AlignmentType.CENTER }),
+        cell(a.attitude_name, { bold: true }),
+        cell(ATTITUDE_LABEL[a.self_status] || '', { align: AlignmentType.CENTER }),
+        cell(ATTITUDE_LABEL[a.manager_status] || '', { align: AlignmentType.CENTER }),
+      ],
+    }),
+    new TableRow({
+      children: [
+        cell('', { width: 700 }),
+        detailCell([
+          ...labeledParas('Minh chứng / biểu hiện hiện tại', a.evidence_text || a.current_status),
+          ...labeledParas('Điểm cần cải thiện chính', focusLabels(a.attitude_dimension_id, a.improvement_focus, a.improvement_focus_other)),
+          ...labeledParas('Hành động cải thiện', a.improvement_action || a.improvement_goal),
+          ...labeledParas('Thời hạn', a.improvement_deadline),
+          ...labeledParas('Kết quả / bằng chứng mong đợi', a.expected_evidence),
+          ...labeledParas('Hỗ trợ cần thiết', a.support_needed),
+          ...labeledParas('Trạng thái thực hiện', a.improvement_status ? (IMPROVEMENT_STATUS_LABEL[a.improvement_status] || a.improvement_status) : ''),
+        ], 3, PAGE_W - 700),
+      ],
+    }),
+  ]);
+
+  // ===== C. Rà soát kế hoạch hành động kỳ trước (luôn hiển thị) =====
+  const prevItems: PreviousActionExportItem[] = extras?.previousActions?.items.length
+    ? extras.previousActions.items
+    : Array.from({ length: 3 }, () => ({
+        typeLabel: '', actionText: '', expectedResult: '', actualResult: '',
+        selfStatusLabel: '', managerStatusLabel: '', evidence: '', employeeNote: '', managerNote: '',
+      }));
+  const prevHeader = new TableRow({
+    tableHeader: true,
+    children: [
+      cell('TT', { bold: true, shade: 'E7E6E6', width: 700, align: AlignmentType.CENTER }),
+      cell('Hành động đã cam kết kỳ trước', { bold: true, shade: 'E7E6E6', width: 9660 }),
+      cell('Tự ĐG', { bold: true, shade: 'E7E6E6', width: 2000, align: AlignmentType.CENTER }),
+      cell('Lãnh đạo ĐG', { bold: true, shade: 'E7E6E6', width: 2000, align: AlignmentType.CENTER }),
+    ],
+  });
+  const prevRows = prevItems.flatMap((it, i) => [
+    new TableRow({
+      children: [
+        cell(String(i + 1), { align: AlignmentType.CENTER }),
+        cell(`${it.typeLabel ? `[${it.typeLabel}] ` : ''}${it.actionText}`, { bold: !!it.actionText }),
+        cell(it.selfStatusLabel, { align: AlignmentType.CENTER }),
+        cell(it.managerStatusLabel, { align: AlignmentType.CENTER }),
+      ],
+    }),
+    new TableRow({
+      children: [
+        cell('', { width: 700 }),
+        detailCell([
+          ...labeledParas('Kết quả mong đợi', it.expectedResult),
+          ...labeledParas('Kết quả thực tế', it.actualResult),
+          ...labeledParas('Bằng chứng', it.evidence),
+          ...labeledParas('Ghi chú của cán bộ', it.employeeNote),
+          ...labeledParas('Nhận xét của lãnh đạo', it.managerNote),
+        ], 3, PAGE_W - 700),
+      ],
+    }),
+  ]);
+
+  // ===== D. Nhận xét & đánh giá tổng thể của lãnh đạo (luôn hiển thị) =====
   const comments = extras?.comments;
-  const hasComments = !!(comments?.employee || comments?.manager || comments?.pgd);
-  if (hasComments || extras?.overallReviews?.length) {
-    reviewChildren.push(p('D. NHẬN XÉT & ĐÁNH GIÁ CỦA LÃNH ĐẠO', { bold: true, size: 24 }));
-  }
-  if (hasComments) {
-    reviewChildren.push(
+  const commentTable = new Table({
+    width: { size: PAGE_W, type: WidthType.DXA },
+    columnWidths: [3600, PAGE_W - 3600],
+    rows: [
+      new TableRow({ children: [
+        cell('Ý kiến của cán bộ', { bold: true, shade: 'F2F2F2', width: 3600 }),
+        detailCell(valueParas(comments?.employee), 1, PAGE_W - 3600),
+      ] }),
+      new TableRow({ children: [
+        cell('Nhận xét của Trưởng phòng / người đánh giá', { bold: true, shade: 'F2F2F2', width: 3600 }),
+        detailCell(valueParas(comments?.manager), 1, PAGE_W - 3600),
+      ] }),
+      new TableRow({ children: [
+        cell('Ý kiến của Phó Giám đốc phụ trách', { bold: true, shade: 'F2F2F2', width: 3600 }),
+        detailCell(valueParas(comments?.pgd), 1, PAGE_W - 3600),
+      ] }),
+    ],
+  });
+
+  const OVERALL_FIELD_LABELS = [
+    'Điểm mạnh cần phát huy',
+    'Điểm cần cải thiện',
+    'Trọng tâm phát triển kỳ tới',
+    'Ý kiến về lộ trình upskill',
+    'Nhận xét thái độ / tinh thần phối hợp',
+    'Hỗ trợ / định hướng từ lãnh đạo',
+    'Kết luận / định hướng phát triển',
+  ];
+  const overallByTitle = new Map((extras?.overallReviews || []).map(r => [r.title, r]));
+  const defaultOverallTitles = [
+    'Đánh giá tổng thể của Trưởng phòng / người đánh giá',
+    'Đánh giá tổng thể của Phó Giám đốc phụ trách',
+  ];
+  // Luôn in bảng của TP và PGĐ; bảng Giám đốc chỉ in khi có nội dung
+  const overallTitles = [
+    ...defaultOverallTitles,
+    ...(extras?.overallReviews || []).map(r => r.title).filter(t => !defaultOverallTitles.includes(t)),
+  ];
+  const overallTables = overallTitles.flatMap((title) => {
+    const rv = overallByTitle.get(title);
+    const valueOf = (label: string) => rv?.fields.find(f => f.label === label)?.value || '';
+    return [
       new Table({
-        width: { size: 14360, type: WidthType.DXA },
-        columnWidths: [3000, 11360],
-        rows: [
-          ...(comments?.employee ? [new TableRow({ children: [
-            cell('Ý kiến của cán bộ', { bold: true, shade: 'F2F2F2', width: 3000 }),
-            cell(comments.employee, { width: 11360 }),
-          ] })] : []),
-          ...(comments?.manager ? [new TableRow({ children: [
-            cell('Nhận xét của Trưởng phòng / người đánh giá', { bold: true, shade: 'F2F2F2', width: 3000 }),
-            cell(comments.manager, { width: 11360 }),
-          ] })] : []),
-          ...(comments?.pgd ? [new TableRow({ children: [
-            cell('Ý kiến của Phó Giám đốc phụ trách', { bold: true, shade: 'F2F2F2', width: 3000 }),
-            cell(comments.pgd, { width: 11360 }),
-          ] })] : []),
-        ],
-      }),
-      new Paragraph({ children: [new TextRun({ text: '' })] }),
-    );
-  }
-  (extras?.overallReviews || []).forEach((rv) => {
-    reviewChildren.push(
-      new Table({
-        width: { size: 14360, type: WidthType.DXA },
-        columnWidths: [3000, 11360],
+        width: { size: PAGE_W, type: WidthType.DXA },
+        columnWidths: [3600, PAGE_W - 3600],
         rows: [
           new TableRow({
             tableHeader: true,
@@ -325,68 +351,64 @@ export async function exportBM01ToWord(data: BM01ExportData) {
               shading: { fill: 'E7E6E6', type: ShadingType.CLEAR },
               margins: { top: 80, bottom: 80, left: 120, right: 120 },
               columnSpan: 2,
-              width: { size: 14360, type: WidthType.DXA },
-              children: [p(rv.title, { bold: true })],
+              width: { size: PAGE_W, type: WidthType.DXA },
+              children: [p(title, { bold: true })],
             })],
           }),
-          ...rv.fields.map((f) => new TableRow({
+          ...OVERALL_FIELD_LABELS.map((label) => new TableRow({
             children: [
-              cell(f.label, { bold: true, shade: 'F2F2F2', width: 3000 }),
-              cell(f.value, { width: 11360 }),
+              cell(label, { bold: true, shade: 'F2F2F2', width: 3600 }),
+              detailCell(valueParas(valueOf(label)), 1, PAGE_W - 3600),
             ],
           })),
         ],
       }),
-      new Paragraph({ children: [new TextRun({ text: '' })] }),
-    );
+      spacer(),
+    ];
   });
 
-  // Build 1-1 Q&A appendix children (only if enabled)
+  // ===== E. Câu hỏi trao đổi 1-1 (luôn hiển thị đủ 8 câu) =====
   const oneOnOne = extras?.oneOnOne || data.oneOnOne;
-  const oneOnOneChildren: any[] = [];
-  if (oneOnOne?.enabled) {
+  const oneOnOneChildren: (Paragraph | Table)[] = [
+    p('E. CÂU HỎI TRAO ĐỔI 1-1 (CÁN BỘ ↔ LÃNH ĐẠO)', { bold: true, size: 24 }),
+  ];
+  ONE_ON_ONE_QUESTIONS_EXPORT.forEach((q, idx) => {
+    const ans = oneOnOne?.answers?.[q.key] || { employee: '', manager: '' };
     oneOnOneChildren.push(
-      new Paragraph({ children: [new TextRun({ text: '' })] }),
-      p('PHỤ LỤC — CÂU HỎI TRAO ĐỔI 1-1', { bold: true, size: 24 }),
+      new Table({
+        width: { size: PAGE_W, type: WidthType.DXA },
+        columnWidths: [PAGE_W / 2, PAGE_W / 2],
+        rows: [
+          new TableRow({
+            tableHeader: true,
+            children: [
+              new TableCell({
+                borders: cellBorders,
+                shading: { fill: 'E7E6E6', type: ShadingType.CLEAR },
+                margins: { top: 80, bottom: 80, left: 120, right: 120 },
+                columnSpan: 2,
+                width: { size: PAGE_W, type: WidthType.DXA },
+                children: [p(`${idx + 1}. ${q.text}`, { bold: true })],
+              }),
+            ],
+          }),
+          new TableRow({
+            children: [
+              cell('Trả lời của cán bộ', { bold: true, shade: 'F2F2F2', width: PAGE_W / 2 }),
+              cell('Ý kiến của lãnh đạo', { bold: true, shade: 'F2F2F2', width: PAGE_W / 2 }),
+            ],
+          }),
+          new TableRow({
+            children: [
+              detailCell(ans.employee ? [p(ans.employee)] : [p(''), p('')], 1, PAGE_W / 2),
+              detailCell(ans.manager ? [p(ans.manager)] : [p(''), p('')], 1, PAGE_W / 2),
+            ],
+          }),
+        ],
+      }),
+      spacer(),
     );
-    ONE_ON_ONE_QUESTIONS_EXPORT.forEach((q, idx) => {
-      const ans = oneOnOne!.answers[q.key] || { employee: '', manager: '' };
-      oneOnOneChildren.push(
-        new Table({
-          width: { size: 14360, type: WidthType.DXA },
-          columnWidths: [7180, 7180],
-          rows: [
-            new TableRow({
-              tableHeader: true,
-              children: [
-                new TableCell({
-                  borders: cellBorders,
-                  shading: { fill: 'E7E6E6', type: ShadingType.CLEAR },
-                  margins: { top: 80, bottom: 80, left: 120, right: 120 },
-                  columnSpan: 2,
-                  width: { size: 14360, type: WidthType.DXA },
-                  children: [p(`${idx + 1}. ${q.text}`, { bold: true })],
-                }),
-              ],
-            }),
-            new TableRow({
-              children: [
-                cell('Đánh giá của cán bộ', { bold: true, shade: 'F2F2F2', width: 7180 }),
-                cell('Ý kiến của CBQL/lãnh đạo', { bold: true, shade: 'F2F2F2', width: 7180 }),
-              ],
-            }),
-            new TableRow({
-              children: [
-                cell(ans.employee || '—', { width: 7180 }),
-                cell(ans.manager || '—', { width: 7180 }),
-              ],
-            }),
-          ],
-        }),
-        new Paragraph({ children: [new TextRun({ text: '' })] }),
-      );
-    });
-  }
+  });
 
   const doc = new Document({
     styles: {
@@ -401,52 +423,62 @@ export async function exportBM01ToWord(data: BM01ExportData) {
       },
       children: [
         new Paragraph({ alignment: AlignmentType.CENTER, heading: HeadingLevel.HEADING_1,
-          children: [new TextRun({ text: 'BM01 — TỰ ĐÁNH GIÁ NĂNG LỰC', bold: true, size: 28 })] }),
+          children: [new TextRun({ text: 'PHIẾU ĐÁNH GIÁ NĂNG LỰC CÁN BỘ (BM01)', bold: true, size: 28 })] }),
         new Paragraph({ alignment: AlignmentType.CENTER,
-          children: [new TextRun({ text: cycleName, italics: true, size: 24 })] }),
-        new Paragraph({ children: [new TextRun({ text: '' })] }),
-        p(`Họ tên: ${profile.full_name || ''}`),
+          children: [new TextRun({ text: `Kỳ đánh giá: ${cycleName}`, italics: true, size: 24 })] }),
+        spacer(),
+        p(`Họ tên: ${profile.full_name || ''}${profile.employee_code ? `     Mã cán bộ: ${profile.employee_code}` : ''}`),
         p(`Vị trí: ${profile.pos_name || ''}     Đơn vị: ${profile.dept_name || ''}`),
-        p(`Quản lý trực tiếp: ${profile.manager_name || ''}`),
-        new Paragraph({ children: [new TextRun({ text: '' })] }),
+        p(`Người đánh giá (lãnh đạo trực tiếp): ${extras?.signatures?.reviewer.name || profile.manager_name || ''}`),
+        p(`Phó Giám đốc phụ trách: ${extras?.signatures?.approver.name || profile.pgd_name || ''}`),
+        spacer(),
 
         p('A. ĐÁNH GIÁ KỸ NĂNG LÕI THEO VỊ TRÍ', { bold: true, size: 24 }),
         new Table({
-          width: { size: 14360, type: WidthType.DXA },
-          columnWidths: [500, 3200, 700, 700, 800, 800, 2560, 2550, 2550],
-          rows: skillRows,
+          width: { size: PAGE_W, type: WidthType.DXA },
+          columnWidths: SKILL_GRID,
+          rows: [skillHeader, ...skillRowsOf(coreAssessments, true)],
         }),
-        new Paragraph({ children: [new TextRun({ text: '' })] }),
+        spacer(),
 
-        ...(suppRows.length ? [
+        ...(supplementaryAssessments.length ? [
           p('A2. SKILL BỔ TRỢ (NGOÀI CHUẨN VỊ TRÍ)', { bold: true, size: 24 }),
           new Table({
-            width: { size: 14360, type: WidthType.DXA },
-            columnWidths: [500, 3800, 800, 800, 3000, 2730, 2730],
-            rows: suppRows,
+            width: { size: PAGE_W, type: WidthType.DXA },
+            columnWidths: SKILL_GRID,
+            rows: [skillHeader, ...skillRowsOf(supplementaryAssessments, false)],
           }),
-          new Paragraph({ children: [new TextRun({ text: '' })] }),
+          spacer(),
         ] : []),
 
         p('B. ĐÁNH GIÁ 6 NHÓM THÁI ĐỘ & KẾ HOẠCH CẢI THIỆN', { bold: true, size: 24 }),
         new Table({
-          width: { size: 14360, type: WidthType.DXA },
-          columnWidths: [500, 2400, 1000, 1000, 2600, 2000, 2200, 800, 1860],
-          rows: attitudeRows,
+          width: { size: PAGE_W, type: WidthType.DXA },
+          columnWidths: ATT_GRID,
+          rows: [attitudeHeader, ...attitudeRows],
         }),
-        new Paragraph({ children: [new TextRun({ text: '' })] }),
+        spacer(),
 
-        ...previousActionChildren,
+        p(`C. RÀ SOÁT KẾ HOẠCH HÀNH ĐỘNG KỲ TRƯỚC${extras?.previousActions?.cycleName ? ` (${extras.previousActions.cycleName})` : ''}`, { bold: true, size: 24 }),
+        new Table({
+          width: { size: PAGE_W, type: WidthType.DXA },
+          columnWidths: ATT_GRID,
+          rows: [prevHeader, ...prevRows],
+        }),
+        spacer(),
 
-        ...reviewChildren,
+        p('D. NHẬN XÉT & ĐÁNH GIÁ TỔNG THỂ CỦA LÃNH ĐẠO', { bold: true, size: 24 }),
+        commentTable,
+        spacer(),
+        ...overallTables,
 
         ...oneOnOneChildren,
 
-        new Paragraph({ children: [new TextRun({ text: '' })] }),
+        spacer(),
 
         // Thành phần ký theo quy trình: CB tự đánh giá → lãnh đạo đánh giá → PGĐ phê duyệt
         new Table({
-          width: { size: 14360, type: WidthType.DXA },
+          width: { size: PAGE_W, type: WidthType.DXA },
           columnWidths: [4787, 4787, 4786],
           rows: [new TableRow({ children: [
             signatureCell(
@@ -475,6 +507,6 @@ export async function exportBM01ToWord(data: BM01ExportData) {
 
   const buffer = await Packer.toBlob(doc);
   const safeName = (profile.full_name || 'CanBo').replace(/\s+/g, '_');
-  const safeCycle = cycleName.replace(/[\/\s]+/g, '_');
+  const safeCycle = cycleName.replace(/[/\s]+/g, '_');
   saveAs(buffer, `BM01_${safeName}_${safeCycle}.docx`);
 }
