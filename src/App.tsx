@@ -41,6 +41,7 @@ const TeamOverview = lazyWithRetry(() => import("./pages/TeamOverview"));
 const StaffGrouping = lazyWithRetry(() => import("./pages/StaffGrouping"));
 const StaffList = lazyWithRetry(() => import("./pages/StaffList"));
 const AddStaff = lazyWithRetry(() => import("./pages/AddStaff"));
+const BulkAddStaffTable = lazyWithRetry(() => import("./pages/BulkAddStaffTable"));
 const EditStaff = lazyWithRetry(() => import("./pages/EditStaff"));
 const RoleManagement = lazyWithRetry(() => import("./pages/RoleManagement"));
 const StaffEvaluation = lazyWithRetry(() => import("./pages/StaffEvaluation"));
@@ -134,6 +135,7 @@ const App = () => (
               {/* Admin-only routes */}
               <Route element={<AdminRoute />}>
                 <Route path="/them-can-bo" element={<AddStaff />} />
+                <Route path="/nhap-nhanh-can-bo" element={<BulkAddStaffTable />} />
                 <Route path="/phan-quyen" element={<RoleManagement />} />
                 <Route path="/upload-danh-sach-cb" element={<UploadStaffPage />} />
                 <Route path="/cau-hinh-skill-loi" element={<ConfigCoreSkillsPage />} />
