@@ -5,8 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { MemoryTree } from '@/components/branding/MemoryTree';
-import { AnniversaryBadge } from '@/components/branding/AnniversaryBadge';
+import { BrandTree, BrandBadge } from '@/components/branding/BrandAssets';
 
 const VALUES = ['Chính trực', 'Trí tuệ', 'Tận tâm', 'Thấu cảm', 'Thích ứng'];
 
@@ -34,12 +33,12 @@ export default function Login() {
       {/* Panel thương hiệu Cây ký ức — laptop / iPad ngang */}
       <div className="relative hidden lg:flex flex-col items-center justify-center overflow-hidden brand-navy-surface p-10 text-white">
         <div className="relative z-10 max-w-md text-center space-y-5">
-          <AnniversaryBadge className="mx-auto h-16 w-16 rounded-full bg-white/95 p-1" />
+          <BrandBadge className="mx-auto h-16 w-16 rounded-full bg-white/95 p-1 object-contain" />
           <h2 className="text-3xl xl:text-4xl font-bold leading-tight">
             20 năm <span className="text-red-400">vun gốc bền rễ</span>
             <br />vươn tầm tương lai
           </h2>
-          <MemoryTree className="mx-auto w-72 xl:w-80 drop-shadow-[0_8px_24px_rgba(0,0,0,0.4)]" />
+          <BrandTree framed className="mx-auto w-72 xl:w-80" />
           <p className="text-sm text-blue-100/90 leading-relaxed">
             Gốc rễ là nền móng của các thế hệ đi trước, thân cây là bản lĩnh được tôi luyện,
             cành lá là khát vọng vươn cao — và mỗi cán bộ là một "quả ngọt" trên cây ký ức
@@ -64,7 +63,7 @@ export default function Login() {
           {/* Banner gọn cho phone / iPad dọc */}
           <div className="lg:hidden mb-5 overflow-hidden rounded-xl brand-navy-surface text-white">
             <div className="flex items-center gap-3 px-4 py-3">
-              <MemoryTree className="w-16 shrink-0" />
+              <BrandTree framed className="w-16 shrink-0" />
               <div className="min-w-0">
                 <p className="text-[10px] font-semibold tracking-[0.18em] text-blue-200">2006 — 2026 · 20 NĂM</p>
                 <p className="text-sm font-bold leading-snug">
