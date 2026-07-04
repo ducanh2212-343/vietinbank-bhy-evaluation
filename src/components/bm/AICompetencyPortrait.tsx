@@ -6,7 +6,7 @@ import { Loader2, RefreshCw } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { BrandMascot } from '@/components/branding/BrandAssets';
+import { BrandMascotAI } from '@/components/branding/BrandAssets';
 import type { CoreSkillAssessment } from '@/components/evaluation/EvalSectionB';
 import type { AttitudeAssessment } from '@/components/evaluation/EvalSectionC';
 
@@ -158,7 +158,7 @@ export function AICompetencyPortrait({
       <CardHeader className="pb-3 px-3 sm:px-6">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <CardTitle className="text-sm sm:text-base flex items-center gap-2">
-            <BrandMascot className="w-7 h-7 object-contain shrink-0" />
+            <BrandMascotAI className="w-7 h-7" />
             Chân dung năng lực bằng AI
           </CardTitle>
           <Badge variant="outline" className="text-[10px]">Tổng hợp tự động</Badge>
@@ -182,9 +182,7 @@ export function AICompetencyPortrait({
               <><RefreshCw className="w-4 h-4 mr-2" /> Phân tích lại</>
             ) : (
               <>
-                <span className="mr-2 inline-flex h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-white">
-                  <BrandMascot className="h-full w-full object-contain" />
-                </span>
+                <BrandMascotAI className="mr-2 h-5 w-5" chip />
                 Phân tích chân dung
               </>
             )}

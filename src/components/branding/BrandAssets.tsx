@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Sparkles } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { MemoryTree } from './MemoryTree';
 import { AnniversaryBadge } from './AnniversaryBadge';
 
@@ -74,5 +75,28 @@ export function BrandMascot({ className }: { className?: string }) {
       decoding="async"
       onError={() => setFailed(true)}
     />
+  );
+}
+
+/**
+ * Icon AI dùng chung: linh vật + tia sáng ✨ (dấu hiệu AI dễ nhận biết).
+ * chip=true: bọc linh vật trong vòng tròn trắng (dùng trên nút/nền tối).
+ */
+export function BrandMascotAI({ className, chip = false }: { className?: string; chip?: boolean }) {
+  return (
+    <span className={cn('relative inline-flex shrink-0 items-center justify-center', className)}>
+      {chip ? (
+        <span className="flex h-full w-full items-center justify-center rounded-full bg-white">
+          <BrandMascot className="h-[82%] w-[82%] object-contain" />
+        </span>
+      ) : (
+        <BrandMascot className="h-full w-full object-contain" />
+      )}
+      <Sparkles
+        className="pointer-events-none absolute -right-1 -top-1 h-1/2 w-1/2 text-amber-400"
+        fill="currentColor"
+        strokeWidth={1}
+      />
+    </span>
   );
 }
