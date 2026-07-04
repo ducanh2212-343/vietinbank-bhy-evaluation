@@ -258,21 +258,14 @@ export async function createOrUpdateStaffUser(
     profileId = data.id;
   }
 
-  // ---- Assign role (insert if the user does not already hold it) ---------
-  const { data: existingRoles } = await adminClient
+  // ---- Assign role (one role per user — upsert on user_id) ---------------
+  // user_roles has a UNIQUE(user_id) constraint, so a plain insert fails when
+  // the account already holds a role. Upsert updates the existing role instead.
+  const { error: roleError } = await adminClient
     .from("user_roles")
-    .select("role")
-    .eq("user_id", userId);
-  const hasRole = (existingRoles ?? []).some(
-    (r: { role: string }) => r.role === role,
-  );
-  if (!hasRole) {
-    const { error: roleError } = await adminClient
-      .from("user_roles")
-      .insert({ user_id: userId, role });
-    if (roleError) {
-      throw new ValidationError(`Lỗi gán vai trò: ${roleError.message}`);
-    }
+    .upsert({ user_id: userId, role }, { onConflict: "user_id" });
+  if (roleError) {
+    throw new ValidationError(`Lỗi gán vai trò: ${roleError.message}`);
   }
 
   // ---- Optional password-reset email -------------------------------------
