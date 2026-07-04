@@ -5,9 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Pencil, ClipboardCheck, Shield, Trash2 } from 'lucide-react';
+import { TempPasswordHandover } from '@/components/staff/TempPasswordHandover';
+import { ArrowLeft, Pencil, ClipboardCheck, Shield, Trash2, KeyRound } from 'lucide-react';
 
 const ROLE_LABELS: Record<string, string> = {
   employee: 'Nhân viên', manager: 'Trưởng phòng', pgd: 'Phó Giám đốc',
@@ -29,6 +31,8 @@ export default function StaffDetail() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [deleting, setDeleting] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetResult, setResetResult] = useState<{ email: string; full_name: string | null; temp_password: string } | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [department, setDepartment] = useState<string>('');
   const [manager, setManager] = useState<string>('');
@@ -105,12 +109,41 @@ export default function StaffDetail() {
     ['Ghi chú', profile.note],
   ];
 
+  const handleResetPassword = async () => {
+    const ok = window.confirm(
+      `Cấp mật khẩu tạm mới cho "${profile.full_name}"?\nMật khẩu hiện tại của cán bộ sẽ mất hiệu lực ngay.`,
+    );
+    if (!ok) return;
+    setResetting(true);
+    const { data, error } = await supabase.functions.invoke('reset-staff-password', {
+      body: { profile_id: id },
+    });
+    setResetting(false);
+    if (error || data?.error) {
+      let message = data?.error || error?.message || 'Lỗi không xác định';
+      try {
+        const ctx = (error as { context?: Response } | null)?.context;
+        const body = ctx ? await ctx.json() : null;
+        if (body?.error) message = body.error;
+      } catch { /* keep default */ }
+      toast({ title: 'Không cấp lại được mật khẩu', description: message, variant: 'destructive' });
+      return;
+    }
+    setResetResult({ email: data.email, full_name: data.full_name, temp_password: data.temp_password });
+    toast({ title: 'Đã cấp mật khẩu tạm mới' });
+  };
+
   return (
     <div className="max-w-3xl space-y-4">
       <div className="flex items-center justify-between">
         <Button variant="ghost" onClick={() => navigate('/danh-sach-can-bo')}><ArrowLeft className="w-4 h-4 mr-2" /> Danh sách</Button>
         <div className="flex gap-2">
           {canEdit && <Button variant="outline" size="sm" onClick={() => navigate(`/sua-can-bo/${id}`)}><Pencil className="w-3 h-3 mr-1" /> Sửa hồ sơ</Button>}
+          {canEdit && profile.user_id && (
+            <Button variant="outline" size="sm" onClick={handleResetPassword} disabled={resetting}>
+              <KeyRound className="w-3 h-3 mr-1" /> {resetting ? 'Đang cấp...' : 'Cấp mật khẩu'}
+            </Button>
+          )}
           {canEvaluate && <Button variant="outline" size="sm" onClick={() => navigate(`/danh-gia/${id}`)}><ClipboardCheck className="w-3 h-3 mr-1" /> Đánh giá</Button>}
           {canEdit && (
             <AlertDialog>
@@ -228,6 +261,22 @@ export default function StaffDetail() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={!!resetResult} onOpenChange={(o) => !o && setResetResult(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><KeyRound className="w-5 h-5" /> Mật khẩu tạm mới</DialogTitle>
+          </DialogHeader>
+          {resetResult && (
+            <TempPasswordHandover
+              fullName={resetResult.full_name}
+              email={resetResult.email}
+              tempPassword={resetResult.temp_password}
+              variant="reset"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
