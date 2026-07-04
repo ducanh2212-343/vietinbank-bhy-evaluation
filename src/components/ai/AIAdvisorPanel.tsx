@@ -7,6 +7,7 @@ import { Send, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { useAiFeatures } from '@/hooks/useAiFeatures';
 import { BrandMascotAI } from '@/components/branding/BrandAssets';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
@@ -71,6 +72,7 @@ export function AIAdvisorPanel() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { isEnabled } = useAiFeatures();
 
   const send = async () => {
     const text = input.trim();
@@ -92,6 +94,9 @@ export function AIAdvisorPanel() {
       setLoading(false);
     }
   };
+
+  // Admin tắt tác vụ "chat" trong Quản trị AI → ẩn hẳn nút trợ lý nổi
+  if (!isEnabled('chat')) return null;
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
