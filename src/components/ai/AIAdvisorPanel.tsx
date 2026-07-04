@@ -97,7 +97,7 @@ export function AIAdvisorPanel() {
       <SheetTrigger asChild>
         <Button
           size="icon"
-          className="fixed bottom-24 right-4 h-12 w-12 rounded-full shadow-lg z-40 bg-gradient-to-br from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
+          className="fixed bottom-24 right-4 h-12 w-12 rounded-full shadow-lift z-40 bg-primary hover:bg-primary/90"
           aria-label="AI tư vấn"
         >
           <Sparkles className="w-5 h-5 text-white" />
@@ -106,7 +106,7 @@ export function AIAdvisorPanel() {
       <SheetContent side="right" className="w-full sm:max-w-md flex flex-col p-0">
         <SheetHeader className="px-4 py-3 border-b">
           <SheetTitle className="flex items-center gap-2 text-base">
-            <Sparkles className="w-4 h-4 text-violet-600" /> AI Tư vấn Skill & Thái độ
+            <Sparkles className="w-4 h-4 text-primary" /> AI Tư vấn Skill & Thái độ
           </SheetTitle>
           <p className="text-xs text-muted-foreground">Hỏi về kỹ năng, IDP, kế hoạch hành động, hoặc nhóm thái độ.</p>
         </SheetHeader>
