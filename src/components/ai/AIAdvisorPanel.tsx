@@ -100,7 +100,7 @@ export function AIAdvisorPanel() {
           className="fixed bottom-24 right-4 h-12 w-12 rounded-full shadow-lift z-40 bg-primary hover:bg-primary/90"
           aria-label="AI tư vấn"
         >
-          <Sparkles className="w-5 h-5 text-primary-foreground" />
+          <Sparkles className="w-5 h-5 text-white" />
         </Button>
       </SheetTrigger>
       <SheetContent side="right" className="w-full sm:max-w-md flex flex-col p-0">

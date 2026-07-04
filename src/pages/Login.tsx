@@ -6,6 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { MemoryTree } from '@/components/branding/MemoryTree';
+import { AnniversaryBadge } from '@/components/branding/AnniversaryBadge';
+
+const VALUES = ['Chính trực', 'Trí tuệ', 'Tận tâm', 'Thấu cảm', 'Thích ứng'];
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -28,28 +31,29 @@ export default function Login() {
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-background" style={{ minHeight: '100dvh' }}>
-      {/* Panel thương hiệu — Cây ký ức 20 năm (laptop/iPad ngang) */}
-      <div className="relative hidden lg:flex flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-[#0F172A] via-[#14224E] to-[#1E3A8A] p-10 text-white">
+      {/* Panel thương hiệu Cây ký ức — laptop / iPad ngang */}
+      <div className="relative hidden lg:flex flex-col items-center justify-center overflow-hidden brand-navy-surface p-10 text-white">
         <div className="relative z-10 max-w-md text-center space-y-5">
-          <span className="inline-flex items-center rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold tracking-[0.2em] text-blue-100">
-            2006 — 2026
-          </span>
+          <AnniversaryBadge className="mx-auto h-16 w-16 rounded-full bg-white/95 p-1" />
           <h2 className="text-3xl xl:text-4xl font-bold leading-tight">
             20 năm <span className="text-red-400">vun gốc bền rễ</span>
             <br />vươn tầm tương lai
           </h2>
           <MemoryTree className="mx-auto w-72 xl:w-80 drop-shadow-[0_8px_24px_rgba(0,0,0,0.4)]" />
           <p className="text-sm text-blue-100/90 leading-relaxed">
-            Bộ rễ là nền móng của các thế hệ đi trước, thân cây là bản lĩnh được tôi luyện,
-            cành lá là khát vọng vươn cao — và mỗi cán bộ là một "trái ngọt" trên cây ký ức
+            Gốc rễ là nền móng của các thế hệ đi trước, thân cây là bản lĩnh được tôi luyện,
+            cành lá là khát vọng vươn cao — và mỗi cán bộ là một "quả ngọt" trên cây ký ức
             VietinBank Bắc Hưng Yên.
           </p>
-          <p className="text-[11px] tracking-wide text-blue-200/80">
-            #VietinBankBacHungYen · #20NamVunGocBenReVuonTamTuongLai · #TuHaoVietinBankBacHungYen
-          </p>
+          <div className="flex flex-wrap justify-center gap-1.5">
+            {VALUES.map((v) => (
+              <span key={v} className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-blue-50">
+                {v}
+              </span>
+            ))}
+          </div>
         </div>
-        {/* Dải đỏ nhận diện ở đáy panel */}
-        <div className="absolute bottom-0 left-0 right-0 h-2 bg-gradient-to-r from-[#C8102E] via-[#E11D48] to-[#C8102E]" />
+        <div className="absolute bottom-0 left-0 right-0 h-2 brand-ribbon" />
       </div>
 
       {/* Form đăng nhập */}
@@ -57,8 +61,8 @@ export default function Login() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.08),transparent_45%)]" />
 
         <div className="relative w-full max-w-md">
-          {/* Banner gọn cho phone/iPad dọc — thay panel lớn */}
-          <div className="lg:hidden mb-5 overflow-hidden rounded-xl bg-gradient-to-r from-[#0F172A] to-[#1E3A8A] text-white">
+          {/* Banner gọn cho phone / iPad dọc */}
+          <div className="lg:hidden mb-5 overflow-hidden rounded-xl brand-navy-surface text-white">
             <div className="flex items-center gap-3 px-4 py-3">
               <MemoryTree className="w-16 shrink-0" />
               <div className="min-w-0">
@@ -68,7 +72,7 @@ export default function Login() {
                 </p>
               </div>
             </div>
-            <div className="h-1 w-full bg-gradient-to-r from-[#C8102E] via-[#E11D48] to-[#C8102E]" />
+            <div className="h-1 w-full brand-ribbon" />
           </div>
 
           <div className="rounded-xl border bg-card shadow-lift p-6 sm:p-8">

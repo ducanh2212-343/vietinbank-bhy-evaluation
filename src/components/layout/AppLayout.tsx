@@ -31,10 +31,9 @@ export function AppLayout() {
   }, []);
 
   return (
-    // h-dvh: đúng chiều cao khả dụng trên mobile (thanh địa chỉ iOS/Android); h-screen là fallback
-    <div className="flex h-screen h-dvh w-full overflow-hidden">
-      {/* Desktop/tablet ngang (≥1024px): sidebar cố định; nhỏ hơn dùng drawer */}
-      <div className="hidden lg:block h-screen h-dvh sticky top-0">
+    <div className="flex h-screen w-full overflow-hidden">
+      {/* Desktop sidebar */}
+      <div className="hidden lg:block h-screen sticky top-0">
         <AppSidebar />
       </div>
 

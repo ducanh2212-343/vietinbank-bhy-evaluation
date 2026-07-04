@@ -8,6 +8,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { useState } from 'react';
 import vtbLogo from '@/assets/vietinbank-bhy-logo.png';
+import { AnniversaryBadge } from '@/components/branding/AnniversaryBadge';
 
 type MinRole = 'manager' | 'admin';
 
@@ -95,6 +96,15 @@ export function AppSidebar({ onNavigate }: Props) {
         <div className="overflow-hidden min-w-0">
           <div className="text-sm font-bold text-sidebar-primary tracking-wide truncate">343 Phát triển nhân sự</div>
           <div className="text-[10px] text-sidebar-muted truncate">VietinBank Bắc Hưng Yên</div>
+        </div>
+      </div>
+
+      {/* Dải kỷ niệm 20 năm — motif Cây ký ức */}
+      <div className="relative mx-3 mb-1 flex items-center gap-2 rounded-lg bg-white/5 px-2.5 py-1.5 ring-1 ring-white/10">
+        <AnniversaryBadge className="h-7 w-7 rounded-full bg-white/95 p-0.5 shrink-0" />
+        <div className="min-w-0 leading-tight">
+          <div className="text-[10px] font-semibold text-sidebar-primary truncate">20 năm · Vun gốc bền rễ</div>
+          <div className="text-[9px] text-sidebar-muted truncate">Vươn tầm tương lai · 2006–2026</div>
         </div>
       </div>
 

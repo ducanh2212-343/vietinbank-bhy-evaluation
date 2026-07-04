@@ -740,7 +740,7 @@ export default function SelfAssessmentPage() {
       <SubmissionChecklist {...checklist} />
 
 
-      {/* Sticky bottom action bar — chừa safe-area cho iPhone home indicator */}
+      {/* Sticky bottom action bar */}
       <div
         className="fixed bottom-0 left-0 right-0 bg-background border-t p-3 flex gap-2 z-50 max-w-4xl mx-auto"
         style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}

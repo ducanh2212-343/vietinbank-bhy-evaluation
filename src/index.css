@@ -5,54 +5,58 @@
 @layer base {
   :root {
     /*
-     * Design system: "Banking / Traditional Finance" (UI/UX Pro Max)
-     * Minimalism & Swiss — navy tin cậy + điểm nhấn gold, WCAG AA/AAA.
+     * Bộ nhận diện "Cây ký ức" — VietinBank Bắc Hưng Yên 20 năm.
+     * Bảng màu chính thức:
+     *   #003A8C navy  ·  #0057B8 royal  ·  #1E88E5 sky  ·  #E60012 red  ·  #F2F7FF nền
      */
-    --background: 210 40% 98%;      /* #F8FAFC */
-    --foreground: 222 47% 9%;        /* near #0B1220 */
+    --background: 217 100% 97%;      /* #F2F7FF */
+    --foreground: 215 59% 15%;       /* navy đậm, dễ đọc */
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 9%;
+    --card-foreground: 215 59% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 9%;
+    --popover-foreground: 215 59% 15%;
 
-    /* Royal navy — màu hành động chính của tổ chức tài chính */
-    --primary: 224 64% 33%;          /* #1E3A8A */
+    /* Royal blue — màu hành động chính (#0057B8) */
+    --primary: 212 100% 36%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 214 32% 94%;
-    --secondary-foreground: 224 64% 25%;
+    --secondary: 214 60% 94%;
+    --secondary-foreground: 215 100% 27%;
 
-    --muted: 213 27% 93%;            /* #E8ECF1 */
-    --muted-foreground: 215 16% 40%; /* đậm hơn #64748B để đạt 4.5:1 trên nền muted */
+    --muted: 216 48% 95%;
+    --muted-foreground: 215 22% 42%;
 
-    --accent: 216 45% 94%;
-    --accent-foreground: 224 64% 27%;
+    --accent: 207 79% 93%;
+    --accent-foreground: 212 100% 30%;
 
-    --destructive: 0 72% 46%;
+    /* VietinBank red (#E60012) */
+    --destructive: 355 100% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 32% 89%;
-    --input: 214 32% 85%;
-    --ring: 224 64% 33%;
+    --border: 214 45% 88%;
+    --input: 214 45% 86%;
+    --ring: 212 100% 36%;
 
-    /* Gold điểm nhấn (dùng tiết chế: chỉ báo active, huy hiệu) */
-    --gold: 41 88% 33%;              /* #A16207 */
-    --gold-bg: 45 90% 94%;
+    /* Token thương hiệu Cây ký ức */
+    --brand-navy: 215 100% 27%;      /* #003A8C */
+    --brand-royal: 212 100% 36%;     /* #0057B8 */
+    --brand-sky: 207 79% 51%;        /* #1E88E5 */
+    --brand-red: 355 100% 45%;       /* #E60012 */
+    --brand-gold: 43 74% 49%;        /* điểm nhấn huy hiệu */
 
-    /* Bo góc vừa phải — nghiêm túc, Swiss */
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    /* Đổ bóng gọn, sắc — không "bồng bềnh" */
-    --shadow-soft: 0 1px 2px 0 hsl(222 47% 11% / 0.05), 0 2px 8px -2px hsl(222 47% 11% / 0.06);
-    --shadow-glass: 0 1px 3px 0 hsl(222 47% 11% / 0.07), 0 4px 12px -4px hsl(222 47% 11% / 0.08);
-    --shadow-lift: 0 6px 20px -8px hsl(222 47% 11% / 0.16);
+    /* Đổ bóng gọn, chuyên nghiệp */
+    --shadow-soft: 0 1px 2px 0 hsl(215 59% 15% / 0.05), 0 4px 14px -6px hsl(215 59% 15% / 0.08);
+    --shadow-glass: 0 1px 0 0 hsl(0 0% 100% / 0.6) inset, 0 8px 26px -12px hsl(215 59% 15% / 0.14);
+    --shadow-lift: 0 12px 34px -14px hsl(215 100% 27% / 0.22);
 
-    /* Bề mặt panel — gần đặc, viền rõ (thay glass mờ ảo) */
-    --glass-bg: 0 0% 100% / 0.92;
-    --glass-bg-strong: 0 0% 100% / 0.97;
-    --glass-border: 214 32% 89% / 0.9;
+    /* Bề mặt panel */
+    --glass-bg: 0 0% 100% / 0.78;
+    --glass-bg-strong: 0 0% 100% / 0.9;
+    --glass-border: 214 45% 90% / 0.8;
 
     /* Level colors */
     --level-1: 200 15% 55%;
@@ -75,16 +79,16 @@
     --star-hom: 0 55% 48%;
     --star-hom-bg: 0 55% 94%;
 
-    /* Sidebar — navy tin cậy đậm (#0F172A), phong cách định chế tài chính */
-    --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 214 32% 86%;
+    /* Sidebar — navy Cây ký ức (#003A8C) */
+    --sidebar-background: 215 100% 27%;
+    --sidebar-foreground: 210 40% 90%;
     --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 222 47% 11%;
-    --sidebar-accent: 223 47% 20%;
+    --sidebar-primary-foreground: 215 100% 27%;
+    --sidebar-accent: 212 80% 34%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 223 40% 22%;
-    --sidebar-ring: 216 80% 62%;
-    --sidebar-muted: 218 20% 62%;
+    --sidebar-border: 213 70% 34%;
+    --sidebar-ring: 207 79% 60%;
+    --sidebar-muted: 211 35% 74%;
   }
 }
 
@@ -103,15 +107,18 @@
   }
   body {
     @apply text-foreground;
-    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     background-color: hsl(var(--background));
+    background-image:
+      radial-gradient(1100px 560px at 0% -10%, hsl(207 79% 90% / 0.6), transparent 60%),
+      radial-gradient(820px 460px at 100% 0%, hsl(212 100% 92% / 0.55), transparent 55%);
+    background-attachment: fixed;
   }
   /* Giảm delay 300ms khi chạm trên mobile */
   button, a, [role="button"] {
     touch-action: manipulation;
   }
-  /* Tôn trọng người dùng tắt hiệu ứng chuyển động */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
       animation-duration: 0.01ms !important;
@@ -138,41 +145,57 @@
   .glass {
     background-color: hsl(var(--glass-bg));
     border: 1px solid hsl(var(--glass-border));
-    backdrop-filter: saturate(180%) blur(14px);
-    -webkit-backdrop-filter: saturate(180%) blur(14px);
+    backdrop-filter: saturate(160%) blur(12px);
+    -webkit-backdrop-filter: saturate(160%) blur(12px);
     box-shadow: var(--shadow-glass);
   }
   .glass-strong {
     background-color: hsl(var(--glass-bg-strong));
     border: 1px solid hsl(var(--glass-border));
-    backdrop-filter: saturate(180%) blur(18px);
-    -webkit-backdrop-filter: saturate(180%) blur(18px);
+    backdrop-filter: saturate(160%) blur(16px);
+    -webkit-backdrop-filter: saturate(160%) blur(16px);
     box-shadow: var(--shadow-glass);
   }
   .glass-subtle {
-    background-color: hsl(0 0% 100% / 0.85);
-    border: 1px solid hsl(214 32% 90% / 0.9);
+    background-color: hsl(0 0% 100% / 0.7);
+    border: 1px solid hsl(214 45% 90% / 0.8);
   }
   .shadow-soft { box-shadow: var(--shadow-soft); }
   .shadow-lift { box-shadow: var(--shadow-lift); }
+
+  /* === Motif Cây ký ức === */
+  /* Nền navy thương hiệu (panel đăng nhập, banner) */
+  .brand-navy-surface {
+    background-image: linear-gradient(160deg, hsl(215 100% 22%), hsl(215 100% 27%) 45%, hsl(212 100% 34%));
+  }
+  /* Chữ gradient xanh thương hiệu */
+  .brand-gradient-text {
+    background-image: linear-gradient(90deg, hsl(var(--brand-royal)), hsl(var(--brand-sky)));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  /* Dải đỏ nhận diện */
+  .brand-ribbon {
+    background-image: linear-gradient(90deg, hsl(var(--brand-red)), hsl(350 90% 55%), hsl(var(--brand-red)));
+  }
 }
 
 @layer components {
   .nav-item {
-    /* min-h 44px: chuẩn touch target cho mobile/tablet */
     @apply flex items-center gap-3 px-3 py-2.5 min-h-[44px] rounded-lg text-[13px] font-medium transition-colors duration-200 cursor-pointer;
     color: hsl(var(--sidebar-foreground));
   }
   .nav-item:hover {
-    background: hsl(0 0% 100% / 0.07);
+    background: hsl(0 0% 100% / 0.08);
     color: hsl(var(--sidebar-primary));
   }
   .nav-item.active {
-    background: hsl(0 0% 100% / 0.12);
+    background: hsl(0 0% 100% / 0.13);
     color: hsl(var(--sidebar-primary));
     font-weight: 600;
-    /* Vạch gold bên trái — dấu hiệu vị trí hiện tại, phong cách định chế tài chính */
-    box-shadow: inset 3px 0 0 0 hsl(43 74% 49%);
+    /* Vạch gold bên trái — dấu vị trí hiện tại */
+    box-shadow: inset 3px 0 0 0 hsl(var(--brand-gold));
   }
   .level-badge {
     @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold;
@@ -189,7 +212,7 @@
   .star-hom { background: hsl(var(--star-hom-bg)); color: hsl(var(--star-hom)); }
 
   .stat-card {
-    @apply bg-card rounded-2xl border p-5 transition-all duration-200;
+    @apply bg-card rounded-xl border p-5 transition-all duration-200;
     box-shadow: var(--shadow-soft);
   }
   .stat-card:hover {
