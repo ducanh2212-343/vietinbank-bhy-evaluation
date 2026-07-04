@@ -1,5 +1,4 @@
-import { MemoryTree } from './MemoryTree';
-import { AnniversaryBadge } from './AnniversaryBadge';
+import { BrandTree, BrandBadge } from './BrandAssets';
 
 const VALUES = ['Chính trực', 'Trí tuệ', 'Tận tâm', 'Thấu cảm', 'Thích ứng'];
 
@@ -13,7 +12,7 @@ export function AnniversaryBanner() {
       <div className="flex items-stretch gap-4 p-5 sm:p-6">
         <div className="min-w-0 flex-1 space-y-2.5">
           <div className="flex items-center gap-2">
-            <AnniversaryBadge className="h-9 w-9 rounded-full bg-white/95 p-0.5 shrink-0" />
+            <BrandBadge className="h-9 w-9 rounded-full bg-white/95 p-0.5 shrink-0 object-contain" />
             <span className="inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold tracking-widest text-blue-100">
               2006 — 2026 · KỶ NIỆM 20 NĂM THÀNH LẬP
             </span>
@@ -40,7 +39,7 @@ export function AnniversaryBanner() {
             #VietinBankBacHungYen · #20NamVunGocBenReVuonTamTuongLai
           </p>
         </div>
-        <MemoryTree className="hidden min-[420px]:block w-28 sm:w-40 lg:w-48 shrink-0 self-center drop-shadow-[0_4px_12px_rgba(0,0,0,0.35)]" />
+        <BrandTree framed className="hidden min-[420px]:block w-28 sm:w-40 lg:w-48 shrink-0 self-center" />
       </div>
       {/* Dải đỏ nhận diện thương hiệu */}
       <div className="h-1.5 w-full brand-ribbon" />
