@@ -750,7 +750,27 @@ export default function SelfAssessmentPage() {
           try {
             const cycleName = cycles.find(c => c.id === cycleId)?.name || 'Quý';
             const { exportBM01ToWord } = await import('@/lib/exportBM01');
-            await exportBM01ToWord({ profile: profile || {}, cycleName, coreAssessments, supplementaryAssessments: suppAssessments, attitudeAssessments });
+            // Lấy đủ nội dung theo quy trình: rà soát KH kỳ trước, câu hỏi 1-1,
+            // nhận xét/đánh giá tổng thể của lãnh đạo và các mốc ký
+            let extras;
+            if (formId) {
+              const { fetchBM01Extras } = await import('@/lib/exportBM01Data');
+              extras = await fetchBM01Extras({
+                formId,
+                employeeName: profile?.full_name,
+                pgdName: profile?.pgd_name,
+                previousCycleName,
+              });
+            }
+            await exportBM01ToWord({
+              profile: profile || {},
+              cycleName,
+              coreAssessments,
+              supplementaryAssessments: suppAssessments,
+              attitudeAssessments,
+              oneOnOne: oneOnOneEnabled ? { enabled: true, answers: oneOnOneAnswers as any } : undefined,
+              extras,
+            });
             toast.success('Đã tải file Word');
           } catch (e: any) { toast.error('Lỗi xuất Word: ' + (e.message || '')); }
         }} disabled={isBusy} title="Xuất biểu mẫu Word">

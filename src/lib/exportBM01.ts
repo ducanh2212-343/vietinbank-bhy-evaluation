@@ -59,6 +59,45 @@ function cell(text: string, opts: { bold?: boolean; shade?: string; width?: numb
   });
 }
 
+export interface OverallReviewExport {
+  title: string;
+  fields: { label: string; value: string }[];
+}
+
+export interface PreviousActionExportItem {
+  typeLabel: string;
+  actionText: string;
+  expectedResult: string;
+  actualResult: string;
+  selfStatusLabel: string;
+  managerStatusLabel: string;
+  evidence: string;
+  employeeNote: string;
+  managerNote: string;
+}
+
+export interface SignatureInfo {
+  name?: string;
+  /** ISO — thời điểm thao tác tương ứng trên hệ thống (nộp / duyệt) */
+  date?: string | null;
+}
+
+/** Dữ liệu bổ sung lấy từ form_submissions (xem lib/exportBM01Data.ts) */
+export interface BM01ExportExtras {
+  previousActions?: { cycleName?: string; items: PreviousActionExportItem[] };
+  oneOnOne?: {
+    enabled: boolean;
+    answers: Record<string, { employee: string; manager: string }>;
+  };
+  overallReviews?: OverallReviewExport[];
+  comments?: { employee?: string; manager?: string; pgd?: string };
+  signatures?: {
+    employee: SignatureInfo;
+    reviewer: SignatureInfo;
+    approver: SignatureInfo;
+  };
+}
+
 export interface BM01ExportData {
   profile: {
     full_name?: string;
@@ -66,6 +105,7 @@ export interface BM01ExportData {
     pos_name?: string;
     dept_name?: string;
     manager_name?: string;
+    pgd_name?: string;
   };
   cycleName: string;
   coreAssessments: CoreSkillAssessment[];
@@ -76,6 +116,31 @@ export interface BM01ExportData {
     enabled: boolean;
     answers: Record<string, { employee: string; manager: string }>;
   };
+  extras?: BM01ExportExtras;
+}
+
+const fmtSignDate = (iso: string | null | undefined) =>
+  iso
+    ? new Date(iso).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : '';
+
+/** Ô chữ ký: chức danh + hướng dẫn ký + khoảng trống + họ tên + dấu thời gian hệ thống (nếu có) */
+function signatureCell(title: string, sig: SignatureInfo | undefined, systemLabel: string, width: number) {
+  const children: Paragraph[] = [
+    p(title, { bold: true, align: AlignmentType.CENTER }),
+    p('(Ký, ghi rõ họ tên)', { align: AlignmentType.CENTER }),
+    p('', {}), p('', {}), p('', {}),
+    p(sig?.name || '', { bold: true, align: AlignmentType.CENTER }),
+  ];
+  if (sig?.date) {
+    children.push(p(`${systemLabel}: ${fmtSignDate(sig.date)}`, { align: AlignmentType.CENTER, size: 18 }));
+  }
+  return new TableCell({
+    borders: cellBorders,
+    width: { size: width, type: WidthType.DXA },
+    margins: { top: 200, bottom: 200, left: 120, right: 120 },
+    children,
+  });
 }
 
 export async function exportBM01ToWord(data: BM01ExportData) {
@@ -174,15 +239,118 @@ export async function exportBM01ToWord(data: BM01ExportData) {
   ];
 
 
+  const extras = data.extras;
+
+  // C. Rà soát kế hoạch hành động kỳ trước
+  const previousActionChildren: (Paragraph | Table)[] = [];
+  if (extras?.previousActions?.items.length) {
+    const pa = extras.previousActions;
+    previousActionChildren.push(
+      p(`C. RÀ SOÁT KẾ HOẠCH HÀNH ĐỘNG KỲ TRƯỚC${pa.cycleName ? ` (${pa.cycleName})` : ''}`, { bold: true, size: 24 }),
+      new Table({
+        width: { size: 14360, type: WidthType.DXA },
+        columnWidths: [500, 900, 3000, 2100, 2900, 1000, 1000, 2960],
+        rows: [
+          new TableRow({
+            tableHeader: true,
+            children: [
+              cell('TT', { bold: true, shade: 'E7E6E6', width: 500, align: AlignmentType.CENTER }),
+              cell('Loại', { bold: true, shade: 'E7E6E6', width: 900, align: AlignmentType.CENTER }),
+              cell('Hành động đã cam kết', { bold: true, shade: 'E7E6E6', width: 3000 }),
+              cell('Kết quả mong đợi', { bold: true, shade: 'E7E6E6', width: 2100 }),
+              cell('Kết quả thực tế / bằng chứng', { bold: true, shade: 'E7E6E6', width: 2900 }),
+              cell('Tự ĐG', { bold: true, shade: 'E7E6E6', width: 1000, align: AlignmentType.CENTER }),
+              cell('CBQL ĐG', { bold: true, shade: 'E7E6E6', width: 1000, align: AlignmentType.CENTER }),
+              cell('Nhận xét CBQL', { bold: true, shade: 'E7E6E6', width: 2960 }),
+            ],
+          }),
+          ...pa.items.map((it, i) => new TableRow({
+            children: [
+              cell(String(i + 1), { align: AlignmentType.CENTER }),
+              cell(it.typeLabel, { align: AlignmentType.CENTER }),
+              cell(it.actionText),
+              cell(it.expectedResult),
+              cell([it.actualResult, it.evidence ? `Bằng chứng: ${it.evidence}` : '', it.employeeNote ? `Ghi chú CB: ${it.employeeNote}` : ''].filter(Boolean).join('\n')),
+              cell(it.selfStatusLabel, { align: AlignmentType.CENTER }),
+              cell(it.managerStatusLabel, { align: AlignmentType.CENTER }),
+              cell(it.managerNote),
+            ],
+          })),
+        ],
+      }),
+      new Paragraph({ children: [new TextRun({ text: '' })] }),
+    );
+  }
+
+  // D. Nhận xét chung & đánh giá tổng thể của lãnh đạo
+  const reviewChildren: (Paragraph | Table)[] = [];
+  const comments = extras?.comments;
+  const hasComments = !!(comments?.employee || comments?.manager || comments?.pgd);
+  if (hasComments || extras?.overallReviews?.length) {
+    reviewChildren.push(p('D. NHẬN XÉT & ĐÁNH GIÁ CỦA LÃNH ĐẠO', { bold: true, size: 24 }));
+  }
+  if (hasComments) {
+    reviewChildren.push(
+      new Table({
+        width: { size: 14360, type: WidthType.DXA },
+        columnWidths: [3000, 11360],
+        rows: [
+          ...(comments?.employee ? [new TableRow({ children: [
+            cell('Ý kiến của cán bộ', { bold: true, shade: 'F2F2F2', width: 3000 }),
+            cell(comments.employee, { width: 11360 }),
+          ] })] : []),
+          ...(comments?.manager ? [new TableRow({ children: [
+            cell('Nhận xét của Trưởng phòng / người đánh giá', { bold: true, shade: 'F2F2F2', width: 3000 }),
+            cell(comments.manager, { width: 11360 }),
+          ] })] : []),
+          ...(comments?.pgd ? [new TableRow({ children: [
+            cell('Ý kiến của Phó Giám đốc phụ trách', { bold: true, shade: 'F2F2F2', width: 3000 }),
+            cell(comments.pgd, { width: 11360 }),
+          ] })] : []),
+        ],
+      }),
+      new Paragraph({ children: [new TextRun({ text: '' })] }),
+    );
+  }
+  (extras?.overallReviews || []).forEach((rv) => {
+    reviewChildren.push(
+      new Table({
+        width: { size: 14360, type: WidthType.DXA },
+        columnWidths: [3000, 11360],
+        rows: [
+          new TableRow({
+            tableHeader: true,
+            children: [new TableCell({
+              borders: cellBorders,
+              shading: { fill: 'E7E6E6', type: ShadingType.CLEAR },
+              margins: { top: 80, bottom: 80, left: 120, right: 120 },
+              columnSpan: 2,
+              width: { size: 14360, type: WidthType.DXA },
+              children: [p(rv.title, { bold: true })],
+            })],
+          }),
+          ...rv.fields.map((f) => new TableRow({
+            children: [
+              cell(f.label, { bold: true, shade: 'F2F2F2', width: 3000 }),
+              cell(f.value, { width: 11360 }),
+            ],
+          })),
+        ],
+      }),
+      new Paragraph({ children: [new TextRun({ text: '' })] }),
+    );
+  });
+
   // Build 1-1 Q&A appendix children (only if enabled)
+  const oneOnOne = extras?.oneOnOne || data.oneOnOne;
   const oneOnOneChildren: any[] = [];
-  if (data.oneOnOne?.enabled) {
+  if (oneOnOne?.enabled) {
     oneOnOneChildren.push(
       new Paragraph({ children: [new TextRun({ text: '' })] }),
       p('PHỤ LỤC — CÂU HỎI TRAO ĐỔI 1-1', { bold: true, size: 24 }),
     );
     ONE_ON_ONE_QUESTIONS_EXPORT.forEach((q, idx) => {
-      const ans = data.oneOnOne!.answers[q.key] || { employee: '', manager: '' };
+      const ans = oneOnOne!.answers[q.key] || { employee: '', manager: '' };
       oneOnOneChildren.push(
         new Table({
           width: { size: 14360, type: WidthType.DXA },
@@ -260,7 +428,7 @@ export async function exportBM01ToWord(data: BM01ExportData) {
           new Paragraph({ children: [new TextRun({ text: '' })] }),
         ] : []),
 
-        p('B. ĐÁNH GIÁ 6 NHÓM THÁI ĐỘ', { bold: true, size: 24 }),
+        p('B. ĐÁNH GIÁ 6 NHÓM THÁI ĐỘ & KẾ HOẠCH CẢI THIỆN', { bold: true, size: 24 }),
         new Table({
           width: { size: 14360, type: WidthType.DXA },
           columnWidths: [500, 2400, 1000, 1000, 2600, 2000, 2200, 800, 1860],
@@ -268,20 +436,37 @@ export async function exportBM01ToWord(data: BM01ExportData) {
         }),
         new Paragraph({ children: [new TextRun({ text: '' })] }),
 
+        ...previousActionChildren,
+
+        ...reviewChildren,
+
         ...oneOnOneChildren,
 
         new Paragraph({ children: [new TextRun({ text: '' })] }),
 
-
-
+        // Thành phần ký theo quy trình: CB tự đánh giá → lãnh đạo đánh giá → PGĐ phê duyệt
         new Table({
           width: { size: 14360, type: WidthType.DXA },
-          columnWidths: [7180, 7180],
+          columnWidths: [4787, 4787, 4786],
           rows: [new TableRow({ children: [
-            new TableCell({ borders: cellBorders, margins: { top: 600, bottom: 600, left: 120, right: 120 },
-              children: [p('Người tự đánh giá', { bold: true, align: AlignmentType.CENTER }), p('(Ký, ghi rõ họ tên)', { align: AlignmentType.CENTER })] }),
-            new TableCell({ borders: cellBorders, margins: { top: 600, bottom: 600, left: 120, right: 120 },
-              children: [p('Quản lý trực tiếp', { bold: true, align: AlignmentType.CENTER }), p('(Ký, ghi rõ họ tên)', { align: AlignmentType.CENTER })] }),
+            signatureCell(
+              'CÁN BỘ TỰ ĐÁNH GIÁ',
+              { name: extras?.signatures?.employee.name || profile.full_name, date: extras?.signatures?.employee.date },
+              'Đã nộp trên hệ thống',
+              4787,
+            ),
+            signatureCell(
+              'LÃNH ĐẠO ĐÁNH GIÁ',
+              { name: extras?.signatures?.reviewer.name || profile.manager_name, date: extras?.signatures?.reviewer.date },
+              'Đã duyệt trên hệ thống',
+              4787,
+            ),
+            signatureCell(
+              'PHÓ GIÁM ĐỐC PHÊ DUYỆT',
+              { name: extras?.signatures?.approver.name || profile.pgd_name, date: extras?.signatures?.approver.date },
+              'Đã phê duyệt trên hệ thống',
+              4786,
+            ),
           ] })],
         }),
       ],

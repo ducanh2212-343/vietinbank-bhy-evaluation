@@ -873,7 +873,17 @@ export function BMFormPage({ config }: Props) {
         <Button variant="outline" onClick={async () => {
           try {
             const { exportBM01ToWord } = await import('@/lib/exportBM01');
-            await exportBM01ToWord({ profile: profile || {}, cycleName: targetCycleName, coreAssessments, supplementaryAssessments: suppAssessments, attitudeAssessments, oneOnOne: oneOnOneEnabled ? { enabled: true, answers: oneOnOneAnswers } : undefined });
+            let extras;
+            if (formId) {
+              const { fetchBM01Extras } = await import('@/lib/exportBM01Data');
+              extras = await fetchBM01Extras({
+                formId,
+                employeeName: profile?.full_name,
+                pgdName: (profile as any)?.pgd_name,
+                previousCycleName,
+              });
+            }
+            await exportBM01ToWord({ profile: profile || {}, cycleName: targetCycleName, coreAssessments, supplementaryAssessments: suppAssessments, attitudeAssessments, oneOnOne: oneOnOneEnabled ? { enabled: true, answers: oneOnOneAnswers } : undefined, extras });
             toast.success('Đã tải file Word');
           } catch (e: any) { toast.error('Lỗi xuất Word: ' + (e.message || '')); }
         }} disabled={isBusy} title="Xuất biểu mẫu Word">
