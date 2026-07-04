@@ -34,6 +34,7 @@ import {
   replaceCoreSkillAssessments,
 } from '@/lib/evaluationPersistence';
 import { validateSubmission, validateSubmissionDetailed } from '@/lib/evaluationValidation';
+import { useCycleOneOnOneQuestions } from '@/hooks/useCycleOneOnOneQuestions';
 import { SubmissionChecklist } from '@/components/evaluation/SubmissionChecklist';
 
 export default function SelfAssessmentPage() {
@@ -49,6 +50,7 @@ export default function SelfAssessmentPage() {
 
   const [formId, setFormId] = useState<string | null>(null);
   const [cycleId, setCycleId] = useState('');
+  const oneOnOneQuestions = useCycleOneOnOneQuestions(cycleId);
   const [formStatus, setFormStatus] = useState('draft');
   const [returnedComment, setReturnedComment] = useState<string>('');
 
@@ -666,6 +668,7 @@ export default function SelfAssessmentPage() {
         answers={oneOnOneAnswers}
         onAnswersChange={setOneOnOneAnswers}
         isManager={false}
+        questions={oneOnOneQuestions}
       />
 
       <PreviousActionsReview

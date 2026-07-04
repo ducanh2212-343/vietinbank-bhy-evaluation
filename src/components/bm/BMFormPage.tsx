@@ -10,6 +10,7 @@ import { EvalSectionA } from '@/components/evaluation/EvalSectionA';
 import { EvalSectionB, type CoreSkillAssessment } from '@/components/evaluation/EvalSectionB';
 import { EvalSectionC, type AttitudeAssessment } from '@/components/evaluation/EvalSectionC';
 import { EvalSection1on1, type OneOnOneAnswers } from '@/components/evaluation/EvalSection1on1';
+import { useCycleOneOnOneQuestions } from '@/hooks/useCycleOneOnOneQuestions';
 import { type SkillPriority } from './SkillPriorityPicker';
 import { type SkillAction } from './SkillActionsBlock';
 import { SkillDevelopmentBlock } from './SkillDevelopmentBlock';
@@ -53,6 +54,7 @@ export function BMFormPage({ config }: Props) {
   const [saving, setSaving] = useState(false);
   const [formId, setFormId] = useState<string | null>(null);
   const [cycleId, setCycleId] = useState('');
+  const oneOnOneQuestions = useCycleOneOnOneQuestions(cycleId);
   const [profile, setProfile] = useState<any>(null);
   const [allSkills, setAllSkills] = useState<any[]>([]);
   const [coreSkillConfigs, setCoreSkillConfigs] = useState<any[]>([]);
@@ -806,6 +808,7 @@ export function BMFormPage({ config }: Props) {
         answers={oneOnOneAnswers}
         onAnswersChange={setOneOnOneAnswers}
         isManager={false}
+        questions={oneOnOneQuestions}
       />
 
       {/* B: Core skill evaluation */}

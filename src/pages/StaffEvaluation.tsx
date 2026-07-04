@@ -39,6 +39,7 @@ import {
 import { OverallReviewBlock, type OverallReviewValue } from '@/components/evaluation/OverallReviewBlock';
 import { StarClassificationBlock } from '@/components/evaluation/StarClassificationBlock';
 import { getReviewerLevel, getOverallReviewField } from '@/lib/reviewerScope';
+import { useCycleOneOnOneQuestions } from '@/hooks/useCycleOneOnOneQuestions';
 
 const hasEmployeeOneOnOneAnswers = (answers: OneOnOneAnswers) =>
   Object.values(answers || {}).some((a: any) => (a?.employee || '').trim().length > 0);
@@ -58,6 +59,7 @@ export default function StaffEvaluation() {
 
   const [formId, setFormId] = useState<string | null>(null);
   const [cycleId, setCycleId] = useState('');
+  const oneOnOneQuestions = useCycleOneOnOneQuestions(cycleId);
   const [formStatus, setFormStatus] = useState('draft');
 
   const [coreAssessments, setCoreAssessments] = useState<CoreSkillAssessment[]>([]);
@@ -966,6 +968,7 @@ export default function StaffEvaluation() {
         answers={oneOnOneAnswers}
         onAnswersChange={setOneOnOneAnswers}
         isManager={isManagerMode}
+        questions={oneOnOneQuestions}
       />
 
       {/* Cảnh báo cập nhật khi CB nộp lại */}
