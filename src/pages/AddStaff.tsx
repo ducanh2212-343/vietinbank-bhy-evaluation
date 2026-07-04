@@ -47,7 +47,7 @@ export default function AddStaff() {
   const [result, setResult] = useState<CreateResult | null>(null);
 
   const [form, setForm] = useState({
-    employee_code: '', full_name: '', email: '', phone: '',
+    full_name: '', email: '', phone: '',
     department_id: '', position_id: '', role: 'employee',
     manager_id: '', pgd_id: '', director_id: '',
     status: 'active', note: '', send_password_email: false,
@@ -73,7 +73,6 @@ export default function AddStaff() {
     e.preventDefault();
     if (!form.full_name.trim()) { toast({ title: 'Vui lòng nhập họ tên', variant: 'destructive' }); return; }
     if (!form.email.trim()) { toast({ title: 'Vui lòng nhập email đăng nhập', variant: 'destructive' }); return; }
-    if (!form.employee_code.trim()) { toast({ title: 'Vui lòng nhập mã cán bộ', variant: 'destructive' }); return; }
     if (!form.department_id) { toast({ title: 'Vui lòng chọn phòng ban', variant: 'destructive' }); return; }
     if (!form.position_id) { toast({ title: 'Vui lòng chọn chức vụ/vị trí', variant: 'destructive' }); return; }
 
@@ -87,7 +86,6 @@ export default function AddStaff() {
     setSaving(true);
     const { data, error } = await supabase.functions.invoke('create-staff-user', {
       body: {
-        employee_code: form.employee_code,
         full_name: form.full_name,
         email: form.email,
         phone: form.phone,
@@ -150,7 +148,7 @@ export default function AddStaff() {
               tempPassword={result.temp_password || ''}
             />
             <div className="flex gap-3 justify-end">
-              <Button variant="outline" onClick={() => { setResult(null); setForm((p) => ({ ...p, employee_code: '', full_name: '', email: '', phone: '', note: '' })); }}>
+              <Button variant="outline" onClick={() => { setResult(null); setForm((p) => ({ ...p, full_name: '', email: '', phone: '', note: '' })); }}>
                 Tạo cán bộ khác
               </Button>
               <Button onClick={() => navigate(`/chi-tiet-can-bo/${result.profile_id}`)}>Xem chi tiết cán bộ</Button>
@@ -175,10 +173,6 @@ export default function AddStaff() {
           </Alert>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Mã cán bộ *</Label>
-                <Input value={form.employee_code} onChange={(e) => set('employee_code', e.target.value)} placeholder="VTB-XXX" required />
-              </div>
               <div className="space-y-2">
                 <Label>Họ tên *</Label>
                 <Input value={form.full_name} onChange={(e) => set('full_name', e.target.value)} required />

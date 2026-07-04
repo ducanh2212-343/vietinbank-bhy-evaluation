@@ -119,7 +119,8 @@ export async function createOrUpdateStaffUser(
   if (!email) throw new ValidationError("Thiếu email đăng nhập");
   if (!EMAIL_RE.test(email)) throw new ValidationError("Email không hợp lệ");
   if (!fullName) throw new ValidationError("Thiếu họ tên");
-  if (!employeeCode) throw new ValidationError("Thiếu mã cán bộ");
+  // employee_code (mã cán bộ) là tùy chọn — đã ẩn khỏi giao diện; giữ cột để
+  // dữ liệu cũ và import Excel vẫn dùng được nếu có.
   if (!isValidRole(role)) throw new ValidationError(`Vai trò không hợp lệ: ${role}`);
 
   const departmentId = clean(input.department_id);

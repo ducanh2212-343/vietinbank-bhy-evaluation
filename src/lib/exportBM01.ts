@@ -237,7 +237,7 @@ export async function exportBM01ToWord(data: BM01ExportData) {
         new Paragraph({ alignment: AlignmentType.CENTER,
           children: [new TextRun({ text: cycleName, italics: true, size: 24 })] }),
         new Paragraph({ children: [new TextRun({ text: '' })] }),
-        p(`Họ tên: ${profile.full_name || ''}     Mã CB: ${profile.employee_code || ''}`),
+        p(`Họ tên: ${profile.full_name || ''}`),
         p(`Vị trí: ${profile.pos_name || ''}     Đơn vị: ${profile.dept_name || ''}`),
         p(`Quản lý trực tiếp: ${profile.manager_name || ''}`),
         new Paragraph({ children: [new TextRun({ text: '' })] }),

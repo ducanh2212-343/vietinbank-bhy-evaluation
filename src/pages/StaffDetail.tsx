@@ -92,7 +92,6 @@ export default function StaffDetail() {
   if (!profile) return <div className="p-6 text-muted-foreground">Không tìm thấy cán bộ.</div>;
 
   const infoRows = [
-    ['Mã CB', profile.employee_code],
     ['Họ tên', profile.full_name],
     ['Email', profile.email],
     ['Điện thoại', profile.phone],
@@ -120,28 +119,40 @@ export default function StaffDetail() {
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Xác nhận xoá cán bộ</AlertDialogTitle>
+                  <AlertDialogTitle>Xoá vĩnh viễn cán bộ?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Bạn có chắc muốn xoá <strong>{profile.full_name}</strong>? Hồ sơ sẽ bị ẩn khỏi danh sách nhưng dữ liệu đánh giá vẫn được giữ lại.
+                    Bạn sắp XOÁ VĨNH VIỄN <strong>{profile.full_name}</strong>: hồ sơ, tài khoản đăng nhập và
+                    toàn bộ dữ liệu đánh giá, kế hoạch phát triển, kanban của cán bộ này. Thao tác
+                    <strong> không thể khôi phục</strong>. Nếu cán bộ đang là quản lý/PGĐ của người khác,
+                    các liên kết đó sẽ được gỡ (đặt trống) để bạn phân công lại.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Huỷ</AlertDialogCancel>
                   <AlertDialogAction
                     disabled={deleting}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     onClick={async () => {
                       setDeleting(true);
-                      const { error } = await supabase.from('profiles').update({ status: 'deleted' }).eq('id', id!);
-                      if (error) {
-                        toast({ title: 'Lỗi', description: error.message, variant: 'destructive' });
+                      const { data, error } = await supabase.functions.invoke('delete-staff', {
+                        body: { profile_id: id },
+                      });
+                      if (error || data?.error) {
+                        let message = data?.error || error?.message || 'Lỗi không xác định';
+                        try {
+                          const ctx = (error as { context?: Response } | null)?.context;
+                          const body = ctx ? await ctx.json() : null;
+                          if (body?.error) message = body.error;
+                        } catch { /* keep default */ }
+                        toast({ title: 'Không xoá được cán bộ', description: message, variant: 'destructive' });
                         setDeleting(false);
                       } else {
-                        toast({ title: 'Đã xoá cán bộ' });
+                        toast({ title: 'Đã xoá vĩnh viễn cán bộ' });
                         navigate('/danh-sach-can-bo');
                       }
                     }}
                   >
-                    {deleting ? 'Đang xoá...' : 'Xoá'}
+                    {deleting ? 'Đang xoá...' : 'Xoá vĩnh viễn'}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>

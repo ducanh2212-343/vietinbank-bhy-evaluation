@@ -162,7 +162,7 @@ export default function UploadStaffPage() {
     if (!email) errors.push('Thiếu email');
     else if (!EMAIL_RE.test(email)) errors.push('Email không hợp lệ');
     if (!fullName) errors.push('Thiếu họ tên');
-    if (!employeeCode) errors.push('Thiếu mã cán bộ');
+    // Mã cán bộ đã ẩn khỏi giao diện — tùy chọn khi import.
     if (!role) errors.push('Thiếu vai trò');
     else if (!VALID_ROLES.includes(role)) errors.push(`Vai trò không hợp lệ: ${role}`);
 
