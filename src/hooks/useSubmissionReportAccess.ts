@@ -4,8 +4,9 @@ import { useAuth } from '@/hooks/useAuth';
 
 /**
  * Phạm vi xem "Báo cáo nộp biểu mẫu":
- * - system_admin, tcth_admin, lãnh đạo (trưởng phòng) Phòng Tổ chức Tổng hợp → toàn chi nhánh
- * - bgd (Giám đốc/BGĐ), pgd (Phó giám đốc) → các phòng mình phụ trách
+ * - Giám đốc/BGĐ (bgd), TCTH Admin (tcth_admin), System Admin (system_admin),
+ *   lãnh đạo (trưởng phòng) Phòng Tổ chức Tổng hợp → toàn chi nhánh
+ * - Phó giám đốc (pgd) → các phòng mình phụ trách
  *   (phòng của các cán bộ có pgd_id / director_id trỏ tới mình, cộng phòng của chính mình)
  * - vai trò khác → không truy cập
  */
@@ -37,10 +38,10 @@ export function useSubmissionReportAccess(): SubmissionReportAccess {
         const { data } = await supabase.from('departments').select('name').eq('id', departmentId).maybeSingle();
         tcthLeader = !!data?.name && data.name.toLowerCase().includes('tổ chức');
       }
-      const full = roles.includes('system_admin') || roles.includes('tcth_admin') || tcthLeader;
+      const full = roles.includes('system_admin') || roles.includes('tcth_admin') || roles.includes('bgd') || tcthLeader;
 
       let deptIds: string[] = [];
-      if (!full && (roles.includes('bgd') || roles.includes('pgd')) && profileId) {
+      if (!full && roles.includes('pgd') && profileId) {
         const { data } = await supabase
           .from('profiles')
           .select('department_id')
