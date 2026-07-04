@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { GraduationCap, Sparkles, Plus, Loader2 } from 'lucide-react';
+import { GraduationCap, Plus, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { BrandMascotAI } from '@/components/branding/BrandAssets';
 import type { SkillPriority } from './SkillPriorityPicker';
 import type { SkillAction } from './SkillActionsBlock';
 
@@ -91,7 +92,7 @@ export function VtbCourseSuggestion({ priority, positionId, onAddAction, existin
           disabled={loading}
           className="h-8 text-xs"
         >
-          {loading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
+          {loading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <BrandMascotAI className="w-4 h-4 mr-1.5" />}
           {courses === null ? 'Gợi ý khóa học' : 'Gợi ý lại'}
         </Button>
       </div>

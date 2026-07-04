@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, Trash2 } from 'lucide-react';
 import type { SkillPriority } from './SkillPriorityPicker';
 import type { AttitudePriority } from './AttitudePriorityPicker';
+import { BrandMascotAI } from '@/components/branding/BrandAssets';
 
 export interface AIAction {
   id?: string;
@@ -60,7 +61,10 @@ export function AIActionsBlock({ aiActions, onChange, skillPriorities, attitudeP
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">II.5. Hành động AI áp dụng trong công việc {quarterLabel}</CardTitle>
+        <CardTitle className="text-base flex items-center gap-2">
+          <BrandMascotAI className="w-6 h-6" />
+          II.5. Hành động AI áp dụng trong công việc {quarterLabel}
+        </CardTitle>
         <p className="text-xs text-muted-foreground">Tối thiểu 2 hành động AI mỗi quý. Nên gắn với skill hoặc thái độ đã chọn.</p>
       </CardHeader>
       <CardContent className="space-y-3">

@@ -14,6 +14,7 @@ import ReactMarkdown from 'react-markdown';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { makeSupplementaryAssessment } from '@/lib/evaluationPersistence';
+import { BrandMascotAI } from '@/components/branding/BrandAssets';
 
 export interface CoreSkillAssessment {
   skill_id: string;
@@ -316,15 +317,15 @@ export function EvalSectionB({
                   disabled={aiLoading[a.skill_id]}
                   title="Tư vấn dựa trên minh chứng, mức yêu cầu vị trí và nhận xét"
                 >
-                  {aiLoading[a.skill_id] ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3 text-violet-600" />}
+                  {aiLoading[a.skill_id] ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BrandMascotAI className="w-4 h-4" />}
                   Khuyến nghị AI
                 </Button>
               </div>
               {aiResults[a.skill_id] && (
-                <div className="mt-2 rounded-md border border-violet-200 bg-violet-50/50 p-2.5 text-xs space-y-2">
+                <div className="mt-2 rounded-md border border-primary/20 bg-primary/5 p-2.5 text-xs space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-medium text-violet-700 flex items-center gap-1">
-                      <Sparkles className="w-3 h-3" /> Tư vấn từ AI
+                    <span className="font-medium text-primary flex items-center gap-1.5">
+                      <BrandMascotAI className="w-4 h-4" /> Tư vấn từ AI
                     </span>
                     <button type="button" onClick={() => dismissSuggestion(a.skill_id)} className="text-muted-foreground hover:text-foreground">
                       <X className="w-3 h-3" />

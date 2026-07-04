@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from '@/hooks/use-toast';
-import { Loader2, Save, Sparkles, RotateCcw, Coins, KeyRound, PlugZap } from 'lucide-react';
+import { Loader2, Save, RotateCcw, Coins, KeyRound, PlugZap } from 'lucide-react';
+import { BrandMascotAI } from '@/components/branding/BrandAssets';
 
 interface AIPrompt {
   mode: string;
@@ -265,8 +266,8 @@ export default function AIPromptsAdmin() {
   return (
     <div className="p-6 lg:p-8 space-y-6 max-w-6xl">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center">
-          <Sparkles className="w-5 h-5 text-primary" />
+        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+          <BrandMascotAI className="w-7 h-7" />
         </div>
         <div>
           <h1 className="text-2xl font-bold">Quản trị AI & Prompt</h1>
