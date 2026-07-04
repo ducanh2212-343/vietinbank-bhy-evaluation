@@ -61,6 +61,7 @@ const MODE_LABELS: Record<string, string> = {
   coach_skill: 'Tư vấn 1 dòng skill (toàn diện)',
   competency_portrait: 'Chân dung năng lực tổng thể',
   suggest_vtb_courses: 'Gợi ý khóa học Trường ĐT VietinBank',
+  suggest_idp_plan: 'Gợi ý kế hoạch hành động (IDP 70/20/10)',
 };
 
 // Khuyến nghị model theo tác vụ để cân đối chi phí
@@ -69,6 +70,7 @@ const MODE_RECOMMENDED_MODEL: Record<string, string> = {
   coach_skill: 'google/gemini-2.5-flash',
   competency_portrait: 'google/gemini-2.5-flash',
   suggest_vtb_courses: 'google/gemini-2.5-flash-lite',
+  suggest_idp_plan: 'google/gemini-2.5-flash',
 };
 
 // Nhà cung cấp AI — BYOK: admin tự nhập API key, không phụ thuộc Lovable.

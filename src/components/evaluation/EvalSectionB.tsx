@@ -14,6 +14,7 @@ import ReactMarkdown from 'react-markdown';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { makeSupplementaryAssessment } from '@/lib/evaluationPersistence';
+import { useAiFeatures } from '@/hooks/useAiFeatures';
 import { BrandMascotAI } from '@/components/branding/BrandAssets';
 
 export interface CoreSkillAssessment {
@@ -71,6 +72,7 @@ export function EvalSectionB({
   levelUpSkillIds,
 }: Props) {
   const { getImageUrl } = useSkillLevelImages();
+  const { isEnabled: isAiEnabled } = useAiFeatures();
   const [openId, setOpenId] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState<Record<string, boolean>>({});
   const [aiResults, setAiResults] = useState<Record<string, string>>({});
@@ -307,20 +309,22 @@ export function EvalSectionB({
             </div>
 
             <div>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-xs gap-1.5"
-                  onClick={() => suggestAi(a, kind)}
-                  disabled={aiLoading[a.skill_id]}
-                  title="Tư vấn dựa trên minh chứng, mức yêu cầu vị trí và nhận xét"
-                >
-                  {aiLoading[a.skill_id] ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BrandMascotAI className="w-4 h-4" />}
-                  Khuyến nghị AI
-                </Button>
-              </div>
+              {isAiEnabled('coach_skill') && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs gap-1.5"
+                    onClick={() => suggestAi(a, kind)}
+                    disabled={aiLoading[a.skill_id]}
+                    title="Tư vấn dựa trên minh chứng, mức yêu cầu vị trí và nhận xét"
+                  >
+                    {aiLoading[a.skill_id] ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BrandMascotAI className="w-4 h-4" />}
+                    Khuyến nghị AI
+                  </Button>
+                </div>
+              )}
               {aiResults[a.skill_id] && (
                 <div className="mt-2 rounded-md border border-primary/20 bg-primary/5 p-2.5 text-xs space-y-2">
                   <div className="flex items-center justify-between">

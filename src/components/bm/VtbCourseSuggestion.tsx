@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { GraduationCap, Plus, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAiFeatures } from '@/hooks/useAiFeatures';
 import { BrandMascotAI } from '@/components/branding/BrandAssets';
 import type { SkillPriority } from './SkillPriorityPicker';
 import type { SkillAction } from './SkillActionsBlock';
@@ -27,6 +28,7 @@ interface Props {
 }
 
 export function VtbCourseSuggestion({ priority, positionId, onAddAction, existingActionsCount }: Props) {
+  const { isEnabled } = useAiFeatures();
   const [loading, setLoading] = useState(false);
   const [courses, setCourses] = useState<VtbCourse[] | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -77,6 +79,9 @@ export function VtbCourseSuggestion({ priority, positionId, onAddAction, existin
     });
     toast.success(`Đã thêm "${c.name}" vào hành động`);
   };
+
+  // Admin tắt tác vụ "suggest_vtb_courses" trong Quản trị AI → ẩn hẳn khối gợi ý
+  if (!isEnabled('suggest_vtb_courses')) return null;
 
   return (
     <div className="border-t pt-3 mt-2 space-y-2">

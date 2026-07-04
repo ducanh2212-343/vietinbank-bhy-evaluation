@@ -6,6 +6,7 @@ import { Loader2, RefreshCw } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAiFeatures } from '@/hooks/useAiFeatures';
 import { BrandMascotAI } from '@/components/branding/BrandAssets';
 import type { CoreSkillAssessment } from '@/components/evaluation/EvalSectionB';
 import type { AttitudeAssessment } from '@/components/evaluation/EvalSectionC';
@@ -25,6 +26,7 @@ export function AICompetencyPortrait({
   supplementaryAssessments = [], oneOnOneEnabled = false, oneOnOneAnswers = {},
 }: Props) {
   const cacheKey = formId ? `ai-portrait-${formId}` : null;
+  const { isEnabled } = useAiFeatures();
   const [result, setResult] = useState<string>('');
   const [generatedAt, setGeneratedAt] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -152,6 +154,9 @@ export function AICompetencyPortrait({
       setLoading(false);
     }
   };
+
+  // Admin tắt tác vụ "competency_portrait" trong Quản trị AI → ẩn cả thẻ
+  if (!isEnabled('competency_portrait')) return null;
 
   return (
     <Card>

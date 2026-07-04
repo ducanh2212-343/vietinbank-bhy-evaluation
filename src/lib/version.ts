@@ -37,7 +37,7 @@ export const APP_FEATURES: FeatureGroup[] = [
   },
   {
     title: 'Trợ lý AI',
-    desc: 'Tư vấn từng kỹ năng, dựng chân dung năng lực tổng thể, gợi ý khóa học Trường ĐT VietinBank.',
+    desc: 'Chân dung năng lực tổng thể, gợi ý kế hoạch hành động 70/20/10, gợi ý khóa học Trường ĐT VietinBank; admin bật/tắt từng tác vụ.',
   },
   {
     title: 'Quản trị đội ngũ',
@@ -50,6 +50,12 @@ export const APP_FEATURES: FeatureGroup[] = [
 ];
 
 export const VERSION_HISTORY: VersionEntry[] = [
+  {
+    version: '3.1.0',
+    date: '04/07/2026',
+    type: 'minor',
+    summary: 'Thêm nút "Gợi ý kế hoạch hành động" 70/20/10 bằng AI cho từng skill ưu tiên; nút AI tự ẩn khi quản trị viên tắt tác vụ tại Quản trị AI.',
+  },
   {
     version: '3.0.0',
     date: '04/07/2026',

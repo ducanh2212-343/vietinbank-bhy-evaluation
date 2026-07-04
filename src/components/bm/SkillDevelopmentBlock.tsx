@@ -13,6 +13,8 @@ import { useSkillLevelImages } from '@/hooks/useSkillLevelImages';
 import type { SkillPriority } from './SkillPriorityPicker';
 import type { SkillAction } from './SkillActionsBlock';
 import { VtbCourseSuggestion } from './VtbCourseSuggestion';
+import { IdpPlanSuggestion } from './IdpPlanSuggestion';
+import { useAiFeatures } from '@/hooks/useAiFeatures';
 import { cn } from '@/lib/utils';
 
 interface Skill { id: string; name: string; code: string | null; skill_group: string; sort_order: number; }
@@ -47,6 +49,7 @@ export function SkillDevelopmentBlock({
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const { getImageUrl } = useSkillLevelImages();
+  const { isEnabled: isAiEnabled } = useAiFeatures();
 
   const coreMap = useMemo(() => new Map(coreSkills.map(c => [c.skill_id, c])), [coreSkills]);
   const assessedMap = useMemo(() => new Map(assessedLevels.map(a => [a.skill_id, a.current_level])), [assessedLevels]);
@@ -389,7 +392,13 @@ export function SkillDevelopmentBlock({
                     })}
                   </div>
 
-                  {!readOnly && (
+                  {!readOnly && isAiEnabled('suggest_idp_plan') && (
+                    <div className="rounded-md border border-dashed border-primary/30 bg-background/60 p-2">
+                      <IdpPlanSuggestion priority={p} />
+                    </div>
+                  )}
+
+                  {!readOnly && isAiEnabled('suggest_vtb_courses') && (
                     <div className="rounded-md border border-dashed border-primary/30 bg-background/60 p-2">
                       <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase text-muted-foreground mb-1">
                         <GraduationCap className="w-3.5 h-3.5" />
