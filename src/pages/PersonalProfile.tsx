@@ -129,7 +129,6 @@ export default function PersonalProfile() {
               <Field label="Họ tên" value={profile.full_name} strong />
               <Field label="Phòng" value={dept || '—'} />
               <Field label="Vị trí" value={positionName || '—'} />
-              <Field label="Mã cán bộ" value={profile.employee_code || '—'} />
               <Field label="Quản lý trực tiếp" value={manager || '—'} />
               <Field label="Phó giám đốc phụ trách" value={pgdName || '—'} />
             </div>

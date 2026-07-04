@@ -66,10 +66,6 @@ export function EvalSectionA({ profile, cycleId, onCycleChange, cycles, lockedQu
             <p className="font-medium">{profile?.full_name || <span className="text-destructive italic text-xs">Thiếu dữ liệu</span>}</p>
           </div>
           <div>
-            <span className="text-muted-foreground text-xs">Mã cán bộ</span>
-            <p className="font-medium">{profile?.employee_code || <span className="text-muted-foreground italic text-xs">Chưa có</span>}</p>
-          </div>
-          <div>
             <span className="text-muted-foreground text-xs flex items-center gap-1"><Building2 className="w-3 h-3" />Phòng ban</span>
             <p className="font-medium">{deptName || <span className="text-destructive italic text-xs">Thiếu dữ liệu</span>}</p>
           </div>

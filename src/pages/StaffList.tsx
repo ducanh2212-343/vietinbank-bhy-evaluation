@@ -121,7 +121,7 @@ export default function StaffList() {
       <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Tìm theo họ tên, mã CB..." value={search} onChange={(e) => updateParam('q', e.target.value, '')} className="pl-9" />
+          <Input placeholder="Tìm theo họ tên..." value={search} onChange={(e) => updateParam('q', e.target.value, '')} className="pl-9" />
         </div>
         <Select value={deptFilter} onValueChange={(v) => updateParam('department', v, 'all')}>
           <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Phòng ban" /></SelectTrigger>
@@ -159,7 +159,6 @@ export default function StaffList() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="text-left py-3 px-3 font-medium">Mã CB</th>
                   <th className="text-left py-3 px-3 font-medium">Họ tên</th>
                   <th className="text-left py-3 px-3 font-medium">Email</th>
                   <th className="text-left py-3 px-3 font-medium">Phòng ban</th>
@@ -170,11 +169,10 @@ export default function StaffList() {
               </thead>
               <tbody>
                 {filtered.length === 0 && (
-                  <tr><td colSpan={7} className="text-center text-muted-foreground py-8">Không tìm thấy cán bộ nào.</td></tr>
+                  <tr><td colSpan={6} className="text-center text-muted-foreground py-8">Không tìm thấy cán bộ nào.</td></tr>
                 )}
                 {filtered.map((s) => (
                   <tr key={s.id} className="border-b last:border-0 hover:bg-muted/30 cursor-pointer" onClick={() => openStaff(s.id)}>
-                    <td className="py-3 px-3 font-mono text-xs">{s.employee_code || '—'}</td>
                     <td className="py-3 px-3 font-medium">{s.full_name}</td>
                     <td className="py-3 px-3 text-muted-foreground text-sm">{s.email || '—'}</td>
                     <td className="py-3 px-3">{s.department || '—'}</td>
@@ -201,8 +199,6 @@ export default function StaffList() {
                   <Badge variant={s.status === 'active' ? 'default' : 'secondary'} className="text-[10px]">{s.status === 'active' ? 'Đang làm' : 'Nghỉ'}</Badge>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span>{s.employee_code || '—'}</span>
-                  <span>·</span>
                   <span className="truncate">{s.department || '—'}</span>
                 </div>
                 <div className="flex items-center justify-between">

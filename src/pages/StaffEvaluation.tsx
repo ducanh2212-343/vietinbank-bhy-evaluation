@@ -796,7 +796,7 @@ export default function StaffEvaluation() {
 
       <div className="space-y-2">
         <h1 className="page-header">Đánh giá cán bộ</h1>
-        <p className="page-subtitle">{profile?.full_name} — {profile?.employee_code}</p>
+        <p className="page-subtitle">{profile?.full_name}</p>
         {(() => {
           if (formMeta.return_target === 'manager') {
             return <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30">PGĐ trả lại · Trưởng phòng cần cập nhật</Badge>;

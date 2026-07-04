@@ -237,10 +237,6 @@ export default function EditStaff() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Mã cán bộ</Label>
-                <Input value={form.employee_code || ''} onChange={(e) => set('employee_code', e.target.value)} />
-              </div>
-              <div className="space-y-2">
                 <Label>Họ tên *</Label>
                 <Input value={form.full_name || ''} onChange={(e) => set('full_name', e.target.value)} required />
               </div>

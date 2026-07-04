@@ -152,7 +152,6 @@ export default function EditMyProfile() {
         </CardHeader>
         <CardContent className="grid sm:grid-cols-2 gap-3 text-sm">
           <div><span className="text-muted-foreground">Họ tên:</span> {readonlyInfo.full_name || '—'}</div>
-          <div><span className="text-muted-foreground">Mã NV:</span> {readonlyInfo.employee_code || '—'}</div>
           <div><span className="text-muted-foreground">Phòng ban:</span> {readonlyInfo.department || '—'}</div>
           <div><span className="text-muted-foreground">Vị trí:</span> {readonlyInfo.position || '—'}</div>
           <div className="sm:col-span-2"><span className="text-muted-foreground">Email công ty:</span> {readonlyInfo.email || '—'}</div>
