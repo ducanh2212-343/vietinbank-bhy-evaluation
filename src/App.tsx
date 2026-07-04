@@ -58,6 +58,8 @@ const BM02Page = lazyWithRetry(() => import("./pages/BM02Page"));
 const BM03Page = lazyWithRetry(() => import("./pages/BM03Page"));
 const ApproveRegistrations = lazyWithRetry(() => import("./pages/ApproveRegistrations"));
 const AIPromptsAdmin = lazyWithRetry(() => import("./pages/AIPromptsAdmin"));
+const CycleManagementPage = lazyWithRetry(() => import("./pages/CycleManagementPage"));
+const SubmissionTimeReportPage = lazyWithRetry(() => import("./pages/SubmissionTimeReportPage"));
 const VtbCoursesAdminPage = lazyWithRetry(() => import("./pages/VtbCoursesAdminPage"));
 const PersonalKanbanPage = lazyWithRetry(() => import("./pages/PersonalKanbanPage"));
 const ChangePassword = lazyWithRetry(() => import("./pages/ChangePassword"));
@@ -146,6 +148,8 @@ const App = () => (
                 <Route path="/duyet-yeu-cau-user" element={<ApproveRegistrations />} />
                 <Route path="/quan-tri-ai" element={<AIPromptsAdmin />} />
                 <Route path="/quan-tri-khoa-hoc-vtb" element={<VtbCoursesAdminPage />} />
+                <Route path="/quan-ly-ky-danh-gia" element={<CycleManagementPage />} />
+                <Route path="/bao-cao-nop-bieu-mau" element={<SubmissionTimeReportPage />} />
               </Route>
 
             </Route>

@@ -30,6 +30,7 @@ import {
   filterQuarterCycles,
   getQuarterFormSubmission,
   mergeAllSkillAssessments,
+  pickDefaultCycle,
   replaceCoreSkillAssessments,
 } from '@/lib/evaluationPersistence';
 import { validateSubmission, validateSubmissionDetailed } from '@/lib/evaluationValidation';
@@ -143,7 +144,7 @@ export default function SelfAssessmentPage() {
     const quarterCycles = filterQuarterCycles(cycleRes.data || []);
     setCycles(quarterCycles);
 
-    const activeCycleId = cycleId || quarterCycles[0]?.id || '';
+    const activeCycleId = cycleId || pickDefaultCycle(quarterCycles)?.id || '';
     if (activeCycleId && activeCycleId !== cycleId) {
       setCycleId(activeCycleId);
     }

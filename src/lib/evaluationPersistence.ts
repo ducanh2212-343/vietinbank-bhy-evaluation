@@ -2,10 +2,13 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
 import type { CoreSkillAssessment } from '@/components/evaluation/EvalSectionB';
 
-export interface QuarterCycleOption {
-  id: string;
-  name: string;
-}
+export {
+  QUARTER_CYCLE_NAME_REGEX,
+  filterQuarterCycles,
+  pickDefaultCycle,
+  quarterCycleOrder,
+  type QuarterCycleOption,
+} from '@/lib/evaluationCycles';
 
 export interface QuarterFormSummary {
   id: string;
@@ -22,19 +25,6 @@ export interface QuarterFormSummary {
   pgd_reviewed_at?: string | null;
   updated_at?: string | null;
 }
-
-export const QUARTER_CYCLE_NAME_REGEX = /^Quý (I|II|III|IV)\/2026$/;
-
-const ROMAN_ORDER: Record<string, number> = { I: 1, II: 2, III: 3, IV: 4 };
-
-export const filterQuarterCycles = (cycles: QuarterCycleOption[]) =>
-  cycles
-    .filter((cycle) => QUARTER_CYCLE_NAME_REGEX.test(cycle.name))
-    .sort((a, b) => {
-      const ra = a.name.match(QUARTER_CYCLE_NAME_REGEX)?.[1] || '';
-      const rb = b.name.match(QUARTER_CYCLE_NAME_REGEX)?.[1] || '';
-      return (ROMAN_ORDER[ra] || 99) - (ROMAN_ORDER[rb] || 99);
-    });
 
 const FORM_SUBMISSION_SELECT =
   'id, cycle_id, status, manager_comment, submitted_at, one_on_one_enabled, one_on_one_answers, reviewer_id, reviewed_at, pgd_comment, pgd_review_status, pgd_reviewed_at, updated_at';

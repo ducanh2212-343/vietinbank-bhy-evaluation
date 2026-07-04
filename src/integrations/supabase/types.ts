@@ -558,9 +558,11 @@ export type Database = {
           description: string | null
           end_date: string
           id: string
+          late_penalty_points: number
           name: string
           start_date: string
           status: Database["public"]["Enums"]["evaluation_status"]
+          submission_deadline: string | null
           updated_at: string
         }
         Insert: {
@@ -570,9 +572,11 @@ export type Database = {
           description?: string | null
           end_date: string
           id?: string
+          late_penalty_points?: number
           name: string
           start_date: string
           status?: Database["public"]["Enums"]["evaluation_status"]
+          submission_deadline?: string | null
           updated_at?: string
         }
         Update: {
@@ -582,9 +586,11 @@ export type Database = {
           description?: string | null
           end_date?: string
           id?: string
+          late_penalty_points?: number
           name?: string
           start_date?: string
           status?: Database["public"]["Enums"]["evaluation_status"]
+          submission_deadline?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -998,6 +1004,7 @@ export type Database = {
           director_overall_review: Json | null
           employee_comment: string | null
           employee_id: string
+          first_submitted_at: string | null
           id: string
           manager_comment: string | null
           manager_overall_review: Json | null
@@ -1025,6 +1032,7 @@ export type Database = {
           director_overall_review?: Json | null
           employee_comment?: string | null
           employee_id: string
+          first_submitted_at?: string | null
           id?: string
           manager_comment?: string | null
           manager_overall_review?: Json | null
@@ -1052,6 +1060,7 @@ export type Database = {
           director_overall_review?: Json | null
           employee_comment?: string | null
           employee_id?: string
+          first_submitted_at?: string | null
           id?: string
           manager_comment?: string | null
           manager_overall_review?: Json | null

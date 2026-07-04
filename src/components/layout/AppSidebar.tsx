@@ -3,7 +3,8 @@ import {
   LayoutDashboard, Users, UserPlus, Shield, LogOut, Target,
   User, UsersRound, Star,
   Upload, Settings as SettingsIcon, BarChart3, Image, FileText,
-  ChevronDown, ChevronRight, UserCheck, Sparkles, GraduationCap, ClipboardList, KeyRound, ListPlus
+  ChevronDown, ChevronRight, UserCheck, Sparkles, GraduationCap, ClipboardList, KeyRound, ListPlus,
+  CalendarClock, Timer
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useState } from 'react';
@@ -43,6 +44,7 @@ const navGroups: NavGroup[] = [
       { label: 'Phân nhóm cán bộ', icon: Star, path: '/phan-nhom-can-bo', minRole: 'manager' },
       { label: 'Danh sách cán bộ', icon: Users, path: '/danh-sach-can-bo', minRole: 'manager' },
       { label: 'Báo cáo', icon: BarChart3, path: '/bao-cao', minRole: 'manager' },
+      { label: 'Báo cáo nộp biểu mẫu', icon: Timer, path: '/bao-cao-nop-bieu-mau', minRole: 'admin' },
       { label: 'Thêm cán bộ', icon: UserPlus, path: '/them-can-bo', minRole: 'admin' },
       { label: 'Nhập nhanh theo phòng', icon: ListPlus, path: '/nhap-nhanh-can-bo', minRole: 'admin' },
       { label: 'Phân quyền', icon: Shield, path: '/phan-quyen', minRole: 'admin' },
@@ -51,6 +53,7 @@ const navGroups: NavGroup[] = [
   {
     label: 'Cấu hình / Hệ thống',
     items: [
+      { label: 'Quản lý kỳ đánh giá', icon: CalendarClock, path: '/quan-ly-ky-danh-gia', minRole: 'admin' },
       { label: 'Upload danh sách CB', icon: Upload, path: '/upload-danh-sach-cb', minRole: 'admin' },
       { label: 'Cấu hình skill lõi', icon: Target, path: '/cau-hinh-skill-loi', minRole: 'admin' },
       { label: 'Quản trị hình ảnh skill', icon: Image, path: '/quan-tri-hinh-anh-skill', minRole: 'admin' },

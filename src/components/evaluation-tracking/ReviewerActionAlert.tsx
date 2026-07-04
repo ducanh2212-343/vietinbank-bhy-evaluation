@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { toDisplayStatus, getActorNeeded, type DisplayStatus } from './statusMap';
+import { getEffectiveDeadline } from '@/lib/submissionKpi';
 
 type ViewerRole = 'admin' | 'pgd' | 'manager' | 'none';
 
@@ -39,7 +40,7 @@ export function ReviewerActionAlert({ onActionClick }: Props) {
   async function load() {
     const { data: cyclesData } = await supabase
       .from('evaluation_cycles')
-      .select('id, name, end_date, start_date')
+      .select('id, name, end_date, start_date, submission_deadline')
       .order('start_date', { ascending: false });
 
     let profilesQuery = supabase
@@ -85,7 +86,7 @@ export function ReviewerActionAlert({ onActionClick }: Props) {
         out.push({
           display,
           actor: getActorNeeded(display),
-          endDate: cycle?.end_date || null,
+          endDate: cycle ? getEffectiveDeadline(cycle).toISOString() : null,
           cycleId: cid,
           cycleName: cycle?.name || '—',
         });
