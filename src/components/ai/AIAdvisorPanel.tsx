@@ -3,10 +3,11 @@ import { useState, useRef } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Sparkles, Send, Loader2 } from 'lucide-react';
+import { Send, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { BrandMascot } from '@/components/branding/BrandAssets';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 
@@ -97,16 +98,16 @@ export function AIAdvisorPanel() {
       <SheetTrigger asChild>
         <Button
           size="icon"
-          className="fixed bottom-24 right-4 h-12 w-12 rounded-full shadow-lift z-40 bg-primary hover:bg-primary/90"
-          aria-label="AI tư vấn"
+          className="fixed bottom-24 right-4 h-14 w-14 rounded-full shadow-lift z-40 bg-white hover:bg-white ring-1 ring-primary/15 p-1 overflow-hidden transition-transform hover:scale-105"
+          aria-label="Trợ lý AI"
         >
-          <Sparkles className="w-5 h-5 text-white" />
+          <BrandMascot className="h-full w-full object-contain" />
         </Button>
       </SheetTrigger>
       <SheetContent side="right" className="w-full sm:max-w-md flex flex-col p-0">
         <SheetHeader className="px-4 py-3 border-b">
           <SheetTitle className="flex items-center gap-2 text-base">
-            <Sparkles className="w-4 h-4 text-primary" /> AI Tư vấn Skill & Thái độ
+            <BrandMascot className="w-7 h-7 object-contain shrink-0" /> AI Tư vấn Skill & Thái độ
           </SheetTitle>
           <p className="text-xs text-muted-foreground">Hỏi về kỹ năng, IDP, kế hoạch hành động, hoặc nhóm thái độ.</p>
         </SheetHeader>

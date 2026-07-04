@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Sparkles, Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { BrandMascot } from '@/components/branding/BrandAssets';
 import type { CoreSkillAssessment } from '@/components/evaluation/EvalSectionB';
 import type { AttitudeAssessment } from '@/components/evaluation/EvalSectionC';
 
@@ -157,7 +158,7 @@ export function AICompetencyPortrait({
       <CardHeader className="pb-3 px-3 sm:px-6">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <CardTitle className="text-sm sm:text-base flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-primary" />
+            <BrandMascot className="w-7 h-7 object-contain shrink-0" />
             Chân dung năng lực bằng AI
           </CardTitle>
           <Badge variant="outline" className="text-[10px]">Tổng hợp tự động</Badge>
@@ -180,7 +181,12 @@ export function AICompetencyPortrait({
             ) : result ? (
               <><RefreshCw className="w-4 h-4 mr-2" /> Phân tích lại</>
             ) : (
-              <><Sparkles className="w-4 h-4 mr-2" /> Phân tích chân dung</>
+              <>
+                <span className="mr-2 inline-flex h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-white">
+                  <BrandMascot className="h-full w-full object-contain" />
+                </span>
+                Phân tích chân dung
+              </>
             )}
           </Button>
           {assessed.length === 0 && (

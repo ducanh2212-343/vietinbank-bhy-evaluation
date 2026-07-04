@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Sparkles } from 'lucide-react';
 import { MemoryTree } from './MemoryTree';
 import { AnniversaryBadge } from './AnniversaryBadge';
 
@@ -54,6 +55,21 @@ export function BrandBadge({ className }: AssetProps) {
     <img
       src={BRAND_ASSETS.badge}
       alt="20 năm VietinBank Bắc Hưng Yên 2006–2026"
+      className={className}
+      decoding="async"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+/** Linh vật — đại diện trợ lý AI. Fallback icon ✨ nếu ảnh chưa có. */
+export function BrandMascot({ className }: { className?: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return <Sparkles className={className} />;
+  return (
+    <img
+      src={BRAND_ASSETS.mascot}
+      alt="Trợ lý AI VietinBank"
       className={className}
       decoding="async"
       onError={() => setFailed(true)}
