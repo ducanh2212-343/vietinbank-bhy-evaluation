@@ -13,9 +13,9 @@ import { AnniversaryBadge } from './AnniversaryBadge';
  */
 
 export const BRAND_ASSETS = {
-  tree: '/brand/cay-ky-uc.png',
-  badge: '/brand/huy-hieu-20.png',
-  mascot: '/brand/mascot.png',
+  tree: '/brand/cay-ky-uc.webp',
+  badge: '/brand/huy-hieu-20.webp',
+  mascot: '/brand/mascot.webp',
 };
 
 interface AssetProps {
