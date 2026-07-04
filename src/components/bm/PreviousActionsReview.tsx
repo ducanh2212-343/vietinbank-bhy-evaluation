@@ -302,6 +302,19 @@ export function PreviousActionsReview({ formId, previousFormId, previousCycleNam
         <p className="text-xs text-muted-foreground mt-1">
           Cập nhật kết quả thực tế cho từng hành động đã lập kỳ trước. Có thể bổ sung các hành động upskill đã thực hiện ngoài kế hoạch.
         </p>
+        {rows.length > 0 && (() => {
+          const total = rows.length;
+          const selfDone = rows.filter(r => r.self_status === 'completed').length;
+          const mgrDone = rows.filter(r => r.status === 'completed').length;
+          const pct = Math.round((mgrDone / total) * 100);
+          return (
+            <div className="flex items-center gap-2 flex-wrap mt-2 text-[11px]">
+              <Badge variant="outline">{total} hành động</Badge>
+              <Badge variant="outline" className="border-sky-300 text-sky-700">Tự đánh giá hoàn thành: {selfDone}/{total}</Badge>
+              <Badge variant="outline" className="border-amber-300 text-amber-700">CBQL xác nhận hoàn thành: {mgrDone}/{total} ({pct}%)</Badge>
+            </div>
+          );
+        })()}
       </CardHeader>
       <CardContent className="space-y-3">
         {rows.map((r, idx) => {

@@ -3,9 +3,11 @@ import {
   LayoutDashboard, Users, UserPlus, Shield, LogOut, Target,
   User, UsersRound, Star,
   Upload, Settings as SettingsIcon, BarChart3, Image, FileText,
-  ChevronDown, ChevronRight, UserCheck, Sparkles, GraduationCap, ClipboardList, KeyRound, ListPlus
+  ChevronDown, ChevronRight, UserCheck, Sparkles, GraduationCap, ClipboardList, KeyRound, ListPlus,
+  CalendarClock, Timer
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useSubmissionReportAccess } from '@/hooks/useSubmissionReportAccess';
 import { useState } from 'react';
 import vtbLogo from '@/assets/vietinbank-bhy-logo.png';
 import { BrandBadge } from '@/components/branding/BrandAssets';
@@ -14,7 +16,7 @@ type MinRole = 'manager' | 'admin';
 
 interface NavGroup {
   label: string;
-  items: { label: string; icon: any; path: string; minRole?: MinRole }[];
+  items: { label: string; icon: any; path: string; minRole?: MinRole; special?: 'submission-report' }[];
 }
 
 // Menu tinh gọn theo thực tế sử dụng của cán bộ.
@@ -43,6 +45,8 @@ const navGroups: NavGroup[] = [
       { label: 'Phân nhóm cán bộ', icon: Star, path: '/phan-nhom-can-bo', minRole: 'manager' },
       { label: 'Danh sách cán bộ', icon: Users, path: '/danh-sach-can-bo', minRole: 'manager' },
       { label: 'Báo cáo', icon: BarChart3, path: '/bao-cao', minRole: 'manager' },
+      // Hiển thị theo phạm vi: GĐ/PGĐ (phòng phụ trách), lãnh đạo Phòng TCTH + admin (full chi nhánh)
+      { label: 'Báo cáo nộp biểu mẫu', icon: Timer, path: '/bao-cao-nop-bieu-mau', special: 'submission-report' },
       { label: 'Thêm cán bộ', icon: UserPlus, path: '/them-can-bo', minRole: 'admin' },
       { label: 'Nhập nhanh theo phòng', icon: ListPlus, path: '/nhap-nhanh-can-bo', minRole: 'admin' },
       { label: 'Phân quyền', icon: Shield, path: '/phan-quyen', minRole: 'admin' },
@@ -51,6 +55,7 @@ const navGroups: NavGroup[] = [
   {
     label: 'Cấu hình / Hệ thống',
     items: [
+      { label: 'Quản lý kỳ đánh giá', icon: CalendarClock, path: '/quan-ly-ky-danh-gia', minRole: 'admin' },
       { label: 'Upload danh sách CB', icon: Upload, path: '/upload-danh-sach-cb', minRole: 'admin' },
       { label: 'Cấu hình skill lõi', icon: Target, path: '/cau-hinh-skill-loi', minRole: 'admin' },
       { label: 'Quản trị hình ảnh skill', icon: Image, path: '/quan-tri-hinh-anh-skill', minRole: 'admin' },
@@ -70,6 +75,7 @@ export function AppSidebar({ onNavigate }: Props) {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, isAdmin, isManager, isPgd } = useAuth();
+  const reportAccess = useSubmissionReportAccess();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const toggleGroup = (label: string) => {
@@ -112,6 +118,7 @@ export function AppSidebar({ onNavigate }: Props) {
       <nav className="flex-1 min-h-0 px-2 py-3 space-y-1 overflow-y-auto overscroll-contain [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-sidebar-border [&::-webkit-scrollbar-thumb]:rounded-full">
         {navGroups.map((group) => {
           const visibleItems = group.items.filter((item) => {
+            if (item.special === 'submission-report') return reportAccess.allowed;
             if (item.minRole === 'admin' && !isAdmin) return false;
             if (item.minRole === 'manager' && !canSeeManagerItems) return false;
             return true;

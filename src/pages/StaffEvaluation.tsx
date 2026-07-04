@@ -33,6 +33,7 @@ import {
   filterQuarterCycles,
   getQuarterFormSubmission,
   mergeAllSkillAssessments,
+  pickDefaultCycle,
   replaceCoreSkillAssessments,
 } from '@/lib/evaluationPersistence';
 import { OverallReviewBlock, type OverallReviewValue } from '@/components/evaluation/OverallReviewBlock';
@@ -186,7 +187,7 @@ export default function StaffEvaluation() {
     const quarterCycles = filterQuarterCycles(cycleRes.data || []);
     setCycles(quarterCycles);
 
-    const activeCycleId = cycleId || quarterCycles[0]?.id || '';
+    const activeCycleId = cycleId || pickDefaultCycle(quarterCycles)?.id || '';
     if (activeCycleId && activeCycleId !== cycleId) {
       setCycleId(activeCycleId);
     }

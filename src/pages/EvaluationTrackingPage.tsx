@@ -13,6 +13,7 @@ import {
   DisplayStatus, toDisplayStatus, getActorNeeded, ACTOR_LABEL,
 } from '@/components/evaluation-tracking/statusMap';
 import { ReviewerActionAlert } from '@/components/evaluation-tracking/ReviewerActionAlert';
+import { getEffectiveDeadline } from '@/lib/submissionKpi';
 
 type ViewerRole = 'admin' | 'pgd' | 'manager' | 'none';
 
@@ -112,7 +113,7 @@ export default function EvaluationTrackingPage() {
     // 1. Cycles
     const { data: cyclesData } = await supabase
       .from('evaluation_cycles')
-      .select('id, name, end_date, status, start_date')
+      .select('id, name, end_date, status, start_date, submission_deadline')
       .order('start_date', { ascending: false });
     setCycles(cyclesData || []);
 
@@ -200,7 +201,8 @@ export default function EvaluationTrackingPage() {
           submittedAt: sub?.submitted_at || null,
           returnedAt: sub?.returned_at || null,
           reviewedAt: sub?.reviewed_at || null,
-          endDate: cycle?.end_date || null,
+          // "Hạn" = mốc nộp thiết đặt cho kỳ (fallback: 23:59 ngày kết thúc kỳ)
+          endDate: cycle ? getEffectiveDeadline(cycle).toISOString() : null,
           gapCount: gap,
           classification: ev?.classification || null,
         });
