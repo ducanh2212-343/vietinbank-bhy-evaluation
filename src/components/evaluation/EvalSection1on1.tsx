@@ -4,20 +4,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { MessagesSquare, Sparkles } from 'lucide-react';
+import { DEFAULT_ONE_ON_ONE_QUESTIONS, type OneOnOneQuestion } from '@/lib/oneOnOneDefaults';
 
 export interface OneOnOneAnswer { employee: string; manager: string; }
 export type OneOnOneAnswers = Record<string, OneOnOneAnswer>;
 
-export const ONE_ON_ONE_QUESTIONS: { key: string; text: string }[] = [
-  { key: 'q1', text: 'Đâu là công việc bạn đã làm tốt nhất từ đầu năm đến nay?' },
-  { key: 'q2', text: 'Đâu là công việc bạn nghĩ mình có thể làm tốt hơn những gì đã thực hiện từ đầu năm đến nay? Lý do?' },
-  { key: 'q3', text: 'Đâu là công việc/năng lực bạn nghĩ trong 5 tháng vừa qua mình đã có sự tiến bộ so với các năm trước? Tại sao bạn đánh giá như vậy?' },
-  { key: 'q4', text: 'Bạn đã làm gì để hỗ trợ cho đồng nghiệp hoặc cho cả nhóm đạt được kết quả công việc tốt hơn?' },
-  { key: 'q5', text: 'Đâu là năng lực (kiến thức, kỹ năng, khả năng, tố chất) mà bạn cho rằng đó là thế mạnh của mình? Bạn mong muốn được phát huy thế mạnh nào hơn nữa trong công việc hiện tại? Bạn cần sự hỗ trợ gì của lãnh đạo để phát huy được năng lực đó?' },
-  { key: 'q6', text: 'Đâu là những năng lực mà bạn cho rằng mình cần cải thiện để làm tốt hơn vị trí công việc hiện tại và/hoặc đạt được vị trí công việc mà bạn mơ ước? Bạn cần sự hỗ trợ gì của lãnh đạo để cải thiện được năng lực đó?' },
-  { key: 'q7', text: 'Bạn có đề xuất gì để phòng/nhóm của bạn làm việc hiệu quả hơn?' },
-  { key: 'q8', text: 'Mục tiêu công việc của bạn trong 3-5 năm tới là gì? Bạn cần lãnh đạo hỗ trợ gì để đạt được mục tiêu đó?' },
-];
+export const ONE_ON_ONE_QUESTIONS = DEFAULT_ONE_ON_ONE_QUESTIONS;
 
 interface Props {
   enabled: boolean;
@@ -25,9 +17,11 @@ interface Props {
   answers: OneOnOneAnswers;
   onAnswersChange: (v: OneOnOneAnswers) => void;
   isManager?: boolean;
+  /** Bộ câu hỏi của kỳ (quản trị theo kỳ); mặc định dùng bộ chuẩn */
+  questions?: OneOnOneQuestion[];
 }
 
-export function EvalSection1on1({ enabled, onEnabledChange, answers, onAnswersChange, isManager = false }: Props) {
+export function EvalSection1on1({ enabled, onEnabledChange, answers, onAnswersChange, isManager = false, questions = DEFAULT_ONE_ON_ONE_QUESTIONS }: Props) {
   const update = (key: string, field: 'employee' | 'manager', value: string) => {
     onAnswersChange({
       ...answers,
@@ -88,7 +82,7 @@ export function EvalSection1on1({ enabled, onEnabledChange, answers, onAnswersCh
         <CardContent className="pt-0">
           <div className="flex items-center gap-2 text-xs text-primary/80 bg-primary/5 border border-dashed border-primary/30 rounded-md px-3 py-2">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Bật công tắc để mở 8 câu hỏi gợi mở giúp CBQL hiểu bối cảnh trước khi đánh giá skill.</span>
+            <span>Bật công tắc để mở {questions.length} câu hỏi gợi mở giúp CBQL hiểu bối cảnh trước khi đánh giá skill.</span>
           </div>
         </CardContent>
       )}
@@ -101,7 +95,7 @@ export function EvalSection1on1({ enabled, onEnabledChange, answers, onAnswersCh
       )}
       {effectiveEnabled && !(isManager && !hasEmployeeAnswers) && (
         <CardContent className="space-y-4">
-          {ONE_ON_ONE_QUESTIONS.map((q, idx) => {
+          {questions.map((q, idx) => {
             const a = answers[q.key] || { employee: '', manager: '' };
             return (
               <div key={q.key} className="border rounded-md p-3 space-y-2 bg-background">

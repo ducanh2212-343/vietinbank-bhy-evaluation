@@ -1429,6 +1429,47 @@ export type Database = {
           },
         ]
       }
+      one_on_one_questions: {
+        Row: {
+          created_at: string
+          cycle_id: string
+          id: string
+          is_active: boolean
+          question_key: string
+          question_text: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          cycle_id: string
+          id?: string
+          is_active?: boolean
+          question_key: string
+          question_text: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          cycle_id?: string
+          id?: string
+          is_active?: boolean
+          question_key?: string
+          question_text?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "one_on_one_questions_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "evaluation_cycles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       position_core_skills: {
         Row: {
           advanced_level: number

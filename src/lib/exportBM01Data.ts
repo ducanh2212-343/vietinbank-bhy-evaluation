@@ -43,7 +43,7 @@ export async function fetchBM01Extras(params: {
   const [formRes, prevRes] = await Promise.all([
     supabase
       .from('form_submissions')
-      .select('status, reviewer_id, employee_comment, manager_comment, pgd_comment, manager_overall_review, pgd_overall_review, director_overall_review, one_on_one_enabled, one_on_one_answers, submitted_at, reviewed_at, pgd_reviewed_at, first_submitted_at, first_reviewed_at, first_approved_at')
+      .select('cycle_id, status, reviewer_id, employee_comment, manager_comment, pgd_comment, manager_overall_review, pgd_overall_review, director_overall_review, one_on_one_enabled, one_on_one_answers, submitted_at, reviewed_at, pgd_reviewed_at, first_submitted_at, first_reviewed_at, first_approved_at')
       .eq('id', formId)
       .maybeSingle(),
     supabase
@@ -59,6 +59,10 @@ export async function fetchBM01Extras(params: {
     const { data: rv } = await supabase.from('profiles').select('full_name').eq('id', form.reviewer_id).maybeSingle();
     reviewerName = rv?.full_name || '';
   }
+
+  // Bộ câu hỏi 1-1 quản trị theo kỳ của phiếu
+  const { loadOneOnOneQuestions } = await import('@/lib/oneOnOneQuestions');
+  const oneOnOneQuestions = await loadOneOnOneQuestions(form?.cycle_id);
 
   const previousActions: PreviousActionExportItem[] = (prevRes.data || []).map((r) => ({
     typeLabel: `${PREV_TYPE_LABEL[r.source_action_type] || r.source_action_type}${r.is_extra ? ' (ngoài KH)' : ''}`,
@@ -93,6 +97,7 @@ export async function fetchBM01Extras(params: {
           ),
         }
       : undefined,
+    oneOnOneQuestions,
     overallReviews,
     comments: {
       employee: form?.employee_comment || '',
