@@ -12,24 +12,24 @@ type Tone = 'amber' | 'sky' | 'violet';
 
 const TONE: Record<Tone, { border: string; bg: string; header: string; title: string; ring: string }> = {
   amber: {
-    border: 'border-amber-200',
-    bg: 'bg-amber-50/60',
-    header: 'bg-amber-100/80 text-amber-900',
-    title: 'text-amber-900',
+    border: 'border-amber-200 dark:border-amber-500/30',
+    bg: 'bg-amber-50/60 dark:bg-amber-500/10',
+    header: 'bg-amber-100/80 text-amber-900 dark:bg-amber-500/15 dark:text-amber-200',
+    title: 'text-amber-900 dark:text-amber-200',
     ring: 'ring-2 ring-amber-400 ring-offset-1',
   },
   sky: {
-    border: 'border-sky-200',
-    bg: 'bg-sky-50/60',
-    header: 'bg-sky-100/80 text-sky-900',
-    title: 'text-sky-900',
+    border: 'border-sky-200 dark:border-sky-500/30',
+    bg: 'bg-sky-50/60 dark:bg-sky-500/10',
+    header: 'bg-sky-100/80 text-sky-900 dark:bg-sky-500/15 dark:text-sky-200',
+    title: 'text-sky-900 dark:text-sky-200',
     ring: 'ring-2 ring-sky-400 ring-offset-1',
   },
   violet: {
-    border: 'border-violet-200',
-    bg: 'bg-violet-50/60',
-    header: 'bg-violet-100/80 text-violet-900',
-    title: 'text-violet-900',
+    border: 'border-violet-200 dark:border-violet-500/30',
+    bg: 'bg-violet-50/60 dark:bg-violet-500/10',
+    header: 'bg-violet-100/80 text-violet-900 dark:bg-violet-500/15 dark:text-violet-200',
+    title: 'text-violet-900 dark:text-violet-200',
     ring: 'ring-2 ring-violet-400 ring-offset-1',
   },
 };
@@ -59,7 +59,7 @@ function Card({
       </div>
       <div className="p-2.5 space-y-2">
         <p className={`text-[11px] leading-relaxed ${t.title}`}>{description}</p>
-        <ul className="text-[11px] leading-relaxed text-slate-700 space-y-1 list-disc pl-4">
+        <ul className="text-[11px] leading-relaxed text-muted-foreground space-y-1 list-disc pl-4">
           {bullets.map((b, i) => (
             <li key={i}>{b}</li>
           ))}

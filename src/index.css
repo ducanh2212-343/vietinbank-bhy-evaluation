@@ -90,6 +90,89 @@
     --sidebar-ring: 207 79% 60%;
     --sidebar-muted: 211 35% 74%;
   }
+
+  /*
+   * Giao diện tối — giữ tinh thần "Cây ký ức", nền navy sâu, chữ sáng dễ đọc.
+   * Kích hoạt bằng class `.dark` trên <html> (ThemeProvider quản lý).
+   */
+  .dark {
+    --background: 216 40% 8%;         /* navy gần đen */
+    --foreground: 210 30% 92%;       /* chữ sáng */
+
+    --card: 216 34% 12%;
+    --card-foreground: 210 30% 92%;
+
+    --popover: 216 36% 11%;
+    --popover-foreground: 210 30% 92%;
+
+    /* Sky blue sáng hơn để nổi trên nền tối (#1E88E5 hướng sáng) */
+    --primary: 207 79% 58%;
+    --primary-foreground: 216 45% 8%;
+
+    --secondary: 214 30% 20%;
+    --secondary-foreground: 210 35% 90%;
+
+    --muted: 215 28% 18%;
+    --muted-foreground: 214 18% 66%;
+
+    --accent: 212 40% 22%;
+    --accent-foreground: 207 79% 82%;
+
+    --destructive: 355 82% 56%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 26% 24%;
+    --input: 214 26% 26%;
+    --ring: 207 79% 58%;
+
+    --brand-navy: 215 70% 40%;
+    --brand-royal: 212 90% 55%;
+    --brand-sky: 207 85% 62%;
+    --brand-red: 355 82% 56%;
+    --brand-gold: 43 74% 55%;
+
+    /* Đổ bóng đậm hơn cho nền tối */
+    --shadow-soft: 0 1px 2px 0 hsl(216 60% 2% / 0.4), 0 4px 14px -6px hsl(216 60% 2% / 0.5);
+    --shadow-glass: 0 1px 0 0 hsl(0 0% 100% / 0.05) inset, 0 8px 26px -12px hsl(216 60% 2% / 0.7);
+    --shadow-lift: 0 12px 34px -14px hsl(216 60% 2% / 0.7);
+
+    /* Bề mặt panel kính trên nền tối */
+    --glass-bg: 216 34% 14% / 0.7;
+    --glass-bg-strong: 216 36% 13% / 0.88;
+    --glass-border: 214 26% 30% / 0.7;
+
+    /* Level colors — nền đậm, chữ nhạt để đủ tương phản */
+    --level-1: 200 20% 68%;
+    --level-2: 210 85% 68%;
+    --level-3: 38 90% 62%;
+    --level-4: 270 60% 72%;
+
+    --level-1-bg: 200 20% 22%;
+    --level-2-bg: 210 60% 20%;
+    --level-3-bg: 38 60% 20%;
+    --level-4-bg: 270 40% 24%;
+
+    /* Star groups */
+    --star-mai: 45 90% 66%;
+    --star-mai-bg: 45 60% 20%;
+    --star-khue: 145 55% 62%;
+    --star-khue-bg: 145 40% 18%;
+    --star-bang: 25 85% 66%;
+    --star-bang-bg: 25 60% 20%;
+    --star-hom: 0 70% 68%;
+    --star-hom-bg: 0 50% 22%;
+
+    /* Sidebar — navy sâu hơn nền một chút để tách lớp */
+    --sidebar-background: 216 44% 12%;
+    --sidebar-foreground: 210 30% 84%;
+    --sidebar-primary: 207 79% 68%;
+    --sidebar-primary-foreground: 216 45% 8%;
+    --sidebar-accent: 212 40% 22%;
+    --sidebar-accent-foreground: 210 35% 92%;
+    --sidebar-border: 214 26% 24%;
+    --sidebar-ring: 207 79% 58%;
+    --sidebar-muted: 211 20% 60%;
+  }
 }
 
 @layer base {
@@ -114,6 +197,14 @@
       radial-gradient(1100px 560px at 0% -10%, hsl(207 79% 90% / 0.6), transparent 60%),
       radial-gradient(820px 460px at 100% 0%, hsl(212 100% 92% / 0.55), transparent 55%);
     background-attachment: fixed;
+    /* Chuyển màu mượt khi đổi sáng/tối */
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  /* Nền tối: quầng sáng navy sâu thay cho gradient xanh nhạt */
+  .dark body {
+    background-image:
+      radial-gradient(1100px 560px at 0% -10%, hsl(212 80% 22% / 0.5), transparent 60%),
+      radial-gradient(820px 460px at 100% 0%, hsl(215 70% 24% / 0.45), transparent 55%);
   }
   /* Giảm delay 300ms khi chạm trên mobile */
   button, a, [role="button"] {
@@ -159,6 +250,10 @@
   .glass-subtle {
     background-color: hsl(0 0% 100% / 0.7);
     border: 1px solid hsl(214 45% 90% / 0.8);
+  }
+  .dark .glass-subtle {
+    background-color: hsl(216 34% 16% / 0.7);
+    border: 1px solid hsl(214 26% 30% / 0.7);
   }
   .shadow-soft { box-shadow: var(--shadow-soft); }
   .shadow-lift { box-shadow: var(--shadow-lift); }
