@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { TempPasswordHandover } from '@/components/staff/TempPasswordHandover';
+import { OneOnOnePrepPanel } from '@/components/ai/OneOnOnePrepPanel';
 import { ArrowLeft, Pencil, ClipboardCheck, Shield, Trash2, KeyRound } from 'lucide-react';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -214,6 +215,14 @@ export default function StaffDetail() {
           )}
         </CardContent>
       </Card>
+
+      {canEvaluate && id && (
+        <OneOnOnePrepPanel
+          profileId={id}
+          positionName={profile.resolved_position}
+          departmentName={department}
+        />
+      )}
 
       {evalData && (
         <Card>
