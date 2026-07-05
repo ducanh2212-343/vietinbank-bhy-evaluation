@@ -2,10 +2,11 @@ import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
-import { Upload, Image as ImageIcon, X, Check, Search, Loader2 } from 'lucide-react';
+import { useSkillLevelImages } from '@/hooks/useSkillLevelImages';
+import { SkillLevelArt } from '@/components/SkillLevelArt';
+import { Upload, X, Check, Search, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface SkillItem {
@@ -14,6 +15,7 @@ interface SkillItem {
   code: string | null;
   skill_group: string;
   sort_order: number;
+  icon_url: string | null;
 }
 
 interface LevelImage {
@@ -27,6 +29,7 @@ interface LevelImage {
 
 export default function SkillMediaPage() {
   const { isAdmin } = useAuth();
+  const { invalidateCache } = useSkillLevelImages();
   const [skills, setSkills] = useState<SkillItem[]>([]);
   const [images, setImages] = useState<LevelImage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,10 +39,10 @@ export default function SkillMediaPage() {
 
   const loadData = async () => {
     const [skillsRes, imagesRes] = await Promise.all([
-      supabase.from('skill_catalog').select('id, name, code, skill_group, sort_order').eq('is_active', true).order('sort_order'),
+      supabase.from('skill_catalog').select('id, name, code, skill_group, sort_order, icon_url').eq('is_active', true).order('sort_order'),
       supabase.from('skill_level_images').select('*').eq('is_active', true),
     ]);
-    setSkills(skillsRes.data || []);
+    setSkills(skillsRes.data as SkillItem[] || []);
     setImages(imagesRes.data as LevelImage[] || []);
     setLoading(false);
   };
@@ -91,9 +94,10 @@ export default function SkillMediaPage() {
       });
 
       toast({ title: 'Đã upload', description: `Level ${level} cho skill` });
-      await loadData();
-    } catch (err: any) {
-      toast({ title: 'Lỗi upload', description: err.message, variant: 'destructive' });
+      await Promise.all([loadData(), invalidateCache()]);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast({ title: 'Lỗi upload', description: message, variant: 'destructive' });
     }
     setUploading(null);
   };
@@ -101,14 +105,54 @@ export default function SkillMediaPage() {
   const handleDelete = async (img: LevelImage) => {
     await supabase.from('skill_level_images').update({ is_active: false }).eq('id', img.id);
     toast({ title: 'Đã xóa ảnh' });
-    await loadData();
+    await Promise.all([loadData(), invalidateCache()]);
+  };
+
+  const handleIconUpload = async (skillId: string, file: File) => {
+    const key = `${skillId}_icon`;
+    setUploading(key);
+    try {
+      const ext = file.name.split('.').pop() || 'png';
+      const path = `${skillId}/icon.${ext}`;
+
+      const { error: uploadErr } = await supabase.storage
+        .from('skill-images')
+        .upload(path, file, { upsert: true });
+      if (uploadErr) throw uploadErr;
+
+      const { data: urlData } = supabase.storage.from('skill-images').getPublicUrl(path);
+      const iconUrl = urlData.publicUrl + '?t=' + Date.now();
+
+      const { error: updateErr } = await supabase.from('skill_catalog').update({ icon_url: iconUrl }).eq('id', skillId);
+      if (updateErr) throw updateErr;
+
+      toast({ title: 'Đã upload icon', description: 'Icon sẽ được đóng khung theo từng level' });
+      await Promise.all([loadData(), invalidateCache()]);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast({ title: 'Lỗi upload icon', description: message, variant: 'destructive' });
+    }
+    setUploading(null);
+  };
+
+  const handleIconDelete = async (skillId: string) => {
+    const { error } = await supabase.from('skill_catalog').update({ icon_url: null }).eq('id', skillId);
+    if (error) {
+      toast({ title: 'Lỗi xóa icon', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Đã xóa icon' });
+    await Promise.all([loadData(), invalidateCache()]);
   };
 
   return (
     <div className="space-y-4 sm:space-y-6">
       <div>
         <h1 className="page-header">Quản trị hình ảnh Skill</h1>
-        <p className="page-subtitle">Upload ảnh cho từng skill × từng level (1-4)</p>
+        <p className="page-subtitle">
+          Upload 1 icon cho mỗi skill — hệ thống tự đóng khung theo level (đồng → bạc → vàng → kim cương).
+          Ảnh riêng từng level là tuỳ chọn, dùng khi muốn art thay thế icon + khung.
+        </p>
       </div>
 
       {/* Filters */}
@@ -141,23 +185,59 @@ export default function SkillMediaPage() {
                 <Badge variant="outline" className="text-[10px] w-fit">{skill.skill_group}</Badge>
               </div>
             </CardHeader>
-            <CardContent className="px-3 sm:px-6">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {[1, 2, 3, 4].map(level => {
-                  const img = getImage(skill.id, level);
-                  const uploadKey = `${skill.id}_L${level}`;
-                  const isUploading = uploading === uploadKey;
-                  return (
-                    <LevelUploadSlot
-                      key={level}
-                      level={level}
-                      image={img}
-                      isUploading={isUploading}
-                      onUpload={(file) => handleUpload(skill.id, level, file)}
-                      onDelete={() => img && handleDelete(img)}
-                    />
-                  );
-                })}
+            <CardContent className="px-3 sm:px-6 space-y-4">
+              {/* Icon chung + xem trước khung compose theo level */}
+              <div className="flex flex-wrap items-start gap-4 sm:gap-6">
+                <IconUploadSlot
+                  iconUrl={skill.icon_url}
+                  isUploading={uploading === `${skill.id}_icon`}
+                  onUpload={(file) => handleIconUpload(skill.id, file)}
+                  onDelete={() => handleIconDelete(skill.id)}
+                />
+                <div>
+                  <p className="text-[10px] font-medium text-muted-foreground mb-1.5">Xem trước hiển thị theo level</p>
+                  <div className="flex items-end gap-2.5">
+                    {[1, 2, 3, 4].map(level => (
+                      <div key={level} className="flex flex-col items-center gap-1">
+                        <SkillLevelArt
+                          level={level}
+                          imageUrl={getImage(skill.id, level)?.image_url}
+                          iconUrl={skill.icon_url}
+                          size="md"
+                        />
+                        <span className="text-[9px] text-muted-foreground">L{level}</span>
+                      </div>
+                    ))}
+                    <div className="flex flex-col items-center gap-1">
+                      <SkillLevelArt level={2} iconUrl={skill.icon_url} size="md" locked />
+                      <span className="text-[9px] text-muted-foreground">Chưa đạt</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Ảnh riêng theo level — tuỳ chọn, thay cho icon + khung */}
+              <div>
+                <p className="text-[10px] font-medium text-muted-foreground mb-1.5">
+                  Ảnh riêng từng level (tuỳ chọn — ưu tiên hơn icon + khung)
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[1, 2, 3, 4].map(level => {
+                    const img = getImage(skill.id, level);
+                    const uploadKey = `${skill.id}_L${level}`;
+                    const isUploading = uploading === uploadKey;
+                    return (
+                      <LevelUploadSlot
+                        key={level}
+                        level={level}
+                        image={img}
+                        isUploading={isUploading}
+                        onUpload={(file) => handleUpload(skill.id, level, file)}
+                        onDelete={() => img && handleDelete(img)}
+                      />
+                    );
+                  })}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -166,6 +246,61 @@ export default function SkillMediaPage() {
           <p className="text-center text-muted-foreground py-8">Không tìm thấy skill nào.</p>
         )}
       </div>
+    </div>
+  );
+}
+
+function IconUploadSlot({
+  iconUrl,
+  isUploading,
+  onUpload,
+  onDelete,
+}: {
+  iconUrl: string | null;
+  isUploading: boolean;
+  onUpload: (file: File) => void;
+  onDelete: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) onUpload(file);
+    e.target.value = '';
+  };
+
+  return (
+    <div>
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <p className="text-[10px] font-medium text-muted-foreground">Icon skill (dùng chung)</p>
+        {iconUrl && (
+          <button onClick={onDelete} className="p-0.5 rounded hover:bg-destructive/10" title="Xóa icon">
+            <X className="w-3 h-3 text-destructive" />
+          </button>
+        )}
+      </div>
+      {isUploading ? (
+        <div className="w-14 h-14 rounded-lg border flex items-center justify-center">
+          <Loader2 className="w-5 h-5 animate-spin text-primary" />
+        </div>
+      ) : iconUrl ? (
+        <div
+          className="w-14 h-14 rounded-lg border overflow-hidden bg-muted/30 flex items-center justify-center cursor-pointer hover:opacity-80"
+          onClick={() => inputRef.current?.click()}
+          title="Bấm để thay icon"
+        >
+          <img src={iconUrl} alt="Icon skill" className="max-h-full max-w-full object-contain" />
+        </div>
+      ) : (
+        <div
+          className="w-14 h-14 rounded-lg border-2 border-dashed flex flex-col items-center justify-center hover:border-primary/50 cursor-pointer transition-colors bg-muted/30"
+          onClick={() => inputRef.current?.click()}
+        >
+          <Upload className="w-4 h-4 text-muted-foreground" />
+          <span className="text-[9px] text-muted-foreground">Icon</span>
+        </div>
+      )}
+      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
     </div>
   );
 }
