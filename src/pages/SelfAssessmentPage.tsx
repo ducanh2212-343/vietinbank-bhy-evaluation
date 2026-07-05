@@ -36,9 +36,11 @@ import {
 import { validateSubmission, validateSubmissionDetailed } from '@/lib/evaluationValidation';
 import { useCycleOneOnOneQuestions } from '@/hooks/useCycleOneOnOneQuestions';
 import { SubmissionChecklist } from '@/components/evaluation/SubmissionChecklist';
+import { useHistoricalSkillLevels, mergeAssessedLevels } from '@/hooks/useHistoricalSkillLevels';
 
 export default function SelfAssessmentPage() {
   const { user, profileId } = useAuth();
+  const historicalLevels = useHistoricalSkillLevels(profileId);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -712,10 +714,10 @@ export default function SelfAssessmentPage() {
           onActionsChange={setSkillActions}
           allSkills={allSkills}
           coreSkills={coreSkillConfigs}
-          assessedLevels={[
+          assessedLevels={mergeAssessedLevels([
             ...coreAssessments.map(a => ({ skill_id: a.skill_id, current_level: a.self_assessed_level ?? a.manager_assessed_level ?? null })),
             ...suppAssessments.map(a => ({ skill_id: a.skill_id, current_level: a.self_assessed_level ?? a.manager_assessed_level ?? null })),
-          ]}
+          ], historicalLevels)}
           positionId={profile?.position_id}
         />
 

@@ -20,6 +20,7 @@ import { type SkillPriority } from '@/components/bm/SkillPriorityPicker';
 import { AICompetencyPortrait } from '@/components/bm/AICompetencyPortrait';
 import { type SkillAction } from '@/components/bm/SkillActionsBlock';
 import { SkillDevelopmentBlock } from '@/components/bm/SkillDevelopmentBlock';
+import { useHistoricalSkillLevels, mergeAssessedLevels } from '@/hooks/useHistoricalSkillLevels';
 import { AttitudePriorityPicker, type AttitudePriority } from '@/components/bm/AttitudePriorityPicker';
 import { AttitudeActionsBlock, type AttitudeAction } from '@/components/bm/AttitudeActionsBlock';
 import { AIActionsBlock, type AIAction } from '@/components/bm/AIActionsBlock';
@@ -47,6 +48,7 @@ const hasEmployeeOneOnOneAnswers = (answers: OneOnOneAnswers) =>
 export default function StaffEvaluation() {
   const { id } = useParams<{ id: string }>();
   const { user, isAdmin, isManager, isPgd, profileId } = useAuth();
+  const historicalLevels = useHistoricalSkillLevels(id);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -1013,10 +1015,10 @@ export default function StaffEvaluation() {
           onActionsChange={setSkillActions}
           allSkills={allSkills}
           coreSkills={coreSkillConfigs}
-          assessedLevels={[
+          assessedLevels={mergeAssessedLevels([
             ...coreAssessments.map(a => ({ skill_id: a.skill_id, current_level: a.manager_assessed_level ?? a.self_assessed_level ?? null })),
             ...suppAssessments.map(a => ({ skill_id: a.skill_id, current_level: a.manager_assessed_level ?? a.self_assessed_level ?? null })),
-          ]}
+          ], historicalLevels)}
           positionId={profile?.position_id}
         />
 
