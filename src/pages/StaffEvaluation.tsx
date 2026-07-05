@@ -119,14 +119,21 @@ export default function StaffEvaluation() {
   // - Chỉ Trưởng phòng TRỰC TIẾP được sửa cột đánh giá của lãnh đạo (B/C), và chỉ khi
   //   phiếu đang chờ TP xử lý (submitted, hoặc PGĐ trả lại cho TP).
   // - PGĐ chỉ xem + duyệt/trả lại; admin không sửa B/C.
+  // - NGOẠI LỆ (luồng rút gọn): cán bộ KHÔNG có Trưởng phòng trực tiếp (TP, PGĐ —
+  //   cấp trên duy nhất là PGĐ/GĐ) → người đánh giá được chỉ định ở cấp PGĐ/GĐ vừa
+  //   chấm điểm vừa phê duyệt gộp một bước.
   const isDirectManagerReviewer = reviewerLevel === 'manager';
   const isPgdReviewer = reviewerLevel === 'pgd';
   const isDirectorViewer = reviewerLevel === 'director';
+  const isAssignedReviewer = !!profileId && formMeta.reviewer_id === profileId;
+  const isSoleApprover =
+    isAssignedReviewer && (isPgdReviewer || isDirectorViewer) && !profile?.manager_id && !isSelfEval;
   const canEditManagerAssessment =
-    isDirectManagerReviewer &&
-    (formStatus === 'submitted' ||
-      (formStatus === 'returned' && formMeta.return_target === 'manager') ||
-      formMeta.return_target === 'manager');
+    (isDirectManagerReviewer &&
+      (formStatus === 'submitted' ||
+        (formStatus === 'returned' && formMeta.return_target === 'manager') ||
+        formMeta.return_target === 'manager')) ||
+    (isSoleApprover && (formStatus === 'submitted' || formStatus === 'reviewed'));
 
   // Cán bộ tự mở phiếu của mình: chỉ sửa khi nháp hoặc bị trả lại
   const canEmployeeEditSelf = isSelfEval && (formStatus === 'draft' || formStatus === 'returned');
@@ -781,6 +788,43 @@ export default function StaffEvaluation() {
       return_target: null,
     }, 'Đã phê duyệt phiếu đánh giá');
 
+  // Luồng rút gọn cho cán bộ không có TP trung gian (TP/PGĐ): người đánh giá
+  // cấp PGĐ/GĐ chấm điểm xong bấm một nút — hệ thống chạy đủ hai bước
+  // rà soát (reviewed) và phê duyệt (approved) để giữ nguyên các mốc thời gian.
+  const handleReviewAndApprove = async () => {
+    if (!formId) return;
+    await handleSave(false);
+    setActionLoading(true);
+    const now = new Date().toISOString();
+    try {
+      if (formStatus === 'submitted') {
+        const { error: e1 } = await supabase.from('form_submissions').update({
+          status: 'reviewed',
+          reviewer_id: profileId,
+          reviewed_at: now,
+          needs_manager_review_update: false,
+          returned_by: null,
+          returned_at: null,
+          return_reason: null,
+          return_target: null,
+        }).eq('id', formId);
+        if (e1) throw e1;
+      }
+      const { error: e2 } = await supabase.from('form_submissions').update({
+        status: 'approved',
+        pgd_review_status: 'approved',
+        pgd_reviewed_at: now,
+      }).eq('id', formId);
+      if (e2) throw e2;
+      toast({ title: 'Đã đánh giá và phê duyệt phiếu' });
+      await loadData();
+    } catch (e) {
+      toast({ title: 'Lỗi phê duyệt', description: e instanceof Error ? e.message : String(e), variant: 'destructive' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleReturnToManager = (reason: string) =>
     updateFormStatus({
       status: 'submitted' as any,
@@ -842,7 +886,7 @@ export default function StaffEvaluation() {
         <>
           <EvalSectionReviewer
             name={formMeta.reviewer_name || undefined}
-            role="Trưởng phòng phụ trách"
+            role={profile?.manager_id ? 'Trưởng phòng phụ trách' : 'Người đánh giá trực tiếp'}
             status={formStatus}
             reviewedAt={formMeta.reviewed_at || undefined}
           />
@@ -1048,6 +1092,7 @@ export default function StaffEvaluation() {
         canConfirmReview={canConfirmReview}
         actionLoading={actionLoading}
         hideManagerActions
+        soleApprover={isSoleApprover}
 
         onClassificationChange={setClassification}
         onRemarkChange={setRemark}
@@ -1057,6 +1102,7 @@ export default function StaffEvaluation() {
         onReturnToEmployee={handleReturnToEmployee}
         onApprove={handleApprove}
         onReturnToManager={handleReturnToManager}
+        onApproveDirect={handleReviewAndApprove}
       />
 
       {/* H — Đánh giá tổng thể của lãnh đạo (chỉ hiện khi actor là cấp trên của target) */}
@@ -1101,8 +1147,8 @@ export default function StaffEvaluation() {
           myProfileId={profileId}
           evaluatorLevel={reviewerLevel}
           approverDefaultId={profile?.pgd_id ?? null}
-          canEvaluate={reviewerLevel === 'manager'}
-          canApprove={reviewerLevel === 'pgd'}
+          canEvaluate={reviewerLevel === 'manager' || isSoleApprover}
+          canApprove={reviewerLevel === 'pgd' || isSoleApprover}
         />
       )}
 
@@ -1168,7 +1214,7 @@ export default function StaffEvaluation() {
                       className="flex-1 min-w-[220px]"
                     >
                       {actionLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
-                      Xác nhận rà soát / Chuyển PGĐ duyệt
+                      {isSoleApprover ? 'Đánh giá & phê duyệt' : 'Xác nhận rà soát / Chuyển PGĐ duyệt'}
                     </Button>
                   </>
                 )}
@@ -1190,18 +1236,24 @@ export default function StaffEvaluation() {
       <AlertDialog open={confirmReviewOpen} onOpenChange={setConfirmReviewOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Xác nhận rà soát?</AlertDialogTitle>
+            <AlertDialogTitle>{isSoleApprover ? 'Đánh giá & phê duyệt phiếu?' : 'Xác nhận rà soát?'}</AlertDialogTitle>
             <AlertDialogDescription>
-              Sau khi xác nhận rà soát, bản đánh giá sẽ chuyển PGĐ duyệt. Bạn có chắc chắn tiếp tục?
+              {isSoleApprover
+                ? 'Bạn là cấp trên trực tiếp duy nhất của cán bộ này — phiếu sẽ được xác nhận đánh giá và phê duyệt hoàn tất trong một bước. Tiếp tục?'
+                : 'Sau khi xác nhận rà soát, bản đánh giá sẽ chuyển PGĐ duyệt. Bạn có chắc chắn tiếp tục?'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={actionLoading}>Hủy</AlertDialogCancel>
             <AlertDialogAction
-              onClick={async () => { setConfirmReviewOpen(false); await handleConfirmReview(); }}
+              onClick={async () => {
+                setConfirmReviewOpen(false);
+                if (isSoleApprover) await handleReviewAndApprove();
+                else await handleConfirmReview();
+              }}
               disabled={actionLoading}
             >
-              Chuyển PGĐ duyệt
+              {isSoleApprover ? 'Phê duyệt hoàn tất' : 'Chuyển PGĐ duyệt'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
