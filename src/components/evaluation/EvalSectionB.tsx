@@ -74,6 +74,8 @@ export function EvalSectionB({
   const [openId, setOpenId] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState<Record<string, boolean>>({});
   const [aiResults, setAiResults] = useState<Record<string, string>>({});
+  const [evidenceAiLoading, setEvidenceAiLoading] = useState<Record<string, boolean>>({});
+  const [evidenceAiResults, setEvidenceAiResults] = useState<Record<string, string>>({});
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const supportsSupplementary = !!onSupplementaryChange && !!allSkills;
@@ -152,6 +154,42 @@ export function EvalSectionB({
       delete n[skillId];
       return n;
     });
+  };
+
+  // Thẩm định minh chứng khi tự chấm L3+: AI so minh chứng với mô tả level của skill
+  const reviewEvidenceAi = async (a: CoreSkillAssessment, kind: 'core' | 'supp') => {
+    setEvidenceAiLoading((prev) => ({ ...prev, [a.skill_id]: true }));
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-advisor', {
+        body: {
+          mode: 'evidence_review',
+          role: role || 'cán bộ',
+          is_core: kind === 'core',
+          claimed_level: a.self_assessed_level,
+          evidence: a.evidence || '',
+          skill: {
+            name: a.skill_name,
+            code: a.skill_code,
+            skill_group: a.skill_group,
+            description: a.description,
+            l1: a.level1_description,
+            l2: a.level2_description,
+            l3: a.level3_description,
+            l4: a.level4_description,
+          },
+        },
+      });
+      if (error) throw error;
+      const text = (data as any)?.text || '';
+      if (!text) throw new Error('AI không trả về nội dung');
+      setEvidenceAiResults((prev) => ({ ...prev, [a.skill_id]: text }));
+    } catch (e: any) {
+      const msg = String(e?.message || '');
+      if (msg.includes('429')) toast.error('Quá nhiều yêu cầu AI, vui lòng thử lại sau.');
+      else toast.error(`Lỗi AI: ${msg || 'không kết nối được'}`);
+    } finally {
+      setEvidenceAiLoading((prev) => ({ ...prev, [a.skill_id]: false }));
+    }
   };
 
 
@@ -288,13 +326,61 @@ export function EvalSectionB({
             </div>
 
             <div>
-              <label className="text-xs text-muted-foreground">Minh chứng / Evidence</label>
+              <label className="text-xs text-muted-foreground">
+                Minh chứng / Evidence
+                {selfLvl >= 3 && <span className="text-orange-600 font-medium"> — bắt buộc khi tự chấm L3+</span>}
+              </label>
               <Textarea
                 value={a.evidence}
                 onChange={(e) => updateRow(kind, idx, 'evidence', e.target.value)}
-                className="min-h-[40px] text-xs"
-                placeholder="Minh chứng cụ thể cho level đánh giá..."
+                className={`min-h-[40px] text-xs ${selfLvl >= 3 && !(a.evidence || '').trim() ? 'border-orange-400 focus-visible:ring-orange-400' : ''}`}
+                placeholder={selfLvl >= 3
+                  ? 'Bắt buộc: hồ sơ/việc thật đã xử lý, chứng chỉ, xác nhận của đồng nghiệp…'
+                  : 'Minh chứng cụ thể cho level đánh giá...'}
               />
+              {selfLvl >= 3 && !(a.evidence || '').trim() && (
+                <p className="mt-1 text-[11px] text-orange-700">
+                  Level Chuyên gia/Bậc thầy cần được chứng minh — phiếu sẽ không nộp được nếu bỏ trống minh chứng.
+                </p>
+              )}
+              {selfLvl >= 3 && (a.evidence || '').trim() && isAiEnabled('evidence_review') && (
+                <div className="mt-1.5">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs gap-1.5"
+                    onClick={() => reviewEvidenceAi(a, kind)}
+                    disabled={evidenceAiLoading[a.skill_id]}
+                    title="AI so minh chứng với mô tả level của skill trước khi trình duyệt"
+                  >
+                    {evidenceAiLoading[a.skill_id] ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BrandMascotAI className="w-4 h-4" />}
+                    AI thẩm định minh chứng L{selfLvl}
+                  </Button>
+                  {evidenceAiResults[a.skill_id] && (
+                    <div className="mt-2 rounded-md border border-violet-200 bg-violet-50/60 p-2.5 text-xs space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-violet-800 flex items-center gap-1.5">
+                          <BrandMascotAI className="w-4 h-4" /> Kết quả thẩm định minh chứng
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setEvidenceAiResults((prev) => { const n = { ...prev }; delete n[a.skill_id]; return n; })}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <div className="prose prose-xs max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0 text-foreground">
+                        <ReactMarkdown>{evidenceAiResults[a.skill_id]}</ReactMarkdown>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground italic">
+                        Kết quả chỉ để tham khảo trước khi trình duyệt — quyết định cuối cùng thuộc về người duyệt.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div>

@@ -600,6 +600,7 @@ export default function SelfAssessmentPage() {
     const errors = validateSubmission({
       coreAssessments, attitudeAssessments,
       skillPriorities, skillActions,
+      supplementaryAssessments: suppAssessments,
     });
     if (errors.length > 0) {
       toast.error('Chưa thể nộp đánh giá', {
@@ -632,8 +633,9 @@ export default function SelfAssessmentPage() {
     () => validateSubmissionDetailed({
       coreAssessments, attitudeAssessments,
       skillPriorities, skillActions,
+      supplementaryAssessments: suppAssessments,
     }),
-    [coreAssessments, attitudeAssessments, skillPriorities, skillActions],
+    [coreAssessments, attitudeAssessments, skillPriorities, skillActions, suppAssessments],
   );
 
   if (loading) return <div className="p-6 text-muted-foreground">Đang tải...</div>;
