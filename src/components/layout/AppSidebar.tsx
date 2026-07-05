@@ -96,11 +96,11 @@ export function AppSidebar({ onNavigate }: Props) {
     <aside className="flex flex-col bg-sidebar w-60 h-full flex-shrink-0 overflow-hidden relative">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-40"
-        style={{ background: 'linear-gradient(180deg, hsl(0 0% 100% / 0.08), transparent)' }}
+        className="pointer-events-none absolute inset-x-0 top-0 h-44"
+        style={{ background: 'linear-gradient(180deg, hsl(216 92% 52% / 0.16), transparent)' }}
       />
       <div className="relative flex items-center gap-3 px-4 py-4">
-        <div className="w-10 h-10 rounded-2xl bg-white p-1 flex items-center justify-center flex-shrink-0 shadow-soft">
+        <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center flex-shrink-0 shadow-soft">
           <img src={vtbLogo} alt="VietinBank Bắc Hưng Yên" className="w-full h-full object-contain" />
         </div>
         <div className="overflow-hidden min-w-0">
@@ -110,7 +110,7 @@ export function AppSidebar({ onNavigate }: Props) {
       </div>
 
       {/* Dải kỷ niệm 20 năm — motif Cây ký ức */}
-      <div className="relative mx-3 mb-1 flex items-center gap-2 rounded-lg bg-white/5 px-2.5 py-1.5 ring-1 ring-white/10">
+      <div className="relative mx-3 mb-1 flex items-center gap-2 rounded-lg bg-white/[0.06] px-2.5 py-1.5 ring-1 ring-white/10 border-l-2 border-brand-orange">
         <BrandBadge className="h-7 w-7 rounded-full bg-white/95 p-0.5 shrink-0 object-contain" />
         <div className="min-w-0 leading-tight">
           <div className="text-[10px] font-semibold text-sidebar-primary truncate">20 năm · Vun gốc bền rễ</div>

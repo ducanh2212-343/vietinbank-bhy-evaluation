@@ -35,7 +35,7 @@ export default function Login() {
         <div className="relative z-10 max-w-md text-center space-y-5">
           <BrandBadge className="mx-auto h-16 w-16 rounded-full bg-white/95 p-1 object-contain" />
           <h2 className="text-3xl xl:text-4xl font-bold leading-tight">
-            20 năm <span className="text-red-400">vun gốc bền rễ</span>
+            20 năm <span className="text-brand-orange">vun gốc bền rễ</span>
             <br />vươn tầm tương lai
           </h2>
           <BrandTree framed className="mx-auto w-72 xl:w-80" />
@@ -67,7 +67,7 @@ export default function Login() {
               <div className="min-w-0">
                 <p className="text-[10px] font-semibold tracking-[0.18em] text-blue-200">2006 — 2026 · 20 NĂM</p>
                 <p className="text-sm font-bold leading-snug">
-                  Vun gốc bền rễ <span className="text-red-400">·</span> Vươn tầm tương lai
+                  Vun gốc bền rễ <span className="text-brand-orange">·</span> Vươn tầm tương lai
                 </p>
               </div>
             </div>

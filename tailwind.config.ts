@@ -15,6 +15,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
+        heading: ['Be Vietnam Pro', 'Inter', 'system-ui', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -70,6 +71,14 @@ export default {
           "3-bg": "hsl(var(--level-3-bg))",
           4: "hsl(var(--level-4))",
           "4-bg": "hsl(var(--level-4-bg))",
+        },
+        brand: {
+          navy: "hsl(var(--brand-navy))",
+          royal: "hsl(var(--brand-royal))",
+          sky: "hsl(var(--brand-sky))",
+          orange: "hsl(var(--brand-orange))",
+          red: "hsl(var(--brand-red))",
+          gold: "hsl(var(--brand-gold))",
         },
         star: {
           mai: "hsl(var(--star-mai))",

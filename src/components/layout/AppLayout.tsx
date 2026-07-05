@@ -55,7 +55,7 @@ export function AppLayout() {
       )}
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="sticky top-0 z-30 h-14 glass-strong flex items-center justify-between px-3 sm:px-6 flex-shrink-0 border-x-0 border-t-0 rounded-none">
+        <header className="sticky top-0 z-30 h-16 bg-card/90 backdrop-blur supports-[backdrop-filter]:bg-card/80 border-b border-border shadow-[0_1px_0_0_hsl(var(--border))] flex items-center justify-between px-3 sm:px-6 flex-shrink-0">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileOpen(true)}
@@ -66,7 +66,7 @@ export function AppLayout() {
             </button>
             <div className="relative w-40 sm:w-72 hidden sm:block">
               <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Tìm kiếm..." aria-label="Tìm kiếm" className="pl-9 h-9 text-sm rounded-full bg-white/60 border-white/70" />
+              <Input placeholder="Tìm kiếm..." aria-label="Tìm kiếm" className="pl-9 h-10 text-sm rounded-full bg-muted/70 border-transparent focus-visible:bg-card" />
             </div>
           </div>
 
@@ -74,7 +74,7 @@ export function AppLayout() {
           <div className="relative min-w-0" ref={menuRef}>
             <button
               onClick={() => setUserMenuOpen(!userMenuOpen)}
-              className="flex items-center gap-2 sm:gap-3 text-sm hover:bg-white/60 rounded-full px-2 py-1.5 transition-colors min-w-0"
+              className="flex items-center gap-2 sm:gap-3 text-sm hover:bg-muted rounded-full px-2 py-1.5 transition-colors min-w-0"
             >
               <span className="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] sm:text-xs font-medium whitespace-nowrap">{displayRole}</span>
               <span className="font-medium text-xs sm:text-sm truncate max-w-[110px] sm:max-w-[200px]">{user?.email}</span>
@@ -82,7 +82,7 @@ export function AppLayout() {
             </button>
 
             {userMenuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-48 glass-strong rounded-2xl shadow-lift z-50 py-1.5">
+              <div className="absolute right-0 top-full mt-2 w-48 bg-card border border-border rounded-xl shadow-lift z-50 py-1.5">
                 <button
                   onClick={() => { navigate('/ho-so-ca-nhan'); setUserMenuOpen(false); }}
                   className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-muted transition-colors"

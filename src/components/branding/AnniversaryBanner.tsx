@@ -18,7 +18,7 @@ export function AnniversaryBanner() {
             </span>
           </div>
           <h2 className="text-lg sm:text-2xl font-bold leading-tight">
-            Vun gốc bền rễ<span className="text-red-400"> · </span>Vươn tầm tương lai
+            Vun gốc bền rễ<span className="text-brand-orange"> · </span>Vươn tầm tương lai
           </h2>
           <p className="hidden sm:block text-sm text-blue-100/90 max-w-xl">
             Mỗi cán bộ là một "quả ngọt" trên cây ký ức — cùng vun đắp nền móng,

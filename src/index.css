@@ -5,58 +5,60 @@
 @layer base {
   :root {
     /*
-     * Bộ nhận diện "Cây ký ức" — VietinBank Bắc Hưng Yên 20 năm.
-     * Bảng màu chính thức:
-     *   #003A8C navy  ·  #0057B8 royal  ·  #1E88E5 sky  ·  #E60012 red  ·  #F2F7FF nền
+     * Giao diện "Emphires" — HR / corporate hiện đại.
+     * Bảng màu:
+     *   #146EF5 xanh chủ đạo  ·  #0E1727 navy đậm  ·  #0DA2E7 xanh cyan
+     *   #FF5E14 cam nhấn      ·  #F4F7FC nền sáng
      */
-    --background: 217 100% 97%;      /* #F2F7FF */
-    --foreground: 215 59% 15%;       /* navy đậm, dễ đọc */
+    --background: 216 50% 97%;       /* #F4F7FC */
+    --foreground: 217 44% 15%;       /* navy chữ, dễ đọc */
 
     --card: 0 0% 100%;
-    --card-foreground: 215 59% 15%;
+    --card-foreground: 217 44% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 215 59% 15%;
+    --popover-foreground: 217 44% 15%;
 
-    /* Royal blue — màu hành động chính (#0057B8) */
-    --primary: 212 100% 36%;
+    /* Xanh Emphires — màu hành động chính (#146EF5) */
+    --primary: 216 92% 52%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 214 60% 94%;
-    --secondary-foreground: 215 100% 27%;
+    --secondary: 214 40% 93%;
+    --secondary-foreground: 217 44% 20%;
 
-    --muted: 216 48% 95%;
-    --muted-foreground: 215 22% 42%;
+    --muted: 214 40% 95%;
+    --muted-foreground: 215 18% 44%;
 
-    --accent: 207 79% 93%;
-    --accent-foreground: 212 100% 30%;
+    --accent: 214 90% 95%;
+    --accent-foreground: 216 85% 38%;
 
-    /* VietinBank red (#E60012) */
-    --destructive: 355 100% 45%;
+    /* Đỏ cảnh báo / hành động nguy hiểm */
+    --destructive: 355 90% 48%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 45% 88%;
-    --input: 214 45% 86%;
-    --ring: 212 100% 36%;
+    --border: 214 35% 89%;
+    --input: 214 35% 86%;
+    --ring: 216 92% 52%;
 
-    /* Token thương hiệu Cây ký ức */
-    --brand-navy: 215 100% 27%;      /* #003A8C */
-    --brand-royal: 212 100% 36%;     /* #0057B8 */
-    --brand-sky: 207 79% 51%;        /* #1E88E5 */
-    --brand-red: 355 100% 45%;       /* #E60012 */
-    --brand-gold: 43 74% 49%;        /* điểm nhấn huy hiệu */
+    /* Token thương hiệu — hệ màu Emphires */
+    --brand-navy: 218 44% 12%;       /* #111B2C navy đậm */
+    --brand-royal: 216 92% 52%;      /* #146EF5 xanh chủ đạo */
+    --brand-sky: 199 89% 48%;        /* #0DA2E7 cyan */
+    --brand-orange: 19 100% 54%;     /* #FF5E14 cam nhấn */
+    --brand-red: 355 90% 48%;        /* đỏ cảnh báo */
+    --brand-gold: 43 96% 52%;        /* điểm nhấn huy hiệu */
 
     --radius: 0.75rem;
 
-    /* Đổ bóng gọn, chuyên nghiệp */
-    --shadow-soft: 0 1px 2px 0 hsl(215 59% 15% / 0.05), 0 4px 14px -6px hsl(215 59% 15% / 0.08);
-    --shadow-glass: 0 1px 0 0 hsl(0 0% 100% / 0.6) inset, 0 8px 26px -12px hsl(215 59% 15% / 0.14);
-    --shadow-lift: 0 12px 34px -14px hsl(215 100% 27% / 0.22);
+    /* Đổ bóng mềm, lan rộng kiểu Emphires */
+    --shadow-soft: 0 1px 2px 0 hsl(217 44% 15% / 0.04), 0 8px 24px -12px hsl(217 44% 15% / 0.10);
+    --shadow-glass: 0 1px 0 0 hsl(0 0% 100% / 0.7) inset, 0 10px 30px -14px hsl(217 44% 15% / 0.12);
+    --shadow-lift: 0 16px 40px -16px hsl(216 92% 52% / 0.28);
 
     /* Bề mặt panel */
-    --glass-bg: 0 0% 100% / 0.78;
-    --glass-bg-strong: 0 0% 100% / 0.9;
-    --glass-border: 214 45% 90% / 0.8;
+    --glass-bg: 0 0% 100% / 0.86;
+    --glass-bg-strong: 0 0% 100% / 0.94;
+    --glass-border: 214 35% 90% / 0.9;
 
     /* Level colors */
     --level-1: 200 15% 55%;
@@ -79,16 +81,16 @@
     --star-hom: 0 55% 48%;
     --star-hom-bg: 0 55% 94%;
 
-    /* Sidebar — navy Cây ký ức (#003A8C) */
-    --sidebar-background: 215 100% 27%;
-    --sidebar-foreground: 210 40% 90%;
+    /* Sidebar — navy đậm Emphires (#0E1727) */
+    --sidebar-background: 218 44% 10%;
+    --sidebar-foreground: 214 25% 80%;
     --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 215 100% 27%;
-    --sidebar-accent: 212 80% 34%;
+    --sidebar-primary-foreground: 218 44% 10%;
+    --sidebar-accent: 216 92% 52%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 213 70% 34%;
-    --sidebar-ring: 207 79% 60%;
-    --sidebar-muted: 211 35% 74%;
+    --sidebar-border: 217 33% 19%;
+    --sidebar-ring: 216 92% 60%;
+    --sidebar-muted: 215 16% 56%;
   }
 }
 
@@ -111,9 +113,13 @@
     -webkit-font-smoothing: antialiased;
     background-color: hsl(var(--background));
     background-image:
-      radial-gradient(1100px 560px at 0% -10%, hsl(207 79% 90% / 0.6), transparent 60%),
-      radial-gradient(820px 460px at 100% 0%, hsl(212 100% 92% / 0.55), transparent 55%);
+      radial-gradient(900px 480px at 100% -10%, hsl(216 92% 52% / 0.07), transparent 60%),
+      radial-gradient(720px 420px at 0% 0%, hsl(199 89% 48% / 0.05), transparent 55%);
     background-attachment: fixed;
+  }
+  /* Tiêu đề dùng font hình học kiểu Emphires (hỗ trợ đầy đủ tiếng Việt) */
+  h1, h2, h3, h4, h5, h6, .font-heading {
+    font-family: 'Be Vietnam Pro', 'Inter', system-ui, sans-serif;
   }
   /* Giảm delay 300ms khi chạm trên mobile */
   button, a, [role="button"] {
@@ -141,32 +147,34 @@
     padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
   }
 
-  /* === Liquid Glass utilities (use sparingly) === */
+  /* === Bề mặt panel sáng (giữ tên class cũ, restyle theo Emphires) === */
   .glass {
     background-color: hsl(var(--glass-bg));
     border: 1px solid hsl(var(--glass-border));
-    backdrop-filter: saturate(160%) blur(12px);
-    -webkit-backdrop-filter: saturate(160%) blur(12px);
+    backdrop-filter: saturate(140%) blur(10px);
+    -webkit-backdrop-filter: saturate(140%) blur(10px);
     box-shadow: var(--shadow-glass);
   }
   .glass-strong {
     background-color: hsl(var(--glass-bg-strong));
     border: 1px solid hsl(var(--glass-border));
-    backdrop-filter: saturate(160%) blur(16px);
-    -webkit-backdrop-filter: saturate(160%) blur(16px);
+    backdrop-filter: saturate(140%) blur(12px);
+    -webkit-backdrop-filter: saturate(140%) blur(12px);
     box-shadow: var(--shadow-glass);
   }
   .glass-subtle {
-    background-color: hsl(0 0% 100% / 0.7);
-    border: 1px solid hsl(214 45% 90% / 0.8);
+    background-color: hsl(0 0% 100% / 0.75);
+    border: 1px solid hsl(214 35% 90% / 0.9);
   }
   .shadow-soft { box-shadow: var(--shadow-soft); }
   .shadow-lift { box-shadow: var(--shadow-lift); }
 
-  /* === Motif Cây ký ức === */
-  /* Nền navy thương hiệu (panel đăng nhập, banner) */
+  /* === Motif Emphires === */
+  /* Nền navy đậm chuyển xanh (panel đăng nhập, banner) */
   .brand-navy-surface {
-    background-image: linear-gradient(160deg, hsl(215 100% 22%), hsl(215 100% 27%) 45%, hsl(212 100% 34%));
+    background-image:
+      radial-gradient(720px 380px at 85% -10%, hsl(216 92% 52% / 0.28), transparent 60%),
+      linear-gradient(155deg, hsl(218 44% 8%), hsl(218 44% 13%) 50%, hsl(217 70% 20%));
   }
   /* Chữ gradient xanh thương hiệu */
   .brand-gradient-text {
@@ -175,9 +183,9 @@
     background-clip: text;
     color: transparent;
   }
-  /* Dải đỏ nhận diện */
+  /* Dải cam nhận diện kiểu Emphires */
   .brand-ribbon {
-    background-image: linear-gradient(90deg, hsl(var(--brand-red)), hsl(350 90% 55%), hsl(var(--brand-red)));
+    background-image: linear-gradient(90deg, hsl(var(--brand-orange)), hsl(28 100% 58%), hsl(var(--brand-orange)));
   }
 }
 
@@ -187,15 +195,14 @@
     color: hsl(var(--sidebar-foreground));
   }
   .nav-item:hover {
-    background: hsl(0 0% 100% / 0.08);
+    background: hsl(0 0% 100% / 0.07);
     color: hsl(var(--sidebar-primary));
   }
   .nav-item.active {
-    background: hsl(0 0% 100% / 0.13);
-    color: hsl(var(--sidebar-primary));
+    background: linear-gradient(90deg, hsl(var(--sidebar-accent)), hsl(216 92% 46%));
+    color: hsl(var(--sidebar-accent-foreground));
     font-weight: 600;
-    /* Vạch gold bên trái — dấu vị trí hiện tại */
-    box-shadow: inset 3px 0 0 0 hsl(var(--brand-gold));
+    box-shadow: 0 8px 20px -8px hsl(216 92% 52% / 0.55);
   }
   .level-badge {
     @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold;
@@ -270,6 +277,7 @@
   }
   .stat-card:hover {
     box-shadow: var(--shadow-lift);
+    transform: translateY(-2px);
   }
 
   .page-header {
