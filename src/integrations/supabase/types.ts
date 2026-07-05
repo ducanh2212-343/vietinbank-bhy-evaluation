@@ -198,6 +198,8 @@ export type Database = {
       }
       ai_settings: {
         Row: {
+          api_base_url: string | null
+          api_key: string | null
           id: number
           max_tokens: number
           model: string
@@ -207,6 +209,8 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          api_base_url?: string | null
+          api_key?: string | null
           id?: number
           max_tokens?: number
           model?: string
@@ -216,6 +220,8 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          api_base_url?: string | null
+          api_key?: string | null
           id?: number
           max_tokens?: number
           model?: string
@@ -223,6 +229,27 @@ export type Database = {
           temperature?: number
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      ai_usage_log: {
+        Row: {
+          created_at: string
+          id: string
+          mode: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mode: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mode?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -999,6 +1026,8 @@ export type Database = {
       }
       form_submissions: {
         Row: {
+          ai_portrait: string | null
+          ai_portrait_generated_at: string | null
           created_at: string
           cycle_id: string
           director_overall_review: Json | null
@@ -1029,6 +1058,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ai_portrait?: string | null
+          ai_portrait_generated_at?: string | null
           created_at?: string
           cycle_id: string
           director_overall_review?: Json | null
@@ -1059,6 +1090,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ai_portrait?: string | null
+          ai_portrait_generated_at?: string | null
           created_at?: string
           cycle_id?: string
           director_overall_review?: Json | null
@@ -1425,6 +1458,180 @@ export type Database = {
             columns: ["form_id"]
             isOneToOne: false
             referencedRelation: "form_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_campaign_targets: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          department_id: string | null
+          id: string
+          profile_id: string | null
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          department_id?: string | null
+          id?: string
+          profile_id?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          department_id?: string | null
+          id?: string
+          profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_campaign_targets_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "learning_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_campaign_targets_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_campaign_targets_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_campaigns: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          cycle_id: string | null
+          description: string | null
+          end_date: string
+          id: string
+          is_active: boolean
+          name: string
+          skill_id: string
+          start_date: string
+          target_level: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          cycle_id?: string | null
+          description?: string | null
+          end_date: string
+          id?: string
+          is_active?: boolean
+          name: string
+          skill_id: string
+          start_date: string
+          target_level: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          cycle_id?: string | null
+          description?: string | null
+          end_date?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          skill_id?: string
+          start_date?: string
+          target_level?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_campaigns_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "evaluation_cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_campaigns_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skill_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mentorship_pairs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          cycle_id: string
+          id: string
+          mentee_profile_id: string
+          mentor_profile_id: string
+          note: string | null
+          skill_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          cycle_id: string
+          id?: string
+          mentee_profile_id: string
+          mentor_profile_id: string
+          note?: string | null
+          skill_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          cycle_id?: string
+          id?: string
+          mentee_profile_id?: string
+          mentor_profile_id?: string
+          note?: string | null
+          skill_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentorship_pairs_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "evaluation_cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentorship_pairs_mentee_profile_id_fkey"
+            columns: ["mentee_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentorship_pairs_mentor_profile_id_fkey"
+            columns: ["mentor_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentorship_pairs_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skill_catalog"
             referencedColumns: ["id"]
           },
         ]
@@ -1991,6 +2198,61 @@ export type Database = {
         }
         Relationships: []
       }
+      skill_criteria_responses: {
+        Row: {
+          answer: number
+          created_at: string
+          criterion_id: string
+          evidence: string | null
+          form_id: string
+          id: string
+          skill_id: string
+          updated_at: string
+        }
+        Insert: {
+          answer: number
+          created_at?: string
+          criterion_id: string
+          evidence?: string | null
+          form_id: string
+          id?: string
+          skill_id: string
+          updated_at?: string
+        }
+        Update: {
+          answer?: number
+          created_at?: string
+          criterion_id?: string
+          evidence?: string | null
+          form_id?: string
+          id?: string
+          skill_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_criteria_responses_criterion_id_fkey"
+            columns: ["criterion_id"]
+            isOneToOne: false
+            referencedRelation: "skill_level_criteria"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_criteria_responses_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "form_submissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_criteria_responses_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skill_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       skill_growth_stage_images: {
         Row: {
           created_at: string
@@ -2054,7 +2316,71 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "skill_level_achievements_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "form_submissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_level_achievements_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "skill_level_achievements_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skill_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      skill_level_criteria: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          is_gate: boolean
+          level_no: number
+          requires_evidence: boolean
+          skill_id: string
+          sort_order: number
+          statement: string
+          updated_at: string
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_gate?: boolean
+          level_no: number
+          requires_evidence?: boolean
+          skill_id: string
+          sort_order?: number
+          statement: string
+          updated_at?: string
+          weight?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_gate?: boolean
+          level_no?: number
+          requires_evidence?: boolean
+          skill_id?: string
+          sort_order?: number
+          statement?: string
+          updated_at?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_level_criteria_skill_id_fkey"
             columns: ["skill_id"]
             isOneToOne: false
             referencedRelation: "skill_catalog"
@@ -2475,6 +2801,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_email_overview: { Args: never; Returns: Json }
       can_view_profile: {
         Args: { _target_profile_id: string }
         Returns: boolean
@@ -2491,10 +2818,18 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      get_campaign_progress: {
+        Args: { _campaign_id: string }
+        Returns: {
+          achieved: number
+          total_members: number
+        }[]
+      }
       get_my_department_id: { Args: never; Returns: string }
       get_my_pgd_scope_dept_ids: { Args: never; Returns: string[] }
       get_my_profile_id: { Args: never; Returns: string }
       get_my_supervisor_ids: { Args: never; Returns: string[] }
+      hard_delete_staff: { Args: { p_profile_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2502,6 +2837,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_tcth_leader: { Args: { _user_id: string }; Returns: boolean }
       kanban_upsert_card: {
         Args: {
           _attitude_dimension_id: number
@@ -2549,6 +2885,29 @@ export type Database = {
       return_kanban_card: {
         Args: { _card_id: string; _reason: string }
         Returns: undefined
+      }
+      save_evaluation_children: {
+        Args: {
+          p_ai_actions?: Json
+          p_attitude_actions?: Json
+          p_attitude_priorities?: Json
+          p_form_id: string
+          p_skill_actions?: Json
+          p_skill_assessments?: Json
+          p_skill_priorities?: Json
+        }
+        Returns: undefined
+      }
+      suggest_skill_mentors: {
+        Args: { _cycle_id: string; _min_level?: number; _skill_id: string }
+        Returns: {
+          active_mentees: number
+          department_id: string
+          department_name: string
+          full_name: string
+          profile_id: string
+          skill_level: number
+        }[]
       }
       update_kanban_progress: {
         Args: {

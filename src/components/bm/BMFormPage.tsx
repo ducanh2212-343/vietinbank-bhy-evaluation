@@ -854,6 +854,9 @@ export function BMFormPage({ config }: Props) {
             ...suppAssessments.map(a => ({ skill_id: a.skill_id, current_level: a.self_assessed_level ?? a.manager_assessed_level ?? null })),
           ], historicalLevels)}
           positionId={profile?.position_id}
+          cycleId={cycleId || undefined}
+          menteeProfileId={profileId}
+          menteeDepartmentId={profile?.department_id}
         />
 
       </div>
