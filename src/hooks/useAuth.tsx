@@ -1,6 +1,15 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useMemo } from 'react';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import type { User } from '@supabase/supabase-js';
+
+/** Ném khi tài khoản không còn hoạt động (nghỉ việc/tạm khóa) — chặn đăng nhập. */
+class InactiveAccountError extends Error {
+  constructor() {
+    super('account_inactive');
+    this.name = 'InactiveAccountError';
+  }
+}
 
 type AppRole = 'employee' | 'manager' | 'pgd' | 'tcth_admin' | 'system_admin' | 'bgd';
 
@@ -52,11 +61,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchRolesAndProfile = async (userId: string) => {
     const [rolesRes, profileRes] = await Promise.all([
       supabase.from('user_roles').select('role').eq('user_id', userId),
-      supabase.from('profiles').select('id, department_id').eq('user_id', userId).maybeSingle(),
+      supabase.from('profiles').select('id, department_id, status').eq('user_id', userId).maybeSingle(),
     ]);
 
     if (rolesRes.error) throw rolesRes.error;
     if (profileRes.error) throw profileRes.error;
+
+    // Chặn truy cập của cán bộ đã bị chuyển "Nghỉ việc"/vô hiệu hóa (thu hồi quyền khi chấm dứt lao động).
+    const status = (profileRes.data as { status?: string } | null)?.status;
+    if (status && status !== 'active') {
+      toast.error('Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ bộ phận Tổ chức để được hỗ trợ.');
+      await supabase.auth.signOut();
+      throw new InactiveAccountError();
+    }
 
     const nextRoles = (rolesRes.data ?? []).map((r) => r.role as AppRole);
     const nextProfileId = profileRes.data?.id ?? null;
@@ -108,6 +125,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         console.error('fetchRolesAndProfile error:', error);
         if (!isMounted) return;
+        // Tài khoản bị vô hiệu hóa: đã signOut bên trong — xóa luôn user để chuyển về trang đăng nhập ngay.
+        if (error instanceof InactiveAccountError) setUser(null);
         setRoles([]);
         setProfileId(null);
         setDepartmentId(null);

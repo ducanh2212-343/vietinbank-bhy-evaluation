@@ -494,15 +494,15 @@ export default function StaffEvaluation() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const handleSave = async (submit = false) => {
-    if (!id || !cycleId) return;
+  const handleSave = async (submit = false): Promise<boolean> => {
+    if (!id || !cycleId) return false;
     if (!canSaveForm) {
       toast({
         title: 'Bạn không có quyền lưu phiếu này',
         description: 'Chỉ Trưởng phòng trực tiếp (khi phiếu chờ rà soát) hoặc cán bộ (khi phiếu nháp/bị trả lại) được chỉnh sửa.',
         variant: 'destructive',
       });
-      return;
+      return false;
     }
     setSaving(true);
 
@@ -721,9 +721,11 @@ export default function StaffEvaluation() {
       // status will be refreshed by loadData()
       toast({ title: submit ? 'Đã nộp đánh giá' : 'Đã lưu bản nháp' });
       await loadData();
+      return true;
     } catch (err: any) {
       console.error(err);
       toast({ title: 'Lỗi khi lưu', description: err.message, variant: 'destructive' });
+      return false;
     } finally {
       setSaving(false);
     }
@@ -745,8 +747,17 @@ export default function StaffEvaluation() {
 
   const handleConfirmReview = async () => {
     if (!formId) return;
-    // Save content first (skill/attitude/dev plan) then flip status
-    await handleSave(false);
+    // Save content first (skill/attitude/dev plan) then flip status.
+    // Chỉ chuyển 'reviewed' khi lưu nội dung THÀNH CÔNG — tránh chuyển PGĐ trên dữ liệu chưa kịp ghi.
+    const saved = await handleSave(false);
+    if (!saved) {
+      toast({
+        title: 'Chưa thể xác nhận rà soát',
+        description: 'Lưu nội dung đánh giá thất bại. Vui lòng kiểm tra kết nối và thử lại.',
+        variant: 'destructive',
+      });
+      return;
+    }
     await updateFormStatus({
       status: 'reviewed' as any,
       reviewer_id: profileId,

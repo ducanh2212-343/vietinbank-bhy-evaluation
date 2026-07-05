@@ -23,11 +23,13 @@ export interface QuarterFormSummary {
   pgd_comment?: string | null;
   pgd_review_status?: string | null;
   pgd_reviewed_at?: string | null;
+  return_reason?: string | null;
+  returned_by?: string | null;
   updated_at?: string | null;
 }
 
 const FORM_SUBMISSION_SELECT =
-  'id, cycle_id, status, manager_comment, submitted_at, one_on_one_enabled, one_on_one_answers, reviewer_id, reviewed_at, pgd_comment, pgd_review_status, pgd_reviewed_at, updated_at';
+  'id, cycle_id, status, manager_comment, submitted_at, one_on_one_enabled, one_on_one_answers, reviewer_id, reviewed_at, pgd_comment, pgd_review_status, pgd_reviewed_at, return_reason, returned_by, updated_at';
 
 export async function getQuarterFormSubmission(params: {
   employeeId: string;

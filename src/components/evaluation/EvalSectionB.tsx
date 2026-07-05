@@ -267,6 +267,7 @@ export function EvalSectionB({
                 <Select
                   value={String(a.self_assessed_level ?? 0)}
                   onValueChange={(v) => updateRow(kind, idx, 'self_assessed_level', parseInt(v))}
+                  disabled={isManager}
                 >
                   <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -296,6 +297,7 @@ export function EvalSectionB({
                 onChange={(e) => updateRow(kind, idx, 'evidence', e.target.value)}
                 className="min-h-[40px] text-xs"
                 placeholder="Minh chứng cụ thể cho level đánh giá..."
+                disabled={isManager}
               />
             </div>
 
@@ -305,6 +307,7 @@ export function EvalSectionB({
                 value={a.employee_comment}
                 onChange={(e) => updateRow(kind, idx, 'employee_comment', e.target.value)}
                 className="min-h-[36px] text-xs"
+                disabled={isManager}
               />
             </div>
 

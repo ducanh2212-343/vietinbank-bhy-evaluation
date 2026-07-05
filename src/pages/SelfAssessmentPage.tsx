@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -60,6 +60,9 @@ export default function SelfAssessmentPage() {
   const [skillPriorities, setSkillPriorities] = useState<SkillPriority[]>([]);
   const [skillActions, setSkillActions] = useState<SkillAction[]>([]);
   const [attitudePriorities, setAttitudePriorities] = useState<AttitudePriority[]>([]);
+  // Ánh xạ id nhóm thái độ cũ (đã load) → attitude_dimension_id, để remap liên kết hành động AI
+  // sau khi form_attitude_priorities bị xóa-tạo-lại với id mới (tránh lỗi FK làm mất mục F).
+  const attPidToDimRef = useRef<Map<string, number>>(new Map());
   const [attitudeActions, setAttitudeActions] = useState<AttitudeAction[]>([]);
   const [aiActions, setAiActions] = useState<AIAction[]>([]);
   const [oneOnOneEnabled, setOneOnOneEnabled] = useState(false);
@@ -219,7 +222,8 @@ export default function SelfAssessmentPage() {
       if (form) {
         setFormId(form.id);
         setFormStatus(form.status);
-        setReturnedComment(form.status === 'returned' ? (form.manager_comment || '') : '');
+        // Ưu tiên lý do trả lại (return_reason) TP nhập trong hộp thoại "Trả lại"; nếu trống mới fallback về Kết luận (manager_comment)
+        setReturnedComment(form.status === 'returned' ? ((form as any).return_reason || form.manager_comment || '') : '');
         setOneOnOneEnabled(!!(form as any).one_on_one_enabled);
         const ooa = (form as any).one_on_one_answers;
         setOneOnOneAnswers(ooa && typeof ooa === 'object' ? (ooa as OneOnOneAnswers) : {});
@@ -252,6 +256,11 @@ export default function SelfAssessmentPage() {
           supabase.from('form_attitude_actions').select('*').eq('form_id', fId).order('row_no'),
           supabase.from('form_ai_actions_v2').select('*').eq('form_id', fId).order('row_no'),
         ]);
+
+        // Lưu ánh xạ id priority thái độ cũ → dimension để remap liên kết AI khi lưu
+        attPidToDimRef.current = new Map<string, number>(
+          (apRes.data || []).map((p: any) => [p.id as string, p.attitude_dimension_id as number]),
+        );
 
         const merged = mergeAllSkillAssessments(initialCoreAssessments, saRes.data, skillRes.data || []);
         resolvedCoreAssessments = merged.core;
@@ -483,7 +492,13 @@ export default function SelfAssessmentPage() {
     if (aiActions.length > 0) {
       const { error } = await supabase.from('form_ai_actions_v2').insert(aiActions.map(a => ({
         form_id: fId, linked_skill_priority_id: (a.linked_skill_priority_id && insertedPriorities[a.linked_skill_priority_id]) || null,
-        linked_attitude_priority_id: a.linked_attitude_priority_id || null,
+        // Remap: id priority cũ → dimension → id priority MỚI vừa tạo; không khớp thì để null (tránh lỗi FK 23503)
+        linked_attitude_priority_id: (() => {
+          const oldPid = a.linked_attitude_priority_id;
+          if (!oldPid) return null;
+          const dim = attPidToDimRef.current.get(oldPid);
+          return (dim != null && insertedAttPriorities[dim]) || null;
+        })(),
         row_no: a.row_no, ai_action_text: a.ai_action_text || 'Chưa nhập',
         expected_result: a.expected_result || null, deadline: a.deadline || null,
         requested_support: a.requested_support || null, evidence_expected: a.evidence_expected || null,
@@ -632,7 +647,9 @@ export default function SelfAssessmentPage() {
       {formStatus === 'returned' && (
         <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
           <p className="font-semibold text-destructive">Phiếu đã bị trả lại để chỉnh sửa</p>
-          {returnedComment && <p className="mt-1 whitespace-pre-line text-foreground/80">Ý kiến người duyệt: {returnedComment}</p>}
+          {returnedComment
+            ? <p className="mt-1 whitespace-pre-line text-foreground/80">Lý do / ý kiến người duyệt: {returnedComment}</p>
+            : <p className="mt-1 text-muted-foreground">Người duyệt chưa ghi lý do cụ thể. Vui lòng liên hệ trưởng phòng để biết nội dung cần chỉnh sửa.</p>}
         </div>
       )}
       {formStatus === 'submitted' && (
