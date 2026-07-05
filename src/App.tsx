@@ -58,6 +58,7 @@ const BM02Page = lazyWithRetry(() => import("./pages/BM02Page"));
 const BM03Page = lazyWithRetry(() => import("./pages/BM03Page"));
 const ApproveRegistrations = lazyWithRetry(() => import("./pages/ApproveRegistrations"));
 const AIPromptsAdmin = lazyWithRetry(() => import("./pages/AIPromptsAdmin"));
+const EmailAdmin = lazyWithRetry(() => import("./pages/EmailAdmin"));
 const CycleManagementPage = lazyWithRetry(() => import("./pages/CycleManagementPage"));
 const OneOnOneQuestionsAdminPage = lazyWithRetry(() => import("./pages/OneOnOneQuestionsAdminPage"));
 const SubmissionTimeReportPage = lazyWithRetry(() => import("./pages/SubmissionTimeReportPage"));
@@ -150,6 +151,7 @@ const App = () => (
                 <Route path="/cai-dat" element={<SettingsPage />} />
                 <Route path="/duyet-yeu-cau-user" element={<ApproveRegistrations />} />
                 <Route path="/quan-tri-ai" element={<AIPromptsAdmin />} />
+                <Route path="/quan-tri-email" element={<EmailAdmin />} />
                 <Route path="/quan-tri-khoa-hoc-vtb" element={<VtbCoursesAdminPage />} />
                 <Route path="/quan-ly-ky-danh-gia" element={<CycleManagementPage />} />
                 <Route path="/quan-tri-cau-hoi-1-1" element={<OneOnOneQuestionsAdminPage />} />
