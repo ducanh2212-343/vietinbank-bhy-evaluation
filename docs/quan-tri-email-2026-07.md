@@ -71,18 +71,23 @@ Trang Quên mật khẩu (`/quen-mat-khau`) + trang đặt lại (`/dat-lai-mat-
   Edge Functions → Secrets → cập nhật `RESEND_API_KEY` → xóa key cũ ở Resend. Không cần deploy lại.
 - **DMARC**: sau 1–2 tuần chạy ổn, nâng TXT `_dmarc` từ `p=none` lên `p=quarantine` (ở Vercel DNS).
 
-## 4. Việc còn lại MỘT LẦN: bật Send Email Hook (≈3 phút, trên Dashboard)
+## 4. Bật Send Email Hook — ĐÃ HOÀN TẤT 05/07/2026 ✅
 
-Làm xong thì email quên-mật-khẩu chuyển từ SMTP mặc định sang Resend/343skill.com:
+Đã làm (ghi lại để tra cứu / làm lại khi cần):
+1. Edge Functions → `auth-email-hook` → tắt "Enforce JWT verification"
+   (Auth gọi hook bằng chữ ký standardwebhooks, không phải JWT).
+2. Authentication → Hooks → "Send Email hook" → Enable → HTTPS →
+   URL `https://whlysprzsguehxmrjwha.supabase.co/functions/v1/auth-email-hook` → Generate secret.
+3. Edge Functions → Secrets → `SEND_EMAIL_HOOK_SECRET` = secret ở bước 2.
+4. Authentication → URL Configuration → Redirect URLs: thêm
+   `https://343skill.com/dat-lai-mat-khau` và `https://www.343skill.com/dat-lai-mat-khau`.
+5. **Đã kiểm chứng end-to-end**: Quên mật khẩu → email tiếng Việt từ
+   `343 Phát triển nhân sự <noreply@343skill.com>` (log: pending → sent qua Resend) →
+   bấm link → vào form Đặt lại mật khẩu → đổi mật khẩu thành công.
 
-1. **Tắt kiểm tra JWT cho hook** (Auth gọi hook bằng chữ ký riêng, không phải JWT):
-   Dashboard → Edge Functions → `auth-email-hook` → Details → tắt "Enforce JWT verification" → Save.
-2. **Bật hook**: Dashboard → Authentication → Hooks → "Send Email hook" → Enable →
-   chọn **HTTPS** → URL: `https://whlysprzsguehxmrjwha.supabase.co/functions/v1/auth-email-hook`
-   → **Generate secret** → copy secret (dạng `v1,whsec_...`) → Save.
-3. **Lưu secret cho hàm**: Dashboard → Edge Functions → Secrets → Add:
-   `SEND_EMAIL_HOOK_SECRET` = secret vừa copy.
-4. **Báo để test end-to-end**: bấm "Quên mật khẩu" với email của bạn → email phải đến từ
-   `343 Phát triển nhân sự <noreply@343skill.com>` (tiếng Việt) và có dòng mới trong Quản trị Email.
-   Nếu hỏng, tắt hook ở bước 2 là quay về SMTP mặc định ngay (không kẹt).
-5. (Sau khi ổn) Xóa secret `LOVABLE_API_KEY` — không còn chỗ nào dùng.
+Lưới an toàn trong app (`useAuth`): mọi phiên vào bằng link đặt-lại-mật-khẩu đều bị ép
+chuyển về `/dat-lai-mat-khau`, kể cả khi Auth trả về trang chủ (redirect_to thiếu/ngoài allow-list).
+
+**Việc dọn dẹp cuối (khuyến nghị):** xóa secret `LOVABLE_API_KEY` ở Supabase → Edge
+Functions → Secrets — không còn mã nào dùng; xóa xong là thoát Lovable 100%.
+Nếu cần quay về SMTP mặc định khẩn cấp: Authentication → Hooks → tắt "Send Email hook".
