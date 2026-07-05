@@ -11,6 +11,7 @@ import { KanbanCardItem } from '@/components/kanban/KanbanCard';
 import { UpdateProgressDialog } from '@/components/kanban/UpdateProgressDialog';
 import { CompleteRequestDialog } from '@/components/kanban/CompleteRequestDialog';
 import { CardDetailDialog } from '@/components/kanban/CardDetailDialog';
+import { TeamReviewPanel } from '@/components/kanban/TeamReviewPanel';
 import {
   computeBadges, rpcMove, sortCards, dedupeCards,
   fetchSkillMetaForCards, fetchActivityFlagsForCards, fetchWeeklyUpdateMap,
@@ -26,8 +27,10 @@ const COLS: { id: KanbanStatus; label: string }[] = [
 ];
 
 export default function PersonalKanbanPage() {
-  const { profileId } = useAuth();
+  const { profileId, isManager, isPgd, isAdmin } = useAuth();
+  const isTeamManager = isManager || isPgd || isAdmin;
   const isMobile = useIsMobile();
+  const [scopeTab, setScopeTab] = useState<'mine' | 'team'>('mine');
   const [cards, setCards] = useState<KanbanCard[]>([]);
   const [skillMap, setSkillMap] = useState<SkillMetaMap>({});
   const [flags, setFlags] = useState<ActivityFlagsMap>({});
@@ -110,13 +113,8 @@ export default function PersonalKanbanPage() {
 
   if (!profileId) return <div className="p-6 text-muted-foreground">Chưa có hồ sơ.</div>;
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="page-header">Hành động phát triển</h1>
-        <p className="page-subtitle">Kanban đầy đủ các hành động bạn đã cam kết</p>
-      </div>
-
+  const myView = (
+    <>
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Bộ lọc</CardTitle>
@@ -167,6 +165,28 @@ export default function PersonalKanbanPage() {
             ))}
           </div>
         </DndContext>
+      )}
+    </>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="page-header">Hành động phát triển</h1>
+        <p className="page-subtitle">Kanban đầy đủ các hành động bạn đã cam kết</p>
+      </div>
+
+      {isTeamManager ? (
+        <Tabs value={scopeTab} onValueChange={(v: any) => setScopeTab(v)}>
+          <TabsList>
+            <TabsTrigger value="mine">Của tôi</TabsTrigger>
+            <TabsTrigger value="team">Đội ngũ</TabsTrigger>
+          </TabsList>
+          <TabsContent value="mine" className="space-y-6 mt-4">{myView}</TabsContent>
+          <TabsContent value="team" className="mt-4"><TeamReviewPanel /></TabsContent>
+        </Tabs>
+      ) : (
+        <div className="space-y-6">{myView}</div>
       )}
 
       {updateCard && <UpdateProgressDialog card={updateCard} open onClose={() => setUpdateCard(null)} onSaved={reload} />}

@@ -13,6 +13,8 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onChanged: () => void;
+  /** Tên chủ thẻ — hiển thị cho quản lý khi xem thẻ của cán bộ khác. */
+  ownerName?: string;
 }
 
 interface LogRow {
@@ -44,7 +46,7 @@ const LOG_LABEL: Record<string, string> = {
   carry_over: 'Chuyển kỳ',
 };
 
-export function CardDetailDialog({ card, open, onClose, onChanged }: Props) {
+export function CardDetailDialog({ card, open, onClose, onChanged, ownerName }: Props) {
   const { profileId } = useAuth();
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [returnOpen, setReturnOpen] = useState(false);
@@ -71,7 +73,10 @@ export function CardDetailDialog({ card, open, onClose, onChanged }: Props) {
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle className="text-base">{card.title}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle className="text-base">{card.title}</DialogTitle>
+          {ownerName && !isOwner && <p className="text-xs text-muted-foreground">Cán bộ: {ownerName}</p>}
+        </DialogHeader>
         <div className="space-y-4 text-sm">
           <div className="flex flex-wrap gap-2">
             <Badge variant="secondary">{SOURCE_LABEL[card.source_type]}</Badge>

@@ -178,6 +178,46 @@ function buildSkillRow(formId: string, assessment: CoreSkillAssessment, isCore: 
   } as any;
 }
 
+/** Build skill_assessments rows (core + supplementary) cho payload RPC lưu phiếu. */
+export function buildSkillAssessmentRows(
+  coreAssessments: CoreSkillAssessment[],
+  supplementaryAssessments: CoreSkillAssessment[] = [],
+) {
+  return [
+    ...coreAssessments.map((a) => buildSkillRow('', a, true)),
+    ...supplementaryAssessments.map((a) => buildSkillRow('', a, false)),
+  ];
+}
+
+export interface EvaluationChildrenPayload {
+  skillAssessments?: any[];
+  skillPriorities?: any[];
+  skillActions?: any[];
+  attitudePriorities?: any[];
+  attitudeActions?: any[];
+  aiActions?: any[];
+}
+
+/**
+ * Lưu toàn bộ bảng con của phiếu trong MỘT giao dịch qua RPC save_evaluation_children.
+ * Ưu điểm so với delete-all + reinsert: (1) atomic — lỗi giữa chừng tự rollback, không mất dữ liệu;
+ * (2) giữ nguyên UUID của hành động → thẻ Kanban không bị reset tiến độ mỗi lần lưu.
+ * Quy ước payload: priorities tham chiếu cha bằng KHÓA TỰ NHIÊN (skill_id / attitude_dimension_id);
+ * actions gửi kèm id cũ (nếu có) để cập-nhật-tại-chỗ, và natural key của cha để RPC nối FK.
+ */
+export async function saveEvaluationChildren(formId: string, p: EvaluationChildrenPayload) {
+  const { error } = await (supabase as any).rpc('save_evaluation_children', {
+    p_form_id: formId,
+    p_skill_assessments: p.skillAssessments ?? [],
+    p_skill_priorities: p.skillPriorities ?? [],
+    p_skill_actions: p.skillActions ?? [],
+    p_attitude_priorities: p.attitudePriorities ?? [],
+    p_attitude_actions: p.attitudeActions ?? [],
+    p_ai_actions: p.aiActions ?? [],
+  });
+  if (error) throw error;
+}
+
 /** Replace all skill assessments (core + optional supplementary) for a form. */
 export async function replaceCoreSkillAssessments(
   formId: string,
