@@ -16,7 +16,17 @@
 
 **Lưu ý:** Hiện cả hai bảng đều rỗng (đang pilot) nên chưa thấy khác biệt trực quan; đây là sửa PHÒNG NGỪA để khi bắt đầu xếp sao kỳ tới, số liệu đồng nhất mọi trang.
 
+## 4.2. Khóa lạc quan chống ghi đè từ tab cũ / 2 người cùng sửa (đã xong)
+
+**Vấn đề (P1-9):** cán bộ mở phiếu ở 2 tab; tab 1 nộp lại → TP duyệt (phiếu thành reviewed/approved). Tab 2 (state cũ) bấm Lưu → bảng con bị ghi đè bằng dữ liệu cũ (RLS bảng con không khóa theo trạng thái), còn update form_submissions bị RLS chặn 0 dòng im lặng → toast "Đã lưu" nhưng thực chất ghi đè phiếu đã duyệt.
+
+**Sửa:** thêm kiểm tra lạc quan (read-only, không đụng quyền) ở `SelfAssessmentPage` và `StaffEvaluation`:
+- Ghi lại mốc `updated_at` của phiếu tại thời điểm MỞ (ref).
+- Khi Lưu, đọc lại `updated_at` hiện tại; nếu KHÁC mốc lúc mở → phiếu đã bị thay đổi ở nơi khác → **dừng ngay, không ghi bất kỳ bảng con nào**, hiện thông báo "Phiếu đã được cập nhật ở nơi khác… vui lòng tải lại trang".
+- Sau mỗi lần lưu thành công, `loadData()` làm mới mốc → các lần lưu liên tiếp của cùng người không bị báo nhầm.
+
+Ưu điểm: chỉ đọc nên chạy cho MỌI vai trò (kể cả bgd/tcth_admin), không vướng vấn đề RLS-chặn-im-lặng. Còn khoảng TOCTOU rất nhỏ (chấp nhận được ở quy mô hiện tại). BM01/02/03 chưa gắn (ít khi chỉnh đồng thời) — có thể bổ sung sau nếu cần.
+
 ## Các hạng mục kế tiếp (sẽ làm tiếp)
-- Khóa lạc quan chống ghi đè từ tab cũ / 2 người cùng sửa.
 - Gói "Bàn giao nhân sự" khi chuyển phòng/nghỉ việc + lưu trữ trước khi xóa.
 - Nối email nhắc việc (phiếu bị trả, chờ duyệt quá hạn, thẻ chờ xác nhận).

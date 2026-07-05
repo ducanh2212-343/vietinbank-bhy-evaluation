@@ -64,6 +64,8 @@ export default function SelfAssessmentPage() {
   // Ánh xạ id nhóm thái độ cũ (đã load) → attitude_dimension_id, để remap liên kết hành động AI
   // sau khi form_attitude_priorities bị xóa-tạo-lại với id mới (tránh lỗi FK làm mất mục F).
   const attPidToDimRef = useRef<Map<string, number>>(new Map());
+  // Khóa lạc quan: mốc updated_at của phiếu lúc mở, để phát hiện tab khác/người khác đã lưu
+  const formUpdatedAtRef = useRef<string | null>(null);
   const [attitudeActions, setAttitudeActions] = useState<AttitudeAction[]>([]);
   const [aiActions, setAiActions] = useState<AIAction[]>([]);
   const [oneOnOneEnabled, setOneOnOneEnabled] = useState(false);
@@ -223,6 +225,7 @@ export default function SelfAssessmentPage() {
       if (form) {
         setFormId(form.id);
         setFormStatus(form.status);
+        formUpdatedAtRef.current = (form as any).updated_at ?? null;
         // Ưu tiên lý do trả lại (return_reason) TP nhập trong hộp thoại "Trả lại"; nếu trống mới fallback về Kết luận (manager_comment)
         setReturnedComment(form.status === 'returned' ? ((form as any).return_reason || form.manager_comment || '') : '');
         setOneOnOneEnabled(!!(form as any).one_on_one_enabled);
@@ -577,6 +580,12 @@ export default function SelfAssessmentPage() {
       const fId = form?.id || null;
       setFormId(fId);
       if (!fId) throw new Error('Không thể tạo phiếu đánh giá');
+
+      // Khóa lạc quan: phiếu đã thay đổi kể từ lúc mở (tab cũ / người khác vừa lưu/duyệt) → chặn ghi đè
+      if (formUpdatedAtRef.current && (form as any)?.updated_at && (form as any).updated_at !== formUpdatedAtRef.current) {
+        toast.error('Phiếu đã được cập nhật ở nơi khác (tab khác hoặc người khác vừa lưu/duyệt). Vui lòng tải lại trang rồi thao tác lại.');
+        return;
+      }
 
       await persistAllData(fId);
 

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -59,6 +59,8 @@ export default function StaffEvaluation() {
   const [coreSkillConfigs, setCoreSkillConfigs] = useState<any[]>([]);
 
   const [formId, setFormId] = useState<string | null>(null);
+  // Khóa lạc quan: mốc updated_at của phiếu lúc mở, để phát hiện tab khác/người khác đã lưu
+  const formUpdatedAtRef = useRef<string | null>(null);
   const [cycleId, setCycleId] = useState('');
   const oneOnOneQuestions = useCycleOneOnOneQuestions(cycleId);
   const [formStatus, setFormStatus] = useState('draft');
@@ -287,6 +289,7 @@ export default function StaffEvaluation() {
       if (form) {
         const fId = form.id;
         setFormId(fId);
+        formUpdatedAtRef.current = (form as any).updated_at ?? null;
         setFormStatus(form.status);
         setManagerConclusion(form.manager_comment || '');
         setOneOnOneEnabled(!!(form as any).one_on_one_enabled);
@@ -518,6 +521,16 @@ export default function StaffEvaluation() {
       setFormId(fId);
 
       if (!fId) throw new Error('Could not create form');
+
+      // Khóa lạc quan: phiếu đã thay đổi kể từ lúc mở (tab cũ / người khác vừa lưu/duyệt) → chặn ghi đè
+      if (formUpdatedAtRef.current && (form as any)?.updated_at && (form as any).updated_at !== formUpdatedAtRef.current) {
+        toast({
+          title: 'Phiếu đã được cập nhật ở nơi khác',
+          description: 'Tab khác hoặc người khác vừa lưu/duyệt phiếu này. Vui lòng tải lại trang rồi thao tác lại.',
+          variant: 'destructive',
+        });
+        return false;
+      }
 
       // Determine next status: respect current submit flag, but preserve non-draft statuses when manager merely "saves draft"
       let nextStatus: string;
