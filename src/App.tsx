@@ -51,6 +51,7 @@ const StaffDetail = lazyWithRetry(() => import("./pages/StaffDetail"));
 const UploadStaffPage = lazyWithRetry(() => import("./pages/UploadStaffPage"));
 const ConfigCoreSkillsPage = lazyWithRetry(() => import("./pages/ConfigCoreSkillsPage"));
 const SkillMediaPage = lazyWithRetry(() => import("./pages/SkillMediaPage"));
+const SkillCriteriaAdminPage = lazyWithRetry(() => import("./pages/SkillCriteriaAdminPage"));
 const ReportsPage = lazyWithRetry(() => import("./pages/ReportsPage"));
 const SettingsPage = lazyWithRetry(() => import("./pages/SettingsPage"));
 const BM01Page = lazyWithRetry(() => import("./pages/BM01Page"));
@@ -147,6 +148,7 @@ const App = () => (
                 <Route path="/upload-danh-sach-cb" element={<UploadStaffPage />} />
                 <Route path="/cau-hinh-skill-loi" element={<ConfigCoreSkillsPage />} />
                 <Route path="/quan-tri-hinh-anh-skill" element={<SkillMediaPage />} />
+                <Route path="/quan-tri-tieu-chi-level" element={<SkillCriteriaAdminPage />} />
                 <Route path="/cai-dat" element={<SettingsPage />} />
                 <Route path="/duyet-yeu-cau-user" element={<ApproveRegistrations />} />
                 <Route path="/quan-tri-ai" element={<AIPromptsAdmin />} />

@@ -1991,6 +1991,61 @@ export type Database = {
         }
         Relationships: []
       }
+      skill_criteria_responses: {
+        Row: {
+          answer: number
+          created_at: string
+          criterion_id: string
+          evidence: string | null
+          form_id: string
+          id: string
+          skill_id: string
+          updated_at: string
+        }
+        Insert: {
+          answer: number
+          created_at?: string
+          criterion_id: string
+          evidence?: string | null
+          form_id: string
+          id?: string
+          skill_id: string
+          updated_at?: string
+        }
+        Update: {
+          answer?: number
+          created_at?: string
+          criterion_id?: string
+          evidence?: string | null
+          form_id?: string
+          id?: string
+          skill_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_criteria_responses_criterion_id_fkey"
+            columns: ["criterion_id"]
+            isOneToOne: false
+            referencedRelation: "skill_level_criteria"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_criteria_responses_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "form_submissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_criteria_responses_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skill_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       skill_growth_stage_images: {
         Row: {
           created_at: string
@@ -2055,6 +2110,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "skill_level_achievements_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skill_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      skill_level_criteria: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          is_gate: boolean
+          level_no: number
+          requires_evidence: boolean
+          skill_id: string
+          sort_order: number
+          statement: string
+          updated_at: string
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_gate?: boolean
+          level_no: number
+          requires_evidence?: boolean
+          skill_id: string
+          sort_order?: number
+          statement: string
+          updated_at?: string
+          weight?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_gate?: boolean
+          level_no?: number
+          requires_evidence?: boolean
+          skill_id?: string
+          sort_order?: number
+          statement?: string
+          updated_at?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_level_criteria_skill_id_fkey"
             columns: ["skill_id"]
             isOneToOne: false
             referencedRelation: "skill_catalog"

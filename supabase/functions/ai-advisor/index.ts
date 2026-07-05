@@ -1,6 +1,6 @@
 // AI Advisor edge function — proxies Lovable AI Gateway (Gemini)
 // Modes: suggest_evidence | suggest_idp_plan | chat (SSE) | summarize_assessment
-// | coach_skill | suggest_attitude_action | competency_portrait
+// | coach_skill | suggest_attitude_action | competency_portrait | generate_criteria (admin)
 // Prompts/model are loaded from public.ai_prompts (admin-editable).
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -544,6 +544,166 @@ Hãy gọi tool select_courses để trả về tất cả khóa phù hợp, s�
       });
     }
     // ============ End VTB courses ============
+
+    // ============ Special: generate skill level criteria (admin-only draft) ============
+    // Sinh NHÁP tiêu chí hành vi (BARS) từ mô tả level trong skill_catalog.
+    // Không ghi DB — admin duyệt/sửa trên trang Quản trị tiêu chí rồi mới lưu.
+    if (mode === 'generate_criteria') {
+      const { data: roleRows2 } = await adminCli
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+      const roles2 = (roleRows2 || []).map((r: any) => r.role);
+      if (!roles2.some((r: string) => ['system_admin', 'bgd', 'tcth_admin'].includes(r))) {
+        return new Response(JSON.stringify({ error: 'Chỉ quản trị viên được sinh tiêu chí.' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const skillId = body.skill_id;
+      if (!skillId) {
+        return new Response(JSON.stringify({ error: 'skill_id bắt buộc' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const levelFilter: number | null = [1, 2, 3, 4].includes(body.level_no) ? body.level_no : null;
+
+      const { data: skill } = await adminCli
+        .from('skill_catalog')
+        .select('name, code, skill_group, description, level1_description, level2_description, level3_description, level4_description, upskill_l0_l1, upskill_l1_l2, upskill_l2_l3, upskill_l3_l4')
+        .eq('id', skillId)
+        .maybeSingle();
+      if (!skill) {
+        return new Response(JSON.stringify({ error: 'Skill không tồn tại' }), {
+          status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const critSys = `Bạn là chuyên gia xây dựng khung năng lực theo phương pháp BARS (Behaviorally Anchored Rating Scales) cho ngân hàng Việt Nam. Trả lời tiếng Việt.`;
+      const critVars: Record<string, unknown> = {
+        skill_name: skill.name,
+        skill_group: skill.skill_group || '',
+        description: skill.description || '',
+        l1: skill.level1_description || '',
+        l2: skill.level2_description || '',
+        l3: skill.level3_description || '',
+        l4: skill.level4_description || '',
+        upskill_l0_l1: skill.upskill_l0_l1 || '',
+        upskill_l1_l2: skill.upskill_l1_l2 || '',
+        upskill_l2_l3: skill.upskill_l2_l3 || '',
+        upskill_l3_l4: skill.upskill_l3_l4 || '',
+        level_filter: levelFilter ? `CHỈ sinh tiêu chí cho level ${levelFilter}.` : 'Sinh cho cả 4 level.',
+      };
+      const defaultCritMsg = `Xây bộ tiêu chí hành vi để xác định level cho kỹ năng "${skill.name}"${skill.skill_group ? ` (nhóm: ${skill.skill_group})` : ''}.
+
+MÔ TẢ KỸ NĂNG: ${skill.description || '(chưa có)'}
+
+MÔ TẢ 4 LEVEL:
+- L1 Tân binh: ${skill.level1_description || '(chưa có)'}
+- L2 Độc lập: ${skill.level2_description || '(chưa có)'}
+- L3 Chuyên gia: ${skill.level3_description || '(chưa có)'}
+- L4 Bậc thầy: ${skill.level4_description || '(chưa có)'}
+
+GỢI Ý THĂNG CẤP THAM KHẢO:
+- L0→L1: ${skill.upskill_l0_l1 || '(chưa có)'}
+- L1→L2: ${skill.upskill_l1_l2 || '(chưa có)'}
+- L2→L3: ${skill.upskill_l2_l3 || '(chưa có)'}
+- L3→L4: ${skill.upskill_l3_l4 || '(chưa có)'}
+
+YÊU CẦU BIÊN SOẠN:
+1. Mỗi level 3-5 tiêu chí, là HÀNH VI QUAN SÁT ĐƯỢC trong công việc thực tế, bắt đầu bằng động từ ("Tự xử lý...", "Đã hướng dẫn...", "Chủ động đề xuất..."), có phạm vi/tần suất đo được. TRÁNH từ cảm tính: tốt, thành thạo, hiểu biết sâu.
+2. Tính tích luỹ (thang Guttman): tiêu chí level cao phải khó hơn rõ rệt level thấp, không lặp lại ý.
+3. Mỗi level đúng 1-2 tiêu chí "gate" (bắt buộc đạt thì level mới được công nhận) — chọn tiêu chí phân định rõ nhất; gate luôn có requires_evidence=true.
+4. Câu ngắn gọn tối đa 30 từ, để cán bộ tự trả lời được: Đạt / Một phần / Chưa.
+${levelFilter ? `5. CHỈ sinh tiêu chí cho level ${levelFilter}.` : ''}
+
+Gọi tool propose_criteria để trả kết quả.`;
+      const critUserMsg = tpl ? renderTemplate(tpl, critVars) : defaultCritMsg;
+
+      const critTools = [{
+        type: 'function',
+        function: {
+          name: 'propose_criteria',
+          description: 'Trả về bộ tiêu chí hành vi theo level.',
+          parameters: {
+            type: 'object',
+            properties: {
+              levels: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    level_no: { type: 'number', description: '1-4' },
+                    criteria: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          statement: { type: 'string' },
+                          is_gate: { type: 'boolean' },
+                          requires_evidence: { type: 'boolean' },
+                        },
+                        required: ['statement', 'is_gate', 'requires_evidence'],
+                        additionalProperties: false,
+                      },
+                    },
+                  },
+                  required: ['level_no', 'criteria'],
+                  additionalProperties: false,
+                },
+              },
+            },
+            required: ['levels'],
+            additionalProperties: false,
+          },
+        },
+      }];
+
+      const critRes = await fetch(providerCfg.endpoint, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${providerCfg.apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'system', content: critSys }, { role: 'user', content: critUserMsg }],
+          tools: critTools,
+          tool_choice: { type: 'function', function: { name: 'propose_criteria' } },
+        }),
+      });
+      if (!critRes.ok) {
+        if (critRes.status === 429) return new Response(JSON.stringify({ error: 'Quá nhiều yêu cầu, thử lại sau.' }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        if (critRes.status === 402) return new Response(JSON.stringify({ error: 'Hết hạn mức/credit của nhà cung cấp AI.' }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        const t = await critRes.text();
+        console.error('AI error generate_criteria:', critRes.status, t);
+        return new Response(JSON.stringify({ error: 'AI gateway lỗi' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      const critData = await critRes.json();
+      const critCall = critData.choices?.[0]?.message?.tool_calls?.[0];
+      let rawLevels: Array<{ level_no: number; criteria: Array<{ statement: string; is_gate: boolean; requires_evidence: boolean }> }> = [];
+      try {
+        rawLevels = JSON.parse(critCall?.function?.arguments || '{}').levels || [];
+      } catch { rawLevels = []; }
+
+      // Sanitize: clamp level 1-4, tối đa 6 tiêu chí/level, gate luôn kèm minh chứng
+      const levels = rawLevels
+        .filter((l) => [1, 2, 3, 4].includes(l.level_no))
+        .filter((l) => !levelFilter || l.level_no === levelFilter)
+        .map((l) => ({
+          level_no: l.level_no,
+          criteria: (l.criteria || [])
+            .map((c) => ({
+              statement: String(c.statement || '').trim().slice(0, 500),
+              is_gate: !!c.is_gate,
+              requires_evidence: !!c.requires_evidence || !!c.is_gate,
+            }))
+            .filter((c) => c.statement.length > 0)
+            .slice(0, 6),
+        }))
+        .filter((l) => l.criteria.length > 0);
+
+      return new Response(JSON.stringify({ levels }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    // ============ End generate criteria ============
 
 
 
