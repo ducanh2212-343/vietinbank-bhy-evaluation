@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { AnswerValue } from '@/lib/levelCheck';
 
 /** Một tiêu chí trong trình soạn thảo — id rỗng = dòng mới chưa lưu. */
 export interface CriterionDraft {
@@ -92,4 +93,32 @@ export async function saveCriteriaChanges(
     if (error) return error.message;
   }
   return null;
+}
+
+/**
+ * Lưu câu trả lời wizard của một skill trong một phiếu (ghi đè lần trả lời trước).
+ * Trả về message lỗi nếu có.
+ */
+export async function saveCriteriaResponses(
+  formId: string,
+  skillId: string,
+  answers: { criterionId: string; answer: AnswerValue; evidence: string }[],
+): Promise<string | null> {
+  const { error: delErr } = await supabase
+    .from('skill_criteria_responses')
+    .delete()
+    .eq('form_id', formId)
+    .eq('skill_id', skillId);
+  if (delErr) return delErr.message;
+  if (answers.length === 0) return null;
+  const { error } = await supabase.from('skill_criteria_responses').insert(
+    answers.map((a) => ({
+      form_id: formId,
+      skill_id: skillId,
+      criterion_id: a.criterionId,
+      answer: a.answer,
+      evidence: a.evidence.trim() || null,
+    })),
+  );
+  return error ? error.message : null;
 }

@@ -7,7 +7,7 @@ import { SkillLevelBadge } from '@/components/SkillLevelBadge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { ChevronDown, Target, Sparkles, Loader2, X, Plus, Trash2, Layers } from 'lucide-react';
+import { ChevronDown, Target, Sparkles, Loader2, X, Plus, Trash2, Layers, Compass } from 'lucide-react';
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,6 +15,9 @@ import { toast } from 'sonner';
 import { makeSupplementaryAssessment } from '@/lib/evaluationPersistence';
 import { useAiFeatures } from '@/hooks/useAiFeatures';
 import { BrandMascotAI } from '@/components/branding/BrandAssets';
+import { useSkillCriteria } from '@/hooks/useSkillCriteria';
+import { LevelCheckWizard, type WizardApplyPayload } from '@/components/evaluation/LevelCheckWizard';
+import { saveCriteriaResponses } from '@/lib/skillCriteria';
 
 export interface CoreSkillAssessment {
   skill_id: string;
@@ -50,6 +53,8 @@ interface Props {
   allSkills?: any[];
   /** Skill IDs that were auto-upskilled from previous quarter — rendered with a success highlight */
   levelUpSkillIds?: Set<string>;
+  /** Có formId thì câu trả lời wizard tiêu chí được lưu lại cho quản lý xem breakdown */
+  formId?: string | null;
 }
 
 const LEVEL_OPTIONS = [
@@ -69,12 +74,33 @@ export function EvalSectionB({
   onSupplementaryChange,
   allSkills,
   levelUpSkillIds,
+  formId,
 }: Props) {
   const { isEnabled: isAiEnabled } = useAiFeatures();
+  const { getCriteria } = useSkillCriteria();
   const [openId, setOpenId] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState<Record<string, boolean>>({});
   const [aiResults, setAiResults] = useState<Record<string, string>>({});
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [wizardTarget, setWizardTarget] = useState<{ kind: 'core' | 'supp'; idx: number; a: CoreSkillAssessment } | null>(null);
+
+  const applyWizardResult = async (payload: WizardApplyPayload) => {
+    if (!wizardTarget) return;
+    const { kind, idx, a } = wizardTarget;
+    updateRow(kind, idx, 'self_assessed_level', payload.level);
+    // Ghi tóm tắt vào minh chứng để quản lý thấy căn cứ (thay dòng wizard cũ nếu có)
+    const cleaned = (a.evidence || '')
+      .split('\n')
+      .filter((line) => !line.startsWith('[Bộ tiêu chí]'))
+      .join('\n')
+      .trim();
+    updateRow(kind, idx, 'evidence', cleaned ? `${cleaned}\n${payload.summary}` : payload.summary);
+    toast.success(`Đã áp dụng L${payload.level} cho ${a.skill_name}`);
+    if (formId) {
+      const err = await saveCriteriaResponses(formId, a.skill_id, payload.answers);
+      if (err) toast.error(`Không lưu được câu trả lời tiêu chí: ${err}`);
+    }
+  };
 
   const supportsSupplementary = !!onSupplementaryChange && !!allSkills;
   const suppList = supplementary || [];
@@ -258,6 +284,20 @@ export function EvalSectionB({
 
             <SkillLevelReference assessment={a} />
 
+            {/* Wizard xác định level theo bộ tiêu chí — hiện khi skill đã có tiêu chí */}
+            {getCriteria(a.skill_id).length > 0 && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs gap-1.5 border-primary/40 text-primary hover:bg-primary/5"
+                onClick={() => setWizardTarget({ kind, idx, a })}
+              >
+                <Compass className="w-3.5 h-3.5" />
+                Xác định level theo bộ tiêu chí
+              </Button>
+            )}
+
             {/* Self & Manager levels */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
@@ -358,6 +398,19 @@ export function EvalSectionB({
 
   return (
     <div className="space-y-3">
+      {wizardTarget && (
+        <LevelCheckWizard
+          open={!!wizardTarget}
+          onOpenChange={(o) => { if (!o) setWizardTarget(null); }}
+          skillId={wizardTarget.a.skill_id}
+          skillName={wizardTarget.a.skill_name}
+          skillCode={wizardTarget.a.skill_code}
+          criteria={getCriteria(wizardTarget.a.skill_id)}
+          startLevel={wizardTarget.a.self_assessed_level ?? 0}
+          onApply={applyWizardResult}
+        />
+      )}
+
       {/* B1. Core skills */}
       <Card>
         <CardHeader className="pb-2">
