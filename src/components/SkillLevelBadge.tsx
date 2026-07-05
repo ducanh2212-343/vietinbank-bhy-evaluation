@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { SkillLevelArt } from '@/components/SkillLevelArt';
-import { LEVEL_LABELS } from '@/lib/skillLevels';
+import { LEVEL_LABELS, GROWTH_STAGE_LABELS } from '@/lib/skillLevels';
 import { useSkillLevelImages } from '@/hooks/useSkillLevelImages';
 
 interface Props {
@@ -47,13 +47,16 @@ export function SkillLevelBadge({ level, imageUrl, skillId, className = '', size
         </DialogTrigger>
         <DialogContent className="max-w-xs p-6 flex flex-col items-center gap-4" onClick={(e) => e.stopPropagation()}>
           <SkillLevelArt level={lvl} imageUrl={art} iconUrl={icon} size="xl" />
-          <p className="text-sm font-medium">Level {lvl} — {LEVEL_LABELS[lvl]}</p>
+          <div className="text-center">
+            <p className="text-sm font-medium">Level {lvl} — {LEVEL_LABELS[lvl]}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Nấc phát triển: {GROWTH_STAGE_LABELS[lvl]}</p>
+          </div>
           {nextLvl && (
             <div className="w-full flex items-center gap-3 rounded-lg border border-dashed bg-muted/40 p-3">
               <SkillLevelArt level={nextLvl} imageUrl={nextArt} iconUrl={icon} size="md" locked />
               <div className="text-left">
                 <p className="text-xs font-medium text-muted-foreground">Cấp tiếp theo</p>
-                <p className="text-xs">L{nextLvl} — {LEVEL_LABELS[nextLvl]}</p>
+                <p className="text-xs">L{nextLvl} — {LEVEL_LABELS[nextLvl]} · {GROWTH_STAGE_LABELS[nextLvl]}</p>
               </div>
             </div>
           )}

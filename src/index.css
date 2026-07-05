@@ -249,12 +249,6 @@
   .skill-art-lock {
     @apply absolute -bottom-1 -right-1 rounded-full bg-background border p-0.5 text-muted-foreground shadow-sm;
   }
-  .skill-art-fallback { color: hsl(var(--muted-foreground)); }
-  .skill-art-l1 .skill-art-fallback { color: hsl(28 48% 42%); fill: hsl(28 48% 42% / 0.25); }
-  .skill-art-l2 .skill-art-fallback { color: hsl(215 16% 48%); fill: hsl(215 16% 48% / 0.25); }
-  .skill-art-l3 .skill-art-fallback { color: hsl(40 82% 40%); fill: hsl(var(--brand-gold) / 0.3); }
-  .skill-art-l4 .skill-art-fallback { color: hsl(var(--level-4)); fill: hsl(var(--level-4) / 0.25); }
-  .skill-art-locked .skill-art-fallback { color: hsl(var(--muted-foreground)); fill: transparent; opacity: 0.5; }
 
   .star-mai { background: hsl(var(--star-mai-bg)); color: hsl(var(--star-mai)); }
   .star-khue { background: hsl(var(--star-khue-bg)); color: hsl(var(--star-khue)); }

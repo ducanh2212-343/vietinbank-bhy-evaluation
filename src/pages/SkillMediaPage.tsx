@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
 import { useSkillLevelImages } from '@/hooks/useSkillLevelImages';
 import { SkillLevelArt } from '@/components/SkillLevelArt';
+import { GROWTH_STAGE_LABELS } from '@/lib/skillLevels';
 import { Upload, X, Check, Search, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
@@ -150,8 +151,8 @@ export default function SkillMediaPage() {
       <div>
         <h1 className="page-header">Quản trị hình ảnh Skill</h1>
         <p className="page-subtitle">
-          Upload 1 icon cho mỗi skill — hệ thống tự đóng khung theo level (đồng → bạc → vàng → kim cương).
-          Ảnh riêng từng level là tuỳ chọn, dùng khi muốn art thay thế icon + khung.
+          Thứ tự ưu tiên hiển thị: ảnh riêng từng level → icon skill + khung level (đồng → bạc → vàng → kim cương)
+          → bộ hình chung 4 nấc Cây ký ức (Ươm mầm · Bám rễ · Vươn cành · Lan tỏa).
         </p>
       </div>
 
@@ -205,7 +206,9 @@ export default function SkillMediaPage() {
                           iconUrl={skill.icon_url}
                           size="md"
                         />
-                        <span className="text-[9px] text-muted-foreground">L{level}</span>
+                        <span className="text-[9px] text-muted-foreground">
+                          L{level}{!getImage(skill.id, level)?.image_url && !skill.icon_url ? ` · ${GROWTH_STAGE_LABELS[level]}` : ''}
+                        </span>
                       </div>
                     ))}
                     <div className="flex flex-col items-center gap-1">
