@@ -67,6 +67,7 @@ const SkillRiskHeatmapPage = lazyWithRetry(() => import("./pages/SkillRiskHeatma
 const CareerPathPage = lazyWithRetry(() => import("./pages/CareerPathPage"));
 const TransferSimulationPage = lazyWithRetry(() => import("./pages/TransferSimulationPage"));
 const QuarterlyNewsletterPage = lazyWithRetry(() => import("./pages/QuarterlyNewsletterPage"));
+const LearningCampaignsPage = lazyWithRetry(() => import("./pages/LearningCampaignsPage"));
 const ChangePassword = lazyWithRetry(() => import("./pages/ChangePassword"));
 const ForgotPassword = lazyWithRetry(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
@@ -124,6 +125,7 @@ const App = () => (
               <Route path="/ung-dung-ai" element={<AIApplicationPage />} />
               <Route path="/thai-do-tu-duy" element={<AttitudeMindset />} />
               <Route path="/hanh-dong-phat-trien" element={<PersonalKanbanPage />} />
+              <Route path="/chien-dich-hoc-tap" element={<LearningCampaignsPage />} />
 
               <Route path="/bieu-mau-01" element={<BM01Page />} />
               <Route path="/bieu-mau-02" element={<BM02Page />} />
