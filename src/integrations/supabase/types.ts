@@ -2062,6 +2062,56 @@ export type Database = {
           },
         ]
       }
+      skill_level_criteria: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          is_gate: boolean
+          level_no: number
+          requires_evidence: boolean
+          skill_id: string
+          sort_order: number
+          statement: string
+          updated_at: string
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_gate?: boolean
+          level_no: number
+          requires_evidence?: boolean
+          skill_id: string
+          sort_order?: number
+          statement: string
+          updated_at?: string
+          weight?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_gate?: boolean
+          level_no?: number
+          requires_evidence?: boolean
+          skill_id?: string
+          sort_order?: number
+          statement?: string
+          updated_at?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_level_criteria_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skill_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       skill_level_images: {
         Row: {
           created_at: string
