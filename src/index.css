@@ -249,6 +249,15 @@
   .skill-art-lock {
     @apply absolute -bottom-1 -right-1 rounded-full bg-background border p-0.5 text-muted-foreground shadow-sm;
   }
+  /* Hiệu ứng "mở khoá" trong modal chúc mừng thăng cấp */
+  @keyframes skill-art-pop {
+    0% { transform: scale(0.55); opacity: 0.4; }
+    60% { transform: scale(1.12); opacity: 1; }
+    100% { transform: scale(1); }
+  }
+  .skill-art-pop {
+    animation: skill-art-pop 0.55s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
 
   .star-mai { background: hsl(var(--star-mai-bg)); color: hsl(var(--star-mai)); }
   .star-khue { background: hsl(var(--star-khue-bg)); color: hsl(var(--star-khue)); }

@@ -11,6 +11,7 @@ import { ReviewerActionAlert } from '@/components/evaluation-tracking/ReviewerAc
 import { PersonalKanbanMini } from '@/components/kanban/PersonalKanbanMini';
 import { AnniversaryBanner } from '@/components/branding/AnniversaryBanner';
 import { SkillCollectionStrip } from '@/components/profile/SkillCollectionStrip';
+import { LevelUpReveal } from '@/components/profile/LevelUpReveal';
 
 
 function OverviewSelf({ profileId }: { profileId: string }) {
@@ -68,6 +69,9 @@ function OverviewSelf({ profileId }: { profileId: string }) {
       <AnniversaryBanner />
 
       <ReviewerActionAlert />
+
+      {/* Modal chúc mừng khi có level mới được duyệt (hiện một lần) */}
+      <LevelUpReveal profileId={profileId} />
 
       {latestForm && (
         <SkillCollectionStrip formId={latestForm.id} cycleName={latestForm.cycle_name} />

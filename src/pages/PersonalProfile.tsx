@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { User, Briefcase, Pencil } from 'lucide-react';
 import { fetchAllForms, APPROVED_STATUSES, type ApprovedFormMeta } from '@/lib/approvedForm';
 import { EvaluationHistoryList } from '@/components/profile/EvaluationHistoryList';
+import { SkillCollectionGrid } from '@/components/profile/SkillCollectionGrid';
 import type { TrendPoint } from '@/components/profile/ProgressTrendChart';
 const ProgressTrendChart = lazy(() => import('@/components/profile/ProgressTrendChart').then(m => ({ default: m.ProgressTrendChart })));
 import { StatusBadge, StatusNoteBanner } from '@/components/profile/StatusBadge';
@@ -145,8 +146,12 @@ export default function PersonalProfile() {
         </CardContent>
       </Card>
 
+      {latest && (
+        <SkillCollectionGrid formId={latest.id} cycleName={latest.cycle_name} />
+      )}
+
       {trend.length >= 2 && (
-        <Suspense fallback={<div className="h-48" />}> 
+        <Suspense fallback={<div className="h-48" />}>
           <ProgressTrendChart data={trend} />
         </Suspense>
       )}
