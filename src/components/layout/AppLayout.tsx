@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/input';
 import { Search, Menu, X, LogOut, User, ChevronDown, KeyRound } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export function AppLayout() {
   const { user, roles, signOut } = useAuth();
@@ -66,15 +67,19 @@ export function AppLayout() {
             </button>
             <div className="relative w-40 sm:w-72 hidden sm:block">
               <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Tìm kiếm..." aria-label="Tìm kiếm" className="pl-9 h-9 text-sm rounded-full bg-white/60 border-white/70" />
+              <Input placeholder="Tìm kiếm..." aria-label="Tìm kiếm" className="pl-9 h-9 text-sm rounded-full bg-white/60 border-white/70 dark:bg-white/10 dark:border-white/15" />
             </div>
           </div>
+
+          <div className="flex items-center gap-1 sm:gap-2 min-w-0">
+          {/* Chuyển giao diện sáng / tối */}
+          <ThemeToggle />
 
           {/* User menu */}
           <div className="relative min-w-0" ref={menuRef}>
             <button
               onClick={() => setUserMenuOpen(!userMenuOpen)}
-              className="flex items-center gap-2 sm:gap-3 text-sm hover:bg-white/60 rounded-full px-2 py-1.5 transition-colors min-w-0"
+              className="flex items-center gap-2 sm:gap-3 text-sm hover:bg-white/60 dark:hover:bg-white/10 rounded-full px-2 py-1.5 transition-colors min-w-0"
             >
               <span className="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] sm:text-xs font-medium whitespace-nowrap">{displayRole}</span>
               <span className="font-medium text-xs sm:text-sm truncate max-w-[110px] sm:max-w-[200px]">{user?.email}</span>
@@ -107,6 +112,7 @@ export function AppLayout() {
                 </button>
               </div>
             )}
+          </div>
           </div>
         </header>
         <main className="flex-1 p-3 sm:p-6 overflow-y-auto safe-bottom">
