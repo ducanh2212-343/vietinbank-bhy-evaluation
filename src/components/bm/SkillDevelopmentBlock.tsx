@@ -13,6 +13,7 @@ import type { SkillPriority } from './SkillPriorityPicker';
 import type { SkillAction } from './SkillActionsBlock';
 import { VtbCourseSuggestion } from './VtbCourseSuggestion';
 import { IdpPlanSuggestion } from './IdpPlanSuggestion';
+import { MentorSuggestion } from './MentorSuggestion';
 import { useAiFeatures } from '@/hooks/useAiFeatures';
 import { cn } from '@/lib/utils';
 
@@ -30,6 +31,10 @@ interface Props {
   assessedLevels?: AssessedLevel[];
   positionId?: string | null;
   readOnly?: boolean;
+  /** Kỳ đánh giá + hồ sơ cán bộ — cần cho gợi ý người kèm cặp nội bộ (20%) */
+  cycleId?: string;
+  menteeProfileId?: string | null;
+  menteeDepartmentId?: string | null;
 }
 
 const ACTION_TYPES = [
@@ -43,6 +48,7 @@ const typeMeta = (v: string) => ACTION_TYPES.find(t => t.value === v) || ACTION_
 export function SkillDevelopmentBlock({
   priorities, actions, onPrioritiesChange, onActionsChange,
   allSkills, coreSkills, assessedLevels = [], positionId, readOnly,
+  cycleId, menteeProfileId, menteeDepartmentId,
 }: Props) {
 
   const [search, setSearch] = useState('');
@@ -391,6 +397,20 @@ export function SkillDevelopmentBlock({
                       );
                     })}
                   </div>
+
+                  {!readOnly && cycleId && menteeProfileId && (
+                    <div className="rounded-md border border-dashed border-primary/30 bg-background/60 p-2">
+                      <MentorSuggestion
+                        priority={p}
+                        cycleId={cycleId}
+                        menteeProfileId={menteeProfileId}
+                        menteeDepartmentId={menteeDepartmentId}
+                        existingActionsCount={pActions.length}
+                        onAddAction={(a) => onActionsChange([...actions, a])}
+                        readOnly={readOnly}
+                      />
+                    </div>
+                  )}
 
                   {!readOnly && isAiEnabled('suggest_idp_plan') && (
                     <div className="rounded-md border border-dashed border-primary/30 bg-background/60 p-2">

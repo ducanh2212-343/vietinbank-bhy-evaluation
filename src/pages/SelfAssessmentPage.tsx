@@ -600,6 +600,7 @@ export default function SelfAssessmentPage() {
     const errors = validateSubmission({
       coreAssessments, attitudeAssessments,
       skillPriorities, skillActions,
+      supplementaryAssessments: suppAssessments,
     });
     if (errors.length > 0) {
       toast.error('Chưa thể nộp đánh giá', {
@@ -632,8 +633,9 @@ export default function SelfAssessmentPage() {
     () => validateSubmissionDetailed({
       coreAssessments, attitudeAssessments,
       skillPriorities, skillActions,
+      supplementaryAssessments: suppAssessments,
     }),
-    [coreAssessments, attitudeAssessments, skillPriorities, skillActions],
+    [coreAssessments, attitudeAssessments, skillPriorities, skillActions, suppAssessments],
   );
 
   if (loading) return <div className="p-6 text-muted-foreground">Đang tải...</div>;
@@ -737,6 +739,9 @@ export default function SelfAssessmentPage() {
             ...suppAssessments.map(a => ({ skill_id: a.skill_id, current_level: a.self_assessed_level ?? a.manager_assessed_level ?? null })),
           ], historicalLevels)}
           positionId={profile?.position_id}
+          cycleId={cycleId || undefined}
+          menteeProfileId={profileId}
+          menteeDepartmentId={profile?.department_id}
         />
 
       </div>

@@ -23,3 +23,5 @@ project_id = "whlysprzsguehxmrjwha"
     verify_jwt = true
   [functions.delete-staff]
     verify_jwt = true
+  [functions.send-hr-notification]
+    verify_jwt = true

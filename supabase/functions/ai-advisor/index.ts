@@ -1,6 +1,7 @@
 // AI Advisor edge function — proxies Lovable AI Gateway (Gemini)
 // Modes: suggest_evidence | suggest_idp_plan | chat (SSE) | summarize_assessment
 // | coach_skill | suggest_attitude_action | competency_portrait | generate_criteria (admin)
+// | evidence_review | one_on_one_prep | quarterly_letter
 // Prompts/model are loaded from public.ai_prompts (admin-editable).
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -179,6 +180,67 @@ CẤU TRÚC ĐẦU RA (đúng thứ tự):
 
 Dữ liệu đánh giá (JSON):
 ${JSON.stringify(payload).slice(0, 12000)}`;
+  }
+  if (mode === 'evidence_review') {
+    const { skill = {}, role, claimed_level, evidence, is_core } = body;
+    return `Bạn là người thẩm định năng lực khách quan. Cán bộ vị trí "${role || 'cán bộ'}" tự chấm mức L${claimed_level ?? '?'} cho kỹ năng dưới đây và cung cấp minh chứng. Hãy đánh giá xem minh chứng có ĐỦ SỨC chứng minh mức đó không — nghiêm khắc nhưng công bằng, chỉ dựa trên dữ liệu được cung cấp.
+
+THÔNG TIN SKILL
+- Tên: ${skill.name || '?'} ${skill.code ? `(${skill.code})` : ''}
+- Nhóm: ${skill.skill_group || '?'} · Loại: ${is_core ? 'Skill LÕI theo vị trí' : 'Skill BỔ TRỢ'}
+
+MÔ TẢ CÁC MỨC
+- L1: ${skill.l1 || '—'}
+- L2: ${skill.l2 || '—'}
+- L3: ${skill.l3 || '—'}
+- L4: ${skill.l4 || '—'}
+
+MỨC TỰ CHẤM: L${claimed_level ?? '?'}
+MINH CHỨNG CÁN BỘ CUNG CẤP:
+${evidence || '(trống)'}
+
+Trả lời markdown NGẮN GỌN theo đúng cấu trúc:
+## ⚖️ Kết luận
+(một trong ba: **Khớp mức L${claimed_level ?? '?'}** / **Mới tương đương L thấp hơn — nêu rõ L nào** / **Chưa đủ dữ kiện để kết luận**, kèm 1 câu lý do)
+## 🔎 Phân tích minh chứng
+(minh chứng khớp/không khớp tiêu chí nào trong mô tả mức — trích cụ thể)
+## 📌 Cần bổ sung gì
+(2-3 minh chứng cụ thể, kiểm chứng được, giúp người duyệt tin mức này)`;
+  }
+  if (mode === 'one_on_one_prep') {
+    const { payload } = body;
+    return `Bạn là trợ lý của quản lý ngân hàng, chuẩn bị cho phiên trao đổi 1-1 với một cán bộ trong kỳ đánh giá. Dựa TOÀN BỘ trên dữ liệu JSON bên dưới (kỹ năng, gap, thái độ, hành động phát triển/Kanban, câu trả lời 1-1 kỳ trước nếu có), soạn TRANG CHUẨN BỊ ngắn gọn để quản lý đọc trong 2 phút.
+
+YÊU CẦU FORMAT (markdown, tiếng Việt, đúng cấu trúc):
+## 🌟 3 điểm nổi bật quý này
+(3 gạch đầu dòng — thành tích, kỹ năng tiến bộ, hành động đã hoàn thành)
+## 🎯 2 khoảng trống đáng trao đổi nhất
+(2 gạch đầu dòng — gap kỹ năng/thái độ quan trọng nhất, kèm số liệu L hiện tại → yêu cầu)
+## 📋 Cam kết kỳ trước — tiến độ
+(điểm lại các hành động phát triển: cái nào xong, cái nào trễ hạn/không cập nhật; nếu không có dữ liệu ghi "Chưa có hành động được giao")
+## 💬 3 câu hỏi nên hỏi trong phiên
+(câu hỏi mở, gắn trực tiếp với dữ liệu trên, giúp cán bộ tự nói ra vấn đề)
+## 🤝 1 việc quản lý nên cam kết hỗ trợ
+(cụ thể, khả thi trong quý)
+
+Không bịa thông tin ngoài dữ liệu. Nếu thiếu dữ liệu ở mục nào, nói thẳng là thiếu.
+
+Dữ liệu (JSON):
+${JSON.stringify(payload).slice(0, 12000)}`;
+  }
+  if (mode === 'quarterly_letter') {
+    const { payload } = body;
+    return `Bạn viết THƯ TỔNG KẾT PHÁT TRIỂN CÁ NHÂN cuối kỳ cho một cán bộ ngân hàng, giọng ấm áp - tích cực - cụ thể (xưng "bạn", ký tên "Hệ thống 343 Phát triển nhân sự"). Dựa hoàn toàn trên dữ liệu JSON bên dưới. KHÔNG nêu tên người khác, KHÔNG so sánh với đồng nghiệp — chỉ so bạn-với-chính-bạn.
+
+Cấu trúc (markdown, 200-320 từ):
+1. Mở đầu: ghi nhận nỗ lực trong kỳ (nhắc tên kỳ).
+2. Điểm sáng: các kỹ năng đã lên level trong kỳ (nêu rõ skill + L cũ → L mới); nếu không có, ghi nhận việc hoàn thành đánh giá và duy trì mặt bằng.
+3. So với chính mình: tiến bộ so với kỳ trước (số kỹ năng đạt chuẩn, hành động hoàn thành).
+4. Quý tới nên dồn sức vào đâu: tối đa 2 kỹ năng (từ gap/IDP), mỗi kỹ năng 1 câu vì sao đáng đầu tư.
+5. Kết: 1 câu động viên, không sáo rỗng.
+
+Dữ liệu (JSON):
+${JSON.stringify(payload).slice(0, 10000)}`;
   }
   if (mode === 'coach_skill') {
     const {
@@ -736,6 +798,15 @@ Gọi tool propose_criteria để trả kết quả.`;
           payload: typeof body.payload === 'string' ? body.payload : JSON.stringify(body.payload ?? {}).slice(0, 12000),
         };
         if (mode === 'coach_skill') Object.assign(vars, buildCoachVars(body));
+        if (mode === 'evidence_review') {
+          const sk = body.skill || {};
+          Object.assign(vars, {
+            skill_name: sk.name || '', skill_code: sk.code || '', skill_group: sk.skill_group || '',
+            l1: sk.l1 || '', l2: sk.l2 || '', l3: sk.l3 || '', l4: sk.l4 || '',
+            claimed_level: String(body.claimed_level ?? ''),
+            evidence_block: body.evidence || '(trống)',
+          });
+        }
         userContent = renderTemplate(tpl, vars);
       } else {
         const fb = buildFallbackUserPrompt(mode, body);
