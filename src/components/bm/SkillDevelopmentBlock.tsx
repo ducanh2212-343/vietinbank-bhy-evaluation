@@ -56,6 +56,8 @@ export function SkillDevelopmentBlock({
   const selectedIds = new Set(priorities.map(p => p.skill_id));
 
   useEffect(() => {
+    // Phiếu chỉ xem (đã duyệt/lịch sử): giữ nguyên level đã lưu, không đồng bộ lại
+    if (readOnly) return;
     if (!assessedLevels.length) return;
     let dirty = false;
     const updated = priorities.map(p => {
@@ -230,7 +232,7 @@ export function SkillDevelopmentBlock({
                   {/* Level summary bar */}
                   <div className="flex items-center gap-3 flex-wrap text-sm bg-muted/40 rounded-md p-3 border">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs text-muted-foreground">Hiện tại{lockedCurrent ? ' (từ mục B)' : ''}:</span>
+                      <span className="text-xs text-muted-foreground">Hiện tại{lockedCurrent ? ' (tự động từ mục B / kỳ gần nhất)' : ''}:</span>
                       <SkillLevelBadge level={p.current_level} imageUrl={getImageUrl(p.skill_id, p.current_level)} />
                     </div>
                     <span className="text-muted-foreground font-bold">→</span>
