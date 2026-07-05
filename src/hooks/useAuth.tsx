@@ -168,6 +168,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        // Người dùng vào bằng link đặt-lại-mật-khẩu trong email. Nếu Auth trả họ về
+        // trang chủ (redirect_to thiếu / không nằm trong allow-list) thì ép về đúng
+        // trang đặt mật khẩu mới — không để họ lạc vào app mà không đổi mật khẩu.
+        if (window.location.pathname !== '/dat-lai-mat-khau') {
+          window.location.replace('/dat-lai-mat-khau');
+          return;
+        }
+      }
       if (event === 'TOKEN_REFRESHED' && !session) {
         // Refresh failed — ensure we don't keep a stale user object.
         void supabase.auth.signOut().catch(() => {});
