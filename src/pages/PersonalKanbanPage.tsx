@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -30,7 +31,11 @@ export default function PersonalKanbanPage() {
   const { profileId, isManager, isPgd, isAdmin } = useAuth();
   const isTeamManager = isManager || isPgd || isAdmin;
   const isMobile = useIsMobile();
-  const [scopeTab, setScopeTab] = useState<'mine' | 'team'>('mine');
+  const [searchParams] = useSearchParams();
+  // Deep-link tới tab "Đội ngũ" qua ?view=team (dùng từ dải nhắc "Chờ xác nhận" trên Tổng quan)
+  const [scopeTab, setScopeTab] = useState<'mine' | 'team'>(
+    isTeamManager && searchParams.get('view') === 'team' ? 'team' : 'mine',
+  );
   const [cards, setCards] = useState<KanbanCard[]>([]);
   const [skillMap, setSkillMap] = useState<SkillMetaMap>({});
   const [flags, setFlags] = useState<ActivityFlagsMap>({});

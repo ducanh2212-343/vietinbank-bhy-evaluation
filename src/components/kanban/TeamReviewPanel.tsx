@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +8,7 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/
 import { CardDetailDialog } from './CardDetailDialog';
 import { computeBadges, dedupeCards, SOURCE_LABEL, type KanbanCard } from '@/lib/kanban';
 import { toast } from 'sonner';
-import { Clock, AlertTriangle, Inbox, Users } from 'lucide-react';
+import { Clock, AlertTriangle, Inbox } from 'lucide-react';
 
 interface TeamProfile {
   id: string;
@@ -26,9 +25,8 @@ function fmtDate(iso: string | null | undefined): string {
   return new Date(iso).toLocaleDateString('vi-VN');
 }
 
-export function TeamReviewPanel({ compact = false }: { compact?: boolean } = {}) {
+export function TeamReviewPanel() {
   const { profileId, scope, departmentId, visibleDeptIds } = useAuth();
-  const navigate = useNavigate();
   const [profiles, setProfiles] = useState<TeamProfile[]>([]);
   const [deptMap, setDeptMap] = useState<Record<string, string>>({});
   const [cards, setCards] = useState<KanbanCard[]>([]);
@@ -130,87 +128,12 @@ export function TeamReviewPanel({ compact = false }: { compact?: boolean } = {})
     return rows;
   }, [profiles, cardsByProfile]);
 
-  // Tổng hợp nhanh cho chế độ gọn
-  const summary = useMemo(() => {
-    let doing = 0, overdue = 0;
-    for (const r of overview) { doing += r.doing; overdue += r.overdue; }
-    return { people: profiles.length, doing, overdue, waiting: waiting.length };
-  }, [overview, profiles.length, waiting.length]);
-
   const detailOwnerName = detailCard ? profiles.find(p => p.id === detailCard.profile_id)?.full_name : undefined;
-
-  const detailDialog = detailCard && (
-    <CardDetailDialog
-      card={detailCard}
-      ownerName={detailOwnerName}
-      open
-      onClose={() => setDetailCard(null)}
-      onChanged={load}
-    />
-  );
 
   if (loading) return <p className="text-muted-foreground">Đang tải...</p>;
 
   if (!profiles.length) {
-    return (
-      <p className="text-muted-foreground text-sm">
-        {compact ? 'Chưa có cán bộ trong phạm vi.' : 'Không có cán bộ nào trong phạm vi quản lý của bạn.'}
-      </p>
-    );
-  }
-
-  if (compact) {
-    const shownWaiting = waiting.slice(0, 6);
-    const extraWaiting = waiting.length - shownWaiting.length;
-    return (
-      <div className="space-y-4">
-        {/* Dòng tóm tắt nhanh */}
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="gap-1"><Users className="w-3.5 h-3.5" />{summary.people} cán bộ</Badge>
-          <Badge variant="outline">Đang làm {summary.doing}</Badge>
-          {summary.overdue > 0
-            ? <Badge variant="destructive" className="gap-1"><AlertTriangle className="w-3.5 h-3.5" />Quá hạn {summary.overdue}</Badge>
-            : <Badge variant="outline">Quá hạn 0</Badge>}
-          <Badge className="bg-blue-500 hover:bg-blue-500">Chờ xác nhận {summary.waiting}</Badge>
-        </div>
-
-        {/* Hàng đợi Chờ xác nhận */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Inbox className="w-4 h-4" />
-              Chờ xác nhận
-              <Badge className="bg-blue-500 hover:bg-blue-500">{waiting.length}</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {waiting.length === 0 && <p className="text-sm text-muted-foreground">Không có thẻ nào chờ xác nhận.</p>}
-            {shownWaiting.map(({ card, profile }) => (
-              <div key={card.id} className="flex flex-col gap-2 rounded-lg border bg-card/95 p-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0 space-y-1">
-                  <div className="text-sm font-medium leading-snug">{card.title}</div>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground">{profile.full_name}</span>
-                    <Badge variant="secondary" className="text-[10px] py-0">{SOURCE_LABEL[card.source_type]}</Badge>
-                    <span className="flex items-center gap-1"><Clock className="w-3 h-3" />Gửi: {fmtDate(card.last_progress_at)}</span>
-                  </div>
-                </div>
-                <Button size="sm" className="shrink-0" onClick={() => setDetailCard(card)}>Xem &amp; duyệt</Button>
-              </div>
-            ))}
-            {extraWaiting > 0 && (
-              <p className="text-xs text-muted-foreground pt-1">… và {extraWaiting} thẻ khác</p>
-            )}
-          </CardContent>
-        </Card>
-
-        <div>
-          <Button variant="outline" size="sm" onClick={() => navigate('/hanh-dong-phat-trien')}>Xem bảng đầy đủ</Button>
-        </div>
-
-        {detailDialog}
-      </div>
-    );
+    return <p className="text-muted-foreground">Không có cán bộ nào trong phạm vi quản lý của bạn.</p>;
   }
 
   return (
@@ -301,7 +224,15 @@ export function TeamReviewPanel({ compact = false }: { compact?: boolean } = {})
         </CardContent>
       </Card>
 
-      {detailDialog}
+      {detailCard && (
+        <CardDetailDialog
+          card={detailCard}
+          ownerName={detailOwnerName}
+          open
+          onClose={() => setDetailCard(null)}
+          onChanged={load}
+        />
+      )}
     </div>
   );
 }
