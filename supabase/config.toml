@@ -24,4 +24,6 @@ project_id = "ycldnyjohittetvpoezj"
   [functions.delete-staff]
     verify_jwt = true
   [functions.send-reminders]
-    verify_jwt = false
+    # Cron gửi service_role JWT hợp lệ; user admin gửi JWT của họ → verify_jwt = true
+    # (cổng nền tảng chặn JWT sai trước khi vào code; code vẫn kiểm role/quyền).
+    verify_jwt = true

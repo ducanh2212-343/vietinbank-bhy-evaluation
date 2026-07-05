@@ -21,6 +21,23 @@ const corsHeaders = {
 
 const ADMIN_ROLES = ['system_admin', 'bgd', 'tcth_admin'];
 
+// Đọc claims từ JWT (không xác minh chữ ký — chỉ để nhận diện service_role của cron).
+// Dùng đúng cách của process-email-queue: bền vững khi service_role key đổi định dạng
+// (legacy JWT vs sb_secret_...) nên KHÔNG so khớp chuỗi cứng với biến môi trường.
+function parseJwtClaims(token: string): Record<string, unknown> | null {
+  const parts = token.split('.');
+  if (parts.length < 2) return null;
+  try {
+    const payload = parts[1]
+      .replaceAll('-', '+')
+      .replaceAll('_', '/')
+      .padEnd(Math.ceil(parts[1].length / 4) * 4, '=');
+    return JSON.parse(atob(payload)) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
 interface Digest {
   profileId: string;
   name: string;
@@ -57,7 +74,9 @@ Deno.serve(async (req) => {
     // ---- Xác thực: service_role (cron) hoặc user admin ----
     const authHeader = req.headers.get('Authorization') || '';
     const token = authHeader.replace(/^Bearer\s+/i, '');
-    let authorized = token === SERVICE_KEY;
+    // Cron gửi service_role JWT lấy từ Vault; nhận diện qua claim role thay vì so chuỗi
+    // (env SUPABASE_SERVICE_ROLE_KEY có thể khác định dạng với key trong Vault).
+    let authorized = token === SERVICE_KEY || parseJwtClaims(token)?.role === 'service_role';
     if (!authorized && token) {
       const userClient = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_ANON_KEY') || '', {
         global: { headers: { Authorization: authHeader } },
