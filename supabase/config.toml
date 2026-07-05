@@ -23,3 +23,5 @@ project_id = "ycldnyjohittetvpoezj"
     verify_jwt = true
   [functions.delete-staff]
     verify_jwt = true
+  [functions.send-reminders]
+    verify_jwt = false
