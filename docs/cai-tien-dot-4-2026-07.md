@@ -63,5 +63,14 @@ vào hàng đợi email có sẵn (`transactional_emails`, do pg_cron xử lý m
    ```
    (Cần extension `pg_net` cho `net.http_post` — hạ tầng email đã bật pg_cron sẵn.)
 
-**Lưu ý:** cần đảm bảo API key nhà cung cấp email đã cấu hình ở prod (bạn xác nhận email đang gửi được).
+**Trạng thái hạ tầng email (05/07):** đã tách khỏi Lovable, gửi qua **Resend** của riêng bạn
+(domain `343skill.com` verify + DKIM Verified; `RESEND_API_KEY` set ở Supabase secrets;
+`process-email-queue` deploy lại để ưu tiên Resend). Đã gửi 1 email test → **vào Inbox Gmail**
+(from `chieuthuc3 <noreply@343skill.com>`) → luồng gửi hoạt động end-to-end.
+
+**Còn 1 cổng an toàn trước khi bật lịch nhắc việc thật:** mở email test → *Show original* ở Gmail,
+xác nhận **SPF / DKIM / DMARC = PASS**. Đạt cả 3 → bật cron `send-reminders-daily`
+(SQL đọc key từ Vault, ghi trong `supabase/migrations/20260705140000_send_reminders_cron_enable_notes.sql`).
+Hôm nay một lần chạy thật sẽ gửi ~2 email (nhắc TP rà soát 2 phiếu đang `submitted`) — khối lượng nhỏ, đúng người.
+
 Nếu muốn, có thể thêm nút "Gửi nhắc việc ngay" trong trang Cài đặt cho admin (chưa làm — báo nếu cần).

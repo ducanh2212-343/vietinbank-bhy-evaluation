@@ -1,0 +1,47 @@
+-- ============================================================
+-- send-reminders — BƯỚC LÊN LỊCH CRON (thao tác vận hành, không tự chạy khi apply)
+-- ============================================================
+-- Edge function `send-reminders` đã deploy. Migration này CHỈ ghi lại bước
+-- lên/gỡ lịch để có dấu vết trong repo. Apply migration KHÔNG gửi email nào
+-- (toàn bộ là comment) — việc bật lịch là thao tác thủ công có kiểm soát,
+-- chạy 1 lần trong SQL Editor SAU KHI đã xác nhận SPF/DKIM/DMARC = pass.
+--
+-- Không có secret trong file này: cron đọc service_role key từ Vault lúc chạy
+-- (đúng như cron 'process-email-queue' đang dùng), key do người vận hành tự
+-- lưu ở vault.secrets với name = 'email_queue_service_role_key'.
+--
+-- ------------------------------------------------------------
+-- 1) XEM TRƯỚC (không gửi) — chạy bằng tài khoản admin hoặc qua cron key:
+--    body {"dry_run": true} → trả về danh sách 'digests' sẽ gửi cho ai.
+--
+-- 2) BẬT LỊCH HẰNG NGÀY 08:00 giờ VN (= 01:00 UTC). Chạy 1 lần:
+--
+--    select cron.schedule(
+--      'send-reminders-daily',
+--      '0 1 * * *',
+--      $cron$
+--        select net.http_post(
+--          url := 'https://whlysprzsguehxmrjwha.supabase.co/functions/v1/send-reminders',
+--          headers := jsonb_build_object(
+--            'Authorization',
+--            'Bearer ' || (select decrypted_secret from vault.decrypted_secrets
+--                          where name = 'email_queue_service_role_key'),
+--            'Content-Type', 'application/json'
+--          ),
+--          body := '{"dry_run": false}'::jsonb
+--        );
+--      $cron$
+--    );
+--
+-- 3) GỠ LỊCH (nếu cần dừng):
+--    select cron.unschedule('send-reminders-daily');
+--
+-- 4) KIỂM TRA:
+--    select jobname, schedule, active from cron.job where jobname = 'send-reminders-daily';
+--    select * from cron.job_run_details
+--      where jobid = (select jobid from cron.job where jobname = 'send-reminders-daily')
+--      order by start_time desc limit 5;
+--
+-- Idempotency theo ngày trong function ('reminder:<profile>:<YYYY-MM-DD>') → nếu
+-- chạy lại cùng ngày sẽ không gửi trùng cho cùng một người.
+-- ============================================================
