@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -89,6 +90,11 @@ export default function EditStaff() {
   const [form, setForm] = useState<any>({});
   const [resetting, setResetting] = useState(false);
   const [resetResult, setResetResult] = useState<{ email: string; full_name: string | null; temp_password: string } | null>(null);
+  // Bàn giao nhân sự: khi chuyển phòng / nghỉ việc mà cán bộ này đang là QL/PGĐ của người khác
+  const originalRef = useRef<{ status: string; department_id: string | null }>({ status: 'active', department_id: null });
+  const [handoverSubs, setHandoverSubs] = useState<
+    { id: string; full_name: string; position: string | null; asManager: boolean; asPgd: boolean }[] | null
+  >(null);
 
   useEffect(() => {
     const load = async () => {
@@ -98,7 +104,10 @@ export default function EditStaff() {
         supabase.from('positions').select('id, name, department_id').eq('is_active', true).order('sort_order'),
         supabase.from('profiles').select('id, full_name, position, department_id, status').eq('status', 'active').order('full_name'),
       ]);
-      if (profileRes.data) setForm(profileRes.data);
+      if (profileRes.data) {
+        setForm(profileRes.data);
+        originalRef.current = { status: profileRes.data.status || 'active', department_id: profileRes.data.department_id || null };
+      }
       setDepartments(dRes.data || []);
       setPositions(posRes.data || []);
       setAllProfiles(((pRes.data as ProfileLite[]) || []).filter((p) => p.id !== id));
@@ -173,6 +182,32 @@ export default function EditStaff() {
       toast({ title: 'Thiếu thông tin bắt buộc', description: missing.join(', '), variant: 'destructive' });
       return;
     }
+    // Bàn giao: nếu cán bộ này chuyển phòng hoặc chuyển sang nghỉ việc mà đang là QL/PGĐ của người khác,
+    // cảnh báo danh sách cấp dưới bị ảnh hưởng (phiếu kỳ tới có thể đi lạc người) và yêu cầu xác nhận.
+    const becameInactive = form.status !== 'active' && originalRef.current.status === 'active';
+    const deptChanged = (form.department_id || null) !== (originalRef.current.department_id || null);
+    if (becameInactive || deptChanged) {
+      const { data: subs } = await supabase
+        .from('profiles')
+        .select('id, full_name, position, manager_id, pgd_id')
+        .eq('status', 'active')
+        .or(`manager_id.eq.${id},pgd_id.eq.${id}`);
+      const affected = (subs || [])
+        .filter((s: any) => s.id !== id)
+        .map((s: any) => ({
+          id: s.id, full_name: s.full_name, position: s.position,
+          asManager: s.manager_id === id, asPgd: s.pgd_id === id,
+        }));
+      if (affected.length > 0) {
+        setHandoverSubs(affected);
+        return; // chờ admin xác nhận trong hộp thoại
+      }
+    }
+
+    await doSave();
+  };
+
+  const doSave = async () => {
     setSaving(true);
     const selectedPosition = positions.find((p) => p.id === form.position_id);
     const { error } = await supabase.from('profiles').update({
@@ -384,6 +419,45 @@ export default function EditStaff() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={!!handoverSubs} onOpenChange={(o) => { if (!o) setHandoverSubs(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" /> Cần bàn giao cán bộ cấp dưới
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Cán bộ này đang là Quản lý trực tiếp / Phó giám đốc phụ trách của {handoverSubs?.length} cán bộ dưới đây.
+              Khi chuyển phòng hoặc chuyển sang nghỉ việc, những cán bộ này sẽ mất người phụ trách và
+              phiếu đánh giá kỳ tới có thể đi lạc người. Hãy mở hồ sơ từng cán bộ để gán lại Quản lý/PGĐ sau khi lưu.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="max-h-56 overflow-y-auto rounded-md border divide-y text-sm">
+            {handoverSubs?.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => window.open(`/sua-can-bo/${s.id}`, '_blank')}
+                className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-muted/50"
+              >
+                <span>
+                  <span className="font-medium">{s.full_name}</span>
+                  {s.position ? <span className="text-muted-foreground"> · {s.position}</span> : null}
+                </span>
+                <span className="shrink-0 text-[11px] text-muted-foreground">
+                  {s.asManager ? 'Quản lý trực tiếp' : ''}{s.asManager && s.asPgd ? ' · ' : ''}{s.asPgd ? 'PGĐ phụ trách' : ''}
+                </span>
+              </button>
+            ))}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Để tôi gán lại trước</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setHandoverSubs(null); doSave(); }}>
+              Tôi hiểu, vẫn lưu
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
