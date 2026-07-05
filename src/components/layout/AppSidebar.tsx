@@ -4,10 +4,11 @@ import {
   User, UsersRound, Star,
   Upload, Settings as SettingsIcon, BarChart3, Image, FileText,
   ChevronDown, ChevronRight, UserCheck, Sparkles, GraduationCap, ClipboardList, KeyRound, ListPlus,
-  CalendarClock, Timer, MessagesSquare
+  CalendarClock, Timer, MessagesSquare, ShieldAlert, Route, ArrowLeftRight
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubmissionReportAccess } from '@/hooks/useSubmissionReportAccess';
+import { useStrategicHrAccess } from '@/hooks/useStrategicHrAccess';
 import { useState } from 'react';
 import vtbLogo from '@/assets/vietinbank-bhy-logo.png';
 import { BrandBadge } from '@/components/branding/BrandAssets';
@@ -16,7 +17,7 @@ type MinRole = 'manager' | 'admin';
 
 interface NavGroup {
   label: string;
-  items: { label: string; icon: any; path: string; minRole?: MinRole; special?: 'submission-report' }[];
+  items: { label: string; icon: any; path: string; minRole?: MinRole; special?: 'submission-report' | 'strategic-hr' }[];
 }
 
 // Menu tinh gọn theo thực tế sử dụng của cán bộ.
@@ -53,6 +54,15 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
+    // Nhóm dành cho Phòng Tổ chức Tổng hợp + Ban Giám đốc (dữ liệu toàn chi nhánh)
+    label: 'Chiến lược nhân sự',
+    items: [
+      { label: 'Bản đồ rủi ro năng lực', icon: ShieldAlert, path: '/ban-do-rui-ro-nang-luc', special: 'strategic-hr' },
+      { label: 'Con đường sự nghiệp', icon: Route, path: '/con-duong-su-nghiep', special: 'strategic-hr' },
+      { label: 'Mô phỏng điều chuyển', icon: ArrowLeftRight, path: '/mo-phong-dieu-chuyen', special: 'strategic-hr' },
+    ],
+  },
+  {
     label: 'Cấu hình / Hệ thống',
     items: [
       { label: 'Quản lý kỳ đánh giá', icon: CalendarClock, path: '/quan-ly-ky-danh-gia', minRole: 'admin' },
@@ -77,6 +87,7 @@ export function AppSidebar({ onNavigate }: Props) {
   const navigate = useNavigate();
   const { signOut, isAdmin, isManager, isPgd } = useAuth();
   const reportAccess = useSubmissionReportAccess();
+  const strategicAccess = useStrategicHrAccess();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const toggleGroup = (label: string) => {
@@ -120,6 +131,7 @@ export function AppSidebar({ onNavigate }: Props) {
         {navGroups.map((group) => {
           const visibleItems = group.items.filter((item) => {
             if (item.special === 'submission-report') return reportAccess.allowed;
+            if (item.special === 'strategic-hr') return strategicAccess.allowed;
             if (item.minRole === 'admin' && !isAdmin) return false;
             if (item.minRole === 'manager' && !canSeeManagerItems) return false;
             return true;

@@ -63,6 +63,9 @@ const OneOnOneQuestionsAdminPage = lazyWithRetry(() => import("./pages/OneOnOneQ
 const SubmissionTimeReportPage = lazyWithRetry(() => import("./pages/SubmissionTimeReportPage"));
 const VtbCoursesAdminPage = lazyWithRetry(() => import("./pages/VtbCoursesAdminPage"));
 const PersonalKanbanPage = lazyWithRetry(() => import("./pages/PersonalKanbanPage"));
+const SkillRiskHeatmapPage = lazyWithRetry(() => import("./pages/SkillRiskHeatmapPage"));
+const CareerPathPage = lazyWithRetry(() => import("./pages/CareerPathPage"));
+const TransferSimulationPage = lazyWithRetry(() => import("./pages/TransferSimulationPage"));
 const ChangePassword = lazyWithRetry(() => import("./pages/ChangePassword"));
 const ForgotPassword = lazyWithRetry(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
@@ -137,6 +140,10 @@ const App = () => (
                 <Route path="/bao-cao" element={<ReportsPage />} />
                 {/* Trang tự kiểm soát phạm vi: GĐ/PGĐ thấy phòng phụ trách; TCTH lead + admin thấy full */}
                 <Route path="/bao-cao-nop-bieu-mau" element={<SubmissionTimeReportPage />} />
+                {/* Chiến lược nhân sự — tự gác quyền trong trang: BGĐ + Phòng TCTH */}
+                <Route path="/ban-do-rui-ro-nang-luc" element={<SkillRiskHeatmapPage />} />
+                <Route path="/con-duong-su-nghiep" element={<CareerPathPage />} />
+                <Route path="/mo-phong-dieu-chuyen" element={<TransferSimulationPage />} />
               </Route>
 
               {/* Admin-only routes */}
