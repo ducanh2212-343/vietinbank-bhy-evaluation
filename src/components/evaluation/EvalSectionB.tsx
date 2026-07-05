@@ -231,7 +231,7 @@ export function EvalSectionB({
                 </Badge>
               )}
               {isSupp && (
-                <Badge variant="outline" className="text-[9px] border-violet-300 text-violet-700 bg-violet-50 flex-shrink-0">
+                <Badge variant="outline" className="text-[9px] border-violet-300 dark:border-violet-500/40 text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-500/10 flex-shrink-0">
                   Bổ trợ
                 </Badge>
               )}
@@ -452,7 +452,7 @@ export function EvalSectionB({
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="h-8 text-xs gap-1.5 border-violet-300 text-violet-700 hover:bg-violet-50"
+                    className="h-8 text-xs gap-1.5 border-violet-300 dark:border-violet-500/40 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-500/10"
                     disabled={availableForPicker.length === 0}
                   >
                     <Plus className="w-3.5 h-3.5" /> Thêm skill bổ trợ
@@ -528,32 +528,32 @@ function SkillLevelReference({ assessment }: { assessment: CoreSkillAssessment }
   const nextUpskill = currentLvl < 4 ? upskillMap[currentLvl] : null;
 
   return (
-    <div className="rounded-md border border-slate-200 bg-slate-50/40 overflow-hidden">
+    <div className="rounded-md border border-border bg-muted/40 overflow-hidden">
       {assessment.description && (
-        <div className="px-3 py-2 bg-slate-100/70 border-b border-slate-200">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 mb-0.5">Mô tả skill</div>
-          <p className="text-xs text-slate-700 leading-relaxed">{assessment.description}</p>
+        <div className="px-3 py-2 bg-muted/70 border-b border-border">
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-0.5">Mô tả skill</div>
+          <p className="text-xs text-muted-foreground leading-relaxed">{assessment.description}</p>
         </div>
       )}
 
       {hasAnyLevel && (
         <div className="overflow-x-auto">
-          <div className="grid grid-cols-4 min-w-[720px] divide-x divide-slate-200">
+          <div className="grid grid-cols-4 min-w-[720px] divide-x divide-border">
             {levels.map((l) => {
               const isMin = hasPositionLevels && l.n === minL;
               const isAdv = hasPositionLevels && l.n === advL;
               const isCurrent = l.n === currentLvl;
-              const cellBg = isMin ? 'bg-orange-50' : isAdv ? 'bg-green-50' : 'bg-white';
+              const cellBg = isMin ? 'bg-orange-50 dark:bg-orange-500/10' : isAdv ? 'bg-green-50 dark:bg-green-500/10' : 'bg-card';
               return (
-                <div key={l.n} className={cellBg + ' p-2.5 text-[11px] leading-relaxed text-slate-700'}>
+                <div key={l.n} className={cellBg + ' p-2.5 text-[11px] leading-relaxed text-muted-foreground'}>
                   <div className="flex items-center gap-1 mb-1.5">
-                    <span className="font-bold text-slate-900">L{l.n}</span>
-                    <span className="text-[10px] text-slate-500">— {l.label}</span>
+                    <span className="font-bold text-foreground">L{l.n}</span>
+                    <span className="text-[10px] text-muted-foreground">— {l.label}</span>
                     {isMin && <span title="Tối thiểu cho vị trí" className="text-orange-600 text-[10px] font-semibold">★ TT</span>}
                     {isAdv && <span title="Nâng cao cho vị trí" className="text-green-600 text-[10px] font-semibold">▲ NC</span>}
                     {isCurrent && currentLvl > 0 && <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-primary/15 text-primary font-medium">Hiện tại</span>}
                   </div>
-                  <p>{l.text || <span className="italic text-slate-400">(chưa có mô tả)</span>}</p>
+                  <p>{l.text || <span className="italic text-muted-foreground/70">(chưa có mô tả)</span>}</p>
                 </div>
               );
             })}
@@ -562,18 +562,18 @@ function SkillLevelReference({ assessment }: { assessment: CoreSkillAssessment }
       )}
 
       {nextUpskill?.text && (
-        <div className="border-t border-slate-200">
+        <div className="border-t border-border">
           <button
             type="button"
             onClick={() => setShowUpskill((s) => !s)}
-            className="w-full px-3 py-2 text-left text-[11px] font-semibold text-violet-700 hover:bg-violet-50/60 flex items-center gap-2"
+            className="w-full px-3 py-2 text-left text-[11px] font-semibold text-violet-700 dark:text-violet-300 hover:bg-violet-50/60 dark:hover:bg-violet-500/10 flex items-center gap-2"
           >
             <Sparkles className="w-3 h-3" />
             Cách thăng cấp {nextUpskill.label} {currentLvl === 0 ? '(từ Chưa hình thành)' : ''}
             <ChevronDown className={`w-3 h-3 ml-auto transition-transform ${showUpskill ? 'rotate-180' : ''}`} />
           </button>
           {showUpskill && (
-            <div className="px-3 pb-3 text-[11px] leading-relaxed text-violet-900 bg-violet-50/40">
+            <div className="px-3 pb-3 text-[11px] leading-relaxed text-violet-900 dark:text-violet-200 bg-violet-50/40 dark:bg-violet-500/10">
               {nextUpskill.text}
             </div>
           )}
