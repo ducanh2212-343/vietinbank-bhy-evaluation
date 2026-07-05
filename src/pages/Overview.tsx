@@ -9,6 +9,7 @@ import { ApprovedFormDetail } from '@/components/profile/ApprovedFormDetail';
 import { StatusBadge, StatusNoteBanner } from '@/components/profile/StatusBadge';
 import { ReviewerActionAlert } from '@/components/evaluation-tracking/ReviewerActionAlert';
 import { PersonalKanbanMini } from '@/components/kanban/PersonalKanbanMini';
+import { TeamReviewPanel } from '@/components/kanban/TeamReviewPanel';
 import { AnniversaryBanner } from '@/components/branding/AnniversaryBanner';
 
 
@@ -207,7 +208,10 @@ export default function Overview() {
 
       <ReviewerActionAlert />
 
-
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold">Hành động phát triển của đội ngũ</h2>
+        <TeamReviewPanel compact />
+      </section>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card className="stat-card">
