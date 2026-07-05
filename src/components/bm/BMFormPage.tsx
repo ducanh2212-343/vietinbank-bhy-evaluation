@@ -24,7 +24,8 @@ import {
   filterQuarterCycles,
   getQuarterFormSubmission,
   mergeAllSkillAssessments,
-  replaceCoreSkillAssessments,
+  buildSkillAssessmentRows,
+  saveEvaluationChildren,
   makeSupplementaryAssessment,
 } from '@/lib/evaluationPersistence';
 
@@ -523,78 +524,87 @@ export function BMFormPage({ config }: Props) {
   const [submitting, setSubmitting] = useState(false);
 
   const persistAllData = async (fId: string) => {
-    // Save core assessments
-    await replaceCoreSkillAssessments(fId, coreAssessments, suppAssessments);
-
-    // Save attitudes
-    await supabase.from('form_attitude_actions').delete().eq('form_id', fId);
-    await supabase.from('form_attitude_priorities').delete().eq('form_id', fId);
-    const insertedAttPriorities: Record<string, string> = {};
-    for (const aa of attitudeAssessments) {
-      const ip = attitudePriorities.find(p => p.attitude_dimension_id === aa.attitude_dimension_id);
-      const { data, error } = await supabase.from('form_attitude_priorities').insert({
-        form_id: fId, attitude_dimension_id: aa.attitude_dimension_id,
-        attitude_name: aa.attitude_name, self_status: aa.self_status || null,
-        manager_status: aa.manager_status || null, current_status: aa.current_status || null,
-        desired_status: aa.desired_status || null, issue_summary: aa.issue_summary || null,
-        improvement_goal: aa.improvement_goal || ip?.improvement_goal || null, evidence: aa.evidence || null,
-        employee_comment: aa.employee_comment || null, manager_comment: aa.manager_comment || null,
-        priority_order: aa.attitude_dimension_id, status: ip?.status || 'planned',
-      }).select('id').single();
-      if (error) throw error;
-      if (data && ip?.id) insertedAttPriorities[ip.id] = data.id;
-    }
-
-    // Save skill priorities + actions
-    await supabase.from('form_skill_actions').delete().eq('form_id', fId);
-    await supabase.from('form_skill_priorities').delete().eq('form_id', fId);
-    const insertedPriorities: Record<string, string> = {};
+    // Lưu toàn bộ bảng con qua RPC atomic (giữ UUID hành động → Kanban không reset; rollback nếu lỗi).
+    const spKeyToSkillId = new Map<string, string>();
     for (const sp of skillPriorities) {
-      const { data, error } = await supabase.from('form_skill_priorities').insert({
-        form_id: fId, skill_id: sp.skill_id, current_level: sp.current_level,
-        target_level: sp.target_level, priority_order: sp.priority_order,
-        reason_text: sp.reason_text || null, source_type: sp.source_type, status: sp.status,
-      }).select('id').single();
-      if (error) throw error;
-      if (data) insertedPriorities[sp.id || sp.skill_id] = data.id;
+      if (sp.id) spKeyToSkillId.set(sp.id, sp.skill_id);
+      spKeyToSkillId.set(sp.skill_id, sp.skill_id);
     }
-    if (skillActions.length > 0) {
-      const { error } = await supabase.from('form_skill_actions').insert(skillActions.map(a => ({
-        form_id: fId, skill_priority_id: insertedPriorities[a.skill_priority_id] || a.skill_priority_id,
+    const attPidToDim = new Map<string, number>();
+    for (const p of attitudePriorities) {
+      if (p.id) attPidToDim.set(p.id, p.attitude_dimension_id);
+    }
+
+    const skillAssessmentsPayload = buildSkillAssessmentRows(coreAssessments, suppAssessments);
+
+    const skillPrioritiesPayload = skillPriorities.map(sp => ({
+      skill_id: sp.skill_id, current_level: sp.current_level, target_level: sp.target_level,
+      priority_order: sp.priority_order, reason_text: sp.reason_text || null,
+      source_type: sp.source_type, status: sp.status,
+    }));
+
+    const skillActionsPayload = skillActions
+      .map(a => ({
+        id: a.id || null,
+        skill_id: spKeyToSkillId.get(a.skill_priority_id) || null,
         row_no: a.row_no, action_type: a.action_type, action_text: a.action_text || 'Chưa nhập',
         expected_result: a.expected_result || null, deadline: a.deadline || null,
         requested_support: a.requested_support || null, evidence_expected: a.evidence_expected || null,
         status: a.status, actual_result: a.actual_result || null, manager_review: a.manager_review || null,
-      })));
-      if (error) throw error;
-    }
+      }))
+      .filter(r => r.skill_id);
 
-    // Save attitude actions
-    if (attitudeActions.length > 0) {
-      const { error } = await supabase.from('form_attitude_actions').insert(attitudeActions.map(a => ({
-        form_id: fId, attitude_priority_id: insertedAttPriorities[a.attitude_priority_id] || a.attitude_priority_id,
+    // Priorities thái độ giữ đúng model hiện tại của BM (legacy: issue_summary/improvement_goal/evidence trực tiếp)
+    const attitudePrioritiesPayload = attitudeAssessments.map(aa => {
+      const ip = attitudePriorities.find(p => p.attitude_dimension_id === aa.attitude_dimension_id);
+      return {
+        attitude_dimension_id: aa.attitude_dimension_id,
+        attitude_name: aa.attitude_name,
+        self_status: aa.self_status || null,
+        manager_status: aa.manager_status || null,
+        current_status: aa.current_status || null,
+        desired_status: aa.desired_status || null,
+        issue_summary: aa.issue_summary || null,
+        improvement_goal: aa.improvement_goal || ip?.improvement_goal || null,
+        evidence: aa.evidence || null,
+        employee_comment: aa.employee_comment || null,
+        manager_comment: aa.manager_comment || null,
+        priority_order: aa.attitude_dimension_id,
+        status: ip?.status || 'planned',
+      };
+    });
+
+    const attitudeActionsPayload = attitudeActions
+      .map(a => ({
+        id: a.id || null,
+        attitude_dimension_id: attPidToDim.get(a.attitude_priority_id) ?? null,
         row_no: a.row_no, action_text: a.action_text || 'Chưa nhập',
         expected_evidence: a.expected_evidence || null, deadline: a.deadline || null,
         requested_support: a.requested_support || null, status: a.status,
         actual_result: a.actual_result || null, manager_review: a.manager_review || null,
-      })));
-      if (error) throw error;
-    }
+      }))
+      .filter(r => r.attitude_dimension_id != null);
 
-    // Save AI actions
-    await supabase.from('form_ai_actions_v2').delete().eq('form_id', fId);
-    if (aiActions.length > 0) {
-      const { error } = await supabase.from('form_ai_actions_v2').insert(aiActions.map(a => ({
-        form_id: fId, linked_skill_priority_id: (a.linked_skill_priority_id && insertedPriorities[a.linked_skill_priority_id]) || null,
-        linked_attitude_priority_id: (a.linked_attitude_priority_id && insertedAttPriorities[a.linked_attitude_priority_id]) || a.linked_attitude_priority_id || null,
-        row_no: a.row_no, ai_action_text: a.ai_action_text || 'Chưa nhập',
-        expected_result: a.expected_result || null, deadline: a.deadline || null,
-        requested_support: a.requested_support || null, evidence_expected: a.evidence_expected || null,
-        status: a.status, actual_result: a.actual_result || null,
-        manager_review: a.manager_review || null, unlinked_reason: a.unlinked_reason || null,
-      })));
-      if (error) throw error;
-    }
+    const aiActionsPayload = aiActions.map(a => ({
+      id: a.id || null,
+      linked_skill_id: (a.linked_skill_priority_id && spKeyToSkillId.get(a.linked_skill_priority_id)) || null,
+      linked_attitude_dimension_id:
+        (a.linked_attitude_priority_id && attPidToDim.get(a.linked_attitude_priority_id)) ?? null,
+      row_no: a.row_no, ai_action_text: a.ai_action_text || 'Chưa nhập',
+      expected_result: a.expected_result || null, deadline: a.deadline || null,
+      requested_support: a.requested_support || null, evidence_expected: a.evidence_expected || null,
+      status: a.status, actual_result: a.actual_result || null,
+      manager_review: a.manager_review || null, unlinked_reason: a.unlinked_reason || null,
+    }));
+
+    await saveEvaluationChildren(fId, {
+      skillAssessments: skillAssessmentsPayload,
+      skillPriorities: skillPrioritiesPayload,
+      skillActions: skillActionsPayload,
+      attitudePriorities: attitudePrioritiesPayload,
+      attitudeActions: attitudeActionsPayload,
+      aiActions: aiActionsPayload,
+    });
   };
 
   const saveDraft = async () => {
