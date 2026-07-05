@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { TempPasswordHandover } from '@/components/staff/TempPasswordHandover';
+import { fetchDefaultCycle, fetchStarByEmployee } from '@/lib/starClassification';
 import { ArrowLeft, Pencil, ClipboardCheck, Shield, Trash2, KeyRound } from 'lucide-react';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -40,6 +41,7 @@ export default function StaffDetail() {
   const [director, setDirector] = useState<string>('');
   const [role, setRole] = useState<string | null>(null);
   const [evalData, setEvalData] = useState<any>(null);
+  const [star, setStar] = useState<string | null>(null);
   const [skills, setSkills] = useState<Map<string, string>>(new Map());
   const [comments, setComments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,6 +58,13 @@ export default function StaffDetail() {
       const p = profileRes.data;
       setProfile(p);
       setSkills(new Map((skillsRes.data || []).map((s) => [s.id, s.name])));
+
+      // Nhóm sao đọc từ nguồn chuẩn theo kỳ mới nhất (đồng nhất với các trang tổng hợp)
+      const cycle = await fetchDefaultCycle();
+      if (cycle) {
+        const starMap = await fetchStarByEmployee(cycle.id);
+        setStar(starMap.get(id!) || null);
+      }
 
       if (p?.department_id) {
         const { data } = await supabase.from('departments').select('name').eq('id', p.department_id).single();
@@ -221,8 +230,8 @@ export default function StaffDetail() {
           <CardContent className="space-y-3 text-sm">
             <div className="flex items-center gap-3">
               <span className="text-muted-foreground">Nhóm:</span>
-              {evalData.classification ? (
-                <span className={`level-badge ${CLASS_CSS[evalData.classification]}`}>{CLASS_LABELS[evalData.classification]}</span>
+              {star ? (
+                <span className={`level-badge ${CLASS_CSS[star]}`}>{CLASS_LABELS[star]}</span>
               ) : '—'}
               <span className="text-muted-foreground ml-4">Hoàn thành:</span>
               <Badge variant="outline">{evalData.completion_status === 'completed' ? 'Hoàn thành' : evalData.completion_status === 'in_progress' ? 'Đang thực hiện' : 'Chưa bắt đầu'}</Badge>

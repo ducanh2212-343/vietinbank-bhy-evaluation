@@ -10,6 +10,7 @@ import { StatusBadge, StatusNoteBanner } from '@/components/profile/StatusBadge'
 import { ReviewerActionAlert } from '@/components/evaluation-tracking/ReviewerActionAlert';
 import { PersonalKanbanMini } from '@/components/kanban/PersonalKanbanMini';
 import { TeamPendingAlert } from '@/components/kanban/TeamPendingAlert';
+import { fetchDefaultCycle, fetchStarByEmployee } from '@/lib/starClassification';
 import { AnniversaryBanner } from '@/components/branding/AnniversaryBanner';
 
 
@@ -150,10 +151,13 @@ export default function Overview() {
         deptsQuery = deptsQuery.in('id', visibleDeptIds);
       }
 
-      const [profilesRes, deptsRes, evalsRes, commentsRes] = await Promise.all([
+      // Xếp sao đọc từ nguồn chuẩn theo kỳ mới nhất (đồng nhất với Báo cáo & các trang tổng hợp khác)
+      const cycle = await fetchDefaultCycle();
+
+      const [profilesRes, deptsRes, starByEmp, commentsRes] = await Promise.all([
         profilesQuery,
         deptsQuery,
-        supabase.from('admin_evaluations').select('employee_id, classification'),
+        cycle ? fetchStarByEmployee(cycle.id) : Promise.resolve(new Map<string, string>()),
         supabase.from('admin_comments')
           .select('employee_id, comment, created_at, profiles!admin_comments_employee_id_fkey(full_name)')
           .order('created_at', { ascending: false }).limit(5),
@@ -162,13 +166,16 @@ export default function Overview() {
       const profiles = profilesRes.data || [];
       const depts = deptsRes.data || [];
       const profileIds = new Set(profiles.map(p => p.id));
-      const evals = (evalsRes.data || []).filter(e => profileIds.has(e.employee_id));
 
       const byDept = depts.map(d => ({ name: d.name, count: profiles.filter(p => p.department_id === d.id).length }));
 
       const groupMap: Record<string, string> = { sao_mai: 'Sao Mai', sao_khue: 'Sao Khuê', sao_bang: 'Sao Băng', sao_hom: 'Sao Hôm' };
       const groupCounts: Record<string, number> = {};
-      evals.forEach(e => { if (e.classification) groupCounts[e.classification] = (groupCounts[e.classification] || 0) + 1; });
+      // Đếm mỗi cán bộ tối đa 1 lần theo xếp sao của kỳ (không cộng dồn nhiều kỳ như trước)
+      profiles.forEach(p => {
+        const g = starByEmp.get(p.id);
+        if (g) groupCounts[g] = (groupCounts[g] || 0) + 1;
+      });
       const byGroup = Object.entries(groupMap).map(([key, label]) => ({ key, label, count: groupCounts[key] || 0 }));
 
       const recentComments = (commentsRes.data || [])
