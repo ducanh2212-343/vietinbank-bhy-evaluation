@@ -180,11 +180,11 @@ export function EvalSectionB({
         },
       });
       if (error) throw error;
-      const text = (data as any)?.text || '';
+      const text = (data as { text?: string })?.text || '';
       if (!text) throw new Error('AI không trả về nội dung');
       setEvidenceAiResults((prev) => ({ ...prev, [a.skill_id]: text }));
-    } catch (e: any) {
-      const msg = String(e?.message || '');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
       if (msg.includes('429')) toast.error('Quá nhiều yêu cầu AI, vui lòng thử lại sau.');
       else toast.error(`Lỗi AI: ${msg || 'không kết nối được'}`);
     } finally {
