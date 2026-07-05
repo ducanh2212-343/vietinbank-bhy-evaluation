@@ -9,7 +9,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { X, Plus, Search, Target, ListChecks, ChevronDown, GraduationCap, Trash2 } from 'lucide-react';
 import { SkillLevelBadge } from '@/components/SkillLevelBadge';
-import { useSkillLevelImages } from '@/hooks/useSkillLevelImages';
 import type { SkillPriority } from './SkillPriorityPicker';
 import type { SkillAction } from './SkillActionsBlock';
 import { VtbCourseSuggestion } from './VtbCourseSuggestion';
@@ -48,7 +47,6 @@ export function SkillDevelopmentBlock({
 
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
-  const { getImageUrl } = useSkillLevelImages();
   const { isEnabled: isAiEnabled } = useAiFeatures();
 
   const coreMap = useMemo(() => new Map(coreSkills.map(c => [c.skill_id, c])), [coreSkills]);
@@ -233,12 +231,12 @@ export function SkillDevelopmentBlock({
                   <div className="flex items-center gap-3 flex-wrap text-sm bg-muted/40 rounded-md p-3 border">
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs text-muted-foreground">Hiện tại{lockedCurrent ? ' (tự động từ mục B / kỳ gần nhất)' : ''}:</span>
-                      <SkillLevelBadge level={p.current_level} imageUrl={getImageUrl(p.skill_id, p.current_level)} />
+                      <SkillLevelBadge level={p.current_level} skillId={p.skill_id} />
                     </div>
                     <span className="text-muted-foreground font-bold">→</span>
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs text-muted-foreground">Mục tiêu:</span>
-                      <SkillLevelBadge level={p.target_level} imageUrl={getImageUrl(p.skill_id, p.target_level)} />
+                      <SkillLevelBadge level={p.target_level} skillId={p.skill_id} />
                     </div>
                     <div className="ml-auto text-xs font-semibold px-2 py-1 rounded bg-primary/10 text-primary">
                       Gap: {p.current_level != null && p.target_level != null ? p.target_level - p.current_level : '—'}

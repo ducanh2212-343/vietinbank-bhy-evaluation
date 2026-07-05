@@ -3,6 +3,8 @@ import type { Config } from "tailwindcss";
 export default {
   darkMode: ["class"],
   content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
+  // Class ghép động kiểu `level-${lvl}` không được content-scan nhìn thấy — giữ lại thủ công
+  safelist: ["level-0", "level-1", "level-2", "level-3", "level-4"],
   prefix: "",
   theme: {
     container: {

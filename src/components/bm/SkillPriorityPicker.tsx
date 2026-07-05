@@ -8,7 +8,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { X, Plus, Search } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { SkillLevelBadge } from '@/components/SkillLevelBadge';
-import { useSkillLevelImages } from '@/hooks/useSkillLevelImages';
 
 interface Skill {
   id: string;
@@ -49,7 +48,6 @@ interface Props {
 export function SkillPriorityPicker({ priorities, onChange, allSkills, coreSkills, readOnly }: Props) {
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
-  const { getImageUrl } = useSkillLevelImages();
 
   const coreMap = new Map(coreSkills.map(c => [c.skill_id, c]));
   const selectedIds = new Set(priorities.map(p => p.skill_id));
@@ -127,12 +125,12 @@ export function SkillPriorityPicker({ priorities, onChange, allSkills, coreSkill
             <div className="flex items-center gap-3 flex-wrap text-sm">
               <div className="flex items-center gap-1">
                 <span className="text-xs text-muted-foreground">Hiện tại:</span>
-                <SkillLevelBadge level={p.current_level} imageUrl={getImageUrl(p.skill_id, p.current_level)} />
+                <SkillLevelBadge level={p.current_level} skillId={p.skill_id} />
               </div>
               <span className="text-muted-foreground">→</span>
               <div className="flex items-center gap-1">
                 <span className="text-xs text-muted-foreground">Mục tiêu:</span>
-                <SkillLevelBadge level={p.target_level} imageUrl={getImageUrl(p.skill_id, p.target_level)} />
+                <SkillLevelBadge level={p.target_level} skillId={p.skill_id} />
               </div>
               <div className="text-xs font-medium">
                 Gap: {p.current_level != null && p.target_level != null ? p.target_level - p.current_level : '—'}

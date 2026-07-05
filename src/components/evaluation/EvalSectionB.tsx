@@ -4,7 +4,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SkillLevelBadge } from '@/components/SkillLevelBadge';
-import { useSkillLevelImages } from '@/hooks/useSkillLevelImages';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -71,7 +70,6 @@ export function EvalSectionB({
   allSkills,
   levelUpSkillIds,
 }: Props) {
-  const { getImageUrl } = useSkillLevelImages();
   const { isEnabled: isAiEnabled } = useAiFeatures();
   const [openId, setOpenId] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState<Record<string, boolean>>({});
@@ -217,7 +215,7 @@ export function EvalSectionB({
               </span>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-auto">
-              <SkillLevelBadge level={selfLvl} imageUrl={getImageUrl(a.skill_id, selfLvl)} />
+              <SkillLevelBadge level={selfLvl} skillId={a.skill_id} />
               {!isSupp && gapMin > 0 && (
                 <Badge variant="destructive" className="text-[9px]">
                   Gap -{gapMin}
