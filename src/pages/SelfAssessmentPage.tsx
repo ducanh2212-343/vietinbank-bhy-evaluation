@@ -708,6 +708,7 @@ export default function SelfAssessmentPage() {
         supplementary={suppAssessments}
         onSupplementaryChange={setSuppAssessments}
         allSkills={allSkills}
+        formId={formId}
       />
       </div>
       <div id="section-c">

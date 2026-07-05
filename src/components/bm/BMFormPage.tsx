@@ -823,6 +823,7 @@ export function BMFormPage({ config }: Props) {
         onSupplementaryChange={setSuppAssessments}
         allSkills={allSkills}
         levelUpSkillIds={new Set(levelUpCarryover.map(l => l.skill_id))}
+        formId={formId}
       />
 
       {/* C: Attitude evaluation */}

@@ -51,6 +51,7 @@ const StaffDetail = lazyWithRetry(() => import("./pages/StaffDetail"));
 const UploadStaffPage = lazyWithRetry(() => import("./pages/UploadStaffPage"));
 const ConfigCoreSkillsPage = lazyWithRetry(() => import("./pages/ConfigCoreSkillsPage"));
 const SkillMediaPage = lazyWithRetry(() => import("./pages/SkillMediaPage"));
+const SkillCriteriaAdminPage = lazyWithRetry(() => import("./pages/SkillCriteriaAdminPage"));
 const ReportsPage = lazyWithRetry(() => import("./pages/ReportsPage"));
 const SettingsPage = lazyWithRetry(() => import("./pages/SettingsPage"));
 const BM01Page = lazyWithRetry(() => import("./pages/BM01Page"));
@@ -59,6 +60,7 @@ const BM03Page = lazyWithRetry(() => import("./pages/BM03Page"));
 const ApproveRegistrations = lazyWithRetry(() => import("./pages/ApproveRegistrations"));
 const AIPromptsAdmin = lazyWithRetry(() => import("./pages/AIPromptsAdmin"));
 const CycleManagementPage = lazyWithRetry(() => import("./pages/CycleManagementPage"));
+const OrgStructurePage = lazyWithRetry(() => import("./pages/OrgStructurePage"));
 const OneOnOneQuestionsAdminPage = lazyWithRetry(() => import("./pages/OneOnOneQuestionsAdminPage"));
 const SubmissionTimeReportPage = lazyWithRetry(() => import("./pages/SubmissionTimeReportPage"));
 const VtbCoursesAdminPage = lazyWithRetry(() => import("./pages/VtbCoursesAdminPage"));
@@ -157,11 +159,13 @@ const App = () => (
                 <Route path="/upload-danh-sach-cb" element={<UploadStaffPage />} />
                 <Route path="/cau-hinh-skill-loi" element={<ConfigCoreSkillsPage />} />
                 <Route path="/quan-tri-hinh-anh-skill" element={<SkillMediaPage />} />
+                <Route path="/quan-tri-tieu-chi-level" element={<SkillCriteriaAdminPage />} />
                 <Route path="/cai-dat" element={<SettingsPage />} />
                 <Route path="/duyet-yeu-cau-user" element={<ApproveRegistrations />} />
                 <Route path="/quan-tri-ai" element={<AIPromptsAdmin />} />
                 <Route path="/quan-tri-khoa-hoc-vtb" element={<VtbCoursesAdminPage />} />
                 <Route path="/quan-ly-ky-danh-gia" element={<CycleManagementPage />} />
+                <Route path="/quan-ly-phong-ban" element={<OrgStructurePage />} />
                 <Route path="/quan-tri-cau-hoi-1-1" element={<OneOnOneQuestionsAdminPage />} />
                 <Route path="/ban-tin-quy" element={<QuarterlyNewsletterPage />} />
               </Route>
