@@ -103,9 +103,11 @@ Hệ khung (frame) thống nhất theo level, áp cho mọi skill:
 **Thứ tự ưu tiên hiển thị (đã chốt):**
 1. **Ảnh riêng skill × level** (`skill_level_images`) — mỗi skill ưu tiên art riêng của nó;
 2. **Icon riêng của skill + khung level** (`skill_catalog.icon_url` compose với khung CSS/SVG);
-3. **Bộ hình chung 4 nấc theo motif Cây ký ức**: Ươm mầm → Bám rễ → Vươn cành → Lan tỏa —
-   khớp thông điệp thương hiệu "Vun gốc bền rễ – Vươn tầm tương lai", vẽ cùng ngôn ngữ SVG
-   với `MemoryTree` (nét tròn, lá ellipse, bảng màu #0057B8 #1E88E5 #60A5FA #E60012).
+3. **Ảnh chung 4 nấc do admin upload** (`skill_growth_stage_images`) theo motif Cây ký ức:
+   Ươm mầm → Bám rễ → Vươn cành → Lan tỏa — khớp thông điệp "Vun gốc bền rễ – Vươn tầm
+   tương lai"; upload tại trang Quản trị hình ảnh Skill, mỗi nấc 1 ảnh dùng chung toàn bộ skill;
+4. **Vector SVG built-in** (cùng ngôn ngữ vẽ với `MemoryTree`) — chỉ là dự phòng cuối để
+   không skill nào trống hình khi chưa upload gì.
 
 **Khuyến nghị kỹ thuật giảm 90% công upload:** với chuỗi ưu tiên trên, admin không phải upload
 152 ảnh: chỉ cần 38 icon là mọi skill có hình có bậc; chưa upload gì thì bộ hình chung 4 nấc

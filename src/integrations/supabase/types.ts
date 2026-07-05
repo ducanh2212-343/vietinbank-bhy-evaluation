@@ -1991,6 +1991,36 @@ export type Database = {
         }
         Relationships: []
       }
+      skill_growth_stage_images: {
+        Row: {
+          created_at: string
+          id: string
+          image_name: string | null
+          image_url: string
+          is_active: boolean
+          stage_no: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_name?: string | null
+          image_url: string
+          is_active?: boolean
+          stage_no: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_name?: string | null
+          image_url?: string
+          is_active?: boolean
+          stage_no?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       skill_level_images: {
         Row: {
           created_at: string

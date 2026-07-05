@@ -28,23 +28,34 @@ interface LevelImage {
   is_active: boolean;
 }
 
+interface StageImage {
+  id: string;
+  stage_no: number;
+  image_url: string;
+  image_name: string | null;
+  is_active: boolean;
+}
+
 export default function SkillMediaPage() {
   const { isAdmin } = useAuth();
   const { invalidateCache } = useSkillLevelImages();
   const [skills, setSkills] = useState<SkillItem[]>([]);
   const [images, setImages] = useState<LevelImage[]>([]);
+  const [stageImages, setStageImages] = useState<StageImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState('');
   const [uploading, setUploading] = useState<string | null>(null);
 
   const loadData = async () => {
-    const [skillsRes, imagesRes] = await Promise.all([
+    const [skillsRes, imagesRes, stagesRes] = await Promise.all([
       supabase.from('skill_catalog').select('id, name, code, skill_group, sort_order, icon_url').eq('is_active', true).order('sort_order'),
       supabase.from('skill_level_images').select('*').eq('is_active', true),
+      supabase.from('skill_growth_stage_images').select('*').eq('is_active', true),
     ]);
     setSkills(skillsRes.data as SkillItem[] || []);
     setImages(imagesRes.data as LevelImage[] || []);
+    setStageImages(stagesRes.data as StageImage[] || []);
     setLoading(false);
   };
 
@@ -63,6 +74,9 @@ export default function SkillMediaPage() {
 
   const getImage = (skillId: string, level: number) =>
     images.find(img => img.skill_id === skillId && img.level_no === level);
+
+  const getStageImage = (stage: number) =>
+    stageImages.find(img => img.stage_no === stage);
 
   const handleUpload = async (skillId: string, level: number, file: File) => {
     const key = `${skillId}_L${level}`;
@@ -136,6 +150,49 @@ export default function SkillMediaPage() {
     setUploading(null);
   };
 
+  const handleStageUpload = async (stage: number, file: File) => {
+    const key = `stage_${stage}`;
+    setUploading(key);
+    try {
+      const ext = file.name.split('.').pop() || 'png';
+      const path = `growth-stages/stage_${stage}.${ext}`;
+
+      const { error: uploadErr } = await supabase.storage
+        .from('skill-images')
+        .upload(path, file, { upsert: true });
+      if (uploadErr) throw uploadErr;
+
+      const { data: urlData } = supabase.storage.from('skill-images').getPublicUrl(path);
+      const imageUrl = urlData.publicUrl + '?t=' + Date.now();
+
+      const existing = getStageImage(stage);
+      if (existing) {
+        await supabase.from('skill_growth_stage_images').update({ is_active: false }).eq('id', existing.id);
+      }
+
+      const { error: insertErr } = await supabase.from('skill_growth_stage_images').insert({
+        stage_no: stage,
+        image_url: imageUrl,
+        image_name: file.name,
+        is_active: true,
+      });
+      if (insertErr) throw insertErr;
+
+      toast({ title: 'Đã upload', description: `Nấc ${GROWTH_STAGE_LABELS[stage]} — áp dụng cho mọi skill chưa có hình riêng` });
+      await Promise.all([loadData(), invalidateCache()]);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast({ title: 'Lỗi upload', description: message, variant: 'destructive' });
+    }
+    setUploading(null);
+  };
+
+  const handleStageDelete = async (img: StageImage) => {
+    await supabase.from('skill_growth_stage_images').update({ is_active: false }).eq('id', img.id);
+    toast({ title: 'Đã xóa ảnh nấc', description: 'Sẽ hiển thị vector dự phòng cho tới khi upload ảnh mới' });
+    await Promise.all([loadData(), invalidateCache()]);
+  };
+
   const handleIconDelete = async (skillId: string) => {
     const { error } = await supabase.from('skill_catalog').update({ icon_url: null }).eq('id', skillId);
     if (error) {
@@ -152,9 +209,53 @@ export default function SkillMediaPage() {
         <h1 className="page-header">Quản trị hình ảnh Skill</h1>
         <p className="page-subtitle">
           Thứ tự ưu tiên hiển thị: ảnh riêng từng level → icon skill + khung level (đồng → bạc → vàng → kim cương)
-          → bộ hình chung 4 nấc Cây ký ức (Ươm mầm · Bám rễ · Vươn cành · Lan tỏa).
+          → ảnh chung 4 nấc Cây ký ức (Ươm mầm · Bám rễ · Vươn cành · Lan tỏa).
         </p>
       </div>
+
+      {/* Bộ hình chung 4 nấc — áp dụng cho mọi skill chưa có ảnh riêng / icon riêng */}
+      <Card className="border-primary/20">
+        <CardHeader className="pb-2 px-3 sm:px-6">
+          <CardTitle className="text-sm">Bộ hình chung 4 nấc phát triển</CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Upload 1 ảnh cho mỗi nấc — dùng chung cho mọi skill chưa có hình riêng. Chưa upload thì hệ thống
+            hiển thị vector dự phòng.
+          </p>
+        </CardHeader>
+        <CardContent className="px-3 sm:px-6 space-y-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[1, 2, 3, 4].map(stage => {
+              const img = getStageImage(stage);
+              return (
+                <LevelUploadSlot
+                  key={stage}
+                  level={stage}
+                  label={`L${stage} · ${GROWTH_STAGE_LABELS[stage]}`}
+                  image={img}
+                  isUploading={uploading === `stage_${stage}`}
+                  onUpload={(file) => handleStageUpload(stage, file)}
+                  onDelete={() => img && handleStageDelete(img)}
+                />
+              );
+            })}
+          </div>
+          <div>
+            <p className="text-[10px] font-medium text-muted-foreground mb-1.5">Xem trước trong khung level</p>
+            <div className="flex items-end gap-2.5">
+              {[1, 2, 3, 4].map(stage => (
+                <div key={stage} className="flex flex-col items-center gap-1">
+                  <SkillLevelArt level={stage} stageImageUrl={getStageImage(stage)?.image_url} size="md" />
+                  <span className="text-[9px] text-muted-foreground">{GROWTH_STAGE_LABELS[stage]}</span>
+                </div>
+              ))}
+              <div className="flex flex-col items-center gap-1">
+                <SkillLevelArt level={2} stageImageUrl={getStageImage(2)?.image_url} size="md" locked />
+                <span className="text-[9px] text-muted-foreground">Chưa đạt</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-2">
@@ -204,6 +305,7 @@ export default function SkillMediaPage() {
                           level={level}
                           imageUrl={getImage(skill.id, level)?.image_url}
                           iconUrl={skill.icon_url}
+                          stageImageUrl={getStageImage(level)?.image_url}
                           size="md"
                         />
                         <span className="text-[9px] text-muted-foreground">
@@ -212,7 +314,7 @@ export default function SkillMediaPage() {
                       </div>
                     ))}
                     <div className="flex flex-col items-center gap-1">
-                      <SkillLevelArt level={2} iconUrl={skill.icon_url} size="md" locked />
+                      <SkillLevelArt level={2} iconUrl={skill.icon_url} stageImageUrl={getStageImage(2)?.image_url} size="md" locked />
                       <span className="text-[9px] text-muted-foreground">Chưa đạt</span>
                     </div>
                   </div>
@@ -310,13 +412,15 @@ function IconUploadSlot({
 
 function LevelUploadSlot({
   level,
+  label,
   image,
   isUploading,
   onUpload,
   onDelete,
 }: {
   level: number;
-  image?: LevelImage | null;
+  label?: string;
+  image?: { image_url: string; image_name: string | null } | null;
   isUploading: boolean;
   onUpload: (file: File) => void;
   onDelete: () => void;
@@ -332,7 +436,7 @@ function LevelUploadSlot({
   return (
     <div className="border rounded-lg p-3 text-center space-y-2">
       <div className="flex items-center justify-between">
-        <span className={`level-badge level-${level} text-[10px]`}>Level {level}</span>
+        <span className={`level-badge level-${level} text-[10px]`}>{label || `Level ${level}`}</span>
         {image && (
           <button onClick={onDelete} className="p-0.5 rounded hover:bg-destructive/10">
             <X className="w-3 h-3 text-destructive" />

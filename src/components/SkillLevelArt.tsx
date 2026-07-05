@@ -26,6 +26,8 @@ interface Props {
   imageUrl?: string | null;
   /** Icon riêng của skill (skill_catalog.icon_url) — compose với khung level */
   iconUrl?: string | null;
+  /** Ảnh chung theo nấc do admin upload (skill_growth_stage_images) */
+  stageImageUrl?: string | null;
   size?: SkillArtSize;
   /** Level chưa đạt — silhouette + ổ khoá, không lộ chi tiết art */
   locked?: boolean;
@@ -37,20 +39,22 @@ interface Props {
  * Ảnh skill đóng khung theo level. Thứ tự ưu tiên:
  *   1. Ảnh riêng từng level (skill_level_images)
  *   2. Icon riêng của skill + khung level
- *   3. Bộ hình chung 4 nấc Cây ký ức: Ươm mầm → Bám rễ → Vươn cành → Lan tỏa
- * — mọi skill đều có hình nhất quán mà không cần upload đủ 38 × 4 ảnh.
+ *   3. Ảnh chung 4 nấc do admin upload (skill_growth_stage_images)
+ *   4. Vector Cây ký ức built-in — dự phòng cuối để không skill nào trống hình
+ * Nấc: Ươm mầm → Bám rễ → Vươn cành → Lan tỏa.
  */
 export function SkillLevelArt({
   level,
   imageUrl,
   iconUrl,
+  stageImageUrl,
   size = 'md',
   locked = false,
   className = '',
   alt,
 }: Props) {
   const s = SIZE_CLASSES[size];
-  const src = imageUrl || iconUrl;
+  const src = imageUrl || iconUrl || stageImageUrl;
   const lvl = Math.min(Math.max(level, 1), 4);
   const frameClass = locked ? 'skill-art-locked' : FRAME_CLASSES[lvl];
   const label = alt || `Level ${level} — ${LEVEL_LABELS[level] || ''} · ${GROWTH_STAGE_LABELS[lvl]}`;

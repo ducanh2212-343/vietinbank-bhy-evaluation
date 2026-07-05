@@ -15,7 +15,7 @@ interface Props {
 }
 
 export function SkillLevelBadge({ level, imageUrl, skillId, className = '', size = 'sm', showLabel }: Props) {
-  const { getImageUrl, getIconUrl } = useSkillLevelImages();
+  const { getImageUrl, getIconUrl, getStageImageUrl } = useSkillLevelImages();
   const lvl = level ?? 0;
 
   if (lvl === 0) {
@@ -42,18 +42,18 @@ export function SkillLevelBadge({ level, imageUrl, skillId, className = '', size
             className="cursor-pointer hover:opacity-80 transition-opacity inline-flex"
             onClick={(e) => e.stopPropagation()}
           >
-            <SkillLevelArt level={lvl} imageUrl={art} iconUrl={icon} size={size} />
+            <SkillLevelArt level={lvl} imageUrl={art} iconUrl={icon} stageImageUrl={getStageImageUrl(lvl)} size={size} />
           </span>
         </DialogTrigger>
         <DialogContent className="max-w-xs p-6 flex flex-col items-center gap-4" onClick={(e) => e.stopPropagation()}>
-          <SkillLevelArt level={lvl} imageUrl={art} iconUrl={icon} size="xl" />
+          <SkillLevelArt level={lvl} imageUrl={art} iconUrl={icon} stageImageUrl={getStageImageUrl(lvl)} size="xl" />
           <div className="text-center">
             <p className="text-sm font-medium">Level {lvl} — {LEVEL_LABELS[lvl]}</p>
             <p className="text-xs text-muted-foreground mt-0.5">Nấc phát triển: {GROWTH_STAGE_LABELS[lvl]}</p>
           </div>
           {nextLvl && (
             <div className="w-full flex items-center gap-3 rounded-lg border border-dashed bg-muted/40 p-3">
-              <SkillLevelArt level={nextLvl} imageUrl={nextArt} iconUrl={icon} size="md" locked />
+              <SkillLevelArt level={nextLvl} imageUrl={nextArt} iconUrl={icon} stageImageUrl={getStageImageUrl(nextLvl)} size="md" locked />
               <div className="text-left">
                 <p className="text-xs font-medium text-muted-foreground">Cấp tiếp theo</p>
                 <p className="text-xs">L{nextLvl} — {LEVEL_LABELS[nextLvl]} · {GROWTH_STAGE_LABELS[nextLvl]}</p>
