@@ -10,7 +10,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CalendarClock, Download, Loader2, Timer } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { BellRing, CalendarClock, Download, Loader2, Timer } from 'lucide-react';
 import { toast } from 'sonner';
 import { filterQuarterCycles, pickDefaultCycle } from '@/lib/evaluationCycles';
 import {
@@ -118,6 +122,9 @@ export default function SubmissionTimeReportPage() {
   const [subs, setSubs] = useState<SubInfo[]>([]);
   const [cycleId, setCycleId] = useState<string>('');
   const [deptFilter, setDeptFilter] = useState<string>('all');
+  const [remindingIds, setRemindingIds] = useState<Set<string>>(new Set());
+  const [remindedIds, setRemindedIds] = useState<Set<string>>(new Set());
+  const [remindingAll, setRemindingAll] = useState(false);
   const [timingFilter, setTimingFilter] = useState<'all' | SubmissionTimingStatus>('all');
 
   const load = useCallback(async () => {
@@ -382,6 +389,69 @@ export default function SubmissionTimeReportPage() {
 
   const deadlineSet = !!selectedCycle?.submission_deadline;
 
+  // Nhắc việc: chỉ những phiếu mà bóng đang ở sân CÁN BỘ (chưa đẩy lên / bị trả lại)
+  // và kỳ chưa được duyệt xong. Server (send-hr-notification) chặn gửi trùng trong ngày.
+  const needsReminder = (r: StaffTimingRow): boolean => {
+    if (r.timing.status === 'ontime' || r.timing.status === 'late') return false;
+    const display = toDisplayStatus(r.sub);
+    return display === 'not_started' || display === 'in_progress' || display === 'returned_employee';
+  };
+  const remindTargets = cycleRows.filter(needsReminder);
+
+  const sendReminder = async (r: StaffTimingRow): Promise<'sent' | 'skipped' | 'error'> => {
+    if (!selectedCycle) return 'error';
+    setRemindingIds((prev) => new Set(prev).add(r.profileId));
+    try {
+      const { data, error } = await supabase.functions.invoke('send-hr-notification', {
+        body: {
+          kind: 'submission_reminder',
+          recipient_profile_id: r.profileId,
+          cycle_name: selectedCycle.name,
+          deadline_text: fmtDateTime(getEffectiveDeadline(selectedCycle).toISOString()),
+          status_label: STATUS_LABEL[toDisplayStatus(r.sub)],
+        },
+      });
+      if (error) throw error;
+      const res = data as { success?: boolean; skipped?: string; error?: string };
+      if (res?.success) {
+        setRemindedIds((prev) => new Set(prev).add(r.profileId));
+        return 'sent';
+      }
+      if (res?.skipped === 'duplicate') {
+        setRemindedIds((prev) => new Set(prev).add(r.profileId));
+        return 'skipped';
+      }
+      return 'skipped';
+    } catch {
+      return 'error';
+    } finally {
+      setRemindingIds((prev) => { const n = new Set(prev); n.delete(r.profileId); return n; });
+    }
+  };
+
+  const remindOne = async (r: StaffTimingRow) => {
+    const result = await sendReminder(r);
+    if (result === 'sent') toast.success(`Đã gửi email nhắc ${r.fullName}`);
+    else if (result === 'skipped') toast.info(`${r.fullName}: hôm nay đã nhắc rồi hoặc không có email`);
+    else toast.error(`Không gửi được email nhắc ${r.fullName}`);
+  };
+
+  const remindAll = async () => {
+    setRemindingAll(true);
+    let sent = 0; let skipped = 0; let failed = 0;
+    try {
+      for (const r of remindTargets) {
+        const result = await sendReminder(r);
+        if (result === 'sent') sent++;
+        else if (result === 'skipped') skipped++;
+        else failed++;
+      }
+      toast.success(`Nhắc việc xong: ${sent} email đã gửi, ${skipped} bỏ qua (đã nhắc hôm nay / thiếu email)${failed ? `, ${failed} lỗi` : ''}.`);
+    } finally {
+      setRemindingAll(false);
+    }
+  };
+
   return (
     <div className="p-4 md:p-6 space-y-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -420,6 +490,30 @@ export default function SubmissionTimeReportPage() {
             {exporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
             Xuất báo cáo
           </Button>
+          {access.fullBranch && selectedCycle && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button size="sm" variant="outline" disabled={remindingAll || remindTargets.length === 0}>
+                  {remindingAll ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <BellRing className="w-4 h-4 mr-1" />}
+                  Nhắc CB chưa nộp ({remindTargets.length})
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Gửi email nhắc {remindTargets.length} cán bộ chưa nộp?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Email nhắc kèm hạn nộp {selectedCycle.name} và liên kết mở thẳng phiếu Tự đánh giá sẽ được gửi
+                    cho các cán bộ đang ở trạng thái Chưa bắt đầu / Đang tự đánh giá / Bị trả lại.
+                    Mỗi cán bộ chỉ nhận tối đa 1 email nhắc mỗi ngày — gửi lại trong ngày sẽ tự bỏ qua.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Hủy</AlertDialogCancel>
+                  <AlertDialogAction onClick={remindAll}>Gửi email nhắc</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
       </div>
 
@@ -535,7 +629,8 @@ export default function SubmissionTimeReportPage() {
                         <th className="py-2 pr-3 font-medium">③ PGĐ duyệt (nộp cuối)</th>
                         <th className="py-2 pr-3 font-medium">So với mốc</th>
                         <th className="py-2 pr-3 font-medium">Kết quả</th>
-                        <th className="py-2 pr-0 font-medium text-right">Điểm KPI trừ</th>
+                        <th className="py-2 pr-3 font-medium text-right">Điểm KPI trừ</th>
+                        {access.fullBranch && <th className="py-2 pr-0 font-medium"></th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -561,14 +656,32 @@ export default function SubmissionTimeReportPage() {
                             <td className="py-2.5 pr-3">
                               <Badge variant="outline" className={`text-[10px] ${TIMING_BADGE_CLS[r.timing.status]}`}>{TIMING_LABEL[r.timing.status]}</Badge>
                             </td>
-                            <td className={`py-2.5 pr-0 text-right font-medium ${r.timing.penalty > 0 ? 'text-red-700' : 'text-muted-foreground'}`}>
+                            <td className={`py-2.5 pr-3 text-right font-medium ${r.timing.penalty > 0 ? 'text-red-700' : 'text-muted-foreground'}`}>
                               {r.timing.penalty > 0 ? `−${r.timing.penalty}` : '0'}
                             </td>
+                            {access.fullBranch && (
+                              <td className="py-2.5 pr-0 text-right">
+                                {needsReminder(r) && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 px-2 text-xs"
+                                    title={remindedIds.has(r.profileId) ? 'Đã nhắc hôm nay' : 'Gửi email nhắc nộp phiếu'}
+                                    disabled={remindingIds.has(r.profileId) || remindedIds.has(r.profileId) || remindingAll}
+                                    onClick={() => remindOne(r)}
+                                  >
+                                    {remindingIds.has(r.profileId)
+                                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                      : <BellRing className={`w-3.5 h-3.5 ${remindedIds.has(r.profileId) ? 'text-muted-foreground/40' : ''}`} />}
+                                  </Button>
+                                )}
+                              </td>
+                            )}
                           </tr>
                         );
                       })}
                       {filteredRows.length === 0 && (
-                        <tr><td colSpan={9} className="py-6 text-center text-xs text-muted-foreground">Không có cán bộ nào khớp bộ lọc.</td></tr>
+                        <tr><td colSpan={access.fullBranch ? 10 : 9} className="py-6 text-center text-xs text-muted-foreground">Không có cán bộ nào khớp bộ lọc.</td></tr>
                       )}
                     </tbody>
                   </table>

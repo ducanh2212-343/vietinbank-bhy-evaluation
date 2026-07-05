@@ -66,6 +66,7 @@ const PersonalKanbanPage = lazyWithRetry(() => import("./pages/PersonalKanbanPag
 const SkillRiskHeatmapPage = lazyWithRetry(() => import("./pages/SkillRiskHeatmapPage"));
 const CareerPathPage = lazyWithRetry(() => import("./pages/CareerPathPage"));
 const TransferSimulationPage = lazyWithRetry(() => import("./pages/TransferSimulationPage"));
+const QuarterlyNewsletterPage = lazyWithRetry(() => import("./pages/QuarterlyNewsletterPage"));
 const ChangePassword = lazyWithRetry(() => import("./pages/ChangePassword"));
 const ForgotPassword = lazyWithRetry(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
@@ -160,6 +161,7 @@ const App = () => (
                 <Route path="/quan-tri-khoa-hoc-vtb" element={<VtbCoursesAdminPage />} />
                 <Route path="/quan-ly-ky-danh-gia" element={<CycleManagementPage />} />
                 <Route path="/quan-tri-cau-hoi-1-1" element={<OneOnOneQuestionsAdminPage />} />
+                <Route path="/ban-tin-quy" element={<QuarterlyNewsletterPage />} />
               </Route>
 
             </Route>
