@@ -554,7 +554,24 @@ export default function SelfAssessmentPage() {
         const { error } = await supabase.from('form_submissions').update(submitPayload).eq('id', fId);
         if (error) throw error;
         setFormStatus('submitted');
-        toast.success('Đã nộp tự đánh giá');
+
+        // Giám đốc chi nhánh không có cấp trên: tự đánh giá — tự phê duyệt.
+        // Chạy đủ chuỗi trạng thái để giữ nguyên các mốc thời gian (nộp/duyệt/phê duyệt).
+        if (isGdcnSelf && reviewerId === profileId) {
+          const now = new Date().toISOString();
+          const { error: e1 } = await supabase.from('form_submissions')
+            .update({ status: 'reviewed', reviewer_id: profileId, reviewed_at: now })
+            .eq('id', fId);
+          if (e1) throw e1;
+          const { error: e2 } = await supabase.from('form_submissions')
+            .update({ status: 'approved', pgd_review_status: 'approved', pgd_reviewed_at: now })
+            .eq('id', fId);
+          if (e2) throw e2;
+          setFormStatus('approved');
+          toast.success('Giám đốc chi nhánh tự đánh giá — phiếu đã hoàn tất phê duyệt');
+        } else {
+          toast.success('Đã nộp tự đánh giá');
+        }
       } else {
         // Lưu nháp: KHÔNG đổi trạng thái (draft giữ draft, returned giữ returned)
         const { error } = await supabase.from('form_submissions').update({

@@ -107,7 +107,9 @@ export async function fetchBM01Extras(params: {
     signatures: {
       employee: { name: params.employeeName || '', date: form?.first_submitted_at || form?.submitted_at || null },
       reviewer: { name: reviewerName, date: form?.first_reviewed_at || form?.reviewed_at || null },
-      approver: { name: params.pgdName || '', date: form?.first_approved_at || form?.pgd_reviewed_at || null },
+      // Không có PGĐ phụ trách (luồng rút gọn: PGĐ do GĐ duyệt, GĐCN tự phê duyệt)
+      // → người phê duyệt chính là người đánh giá được chỉ định
+      approver: { name: params.pgdName || reviewerName || '', date: form?.first_approved_at || form?.pgd_reviewed_at || null },
     },
   };
 }
