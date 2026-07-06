@@ -6,11 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { TempPasswordHandover } from '@/components/staff/TempPasswordHandover';
 import { fetchDefaultCycle, fetchStarByEmployee } from '@/lib/starClassification';
-import { ArrowLeft, Pencil, ClipboardCheck, Shield, Trash2, KeyRound } from 'lucide-react';
+import { ArrowLeft, Pencil, ClipboardCheck, Shield, Trash2, KeyRound, ChevronDown, MailCheck } from 'lucide-react';
 
 const ROLE_LABELS: Record<string, string> = {
   employee: 'Nhân viên', manager: 'Trưởng phòng', pgd: 'Phó Giám đốc',
@@ -34,6 +36,7 @@ export default function StaffDetail() {
   const [deleting, setDeleting] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [resetResult, setResetResult] = useState<{ email: string; full_name: string | null; temp_password: string } | null>(null);
+  const [emailReset, setEmailReset] = useState<{ email: string } | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [department, setDepartment] = useState<string>('');
   const [manager, setManager] = useState<string>('');
@@ -118,14 +121,20 @@ export default function StaffDetail() {
     ['Ghi chú', profile.note],
   ];
 
-  const handleResetPassword = async () => {
+  const handleResetPassword = async (sendEmail: boolean) => {
     const ok = window.confirm(
-      `Cấp mật khẩu tạm mới cho "${profile.full_name}"?\nMật khẩu hiện tại của cán bộ sẽ mất hiệu lực ngay.`,
+      sendEmail
+        ? `Gửi email link đặt lại mật khẩu cho "${profile.full_name}"?\nCán bộ bấm link trong email để tự đặt mật khẩu mới. Mật khẩu hiện tại vẫn dùng được cho tới khi cán bộ đặt lại.`
+        : `Cấp mật khẩu tạm mới cho "${profile.full_name}"?\nMật khẩu hiện tại của cán bộ sẽ mất hiệu lực ngay.`,
     );
     if (!ok) return;
     setResetting(true);
     const { data, error } = await supabase.functions.invoke('reset-staff-password', {
-      body: { profile_id: id },
+      body: {
+        profile_id: id,
+        send_email: sendEmail,
+        redirect_to: `${window.location.origin}/dat-lai-mat-khau`,
+      },
     });
     setResetting(false);
     if (error || data?.error) {
@@ -135,11 +144,16 @@ export default function StaffDetail() {
         const body = ctx ? await ctx.json() : null;
         if (body?.error) message = body.error;
       } catch { /* keep default */ }
-      toast({ title: 'Không cấp lại được mật khẩu', description: message, variant: 'destructive' });
+      toast({ title: 'Không thực hiện được', description: message, variant: 'destructive' });
       return;
     }
-    setResetResult({ email: data.email, full_name: data.full_name, temp_password: data.temp_password });
-    toast({ title: 'Đã cấp mật khẩu tạm mới' });
+    if (data.mode === 'email_link') {
+      setEmailReset({ email: data.email });
+      toast({ title: 'Đã gửi email link đặt lại mật khẩu' });
+    } else {
+      setResetResult({ email: data.email, full_name: data.full_name, temp_password: data.temp_password });
+      toast({ title: 'Đã cấp mật khẩu tạm mới' });
+    }
   };
 
   return (
@@ -149,9 +163,30 @@ export default function StaffDetail() {
         <div className="flex gap-2">
           {canEdit && <Button variant="outline" size="sm" onClick={() => navigate(`/sua-can-bo/${id}`)}><Pencil className="w-3 h-3 mr-1" /> Sửa hồ sơ</Button>}
           {canEdit && profile.user_id && (
-            <Button variant="outline" size="sm" onClick={handleResetPassword} disabled={resetting}>
-              <KeyRound className="w-3 h-3 mr-1" /> {resetting ? 'Đang cấp...' : 'Cấp mật khẩu'}
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" disabled={resetting}>
+                  <KeyRound className="w-3 h-3 mr-1" /> {resetting ? 'Đang xử lý...' : 'Cấp mật khẩu'}
+                  <ChevronDown className="w-3 h-3 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuItem onClick={() => handleResetPassword(true)}>
+                  <MailCheck className="w-4 h-4 mr-2" />
+                  <div>
+                    <div>Gửi email link cho cán bộ</div>
+                    <div className="text-xs text-muted-foreground">Cán bộ tự đặt — bạn không thấy mật khẩu</div>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleResetPassword(false)}>
+                  <KeyRound className="w-4 h-4 mr-2" />
+                  <div>
+                    <div>Sinh mã tạm (bàn giao tay)</div>
+                    <div className="text-xs text-muted-foreground">Hiện mã để copy gửi Zalo/SMS</div>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
           {canEvaluate && <Button variant="outline" size="sm" onClick={() => navigate(`/danh-gia/${id}`)}><ClipboardCheck className="w-3 h-3 mr-1" /> Đánh giá</Button>}
           {canEdit && (
@@ -283,6 +318,24 @@ export default function StaffDetail() {
               tempPassword={resetResult.temp_password}
               variant="reset"
             />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!emailReset} onOpenChange={(o) => !o && setEmailReset(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><MailCheck className="w-5 h-5" /> Đã gửi email đặt lại</DialogTitle>
+          </DialogHeader>
+          {emailReset && (
+            <Alert>
+              <MailCheck className="h-4 w-4" />
+              <AlertDescription>
+                Đã gửi email chứa link đặt lại mật khẩu tới <strong>{emailReset.email}</strong>.
+                Cán bộ mở email, bấm link là vào thẳng trang đặt mật khẩu mới (không cần mật khẩu cũ).
+                Link có hiệu lực trong thời gian ngắn; nếu quá hạn, gửi lại hoặc dùng mã tạm.
+              </AlertDescription>
+            </Alert>
           )}
         </DialogContent>
       </Dialog>

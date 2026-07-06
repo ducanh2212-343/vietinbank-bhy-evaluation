@@ -9,10 +9,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { TempPasswordHandover } from '@/components/staff/TempPasswordHandover';
-import { ArrowLeft, AlertTriangle, KeyRound } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, KeyRound, MailCheck } from 'lucide-react';
 
 type ProfileLite = { id: string; full_name: string; position: string | null; department_id: string | null; status: string | null };
 
@@ -90,6 +91,9 @@ export default function EditStaff() {
   const [form, setForm] = useState<any>({});
   const [resetting, setResetting] = useState(false);
   const [resetResult, setResetResult] = useState<{ email: string; full_name: string | null; temp_password: string } | null>(null);
+  // Bật = gửi email link đặt lại cho cán bộ (cán bộ tự đặt); Tắt = sinh mã tạm để admin bàn giao.
+  const [sendResetEmail, setSendResetEmail] = useState(false);
+  const [emailReset, setEmailReset] = useState<{ email: string } | null>(null);
   // Bàn giao nhân sự: khi chuyển phòng / nghỉ việc mà cán bộ này đang là QL/PGĐ của người khác
   const originalRef = useRef<{ status: string; department_id: string | null }>({ status: 'active', department_id: null });
   const [handoverSubs, setHandoverSubs] = useState<
@@ -235,12 +239,18 @@ export default function EditStaff() {
 
   const handleResetPassword = async () => {
     const ok = window.confirm(
-      `Cấp lại mật khẩu tạm cho "${form.full_name}"?\nMật khẩu hiện tại của cán bộ sẽ mất hiệu lực ngay lập tức.`,
+      sendResetEmail
+        ? `Gửi email link đặt lại mật khẩu cho "${form.full_name}"?\nCán bộ bấm link trong email để tự đặt mật khẩu mới. Mật khẩu hiện tại vẫn dùng được cho tới khi cán bộ đặt lại.`
+        : `Cấp lại mật khẩu tạm cho "${form.full_name}"?\nMật khẩu hiện tại của cán bộ sẽ mất hiệu lực ngay lập tức.`,
     );
     if (!ok) return;
     setResetting(true);
     const { data, error } = await supabase.functions.invoke('reset-staff-password', {
-      body: { profile_id: id },
+      body: {
+        profile_id: id,
+        send_email: sendResetEmail,
+        redirect_to: `${window.location.origin}/dat-lai-mat-khau`,
+      },
     });
     setResetting(false);
     if (error || data?.error) {
@@ -250,11 +260,16 @@ export default function EditStaff() {
         const body = ctx ? await ctx.json() : null;
         if (body?.error) message = body.error;
       } catch { /* keep default */ }
-      toast({ title: 'Không cấp lại được mật khẩu', description: message, variant: 'destructive' });
+      toast({ title: 'Không thực hiện được', description: message, variant: 'destructive' });
       return;
     }
-    setResetResult({ email: data.email, full_name: data.full_name, temp_password: data.temp_password });
-    toast({ title: 'Đã cấp lại mật khẩu tạm' });
+    if (data.mode === 'email_link') {
+      setEmailReset({ email: data.email });
+      toast({ title: 'Đã gửi email link đặt lại mật khẩu' });
+    } else {
+      setResetResult({ email: data.email, full_name: data.full_name, temp_password: data.temp_password });
+      toast({ title: 'Đã cấp lại mật khẩu tạm' });
+    }
   };
 
   if (!isAdmin) return <div className="p-6 text-muted-foreground">Bạn không có quyền truy cập.</div>;
@@ -389,11 +404,20 @@ export default function EditStaff() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <KeyRound className="w-4 h-4" /> Cấp lại mật khẩu tạm
+            <KeyRound className="w-4 h-4" /> Cấp lại mật khẩu
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {resetResult ? (
+          {emailReset ? (
+            <Alert>
+              <MailCheck className="h-4 w-4" />
+              <AlertDescription>
+                Đã gửi email chứa link đặt lại mật khẩu tới <strong>{emailReset.email}</strong>.
+                Cán bộ mở email, bấm link là vào thẳng trang đặt mật khẩu mới (không cần mật khẩu cũ).
+                Link có hiệu lực trong thời gian ngắn; nếu quá hạn, gửi lại hoặc dùng mã tạm.
+              </AlertDescription>
+            </Alert>
+          ) : resetResult ? (
             <TempPasswordHandover
               fullName={resetResult.full_name}
               email={resetResult.email}
@@ -402,13 +426,25 @@ export default function EditStaff() {
             />
           ) : (
             <>
+              <div className="flex items-start gap-3 rounded-md border p-3">
+                <Switch id="send-reset-email" checked={sendResetEmail} onCheckedChange={setSendResetEmail} disabled={!form.user_id} />
+                <Label htmlFor="send-reset-email" className="text-sm font-normal cursor-pointer">
+                  <span className="font-medium">Gửi email link đặt lại cho cán bộ</span>
+                  <span className="block text-muted-foreground mt-0.5">
+                    Cán bộ nhận email, bấm link tự đặt mật khẩu mới — bạn không thấy mật khẩu. Phù hợp khi cán bộ dùng email tốt.
+                    <br />Tắt (mặc định) = sinh mã tạm hiện lên màn hình để bạn bàn giao qua Zalo/SMS.
+                  </span>
+                </Label>
+              </div>
               <p className="text-sm text-muted-foreground">
-                Dùng khi cán bộ quên mật khẩu. Hệ thống sinh mật khẩu tạm mới, mật khẩu cũ mất hiệu lực ngay,
-                và cán bộ sẽ bị bắt buộc đổi mật khẩu ở lần đăng nhập kế tiếp.
-                Tin nhắn bàn giao soạn sẵn sẽ hiển thị để bạn copy gửi qua Zalo/SMS.
+                {sendResetEmail
+                  ? 'Khi bấm nút: hệ thống gửi email link đặt lại. Mật khẩu hiện tại vẫn dùng được cho tới khi cán bộ đặt lại.'
+                  : 'Khi bấm nút: hệ thống sinh mật khẩu tạm mới (mật khẩu cũ mất hiệu lực ngay), cán bộ bị bắt buộc đổi ở lần đăng nhập kế tiếp. Tin nhắn bàn giao soạn sẵn sẽ hiện ra để bạn copy.'}
               </p>
               <Button type="button" variant="outline" onClick={handleResetPassword} disabled={resetting || !form.user_id}>
-                {resetting ? 'Đang cấp lại...' : 'Cấp lại mật khẩu tạm'}
+                {resetting
+                  ? (sendResetEmail ? 'Đang gửi...' : 'Đang cấp lại...')
+                  : (sendResetEmail ? 'Gửi email link đặt lại' : 'Cấp lại mật khẩu tạm')}
               </Button>
               {!form.user_id && (
                 <p className="text-xs text-muted-foreground">

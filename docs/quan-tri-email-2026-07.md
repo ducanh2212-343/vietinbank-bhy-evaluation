@@ -20,8 +20,12 @@
 │ Server sinh ngẫu nhiên 16 ký tự ──▶ hiện 1 LẦN cho admin                 │
 │   ──▶ bàn giao riêng (Zalo/SMS, có tin nhắn soạn sẵn)                    │
 │   ──▶ bắt buộc đổi mật khẩu ở lần đăng nhập đầu (must_change_password)   │
-│ Tùy chọn "gửi email" khi thêm cán bộ = gửi LINK đặt mật khẩu (đường 1),  │
-│ không phải mật khẩu.                                                     │
+│                                                                          │
+│ Cấp lại mật khẩu (Sửa cán bộ / Chi tiết cán bộ) có 2 lựa chọn:           │
+│  • Sinh mã tạm (mặc định) — hiện mã để admin bàn giao tay.               │
+│  • "Gửi email link cho cán bộ" — gửi LINK đặt lại (đường 1 qua Resend),  │
+│    cán bộ tự đặt mật khẩu, admin KHÔNG thấy; mật khẩu cũ vẫn dùng được   │
+│    tới khi cán bộ đặt lại. Ghi audit reset_staff_password_email.         │
 └──────────────────────────────────────────────────────────────────────────┘
 
 ┌─ 3. EMAIL THÔNG BÁO ────────────────────────────────────────────────────┐
