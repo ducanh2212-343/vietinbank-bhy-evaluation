@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Star } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { fetchDefaultCycle, fetchStarByEmployee } from '@/lib/starClassification';
 
 const groupConfig = [
   { key: 'sao_mai', label: 'Sao Mai', desc: 'Năng lực cao + Hiệu suất cao', css: 'star-mai' },
@@ -16,29 +17,33 @@ export default function StaffGrouping() {
   const navigate = useNavigate();
   const { scope, visibleDeptIds, loading: authLoading } = useAuth();
   const [grouped, setGrouped] = useState<Record<string, any[]>>({});
+  const [cycleName, setCycleName] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (authLoading) return;
     const load = async () => {
-      let profilesQuery = supabase.from('profiles').select('id, full_name, position, department_id');
+      // Xếp sao theo kỳ mới nhất, đọc từ nguồn chuẩn dùng chung (đồng nhất với Báo cáo & các trang khác)
+      const cycle = await fetchDefaultCycle();
+      setCycleName(cycle?.name || '');
+
+      let profilesQuery = supabase
+        .from('profiles')
+        .select('id, full_name, position, department_id')
+        .eq('status', 'active');
       if (scope !== 'all' && visibleDeptIds.length > 0) {
         profilesQuery = profilesQuery.in('department_id', visibleDeptIds);
       }
-      const [pRes, eRes] = await Promise.all([
-        profilesQuery,
-        supabase.from('admin_evaluations').select('employee_id, classification'),
-      ]);
-      const profileMap = new Map((pRes.data || []).map((p) => [p.id, p]));
+      const pRes = await profilesQuery;
+      const profiles = pRes.data || [];
+      const starByEmp = cycle ? await fetchStarByEmployee(cycle.id) : new Map<string, string>();
+
       const groups: Record<string, any[]> = {};
-      (eRes.data || []).forEach((e) => {
-        if (e.classification) {
-          const p = profileMap.get(e.employee_id);
-          if (!p) return;
-          if (!groups[e.classification]) groups[e.classification] = [];
-          groups[e.classification].push(p);
-        }
-      });
+      for (const p of profiles) {
+        const g = starByEmp.get(p.id);
+        if (!g) continue;
+        (groups[g] ||= []).push(p);
+      }
       setGrouped(groups);
       setLoading(false);
     };
@@ -51,7 +56,7 @@ export default function StaffGrouping() {
     <div className="space-y-6">
       <div>
         <h1 className="page-header">Phân nhóm cán bộ</h1>
-        <p className="page-subtitle">Ma trận 4 nhóm theo năng lực và hiệu suất</p>
+        <p className="page-subtitle">Ma trận 4 nhóm theo năng lực và hiệu suất{cycleName ? ` · ${cycleName}` : ''}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

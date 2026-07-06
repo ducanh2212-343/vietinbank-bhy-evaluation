@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Eye } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { fetchDefaultCycle, fetchStarByEmployee } from '@/lib/starClassification';
 
 export default function TeamOverview() {
   const navigate = useNavigate();
@@ -28,12 +29,16 @@ export default function TeamOverview() {
         profilesQuery = profilesQuery.in('department_id', visibleDeptIds);
         deptsQuery = deptsQuery.in('id', visibleDeptIds);
       }
-      const [pRes, dRes, eRes, posRes, pcsRes] = await Promise.all([
+      // Nhóm sao đọc từ nguồn chuẩn theo kỳ mới nhất (đồng nhất với Báo cáo & các trang khác);
+      // các cột skill lõi tạm giữ đường dữ liệu cũ (không thuộc phạm vi hợp nhất xếp sao).
+      const cycle = await fetchDefaultCycle();
+      const [pRes, dRes, eRes, posRes, pcsRes, starByEmp] = await Promise.all([
         profilesQuery,
         deptsQuery,
         supabase.from('admin_evaluations').select('employee_id, classification, completion_status, priority_skill_ids, current_levels'),
         supabase.from('positions').select('id, name'),
         supabase.from('position_core_skills').select('position_id, skill_id, minimum_level'),
+        cycle ? fetchStarByEmployee(cycle.id) : Promise.resolve(new Map<string, string>()),
       ]);
 
       const deptMap = new Map((dRes.data || []).map(d => [d.id, d.name]));
@@ -69,6 +74,7 @@ export default function TeamOverview() {
         department: deptMap.get(p.department_id) || '—',
         posName: p.position_id ? posMap.get(p.position_id)?.name : p.position,
         eval: evalMap.get(p.id) || null,
+        star: starByEmp.get(p.id) || null,
       })));
       setLoading(false);
     };
@@ -133,8 +139,8 @@ export default function TeamOverview() {
                       ) : '—'}
                     </TableCell>
                     <TableCell>
-                      {s.eval?.classification ? (
-                        <span className={`level-badge ${classCss[s.eval.classification]}`}>{classLabel[s.eval.classification]}</span>
+                      {s.star ? (
+                        <span className={`level-badge ${classCss[s.star]}`}>{classLabel[s.star]}</span>
                       ) : '—'}
                     </TableCell>
                     <TableCell>

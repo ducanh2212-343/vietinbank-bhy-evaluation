@@ -211,14 +211,18 @@ export function EvalSectionC({ assessments, onChange, isManager }: Props) {
                           <button
                             key={opt.value}
                             type="button"
+                            disabled={isManager}
                             onClick={() => update(a.attitude_dimension_id, { self_status: opt.value })}
                             className={cn(
                               'rounded-lg border-2 px-2 py-2.5 text-xs font-medium transition-all text-center',
                               a.self_status === opt.value
                                 ? cn(opt.color, 'border-current ring-2 ring-offset-1 ring-current/30')
-                                : 'border-border bg-background hover:bg-muted/50',
+                                : 'border-border bg-background',
+                              isManager
+                                ? 'opacity-70 cursor-not-allowed'
+                                : a.self_status === opt.value ? '' : 'hover:bg-muted/50',
                             )}
-                            title={opt.tip}
+                            title={isManager ? 'Chỉ cán bộ tự chọn mức này' : opt.tip}
                           >
                             {opt.label}
                           </button>
@@ -323,6 +327,7 @@ export function EvalSectionC({ assessments, onChange, isManager }: Props) {
                         onChange={e => update(a.attitude_dimension_id, { evidence_text: e.target.value })}
                         className="min-h-[60px] text-xs"
                         placeholder="Ví dụ: Trong kỳ vừa qua, tôi đã… Kết quả là… Việc này thể hiện tôi…"
+                        disabled={isManager}
                       />
                     </div>
 

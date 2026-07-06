@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -31,7 +31,8 @@ import {
   getQuarterFormSubmission,
   mergeAllSkillAssessments,
   pickDefaultCycle,
-  replaceCoreSkillAssessments,
+  buildSkillAssessmentRows,
+  saveEvaluationChildren,
 } from '@/lib/evaluationPersistence';
 import { validateSubmission, validateSubmissionDetailed } from '@/lib/evaluationValidation';
 import { useCycleOneOnOneQuestions } from '@/hooks/useCycleOneOnOneQuestions';
@@ -62,6 +63,11 @@ export default function SelfAssessmentPage() {
   const [skillPriorities, setSkillPriorities] = useState<SkillPriority[]>([]);
   const [skillActions, setSkillActions] = useState<SkillAction[]>([]);
   const [attitudePriorities, setAttitudePriorities] = useState<AttitudePriority[]>([]);
+  // Ánh xạ id nhóm thái độ cũ (đã load) → attitude_dimension_id, để remap liên kết hành động AI
+  // sau khi form_attitude_priorities bị xóa-tạo-lại với id mới (tránh lỗi FK làm mất mục F).
+  const attPidToDimRef = useRef<Map<string, number>>(new Map());
+  // Khóa lạc quan: mốc updated_at của phiếu lúc mở, để phát hiện tab khác/người khác đã lưu
+  const formUpdatedAtRef = useRef<string | null>(null);
   const [attitudeActions, setAttitudeActions] = useState<AttitudeAction[]>([]);
   const [aiActions, setAiActions] = useState<AIAction[]>([]);
   const [oneOnOneEnabled, setOneOnOneEnabled] = useState(false);
@@ -221,7 +227,9 @@ export default function SelfAssessmentPage() {
       if (form) {
         setFormId(form.id);
         setFormStatus(form.status);
-        setReturnedComment(form.status === 'returned' ? (form.manager_comment || '') : '');
+        formUpdatedAtRef.current = (form as any).updated_at ?? null;
+        // Ưu tiên lý do trả lại (return_reason) TP nhập trong hộp thoại "Trả lại"; nếu trống mới fallback về Kết luận (manager_comment)
+        setReturnedComment(form.status === 'returned' ? ((form as any).return_reason || form.manager_comment || '') : '');
         setOneOnOneEnabled(!!(form as any).one_on_one_enabled);
         const ooa = (form as any).one_on_one_answers;
         setOneOnOneAnswers(ooa && typeof ooa === 'object' ? (ooa as OneOnOneAnswers) : {});
@@ -254,6 +262,11 @@ export default function SelfAssessmentPage() {
           supabase.from('form_attitude_actions').select('*').eq('form_id', fId).order('row_no'),
           supabase.from('form_ai_actions_v2').select('*').eq('form_id', fId).order('row_no'),
         ]);
+
+        // Lưu ánh xạ id priority thái độ cũ → dimension để remap liên kết AI khi lưu
+        attPidToDimRef.current = new Map<string, number>(
+          (apRes.data || []).map((p: any) => [p.id as string, p.attitude_dimension_id as number]),
+        );
 
         const merged = mergeAllSkillAssessments(initialCoreAssessments, saRes.data, skillRes.data || []);
         resolvedCoreAssessments = merged.core;
@@ -391,13 +404,46 @@ export default function SelfAssessmentPage() {
   useEffect(() => { loadData(); }, [loadData]);
 
   const persistAllData = async (fId: string) => {
-    // 1. Save core skill assessments
-    await replaceCoreSkillAssessments(fId, coreAssessments, suppAssessments);
+    // Lưu toàn bộ bảng con trong MỘT giao dịch qua RPC (atomic) — không xóa-ghi-lại rời rạc,
+    // giữ nguyên UUID hành động để thẻ Kanban không bị reset tiến độ.
+    const statusToDb = (s?: string) =>
+      s === 'in_progress' ? 'in_progress' : s === 'completed' ? 'completed' : 'planned';
 
-    // 2. Save attitudes — new model: kế hoạch cải thiện gộp trong từng nhóm (mục C)
-    await supabase.from('form_attitude_actions').delete().eq('form_id', fId);
-    await supabase.from('form_attitude_priorities').delete().eq('form_id', fId);
-    const insertedAttPriorities: Record<number, string> = {};
+    // Map khóa priority phía client → skill_id (để action tham chiếu cha bằng khóa tự nhiên)
+    const spKeyToSkillId = new Map<string, string>();
+    for (const sp of skillPriorities) spKeyToSkillId.set(sp.id || sp.skill_id, sp.skill_id);
+
+    // Map dimension → các dòng hành động thái độ đã load (giữ id + nhận xét TP, và các dòng TP thêm)
+    const dimToLoadedActions = new Map<number, AttitudeAction[]>();
+    for (const act of attitudeActions) {
+      const dim = attPidToDimRef.current.get(act.attitude_priority_id);
+      if (dim == null) continue;
+      const arr = dimToLoadedActions.get(dim) || [];
+      arr.push(act);
+      dimToLoadedActions.set(dim, arr);
+    }
+
+    const skillAssessments = buildSkillAssessmentRows(coreAssessments, suppAssessments);
+
+    const skillPriorityRows = skillPriorities.map((sp) => ({
+      skill_id: sp.skill_id, current_level: sp.current_level, target_level: sp.target_level,
+      priority_order: sp.priority_order, reason_text: sp.reason_text || null,
+      source_type: sp.source_type, status: sp.status,
+    }));
+
+    const skillActionRows = skillActions
+      .map((a) => ({
+        id: a.id || null,
+        skill_id: spKeyToSkillId.get(a.skill_priority_id) || null,
+        row_no: a.row_no, action_type: a.action_type, action_text: a.action_text || 'Chưa nhập',
+        expected_result: a.expected_result || null, deadline: a.deadline || null,
+        requested_support: a.requested_support || null, evidence_expected: a.evidence_expected || null,
+        status: a.status, actual_result: a.actual_result || null, manager_review: a.manager_review || null,
+      }))
+      .filter((r) => r.skill_id);
+
+    const attitudePriorityRows: any[] = [];
+    const attitudeActionRows: any[] = [];
     for (const aa of attitudeAssessments) {
       const hasFocus = (aa.improvement_focus && aa.improvement_focus.length) || !!aa.improvement_focus_other;
       const focusPayload = hasFocus
@@ -413,14 +459,11 @@ export default function SelfAssessmentPage() {
         } catch { /* text thường → giữ lại */ }
         return raw;
       })();
-      const planActive = aa.self_status === 'can_cai_thien' || aa.manager_status === 'can_cai_thien' || !!aa.improvement_required;
-      const { data, error } = await supabase.from('form_attitude_priorities').insert({
-        form_id: fId,
+      attitudePriorityRows.push({
         attitude_dimension_id: aa.attitude_dimension_id,
         attitude_name: aa.attitude_name,
         self_status: aa.self_status || null,
         manager_status: aa.manager_status || null,
-        // Giữ dữ liệu legacy đã load — không ghi đè null làm mất nhận xét của TP
         current_status: aa.current_status || null,
         desired_status: aa.desired_status || null,
         issue_summary: focusPayload ?? legacyIssueSummary,
@@ -429,71 +472,82 @@ export default function SelfAssessmentPage() {
         employee_comment: aa.employee_comment || null,
         manager_comment: aa.manager_comment || null,
         priority_order: aa.attitude_dimension_id,
-        status: (aa.improvement_status === 'in_progress' ? 'in_progress'
-              : aa.improvement_status === 'completed' ? 'completed' : 'planned'),
-      }).select('id').single();
-      if (error) throw error;
-      if (data) insertedAttPriorities[aa.attitude_dimension_id] = data.id;
+        status: statusToDb(aa.improvement_status),
+      });
 
+      const loaded = dimToLoadedActions.get(aa.attitude_dimension_id) || [];
+      const loadedRow1 = loaded.find((r) => r.row_no === 1) || loaded[0];
+      const extraRows = loaded.filter((r) => r !== loadedRow1);
+      const planActive = aa.self_status === 'can_cai_thien' || aa.manager_status === 'can_cai_thien' || !!aa.improvement_required;
       const hasActionFields = !!(aa.improvement_action || aa.improvement_deadline || aa.expected_evidence || aa.support_needed || aa.progress_note);
+
       if (planActive && hasActionFields) {
-        const { error: aerr } = await supabase.from('form_attitude_actions').insert({
-          form_id: fId,
-          attitude_priority_id: data!.id,
+        // Dòng 1 lấy từ mục C của cán bộ; GIỮ id cũ (Kanban) và GIỮ nhận xét TP (không ghi null đè)
+        attitudeActionRows.push({
+          id: loadedRow1?.id || null,
+          attitude_dimension_id: aa.attitude_dimension_id,
           row_no: 1,
           action_text: aa.improvement_action || 'Chưa nhập',
           expected_evidence: aa.expected_evidence || null,
           deadline: aa.improvement_deadline || null,
           requested_support: aa.support_needed || null,
-          status: (aa.improvement_status === 'in_progress' ? 'in_progress'
-                : aa.improvement_status === 'completed' ? 'completed' : 'planned'),
+          status: statusToDb(aa.improvement_status),
           actual_result: aa.progress_note || null,
-          manager_review: null,
+          manager_review: loadedRow1?.manager_review || null,
         });
-        if (aerr) throw aerr;
+      } else if (loadedRow1) {
+        // Không có kế hoạch mới từ CB nhưng đã có dòng cũ (TP tạo) → giữ nguyên, không xóa
+        attitudeActionRows.push({
+          id: loadedRow1.id || null,
+          attitude_dimension_id: aa.attitude_dimension_id,
+          row_no: loadedRow1.row_no || 1,
+          action_text: loadedRow1.action_text || 'Chưa nhập',
+          expected_evidence: loadedRow1.expected_evidence || null,
+          deadline: loadedRow1.deadline || null,
+          requested_support: loadedRow1.requested_support || null,
+          status: loadedRow1.status,
+          actual_result: loadedRow1.actual_result || null,
+          manager_review: loadedRow1.manager_review || null,
+        });
+      }
+      // Các dòng hành động bổ sung do TP thêm (row_no >= 2) → chuyển nguyên vẹn, không để bị xóa
+      for (const r of extraRows) {
+        attitudeActionRows.push({
+          id: r.id || null,
+          attitude_dimension_id: aa.attitude_dimension_id,
+          row_no: r.row_no,
+          action_text: r.action_text || 'Chưa nhập',
+          expected_evidence: r.expected_evidence || null,
+          deadline: r.deadline || null,
+          requested_support: r.requested_support || null,
+          status: r.status,
+          actual_result: r.actual_result || null,
+          manager_review: r.manager_review || null,
+        });
       }
     }
 
-    // 3. Save skill priorities + actions
-    await supabase.from('form_skill_actions').delete().eq('form_id', fId);
-    await supabase.from('form_skill_priorities').delete().eq('form_id', fId);
-    const insertedPriorities: Record<string, string> = {};
-    for (const sp of skillPriorities) {
-      const { data, error } = await supabase.from('form_skill_priorities').insert({
-        form_id: fId, skill_id: sp.skill_id, current_level: sp.current_level,
-        target_level: sp.target_level, priority_order: sp.priority_order,
-        reason_text: sp.reason_text || null, source_type: sp.source_type, status: sp.status,
-      }).select('id').single();
-      if (error) throw error;
-      if (data) insertedPriorities[sp.id || sp.skill_id] = data.id;
-    }
-    if (skillActions.length > 0) {
-      const { error } = await supabase.from('form_skill_actions').insert(skillActions.map(a => ({
-        form_id: fId, skill_priority_id: insertedPriorities[a.skill_priority_id] || a.skill_priority_id,
-        row_no: a.row_no, action_type: a.action_type, action_text: a.action_text || 'Chưa nhập',
-        expected_result: a.expected_result || null, deadline: a.deadline || null,
-        requested_support: a.requested_support || null, evidence_expected: a.evidence_expected || null,
-        status: a.status, actual_result: a.actual_result || null, manager_review: a.manager_review || null,
-      })));
-      if (error) throw error;
-    }
+    // AI actions: liên kết tham chiếu bằng khóa tự nhiên; RPC tự nối FK sau khi upsert priorities
+    const aiActionRows = aiActions.map((a) => ({
+      id: a.id || null,
+      linked_skill_id: (a.linked_skill_priority_id && spKeyToSkillId.get(a.linked_skill_priority_id)) || null,
+      linked_attitude_dimension_id:
+        (a.linked_attitude_priority_id && attPidToDimRef.current.get(a.linked_attitude_priority_id)) ?? null,
+      row_no: a.row_no, ai_action_text: a.ai_action_text || 'Chưa nhập',
+      expected_result: a.expected_result || null, deadline: a.deadline || null,
+      requested_support: a.requested_support || null, evidence_expected: a.evidence_expected || null,
+      status: a.status, actual_result: a.actual_result || null,
+      manager_review: a.manager_review || null, unlinked_reason: a.unlinked_reason || null,
+    }));
 
-
-
-    // 5. Save AI actions
-    await supabase.from('form_ai_actions_v2').delete().eq('form_id', fId);
-    if (aiActions.length > 0) {
-      const { error } = await supabase.from('form_ai_actions_v2').insert(aiActions.map(a => ({
-        form_id: fId, linked_skill_priority_id: (a.linked_skill_priority_id && insertedPriorities[a.linked_skill_priority_id]) || null,
-        linked_attitude_priority_id: a.linked_attitude_priority_id || null,
-        row_no: a.row_no, ai_action_text: a.ai_action_text || 'Chưa nhập',
-        expected_result: a.expected_result || null, deadline: a.deadline || null,
-        requested_support: a.requested_support || null, evidence_expected: a.evidence_expected || null,
-        status: a.status, actual_result: a.actual_result || null,
-        manager_review: a.manager_review || null, unlinked_reason: a.unlinked_reason || null,
-      })));
-      if (error) throw error;
-    }
+    await saveEvaluationChildren(fId, {
+      skillAssessments,
+      skillPriorities: skillPriorityRows,
+      skillActions: skillActionRows,
+      attitudePriorities: attitudePriorityRows,
+      attitudeActions: attitudeActionRows,
+      aiActions: aiActionRows,
+    });
   };
 
   // Cán bộ chỉ được sửa khi phiếu ở trạng thái nháp hoặc bị trả lại
@@ -528,6 +582,12 @@ export default function SelfAssessmentPage() {
       const fId = form?.id || null;
       setFormId(fId);
       if (!fId) throw new Error('Không thể tạo phiếu đánh giá');
+
+      // Khóa lạc quan: phiếu đã thay đổi kể từ lúc mở (tab cũ / người khác vừa lưu/duyệt) → chặn ghi đè
+      if (formUpdatedAtRef.current && (form as any)?.updated_at && (form as any).updated_at !== formUpdatedAtRef.current) {
+        toast.error('Phiếu đã được cập nhật ở nơi khác (tab khác hoặc người khác vừa lưu/duyệt). Vui lòng tải lại trang rồi thao tác lại.');
+        return;
+      }
 
       await persistAllData(fId);
 
@@ -653,7 +713,9 @@ export default function SelfAssessmentPage() {
       {formStatus === 'returned' && (
         <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
           <p className="font-semibold text-destructive">Phiếu đã bị trả lại để chỉnh sửa</p>
-          {returnedComment && <p className="mt-1 whitespace-pre-line text-foreground/80">Ý kiến người duyệt: {returnedComment}</p>}
+          {returnedComment
+            ? <p className="mt-1 whitespace-pre-line text-foreground/80">Lý do / ý kiến người duyệt: {returnedComment}</p>
+            : <p className="mt-1 text-muted-foreground">Người duyệt chưa ghi lý do cụ thể. Vui lòng liên hệ trưởng phòng để biết nội dung cần chỉnh sửa.</p>}
         </div>
       )}
       {formStatus === 'submitted' && (

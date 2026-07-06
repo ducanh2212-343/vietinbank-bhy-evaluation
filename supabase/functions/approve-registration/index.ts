@@ -5,6 +5,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+/** Mật khẩu tạm ngẫu nhiên (giống _shared/staff.ts — giữ bản sao để hàm tự chứa khi deploy). */
+function generatePassword(length = 16): string {
+  const chars =
+    "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*";
+  const arr = new Uint32Array(length);
+  crypto.getRandomValues(arr);
+  return Array.from(arr, (n) => chars[n % chars.length]).join("");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -36,7 +45,10 @@ Deno.serve(async (req) => {
     const hasPermission = callerRoles?.some((r: any) => allowedRoles.includes(r.role));
     if (!hasPermission) throw new Error("Insufficient permissions");
 
-    const { request_id, assigned_role, review_comment, temp_password, action } = await req.json();
+    // temp_password từ client bị BỎ QUA có chủ đích: trước đây là 8 số cuối SĐT
+    // (đoán được — ai biết SĐT có thể đăng nhập trước chủ tài khoản). Server tự
+    // sinh mật khẩu ngẫu nhiên và trả về đúng 1 lần cho người duyệt bàn giao riêng.
+    const { request_id, assigned_role, review_comment, action } = await req.json();
 
     // Handle rejection
     if (action === "reject") {
@@ -84,6 +96,19 @@ Deno.serve(async (req) => {
         console.error("Failed to send rejection email:", emailErr);
       }
 
+      // Audit log (best-effort)
+      try {
+        await adminClient.from("audit_logs").insert({
+          user_id: user.id,
+          action: "reject_registration",
+          entity_type: "staff_account",
+          entity_id: null,
+          new_data: { request_id, target_email: regReq.email },
+        });
+      } catch (auditErr) {
+        console.error("audit_logs insert failed:", auditErr);
+      }
+
       return new Response(
         JSON.stringify({ success: true }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -91,8 +116,8 @@ Deno.serve(async (req) => {
     }
 
     // Handle approval (default)
-    if (!request_id || !temp_password) throw new Error("Missing required fields");
-    if (temp_password.length < 6) throw new Error("Temporary password too short");
+    if (!request_id) throw new Error("Missing required fields");
+    const tempPassword = generatePassword();
 
     // Get the registration request
     const { data: regReq, error: reqError } = await adminClient
@@ -114,7 +139,7 @@ Deno.serve(async (req) => {
     // Create auth user
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email: regReq.email,
-      password: temp_password,
+      password: tempPassword,
       email_confirm: true,
       user_metadata: { full_name: regReq.full_name, must_change_password: true },
     });
@@ -169,7 +194,8 @@ Deno.serve(async (req) => {
       })
       .eq("id", request_id);
 
-    // Send approval email
+    // Send approval email — KHÔNG kèm mật khẩu/gợi ý mật khẩu qua email;
+    // mật khẩu tạm được người duyệt bàn giao riêng (Zalo/SMS).
     try {
       await adminClient.functions.invoke("send-transactional-email", {
         body: {
@@ -179,7 +205,7 @@ Deno.serve(async (req) => {
           templateData: {
             fullName: regReq.full_name,
             email: regReq.email,
-            tempPasswordHint: "8 số cuối của số điện thoại đã đăng ký",
+            tempPasswordHint: "người phê duyệt sẽ gửi riêng cho bạn qua Zalo/SMS",
           },
         },
       });
@@ -187,8 +213,34 @@ Deno.serve(async (req) => {
       console.error("Failed to send approval email:", emailErr);
     }
 
+    // Audit log (best-effort)
+    try {
+      await adminClient.from("audit_logs").insert({
+        user_id: user.id,
+        action: "approve_registration",
+        entity_type: "staff_account",
+        entity_id: newUserId,
+        new_data: {
+          request_id,
+          target_email: regReq.email,
+          role: roleToAssign,
+          profile_id: newProfile.id,
+        },
+      });
+    } catch (auditErr) {
+      console.error("audit_logs insert failed:", auditErr);
+    }
+
     return new Response(
-      JSON.stringify({ success: true, user_id: newUserId, profile_id: newProfile.id }),
+      JSON.stringify({
+        success: true,
+        user_id: newUserId,
+        profile_id: newProfile.id,
+        email: regReq.email,
+        full_name: regReq.full_name,
+        // Trả về đúng 1 lần cho màn hình người duyệt để bàn giao riêng.
+        temp_password: tempPassword,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {

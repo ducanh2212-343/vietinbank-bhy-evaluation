@@ -23,11 +23,13 @@ export interface QuarterFormSummary {
   pgd_comment?: string | null;
   pgd_review_status?: string | null;
   pgd_reviewed_at?: string | null;
+  return_reason?: string | null;
+  returned_by?: string | null;
   updated_at?: string | null;
 }
 
 const FORM_SUBMISSION_SELECT =
-  'id, cycle_id, status, manager_comment, submitted_at, one_on_one_enabled, one_on_one_answers, reviewer_id, reviewed_at, pgd_comment, pgd_review_status, pgd_reviewed_at, updated_at';
+  'id, cycle_id, status, manager_comment, submitted_at, one_on_one_enabled, one_on_one_answers, reviewer_id, reviewed_at, pgd_comment, pgd_review_status, pgd_reviewed_at, return_reason, returned_by, updated_at';
 
 export async function getQuarterFormSubmission(params: {
   employeeId: string;
@@ -174,6 +176,46 @@ function buildSkillRow(formId: string, assessment: CoreSkillAssessment, isCore: 
     employee_comment: assessment.employee_comment || null,
     manager_note: assessment.manager_note || null,
   } as any;
+}
+
+/** Build skill_assessments rows (core + supplementary) cho payload RPC lưu phiếu. */
+export function buildSkillAssessmentRows(
+  coreAssessments: CoreSkillAssessment[],
+  supplementaryAssessments: CoreSkillAssessment[] = [],
+) {
+  return [
+    ...coreAssessments.map((a) => buildSkillRow('', a, true)),
+    ...supplementaryAssessments.map((a) => buildSkillRow('', a, false)),
+  ];
+}
+
+export interface EvaluationChildrenPayload {
+  skillAssessments?: any[];
+  skillPriorities?: any[];
+  skillActions?: any[];
+  attitudePriorities?: any[];
+  attitudeActions?: any[];
+  aiActions?: any[];
+}
+
+/**
+ * Lưu toàn bộ bảng con của phiếu trong MỘT giao dịch qua RPC save_evaluation_children.
+ * Ưu điểm so với delete-all + reinsert: (1) atomic — lỗi giữa chừng tự rollback, không mất dữ liệu;
+ * (2) giữ nguyên UUID của hành động → thẻ Kanban không bị reset tiến độ mỗi lần lưu.
+ * Quy ước payload: priorities tham chiếu cha bằng KHÓA TỰ NHIÊN (skill_id / attitude_dimension_id);
+ * actions gửi kèm id cũ (nếu có) để cập-nhật-tại-chỗ, và natural key của cha để RPC nối FK.
+ */
+export async function saveEvaluationChildren(formId: string, p: EvaluationChildrenPayload) {
+  const { error } = await (supabase as any).rpc('save_evaluation_children', {
+    p_form_id: formId,
+    p_skill_assessments: p.skillAssessments ?? [],
+    p_skill_priorities: p.skillPriorities ?? [],
+    p_skill_actions: p.skillActions ?? [],
+    p_attitude_priorities: p.attitudePriorities ?? [],
+    p_attitude_actions: p.attitudeActions ?? [],
+    p_ai_actions: p.aiActions ?? [],
+  });
+  if (error) throw error;
 }
 
 /** Replace all skill assessments (core + optional supplementary) for a form. */

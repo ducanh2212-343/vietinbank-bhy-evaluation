@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Search } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { fetchDefaultCycle, fetchStarByEmployee } from '@/lib/starClassification';
 
 interface Staff {
   id: string;
@@ -53,15 +54,15 @@ export default function StaffList() {
         profilesQuery = profilesQuery.in('department_id', visibleDeptIds);
         deptsQuery = deptsQuery.in('id', visibleDeptIds);
       }
-      const [profilesRes, deptsRes, evalsRes, posRes] = await Promise.all([
+      // Xếp sao đọc từ nguồn chuẩn theo kỳ mới nhất (đồng nhất với Báo cáo & các trang khác)
+      const cycle = await fetchDefaultCycle();
+      const [profilesRes, deptsRes, starByEmp, posRes] = await Promise.all([
         profilesQuery,
         deptsQuery,
-        supabase.from('admin_evaluations').select('employee_id, classification'),
+        cycle ? fetchStarByEmployee(cycle.id) : Promise.resolve(new Map<string, string>()),
         supabase.from('positions').select('id, name').eq('is_active', true),
       ]);
       const depts = deptsRes.data || [];
-      const evals = evalsRes.data || [];
-      const evalMap = new Map(evals.map((e) => [e.employee_id, e.classification]));
       const deptMap = new Map(depts.map((d) => [d.id, d.name]));
       const posMap = new Map((posRes.data || []).map((p) => [p.id, p.name]));
       setDepartments(depts);
@@ -69,7 +70,7 @@ export default function StaffList() {
         ...p,
         department: p.department_id ? deptMap.get(p.department_id) || null : null,
         position: p.position_id ? posMap.get(p.position_id) || p.position : p.position,
-        classification: evalMap.get(p.id) || null,
+        classification: starByEmp.get(p.id) || null,
       })));
       setLoading(false);
     };

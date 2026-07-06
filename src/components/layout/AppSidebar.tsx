@@ -4,7 +4,7 @@ import {
   User, UsersRound, Star,
   Upload, Settings as SettingsIcon, BarChart3, Image, FileText,
   ChevronDown, ChevronRight, UserCheck, Sparkles, GraduationCap, ClipboardList, KeyRound, ListPlus,
-  CalendarClock, Timer, MessagesSquare, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag,
+  CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag,
   ListChecks, Building2
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -77,6 +77,7 @@ const navGroups: NavGroup[] = [
       { label: 'Quản trị hình ảnh skill', icon: Image, path: '/quan-tri-hinh-anh-skill', minRole: 'admin' },
       { label: 'Duyệt yêu cầu user', icon: UserCheck, path: '/duyet-yeu-cau-user', minRole: 'admin' },
       { label: 'Quản trị AI & Prompt', icon: Sparkles, path: '/quan-tri-ai', minRole: 'admin' },
+      { label: 'Quản trị Email', icon: Mail, path: '/quan-tri-email', minRole: 'admin' },
       { label: 'Khóa học VietinBank', icon: GraduationCap, path: '/quan-tri-khoa-hoc-vtb', minRole: 'admin' },
       { label: 'Cài đặt', icon: SettingsIcon, path: '/cai-dat', minRole: 'admin' },
     ],

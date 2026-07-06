@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { TempPasswordHandover } from '@/components/staff/TempPasswordHandover';
 import { CheckCircle, XCircle, Eye, Search } from 'lucide-react';
 
 type RegistrationRequest = {
@@ -48,6 +49,8 @@ export default function ApproveRegistrations() {
   const [reviewComment, setReviewComment] = useState('');
   const [assignedRole, setAssignedRole] = useState('employee');
   const [processing, setProcessing] = useState(false);
+  // Kết quả duyệt: mật khẩu tạm server sinh, hiện đúng 1 lần để bàn giao riêng.
+  const [approvedResult, setApprovedResult] = useState<{ fullName: string; email: string; tempPassword: string } | null>(null);
 
   const isSystemAdmin = roles.includes('system_admin');
   const canApprove = roles.some(r => ['bgd', 'tcth_admin', 'system_admin'].includes(r));
@@ -77,28 +80,17 @@ export default function ApproveRegistrations() {
     return true;
   });
 
-  const extractLast8Digits = (phone: string): string | null => {
-    const digits = phone.replace(/\D/g, '');
-    return digits.length >= 8 ? digits.slice(-8) : null;
-  };
-
   const handleApprove = async () => {
     if (!selected) return;
-    const tempPassword = extractLast8Digits(selected.phone_number);
-    if (!tempPassword) {
-      toast({ title: 'Lỗi', description: 'Số điện thoại không đủ 8 chữ số để tạo mật khẩu tạm.', variant: 'destructive' });
-      return;
-    }
 
     setProcessing(true);
     try {
-      // Call edge function to create user
+      // Server tự sinh mật khẩu tạm ngẫu nhiên và trả về đúng 1 lần.
       const { data, error } = await supabase.functions.invoke('approve-registration', {
         body: {
           request_id: selected.id,
           assigned_role: assignedRole,
           review_comment: reviewComment || null,
-          temp_password: tempPassword,
         },
       });
 
@@ -106,6 +98,13 @@ export default function ApproveRegistrations() {
       if (data?.error) throw new Error(data.error);
 
       toast({ title: 'Thành công', description: `Tài khoản ${selected.email} đã được tạo.` });
+      if (data?.temp_password) {
+        setApprovedResult({
+          fullName: data.full_name || selected.full_name,
+          email: data.email || selected.email,
+          tempPassword: data.temp_password,
+        });
+      }
       setSelected(null);
       setReviewComment('');
       setAssignedRole('employee');
@@ -235,7 +234,8 @@ export default function ApproveRegistrations() {
                     </div>
 
                     <p className="text-xs text-muted-foreground bg-muted p-2 rounded">
-                      Tài khoản sẽ được tạo với mật khẩu tạm thời là 8 số cuối của số điện thoại.
+                      Hệ thống sẽ sinh mật khẩu tạm ngẫu nhiên và hiển thị <strong>một lần duy nhất</strong> sau khi duyệt
+                      — bạn bàn giao riêng cho cán bộ qua Zalo/SMS (không gửi qua email).
                     </p>
                   </div>
 
@@ -253,6 +253,32 @@ export default function ApproveRegistrations() {
               {selected.status !== 'pending' && selected.review_comment && (
                 <div className="text-sm"><span className="text-muted-foreground">Ghi chú duyệt:</span><br />{selected.review_comment}</div>
               )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Bàn giao mật khẩu tạm sau khi duyệt — hiện đúng 1 lần, đóng là mất */}
+      <Dialog open={!!approvedResult} onOpenChange={(open) => { if (!open) setApprovedResult(null); }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Đã tạo tài khoản — bàn giao mật khẩu tạm</DialogTitle>
+          </DialogHeader>
+          {approvedResult && (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Mật khẩu tạm chỉ hiển thị <strong>một lần duy nhất</strong>. Hãy sao chép tin nhắn bàn giao
+                và gửi riêng cho cán bộ trước khi đóng hộp thoại này.
+              </p>
+              <TempPasswordHandover
+                fullName={approvedResult.fullName}
+                email={approvedResult.email}
+                tempPassword={approvedResult.tempPassword}
+                variant="create"
+              />
+              <DialogFooter>
+                <Button onClick={() => setApprovedResult(null)}>Đã bàn giao xong</Button>
+              </DialogFooter>
             </div>
           )}
         </DialogContent>
