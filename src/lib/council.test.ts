@@ -6,6 +6,7 @@ import {
   extremeScoreCriteria,
   rawAverage,
   resolveWeightScheme,
+  sectionAverage,
   weightBucketOf,
   type ReportEvaluationRow,
 } from './council';
@@ -203,6 +204,22 @@ describe('khái niệm "PGĐ khác": 2 PGĐ tổng 15% — mỗi người 7,5%',
     const r = computeCouncilReport(rows, CRITERIA, 'pgd');
     const total = rows.reduce((acc, x) => acc + effectiveRowWeight(x, 'pgd', r.buckets), 0);
     expect(total).toBeCloseTo(1, 10);
+  });
+});
+
+describe('sectionAverage — điểm TB theo Phần (Năng lực / Hiệu quả)', () => {
+  it('lấy TB các tiêu chí thuộc phần, bỏ tiêu chí chưa chấm', () => {
+    const rows: ReportEvaluationRow[] = [
+      row('#1', 'giam_doc', [9, 7, 5, 3, 1, 8, 8, 8, 8, 8]),
+      row('#2', 'thanh_vien', [7, 9, 5, 5, 3, 6, 6, 6, 6, 6]),
+    ];
+    // Phần I = c1..c5: TB từng TC = 8,8,5,4,2 -> TB phần = (8+8+5+4+2)/5 = 5.4
+    expect(sectionAverage(rows, ['c1', 'c2', 'c3', 'c4', 'c5'])).toBeCloseTo(5.4, 5);
+    // Phần II = c6..c10: TB từng TC = 7,7,7,7,7 -> 7
+    expect(sectionAverage(rows, ['c6', 'c7', 'c8', 'c9', 'c10'])).toBeCloseTo(7, 5);
+  });
+  it('trả null khi không có tiêu chí nào được chấm', () => {
+    expect(sectionAverage([], ['c1', 'c2'])).toBeNull();
   });
 });
 

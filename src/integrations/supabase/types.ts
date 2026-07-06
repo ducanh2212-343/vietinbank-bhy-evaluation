@@ -491,6 +491,7 @@ export type Database = {
           suggestions: string | null
           updated_at: string
           weaknesses: string | null
+          wish: string | null
         }
         Insert: {
           created_at?: string
@@ -505,6 +506,7 @@ export type Database = {
           suggestions?: string | null
           updated_at?: string
           weaknesses?: string | null
+          wish?: string | null
         }
         Update: {
           created_at?: string
@@ -519,6 +521,7 @@ export type Database = {
           suggestions?: string | null
           updated_at?: string
           weaknesses?: string | null
+          wish?: string | null
         }
         Relationships: [
           {

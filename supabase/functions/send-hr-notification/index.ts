@@ -145,11 +145,14 @@ Deno.serve(async (req) => {
       const submittedCount = Number(body.submitted_count) || 0;
       const totalMembers = Number(body.total_members) || 0;
       const weightPresent = (body.weight_present as string || '').trim();
-      // Điểm TB theo tiêu chí (ẩn danh) — KHÔNG nhận dữ liệu theo nhóm vị trí
+      // Điểm TB theo tiêu chí (ẩn danh) — KHÔNG nhận dữ liệu theo nhóm vị trí.
+      // Nhận xét/góp ý KHÔNG gửi cho cán bộ (đưa vào phụ lục nội bộ). Chỉ kèm Lời chúc EQ.
       const criteriaAvg = Array.isArray(body.criteria_avg) ? body.criteria_avg as {
         code: string; title: string; score: string;
       }[] : [];
-      const comments = (body.comments || {}) as { strengths?: string[]; weaknesses?: string[]; suggestions?: string[] };
+      const wishes = Array.isArray(body.wishes)
+        ? (body.wishes as string[]).filter((s) => typeof s === 'string' && s.trim())
+        : [];
       if (!scoreText) return json({ error: 'Thiếu score_text' }, 400);
       label = 'council-report';
       subject = `📊 Kết quả đánh giá công tác đầu mối ${cycleName} — 343 Phát triển nhân sự`;
@@ -161,12 +164,12 @@ Deno.serve(async (req) => {
           <td style="border:1px solid #d7dde6;padding:5px 8px;">${escapeHtml(c.code)}. ${escapeHtml(c.title)}</td>
           <td style="border:1px solid #d7dde6;padding:5px 8px;text-align:center;font-weight:bold;">${escapeHtml(c.score)}</td>
         </tr>`).join('');
-      const commentBlock = (heading: string, items?: string[]) => {
-        const list = (items || []).filter((s) => typeof s === 'string' && s.trim());
-        if (list.length === 0) return '';
-        return `<p style="margin:12px 0 4px;font-weight:bold;color:#0b2e59;font-size:13px;">${escapeHtml(heading)}</p>
-<ul style="margin:0;padding-left:20px;">${list.map((s) => `<li style="margin:3px 0;line-height:1.5;">${escapeHtml(s)}</li>`).join('')}</ul>`;
-      };
+      // Khối Lời chúc EQ ở cuối email (ấm áp) — gom ẩn danh từ các thành viên Hội đồng
+      const wishesBlock = wishes.length ? `
+<div style="margin:20px 0 4px;padding:16px;background:#fff7ed;border:1px solid #fdba74;border-radius:10px;">
+  <p style="margin:0 0 8px;font-weight:bold;color:#b45309;font-size:14px;">💌 Lời chúc gửi tới anh/chị</p>
+  ${wishes.map((w) => `<p style="margin:6px 0;line-height:1.6;color:#7c4a03;font-style:italic;">“${escapeHtml(w)}”</p>`).join('')}
+</div>` : '';
       const ctaUrl = `${APP_URL}/bao-cao-dau-moi`;
       bodyHtml = `
 <p style="margin:8px 0;line-height:1.6;">Kính gửi <strong>${escapeHtml(firstName)}</strong>,</p>
@@ -186,17 +189,12 @@ ${criteriaRows ? `<p style="margin:12px 0 4px;font-weight:bold;color:#0b2e59;fon
   </tr>
   ${criteriaRows}
 </table>` : ''}
-${commentBlock('Ưu điểm nổi bật', comments.strengths)}
-${commentBlock('Mặt hạn chế, khuyết điểm', comments.weaknesses)}
-${commentBlock('Ý kiến đóng góp, đề xuất phát triển', comments.suggestions)}
-<p style="margin:18px 0;text-align:center;">
+<p style="margin:14px 0 0;text-align:center;">
   <a href="${ctaUrl}" style="background:#0b2e59;color:#ffffff;text-decoration:none;padding:11px 26px;border-radius:6px;font-weight:bold;display:inline-block;">Xem báo cáo đầy đủ trên hệ thống</a>
-</p>`;
-      const commentText = (heading: string, items?: string[]) => {
-        const list = (items || []).filter((s) => typeof s === 'string' && s.trim());
-        return list.length ? `\n${heading}:\n${list.map((s) => `- ${s}`).join('\n')}` : '';
-      };
-      text = `Kính gửi ${firstName},\n\nKết quả đánh giá công tác đầu mối ${cycleName}: ${scoreText} điểm (thang 100), tổng hợp từ ${submittedCount}/${totalMembers} phiếu (ẩn danh).\n\nĐiểm TB theo tiêu chí:\n${criteriaAvg.map((c) => `- ${c.code}. ${c.title}: ${c.score}`).join('\n')}${commentText('Ưu điểm nổi bật', comments.strengths)}${commentText('Mặt hạn chế', comments.weaknesses)}${commentText('Đề xuất phát triển', comments.suggestions)}\n\nXem báo cáo đầy đủ: ${ctaUrl}`;
+</p>
+${wishesBlock}`;
+      const wishesText = wishes.length ? `\n\n💌 Lời chúc gửi tới anh/chị:\n${wishes.map((w) => `- ${w}`).join('\n')}` : '';
+      text = `Kính gửi ${firstName},\n\nKết quả đánh giá công tác đầu mối ${cycleName}: ${scoreText} điểm (thang 100), tổng hợp từ ${submittedCount}/${totalMembers} phiếu (ẩn danh).\n\nĐiểm TB theo tiêu chí:\n${criteriaAvg.map((c) => `- ${c.code}. ${c.title}: ${c.score}`).join('\n')}\n\nXem báo cáo đầy đủ: ${ctaUrl}${wishesText}`;
     } else if (kind === 'council_vote_reminder') {
       const pendingSubjects = Array.isArray(body.pending_subjects)
         ? (body.pending_subjects as string[]).filter((s) => typeof s === 'string' && s.trim())

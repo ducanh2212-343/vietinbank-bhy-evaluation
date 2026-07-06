@@ -51,9 +51,17 @@ Tính năng được xây dựng theo 4 tài liệu Chi nhánh cung cấp: **Cơ
   `send-reminders` hàng ngày: (a) kỳ quá hạn tự chuyển "Đã chốt"; (b) còn ≤3 ngày đến hạn thì email nhắc
   các thành viên còn phiếu chưa gửi (1 lần/ngày/kỳ/người). Tab *Tiến độ* có nút nhắc tay từng người +
   "Nhắc tất cả chưa gửi" — dùng chung khóa chống trùng với nhắc tự động nên không gửi đúp trong ngày.
-- **Biên bản toàn kỳ + Xuất Excel:** trên *Báo cáo đầu mối*, admin chọn "📋 Biên bản toàn kỳ" để in một
-  trang tổng hợp tất cả đầu mối (điểm nhóm GĐ/PGĐ/TV, điểm thang 100, chữ ký Thư ký + BGĐ); nút
-  "Xuất Excel" tạo file 3 sheet: Tổng hợp / Chi tiết phiếu ẩn danh / Danh mục tiêu chí.
+- **Biên bản toàn kỳ + Xuất Excel/PDF:** trên *Báo cáo đầu mối*, admin chọn "📋 Biên bản toàn kỳ" để in
+  một trang tổng hợp tất cả đầu mối (**điểm TB Phần I Năng lực + Phần II Hiệu quả**, điểm thang 100, chữ ký
+  Thư ký + BGĐ — KHÔNG lộ điểm theo nhóm người chấm). Nút **"Xuất PDF"** tải thẳng file .pdf (jsPDF +
+  html2canvas). Nút **"Xuất Excel"** tạo file 3 sheet: Tổng hợp (điểm 100 + TB Phần I/II + TB từng tiêu chí,
+  **đã bỏ cột "Tổng trọng số hiện có"**) / Nhận xét tổng hợp / Danh mục tiêu chí.
+- **Nhận xét/góp ý đưa vào PHỤ LỤC:** bản báo cáo chính (in/PDF) chỉ gồm điểm số + chữ ký; nhận xét/góp ý
+  chuyển sang **PHỤ LỤC (trang riêng, lưu nội bộ)** để hồ sơ KPI khách quan, tránh cán bộ ám ảnh.
+- **Lời chúc EQ:** mỗi thành viên Hội đồng **bắt buộc viết 1 lời chúc** khi chấm phiếu (trường riêng trên
+  phiếu, chặn gửi nếu để trống). Lời chúc gom ẩn danh và **chỉ hiển thị ở cuối EMAIL** kết quả gửi cán bộ
+  ("💌 Lời chúc gửi tới anh/chị") — không đưa vào bản/PDF/Excel/hồ sơ lưu. Email kết quả cũng **bỏ phần
+  nhận xét/góp ý** (chỉ còn điểm 100 + điểm TB tiêu chí + lời chúc).
 - **Báo cáo — ẩn danh toàn diện (điều chỉnh 07/2026):** KHÔNG hiển thị điểm của từng phiếu hay từng nhóm
   vị trí (tránh lộ điểm Giám đốc/PGĐ chấm — nhóm chỉ 1 người sẽ bị nhận diện). Thay vào đó:
   - **2 biểu đồ thanh ngang** theo điểm trung bình mỗi tiêu chí: Phần I (Năng lực TC1-5) và Phần II

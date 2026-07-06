@@ -119,6 +119,7 @@ export interface ReportEvaluationRow {
   weaknesses: string | null;
   suggestions: string | null;
   evidence: string | null; // minh chứng chung (dữ liệu cũ, giữ để tương thích)
+  wish?: string | null;     // lời chúc EQ — chỉ dùng cho email gửi cán bộ
 }
 
 export function weightBucketOf(row: Pick<ReportEvaluationRow, 'member_group' | 'is_supervisor'>, level: CouncilSubjectLevel): WeightBucket {
@@ -211,6 +212,15 @@ export function computeCriterionAverages(
     if (vals.length > 0) out.set(id, vals.reduce((a, b) => a + b, 0) / vals.length);
   }
   return out;
+}
+
+/** Điểm TB của một phần (Năng lực / Hiệu quả) = TB các tiêu chí thuộc phần đó (thang 10). */
+export function sectionAverage(rows: ReportEvaluationRow[], sectionCriterionIds: string[]): number | null {
+  const perCriterion = computeCriterionAverages(rows, sectionCriterionIds);
+  const vals = sectionCriterionIds
+    .map((id) => perCriterion.get(id))
+    .filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
+  return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
 }
 
 /** Các tiêu chí chấm rất cao/rất thấp — bắt buộc kèm nhận xét & minh chứng. */

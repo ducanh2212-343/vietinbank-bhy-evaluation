@@ -27,7 +27,7 @@ interface CriterionRow {
 }
 interface MyEvaluation {
   id: string; subject_id: string; status: 'draft' | 'submitted';
-  strengths: string | null; weaknesses: string | null; suggestions: string | null;
+  strengths: string | null; weaknesses: string | null; suggestions: string | null; wish: string | null;
 }
 
 type AnchorField = keyof Pick<CriterionRow, 'anchor_10' | 'anchor_8' | 'anchor_6' | 'anchor_3' | 'anchor_0'>;
@@ -68,6 +68,7 @@ export default function CouncilEvaluationPage() {
   const [strengths, setStrengths] = useState('');
   const [weaknesses, setWeaknesses] = useState('');
   const [suggestions, setSuggestions] = useState('');
+  const [wish, setWish] = useState(''); // Lời chúc EQ — bắt buộc khi gửi
 
   useEffect(() => {
     (async () => {
@@ -95,7 +96,7 @@ export default function CouncilEvaluationPage() {
         .select('id, criterion_key, section, title, description, anchor_10, anchor_8, anchor_6, anchor_3, anchor_0, sort_order')
         .eq('round_id', roundId).eq('is_active', true).order('sort_order'),
       supabase.from('council_evaluations')
-        .select('id, subject_id, status, strengths, weaknesses, suggestions')
+        .select('id, subject_id, status, strengths, weaknesses, suggestions, wish')
         .eq('round_id', roundId).eq('evaluator_id', profileId),
     ]);
     if (subjectsRes.error || criteriaRes.error || evalsRes.error) {
@@ -127,6 +128,7 @@ export default function CouncilEvaluationPage() {
     setStrengths(ev?.strengths || '');
     setWeaknesses(ev?.weaknesses || '');
     setSuggestions(ev?.suggestions || '');
+    setWish(ev?.wish || '');
     setScores({});
     setEvidences({});
     setSavedScoreIds({});
@@ -170,7 +172,7 @@ export default function CouncilEvaluationPage() {
     setScores({});
     setEvidences({});
     setSavedScoreIds({});
-    setStrengths(''); setWeaknesses(''); setSuggestions('');
+    setStrengths(''); setWeaknesses(''); setSuggestions(''); setWish('');
   };
 
   const persist = async (submit: boolean) => {
@@ -193,7 +195,11 @@ export default function CouncilEvaluationPage() {
         );
         return;
       }
-    } else if (scoredIds.length === 0 && !strengths.trim() && !weaknesses.trim() && !suggestions.trim()) {
+      if (!wish.trim()) {
+        toast.error('Vui lòng viết Lời chúc gửi tới cán bộ trước khi gửi phiếu (bắt buộc).');
+        return;
+      }
+    } else if (scoredIds.length === 0 && !strengths.trim() && !weaknesses.trim() && !suggestions.trim() && !wish.trim()) {
       toast.info('Chưa có nội dung để lưu.');
       return;
     }
@@ -208,6 +214,7 @@ export default function CouncilEvaluationPage() {
         strengths: strengths.trim() || null,
         weaknesses: weaknesses.trim() || null,
         suggestions: suggestions.trim() || null,
+        wish: wish.trim() || null,
         ...(submit
           ? { status: 'submitted' as const, submitted_at: new Date().toISOString() }
           : existing?.status === 'submitted' ? {} : { status: 'draft' as const }),
@@ -248,7 +255,7 @@ export default function CouncilEvaluationPage() {
       // Cập nhật trạng thái cục bộ
       const { data: refreshed } = await supabase
         .from('council_evaluations')
-        .select('id, subject_id, status, strengths, weaknesses, suggestions')
+        .select('id, subject_id, status, strengths, weaknesses, suggestions, wish')
         .eq('round_id', roundId).eq('evaluator_id', profileId);
       setMyEvals((refreshed || []) as MyEvaluation[]);
       if (submit) setSubjectId('');
@@ -436,6 +443,26 @@ export default function CouncilEvaluationPage() {
               <label className="text-xs font-medium">3. Ý kiến đóng góp, đề xuất giải pháp phát triển cán bộ</label>
               <Textarea value={suggestions} onChange={(e) => setSuggestions(e.target.value)} rows={2} disabled={!roundOpen} className="mt-1 text-sm bg-background" />
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-primary/40">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-1.5">💌 Lời chúc gửi tới cán bộ <span className="text-[11px] font-normal text-amber-600 dark:text-amber-500">(bắt buộc)</span></CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-[11px] text-muted-foreground mb-1.5">
+              Một lời động viên, ghi nhận mang tính cảm xúc gửi tới cán bộ. Lời chúc được gom ẩn danh và
+              chỉ xuất hiện ở cuối email kết quả gửi cho cán bộ — không đưa vào hồ sơ/biên bản chấm điểm.
+            </p>
+            <Textarea
+              value={wish}
+              onChange={(e) => setWish(e.target.value)}
+              rows={2}
+              disabled={!roundOpen}
+              className={`text-sm bg-background ${roundOpen && !wish.trim() ? 'border-amber-500' : ''}`}
+              placeholder="VD: Chúc anh/chị luôn giữ lửa nhiệt huyết, tiếp tục dẫn dắt đội ngũ gặt hái nhiều thành công trong quý tới!"
+            />
           </CardContent>
         </Card>
 

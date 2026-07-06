@@ -2,8 +2,8 @@
 // KHÔNG xuất điểm từng phiếu hay điểm theo nhóm vị trí (tránh lộ ai chấm bao nhiêu).
 // Chỉ xuất: điểm thang 100, điểm TB theo từng tiêu chí (tổng hợp), và nhận xét gộp.
 import {
-  computeCriterionAverages, formatPercent,
-  type CouncilReportSummary, type CouncilSubjectLevel,
+  computeCriterionAverages, sectionAverage,
+  type CouncilReportSummary, type CouncilSection, type CouncilSubjectLevel,
   type ReportEvaluationRow,
 } from '@/lib/council';
 
@@ -17,7 +17,7 @@ export interface CouncilExportItem {
   summary: CouncilReportSummary;
 }
 
-export interface CouncilExportCriterion { id: string; title: string; }
+export interface CouncilExportCriterion { id: string; title: string; section: CouncilSection; }
 
 const round2 = (v: number | null | undefined): number | string =>
   v == null || !Number.isFinite(v) ? '' : Math.round(v * 100) / 100;
@@ -31,10 +31,13 @@ export async function exportCouncilExcel(
   const wb = XLSX.utils.book_new();
   const critIds = criteria.map((c) => c.id);
   const idxOf = new Map(criteria.map((c, i) => [c.id, i]));
+  const part1Ids = criteria.filter((c) => c.section === 'nang_luc').map((c) => c.id);
+  const part2Ids = criteria.filter((c) => c.section === 'hieu_qua').map((c) => c.id);
 
-  // Sheet 1 — Tổng hợp: điểm thang 100 + điểm TB từng tiêu chí (ẩn danh)
+  // Sheet 1 — Tổng hợp: điểm thang 100 + TB Phần I/II + điểm TB từng tiêu chí (ẩn danh)
   const header1 = [
-    'STT', 'Cán bộ đầu mối', 'Chức vụ', 'Số phiếu', 'Điểm quy thang 100', 'Tổng trọng số hiện có',
+    'STT', 'Cán bộ đầu mối', 'Chức vụ', 'Số phiếu',
+    'TB Phần I (Năng lực)', 'TB Phần II (Hiệu quả)', 'Điểm quy thang 100',
     ...criteria.map((_, i) => `TC${i + 1}`),
   ];
   const summaryRows: (string | number)[][] = [
@@ -50,13 +53,14 @@ export async function exportCouncilExcel(
       item.subjectName,
       item.position || '',
       `${item.submittedCount}/${item.totalMembers}`,
+      round2(sectionAverage(item.evaluations, part1Ids)),
+      round2(sectionAverage(item.evaluations, part2Ids)),
       round2(item.summary.score100),
-      formatPercent(item.summary.totalWeightPresent),
       ...criteria.map((c) => (avgs.has(c.id) ? round2(avgs.get(c.id)) : '')),
     ]);
   });
   const ws1 = XLSX.utils.aoa_to_sheet(summaryRows);
-  ws1['!cols'] = [{ wch: 5 }, { wch: 26 }, { wch: 24 }, { wch: 10 }, { wch: 16 }, { wch: 16 }, ...criteria.map(() => ({ wch: 6 }))];
+  ws1['!cols'] = [{ wch: 5 }, { wch: 26 }, { wch: 24 }, { wch: 10 }, { wch: 18 }, { wch: 18 }, { wch: 16 }, ...criteria.map(() => ({ wch: 6 }))];
   XLSX.utils.book_append_sheet(wb, ws1, 'Tổng hợp');
 
   // Sheet 2 — Nhận xét & góp ý gộp (ẩn danh, không gắn người chấm)

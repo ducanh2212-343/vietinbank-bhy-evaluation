@@ -6,11 +6,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BarChart3, FileSpreadsheet, Loader2, Mail, Printer } from 'lucide-react';
+import { BarChart3, FileDown, FileSpreadsheet, Loader2, Mail, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   ROUND_STATUS_LABELS, SECTION_LABELS,
-  computeCouncilReport, computeCriterionAverages, formatPercent, formatScore,
+  computeCouncilReport, computeCriterionAverages, formatPercent, formatScore, sectionAverage,
   type CouncilRoundStatus, type CouncilSection, type CouncilSubjectLevel, type CouncilWeightConfig,
   type ReportEvaluationRow,
 } from '@/lib/council';
@@ -85,6 +85,7 @@ export default function CouncilReportPage() {
   const [loading, setLoading] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   const allowed = isAdmin || access.isSubject;
 
@@ -203,16 +204,29 @@ export default function CouncilReportPage() {
     return { strengths, weaknesses, suggestions, evidences };
   }, [report, criteria]);
 
+  // Lời chúc EQ gộp ẩn danh — chỉ dùng cho email gửi cán bộ (không hiện trong bản/PDF)
+  const pooledWishes = useMemo(
+    () => (report ? report.evaluations.map((ev) => ev.wish?.trim()).filter((w): w is string => !!w) : []),
+    [report],
+  );
 
-  // Biên bản toàn kỳ: tổng hợp trọng số cho từng đầu mối
+
+  const sectionIds = useMemo(() => ({
+    nang_luc: criteria.filter((c) => c.section === 'nang_luc').map((c) => c.id),
+    hieu_qua: criteria.filter((c) => c.section === 'hieu_qua').map((c) => c.id),
+  }), [criteria]);
+
+  // Biên bản toàn kỳ: điểm thang 100 + điểm TB Phần I/II cho từng đầu mối
   const roundSummaries = useMemo(() => {
     if (!roundReports) return null;
     const ids = criteria.map((c) => c.id);
     return roundReports.map((rp) => ({
       report: rp,
       summary: computeCouncilReport(rp.evaluations, ids, rp.subject.subject_level, weightConfig),
+      part1: sectionAverage(rp.evaluations, sectionIds.nang_luc),
+      part2: sectionAverage(rp.evaluations, sectionIds.hieu_qua),
     }));
-  }, [roundReports, criteria, weightConfig]);
+  }, [roundReports, criteria, weightConfig, sectionIds]);
 
   const exportExcel = async () => {
     const roundName = rounds.find((r) => r.id === roundId)?.name || '';
@@ -229,12 +243,50 @@ export default function CouncilReportPage() {
     if (items.length === 0) { toast.info('Chưa có dữ liệu để xuất.'); return; }
     setExporting(true);
     try {
-      await exportCouncilExcel(roundName, criteria.map((c) => ({ id: c.id, title: c.title })), items);
+      await exportCouncilExcel(roundName, criteria.map((c) => ({ id: c.id, title: c.title, section: c.section })), items);
       toast.success('Đã xuất file Excel.');
     } catch (e) {
       toast.error('Lỗi xuất Excel: ' + (e instanceof Error ? e.message : String(e)));
     } finally {
       setExporting(false);
+    }
+  };
+
+  // Xuất PDF một chạm: chụp #council-report (html2canvas) → jsPDF A4 đa trang
+  const exportPdf = async () => {
+    const el = document.getElementById('council-report');
+    if (!el) { toast.info('Chưa có nội dung để xuất.'); return; }
+    setExportingPdf(true);
+    try {
+      const [{ default: html2canvas }, { default: JsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ]);
+      const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+      const pdf = new JsPDF('p', 'mm', 'a4');
+      const pw = pdf.internal.pageSize.getWidth();
+      const ph = pdf.internal.pageSize.getHeight();
+      const imgH = (canvas.height * pw) / canvas.width;
+      const img = canvas.toDataURL('image/jpeg', 0.92);
+      let heightLeft = imgH;
+      let position = 0;
+      pdf.addImage(img, 'JPEG', 0, position, pw, imgH);
+      heightLeft -= ph;
+      while (heightLeft > 0) {
+        position -= ph;
+        pdf.addPage();
+        pdf.addImage(img, 'JPEG', 0, position, pw, imgH);
+        heightLeft -= ph;
+      }
+      const label = subjectId === ROUND_ALL
+        ? `bien-ban-toan-ky-${rounds.find((r) => r.id === roundId)?.name || ''}`
+        : `bao-cao-danh-gia-${report?.subject.full_name || ''}-${report?.subject.round_name || ''}`;
+      pdf.save(`${label.replace(/[^\p{L}\p{N}]+/gu, '-')}.pdf`);
+      toast.success('Đã xuất file PDF.');
+    } catch (e) {
+      toast.error('Lỗi xuất PDF: ' + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setExportingPdf(false);
     }
   };
 
@@ -266,15 +318,12 @@ export default function CouncilReportPage() {
           submitted_count: report.submitted_count,
           total_members: report.total_members,
           weight_present: formatPercent(summary.totalWeightPresent),
-          // Điểm TB theo tiêu chí (ẩn danh) + nhận xét gộp — KHÔNG gửi phân tích theo nhóm
+          // Điểm TB theo tiêu chí (ẩn danh) — KHÔNG gửi nhận xét (chuyển sang phụ lục nội bộ),
+          // chỉ kèm Lời chúc EQ ở cuối email.
           criteria_avg: [...scoresBySection.nang_luc, ...scoresBySection.hieu_qua]
             .filter((d) => d.score != null)
             .map((d) => ({ code: d.criterion, title: d.title, score: formatScore(d.score as number) })),
-          comments: {
-            strengths: pooledComments.strengths,
-            weaknesses: pooledComments.weaknesses,
-            suggestions: pooledComments.suggestions,
-          },
+          wishes: pooledWishes,
         },
       });
       if (error) throw error;
@@ -328,6 +377,10 @@ export default function CouncilReportPage() {
           <Button size="sm" variant="outline" onClick={() => window.print()} disabled={!report && !roundSummaries}>
             <Printer className="w-4 h-4 mr-1" /> In
           </Button>
+          <Button size="sm" variant="outline" onClick={exportPdf} disabled={exportingPdf || loading || (!report && !roundSummaries)}>
+            {exportingPdf ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <FileDown className="w-4 h-4 mr-1" />}
+            Xuất PDF
+          </Button>
           {isAdmin && (
             <Button size="sm" variant="outline" onClick={exportExcel} disabled={exporting || loading || (!report && !roundSummaries)}>
               {exporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <FileSpreadsheet className="w-4 h-4 mr-1" />}
@@ -370,7 +423,7 @@ export default function CouncilReportPage() {
               Kỳ đánh giá: {rounds.find((r) => r.id === roundId)?.name} — Chi nhánh Bắc Hưng Yên · Xuất lúc {new Date().toLocaleString('vi-VN')}
             </p>
 
-            <div className="overflow-x-auto mt-4 max-w-2xl mx-auto">
+            <div className="overflow-x-auto mt-4 max-w-3xl mx-auto">
               <table className="w-full text-xs border">
                 <thead>
                   <tr className="bg-muted/40">
@@ -378,16 +431,20 @@ export default function CouncilReportPage() {
                     <th className="border px-2 py-1.5 text-left">Cán bộ đầu mối</th>
                     <th className="border px-2 py-1.5 text-left">Chức vụ</th>
                     <th className="border px-2 py-1.5">Số phiếu</th>
+                    <th className="border px-2 py-1.5">Phần I<br/>(Năng lực)</th>
+                    <th className="border px-2 py-1.5">Phần II<br/>(Hiệu quả)</th>
                     <th className="border px-2 py-1.5">Điểm thang 100</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {roundSummaries.map(({ report: rp, summary: sm }, idx) => (
+                  {roundSummaries.map(({ report: rp, summary: sm, part1, part2 }, idx) => (
                     <tr key={rp.subject.id}>
                       <td className="border px-2 py-1.5 text-center">{idx + 1}</td>
                       <td className="border px-2 py-1.5 font-medium whitespace-nowrap">{rp.subject.full_name}</td>
                       <td className="border px-2 py-1.5">{rp.subject.position || '—'}</td>
                       <td className="border px-2 py-1.5 text-center">{rp.submitted_count}/{rp.total_members}</td>
+                      <td className="border px-2 py-1.5 text-center">{part1 != null ? `${formatScore(part1)}/10` : '—'}</td>
+                      <td className="border px-2 py-1.5 text-center">{part2 != null ? `${formatScore(part2)}/10` : '—'}</td>
                       <td className="border px-2 py-1.5 text-center font-semibold">
                         {sm.score100 != null ? formatScore(sm.score100) : '—'}
                         {sm.score100 != null && sm.totalWeightPresent < 1 && (
@@ -402,8 +459,9 @@ export default function CouncilReportPage() {
               </table>
             </div>
             <p className="text-[11px] text-muted-foreground mt-2 text-center">
-              Điểm thang 100 đã xử lý trọng số theo cấp đánh giá và chuẩn hóa theo tổng trọng số các nhóm đã bỏ phiếu.
-              Điểm chấm của từng nhóm/thành viên được ẩn danh, không hiển thị để bảo đảm tính khách quan.
+              Điểm Phần I (Năng lực) và Phần II (Hiệu quả) là điểm trung bình thang 10 của các tiêu chí thuộc phần đó.
+              Điểm thang 100 đã xử lý trọng số theo cấp đánh giá. Điểm chấm của từng nhóm/thành viên được ẩn danh
+              để bảo đảm tính khách quan.
             </p>
 
             <h3 className="text-sm font-bold mt-6 mb-2 text-primary">CÁC THÀNH VIÊN THAM DỰ HỘI ĐỒNG KÝ XÁC NHẬN</h3>
@@ -490,41 +548,11 @@ export default function CouncilReportPage() {
                   </p>
                 )}
 
-                {/* III. Nhận xét và góp ý tổng hợp (ẩn danh) */}
-                <h3 className="text-sm font-bold mt-5 mb-2 text-primary">III. NHẬN XÉT VÀ GÓP Ý TỔNG HỢP CỦA HỘI ĐỒNG</h3>
-                {(() => {
-                  const blocks: { label: string; items: string[] }[] = [
-                    { label: '1. Ưu điểm nổi bật', items: pooledComments.strengths },
-                    { label: '2. Mặt hạn chế, khuyết điểm', items: pooledComments.weaknesses },
-                    { label: '3. Ý kiến đóng góp, đề xuất phát triển', items: pooledComments.suggestions },
-                    { label: '4. Minh chứng ghi nhận', items: pooledComments.evidences },
-                  ];
-                  const anyContent = blocks.some((b) => b.items.length > 0);
-                  if (!anyContent) return <p className="text-sm text-muted-foreground">Chưa có nhận xét, góp ý nào từ Hội đồng.</p>;
-                  return (
-                    <div className="space-y-2.5">
-                      {blocks.map((b) => (
-                        <div key={b.label}>
-                          <p className="text-xs font-semibold">{b.label}</p>
-                          {b.items.length === 0 ? (
-                            <p className="text-xs text-muted-foreground pl-3">—</p>
-                          ) : (
-                            <ul className="list-disc pl-6 mt-0.5 space-y-1">
-                              {b.items.map((t, i) => (
-                                <li key={i} className="text-xs leading-snug whitespace-pre-wrap break-words">{t}</li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()}
               </>
             )}
 
-            {/* Ký xác nhận */}
-            <h3 className="text-sm font-bold mt-6 mb-2 text-primary">IV. CÁC THÀNH VIÊN THAM DỰ HỘI ĐỒNG KÝ XÁC NHẬN KẾT QUẢ ĐÁNH GIÁ</h3>
+            {/* III. Ký xác nhận (nhận xét/góp ý đưa vào phụ lục riêng, không nằm trong bản chính) */}
+            <h3 className="text-sm font-bold mt-6 mb-2 text-primary">III. CÁC THÀNH VIÊN THAM DỰ HỘI ĐỒNG KÝ XÁC NHẬN KẾT QUẢ ĐÁNH GIÁ</h3>
             <div className="grid grid-cols-2 gap-4 text-center text-xs mt-4 mb-2 max-w-xl mx-auto">
               <div>
                 <p className="font-semibold uppercase">Thư ký Hội đồng / Kiểm soát</p>
@@ -535,14 +563,52 @@ export default function CouncilReportPage() {
                 <p className="text-muted-foreground italic">(Ký, đóng dấu xác nhận)</p>
               </div>
             </div>
+
+            {/* PHỤ LỤC — nhận xét/góp ý (lưu nội bộ, trang riêng khi in/PDF) */}
+            {(() => {
+              const blocks: { label: string; items: string[] }[] = [
+                { label: '1. Ưu điểm nổi bật', items: pooledComments.strengths },
+                { label: '2. Mặt hạn chế, khuyết điểm', items: pooledComments.weaknesses },
+                { label: '3. Ý kiến đóng góp, đề xuất phát triển', items: pooledComments.suggestions },
+                { label: '4. Minh chứng ghi nhận', items: pooledComments.evidences },
+              ];
+              if (!blocks.some((b) => b.items.length > 0)) return null;
+              return (
+                <div className="mt-8 pt-4 border-t-2 border-dashed break-before-page">
+                  <h3 className="text-sm font-bold mb-1 text-primary">PHỤ LỤC — Ý KIẾN NHẬN XÉT, GÓP Ý CỦA HỘI ĐỒNG</h3>
+                  <p className="text-[11px] text-muted-foreground mb-3">
+                    (Tài liệu tham khảo lưu nội bộ Hội đồng — tách khỏi bản chấm điểm chính thức, tổng hợp ẩn danh)
+                  </p>
+                  <div className="space-y-2.5">
+                    {blocks.map((b) => (
+                      <div key={b.label}>
+                        <p className="text-xs font-semibold">{b.label}</p>
+                        {b.items.length === 0 ? (
+                          <p className="text-xs text-muted-foreground pl-3">—</p>
+                        ) : (
+                          <ul className="list-disc pl-6 mt-0.5 space-y-1">
+                            {b.items.map((t, i) => (
+                              <li key={i} className="text-xs leading-snug whitespace-pre-wrap break-words">{t}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
       )}
 
       {report && (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground pb-4">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground pb-4 flex-wrap">
           <Badge variant="outline" className="text-[10px]">{report.submitted_count}/{report.total_members} phiếu đã gửi</Badge>
-          Kết quả cập nhật theo thời gian thực; danh tính người chấm được ẩn danh theo cơ chế đánh giá của Hội đồng.
+          {pooledWishes.length > 0 && (
+            <Badge variant="outline" className="text-[10px]">💌 {pooledWishes.length} lời chúc — kèm trong email</Badge>
+          )}
+          Nhận xét/góp ý nằm ở PHỤ LỤC (lưu nội bộ); lời chúc chỉ hiển thị trong email gửi cán bộ. Danh tính người chấm được ẩn danh.
         </div>
       )}
     </div>
