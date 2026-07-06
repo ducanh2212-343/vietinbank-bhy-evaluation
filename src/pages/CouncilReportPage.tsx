@@ -2,16 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useCouncilAccess } from '@/hooks/useCouncilAccess';
-import { useTheme } from '@/hooks/useTheme';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BarChart3, FileSpreadsheet, Loader2, Mail, Printer } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer, Tooltip,
-} from 'recharts';
 import {
   ROUND_STATUS_LABELS, SECTION_LABELS,
   computeCouncilReport, computeCriterionAverages, formatPercent, formatScore,
@@ -22,6 +18,9 @@ import { exportCouncilExcel, type CouncilExportItem } from '@/lib/councilExport'
 
 // Giá trị đặc biệt của picker: xem biên bản tổng hợp toàn kỳ (admin)
 const ROUND_ALL = '__round__';
+// Màu cố định (in PDF hiển thị nhất quán): Phần I xanh dương, Phần II xanh lá
+const COLOR_PART1 = '#2a78d6';
+const COLOR_PART2 = '#1baf7a';
 
 interface RoundRow { id: string; name: string; status: CouncilRoundStatus; weight_config: CouncilWeightConfig | null; }
 interface SubjectOption { id: string; full_name: string; position: string | null; profile_id: string | null; sort_order: number; }
@@ -38,50 +37,43 @@ interface ReportPayload {
   evaluations: ReportEvaluationRow[];
 }
 
-interface RadarDatum { criterion: string; title: string; score: number | null }
+interface CriterionScore { criterion: string; title: string; score: number | null }
 
-// Biểu đồ radar điểm TB theo tiêu chí cho một phần (Năng lực / Hiệu quả).
+// Biểu đồ thanh ngang điểm TB theo tiêu chí (thang 10) — ghi rõ số điểm từng tiêu chí,
+// dùng CSS thuần nên in PDF luôn hiển thị đúng (không phụ thuộc canvas/SVG).
 // Chỉ dùng điểm trung bình tổng hợp (ẩn danh — không lộ ai chấm bao nhiêu).
-function CriterionRadar({ data, title, color, gridColor, ink }: {
-  data: RadarDatum[]; title: string; color: string; gridColor: string; ink: string;
-}) {
-  const hasData = data.some((d) => d.score != null);
+function CriterionBars({ data, title, color }: { data: CriterionScore[]; title: string; color: string }) {
+  const scored = data.filter((d) => d.score != null);
+  const avg = scored.length ? scored.reduce((a, d) => a + (d.score as number), 0) / scored.length : null;
   return (
     <div className="border rounded-lg p-3">
-      <p className="text-xs font-semibold text-center mb-1">{title}</p>
-      {!hasData ? (
-        <p className="text-xs text-muted-foreground text-center py-8">Chưa có dữ liệu.</p>
+      <div className="flex items-baseline justify-between gap-2 mb-2">
+        <p className="text-xs font-semibold">{title}</p>
+        {avg != null && <span className="text-[11px] text-muted-foreground">TB phần: <strong>{formatScore(avg)}/10</strong></span>}
+      </div>
+      {scored.length === 0 ? (
+        <p className="text-xs text-muted-foreground py-4 text-center">Chưa có dữ liệu.</p>
       ) : (
-        <div className="h-60">
-          <ResponsiveContainer width="100%" height="100%">
-            <RadarChart data={data} margin={{ top: 8, right: 22, bottom: 8, left: 22 }}>
-              <PolarGrid stroke={gridColor} />
-              <PolarAngleAxis dataKey="criterion" tick={{ fontSize: 11, fill: ink }} />
-              <PolarRadiusAxis domain={[0, 10]} tick={{ fontSize: 10, fill: ink }} tickCount={6} />
-              <Tooltip
-                formatter={(v: number) => [formatScore(v), 'Điểm TB']}
-                labelFormatter={(l: string) => { const it = data.find((d) => d.criterion === l); return it ? `${l}. ${it.title}` : l; }}
-                contentStyle={{ fontSize: 12, borderRadius: 8, maxWidth: 320 }}
-              />
-              <Radar dataKey="score" stroke={color} strokeWidth={2} fill={color} fillOpacity={0.18} />
-            </RadarChart>
-          </ResponsiveContainer>
+        <div className="space-y-2">
+          {data.map((d) => (
+            <div key={d.criterion} className="text-xs">
+              <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                <span className="leading-snug"><strong>{d.criterion}.</strong> {d.title}</span>
+                <span className="font-bold tabular-nums whitespace-nowrap">{d.score != null ? `${formatScore(d.score)}/10` : '—'}</span>
+              </div>
+              <div className="h-3 rounded bg-muted overflow-hidden">
+                <div className="h-full bar-fill rounded" style={{ width: `${((d.score ?? 0) / 10) * 100}%`, background: color }} />
+              </div>
+            </div>
+          ))}
         </div>
       )}
-      <ul className="mt-1.5 space-y-0.5">
-        {data.map((d) => (
-          <li key={d.criterion} className="text-[10px] text-muted-foreground leading-snug">
-            <strong>{d.criterion}.</strong> {d.title}{d.score != null ? ` — ${formatScore(d.score)}đ` : ''}
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }
 
 export default function CouncilReportPage() {
   const { isAdmin, profileId } = useAuth();
-  const { theme } = useTheme();
   const access = useCouncilAccess();
   const [rounds, setRounds] = useState<RoundRow[]>([]);
   const [roundId, setRoundId] = useState('');
@@ -178,10 +170,10 @@ export default function CouncilReportPage() {
     [report, criteria],
   );
 
-  // Chia tiêu chí theo Phần I (năng lực) / Phần II (hiệu quả) để vẽ radar
-  const radarBySection = useMemo(() => {
+  // Chia tiêu chí theo Phần I (năng lực) / Phần II (hiệu quả) để vẽ biểu đồ thanh
+  const scoresBySection = useMemo(() => {
     const idxOf = new Map(criteria.map((c, i) => [c.id, i]));
-    const build = (section: CouncilSection): RadarDatum[] => criteria
+    const build = (section: CouncilSection): CriterionScore[] => criteria
       .filter((c) => c.section === section)
       .map((c) => ({
         criterion: `TC${(idxOf.get(c.id) ?? 0) + 1}`,
@@ -211,12 +203,6 @@ export default function CouncilReportPage() {
     return { strengths, weaknesses, suggestions, evidences };
   }, [report, criteria]);
 
-  const themeColors = useMemo(() => ({
-    part1: theme === 'dark' ? '#3987e5' : '#2a78d6',
-    part2: theme === 'dark' ? '#199e70' : '#1baf7a',
-    grid: theme === 'dark' ? 'hsl(0 0% 100% / 0.12)' : 'hsl(0 0% 0% / 0.08)',
-    ink: theme === 'dark' ? '#c3c2b7' : '#5a6577',
-  }), [theme]);
 
   // Biên bản toàn kỳ: tổng hợp trọng số cho từng đầu mối
   const roundSummaries = useMemo(() => {
@@ -281,7 +267,7 @@ export default function CouncilReportPage() {
           total_members: report.total_members,
           weight_present: formatPercent(summary.totalWeightPresent),
           // Điểm TB theo tiêu chí (ẩn danh) + nhận xét gộp — KHÔNG gửi phân tích theo nhóm
-          criteria_avg: [...radarBySection.nang_luc, ...radarBySection.hieu_qua]
+          criteria_avg: [...scoresBySection.nang_luc, ...scoresBySection.hieu_qua]
             .filter((d) => d.score != null)
             .map((d) => ({ code: d.criterion, title: d.title, score: formatScore(d.score as number) })),
           comments: {
@@ -308,6 +294,8 @@ export default function CouncilReportPage() {
   return (
     <div className="space-y-4 max-w-6xl">
       <style>{`
+        /* Thanh điểm luôn in đúng màu trong PDF */
+        #council-report .bar-fill { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         @media print {
           body * { visibility: hidden; }
           #council-report, #council-report * { visibility: visible; }
@@ -477,18 +465,16 @@ export default function CouncilReportPage() {
               <p className="text-sm text-muted-foreground mt-4">Chưa có phiếu đánh giá nào được gửi.</p>
             ) : (
               <>
-                {/* II. Phân tích điểm theo tiêu chí — 2 radar tổng hợp (ẩn danh) */}
-                <h3 className="text-sm font-bold mt-5 mb-2 text-primary">II. PHÂN TÍCH ĐIỂM TRUNG BÌNH THEO TỪNG TIÊU CHÍ</h3>
+                {/* II. Phân tích điểm theo tiêu chí — biểu đồ thanh có số điểm (ẩn danh) */}
+                <h3 className="text-sm font-bold mt-5 mb-2 text-primary">II. ĐIỂM TRUNG BÌNH THEO TỪNG TIÊU CHÍ</h3>
                 <p className="text-[11px] text-muted-foreground mb-2">
-                  Biểu đồ thể hiện điểm trung bình của Hội đồng theo từng tiêu chí (thang 10), tổng hợp từ
-                  toàn bộ {report.submitted_count} phiếu đã gửi. Điểm chấm của từng thành viên được ẩn danh
+                  Điểm trung bình của Hội đồng theo từng tiêu chí (thang 10), tổng hợp từ toàn bộ
+                  {' '}{report.submitted_count} phiếu đã gửi. Điểm chấm của từng thành viên được ẩn danh
                   hoàn toàn — báo cáo không hiển thị điểm của bất kỳ cá nhân hay nhóm vị trí nào.
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <CriterionRadar data={radarBySection.nang_luc} title={SECTION_LABELS.nang_luc}
-                    color={themeColors.part1} gridColor={themeColors.grid} ink={themeColors.ink} />
-                  <CriterionRadar data={radarBySection.hieu_qua} title={SECTION_LABELS.hieu_qua}
-                    color={themeColors.part2} gridColor={themeColors.grid} ink={themeColors.ink} />
+                  <CriterionBars data={scoresBySection.nang_luc} title={SECTION_LABELS.nang_luc} color={COLOR_PART1} />
+                  <CriterionBars data={scoresBySection.hieu_qua} title={SECTION_LABELS.hieu_qua} color={COLOR_PART2} />
                 </div>
 
                 <div className="border rounded-lg p-3 text-center mt-4">

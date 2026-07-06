@@ -56,7 +56,9 @@ Tính năng được xây dựng theo 4 tài liệu Chi nhánh cung cấp: **Cơ
   "Xuất Excel" tạo file 3 sheet: Tổng hợp / Chi tiết phiếu ẩn danh / Danh mục tiêu chí.
 - **Báo cáo — ẩn danh toàn diện (điều chỉnh 07/2026):** KHÔNG hiển thị điểm của từng phiếu hay từng nhóm
   vị trí (tránh lộ điểm Giám đốc/PGĐ chấm — nhóm chỉ 1 người sẽ bị nhận diện). Thay vào đó:
-  - **2 biểu đồ radar** theo điểm trung bình mỗi tiêu chí: Phần I (Năng lực TC1-5) và Phần II (Hiệu quả TC6-10).
+  - **2 biểu đồ thanh ngang** theo điểm trung bình mỗi tiêu chí: Phần I (Năng lực TC1-5) và Phần II
+    (Hiệu quả TC6-10) — mỗi tiêu chí ghi rõ số điểm "x/10" + TB của phần; dùng CSS thuần nên in PDF
+    hiển thị đúng số và màu (đã thay cho radar vì radar khó đọc số cụ thể trên bản in).
   - **Điểm quy thang 100** (đã xử lý trọng số) — con số tổng, không phân rã theo nhóm.
   - **Nhận xét & góp ý tổng hợp** gộp ẩn danh: Ưu điểm / Hạn chế / Đề xuất / Minh chứng (không gắn mã phiếu, nhóm).
   - Khối ký Thư ký Hội đồng + Đại diện BGĐ (đã bỏ phần ký của cán bộ được đánh giá).
