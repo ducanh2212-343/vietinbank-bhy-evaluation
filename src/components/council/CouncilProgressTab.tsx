@@ -14,7 +14,7 @@ interface Props {
   votingDeadline: string | null;
 }
 
-interface MemberRow { id: string; profile_id: string; member_group: CouncilMemberGroup; full_name: string; }
+interface MemberRow { id: string; profile_id: string; member_group: CouncilMemberGroup; full_name: string; email: string | null; }
 interface SubjectRow { id: string; full_name: string; profile_id: string | null; }
 interface EvalRow { id: string; subject_id: string; evaluator_id: string; status: string; }
 
@@ -33,15 +33,18 @@ export function CouncilProgressTab({ roundId, roundName, roundOpen, votingDeadli
     if (!roundId) return;
     setLoading(true);
     const [membersRes, subjectsRes, evalsRes] = await Promise.all([
-      supabase.from('council_members').select('id, profile_id, member_group, is_active, profiles(full_name)').eq('is_active', true),
+      supabase.from('council_members').select('id, profile_id, member_group, is_active, profiles(full_name, email)').eq('is_active', true),
       supabase.from('council_subjects').select('id, full_name, profile_id').eq('round_id', roundId).eq('is_active', true).order('sort_order'),
       supabase.from('council_evaluations').select('id, subject_id, evaluator_id, status').eq('round_id', roundId),
     ]);
     const err = membersRes.error || subjectsRes.error || evalsRes.error;
     if (err) { toast.error('Lỗi tải tiến độ: ' + err.message); setLoading(false); return; }
     setMembers((membersRes.data || []).map((m) => {
-      const p = m.profiles as unknown as { full_name: string } | null;
-      return { id: m.id, profile_id: m.profile_id, member_group: m.member_group as CouncilMemberGroup, full_name: p?.full_name || '?' };
+      const p = m.profiles as unknown as { full_name: string; email: string | null } | null;
+      return {
+        id: m.id, profile_id: m.profile_id, member_group: m.member_group as CouncilMemberGroup,
+        full_name: p?.full_name || '?', email: p?.email || null,
+      };
     }));
     setSubjects((subjectsRes.data || []) as SubjectRow[]);
     setEvals((evalsRes.data || []) as EvalRow[]);
@@ -92,9 +95,13 @@ export function CouncilProgressTab({ roundId, roundName, roundOpen, votingDeadli
 
   const remindOne = async (member: MemberRow) => {
     const result = await remindMember(member);
-    if (result === 'sent') toast.success(`Đã gửi email nhắc ${member.full_name}.`);
-    else if (result === 'skipped') toast.info(`${member.full_name} đã được nhắc hôm nay hoặc chưa có email.`);
-    else toast.error(`Không gửi được email nhắc ${member.full_name}.`);
+    if (result === 'sent') {
+      toast.success(`Đã gửi email nhắc tới ${member.email || member.full_name}. Nếu chưa thấy thư, vui lòng kiểm tra mục Spam/Quảng cáo.`);
+    } else if (result === 'skipped') {
+      toast.info(`${member.full_name} đã được nhắc hôm nay${member.email ? ` (${member.email})` : ''} hoặc chưa có email trong hồ sơ.`);
+    } else {
+      toast.error(`Không gửi được email nhắc ${member.full_name}.`);
+    }
   };
 
   const remindAll = async () => {
@@ -171,13 +178,15 @@ export function CouncilProgressTab({ roundId, roundName, roundOpen, votingDeadli
         )}
       </div>
       <Card>
-        <CardContent className="p-0 overflow-x-auto">
+        {/* Cuộn 2 chiều tự chứa (max-h) + sticky header/cột đầu: trên điện thoại
+            trang ngoài ngắn lại, vuốt dọc trong bảng luôn ăn, không bị cuộn ngang "nuốt". */}
+        <CardContent className="p-0 overflow-auto max-h-[65vh] overscroll-contain">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b bg-muted/40 text-left">
-                <th className="px-3 py-2 font-medium whitespace-nowrap">Thành viên Hội đồng</th>
+              <tr className="border-b text-left">
+                <th className="px-2 py-2 font-medium whitespace-nowrap sticky left-0 top-0 z-30 bg-card">Thành viên Hội đồng</th>
                 {subjects.map((s) => (
-                  <th key={s.id} className="px-2 py-2 font-medium text-center whitespace-nowrap" title={s.full_name}>
+                  <th key={s.id} className="px-2 py-2 font-medium text-center whitespace-nowrap sticky top-0 z-20 bg-card" title={s.full_name}>
                     {shortName(s.full_name)}
                   </th>
                 ))}
@@ -186,7 +195,7 @@ export function CouncilProgressTab({ roundId, roundName, roundOpen, votingDeadli
             <tbody>
               {members.map((m) => (
                 <tr key={m.id} className="border-b last:border-0">
-                  <td className="px-3 py-2 whitespace-nowrap">
+                  <td className="px-2 py-1.5 whitespace-nowrap sticky left-0 z-10 bg-card">
                     <div className="font-medium flex items-center gap-1.5">
                       {m.full_name}
                       {roundOpen && pendingSubjectsOf(m).length > 0 && (
@@ -194,8 +203,10 @@ export function CouncilProgressTab({ roundId, roundName, roundOpen, votingDeadli
                           size="sm"
                           variant="ghost"
                           className={`h-6 w-6 p-0 ${remindedIds.has(m.profile_id) ? 'text-emerald-600' : 'text-muted-foreground'}`}
-                          title={`Nhắc email ${m.full_name} — còn ${pendingSubjectsOf(m).length} phiếu chưa gửi`}
-                          disabled={remindingIds.has(m.profile_id) || remindingAll}
+                          title={m.email
+                            ? `Nhắc email ${m.full_name} (gửi tới ${m.email}) — còn ${pendingSubjectsOf(m).length} phiếu chưa gửi`
+                            : `${m.full_name} chưa có email trong hồ sơ — bổ sung tại Danh sách cán bộ`}
+                          disabled={remindingIds.has(m.profile_id) || remindingAll || !m.email}
                           onClick={() => remindOne(m)}
                         >
                           {remindingIds.has(m.profile_id) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
@@ -205,7 +216,7 @@ export function CouncilProgressTab({ roundId, roundName, roundOpen, votingDeadli
                     <div className="text-[10px] text-muted-foreground">{MEMBER_GROUP_LABELS[m.member_group]}</div>
                   </td>
                   {subjects.map((s) => (
-                    <td key={s.id} className="px-2 py-2 text-center">{cell(m, s)}</td>
+                    <td key={s.id} className="px-2 py-1.5 text-center">{cell(m, s)}</td>
                   ))}
                 </tr>
               ))}

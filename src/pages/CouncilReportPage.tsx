@@ -409,19 +409,20 @@ export default function CouncilReportPage() {
             {report.evaluations.length === 0 ? (
               <p className="text-sm text-muted-foreground">Chưa có phiếu đánh giá nào được gửi.</p>
             ) : (
-              <div className="overflow-x-auto">
+              /* Cuộn tự chứa trên màn hình (dễ vuốt trên điện thoại); khi in bung toàn bộ */
+              <div className="overflow-auto max-h-[70vh] overscroll-contain print:max-h-none print:overflow-visible">
                 <table className="w-full text-xs border">
                   <thead>
-                    <tr className="bg-muted/40">
-                      <th className="border px-1.5 py-1.5">STT</th>
-                      <th className="border px-1.5 py-1.5 whitespace-nowrap">Người đánh giá</th>
-                      <th className="border px-1.5 py-1.5">Trọng số</th>
+                    <tr>
+                      <th className="border px-1.5 py-1.5 sticky top-0 bg-muted z-10">STT</th>
+                      <th className="border px-1.5 py-1.5 whitespace-nowrap sticky top-0 bg-muted z-10">Người đánh giá</th>
+                      <th className="border px-1.5 py-1.5 sticky top-0 bg-muted z-10">Trọng số</th>
                       {criteria.map((c, i) => (
-                        <th key={c.id} className="border px-1 py-1.5" title={c.title}>TC{i + 1}</th>
+                        <th key={c.id} className="border px-1 py-1.5 sticky top-0 bg-muted z-10" title={c.title}>TC{i + 1}</th>
                       ))}
-                      <th className="border px-1.5 py-1.5 whitespace-nowrap">TB thô</th>
-                      <th className="border px-1.5 py-1.5 min-w-48 w-[24%]">Ý kiến đóng góp</th>
-                      <th className="border px-1.5 py-1.5 min-w-40 w-[20%]">Minh chứng ghi nhận</th>
+                      <th className="border px-1.5 py-1.5 whitespace-nowrap sticky top-0 bg-muted z-10">TB thô</th>
+                      <th className="border px-1.5 py-1.5 min-w-48 w-[24%] sticky top-0 bg-muted z-10">Ý kiến đóng góp</th>
+                      <th className="border px-1.5 py-1.5 min-w-40 w-[20%] sticky top-0 bg-muted z-10">Minh chứng ghi nhận</th>
                     </tr>
                   </thead>
                   <tbody>
