@@ -23,6 +23,7 @@ Deno.serve(async (req) => {
     const result = await createOrUpdateStaffUser(body, {
       adminClient: caller.adminClient,
       callerUserId: caller.userId,
+      callerRoles: caller.roles,
       siteUrl: resolveSiteUrl(req),
     });
 

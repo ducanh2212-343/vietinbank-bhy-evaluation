@@ -59,7 +59,7 @@ export async function requireRole(
   const roles = (roleRows ?? []).map((r: { role: string }) => r.role);
   const hasPermission = roles.some((r) => allowedRoles.includes(r));
   if (!hasPermission) {
-    throw new HttpError("Bạn không có quyền tạo tài khoản cán bộ", 403);
+    throw new HttpError("Bạn không có quyền thực hiện thao tác này", 403);
   }
 
   return { userId: user.id, email: user.email ?? null, roles, adminClient };

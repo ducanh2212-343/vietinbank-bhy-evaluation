@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { isValidRole } from "./roles.ts";
+import { canAssignRole, isElevatedRole, isValidRole } from "./roles.ts";
 
 /** Validation error for a single staff row — never aborts a bulk run. */
 export class ValidationError extends Error {
@@ -29,6 +29,8 @@ export interface StaffInput {
 export interface StaffContext {
   adminClient: SupabaseClient;
   callerUserId: string;
+  /** Roles held by the caller — gates which roles they may assign (anti-escalation). */
+  callerRoles: readonly string[];
   siteUrl: string;
   // Optional pre-loaded validation sets (bulk loads these once).
   validDeptIds?: Set<string>;
@@ -108,7 +110,7 @@ export async function createOrUpdateStaffUser(
   input: StaffInput,
   ctx: StaffContext,
 ): Promise<StaffResult> {
-  const { adminClient, callerUserId, siteUrl } = ctx;
+  const { adminClient, callerRoles, siteUrl } = ctx;
 
   // ---- Validate ----------------------------------------------------------
   const email = clean(input.email)?.toLowerCase() ?? null;
@@ -122,6 +124,13 @@ export async function createOrUpdateStaffUser(
   // employee_code (mã cán bộ) là tùy chọn — đã ẩn khỏi giao diện; giữ cột để
   // dữ liệu cũ và import Excel vẫn dùng được nếu có.
   if (!isValidRole(role)) throw new ValidationError(`Vai trò không hợp lệ: ${role}`);
+  // Chống leo thang quyền: người tạo không được gán vai trò cao hơn quyền của mình.
+  // (Chỉ system_admin mới được gán system_admin / bgd / tcth_admin.)
+  if (!canAssignRole(callerRoles, role)) {
+    throw new ValidationError(
+      "Bạn không đủ quyền để gán vai trò quản trị này. Chỉ Quản trị hệ thống mới được cấp vai trò cấp cao.",
+    );
+  }
 
   const departmentId = clean(input.department_id);
   const positionId = clean(input.position_id);
@@ -198,6 +207,23 @@ export async function createOrUpdateStaffUser(
     } else {
       userId = data.user.id;
       createdNew = true;
+    }
+  }
+
+  // ---- Guard: don't let a non-admin creator touch an existing admin account -
+  // A tcth_admin must not be able to update (or silently downgrade) an account
+  // that currently holds an elevated role. Only system_admin may touch admins.
+  if (!callerRoles.includes("system_admin")) {
+    const { data: currentRoleRow } = await adminClient
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const currentRole = (currentRoleRow as { role: string } | null)?.role ?? null;
+    if (isElevatedRole(currentRole)) {
+      throw new ValidationError(
+        "Tài khoản này đang giữ vai trò quản trị — chỉ Quản trị hệ thống mới được chỉnh sửa.",
+      );
     }
   }
 
