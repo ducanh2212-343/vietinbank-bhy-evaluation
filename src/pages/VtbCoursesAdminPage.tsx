@@ -543,12 +543,12 @@ function CourseEditDialog({
                     {gskills.map(s => {
                       const m = skillMaps.find(x => x.skill_id === s.id);
                       return (
-                        <div key={s.id} className="flex items-center gap-2 text-xs">
+                        <div key={s.id} className="flex flex-wrap items-center gap-2 text-xs">
                           <input type="checkbox" checked={!!m} onChange={() => toggleSkill(s.id)} />
                           <Badge variant="outline" className="text-[10px] w-12 justify-center">{s.code}</Badge>
-                          <span className="flex-1 truncate">{s.name}</span>
+                          <span className="flex-1 min-w-0 truncate">{s.name}</span>
                           {m && (
-                            <>
+                            <div className="flex gap-2 w-full sm:w-auto">
                               <Select value={String(m.target_level_min)} onValueChange={(v) => updateSkillMap(s.id, 'target_level_min', Number(v))}>
                                 <SelectTrigger className="h-7 w-[80px] text-xs"><SelectValue /></SelectTrigger>
                                 <SelectContent>{[1,2,3,4].map(l => <SelectItem key={l} value={String(l)}>≥ L{l}</SelectItem>)}</SelectContent>
@@ -561,7 +561,7 @@ function CourseEditDialog({
                                   <SelectItem value="low">Thấp</SelectItem>
                                 </SelectContent>
                               </Select>
-                            </>
+                            </div>
                           )}
                         </div>
                       );
@@ -704,7 +704,7 @@ function ImportTab({ onReload, existing }: { onReload: () => void; existing: Vtb
         {rows && (
           <>
             <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between p-3 border rounded bg-muted/30">
-              <div className="flex gap-4 text-sm">
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
                 <span>📋 Tổng: <strong>{rows.length}</strong></span>
                 <span className="text-green-700">+ Mới: <strong>{rows.filter(r => r.status === 'new').length}</strong></span>
                 <span className="text-blue-700">↻ Cập nhật: <strong>{rows.filter(r => r.status === 'update').length}</strong></span>

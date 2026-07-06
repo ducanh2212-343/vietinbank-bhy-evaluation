@@ -1178,7 +1178,7 @@ export default function StaffEvaluation() {
 
         return (
           <div
-            className="fixed bottom-0 left-0 right-0 bg-background border-t p-3 z-50"
+            className="fixed bottom-0 left-0 right-0 lg:left-60 bg-background border-t p-3 z-50"
             style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
           >
             <div className="max-w-4xl mx-auto flex flex-col gap-2">

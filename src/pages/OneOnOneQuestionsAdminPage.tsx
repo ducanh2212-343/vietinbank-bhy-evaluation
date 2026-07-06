@@ -172,7 +172,7 @@ export default function OneOnOneQuestionsAdminPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-4xl">
+    <div className="space-y-4 max-w-4xl">
       <div>
         <h1 className="text-xl font-semibold flex items-center gap-2">
           <MessagesSquare className="w-5 h-5 text-primary" /> Câu hỏi trao đổi 1-1 theo kỳ

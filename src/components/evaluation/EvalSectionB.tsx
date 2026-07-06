@@ -547,7 +547,7 @@ export function EvalSectionB({
                     <Plus className="w-3.5 h-3.5" /> Thêm skill bổ trợ
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[320px] p-0" align="end">
+                <PopoverContent className="w-[min(320px,90vw)] p-0" align="end">
                   <Command>
                     <CommandInput placeholder="Tìm skill..." className="h-9" />
                     <CommandList>

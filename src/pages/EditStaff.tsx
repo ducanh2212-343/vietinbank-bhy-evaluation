@@ -285,7 +285,7 @@ export default function EditStaff() {
         <CardHeader><CardTitle>Sửa hồ sơ cán bộ</CardTitle></CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Họ tên *</Label>
                 <Input value={form.full_name || ''} onChange={(e) => set('full_name', e.target.value)} required />
@@ -316,7 +316,7 @@ export default function EditStaff() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2 col-span-2">
+              <div className="space-y-2 sm:col-span-2">
                 <Label>Quản lý trực tiếp {!isHeadPosition && '*'}</Label>
                 {isHeadPosition ? (
                   <Input
@@ -349,7 +349,7 @@ export default function EditStaff() {
                   </>
                 )}
               </div>
-              <div className="space-y-2 col-span-2">
+              <div className="space-y-2 sm:col-span-2">
                 <Label>Ban giám đốc phụ trách *</Label>
                 <Select value={form.pgd_id || ''} onValueChange={(v) => set('pgd_id', v)}>
                   <SelectTrigger><SelectValue placeholder="Chọn thành viên Ban Giám đốc" /></SelectTrigger>
@@ -368,7 +368,7 @@ export default function EditStaff() {
                   </Alert>
                 )}
               </div>
-              <div className="space-y-2 col-span-2">
+              <div className="space-y-2 sm:col-span-2">
                 <Label>Giám đốc Chi nhánh</Label>
                 <Input value={branchDirectorName} disabled readOnly placeholder="(Tự động)" />
                 {directorWarning && (

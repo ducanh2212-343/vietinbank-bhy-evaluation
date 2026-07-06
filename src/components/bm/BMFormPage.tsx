@@ -886,7 +886,7 @@ export function BMFormPage({ config }: Props) {
 
       {/* Sticky bottom bar */}
       <div
-        className="fixed bottom-0 left-0 right-0 bg-background border-t p-3 flex gap-2 z-50 max-w-4xl mx-auto"
+        className="fixed bottom-0 left-0 right-0 lg:left-60 bg-background border-t p-3 flex flex-wrap gap-2 z-50 max-w-4xl mx-auto"
         style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
       >
         <Button variant="outline" onClick={async () => {
@@ -908,11 +908,11 @@ export function BMFormPage({ config }: Props) {
         }} disabled={isBusy} title="Xuất biểu mẫu Word">
           <FileDown className="w-4 h-4" />
         </Button>
-        <Button onClick={saveDraft} disabled={isBusy} className="flex-1">
+        <Button onClick={saveDraft} disabled={isBusy} className="flex-1 min-w-[140px]">
           {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
           {saving ? 'Đang lưu...' : 'Lưu nháp'}
         </Button>
-        <Button variant="default" onClick={handleSubmit} disabled={isBusy} className="flex-1 bg-green-600 hover:bg-green-700">
+        <Button variant="default" onClick={handleSubmit} disabled={isBusy} className="flex-1 min-w-[140px] bg-green-600 hover:bg-green-700">
           {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
           {submitting ? 'Đang nộp...' : 'Nộp tự đánh giá'}
         </Button>

@@ -394,7 +394,7 @@ export default function OrgStructurePage() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-6xl">
+    <div className="space-y-4 max-w-6xl">
       <div>
         <h1 className="text-xl font-semibold flex items-center gap-2">
           <Building2 className="w-5 h-5 text-primary" /> Quản lý Phòng ban & Chức danh
@@ -514,10 +514,10 @@ export default function OrgStructurePage() {
                   return (
                     <div key={p.id} className={`rounded-lg border px-3 py-2 flex items-center gap-2 ${!p.is_active ? 'opacity-60' : ''}`}>
                       <div className="flex flex-col flex-shrink-0">
-                        <Button variant="ghost" size="icon" className="h-5 w-5" disabled={idx === 0} onClick={() => movePos(p, -1)} aria-label="Chuyển lên">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" disabled={idx === 0} onClick={() => movePos(p, -1)} aria-label="Chuyển lên">
                           <ArrowUp className="w-3 h-3" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-5 w-5" disabled={idx === deptPositions.length - 1} onClick={() => movePos(p, 1)} aria-label="Chuyển xuống">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" disabled={idx === deptPositions.length - 1} onClick={() => movePos(p, 1)} aria-label="Chuyển xuống">
                           <ArrowDown className="w-3 h-3" />
                         </Button>
                       </div>

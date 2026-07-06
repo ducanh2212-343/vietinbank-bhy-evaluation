@@ -212,7 +212,7 @@ export default function AICostPanel() {
 
         {summary && (
           <>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <Stat label="Số lượt gọi" value={fmtInt(summary.total_calls)} />
               <Stat label="Tổng token" value={fmtInt(summary.total_tokens)} />
               <Stat label={`Chi phí ước tính (${cur})`} value={fmtCost(summary.total_cost, cur)} highlight />

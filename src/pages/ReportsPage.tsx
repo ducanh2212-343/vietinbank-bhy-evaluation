@@ -406,7 +406,7 @@ export default function ReportsPage() {
   const pctPrev = tiles.prevTotal ? Math.round((tiles.prevDone / tiles.prevTotal) * 100) : 0;
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="space-y-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-xl font-semibold flex items-center gap-2">

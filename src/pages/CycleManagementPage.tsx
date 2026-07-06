@@ -187,7 +187,7 @@ export default function CycleManagementPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-4xl">
+    <div className="space-y-4 max-w-4xl">
       <div>
         <h1 className="text-xl font-semibold flex items-center gap-2">
           <CalendarClock className="w-5 h-5 text-primary" /> Quản lý kỳ đánh giá
@@ -301,7 +301,7 @@ export default function CycleManagementPage() {
               <label className="text-[11px] text-muted-foreground font-medium">Tên kỳ (định dạng "Quý I/2026")</label>
               <Input value={newCycle.name} onChange={(ev) => handleNameChange(ev.target.value)} placeholder="Quý IV/2026" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-[11px] text-muted-foreground font-medium">Ngày bắt đầu</label>
                 <Input type="date" value={newCycle.start} onChange={(ev) => setNewCycle((p) => ({ ...p, start: ev.target.value }))} />
