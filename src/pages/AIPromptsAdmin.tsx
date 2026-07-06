@@ -298,7 +298,7 @@ export default function AIPromptsAdmin() {
   }
 
   return (
-    <div className="p-6 lg:p-8 space-y-6 max-w-6xl">
+    <div className="space-y-6 max-w-6xl">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
           <BrandMascotAI className="w-7 h-7" />

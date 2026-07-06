@@ -241,7 +241,7 @@ export default function SkillMediaPage() {
           </div>
           <div>
             <p className="text-[10px] font-medium text-muted-foreground mb-1.5">Xem trước trong khung level</p>
-            <div className="flex items-end gap-2.5">
+            <div className="flex items-end gap-2.5 overflow-x-auto">
               {[1, 2, 3, 4].map(stage => (
                 <div key={stage} className="flex flex-col items-center gap-1">
                   <SkillLevelArt level={stage} stageImageUrl={getStageImage(stage)?.image_url} size="md" />
@@ -298,7 +298,7 @@ export default function SkillMediaPage() {
                 />
                 <div>
                   <p className="text-[10px] font-medium text-muted-foreground mb-1.5">Xem trước hiển thị theo level</p>
-                  <div className="flex items-end gap-2.5">
+                  <div className="flex items-end gap-2.5 overflow-x-auto">
                     {[1, 2, 3, 4].map(level => (
                       <div key={level} className="flex flex-col items-center gap-1">
                         <SkillLevelArt

@@ -138,8 +138,8 @@ export default function LearningCampaignsPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-3 rounded-full bg-muted overflow-hidden">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <div className="flex-1 min-w-[120px] h-3 rounded-full bg-muted overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all ${pct >= 100 ? 'bg-emerald-500' : 'bg-primary'}`}
                 style={{ width: `${Math.min(100, pct)}%` }}
@@ -183,7 +183,7 @@ export default function LearningCampaignsPage() {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-4xl">
+    <div className="space-y-4 max-w-4xl">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-xl font-semibold flex items-center gap-2">
@@ -335,7 +335,7 @@ function CreateCampaignDialog({
             <label className="text-xs text-muted-foreground">Mô tả (tuỳ chọn)</label>
             <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-[48px] text-xs" />
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div>
               <label className="text-xs text-muted-foreground">Kỹ năng mục tiêu</label>
               <Select value={skillId} onValueChange={setSkillId}>
@@ -357,7 +357,7 @@ function CreateCampaignDialog({
               </Select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div>
               <label className="text-xs text-muted-foreground">Bắt đầu</label>
               <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-9" />

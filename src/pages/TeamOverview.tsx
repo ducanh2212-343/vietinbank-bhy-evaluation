@@ -90,13 +90,13 @@ export default function TeamOverview() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="page-header">Đội ngũ phòng ban</h1>
           <p className="page-subtitle">Tổng quan năng lực đội ngũ ({filtered.length} cán bộ)</p>
         </div>
         <Select value={selectedDept} onValueChange={setSelectedDept}>
-          <SelectTrigger className="w-[220px]"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[220px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tất cả phòng ban</SelectItem>
             {departments.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}

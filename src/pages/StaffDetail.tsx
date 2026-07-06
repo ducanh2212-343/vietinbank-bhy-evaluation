@@ -159,9 +159,9 @@ export default function StaffDetail() {
 
   return (
     <div className="max-w-3xl space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Button variant="ghost" onClick={() => navigate('/danh-sach-can-bo')}><ArrowLeft className="w-4 h-4 mr-2" /> Danh sách</Button>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {canEdit && <Button variant="outline" size="sm" onClick={() => navigate(`/sua-can-bo/${id}`)}><Pencil className="w-3 h-3 mr-1" /> Sửa hồ sơ</Button>}
           {canEdit && profile.user_id && (
             <DropdownMenu>
@@ -242,7 +242,7 @@ export default function StaffDetail() {
       <Card>
         <CardHeader><CardTitle className="text-base">Hồ sơ cán bộ</CardTitle></CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-y-3 gap-x-8 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 sm:gap-x-8 text-sm">
             {infoRows.map(([label, val]) => (
               <div key={label}>
                 <span className="text-muted-foreground">{label}:</span>{' '}

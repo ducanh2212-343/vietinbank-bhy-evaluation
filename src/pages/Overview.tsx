@@ -232,7 +232,7 @@ export default function Overview() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card className="stat-card">
-          <CardContent className="p-5">
+          <CardContent className="p-0">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Tổng cán bộ</p>
@@ -244,7 +244,7 @@ export default function Overview() {
         </Card>
         {stats.byGroup.map(g => (
           <Card key={g.key} className="stat-card">
-            <CardContent className="p-5">
+            <CardContent className="p-0">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">{g.label}</p>
@@ -263,9 +263,9 @@ export default function Overview() {
           <CardContent>
             <div className="space-y-3">
               {stats.byDept.map(d => (
-                <div key={d.name} className="flex justify-between items-center text-sm">
-                  <span>{d.name}</span>
-                  <div className="flex items-center gap-2">
+                <div key={d.name} className="flex justify-between items-center gap-2 text-sm">
+                  <span className="truncate min-w-0">{d.name}</span>
+                  <div className="flex items-center gap-2 flex-shrink-0">
                     <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
                       <div className="h-full bg-primary rounded-full" style={{ width: `${stats.total ? (d.count / stats.total) * 100 : 0}%` }} />
                     </div>

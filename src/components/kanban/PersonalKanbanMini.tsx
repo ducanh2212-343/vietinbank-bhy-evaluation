@@ -112,9 +112,9 @@ export function PersonalKanbanMini({ profileId, limit = 5 }: Props) {
       />
       {isMobile && (
         <div className="flex gap-1 px-1">
-          {c.kanban_status === 'todo' && <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => handleQuickMove(c, 'doing')}>Bắt đầu</Button>}
-          {c.kanban_status === 'doing' && <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => handleQuickMove(c, 'todo')}>Trả về</Button>}
-          {c.kanban_status === 'done' && c.completion_status !== 'confirmed' && <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => handleQuickMove(c, 'doing')}>Chuyển lại Đang làm</Button>}
+          {c.kanban_status === 'todo' && <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => handleQuickMove(c, 'doing')}>Bắt đầu</Button>}
+          {c.kanban_status === 'doing' && <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => handleQuickMove(c, 'todo')}>Trả về</Button>}
+          {c.kanban_status === 'done' && c.completion_status !== 'confirmed' && <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => handleQuickMove(c, 'doing')}>Chuyển lại Đang làm</Button>}
         </div>
       )}
     </div>

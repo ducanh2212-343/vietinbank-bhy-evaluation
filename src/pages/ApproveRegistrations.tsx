@@ -150,7 +150,7 @@ export default function ApproveRegistrations() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
+    <div className="space-y-6 max-w-6xl mx-auto">
       <h1 className="text-2xl font-bold">Duyệt yêu cầu đăng ký tài khoản</h1>
 
       <div className="flex flex-wrap gap-3 items-center">
@@ -201,7 +201,7 @@ export default function ApproveRegistrations() {
           </DialogHeader>
           {selected && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                 <div><span className="text-muted-foreground">Họ và tên:</span><br />{selected.full_name}</div>
                 <div><span className="text-muted-foreground">Email:</span><br />{selected.email}</div>
                 <div><span className="text-muted-foreground">Số điện thoại:</span><br />{selected.phone_number}</div>

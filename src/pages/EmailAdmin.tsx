@@ -149,7 +149,7 @@ export default function EmailAdmin() {
         <CardHeader className="pb-3"><CardTitle className="text-base">30 email gần nhất</CardTitle></CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[640px]">
               <thead>
                 <tr className="text-left text-muted-foreground border-b">
                   <th className="py-2 pr-3 font-medium">Thời gian</th>

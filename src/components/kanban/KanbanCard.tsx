@@ -90,7 +90,7 @@ export function KanbanCardItem({ card, skillMap = {}, flags, weeklyUpdated, onUp
           <Button
             size="sm"
             variant="outline"
-            className="h-7 text-xs flex-1"
+            className="h-8 text-xs flex-1"
             onClick={(e) => {
               stop(e);
               const focus = card.source_action_id ? `&focus=${card.source_table}:${card.source_action_id}` : '';
@@ -102,16 +102,16 @@ export function KanbanCardItem({ card, skillMap = {}, flags, weeklyUpdated, onUp
         ) : (
           <>
             {card.kanban_status !== 'done' && (
-              <Button size="sm" variant="outline" className="h-7 text-xs flex-1" onClick={(e) => { stop(e); onUpdate(); }}>
+              <Button size="sm" variant="outline" className="h-8 text-xs flex-1" onClick={(e) => { stop(e); onUpdate(); }}>
                 Cập nhật
               </Button>
             )}
             {card.kanban_status === 'doing' && (
-              <Button size="sm" className="h-7 text-xs" onClick={(e) => { stop(e); onComplete(); }}>
+              <Button size="sm" className="h-8 text-xs" onClick={(e) => { stop(e); onComplete(); }}>
                 Gửi hoàn thành
               </Button>
             )}
-            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={(e) => { stop(e); onOpen(); }}>
+            <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={(e) => { stop(e); onOpen(); }}>
               Xem chi tiết
             </Button>
           </>
