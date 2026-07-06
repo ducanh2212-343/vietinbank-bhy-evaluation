@@ -12,41 +12,94 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const DEFAULT_MODEL = 'google/gemini-2.5-flash';
 
 // ============ Nhà cung cấp AI (BYOK — cấu hình trong ai_settings, admin chỉnh qua UI) ============
-type AiProvider = 'lovable' | 'gemini' | 'openai' | 'custom';
+// Preset registry: thêm nhà cung cấp OpenAI-compatible mới (như DeepSeek) chỉ cần
+// thêm 1 entry ở đây + 1 entry PROVIDER_OPTIONS trong src/pages/AIPromptsAdmin.tsx.
+// DB không còn CHECK cứng danh sách provider — registry này là nguồn kiểm soát;
+// provider lạ nhận configError rõ ràng thay vì âm thầm fallback.
+interface ProviderPreset {
+  label: string;
+  /** Endpoint chat/completions. null = lấy từ api_base_url do admin nhập (custom). */
+  endpoint: string | null;
+  /** Tiền tố model dạng gateway của provider ('google/', 'deepseek/'...) — tự bỏ khi
+   * gọi API trực tiếp. null = gateway đa model, giữ nguyên tên. */
+  ownPrefix: string | null;
+  /** Model dùng cho "Kiểm tra kết nối" khi client không truyền model. */
+  testModel: string;
+  missingKeyMsg: string;
+}
+
+const PROVIDER_PRESETS: Record<string, ProviderPreset> = {
+  lovable: {
+    label: 'Lovable AI Gateway',
+    endpoint: 'https://ai.gateway.lovable.dev/v1/chat/completions',
+    ownPrefix: null,
+    testModel: DEFAULT_MODEL,
+    missingKeyMsg: 'Chưa cấu hình API key AI (Lovable). Vào Quản trị AI → Nhà cung cấp AI để thêm, hoặc đặt secret LOVABLE_API_KEY.',
+  },
+  gemini: {
+    label: 'Google Gemini',
+    endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+    ownPrefix: 'google/',
+    testModel: 'gemini-2.5-flash',
+    missingKeyMsg: 'Chưa cấu hình API key Google Gemini. Vào Quản trị AI → Nhà cung cấp AI để thêm.',
+  },
+  openai: {
+    label: 'OpenAI',
+    endpoint: 'https://api.openai.com/v1/chat/completions',
+    ownPrefix: 'openai/',
+    testModel: 'gpt-5-mini',
+    missingKeyMsg: 'Chưa cấu hình API key OpenAI. Vào Quản trị AI → Nhà cung cấp AI để thêm.',
+  },
+  deepseek: {
+    label: 'DeepSeek',
+    endpoint: 'https://api.deepseek.com/chat/completions',
+    ownPrefix: 'deepseek/',
+    testModel: 'deepseek-chat',
+    missingKeyMsg: 'Chưa cấu hình API key DeepSeek. Vào Quản trị AI → Nhà cung cấp AI để thêm (lấy key tại platform.deepseek.com).',
+  },
+  custom: {
+    label: 'Gateway tùy chỉnh',
+    endpoint: null,
+    ownPrefix: null,
+    testModel: DEFAULT_MODEL,
+    missingKeyMsg: 'Chưa cấu hình API key cho nhà cung cấp tùy chỉnh. Vào Quản trị AI → Nhà cung cấp AI để thêm.',
+  },
+};
+
+// Mọi tiền tố gateway đã khai báo — dùng để phát hiện model thuộc provider khác.
+const KNOWN_MODEL_PREFIXES = Object.values(PROVIDER_PRESETS)
+  .map((p) => p.ownPrefix)
+  .filter((p): p is string => !!p);
 
 interface ProviderConfig {
-  provider: AiProvider;
+  provider: string;
   endpoint: string;
   apiKey: string | null;
-  /** Lỗi cấu hình (thiếu key/base URL) — trả về cho client để admin biết đường sửa */
+  /** Lỗi cấu hình (thiếu key/base URL, provider lạ) — trả về cho client để admin biết đường sửa */
   configError: string | null;
 }
 
 /**
- * Model trong ai_prompts lưu theo dạng gateway ('google/gemini-2.5-flash', 'openai/gpt-5-mini').
- * Khi gọi API trực tiếp phải bỏ prefix; đồng thời chặn model không thuộc provider.
+ * Model trong ai_prompts lưu theo dạng gateway ('google/gemini-2.5-flash',
+ * 'deepseek/deepseek-chat'...). Khi gọi API trực tiếp phải bỏ tiền tố của chính
+ * provider; model mang tiền tố provider KHÁC bị chặn với thông báo rõ.
  */
-function normalizeModel(provider: AiProvider, model: string): { model?: string; error?: string } {
+function normalizeModel(provider: string, model: string): { model?: string; error?: string } {
   const m = model.trim();
-  if (provider === 'lovable' || provider === 'custom') return { model: m };
-  if (provider === 'gemini') {
-    if (m.startsWith('google/')) return { model: m.slice('google/'.length) };
-    if (m.startsWith('openai/')) {
-      return { error: `Model "${m}" không dùng được với nhà cung cấp Google Gemini. Vào Quản trị AI chọn model Gemini cho tác vụ này.` };
-    }
-    return { model: m }; // đã là tên Gemini thuần (gemini-2.5-flash)
+  const preset = PROVIDER_PRESETS[provider];
+  if (!preset) return { error: `Nhà cung cấp AI "${provider}" chưa được hỗ trợ.` };
+  if (preset.ownPrefix === null) return { model: m }; // gateway: giữ nguyên tên model
+  if (m.startsWith(preset.ownPrefix)) return { model: m.slice(preset.ownPrefix.length) };
+  const foreign = KNOWN_MODEL_PREFIXES.find((p) => p !== preset.ownPrefix && m.startsWith(p));
+  if (foreign) {
+    return { error: `Model "${m}" không dùng được với nhà cung cấp ${preset.label}. Vào Quản trị AI chọn model ${preset.label} cho tác vụ này.` };
   }
-  // openai
-  if (m.startsWith('openai/')) return { model: m.slice('openai/'.length) };
-  if (m.startsWith('google/')) {
-    return { error: `Model "${m}" không dùng được với nhà cung cấp OpenAI. Vào Quản trị AI chọn model GPT cho tác vụ này.` };
-  }
-  return { model: m };
+  return { model: m }; // đã là tên thuần của provider (ví dụ gemini-2.5-flash, deepseek-chat)
 }
 
 /** Đọc cấu hình provider từ ai_settings (id=1). Mặc định: Lovable gateway + LOVABLE_API_KEY env. */
 async function resolveProvider(adminCli: any): Promise<ProviderConfig> {
-  let provider: AiProvider = 'lovable';
+  let provider = 'lovable';
   let dbKey: string | null = null;
   let baseUrl: string | null = null;
   try {
@@ -56,7 +109,7 @@ async function resolveProvider(adminCli: any): Promise<ProviderConfig> {
       .eq('id', 1)
       .maybeSingle();
     if (data) {
-      if (['lovable', 'gemini', 'openai', 'custom'].includes(data.provider)) provider = data.provider;
+      if ((data.provider || '').trim()) provider = String(data.provider).trim();
       dbKey = (data.api_key || '').trim() || null;
       baseUrl = (data.api_base_url || '').trim() || null;
     }
@@ -64,23 +117,18 @@ async function resolveProvider(adminCli: any): Promise<ProviderConfig> {
     console.warn('ai_settings unavailable, falling back to lovable:', e);
   }
 
-  if (provider === 'gemini') {
+  const preset = PROVIDER_PRESETS[provider];
+  if (!preset) {
     return {
       provider,
-      endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
-      apiKey: dbKey,
-      configError: dbKey ? null : 'Chưa cấu hình API key Google Gemini. Vào Quản trị AI → Nhà cung cấp AI để thêm.',
+      endpoint: '',
+      apiKey: null,
+      configError: `Nhà cung cấp AI "${provider}" chưa được hỗ trợ. Vào Quản trị AI → Nhà cung cấp AI chọn lại, hoặc dùng "Gateway tùy chỉnh" với Base URL OpenAI-compatible.`,
     };
   }
-  if (provider === 'openai') {
-    return {
-      provider,
-      endpoint: 'https://api.openai.com/v1/chat/completions',
-      apiKey: dbKey,
-      configError: dbKey ? null : 'Chưa cấu hình API key OpenAI. Vào Quản trị AI → Nhà cung cấp AI để thêm.',
-    };
-  }
-  if (provider === 'custom') {
+
+  // custom: endpoint lấy từ Base URL admin nhập
+  if (preset.endpoint === null) {
     const endpoint = baseUrl ? `${baseUrl.replace(/\/$/, '')}/chat/completions` : '';
     return {
       provider,
@@ -88,16 +136,17 @@ async function resolveProvider(adminCli: any): Promise<ProviderConfig> {
       apiKey: dbKey,
       configError: !baseUrl
         ? 'Chưa cấu hình Base URL cho nhà cung cấp tùy chỉnh. Vào Quản trị AI → Nhà cung cấp AI để thêm.'
-        : dbKey ? null : 'Chưa cấu hình API key cho nhà cung cấp tùy chỉnh. Vào Quản trị AI → Nhà cung cấp AI để thêm.',
+        : dbKey ? null : preset.missingKeyMsg,
     };
   }
+
   // lovable: ưu tiên key admin nhập, fallback secret LOVABLE_API_KEY
-  const key = dbKey || LOVABLE_API_KEY || null;
+  const apiKey = provider === 'lovable' ? (dbKey || LOVABLE_API_KEY || null) : dbKey;
   return {
-    provider: 'lovable',
-    endpoint: 'https://ai.gateway.lovable.dev/v1/chat/completions',
-    apiKey: key,
-    configError: key ? null : 'Chưa cấu hình API key AI (Lovable). Vào Quản trị AI → Nhà cung cấp AI để thêm, hoặc đặt secret LOVABLE_API_KEY.',
+    provider,
+    endpoint: preset.endpoint,
+    apiKey,
+    configError: apiKey ? null : preset.missingKeyMsg,
   };
 }
 
@@ -391,7 +440,9 @@ Deno.serve(async (req) => {
           status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      const testModelRaw = (typeof body.model === 'string' && body.model.trim()) || DEFAULT_MODEL;
+      const testModelRaw = (typeof body.model === 'string' && body.model.trim())
+        || PROVIDER_PRESETS[providerCfg.provider]?.testModel
+        || DEFAULT_MODEL;
       const norm = normalizeModel(providerCfg.provider, testModelRaw);
       if (norm.error) {
         return new Response(JSON.stringify({ ok: false, error: norm.error }), {
