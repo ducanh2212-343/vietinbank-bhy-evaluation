@@ -70,6 +70,10 @@ Theo mục III của Cơ chế đánh giá:
 | Cấp Trưởng phòng | 20% | 10% | 15% | 55% |
 
 - Điểm TB thô mỗi phiếu = trung bình 10 tiêu chí. Điểm nhóm = trung bình các phiếu trong nhóm.
+- **Trọng số nhóm chia đều cho số phiếu trong nhóm**: VD đánh giá 1 PGĐ, 2 PGĐ còn lại bỏ phiếu —
+  nhóm "PGĐ khác" tổng 15% → mỗi phiếu thực nhận 7,5% (điểm nhóm × 15% ≡ mỗi phiếu × 7,5%,
+  có unit test chứng minh tương đương). Bảng chi tiết báo cáo và Excel hiển thị cột
+  "Trọng số phiếu" theo giá trị chia đều này.
 - **Điểm thang 100 = Σ(điểm nhóm × trọng số) ÷ Σ(trọng số các nhóm đã bỏ phiếu) × 10** — nhóm chưa bỏ phiếu
   được chuẩn hóa lại đúng như dòng "Tổng trọng số bỏ phiếu hiện có" của mẫu báo cáo.
 - Unit test `src/lib/council.test.ts` tái lập chính xác số liệu mẫu Quý 1/2026: nhóm 8,75/8,45/8,12 → **82,93 điểm**.

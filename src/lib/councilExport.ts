@@ -1,7 +1,7 @@
 // Xuất Excel kết quả đánh giá đầu mối: sheet Tổng hợp (mỗi đầu mối một dòng)
 // + sheet Chi tiết (mỗi phiếu ẩn danh một dòng). Lazy-import xlsx như các trang khác.
 import {
-  MEMBER_GROUP_LABELS, WEIGHT_BUCKET_LABELS, formatPercent, resolveWeightScheme, weightBucketOf,
+  MEMBER_GROUP_LABELS, WEIGHT_BUCKET_LABELS, effectiveRowWeight, formatPercent,
   type CouncilReportSummary, type CouncilSubjectLevel, type CouncilWeightConfig,
   type ReportEvaluationRow, type WeightBucket,
 } from '@/lib/council';
@@ -59,13 +59,12 @@ export async function exportCouncilExcel(
 
   // Sheet 2 — Chi tiết từng phiếu (ẩn danh)
   const detailHeader = [
-    'Cán bộ đầu mối', 'Mã phiếu ẩn danh', 'Nhóm đánh giá', 'Trọng số',
+    'Cán bộ đầu mối', 'Mã phiếu ẩn danh', 'Nhóm đánh giá', 'Trọng số phiếu (nhóm chia đều)',
     ...criteria.map((_, i) => `TC${i + 1}`),
     'TB thô', 'Ưu điểm', 'Hạn chế', 'Đề xuất', 'Minh chứng',
   ];
   const detailRows: (string | number)[][] = [detailHeader];
   for (const item of items) {
-    const scheme = resolveWeightScheme(item.subjectLevel, weightConfig);
     for (const ev of item.evaluations) {
       const evidence = [
         ...criteria.map((c, i) => (ev.evidences?.[c.id] ? `TC${i + 1}: ${ev.evidences[c.id]}` : null)).filter(Boolean),
@@ -75,7 +74,7 @@ export async function exportCouncilExcel(
         item.subjectName,
         ev.anon_code,
         MEMBER_GROUP_LABELS[ev.member_group] + (ev.is_supervisor ? ' (PGĐ phụ trách)' : ''),
-        formatPercent(scheme[weightBucketOf(ev, item.subjectLevel)] ?? 0),
+        formatPercent(effectiveRowWeight(ev, item.subjectLevel, item.summary.buckets, weightConfig)),
         ...criteria.map((c) => (ev.scores[c.id] != null ? Number(ev.scores[c.id]) : '')),
         round2(item.summary.rowAverages.get(ev.anon_code)),
         ev.strengths || '',

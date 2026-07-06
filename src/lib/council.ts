@@ -230,5 +230,23 @@ export function formatScore(v: number | null | undefined, digits = 2): string {
 }
 
 export function formatPercent(w: number): string {
-  return `${Math.round(w * 100)}%`;
+  // Giữ tối đa 1 chữ số lẻ để hiển thị đúng trọng số chia đều (VD 15%/2 phiếu = 7,5%)
+  return `${(w * 100).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}%`;
+}
+
+/**
+ * Trọng số THỰC của một phiếu = trọng số nhóm chia đều cho số phiếu trong nhóm.
+ * VD đầu mối cấp PGĐ: nhóm "PGĐ khác" 15% có 2 phiếu → mỗi phiếu 7,5%.
+ * (Tương đương toán học với cách tính điểm nhóm = trung bình phiếu × trọng số nhóm.)
+ */
+export function effectiveRowWeight(
+  row: Pick<ReportEvaluationRow, 'member_group' | 'is_supervisor'>,
+  level: CouncilSubjectLevel,
+  buckets: BucketSummary[],
+  weightConfig?: CouncilWeightConfig | null,
+): number {
+  const bucket = weightBucketOf(row, level);
+  const groupWeight = resolveWeightScheme(level, weightConfig)[bucket] ?? 0;
+  const b = buckets.find((x) => x.bucket === bucket);
+  return b && b.votes > 0 ? groupWeight / b.votes : groupWeight;
 }

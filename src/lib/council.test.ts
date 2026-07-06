@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   computeCouncilReport,
   computeCriterionAverages,
+  effectiveRowWeight,
   extremeScoreCriteria,
   rawAverage,
   resolveWeightScheme,
@@ -165,6 +166,43 @@ describe('kịch bản đối chiếu chéo với SQL trên database (06-07/07/2
     // Với dữ liệu xen kẽ a,b: bỏ c10 (giá trị b) làm TB thay đổi khi a != b
     expect(r2.score100).not.toBeNull();
     expect(r1.score100).not.toBeCloseTo(r2.score100!, 4);
+  });
+});
+
+describe('khái niệm "PGĐ khác": 2 PGĐ tổng 15% — mỗi người 7,5%', () => {
+  // Đánh giá 1 PGĐ, còn 2 PGĐ khác bỏ phiếu với điểm khác nhau (8 và 6)
+  const rows: ReportEvaluationRow[] = [
+    row('#gd', 'giam_doc', Array(10).fill(9)),
+    row('#pgd-a', 'pho_giam_doc', Array(10).fill(8)),
+    row('#pgd-b', 'pho_giam_doc', Array(10).fill(6)),
+    row('#tv', 'thanh_vien', Array(10).fill(7)),
+  ];
+
+  it('điểm nhóm × 15% ≡ mỗi phiếu PGĐ × 7,5% (tương đương toán học)', () => {
+    const r = computeCouncilReport(rows, CRITERIA, 'pgd');
+    const pgdGroup = r.buckets.find((b) => b.bucket === 'pgd_khac')!;
+    // Cách 1 (app đang dùng): trung bình nhóm (8+6)/2 = 7 rồi × 15%
+    expect(pgdGroup.rawAvg).toBeCloseTo(7, 5);
+    expect(pgdGroup.contribution).toBeCloseTo(7 * 0.15, 5);
+    // Cách 2 (khái niệm mỗi người 7,5%): 8×7,5% + 6×7,5% = 1.05 — phải bằng nhau
+    expect(pgdGroup.contribution).toBeCloseTo(8 * 0.075 + 6 * 0.075, 10);
+    // Tổng: 9×20% + 7×15% + 7×65% = 1.8 + 1.05 + 4.55 = 7.4 → 74
+    expect(r.score100).toBeCloseTo(74, 5);
+  });
+
+  it('effectiveRowWeight: trọng số thực mỗi phiếu PGĐ = 15%/2 = 7,5%', () => {
+    const r = computeCouncilReport(rows, CRITERIA, 'pgd');
+    expect(effectiveRowWeight(rows[1], 'pgd', r.buckets)).toBeCloseTo(0.075, 10);
+    expect(effectiveRowWeight(rows[2], 'pgd', r.buckets)).toBeCloseTo(0.075, 10);
+    // GĐ 1 phiếu giữ nguyên 20%; thành viên 1 phiếu giữ nguyên 65%
+    expect(effectiveRowWeight(rows[0], 'pgd', r.buckets)).toBeCloseTo(0.2, 10);
+    expect(effectiveRowWeight(rows[3], 'pgd', r.buckets)).toBeCloseTo(0.65, 10);
+  });
+
+  it('tổng trọng số thực của mọi phiếu = 100% khi đủ các nhóm', () => {
+    const r = computeCouncilReport(rows, CRITERIA, 'pgd');
+    const total = rows.reduce((acc, x) => acc + effectiveRowWeight(x, 'pgd', r.buckets), 0);
+    expect(total).toBeCloseTo(1, 10);
   });
 });
 

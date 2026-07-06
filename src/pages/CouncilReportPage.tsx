@@ -10,7 +10,7 @@ import { BarChart3, FileSpreadsheet, Loader2, Mail, Printer } from 'lucide-react
 import { toast } from 'sonner';
 import {
   ROUND_STATUS_LABELS,
-  computeCouncilReport, formatPercent, formatScore, resolveWeightScheme, weightBucketOf,
+  computeCouncilReport, effectiveRowWeight, formatPercent, formatScore,
   type CouncilReportSummary, type CouncilRoundStatus, type CouncilSubjectLevel, type CouncilWeightConfig,
   type ReportEvaluationRow, type WeightBucket,
 } from '@/lib/council';
@@ -178,9 +178,10 @@ export default function CouncilReportPage() {
     );
   }
 
-  const scheme = report ? resolveWeightScheme(report.subject.subject_level, weightConfig) : null;
+  // Trọng số THỰC mỗi phiếu = trọng số nhóm chia đều số phiếu trong nhóm
+  // (VD 2 PGĐ khác cùng bỏ phiếu, nhóm 15% → mỗi phiếu 7,5%)
   const weightOf = (row: ReportEvaluationRow) =>
-    scheme?.[weightBucketOf(row, report!.subject.subject_level)] ?? 0;
+    report && summary ? effectiveRowWeight(row, report.subject.subject_level, summary.buckets, weightConfig) : 0;
 
   const subjectProfileId = subjects.find((s) => s.id === subjectId)?.profile_id || null;
 
@@ -416,7 +417,7 @@ export default function CouncilReportPage() {
                     <tr>
                       <th className="border px-1.5 py-1.5 sticky top-0 bg-muted z-10">STT</th>
                       <th className="border px-1.5 py-1.5 whitespace-nowrap sticky top-0 bg-muted z-10">Người đánh giá</th>
-                      <th className="border px-1.5 py-1.5 sticky top-0 bg-muted z-10">Trọng số</th>
+                      <th className="border px-1.5 py-1.5 sticky top-0 bg-muted z-10 whitespace-nowrap">Trọng số phiếu</th>
                       {criteria.map((c, i) => (
                         <th key={c.id} className="border px-1 py-1.5 sticky top-0 bg-muted z-10" title={c.title}>TC{i + 1}</th>
                       ))}
@@ -473,6 +474,12 @@ export default function CouncilReportPage() {
                 </table>
               </div>
             )}
+
+            <p className="text-[11px] text-muted-foreground mt-1.5">
+              Trọng số phiếu = trọng số nhóm chia đều cho số phiếu trong nhóm
+              (VD nhóm "PGĐ khác" 15% có 2 phiếu → mỗi phiếu 7,5%). Tổng trọng số phiếu của các nhóm đã bỏ phiếu
+              đúng bằng trọng số nhóm ở mục III.
+            </p>
 
             {/* III. Phân tích trọng số */}
             <h3 className="text-sm font-bold mt-5 mb-2 text-primary">
