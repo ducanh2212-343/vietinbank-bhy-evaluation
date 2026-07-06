@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Save, Send, Loader2, FileDown } from 'lucide-react';
+import { Save, Send, Loader2, FileDown, UserCheck } from 'lucide-react';
 import { EvalSectionA } from '@/components/evaluation/EvalSectionA';
 import { EvalSectionB, type CoreSkillAssessment } from '@/components/evaluation/EvalSectionB';
 import { EvalSectionC, type AttitudeAssessment } from '@/components/evaluation/EvalSectionC';
@@ -109,23 +111,45 @@ export default function SelfAssessmentPage() {
         const { data: pgd } = await supabase.from('profiles').select('full_name').eq('id', prof.pgd_id).maybeSingle();
         enriched.pgd_name = pgd?.full_name || '';
       }
+      if (prof.director_id) {
+        const { data: dir } = await supabase.from('profiles').select('full_name').eq('id', prof.director_id).maybeSingle();
+        enriched.director_name = dir?.full_name || '';
+      }
       prof = enriched;
     }
 
     setProfile(prof);
     setAllSkills(skillRes.data || []);
 
-    // Build reviewer options: manager, pgd, plus BGĐ/GĐCN candidates
+    // Danh sách người đánh giá theo thứ tự ưu tiên vận hành:
+    // Tự phê duyệt (nếu đủ điều kiện) → Quản lý trực tiếp → PGĐ phụ trách → GĐ phụ trách → các thành viên BGĐ khác
     const opts: ReviewerOption[] = [];
     const seen = new Set<string>();
     const p: any = prof;
+
+    // Điều kiện "tự đánh giá – tự phê duyệt": chức danh Giám đốc (không phải Phó GĐ)
+    // và không có bất kỳ cấp trên nào trong hồ sơ; hoặc chức danh Giám đốc chi nhánh.
+    const posName = (p?.pos_name || '').toLowerCase();
+    const isDirectorTitle = posName.includes('giám đốc') && !posName.includes('phó');
+    const hasNoSuperior = !p?.manager_id && !p?.pgd_id && !p?.director_id;
+    const canSelfApprove = posName.includes('giám đốc chi nhánh') || (isDirectorTitle && hasNoSuperior);
+    setIsGdcnSelf(canSelfApprove);
+    if (canSelfApprove && profileId) {
+      opts.push({ id: profileId, name: p?.full_name || 'Tôi', role_label: 'Giám đốc — tự đánh giá, tự phê duyệt' });
+      seen.add(profileId);
+    }
+
     if (p?.manager_id && p.manager_id !== profileId) {
       opts.push({ id: p.manager_id, name: p.manager_name || 'Quản lý trực tiếp', role_label: 'Quản lý trực tiếp' });
       seen.add(p.manager_id);
     }
     if (p?.pgd_id && p.pgd_id !== profileId && !seen.has(p.pgd_id)) {
-      opts.push({ id: p.pgd_id, name: p.pgd_name || 'Ban giám đốc Phụ trách', role_label: 'Ban giám đốc Phụ trách' });
+      opts.push({ id: p.pgd_id, name: p.pgd_name || 'Ban giám đốc Phụ trách', role_label: 'PGĐ phụ trách' });
       seen.add(p.pgd_id);
+    }
+    if (p?.director_id && p.director_id !== profileId && !seen.has(p.director_id)) {
+      opts.push({ id: p.director_id, name: p.director_name || 'Giám đốc phụ trách', role_label: 'Giám đốc phụ trách' });
+      seen.add(p.director_id);
     }
     const { data: bgdRoles } = await supabase.from('user_roles').select('user_id').eq('role', 'bgd');
     const bgdUserIds = (bgdRoles || []).map((r: any) => r.user_id);
@@ -141,12 +165,6 @@ export default function SelfAssessmentPage() {
           seen.add(bp.id);
         }
       });
-    }
-    const posName = (p?.pos_name || '').toLowerCase();
-    const isGdcn = posName.includes('giám đốc chi nhánh');
-    setIsGdcnSelf(isGdcn);
-    if (isGdcn && profileId && !seen.has(profileId)) {
-      opts.unshift({ id: profileId, name: p?.full_name || 'Tôi', role_label: 'Giám đốc chi nhánh (tự duyệt)' });
     }
     setReviewerOptions(opts);
     setSelectedReviewerId(prev => prev && opts.some(o => o.id === prev) ? prev : (opts[0]?.id || ''));
@@ -240,6 +258,8 @@ export default function SelfAssessmentPage() {
 
         const reviewerIdFromForm = (form as any).reviewer_id as string | null;
         if (reviewerIdFromForm) {
+          // Đồng bộ lựa chọn hiển thị với người đánh giá đã lưu trên phiếu
+          setSelectedReviewerId(reviewerIdFromForm);
           const { data: rv } = await supabase
             .from('profiles')
             .select('full_name, position, positions!profiles_position_id_fkey(name)')
@@ -628,7 +648,7 @@ export default function SelfAssessmentPage() {
             .eq('id', fId);
           if (e2) throw e2;
           setFormStatus('approved');
-          toast.success('Giám đốc chi nhánh tự đánh giá — phiếu đã hoàn tất phê duyệt');
+          toast.success('Giám đốc tự đánh giá — phiếu đã hoàn tất phê duyệt');
         } else {
           toast.success('Đã nộp tự đánh giá');
         }
@@ -731,8 +751,8 @@ export default function SelfAssessmentPage() {
 
       {(() => {
         const selected = reviewerOptions.find(o => o.id === selectedReviewerId);
-        const displayName = actualReviewer?.name || selected?.name || '';
-        const displayRole = actualReviewer?.role || selected?.role_label || '';
+        const displayName = (canEmployeeEdit ? selected?.name : actualReviewer?.name || selected?.name) || '';
+        const displayRole = (canEmployeeEdit ? selected?.role_label : actualReviewer?.role || selected?.role_label) || '';
         return (
           <EvalSectionA
             profile={profile}
@@ -744,6 +764,49 @@ export default function SelfAssessmentPage() {
           />
         );
       })()}
+
+      {/* Điều chỉnh người đánh giá — linh hoạt theo vận hành thực tế */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <UserCheck className="w-4 h-4" /> Người đánh giá & phê duyệt
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Select
+            value={selectedReviewerId}
+            onValueChange={async (v) => {
+              setSelectedReviewerId(v);
+              // Lưu ngay vào phiếu nếu phiếu đang cho phép chỉnh sửa
+              if (formId && (formStatus === 'draft' || formStatus === 'returned')) {
+                const { error } = await supabase.from('form_submissions').update({ reviewer_id: v }).eq('id', formId);
+                if (error) toast.error('Lỗi lưu người đánh giá: ' + error.message);
+                else toast.success('Đã cập nhật người đánh giá');
+              }
+            }}
+            disabled={!canEmployeeEdit}
+          >
+            <SelectTrigger className="h-9 w-full sm:w-96">
+              <SelectValue placeholder="Chọn người đánh giá" />
+            </SelectTrigger>
+            <SelectContent>
+              {reviewerOptions.map((o) => (
+                <SelectItem key={o.id} value={o.id}>
+                  {o.name} — {o.role_label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            {selectedReviewerId && selectedReviewerId === profileId
+              ? 'Tự đánh giá – tự phê duyệt: phiếu sẽ tự hoàn tất ngay khi nộp (dành cho Giám đốc, không có cấp trên).'
+              : profile?.manager_id
+                ? 'Luồng chuẩn: người đánh giá rà soát, sau đó Phó Giám đốc phê duyệt.'
+                : 'Bạn không có Trưởng phòng trực tiếp: người đánh giá sẽ chấm điểm và phê duyệt hoàn tất trong một bước.'}
+            {!canEmployeeEdit && ' (Phiếu đã nộp — không thể đổi người đánh giá.)'}
+          </p>
+        </CardContent>
+      </Card>
 
       <EvalSection1on1
         enabled={oneOnOneEnabled}
