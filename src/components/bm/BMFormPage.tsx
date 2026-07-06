@@ -14,6 +14,7 @@ import { useCycleOneOnOneQuestions } from '@/hooks/useCycleOneOnOneQuestions';
 import { type SkillPriority } from './SkillPriorityPicker';
 import { type SkillAction } from './SkillActionsBlock';
 import { SkillDevelopmentBlock } from './SkillDevelopmentBlock';
+import { useHistoricalSkillLevels, mergeAssessedLevels } from '@/hooks/useHistoricalSkillLevels';
 import { AttitudePriorityPicker, type AttitudePriority } from './AttitudePriorityPicker';
 import { AttitudeActionsBlock, type AttitudeAction } from './AttitudeActionsBlock';
 import { AIActionsBlock, type AIAction } from './AIActionsBlock';
@@ -51,6 +52,7 @@ const BM_CYCLE_MAP: Record<string, string> = {
 
 export function BMFormPage({ config }: Props) {
   const { profileId, user } = useAuth();
+  const historicalLevels = useHistoricalSkillLevels(profileId);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formId, setFormId] = useState<string | null>(null);
@@ -831,6 +833,7 @@ export function BMFormPage({ config }: Props) {
         onSupplementaryChange={setSuppAssessments}
         allSkills={allSkills}
         levelUpSkillIds={new Set(levelUpCarryover.map(l => l.skill_id))}
+        formId={formId}
       />
 
       {/* C: Attitude evaluation */}
@@ -857,11 +860,14 @@ export function BMFormPage({ config }: Props) {
           onActionsChange={setSkillActions}
           allSkills={allSkills}
           coreSkills={coreSkillConfigs}
-          assessedLevels={[
+          assessedLevels={mergeAssessedLevels([
             ...coreAssessments.map(a => ({ skill_id: a.skill_id, current_level: a.self_assessed_level ?? a.manager_assessed_level ?? null })),
             ...suppAssessments.map(a => ({ skill_id: a.skill_id, current_level: a.self_assessed_level ?? a.manager_assessed_level ?? null })),
-          ]}
+          ], historicalLevels)}
           positionId={profile?.position_id}
+          cycleId={cycleId || undefined}
+          menteeProfileId={profileId}
+          menteeDepartmentId={profile?.department_id}
         />
 
       </div>

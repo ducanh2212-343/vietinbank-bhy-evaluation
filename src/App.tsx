@@ -5,6 +5,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { ThemeProvider } from "@/hooks/useTheme";
 import { IdleLogoutGuard } from "@/components/IdleLogoutGuard";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { AdminRoute, ManagerOrAboveRoute } from "@/components/AdminRoute";
@@ -51,6 +52,7 @@ const StaffDetail = lazyWithRetry(() => import("./pages/StaffDetail"));
 const UploadStaffPage = lazyWithRetry(() => import("./pages/UploadStaffPage"));
 const ConfigCoreSkillsPage = lazyWithRetry(() => import("./pages/ConfigCoreSkillsPage"));
 const SkillMediaPage = lazyWithRetry(() => import("./pages/SkillMediaPage"));
+const SkillCriteriaAdminPage = lazyWithRetry(() => import("./pages/SkillCriteriaAdminPage"));
 const ReportsPage = lazyWithRetry(() => import("./pages/ReportsPage"));
 const SettingsPage = lazyWithRetry(() => import("./pages/SettingsPage"));
 const BM01Page = lazyWithRetry(() => import("./pages/BM01Page"));
@@ -60,10 +62,16 @@ const ApproveRegistrations = lazyWithRetry(() => import("./pages/ApproveRegistra
 const AIPromptsAdmin = lazyWithRetry(() => import("./pages/AIPromptsAdmin"));
 const EmailAdmin = lazyWithRetry(() => import("./pages/EmailAdmin"));
 const CycleManagementPage = lazyWithRetry(() => import("./pages/CycleManagementPage"));
+const OrgStructurePage = lazyWithRetry(() => import("./pages/OrgStructurePage"));
 const OneOnOneQuestionsAdminPage = lazyWithRetry(() => import("./pages/OneOnOneQuestionsAdminPage"));
 const SubmissionTimeReportPage = lazyWithRetry(() => import("./pages/SubmissionTimeReportPage"));
 const VtbCoursesAdminPage = lazyWithRetry(() => import("./pages/VtbCoursesAdminPage"));
 const PersonalKanbanPage = lazyWithRetry(() => import("./pages/PersonalKanbanPage"));
+const SkillRiskHeatmapPage = lazyWithRetry(() => import("./pages/SkillRiskHeatmapPage"));
+const CareerPathPage = lazyWithRetry(() => import("./pages/CareerPathPage"));
+const TransferSimulationPage = lazyWithRetry(() => import("./pages/TransferSimulationPage"));
+const QuarterlyNewsletterPage = lazyWithRetry(() => import("./pages/QuarterlyNewsletterPage"));
+const LearningCampaignsPage = lazyWithRetry(() => import("./pages/LearningCampaignsPage"));
 const ChangePassword = lazyWithRetry(() => import("./pages/ChangePassword"));
 const ForgotPassword = lazyWithRetry(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
@@ -93,6 +101,7 @@ function LoginRoute() {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+    <ThemeProvider>
     <TooltipProvider>
       <Toaster />
       <Sonner />
@@ -121,6 +130,7 @@ const App = () => (
               <Route path="/ung-dung-ai" element={<AIApplicationPage />} />
               <Route path="/thai-do-tu-duy" element={<AttitudeMindset />} />
               <Route path="/hanh-dong-phat-trien" element={<PersonalKanbanPage />} />
+              <Route path="/chien-dich-hoc-tap" element={<LearningCampaignsPage />} />
 
               <Route path="/bieu-mau-01" element={<BM01Page />} />
               <Route path="/bieu-mau-02" element={<BM02Page />} />
@@ -138,6 +148,10 @@ const App = () => (
                 <Route path="/bao-cao" element={<ReportsPage />} />
                 {/* Trang tự kiểm soát phạm vi: GĐ/PGĐ thấy phòng phụ trách; TCTH lead + admin thấy full */}
                 <Route path="/bao-cao-nop-bieu-mau" element={<SubmissionTimeReportPage />} />
+                {/* Chiến lược nhân sự — tự gác quyền trong trang: BGĐ + Phòng TCTH */}
+                <Route path="/ban-do-rui-ro-nang-luc" element={<SkillRiskHeatmapPage />} />
+                <Route path="/con-duong-su-nghiep" element={<CareerPathPage />} />
+                <Route path="/mo-phong-dieu-chuyen" element={<TransferSimulationPage />} />
               </Route>
 
               {/* Admin-only routes */}
@@ -148,13 +162,16 @@ const App = () => (
                 <Route path="/upload-danh-sach-cb" element={<UploadStaffPage />} />
                 <Route path="/cau-hinh-skill-loi" element={<ConfigCoreSkillsPage />} />
                 <Route path="/quan-tri-hinh-anh-skill" element={<SkillMediaPage />} />
+                <Route path="/quan-tri-tieu-chi-level" element={<SkillCriteriaAdminPage />} />
                 <Route path="/cai-dat" element={<SettingsPage />} />
                 <Route path="/duyet-yeu-cau-user" element={<ApproveRegistrations />} />
                 <Route path="/quan-tri-ai" element={<AIPromptsAdmin />} />
                 <Route path="/quan-tri-email" element={<EmailAdmin />} />
                 <Route path="/quan-tri-khoa-hoc-vtb" element={<VtbCoursesAdminPage />} />
                 <Route path="/quan-ly-ky-danh-gia" element={<CycleManagementPage />} />
+                <Route path="/quan-ly-phong-ban" element={<OrgStructurePage />} />
                 <Route path="/quan-tri-cau-hoi-1-1" element={<OneOnOneQuestionsAdminPage />} />
+                <Route path="/ban-tin-quy" element={<QuarterlyNewsletterPage />} />
               </Route>
 
             </Route>
@@ -163,6 +180,7 @@ const App = () => (
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

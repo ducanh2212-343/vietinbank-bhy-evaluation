@@ -4,11 +4,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SkillLevelBadge } from '@/components/SkillLevelBadge';
-import { useSkillLevelImages } from '@/hooks/useSkillLevelImages';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { ChevronDown, Target, Sparkles, Loader2, X, Plus, Trash2, Layers } from 'lucide-react';
+import { ChevronDown, Target, Sparkles, Loader2, X, Plus, Trash2, Layers, Compass } from 'lucide-react';
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,6 +15,9 @@ import { toast } from 'sonner';
 import { makeSupplementaryAssessment } from '@/lib/evaluationPersistence';
 import { useAiFeatures } from '@/hooks/useAiFeatures';
 import { BrandMascotAI } from '@/components/branding/BrandAssets';
+import { useSkillCriteria } from '@/hooks/useSkillCriteria';
+import { LevelCheckWizard, type WizardApplyPayload } from '@/components/evaluation/LevelCheckWizard';
+import { saveCriteriaResponses } from '@/lib/skillCriteria';
 
 export interface CoreSkillAssessment {
   skill_id: string;
@@ -51,6 +53,8 @@ interface Props {
   allSkills?: any[];
   /** Skill IDs that were auto-upskilled from previous quarter — rendered with a success highlight */
   levelUpSkillIds?: Set<string>;
+  /** Có formId thì câu trả lời wizard tiêu chí được lưu lại cho quản lý xem breakdown */
+  formId?: string | null;
 }
 
 const LEVEL_OPTIONS = [
@@ -70,13 +74,35 @@ export function EvalSectionB({
   onSupplementaryChange,
   allSkills,
   levelUpSkillIds,
+  formId,
 }: Props) {
-  const { getImageUrl } = useSkillLevelImages();
   const { isEnabled: isAiEnabled } = useAiFeatures();
+  const { getCriteria } = useSkillCriteria();
   const [openId, setOpenId] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState<Record<string, boolean>>({});
   const [aiResults, setAiResults] = useState<Record<string, string>>({});
+  const [evidenceAiLoading, setEvidenceAiLoading] = useState<Record<string, boolean>>({});
+  const [evidenceAiResults, setEvidenceAiResults] = useState<Record<string, string>>({});
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [wizardTarget, setWizardTarget] = useState<{ kind: 'core' | 'supp'; idx: number; a: CoreSkillAssessment } | null>(null);
+
+  const applyWizardResult = async (payload: WizardApplyPayload) => {
+    if (!wizardTarget) return;
+    const { kind, idx, a } = wizardTarget;
+    updateRow(kind, idx, 'self_assessed_level', payload.level);
+    // Ghi tóm tắt vào minh chứng để quản lý thấy căn cứ (thay dòng wizard cũ nếu có)
+    const cleaned = (a.evidence || '')
+      .split('\n')
+      .filter((line) => !line.startsWith('[Bộ tiêu chí]'))
+      .join('\n')
+      .trim();
+    updateRow(kind, idx, 'evidence', cleaned ? `${cleaned}\n${payload.summary}` : payload.summary);
+    toast.success(`Đã áp dụng L${payload.level} cho ${a.skill_name}`);
+    if (formId) {
+      const err = await saveCriteriaResponses(formId, a.skill_id, payload.answers);
+      if (err) toast.error(`Không lưu được câu trả lời tiêu chí: ${err}`);
+    }
+  };
 
   const supportsSupplementary = !!onSupplementaryChange && !!allSkills;
   const suppList = supplementary || [];
@@ -156,6 +182,42 @@ export function EvalSectionB({
     });
   };
 
+  // Thẩm định minh chứng khi tự chấm L3+: AI so minh chứng với mô tả level của skill
+  const reviewEvidenceAi = async (a: CoreSkillAssessment, kind: 'core' | 'supp') => {
+    setEvidenceAiLoading((prev) => ({ ...prev, [a.skill_id]: true }));
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-advisor', {
+        body: {
+          mode: 'evidence_review',
+          role: role || 'cán bộ',
+          is_core: kind === 'core',
+          claimed_level: a.self_assessed_level,
+          evidence: a.evidence || '',
+          skill: {
+            name: a.skill_name,
+            code: a.skill_code,
+            skill_group: a.skill_group,
+            description: a.description,
+            l1: a.level1_description,
+            l2: a.level2_description,
+            l3: a.level3_description,
+            l4: a.level4_description,
+          },
+        },
+      });
+      if (error) throw error;
+      const text = (data as { text?: string })?.text || '';
+      if (!text) throw new Error('AI không trả về nội dung');
+      setEvidenceAiResults((prev) => ({ ...prev, [a.skill_id]: text }));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes('429')) toast.error('Quá nhiều yêu cầu AI, vui lòng thử lại sau.');
+      else toast.error(`Lỗi AI: ${msg || 'không kết nối được'}`);
+    } finally {
+      setEvidenceAiLoading((prev) => ({ ...prev, [a.skill_id]: false }));
+    }
+  };
+
 
   const addSupplementary = (skillId: string) => {
     if (!onSupplementaryChange || !allSkills) return;
@@ -207,7 +269,7 @@ export function EvalSectionB({
                 </Badge>
               )}
               {isSupp && (
-                <Badge variant="outline" className="text-[9px] border-violet-300 text-violet-700 bg-violet-50 flex-shrink-0">
+                <Badge variant="outline" className="text-[9px] border-violet-300 dark:border-violet-500/40 text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-500/10 flex-shrink-0">
                   Bổ trợ
                 </Badge>
               )}
@@ -217,7 +279,7 @@ export function EvalSectionB({
               </span>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-auto">
-              <SkillLevelBadge level={selfLvl} imageUrl={getImageUrl(a.skill_id, selfLvl)} />
+              <SkillLevelBadge level={selfLvl} skillId={a.skill_id} />
               {!isSupp && gapMin > 0 && (
                 <Badge variant="destructive" className="text-[9px]">
                   Gap -{gapMin}
@@ -260,6 +322,20 @@ export function EvalSectionB({
 
             <SkillLevelReference assessment={a} />
 
+            {/* Wizard xác định level theo bộ tiêu chí — hiện khi skill đã có tiêu chí */}
+            {getCriteria(a.skill_id).length > 0 && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs gap-1.5 border-primary/40 text-primary hover:bg-primary/5"
+                onClick={() => setWizardTarget({ kind, idx, a })}
+              >
+                <Compass className="w-3.5 h-3.5" />
+                Xác định level theo bộ tiêu chí
+              </Button>
+            )}
+
             {/* Self & Manager levels */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
@@ -291,14 +367,62 @@ export function EvalSectionB({
             </div>
 
             <div>
-              <label className="text-xs text-muted-foreground">Minh chứng / Evidence</label>
+              <label className="text-xs text-muted-foreground">
+                Minh chứng / Evidence
+                {selfLvl >= 3 && <span className="text-orange-600 font-medium"> — bắt buộc khi tự chấm L3+</span>}
+              </label>
               <Textarea
                 value={a.evidence}
                 onChange={(e) => updateRow(kind, idx, 'evidence', e.target.value)}
-                className="min-h-[40px] text-xs"
-                placeholder="Minh chứng cụ thể cho level đánh giá..."
+                className={`min-h-[40px] text-xs ${selfLvl >= 3 && !(a.evidence || '').trim() ? 'border-orange-400 focus-visible:ring-orange-400' : ''}`}
+                placeholder={selfLvl >= 3
+                  ? 'Bắt buộc: hồ sơ/việc thật đã xử lý, chứng chỉ, xác nhận của đồng nghiệp…'
+                  : 'Minh chứng cụ thể cho level đánh giá...'}
                 disabled={isManager}
               />
+              {selfLvl >= 3 && !(a.evidence || '').trim() && (
+                <p className="mt-1 text-[11px] text-orange-700">
+                  Level Chuyên gia/Bậc thầy cần được chứng minh — phiếu sẽ không nộp được nếu bỏ trống minh chứng.
+                </p>
+              )}
+              {selfLvl >= 3 && (a.evidence || '').trim() && isAiEnabled('evidence_review') && (
+                <div className="mt-1.5">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs gap-1.5"
+                    onClick={() => reviewEvidenceAi(a, kind)}
+                    disabled={evidenceAiLoading[a.skill_id]}
+                    title="AI so minh chứng với mô tả level của skill trước khi trình duyệt"
+                  >
+                    {evidenceAiLoading[a.skill_id] ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BrandMascotAI className="w-4 h-4" />}
+                    AI thẩm định minh chứng L{selfLvl}
+                  </Button>
+                  {evidenceAiResults[a.skill_id] && (
+                    <div className="mt-2 rounded-md border border-violet-200 bg-violet-50/60 p-2.5 text-xs space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-violet-800 flex items-center gap-1.5">
+                          <BrandMascotAI className="w-4 h-4" /> Kết quả thẩm định minh chứng
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setEvidenceAiResults((prev) => { const n = { ...prev }; delete n[a.skill_id]; return n; })}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <div className="prose prose-xs max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0 text-foreground">
+                        <ReactMarkdown>{evidenceAiResults[a.skill_id]}</ReactMarkdown>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground italic">
+                        Kết quả chỉ để tham khảo trước khi trình duyệt — quyết định cuối cùng thuộc về người duyệt.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div>
@@ -363,6 +487,19 @@ export function EvalSectionB({
 
   return (
     <div className="space-y-3">
+      {wizardTarget && (
+        <LevelCheckWizard
+          open={!!wizardTarget}
+          onOpenChange={(o) => { if (!o) setWizardTarget(null); }}
+          skillId={wizardTarget.a.skill_id}
+          skillName={wizardTarget.a.skill_name}
+          skillCode={wizardTarget.a.skill_code}
+          criteria={getCriteria(wizardTarget.a.skill_id)}
+          startLevel={wizardTarget.a.self_assessed_level ?? 0}
+          onApply={applyWizardResult}
+        />
+      )}
+
       {/* B1. Core skills */}
       <Card>
         <CardHeader className="pb-2">
@@ -404,7 +541,7 @@ export function EvalSectionB({
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="h-8 text-xs gap-1.5 border-violet-300 text-violet-700 hover:bg-violet-50"
+                    className="h-8 text-xs gap-1.5 border-violet-300 dark:border-violet-500/40 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-500/10"
                     disabled={availableForPicker.length === 0}
                   >
                     <Plus className="w-3.5 h-3.5" /> Thêm skill bổ trợ
@@ -480,32 +617,32 @@ function SkillLevelReference({ assessment }: { assessment: CoreSkillAssessment }
   const nextUpskill = currentLvl < 4 ? upskillMap[currentLvl] : null;
 
   return (
-    <div className="rounded-md border border-slate-200 bg-slate-50/40 overflow-hidden">
+    <div className="rounded-md border border-border bg-muted/40 overflow-hidden">
       {assessment.description && (
-        <div className="px-3 py-2 bg-slate-100/70 border-b border-slate-200">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 mb-0.5">Mô tả skill</div>
-          <p className="text-xs text-slate-700 leading-relaxed">{assessment.description}</p>
+        <div className="px-3 py-2 bg-muted/70 border-b border-border">
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-0.5">Mô tả skill</div>
+          <p className="text-xs text-muted-foreground leading-relaxed">{assessment.description}</p>
         </div>
       )}
 
       {hasAnyLevel && (
         <div className="overflow-x-auto">
-          <div className="grid grid-cols-4 min-w-[720px] divide-x divide-slate-200">
+          <div className="grid grid-cols-4 min-w-[720px] divide-x divide-border">
             {levels.map((l) => {
               const isMin = hasPositionLevels && l.n === minL;
               const isAdv = hasPositionLevels && l.n === advL;
               const isCurrent = l.n === currentLvl;
-              const cellBg = isMin ? 'bg-orange-50' : isAdv ? 'bg-green-50' : 'bg-white';
+              const cellBg = isMin ? 'bg-orange-50 dark:bg-orange-500/10' : isAdv ? 'bg-green-50 dark:bg-green-500/10' : 'bg-card';
               return (
-                <div key={l.n} className={cellBg + ' p-2.5 text-[11px] leading-relaxed text-slate-700'}>
+                <div key={l.n} className={cellBg + ' p-2.5 text-[11px] leading-relaxed text-muted-foreground'}>
                   <div className="flex items-center gap-1 mb-1.5">
-                    <span className="font-bold text-slate-900">L{l.n}</span>
-                    <span className="text-[10px] text-slate-500">— {l.label}</span>
+                    <span className="font-bold text-foreground">L{l.n}</span>
+                    <span className="text-[10px] text-muted-foreground">— {l.label}</span>
                     {isMin && <span title="Tối thiểu cho vị trí" className="text-orange-600 text-[10px] font-semibold">★ TT</span>}
                     {isAdv && <span title="Nâng cao cho vị trí" className="text-green-600 text-[10px] font-semibold">▲ NC</span>}
                     {isCurrent && currentLvl > 0 && <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-primary/15 text-primary font-medium">Hiện tại</span>}
                   </div>
-                  <p>{l.text || <span className="italic text-slate-400">(chưa có mô tả)</span>}</p>
+                  <p>{l.text || <span className="italic text-muted-foreground/70">(chưa có mô tả)</span>}</p>
                 </div>
               );
             })}
@@ -514,18 +651,18 @@ function SkillLevelReference({ assessment }: { assessment: CoreSkillAssessment }
       )}
 
       {nextUpskill?.text && (
-        <div className="border-t border-slate-200">
+        <div className="border-t border-border">
           <button
             type="button"
             onClick={() => setShowUpskill((s) => !s)}
-            className="w-full px-3 py-2 text-left text-[11px] font-semibold text-violet-700 hover:bg-violet-50/60 flex items-center gap-2"
+            className="w-full px-3 py-2 text-left text-[11px] font-semibold text-violet-700 dark:text-violet-300 hover:bg-violet-50/60 dark:hover:bg-violet-500/10 flex items-center gap-2"
           >
             <Sparkles className="w-3 h-3" />
             Cách thăng cấp {nextUpskill.label} {currentLvl === 0 ? '(từ Chưa hình thành)' : ''}
             <ChevronDown className={`w-3 h-3 ml-auto transition-transform ${showUpskill ? 'rotate-180' : ''}`} />
           </button>
           {showUpskill && (
-            <div className="px-3 pb-3 text-[11px] leading-relaxed text-violet-900 bg-violet-50/40">
+            <div className="px-3 pb-3 text-[11px] leading-relaxed text-violet-900 dark:text-violet-200 bg-violet-50/40 dark:bg-violet-500/10">
               {nextUpskill.text}
             </div>
           )}

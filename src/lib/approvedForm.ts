@@ -36,7 +36,7 @@ export function getFormStatusMeta(status: string | null | undefined): FormStatus
         note: 'Cán bộ đang chỉnh sửa — số liệu chưa được lãnh đạo xác nhận.',
         tone: 'amber',
         isApproved: false,
-        badgeClass: 'bg-amber-100 text-amber-800 border-amber-300',
+        badgeClass: 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30',
       };
     case 'submitted':
       return {
@@ -44,7 +44,7 @@ export function getFormStatusMeta(status: string | null | undefined): FormStatus
         note: 'Cán bộ đã nộp, đang chờ Trưởng phòng / PGĐ duyệt.',
         tone: 'blue',
         isApproved: false,
-        badgeClass: 'bg-blue-100 text-blue-800 border-blue-300',
+        badgeClass: 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/30',
       };
     case 'returned':
       return {
@@ -52,7 +52,7 @@ export function getFormStatusMeta(status: string | null | undefined): FormStatus
         note: 'Lãnh đạo đã trả lại — cán bộ cần chỉnh sửa và nộp lại.',
         tone: 'orange',
         isApproved: false,
-        badgeClass: 'bg-orange-100 text-orange-800 border-orange-300',
+        badgeClass: 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-500/15 dark:text-orange-300 dark:border-orange-500/30',
       };
     case 'reviewed':
       return {
@@ -60,7 +60,7 @@ export function getFormStatusMeta(status: string | null | undefined): FormStatus
         note: 'Kết quả đã được Trưởng phòng duyệt.',
         tone: 'green',
         isApproved: true,
-        badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+        badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30',
       };
     case 'approved':
       return {
@@ -68,7 +68,7 @@ export function getFormStatusMeta(status: string | null | undefined): FormStatus
         note: 'Kết quả đã được Phó giám đốc / Giám đốc duyệt.',
         tone: 'green',
         isApproved: true,
-        badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+        badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30',
       };
     case 'closed':
       return {
@@ -76,7 +76,7 @@ export function getFormStatusMeta(status: string | null | undefined): FormStatus
         note: 'Kỳ đánh giá đã đóng, kết quả là chính thức.',
         tone: 'slate',
         isApproved: true,
-        badgeClass: 'bg-slate-200 text-slate-800 border-slate-300',
+        badgeClass: 'bg-muted text-muted-foreground border-border',
       };
     default:
       return {
@@ -84,7 +84,7 @@ export function getFormStatusMeta(status: string | null | undefined): FormStatus
         note: 'Trạng thái không xác định.',
         tone: 'slate',
         isApproved: false,
-        badgeClass: 'bg-slate-100 text-slate-700 border-slate-300',
+        badgeClass: 'bg-muted text-muted-foreground border-border',
       };
   }
 }

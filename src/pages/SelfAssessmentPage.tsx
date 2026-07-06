@@ -37,9 +37,11 @@ import {
 import { validateSubmission, validateSubmissionDetailed } from '@/lib/evaluationValidation';
 import { useCycleOneOnOneQuestions } from '@/hooks/useCycleOneOnOneQuestions';
 import { SubmissionChecklist } from '@/components/evaluation/SubmissionChecklist';
+import { useHistoricalSkillLevels, mergeAssessedLevels } from '@/hooks/useHistoricalSkillLevels';
 
 export default function SelfAssessmentPage() {
   const { user, profileId } = useAuth();
+  const historicalLevels = useHistoricalSkillLevels(profileId);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -612,7 +614,24 @@ export default function SelfAssessmentPage() {
         const { error } = await supabase.from('form_submissions').update(submitPayload).eq('id', fId);
         if (error) throw error;
         setFormStatus('submitted');
-        toast.success('Đã nộp tự đánh giá');
+
+        // Giám đốc chi nhánh không có cấp trên: tự đánh giá — tự phê duyệt.
+        // Chạy đủ chuỗi trạng thái để giữ nguyên các mốc thời gian (nộp/duyệt/phê duyệt).
+        if (isGdcnSelf && reviewerId === profileId) {
+          const now = new Date().toISOString();
+          const { error: e1 } = await supabase.from('form_submissions')
+            .update({ status: 'reviewed', reviewer_id: profileId, reviewed_at: now })
+            .eq('id', fId);
+          if (e1) throw e1;
+          const { error: e2 } = await supabase.from('form_submissions')
+            .update({ status: 'approved', pgd_review_status: 'approved', pgd_reviewed_at: now })
+            .eq('id', fId);
+          if (e2) throw e2;
+          setFormStatus('approved');
+          toast.success('Giám đốc chi nhánh tự đánh giá — phiếu đã hoàn tất phê duyệt');
+        } else {
+          toast.success('Đã nộp tự đánh giá');
+        }
       } else {
         // Lưu nháp: KHÔNG đổi trạng thái (draft giữ draft, returned giữ returned)
         const { error } = await supabase.from('form_submissions').update({
@@ -641,6 +660,7 @@ export default function SelfAssessmentPage() {
     const errors = validateSubmission({
       coreAssessments, attitudeAssessments,
       skillPriorities, skillActions,
+      supplementaryAssessments: suppAssessments,
     });
     if (errors.length > 0) {
       toast.error('Chưa thể nộp đánh giá', {
@@ -673,8 +693,9 @@ export default function SelfAssessmentPage() {
     () => validateSubmissionDetailed({
       coreAssessments, attitudeAssessments,
       skillPriorities, skillActions,
+      supplementaryAssessments: suppAssessments,
     }),
-    [coreAssessments, attitudeAssessments, skillPriorities, skillActions],
+    [coreAssessments, attitudeAssessments, skillPriorities, skillActions, suppAssessments],
   );
 
   if (loading) return <div className="p-6 text-muted-foreground">Đang tải...</div>;
@@ -749,6 +770,7 @@ export default function SelfAssessmentPage() {
         supplementary={suppAssessments}
         onSupplementaryChange={setSuppAssessments}
         allSkills={allSkills}
+        formId={formId}
       />
       </div>
       <div id="section-c">
@@ -774,11 +796,14 @@ export default function SelfAssessmentPage() {
           onActionsChange={setSkillActions}
           allSkills={allSkills}
           coreSkills={coreSkillConfigs}
-          assessedLevels={[
+          assessedLevels={mergeAssessedLevels([
             ...coreAssessments.map(a => ({ skill_id: a.skill_id, current_level: a.self_assessed_level ?? a.manager_assessed_level ?? null })),
             ...suppAssessments.map(a => ({ skill_id: a.skill_id, current_level: a.self_assessed_level ?? a.manager_assessed_level ?? null })),
-          ]}
+          ], historicalLevels)}
           positionId={profile?.position_id}
+          cycleId={cycleId || undefined}
+          menteeProfileId={profileId}
+          menteeDepartmentId={profile?.department_id}
         />
 
       </div>

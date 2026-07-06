@@ -20,10 +20,10 @@ interface CardProps {
 function Card({ state, title, statusLabel, description, missingLabels, warning, hint, anchor }: CardProps) {
   const tone =
     state === 'pass'
-      ? 'border-emerald-200/70 bg-emerald-50/70'
+      ? 'border-emerald-200/70 bg-emerald-50/70 dark:border-emerald-500/30 dark:bg-emerald-500/10'
       : state === 'fail'
-        ? 'border-rose-200/70 bg-rose-50/60'
-        : 'border-slate-200/70 bg-white/60';
+        ? 'border-rose-200/70 bg-rose-50/60 dark:border-rose-500/30 dark:bg-rose-500/10'
+        : 'border-border/70 bg-card/60';
 
   const Icon = state === 'pass' ? CheckCircle2 : state === 'fail' ? AlertCircle : Clock;
   const iconColor =

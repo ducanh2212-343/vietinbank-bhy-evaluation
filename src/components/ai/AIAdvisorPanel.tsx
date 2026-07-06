@@ -103,7 +103,7 @@ export function AIAdvisorPanel() {
       <SheetTrigger asChild>
         <Button
           size="icon"
-          className="fixed bottom-24 right-4 h-14 w-14 rounded-full shadow-lift z-40 bg-white hover:bg-white ring-1 ring-primary/15 transition-transform hover:scale-105"
+          className="fixed bottom-24 right-4 h-14 w-14 rounded-full shadow-lift z-40 bg-card hover:bg-accent ring-1 ring-primary/15 transition-transform hover:scale-105"
           aria-label="Trợ lý AI"
         >
           <BrandMascotAI className="h-11 w-11" />

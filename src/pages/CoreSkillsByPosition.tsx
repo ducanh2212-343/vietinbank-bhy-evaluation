@@ -4,11 +4,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { SkillLevelBadge } from '@/components/SkillLevelBadge';
-import { useSkillLevelImages } from '@/hooks/useSkillLevelImages';
 
 export default function CoreSkillsByPosition() {
   const { profileId } = useAuth();
-  const { getImageUrl } = useSkillLevelImages();
   const [coreSkills, setCoreSkills] = useState<any[]>([]);
   const [evalData, setEvalData] = useState<any>(null);
   const [positionName, setPositionName] = useState('');
@@ -77,13 +75,13 @@ export default function CoreSkillsByPosition() {
                         <td className="py-3 px-3 font-medium">{cs.skill?.name || cs.skill_id}</td>
                         <td className="py-3 px-3"><Badge variant="outline" className="text-[10px]">{cs.skill?.skill_group || '—'}</Badge></td>
                         <td className="py-3 px-3 text-center">
-                          <SkillLevelBadge level={cs.minimum_level} imageUrl={getImageUrl(cs.skill_id, cs.minimum_level)} />
+                          <SkillLevelBadge level={cs.minimum_level} skillId={cs.skill_id} />
                         </td>
                         <td className="py-3 px-3 text-center">
-                          <SkillLevelBadge level={cs.advanced_level} imageUrl={getImageUrl(cs.skill_id, cs.advanced_level)} />
+                          <SkillLevelBadge level={cs.advanced_level} skillId={cs.skill_id} />
                         </td>
                         <td className="py-3 px-3 text-center">
-                          <SkillLevelBadge level={cur} imageUrl={getImageUrl(cs.skill_id, cur)} />
+                          <SkillLevelBadge level={cur} skillId={cs.skill_id} />
                         </td>
                         <td className="py-3 px-3 text-center">
                           {cur > 0 ? (gap > 0 ? <Badge variant="destructive">-{gap}</Badge> : <Badge variant="secondary">OK</Badge>) : <span className="text-muted-foreground text-xs">N/A</span>}
@@ -114,15 +112,15 @@ export default function CoreSkillsByPosition() {
                     <div className="grid grid-cols-3 gap-2 text-center">
                       <div>
                         <p className="text-[10px] text-muted-foreground mb-1">Min</p>
-                        <SkillLevelBadge level={cs.minimum_level} imageUrl={getImageUrl(cs.skill_id, cs.minimum_level)} />
+                        <SkillLevelBadge level={cs.minimum_level} skillId={cs.skill_id} />
                       </div>
                       <div>
                         <p className="text-[10px] text-muted-foreground mb-1">Adv</p>
-                        <SkillLevelBadge level={cs.advanced_level} imageUrl={getImageUrl(cs.skill_id, cs.advanced_level)} />
+                        <SkillLevelBadge level={cs.advanced_level} skillId={cs.skill_id} />
                       </div>
                       <div>
                         <p className="text-[10px] text-muted-foreground mb-1">Hiện tại</p>
-                        <SkillLevelBadge level={cur} imageUrl={getImageUrl(cs.skill_id, cur)} />
+                        <SkillLevelBadge level={cur} skillId={cs.skill_id} />
                       </div>
                     </div>
                   </div>

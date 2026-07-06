@@ -9,11 +9,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { X, Plus, Search, Target, ListChecks, ChevronDown, GraduationCap, Trash2 } from 'lucide-react';
 import { SkillLevelBadge } from '@/components/SkillLevelBadge';
-import { useSkillLevelImages } from '@/hooks/useSkillLevelImages';
 import type { SkillPriority } from './SkillPriorityPicker';
 import type { SkillAction } from './SkillActionsBlock';
 import { VtbCourseSuggestion } from './VtbCourseSuggestion';
 import { IdpPlanSuggestion } from './IdpPlanSuggestion';
+import { MentorSuggestion } from './MentorSuggestion';
 import { useAiFeatures } from '@/hooks/useAiFeatures';
 import { cn } from '@/lib/utils';
 
@@ -31,6 +31,10 @@ interface Props {
   assessedLevels?: AssessedLevel[];
   positionId?: string | null;
   readOnly?: boolean;
+  /** Kỳ đánh giá + hồ sơ cán bộ — cần cho gợi ý người kèm cặp nội bộ (20%) */
+  cycleId?: string;
+  menteeProfileId?: string | null;
+  menteeDepartmentId?: string | null;
 }
 
 const ACTION_TYPES = [
@@ -44,11 +48,11 @@ const typeMeta = (v: string) => ACTION_TYPES.find(t => t.value === v) || ACTION_
 export function SkillDevelopmentBlock({
   priorities, actions, onPrioritiesChange, onActionsChange,
   allSkills, coreSkills, assessedLevels = [], positionId, readOnly,
+  cycleId, menteeProfileId, menteeDepartmentId,
 }: Props) {
 
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
-  const { getImageUrl } = useSkillLevelImages();
   const { isEnabled: isAiEnabled } = useAiFeatures();
 
   const coreMap = useMemo(() => new Map(coreSkills.map(c => [c.skill_id, c])), [coreSkills]);
@@ -56,6 +60,8 @@ export function SkillDevelopmentBlock({
   const selectedIds = new Set(priorities.map(p => p.skill_id));
 
   useEffect(() => {
+    // Phiếu chỉ xem (đã duyệt/lịch sử): giữ nguyên level đã lưu, không đồng bộ lại
+    if (readOnly) return;
     if (!assessedLevels.length) return;
     let dirty = false;
     const updated = priorities.map(p => {
@@ -230,13 +236,13 @@ export function SkillDevelopmentBlock({
                   {/* Level summary bar */}
                   <div className="flex items-center gap-3 flex-wrap text-sm bg-muted/40 rounded-md p-3 border">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs text-muted-foreground">Hiện tại{lockedCurrent ? ' (từ mục B)' : ''}:</span>
-                      <SkillLevelBadge level={p.current_level} imageUrl={getImageUrl(p.skill_id, p.current_level)} />
+                      <span className="text-xs text-muted-foreground">Hiện tại{lockedCurrent ? ' (tự động từ mục B / kỳ gần nhất)' : ''}:</span>
+                      <SkillLevelBadge level={p.current_level} skillId={p.skill_id} />
                     </div>
                     <span className="text-muted-foreground font-bold">→</span>
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs text-muted-foreground">Mục tiêu:</span>
-                      <SkillLevelBadge level={p.target_level} imageUrl={getImageUrl(p.skill_id, p.target_level)} />
+                      <SkillLevelBadge level={p.target_level} skillId={p.skill_id} />
                     </div>
                     <div className="ml-auto text-xs font-semibold px-2 py-1 rounded bg-primary/10 text-primary">
                       Gap: {p.current_level != null && p.target_level != null ? p.target_level - p.current_level : '—'}
@@ -391,6 +397,20 @@ export function SkillDevelopmentBlock({
                       );
                     })}
                   </div>
+
+                  {!readOnly && cycleId && menteeProfileId && (
+                    <div className="rounded-md border border-dashed border-primary/30 bg-background/60 p-2">
+                      <MentorSuggestion
+                        priority={p}
+                        cycleId={cycleId}
+                        menteeProfileId={menteeProfileId}
+                        menteeDepartmentId={menteeDepartmentId}
+                        existingActionsCount={pActions.length}
+                        onAddAction={(a) => onActionsChange([...actions, a])}
+                        readOnly={readOnly}
+                      />
+                    </div>
+                  )}
 
                   {!readOnly && isAiEnabled('suggest_idp_plan') && (
                     <div className="rounded-md border border-dashed border-primary/30 bg-background/60 p-2">

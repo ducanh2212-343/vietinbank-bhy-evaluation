@@ -90,6 +90,89 @@
     --sidebar-ring: 207 79% 60%;
     --sidebar-muted: 211 35% 74%;
   }
+
+  /*
+   * Giao diện tối — giữ tinh thần "Cây ký ức", nền navy sâu, chữ sáng dễ đọc.
+   * Kích hoạt bằng class `.dark` trên <html> (ThemeProvider quản lý).
+   */
+  .dark {
+    --background: 216 40% 8%;         /* navy gần đen */
+    --foreground: 210 30% 92%;       /* chữ sáng */
+
+    --card: 216 34% 12%;
+    --card-foreground: 210 30% 92%;
+
+    --popover: 216 36% 11%;
+    --popover-foreground: 210 30% 92%;
+
+    /* Sky blue sáng hơn để nổi trên nền tối (#1E88E5 hướng sáng) */
+    --primary: 207 79% 58%;
+    --primary-foreground: 216 45% 8%;
+
+    --secondary: 214 30% 20%;
+    --secondary-foreground: 210 35% 90%;
+
+    --muted: 215 28% 18%;
+    --muted-foreground: 214 18% 66%;
+
+    --accent: 212 40% 22%;
+    --accent-foreground: 207 79% 82%;
+
+    --destructive: 355 82% 56%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 26% 24%;
+    --input: 214 26% 26%;
+    --ring: 207 79% 58%;
+
+    --brand-navy: 215 70% 40%;
+    --brand-royal: 212 90% 55%;
+    --brand-sky: 207 85% 62%;
+    --brand-red: 355 82% 56%;
+    --brand-gold: 43 74% 55%;
+
+    /* Đổ bóng đậm hơn cho nền tối */
+    --shadow-soft: 0 1px 2px 0 hsl(216 60% 2% / 0.4), 0 4px 14px -6px hsl(216 60% 2% / 0.5);
+    --shadow-glass: 0 1px 0 0 hsl(0 0% 100% / 0.05) inset, 0 8px 26px -12px hsl(216 60% 2% / 0.7);
+    --shadow-lift: 0 12px 34px -14px hsl(216 60% 2% / 0.7);
+
+    /* Bề mặt panel kính trên nền tối */
+    --glass-bg: 216 34% 14% / 0.7;
+    --glass-bg-strong: 216 36% 13% / 0.88;
+    --glass-border: 214 26% 30% / 0.7;
+
+    /* Level colors — nền đậm, chữ nhạt để đủ tương phản */
+    --level-1: 200 20% 68%;
+    --level-2: 210 85% 68%;
+    --level-3: 38 90% 62%;
+    --level-4: 270 60% 72%;
+
+    --level-1-bg: 200 20% 22%;
+    --level-2-bg: 210 60% 20%;
+    --level-3-bg: 38 60% 20%;
+    --level-4-bg: 270 40% 24%;
+
+    /* Star groups */
+    --star-mai: 45 90% 66%;
+    --star-mai-bg: 45 60% 20%;
+    --star-khue: 145 55% 62%;
+    --star-khue-bg: 145 40% 18%;
+    --star-bang: 25 85% 66%;
+    --star-bang-bg: 25 60% 20%;
+    --star-hom: 0 70% 68%;
+    --star-hom-bg: 0 50% 22%;
+
+    /* Sidebar — navy sâu hơn nền một chút để tách lớp */
+    --sidebar-background: 216 44% 12%;
+    --sidebar-foreground: 210 30% 84%;
+    --sidebar-primary: 207 79% 68%;
+    --sidebar-primary-foreground: 216 45% 8%;
+    --sidebar-accent: 212 40% 22%;
+    --sidebar-accent-foreground: 210 35% 92%;
+    --sidebar-border: 214 26% 24%;
+    --sidebar-ring: 207 79% 58%;
+    --sidebar-muted: 211 20% 60%;
+  }
 }
 
 @layer base {
@@ -114,6 +197,14 @@
       radial-gradient(1100px 560px at 0% -10%, hsl(207 79% 90% / 0.6), transparent 60%),
       radial-gradient(820px 460px at 100% 0%, hsl(212 100% 92% / 0.55), transparent 55%);
     background-attachment: fixed;
+    /* Chuyển màu mượt khi đổi sáng/tối */
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  /* Nền tối: quầng sáng navy sâu thay cho gradient xanh nhạt */
+  .dark body {
+    background-image:
+      radial-gradient(1100px 560px at 0% -10%, hsl(212 80% 22% / 0.5), transparent 60%),
+      radial-gradient(820px 460px at 100% 0%, hsl(215 70% 24% / 0.45), transparent 55%);
   }
   /* Giảm delay 300ms khi chạm trên mobile */
   button, a, [role="button"] {
@@ -160,6 +251,10 @@
     background-color: hsl(0 0% 100% / 0.7);
     border: 1px solid hsl(214 45% 90% / 0.8);
   }
+  .dark .glass-subtle {
+    background-color: hsl(216 34% 16% / 0.7);
+    border: 1px solid hsl(214 26% 30% / 0.7);
+  }
   .shadow-soft { box-shadow: var(--shadow-soft); }
   .shadow-lift { box-shadow: var(--shadow-lift); }
 
@@ -205,6 +300,59 @@
   .level-2 { background: hsl(var(--level-2-bg)); color: hsl(var(--level-2)); }
   .level-3 { background: hsl(var(--level-3-bg)); color: hsl(var(--level-3)); }
   .level-4 { background: hsl(var(--level-4-bg)); color: hsl(var(--level-4)); }
+
+  /* === Khung "quân hàm" ảnh skill theo level (SkillLevelArt) ===
+     Một thực thể tiến hoá: đồng → bạc → vàng → kim cương.
+     Khung là lớp nền gradient của phần tử ngoài; nội dung nằm trong .skill-art-inner. */
+  .skill-art {
+    @apply relative inline-flex items-center justify-center flex-shrink-0 align-middle;
+    background: var(--art-frame, hsl(var(--border)));
+    box-shadow: var(--art-glow, none);
+  }
+  .skill-art-inner {
+    @apply w-full h-full flex items-center justify-center overflow-hidden;
+    border-radius: inherit;
+    background: var(--art-bg, hsl(var(--card)));
+  }
+  .skill-art-l1 {
+    --art-frame: linear-gradient(160deg, hsl(28 42% 64%), hsl(28 48% 40%));
+    --art-bg: linear-gradient(180deg, hsl(28 50% 97%), hsl(28 45% 92%));
+  }
+  .skill-art-l2 {
+    --art-frame: linear-gradient(160deg, hsl(215 20% 80%), hsl(215 16% 50%));
+    --art-bg: linear-gradient(180deg, hsl(215 25% 98%), hsl(215 20% 91%));
+  }
+  .skill-art-l3 {
+    --art-frame: linear-gradient(160deg, hsl(46 88% 64%), hsl(40 82% 42%));
+    --art-bg: linear-gradient(180deg, hsl(46 90% 97%), hsl(44 85% 90%));
+    --art-glow: 0 1px 6px -1px hsl(var(--brand-gold) / 0.45);
+  }
+  .skill-art-l4 {
+    --art-frame: linear-gradient(140deg, hsl(var(--brand-sky)), hsl(var(--brand-royal)) 45%, hsl(var(--level-4)));
+    --art-bg: linear-gradient(180deg, hsl(240 60% 98%), hsl(258 55% 94%));
+    --art-glow: 0 0 0 1px hsl(var(--level-4) / 0.2), 0 2px 10px -2px hsl(var(--brand-royal) / 0.5);
+  }
+  /* Level chưa đạt — bóng mờ + khoá, mồi tò mò */
+  .skill-art-locked {
+    --art-frame: hsl(var(--border));
+    --art-bg: hsl(var(--muted));
+  }
+  .skill-art-silhouette {
+    filter: grayscale(1) brightness(0.3);
+    opacity: 0.35;
+  }
+  .skill-art-lock {
+    @apply absolute -bottom-1 -right-1 rounded-full bg-background border p-0.5 text-muted-foreground shadow-sm;
+  }
+  /* Hiệu ứng "mở khoá" trong modal chúc mừng thăng cấp */
+  @keyframes skill-art-pop {
+    0% { transform: scale(0.55); opacity: 0.4; }
+    60% { transform: scale(1.12); opacity: 1; }
+    100% { transform: scale(1); }
+  }
+  .skill-art-pop {
+    animation: skill-art-pop 0.55s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
 
   .star-mai { background: hsl(var(--star-mai-bg)); color: hsl(var(--star-mai)); }
   .star-khue { background: hsl(var(--star-khue-bg)); color: hsl(var(--star-khue)); }

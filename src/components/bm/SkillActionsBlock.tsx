@@ -7,7 +7,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plus, X } from 'lucide-react';
 import type { SkillPriority } from './SkillPriorityPicker';
 import { SkillLevelBadge } from '@/components/SkillLevelBadge';
-import { useSkillLevelImages } from '@/hooks/useSkillLevelImages';
 
 export interface SkillAction {
   id?: string;
@@ -56,7 +55,6 @@ const endOfQuarter = () => {
 };
 
 export function SkillActionsBlock({ priorities, actions, onChange, readOnly }: Props) {
-  const { getImageUrl } = useSkillLevelImages();
 
   const addAction = (priorityId: string) => {
     // Reuse dòng còn rỗng cùng priority nếu có, để tránh tạo card Kanban trùng/placeholder mồ côi.
@@ -116,9 +114,9 @@ export function SkillActionsBlock({ priorities, actions, onChange, readOnly }: P
                   <span className="font-medium text-sm break-words">{p.skill_name}</span>
                 </div>
                 <div className="flex items-center gap-2 ml-0 sm:ml-auto">
-                  <SkillLevelBadge level={p.current_level} imageUrl={getImageUrl(p.skill_id, p.current_level)} />
+                  <SkillLevelBadge level={p.current_level} skillId={p.skill_id} />
                   <span className="text-xs text-muted-foreground">→</span>
-                  <SkillLevelBadge level={p.target_level} imageUrl={getImageUrl(p.skill_id, p.target_level)} />
+                  <SkillLevelBadge level={p.target_level} skillId={p.skill_id} />
                 </div>
               </div>
 

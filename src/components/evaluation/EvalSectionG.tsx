@@ -35,6 +35,8 @@ interface Props {
   actionLoading?: boolean;
   /** Khi true, không render block 3 nút manager (sticky bar đã render) */
   hideManagerActions?: boolean;
+  /** Luồng rút gọn: người đánh giá là cấp trên trực tiếp duy nhất (PGĐ/GĐ) → đánh giá + phê duyệt gộp */
+  soleApprover?: boolean;
   onClassificationChange: (v: string) => void;
   onRemarkChange: (v: string) => void;
   onConclusionChange: (v: string) => void;
@@ -43,14 +45,15 @@ interface Props {
   onReturnToEmployee?: (reason: string) => void;
   onApprove?: () => void;
   onReturnToManager?: (reason: string) => void;
+  onApproveDirect?: () => void;
 }
 
 export function EvalSectionG({
   classification, remark, managerConclusion, formStatus,
   evaluatorLevel, isManager, isAdmin, canConfirmReview, actionLoading,
-  hideManagerActions,
+  hideManagerActions, soleApprover,
   onClassificationChange, onRemarkChange, onConclusionChange, onStatusChange,
-  onConfirmReview, onReturnToEmployee, onApprove, onReturnToManager,
+  onConfirmReview, onReturnToEmployee, onApprove, onReturnToManager, onApproveDirect,
 }: Props) {
 
   const [returnEmpOpen, setReturnEmpOpen] = useState(false);
@@ -134,7 +137,33 @@ export function EvalSectionG({
           </div>
         )}
 
-        {evaluatorLevel === 'pgd' && (
+        {soleApprover && (
+          <div className="flex flex-wrap gap-2 pt-2 border-t">
+            <Button
+              size="sm"
+              onClick={onApproveDirect}
+              disabled={!canConfirmReview || !['submitted', 'reviewed'].includes(formStatus) || actionLoading}
+              title={!canConfirmReview ? 'Cần đánh giá đủ skill lõi, 6 thái độ và nhận xét/kết luận trước khi phê duyệt.' : ''}
+            >
+              {actionLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-1" />}
+              Đánh giá & phê duyệt
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => setReturnEmpOpen(true)}
+              disabled={!['submitted', 'reviewed'].includes(formStatus) || actionLoading}
+            >
+              <XCircle className="w-4 h-4 mr-1" /> Trả lại cán bộ
+            </Button>
+            <p className="w-full text-xs text-muted-foreground flex items-center gap-1">
+              <Info className="w-3.5 h-3.5" />
+              Bạn là cấp trên trực tiếp duy nhất — phiếu được rà soát và phê duyệt hoàn tất trong một bước.
+            </p>
+          </div>
+        )}
+
+        {!soleApprover && evaluatorLevel === 'pgd' && (
           <div className="flex flex-wrap gap-2 pt-2 border-t">
             <Button
               size="sm"
@@ -156,7 +185,7 @@ export function EvalSectionG({
           </div>
         )}
 
-        {evaluatorLevel === 'director' && (
+        {!soleApprover && evaluatorLevel === 'director' && (
           <div className="pt-2 border-t text-xs text-muted-foreground flex items-center gap-1">
             <Info className="w-3.5 h-3.5" />
             Bạn là Giám đốc giám sát — phần duyệt phiếu do PGĐ/TP phụ trách. Bạn vẫn có thể điều chỉnh nhóm sao bên dưới.

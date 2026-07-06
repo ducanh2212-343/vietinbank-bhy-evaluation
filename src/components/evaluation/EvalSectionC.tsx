@@ -352,7 +352,7 @@ export function EvalSectionC({ assessments, onChange, isManager }: Props) {
 
                       {/* Tóm tắt điểm cần cải thiện đã chọn ở phần đánh giá */}
                       {(a.improvement_focus || []).length > 0 ? (
-                        <div className="text-[11px] text-violet-900 bg-white/60 border border-violet-200 rounded-md px-2.5 py-1.5">
+                        <div className="text-[11px] text-violet-900 dark:text-violet-200 bg-white/60 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/30 rounded-md px-2.5 py-1.5">
                           <span className="font-medium">Điểm tập trung:</span>{' '}
                           {(a.improvement_focus || [])
                             .map(code => {
@@ -465,12 +465,12 @@ export function EvalSectionC({ assessments, onChange, isManager }: Props) {
 
 function RefRow({ color, title, body, last }: { color: string; title: string; body: string | null; last?: boolean }) {
   const bgMap: Record<string, string> = {
-    amber: 'bg-amber-50/60 text-amber-900',
-    sky: 'bg-sky-50/60 text-sky-900',
-    emerald: 'bg-emerald-50/60 text-emerald-900',
-    violet: 'bg-violet-50/60 text-violet-900',
-    orange: 'bg-orange-50/60 text-orange-900',
-    slate: 'bg-slate-50/60 text-slate-800',
+    amber: 'bg-amber-50/60 text-amber-900 dark:bg-amber-500/10 dark:text-amber-200',
+    sky: 'bg-sky-50/60 text-sky-900 dark:bg-sky-500/10 dark:text-sky-200',
+    emerald: 'bg-emerald-50/60 text-emerald-900 dark:bg-emerald-500/10 dark:text-emerald-200',
+    violet: 'bg-violet-50/60 text-violet-900 dark:bg-violet-500/10 dark:text-violet-200',
+    orange: 'bg-orange-50/60 text-orange-900 dark:bg-orange-500/10 dark:text-orange-200',
+    slate: 'bg-muted/60 text-foreground',
   };
   const titleMap: Record<string, string> = {
     amber: 'text-amber-700',
@@ -478,10 +478,10 @@ function RefRow({ color, title, body, last }: { color: string; title: string; bo
     emerald: 'text-emerald-700',
     violet: 'text-violet-700',
     orange: 'text-orange-700',
-    slate: 'text-slate-700',
+    slate: 'text-muted-foreground',
   };
   return (
-    <div className={cn('p-2.5', bgMap[color], !last && 'border-b border-slate-200')}>
+    <div className={cn('p-2.5', bgMap[color], !last && 'border-b border-border')}>
       <div className={cn('font-semibold mb-1', titleMap[color])}>{title}</div>
       <p className="leading-relaxed whitespace-pre-line">{body || '—'}</p>
     </div>

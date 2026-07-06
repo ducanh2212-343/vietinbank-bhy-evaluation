@@ -62,6 +62,9 @@ const MODE_LABELS: Record<string, string> = {
   competency_portrait: 'Chân dung năng lực tổng thể',
   suggest_vtb_courses: 'Gợi ý khóa học Trường ĐT VietinBank',
   suggest_idp_plan: 'Gợi ý kế hoạch hành động (IDP 70/20/10)',
+  evidence_review: 'Thẩm định minh chứng level (L3+)',
+  one_on_one_prep: 'Trang chuẩn bị phiên 1-1 cho quản lý',
+  quarterly_letter: 'Thư tổng kết phát triển cá nhân cuối kỳ',
 };
 
 // Khuyến nghị model theo tác vụ để cân đối chi phí
@@ -71,6 +74,9 @@ const MODE_RECOMMENDED_MODEL: Record<string, string> = {
   competency_portrait: 'google/gemini-2.5-flash',
   suggest_vtb_courses: 'google/gemini-2.5-flash-lite',
   suggest_idp_plan: 'google/gemini-2.5-flash',
+  evidence_review: 'google/gemini-2.5-flash',
+  one_on_one_prep: 'google/gemini-2.5-flash',
+  quarterly_letter: 'google/gemini-2.5-flash',
 };
 
 // Nhà cung cấp AI — BYOK: admin tự nhập API key, không phụ thuộc Lovable.

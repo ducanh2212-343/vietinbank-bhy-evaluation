@@ -9,6 +9,16 @@ export interface SubmitValidationInput {
   attitudeAssessments: AttitudeAssessment[];
   skillPriorities: SkillPriority[];
   skillActions: SkillAction[];
+  /** Skill bổ trợ (nếu có) — cùng chịu quy tắc minh chứng khi tự chấm level cao */
+  supplementaryAssessments?: CoreSkillAssessment[];
+}
+
+/** Tự chấm từ level này trở lên phải kèm minh chứng cụ thể (evidence-based leveling) */
+export const EVIDENCE_REQUIRED_LEVEL = 3;
+
+/** Skill tự chấm L3+ nhưng chưa có minh chứng? */
+export function skillNeedsEvidence(a: CoreSkillAssessment): boolean {
+  return (a.self_assessed_level ?? 0) >= EVIDENCE_REQUIRED_LEVEL && !(a.evidence || '').trim();
 }
 
 /**
@@ -73,10 +83,12 @@ export interface DetailedValidation {
   gappedSkillIssues: GappedSkillIssue[];
   needsImprovementTotal: number;
   needsImprovementWithoutPlan: AttitudeAssessment[];
+  /** Skill (lõi + bổ trợ) tự chấm L3+ nhưng chưa nhập minh chứng */
+  highLevelEvidenceMissing: CoreSkillAssessment[];
 }
 
 export function validateSubmissionDetailed(input: SubmitValidationInput): DetailedValidation {
-  const { coreAssessments, attitudeAssessments, skillPriorities, skillActions } = input;
+  const { coreAssessments, attitudeAssessments, skillPriorities, skillActions, supplementaryAssessments = [] } = input;
   const errors: string[] = [];
 
   // 1. Skill lõi chưa đánh giá
@@ -120,6 +132,13 @@ export function validateSubmissionDetailed(input: SubmitValidationInput): Detail
   const gappedSkillsWithoutAction: CoreSkillAssessment[] = [];
   const gappedSkillIssues: GappedSkillIssue[] = [];
 
+  // 4b. Tự chấm level cao (L3+ Chuyên gia/Bậc thầy) phải có minh chứng —
+  //     level cần được "kiếm" bằng bằng chứng thật, không chỉ dropdown chủ quan.
+  const highLevelEvidenceMissing = [...coreAssessments, ...supplementaryAssessments].filter(skillNeedsEvidence);
+  if (highLevelEvidenceMissing.length > 0) {
+    errors.push(`Còn ${highLevelEvidenceMissing.length} skill tự chấm L${EVIDENCE_REQUIRED_LEVEL}+ nhưng chưa nhập minh chứng: ${highLevelEvidenceMissing.slice(0, 3).map(c => c.skill_name).join(', ')}${highLevelEvidenceMissing.length > 3 ? '…' : ''}`);
+  }
+
   // 5. Thái độ có kế hoạch cải thiện — phải đầy đủ focus + hành động + thời hạn
   const needsImprovement = attitudeAssessments.filter(attitudeNeedsPlan);
   const needsImprovementWithoutPlan = needsImprovement.filter(a => !planComplete(a));
@@ -140,5 +159,6 @@ export function validateSubmissionDetailed(input: SubmitValidationInput): Detail
     gappedSkillsWithoutAction,
     needsImprovementTotal: needsImprovement.length,
     needsImprovementWithoutPlan,
+    highLevelEvidenceMissing,
   };
 }

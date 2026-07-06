@@ -51,6 +51,12 @@ export const APP_FEATURES: FeatureGroup[] = [
 
 export const VERSION_HISTORY: VersionEntry[] = [
   {
+    version: '3.1.1',
+    date: '05/07/2026',
+    type: 'patch',
+    summary: 'Mục D tự điền level hiện tại từ mục B hoặc từ phiếu đánh giá gần nhất — cán bộ không phải tự nhập lại level, tránh sai lệch.',
+  },
+  {
     version: '3.1.0',
     date: '04/07/2026',
     type: 'minor',
