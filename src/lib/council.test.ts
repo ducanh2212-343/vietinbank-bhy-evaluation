@@ -3,6 +3,7 @@ import {
   computeCouncilReport,
   extremeScoreCriteria,
   rawAverage,
+  resolveWeightScheme,
   weightBucketOf,
   type ReportEvaluationRow,
 } from './council';
@@ -92,6 +93,35 @@ describe('điểm cấp TP dùng scheme 20/10/15/55', () => {
     const r = computeCouncilReport(rows, CRITERIA, 'truong_phong');
     // 9*0.2 + 8*0.1 + 7*0.15 + 6*0.55 = 1.8 + 0.8 + 1.05 + 3.3 = 6.95 → 69.5
     expect(r.score100).toBeCloseTo(69.5, 2);
+  });
+});
+
+describe('trọng số tùy chỉnh theo kỳ (weight_config)', () => {
+  const rows: ReportEvaluationRow[] = [
+    row('#1', 'giam_doc', Array(10).fill(9)),
+    row('#2', 'pho_giam_doc', Array(10).fill(8)),
+    row('#3', 'thanh_vien', Array(10).fill(7)),
+  ];
+
+  it('áp dụng cấu hình % của kỳ thay cho mặc định', () => {
+    const r = computeCouncilReport(rows, CRITERIA, 'pgd', {
+      pgd: { giam_doc: 30, pgd_khac: 20, thanh_vien: 50 },
+    });
+    // 9*0.3 + 8*0.2 + 7*0.5 = 2.7 + 1.6 + 3.5 = 7.8 → 78
+    expect(r.score100).toBeCloseTo(78, 2);
+  });
+
+  it('không có cấu hình thì dùng mặc định 20/15/65', () => {
+    const r = computeCouncilReport(rows, CRITERIA, 'pgd', null);
+    // 9*0.2 + 8*0.15 + 7*0.65 = 7.55 → 75.5
+    expect(r.score100).toBeCloseTo(75.5, 2);
+  });
+
+  it('cấu hình thiếu nhóm nào thì nhóm đó rơi về mặc định', () => {
+    const scheme = resolveWeightScheme('truong_phong', { truong_phong: { giam_doc: 25 } });
+    expect(scheme.giam_doc).toBeCloseTo(0.25, 5);
+    expect(scheme.pgd_phu_trach).toBeCloseTo(0.1, 5);
+    expect(scheme.thanh_vien).toBeCloseTo(0.55, 5);
   });
 });
 

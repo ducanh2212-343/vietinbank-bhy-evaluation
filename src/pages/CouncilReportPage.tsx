@@ -6,15 +6,15 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BarChart3, Loader2, Printer } from 'lucide-react';
+import { BarChart3, Loader2, Mail, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  ROUND_STATUS_LABELS, WEIGHT_SCHEMES,
-  computeCouncilReport, formatPercent, formatScore, weightBucketOf,
-  type CouncilRoundStatus, type CouncilSubjectLevel, type ReportEvaluationRow, type WeightBucket,
+  ROUND_STATUS_LABELS,
+  computeCouncilReport, formatPercent, formatScore, resolveWeightScheme, weightBucketOf,
+  type CouncilRoundStatus, type CouncilSubjectLevel, type CouncilWeightConfig, type ReportEvaluationRow, type WeightBucket,
 } from '@/lib/council';
 
-interface RoundRow { id: string; name: string; status: CouncilRoundStatus; }
+interface RoundRow { id: string; name: string; status: CouncilRoundStatus; weight_config: CouncilWeightConfig | null; }
 interface SubjectOption { id: string; full_name: string; position: string | null; profile_id: string | null; sort_order: number; }
 interface CriterionLite { id: string; title: string; sort_order: number; }
 
@@ -46,6 +46,7 @@ export default function CouncilReportPage() {
   const [criteria, setCriteria] = useState<CriterionLite[]>([]);
   const [report, setReport] = useState<ReportPayload | null>(null);
   const [loading, setLoading] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   const allowed = isAdmin || access.isSubject;
 
@@ -54,10 +55,10 @@ export default function CouncilReportPage() {
     (async () => {
       const { data } = await supabase
         .from('council_rounds')
-        .select('id, name, status')
+        .select('id, name, status, weight_config')
         .neq('status', 'draft')
         .order('start_date');
-      const list = (data || []) as RoundRow[];
+      const list = (data || []) as unknown as RoundRow[];
       setRounds(list);
       setRoundId((prev) => prev || list.find((r) => r.status === 'open')?.id || list[list.length - 1]?.id || '');
     })();
@@ -99,10 +100,15 @@ export default function CouncilReportPage() {
 
   useEffect(() => { loadReport(); }, [loadReport]);
 
+  const weightConfig = useMemo(
+    () => rounds.find((r) => r.id === roundId)?.weight_config ?? null,
+    [rounds, roundId],
+  );
+
   const summary = useMemo(() => {
     if (!report) return null;
-    return computeCouncilReport(report.evaluations, criteria.map((c) => c.id), report.subject.subject_level);
-  }, [report, criteria]);
+    return computeCouncilReport(report.evaluations, criteria.map((c) => c.id), report.subject.subject_level, weightConfig);
+  }, [report, criteria, weightConfig]);
 
   if (access.loading) {
     return <div className="p-6 text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Đang tải…</div>;
@@ -115,9 +121,49 @@ export default function CouncilReportPage() {
     );
   }
 
-  const scheme = report ? WEIGHT_SCHEMES[report.subject.subject_level] : null;
+  const scheme = report ? resolveWeightScheme(report.subject.subject_level, weightConfig) : null;
   const weightOf = (row: ReportEvaluationRow) =>
     scheme?.[weightBucketOf(row, report!.subject.subject_level)] ?? 0;
+
+  const subjectProfileId = subjects.find((s) => s.id === subjectId)?.profile_id || null;
+
+  // Gửi email kết quả đánh giá cho chính cán bộ được đánh giá (admin bấm)
+  const sendReportEmail = async () => {
+    if (!report || !summary || !subjectProfileId) return;
+    if (!window.confirm(`Gửi email kết quả đánh giá ${report.subject.round_name} cho ${report.subject.full_name}?`)) return;
+    setSendingEmail(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-hr-notification', {
+        body: {
+          kind: 'council_report',
+          recipient_profile_id: subjectProfileId,
+          cycle_name: report.subject.round_name,
+          score_text: summary.score100 != null ? formatScore(summary.score100) : '',
+          submitted_count: report.submitted_count,
+          total_members: report.total_members,
+          weight_present: formatPercent(summary.totalWeightPresent),
+          groups: summary.buckets.filter((b) => b.votes > 0).map((b) => ({
+            label: GROUP_ROW_LABEL[b.bucket],
+            votes: b.votes,
+            raw_avg: formatScore(b.rawAvg),
+            weight: formatPercent(b.weight),
+            contribution: formatScore(b.contribution, 4),
+          })),
+        },
+      });
+      if (error) throw error;
+      const res = data as { success?: boolean; skipped?: string; error?: string };
+      if (res?.success) toast.success(`Đã gửi email kết quả cho ${report.subject.full_name}.`);
+      else if (res?.skipped === 'duplicate') toast.info('Email kết quả này đã được gửi hôm nay — không gửi lại.');
+      else if (res?.skipped === 'no_email') toast.error('Cán bộ chưa có địa chỉ email trong hồ sơ.');
+      else if (res?.skipped === 'suppressed') toast.error('Địa chỉ email này đã từ chối nhận thư của hệ thống.');
+      else toast.error('Không gửi được email: ' + (res?.error || 'lỗi không xác định'));
+    } catch (e) {
+      toast.error('Lỗi gửi email: ' + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setSendingEmail(false);
+    }
+  };
 
   return (
     <div className="space-y-4 max-w-6xl">
@@ -151,6 +197,17 @@ export default function CouncilReportPage() {
           <Button size="sm" variant="outline" onClick={() => window.print()} disabled={!report}>
             <Printer className="w-4 h-4 mr-1" /> In báo cáo
           </Button>
+          {isAdmin && (
+            <Button
+              size="sm"
+              onClick={sendReportEmail}
+              disabled={!report || !summary || sendingEmail || !subjectProfileId || report.submitted_count === 0}
+              title={!subjectProfileId ? 'Cán bộ chưa liên kết tài khoản — bổ sung tại Quản trị Hội đồng đầu mối' : undefined}
+            >
+              {sendingEmail ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Mail className="w-4 h-4 mr-1" />}
+              Gửi email kết quả
+            </Button>
+          )}
         </div>
       </div>
 
@@ -214,20 +271,25 @@ export default function CouncilReportPage() {
                         <th key={c.id} className="border px-1 py-1.5" title={c.title}>TC{i + 1}</th>
                       ))}
                       <th className="border px-1.5 py-1.5 whitespace-nowrap">TB thô</th>
-                      <th className="border px-1.5 py-1.5 min-w-40">Ý kiến đóng góp</th>
-                      <th className="border px-1.5 py-1.5 min-w-32">Minh chứng ghi nhận</th>
+                      <th className="border px-1.5 py-1.5 min-w-48 w-[24%]">Ý kiến đóng góp</th>
+                      <th className="border px-1.5 py-1.5 min-w-40 w-[20%]">Minh chứng ghi nhận</th>
                     </tr>
                   </thead>
                   <tbody>
                     {report.evaluations.map((ev, idx) => {
-                      const comments = [ev.strengths, ev.weaknesses, ev.suggestions].filter(Boolean).join(' · ');
+                      // Ý kiến câu hỏi mở tách theo mục để text dài không phá bố cục bảng
+                      const commentItems = [
+                        ev.strengths && { label: 'Ưu điểm', text: ev.strengths },
+                        ev.weaknesses && { label: 'Hạn chế', text: ev.weaknesses },
+                        ev.suggestions && { label: 'Đề xuất', text: ev.suggestions },
+                      ].filter(Boolean) as { label: string; text: string }[];
                       // Minh chứng theo tiêu chí (TC1: …) + minh chứng chung của phiếu cũ (nếu có)
                       const evidenceItems = criteria
                         .map((c, i) => (ev.evidences?.[c.id] ? `TC${i + 1}: ${ev.evidences[c.id]}` : null))
                         .filter(Boolean) as string[];
                       if (ev.evidence) evidenceItems.push(ev.evidence);
                       return (
-                        <tr key={ev.anon_code}>
+                        <tr key={ev.anon_code} className="align-top">
                           <td className="border px-1.5 py-1.5 text-center">{idx + 1}</td>
                           <td className="border px-1.5 py-1.5 whitespace-nowrap">
                             Thành viên ẩn danh {ev.anon_code}
@@ -242,10 +304,16 @@ export default function CouncilReportPage() {
                           <td className="border px-1.5 py-1.5 text-center font-semibold">
                             {formatScore(summary.rowAverages.get(ev.anon_code) ?? null)}
                           </td>
-                          <td className="border px-1.5 py-1.5">{comments || '—'}</td>
-                          <td className="border px-1.5 py-1.5">
+                          <td className="border px-1.5 py-1.5 whitespace-pre-wrap break-words max-w-[280px]">
+                            {commentItems.length === 0 ? '—' : commentItems.map((item) => (
+                              <p key={item.label} className="mb-1 last:mb-0 leading-snug">
+                                <strong>{item.label}:</strong> {item.text}
+                              </p>
+                            ))}
+                          </td>
+                          <td className="border px-1.5 py-1.5 whitespace-pre-wrap break-words max-w-[240px]">
                             {evidenceItems.length === 0 ? '—' : evidenceItems.map((t, i) => (
-                              <p key={i} className="mb-0.5 last:mb-0">{t}</p>
+                              <p key={i} className="mb-1 last:mb-0 leading-snug">{t}</p>
                             ))}
                           </td>
                         </tr>
@@ -300,13 +368,7 @@ export default function CouncilReportPage() {
 
             {/* Ký xác nhận */}
             <h3 className="text-sm font-bold mt-6 mb-2 text-primary">IV. CÁC THÀNH VIÊN THAM DỰ HỘI ĐỒNG KÝ XÁC NHẬN KẾT QUẢ ĐÁNH GIÁ</h3>
-            <div className="grid grid-cols-3 gap-4 text-center text-xs mt-4 mb-2">
-              <div>
-                <p className="font-semibold uppercase">Cán bộ được đánh giá</p>
-                <p className="text-muted-foreground italic">(Ký và ghi rõ họ tên)</p>
-                <p className="mt-14 font-medium">{report.subject.full_name}</p>
-                <p className="text-muted-foreground">{report.subject.position || ''}</p>
-              </div>
+            <div className="grid grid-cols-2 gap-4 text-center text-xs mt-4 mb-2 max-w-xl mx-auto">
               <div>
                 <p className="font-semibold uppercase">Thư ký Hội đồng / Kiểm soát</p>
                 <p className="text-muted-foreground italic">(Ký và ghi rõ họ tên)</p>

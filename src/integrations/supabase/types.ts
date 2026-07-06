@@ -592,6 +592,7 @@ export type Database = {
           start_date: string | null
           status: string
           updated_at: string
+          weight_config: Json | null
         }
         Insert: {
           created_at?: string
@@ -602,6 +603,7 @@ export type Database = {
           start_date?: string | null
           status?: string
           updated_at?: string
+          weight_config?: Json | null
         }
         Update: {
           created_at?: string
@@ -612,6 +614,7 @@ export type Database = {
           start_date?: string | null
           status?: string
           updated_at?: string
+          weight_config?: Json | null
         }
         Relationships: []
       }

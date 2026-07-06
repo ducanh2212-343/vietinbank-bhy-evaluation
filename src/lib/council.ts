@@ -41,11 +41,44 @@ export const SUBJECT_LEVEL_LABELS: Record<CouncilSubjectLevel, string> = {
   truong_phong: 'Cấp Trưởng phòng',
 };
 
-// Trọng số theo cấp cán bộ được đánh giá
+// Trọng số mặc định theo cấp cán bộ được đánh giá (tỷ lệ 0-1)
 export const WEIGHT_SCHEMES: Record<CouncilSubjectLevel, Partial<Record<WeightBucket, number>>> = {
   pgd: { giam_doc: 0.2, pgd_khac: 0.15, thanh_vien: 0.65 },
   truong_phong: { giam_doc: 0.2, pgd_phu_trach: 0.1, pgd_khac: 0.15, thanh_vien: 0.55 },
 };
+
+// Cấu hình trọng số tùy chỉnh theo kỳ (council_rounds.weight_config), đơn vị %.
+// Thiếu/không hợp lệ ở đâu thì rơi về mặc định ở đó.
+export type CouncilWeightConfig = Partial<
+  Record<CouncilSubjectLevel, Partial<Record<WeightBucket, number>>>
+>;
+
+export const DEFAULT_WEIGHT_CONFIG_PERCENT: Record<CouncilSubjectLevel, Partial<Record<WeightBucket, number>>> = {
+  pgd: { giam_doc: 20, pgd_khac: 15, thanh_vien: 65 },
+  truong_phong: { giam_doc: 20, pgd_phu_trach: 10, pgd_khac: 15, thanh_vien: 55 },
+};
+
+/** Trả về bảng trọng số (tỷ lệ 0-1) cho một cấp đánh giá, ưu tiên cấu hình của kỳ. */
+export function resolveWeightScheme(
+  level: CouncilSubjectLevel,
+  config?: CouncilWeightConfig | null,
+): Partial<Record<WeightBucket, number>> {
+  const custom = config?.[level];
+  if (!custom) return WEIGHT_SCHEMES[level];
+  const resolved: Partial<Record<WeightBucket, number>> = {};
+  let valid = false;
+  for (const bucket of Object.keys(WEIGHT_SCHEMES[level]) as WeightBucket[]) {
+    const pct = custom[bucket];
+    if (typeof pct === 'number' && Number.isFinite(pct) && pct >= 0) {
+      resolved[bucket] = pct / 100;
+      if (pct > 0) valid = true;
+    } else {
+      resolved[bucket] = WEIGHT_SCHEMES[level][bucket];
+      if ((WEIGHT_SCHEMES[level][bucket] || 0) > 0) valid = true;
+    }
+  }
+  return valid ? resolved : WEIGHT_SCHEMES[level];
+}
 
 // Thang điểm chấm chi tiết: 10 nấc rời rạc từ 1 đến 10 (theo mẫu khảo sát ẩn danh)
 export const SCORE_SCALE: number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
@@ -126,8 +159,9 @@ export function computeCouncilReport(
   rows: ReportEvaluationRow[],
   activeCriterionIds: string[],
   level: CouncilSubjectLevel,
+  weightConfig?: CouncilWeightConfig | null,
 ): CouncilReportSummary {
-  const scheme = WEIGHT_SCHEMES[level];
+  const scheme = resolveWeightScheme(level, weightConfig);
   const grouped = new Map<WeightBucket, number[]>();
   const rowAverages = new Map<string, number>();
 

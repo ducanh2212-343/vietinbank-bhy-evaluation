@@ -20,9 +20,9 @@ export default function CouncilAdminPage() {
   const loadRounds = useCallback(async () => {
     const { data } = await supabase
       .from('council_rounds')
-      .select('id, name, description, start_date, end_date, status')
+      .select('id, name, description, start_date, end_date, status, weight_config')
       .order('start_date');
-    const list = (data || []) as CouncilRound[];
+    const list = (data || []) as unknown as CouncilRound[];
     setRounds(list);
     setRoundId((prev) => prev || list.find((r) => r.status === 'open')?.id || list[0]?.id || '');
   }, []);

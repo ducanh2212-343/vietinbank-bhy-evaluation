@@ -34,10 +34,18 @@ Tính năng được xây dựng theo 4 tài liệu Chi nhánh cung cấp: **Cơ
   dưới từng câu hỏi khi chấm điểm rất cao/rất thấp). Phiếu đã gửi vẫn sửa được khi kỳ còn mở.
 - **Admin xóa phiếu để làm lại:** tại tab *Tiến độ*, admin bấm nút xóa ở từng ô để xóa phiếu (điểm + nhận xét)
   của một thành viên cho một đầu mối — thành viên chấm lại từ đầu.
+- **Trọng số điều chỉnh được theo kỳ:** tab *Kỳ đánh giá* → nút *Trọng số* của từng kỳ: chỉnh % của
+  Giám đốc / PGĐ phụ trách / PGĐ khác / Thành viên cho cả 2 cấp đánh giá (tổng mỗi cấp phải bằng 100%);
+  có nút khôi phục mặc định theo Cơ chế. Trọng số áp dụng ngay khi tính báo cáo, kể cả phiếu đã chấm.
+- **Gửi email kết quả:** trên trang *Báo cáo đầu mối*, admin bấm "Gửi email kết quả" — hệ thống gửi cho
+  chính cán bộ được đánh giá (theo email hồ sơ): điểm thang 100, bảng nhóm trọng số, link xem báo cáo chi
+  tiết; tôn trọng chặn thư/hủy đăng ký và chống gửi trùng trong ngày (gửi lại được khi điểm thay đổi).
+  Yêu cầu đầu mối đã liên kết tài khoản.
 - **Báo cáo trọng số:** đúng bố cục mẫu — bảng chi tiết từng phiếu (người chấm **ẩn danh** dạng "Thành viên
   ẩn danh #xxx", trọng số, TC1–TC10, TB thô, ý kiến, minh chứng theo tiêu chí), bảng phân tích nhóm theo
-  trọng số, điểm quy thang 100, khối ký xác nhận, nút **In báo cáo**. (Không hiển thị xếp loại A/B/C/D
-  theo yêu cầu Chi nhánh — chỉ thể hiện điểm.)
+  trọng số, điểm quy thang 100, khối ký xác nhận (Thư ký Hội đồng + Đại diện BGĐ — **đã bỏ phần ký của
+  cán bộ được đánh giá** theo yêu cầu 07/2026), nút **In báo cáo**. Ý kiến/minh chứng dài tự xuống dòng,
+  tách mục Ưu điểm/Hạn chế/Đề xuất, không phá bố cục bảng. (Không hiển thị xếp loại A/B/C/D — chỉ thể hiện điểm.)
 
 ## 2. Trọng số và công thức (đã kiểm chứng bằng unit test)
 

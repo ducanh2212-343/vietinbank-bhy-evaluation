@@ -3,6 +3,8 @@
 //   admin duyệt/sửa từ AI trước khi gửi)
 // - kind = 'submission_reminder': nhắc cán bộ chưa nộp phiếu trước hạn chu kỳ,
 //   kèm deep-link về trang Tự đánh giá
+// - kind = 'council_report': gửi kết quả đánh giá công tác đầu mối (điểm trọng số
+//   theo nhóm, ẩn danh người chấm) cho chính cán bộ được đánh giá
 // Quyền gọi: BGĐ / TCTH admin / system admin / trưởng phòng TCTH (is_tcth_leader).
 // Tôn trọng suppressed_emails + unsubscribe token; chống gửi trùng theo idempotency_key
 // (thư: 1 lần/kỳ/người; nhắc hạn: tối đa 1 lần/ngày/kỳ/người).
@@ -107,7 +109,7 @@ Deno.serve(async (req) => {
     const kind = body.kind as string;
     const profileId = body.recipient_profile_id as string;
     const cycleName = (body.cycle_name as string) || '';
-    if (!['quarterly_letter', 'submission_reminder'].includes(kind) || !profileId || !cycleName) {
+    if (!['quarterly_letter', 'submission_reminder', 'council_report'].includes(kind) || !profileId || !cycleName) {
       return json({ error: 'Thiếu kind / recipient_profile_id / cycle_name' }, 400);
     }
 
@@ -136,6 +138,53 @@ Deno.serve(async (req) => {
       idempotencyKey = `qletter-${cycleName}-${profileId}`;
       bodyHtml = letterMarkdownToHtml(letter);
       text = letter;
+    } else if (kind === 'council_report') {
+      const scoreText = (body.score_text as string || '').trim();
+      const submittedCount = Number(body.submitted_count) || 0;
+      const totalMembers = Number(body.total_members) || 0;
+      const weightPresent = (body.weight_present as string || '').trim();
+      const groups = Array.isArray(body.groups) ? body.groups as {
+        label: string; votes: number; raw_avg: string; weight: string; contribution: string;
+      }[] : [];
+      if (!scoreText || groups.length === 0) return json({ error: 'Thiếu score_text / groups' }, 400);
+      label = 'council-report';
+      subject = `📊 Kết quả đánh giá công tác đầu mối ${cycleName} — 343 Phát triển nhân sự`;
+      const today = new Date().toISOString().slice(0, 10);
+      // Cho phép gửi lại trong ngày nếu điểm thay đổi (có thêm phiếu mới)
+      idempotencyKey = `creport-${cycleName}-${profileId}-${today}-${scoreText}`;
+      const groupRows = groups.map((g) => `
+        <tr>
+          <td style="border:1px solid #d7dde6;padding:6px 8px;">${escapeHtml(g.label)}</td>
+          <td style="border:1px solid #d7dde6;padding:6px 8px;text-align:center;">${escapeHtml(String(g.votes))}</td>
+          <td style="border:1px solid #d7dde6;padding:6px 8px;text-align:center;">${escapeHtml(g.raw_avg)}</td>
+          <td style="border:1px solid #d7dde6;padding:6px 8px;text-align:center;">${escapeHtml(g.weight)}</td>
+          <td style="border:1px solid #d7dde6;padding:6px 8px;text-align:center;">${escapeHtml(g.contribution)}</td>
+        </tr>`).join('');
+      const ctaUrl = `${APP_URL}/bao-cao-dau-moi`;
+      bodyHtml = `
+<p style="margin:8px 0;line-height:1.6;">Kính gửi <strong>${escapeHtml(firstName)}</strong>,</p>
+<p style="margin:8px 0;line-height:1.6;">Hội đồng đánh giá công tác đầu mối đã tổng hợp kết quả kỳ
+<strong>${escapeHtml(cycleName)}</strong> của ông/bà (${submittedCount}/${totalMembers} phiếu, danh tính người chấm được ẩn danh).</p>
+<div style="text-align:center;margin:16px 0;padding:14px;background:#f2f6fc;border-radius:8px;">
+  <div style="font-size:12px;color:#5a6577;">ĐIỂM QUY VỀ THANG 100</div>
+  <div style="font-size:28px;font-weight:bold;color:#0b2e59;">${escapeHtml(scoreText)}</div>
+  ${weightPresent ? `<div style="font-size:11px;color:#8a94a6;">Tổng trọng số bỏ phiếu hiện có: ${escapeHtml(weightPresent)}</div>` : ''}
+</div>
+<table style="border-collapse:collapse;width:100%;font-size:12px;">
+  <tr style="background:#eef1f6;">
+    <th style="border:1px solid #d7dde6;padding:6px 8px;text-align:left;">Nhóm đánh giá</th>
+    <th style="border:1px solid #d7dde6;padding:6px 8px;">Số phiếu</th>
+    <th style="border:1px solid #d7dde6;padding:6px 8px;">Điểm TB nhóm</th>
+    <th style="border:1px solid #d7dde6;padding:6px 8px;">Trọng số</th>
+    <th style="border:1px solid #d7dde6;padding:6px 8px;">Điểm thành phần</th>
+  </tr>
+  ${groupRows}
+</table>
+<p style="margin:18px 0;text-align:center;">
+  <a href="${ctaUrl}" style="background:#0b2e59;color:#ffffff;text-decoration:none;padding:11px 26px;border-radius:6px;font-weight:bold;display:inline-block;">Xem báo cáo chi tiết trên hệ thống</a>
+</p>
+<p style="margin:8px 0;line-height:1.6;font-size:12px;color:#5a6577;">Báo cáo chi tiết gồm điểm từng tiêu chí, ý kiến đóng góp và minh chứng ghi nhận từ các thành viên Hội đồng (ẩn danh).</p>`;
+      text = `Kính gửi ${firstName},\n\nKết quả đánh giá công tác đầu mối ${cycleName}: ${scoreText} điểm (thang 100), tổng hợp từ ${submittedCount}/${totalMembers} phiếu.\n\n${groups.map((g) => `- ${g.label}: ${g.votes} phiếu, TB ${g.raw_avg}, trọng số ${g.weight}`).join('\n')}\n\nXem báo cáo chi tiết: ${ctaUrl}`;
     } else {
       const deadlineText = (body.deadline_text as string || '').trim();
       const statusLabel = (body.status_label as string || 'Chưa nộp').trim();
@@ -215,7 +264,11 @@ Deno.serve(async (req) => {
     }
 
     const html = wrapEmail(
-      kind === 'quarterly_letter' ? `Thư phát triển cá nhân ${cycleName}` : `Nhắc nộp phiếu đánh giá ${cycleName}`,
+      kind === 'quarterly_letter'
+        ? `Thư phát triển cá nhân ${cycleName}`
+        : kind === 'council_report'
+          ? `Kết quả đánh giá công tác đầu mối ${cycleName}`
+          : `Nhắc nộp phiếu đánh giá ${cycleName}`,
       bodyHtml,
     );
 
