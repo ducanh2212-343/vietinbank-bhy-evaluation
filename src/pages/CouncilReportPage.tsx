@@ -221,6 +221,11 @@ export default function CouncilReportPage() {
                   <tbody>
                     {report.evaluations.map((ev, idx) => {
                       const comments = [ev.strengths, ev.weaknesses, ev.suggestions].filter(Boolean).join(' · ');
+                      // Minh chứng theo tiêu chí (TC1: …) + minh chứng chung của phiếu cũ (nếu có)
+                      const evidenceItems = criteria
+                        .map((c, i) => (ev.evidences?.[c.id] ? `TC${i + 1}: ${ev.evidences[c.id]}` : null))
+                        .filter(Boolean) as string[];
+                      if (ev.evidence) evidenceItems.push(ev.evidence);
                       return (
                         <tr key={ev.anon_code}>
                           <td className="border px-1.5 py-1.5 text-center">{idx + 1}</td>
@@ -238,7 +243,11 @@ export default function CouncilReportPage() {
                             {formatScore(summary.rowAverages.get(ev.anon_code) ?? null)}
                           </td>
                           <td className="border px-1.5 py-1.5">{comments || '—'}</td>
-                          <td className="border px-1.5 py-1.5">{ev.evidence || '—'}</td>
+                          <td className="border px-1.5 py-1.5">
+                            {evidenceItems.length === 0 ? '—' : evidenceItems.map((t, i) => (
+                              <p key={i} className="mb-0.5 last:mb-0">{t}</p>
+                            ))}
+                          </td>
                         </tr>
                       );
                     })}
@@ -276,19 +285,12 @@ export default function CouncilReportPage() {
               </table>
             </div>
 
-            <div className="grid sm:grid-cols-2 gap-3 mt-3">
-              <div className="border rounded-lg p-3 text-center">
-                <p className="text-[11px] uppercase text-muted-foreground">Xếp loại thực thi đầu mối</p>
-                <p className="text-lg font-bold mt-1">{summary.classification?.label || 'Chưa đủ dữ liệu'}</p>
-                <p className="text-[10px] text-muted-foreground mt-1">Phân loại dựa trên Quy chế xếp hạng cán bộ VietinBank</p>
-              </div>
-              <div className="border rounded-lg p-3 text-center">
-                <p className="text-[11px] uppercase text-muted-foreground">Điểm quy về thang 100 kiểm chứng</p>
-                <p className="text-lg font-bold mt-1">{summary.score100 != null ? formatScore(summary.score100) : '—'} điểm</p>
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  Tổng trọng số bỏ phiếu hiện có: {formatPercent(summary.totalWeightPresent)}
-                </p>
-              </div>
+            <div className="border rounded-lg p-3 text-center mt-3">
+              <p className="text-[11px] uppercase text-muted-foreground">Điểm quy về thang 100 kiểm chứng</p>
+              <p className="text-lg font-bold mt-1">{summary.score100 != null ? formatScore(summary.score100) : '—'} điểm</p>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Tổng trọng số bỏ phiếu hiện có: {formatPercent(summary.totalWeightPresent)}
+              </p>
             </div>
             {summary.totalWeightPresent < 1 && summary.score100 != null && (
               <p className="text-[11px] text-amber-600 dark:text-amber-500 mt-2">

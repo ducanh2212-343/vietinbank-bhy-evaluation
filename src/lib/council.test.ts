@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  classifyCouncilScore,
   computeCouncilReport,
   extremeScoreCriteria,
   rawAverage,
@@ -61,7 +60,6 @@ describe('computeCouncilReport — khớp mẫu báo cáo Quý 1/2026 (PGĐ Nguy
     expect(byBucket.thanh_vien.contribution).toBeCloseTo(5.2758, 3);
     expect(r.totalWeightPresent).toBeCloseTo(1, 5);
     expect(r.score100).toBeCloseTo(82.93, 1);
-    expect(r.classification?.grade).toBe('A');
   });
 
   it('chuẩn hóa theo tổng trọng số hiện có khi một nhóm chưa bỏ phiếu', () => {
@@ -94,16 +92,6 @@ describe('điểm cấp TP dùng scheme 20/10/15/55', () => {
     const r = computeCouncilReport(rows, CRITERIA, 'truong_phong');
     // 9*0.2 + 8*0.1 + 7*0.15 + 6*0.55 = 1.8 + 0.8 + 1.05 + 3.3 = 6.95 → 69.5
     expect(r.score100).toBeCloseTo(69.5, 2);
-    expect(r.classification?.grade).toBe('B');
-  });
-});
-
-describe('classifyCouncilScore', () => {
-  it('phân loại theo ngưỡng', () => {
-    expect(classifyCouncilScore(82.93).grade).toBe('A');
-    expect(classifyCouncilScore(70).grade).toBe('B');
-    expect(classifyCouncilScore(55).grade).toBe('C');
-    expect(classifyCouncilScore(40).grade).toBe('D');
   });
 });
 

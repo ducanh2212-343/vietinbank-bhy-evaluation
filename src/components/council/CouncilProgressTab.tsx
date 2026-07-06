@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Loader2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { MEMBER_GROUP_LABELS, type CouncilMemberGroup } from '@/lib/council';
 
@@ -13,7 +14,7 @@ interface Props {
 
 interface MemberRow { id: string; profile_id: string; member_group: CouncilMemberGroup; full_name: string; }
 interface SubjectRow { id: string; full_name: string; profile_id: string | null; }
-interface EvalRow { subject_id: string; evaluator_id: string; status: string; }
+interface EvalRow { id: string; subject_id: string; evaluator_id: string; status: string; }
 
 // Bảng theo dõi tiến độ bỏ phiếu — chỉ hiển thị AI đã gửi phiếu (phục vụ đôn đốc),
 // KHÔNG hiển thị điểm số để giữ nguyên tính ẩn danh của kết quả chấm.
@@ -29,7 +30,7 @@ export function CouncilProgressTab({ roundId, roundName }: Props) {
     const [membersRes, subjectsRes, evalsRes] = await Promise.all([
       supabase.from('council_members').select('id, profile_id, member_group, is_active, profiles(full_name)').eq('is_active', true),
       supabase.from('council_subjects').select('id, full_name, profile_id').eq('round_id', roundId).eq('is_active', true).order('sort_order'),
-      supabase.from('council_evaluations').select('subject_id, evaluator_id, status').eq('round_id', roundId),
+      supabase.from('council_evaluations').select('id, subject_id, evaluator_id, status').eq('round_id', roundId),
     ]);
     const err = membersRes.error || subjectsRes.error || evalsRes.error;
     if (err) { toast.error('Lỗi tải tiến độ: ' + err.message); setLoading(false); return; }
@@ -48,14 +49,38 @@ export function CouncilProgressTab({ roundId, roundName }: Props) {
     return <div className="text-sm text-muted-foreground flex items-center gap-2 py-4"><Loader2 className="w-4 h-4 animate-spin" /> Đang tải…</div>;
   }
 
+  const deleteEvaluation = async (ev: EvalRow, memberName: string, subjectName: string) => {
+    if (!window.confirm(
+      `Xóa phiếu của ${memberName} đánh giá ${subjectName}?\nToàn bộ điểm và nhận xét của phiếu này sẽ bị xóa để thành viên chấm lại từ đầu.`,
+    )) return;
+    const { error } = await supabase.from('council_evaluations').delete().eq('id', ev.id);
+    if (error) { toast.error('Lỗi xóa phiếu: ' + error.message); return; }
+    toast.success(`Đã xóa phiếu của ${memberName} — thành viên có thể chấm lại.`);
+    load();
+  };
+
   const cell = (member: MemberRow, subject: SubjectRow) => {
     if (subject.profile_id && subject.profile_id === member.profile_id) {
       return <span className="text-muted-foreground text-xs">×</span>; // không tự đánh giá
     }
     const ev = evals.find((e) => e.subject_id === subject.id && e.evaluator_id === member.profile_id);
-    if (ev?.status === 'submitted') return <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white text-[10px]">Đã gửi</Badge>;
-    if (ev) return <Badge variant="secondary" className="text-[10px]">Nháp</Badge>;
-    return <Badge variant="outline" className="text-[10px] text-muted-foreground">Chưa</Badge>;
+    if (!ev) return <Badge variant="outline" className="text-[10px] text-muted-foreground">Chưa</Badge>;
+    return (
+      <span className="inline-flex items-center gap-1">
+        {ev.status === 'submitted'
+          ? <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white text-[10px]">Đã gửi</Badge>
+          : <Badge variant="secondary" className="text-[10px]">Nháp</Badge>}
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-5 w-5 p-0 text-destructive"
+          title="Xóa phiếu để chấm lại"
+          onClick={() => deleteEvaluation(ev, member.full_name, subject.full_name)}
+        >
+          <Trash2 className="w-3 h-3" />
+        </Button>
+      </span>
+    );
   };
 
   const shortName = (full: string) => full.split(' ').slice(-2).join(' ');
@@ -70,7 +95,8 @@ export function CouncilProgressTab({ roundId, roundName }: Props) {
       <p className="text-sm text-muted-foreground">
         Tiến độ bỏ phiếu kỳ <strong>{roundName}</strong>: đã gửi <strong>{totalSubmitted}/{totalExpected}</strong> phiếu.
         Bảng chỉ hiển thị trạng thái gửi phiếu để đôn đốc — không hiển thị điểm nhằm giữ tính ẩn danh.
-        Dấu × là ô cán bộ không tự đánh giá bản thân.
+        Dấu × là ô cán bộ không tự đánh giá bản thân. Nút <Trash2 className="w-3 h-3 inline text-destructive" /> xóa
+        phiếu (điểm + nhận xét) để thành viên chấm lại từ đầu.
       </p>
       <Card>
         <CardContent className="p-0 overflow-x-auto">

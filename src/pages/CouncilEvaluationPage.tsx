@@ -28,7 +28,7 @@ interface CriterionRow {
 }
 interface MyEvaluation {
   id: string; subject_id: string; status: 'draft' | 'submitted';
-  strengths: string | null; weaknesses: string | null; suggestions: string | null; evidence: string | null;
+  strengths: string | null; weaknesses: string | null; suggestions: string | null;
 }
 
 const ANCHOR_LEVELS: { score: number; field: keyof Pick<CriterionRow, 'anchor_10' | 'anchor_8' | 'anchor_6' | 'anchor_3' | 'anchor_0'> }[] = [
@@ -53,11 +53,11 @@ export default function CouncilEvaluationPage() {
   // Phiếu đang mở
   const [subjectId, setSubjectId] = useState('');
   const [scores, setScores] = useState<Record<string, number | ''>>({});
+  const [evidences, setEvidences] = useState<Record<string, string>>({}); // criterion_id -> minh chứng
   const [savedScoreIds, setSavedScoreIds] = useState<Record<string, string>>({}); // criterion_id -> score row id
   const [strengths, setStrengths] = useState('');
   const [weaknesses, setWeaknesses] = useState('');
   const [suggestions, setSuggestions] = useState('');
-  const [evidence, setEvidence] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -85,7 +85,7 @@ export default function CouncilEvaluationPage() {
         .select('id, criterion_key, section, title, description, anchor_10, anchor_8, anchor_6, anchor_3, anchor_0, sort_order')
         .eq('round_id', roundId).eq('is_active', true).order('sort_order'),
       supabase.from('council_evaluations')
-        .select('id, subject_id, status, strengths, weaknesses, suggestions, evidence')
+        .select('id, subject_id, status, strengths, weaknesses, suggestions')
         .eq('round_id', roundId).eq('evaluator_id', profileId),
     ]);
     if (subjectsRes.error || criteriaRes.error || evalsRes.error) {
@@ -117,16 +117,17 @@ export default function CouncilEvaluationPage() {
     setStrengths(ev?.strengths || '');
     setWeaknesses(ev?.weaknesses || '');
     setSuggestions(ev?.suggestions || '');
-    setEvidence(ev?.evidence || '');
     setScores({});
+    setEvidences({});
     setSavedScoreIds({});
     if (ev) {
       const { data, error } = await supabase
         .from('council_evaluation_scores')
-        .select('id, criterion_id, score')
+        .select('id, criterion_id, score, evidence')
         .eq('evaluation_id', ev.id);
       if (error) { toast.error('Lỗi tải điểm đã chấm: ' + error.message); return; }
       setScores(Object.fromEntries((data || []).map((r) => [r.criterion_id, Number(r.score)])));
+      setEvidences(Object.fromEntries((data || []).filter((r) => r.evidence).map((r) => [r.criterion_id, r.evidence as string])));
       setSavedScoreIds(Object.fromEntries((data || []).map((r) => [r.criterion_id, r.id])));
     }
     setSubjectId(sid);
@@ -157,13 +158,17 @@ export default function CouncilEvaluationPage() {
         return;
       }
       const extremes = extremeScoreCriteria(numericScores, criterionIds);
-      if (extremes.length > 0 && (!evidence.trim() || !(strengths.trim() || suggestions.trim() || weaknesses.trim()))) {
+      const missingEvidence = extremes.filter((cid) => !(evidences[cid] || '').trim());
+      if (missingEvidence.length > 0) {
+        const names = missingEvidence
+          .map((cid) => criteria.find((c) => c.id === cid)?.title || '')
+          .filter(Boolean);
         toast.error(
-          `Có ${extremes.length} tiêu chí chấm rất cao (≥${EXTREME_HIGH}) hoặc rất thấp (≤${EXTREME_LOW}) — theo cơ chế đánh giá, vui lòng nhập nhận xét và minh chứng kèm theo.`,
+          `Tiêu chí chấm rất cao (≥${EXTREME_HIGH}) hoặc rất thấp (≤${EXTREME_LOW}) phải kèm minh chứng. Còn thiếu: ${names.slice(0, 3).join('; ')}${names.length > 3 ? '…' : ''}`,
         );
         return;
       }
-    } else if (scoredIds.length === 0 && !strengths.trim() && !weaknesses.trim() && !suggestions.trim() && !evidence.trim()) {
+    } else if (scoredIds.length === 0 && !strengths.trim() && !weaknesses.trim() && !suggestions.trim()) {
       toast.info('Chưa có nội dung để lưu.');
       return;
     }
@@ -178,7 +183,6 @@ export default function CouncilEvaluationPage() {
         strengths: strengths.trim() || null,
         weaknesses: weaknesses.trim() || null,
         suggestions: suggestions.trim() || null,
-        evidence: evidence.trim() || null,
         ...(submit
           ? { status: 'submitted' as const, submitted_at: new Date().toISOString() }
           : existing?.status === 'submitted' ? {} : { status: 'draft' as const }),
@@ -198,6 +202,7 @@ export default function CouncilEvaluationPage() {
         evaluation_id: evaluationId!,
         criterion_id: cid,
         score: numericScores[cid],
+        evidence: (evidences[cid] || '').trim() || null,
       }));
       if (upserts.length > 0) {
         const { error } = await supabase
@@ -218,7 +223,7 @@ export default function CouncilEvaluationPage() {
       // Cập nhật trạng thái cục bộ
       const { data: refreshed } = await supabase
         .from('council_evaluations')
-        .select('id, subject_id, status, strengths, weaknesses, suggestions, evidence')
+        .select('id, subject_id, status, strengths, weaknesses, suggestions')
         .eq('round_id', roundId).eq('evaluator_id', profileId);
       setMyEvals((refreshed || []) as MyEvaluation[]);
       if (submit) setSubjectId('');
@@ -339,10 +344,20 @@ export default function CouncilEvaluationPage() {
                           ))}
                         </ul>
                       </details>
-                      {isExtreme && (
-                        <p className="text-[11px] text-amber-600 dark:text-amber-500">
-                          Điểm rất cao/rất thấp — vui lòng nêu nhận xét và minh chứng ở phần dưới.
-                        </p>
+                      {(isExtreme || (evidences[c.id] || '').trim()) && (
+                        <div>
+                          <label className={`text-[11px] font-medium ${isExtreme ? 'text-amber-600 dark:text-amber-500' : ''}`}>
+                            Minh chứng cho tiêu chí này {isExtreme && <>(bắt buộc khi chấm ≥{EXTREME_HIGH} hoặc ≤{EXTREME_LOW})</>}
+                          </label>
+                          <Textarea
+                            value={evidences[c.id] || ''}
+                            onChange={(e) => setEvidences((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                            rows={2}
+                            disabled={!roundOpen}
+                            className={`mt-0.5 text-xs bg-background ${isExtreme && !(evidences[c.id] || '').trim() ? 'border-amber-500' : ''}`}
+                            placeholder="VD: Tỷ lệ GDV đạt chuẩn kỹ năng bán hàng tăng lên 95%; điểm hài lòng khách hàng 9.8/10…"
+                          />
+                        </div>
                       )}
                     </div>
                   );
@@ -368,10 +383,6 @@ export default function CouncilEvaluationPage() {
             <div>
               <label className="text-xs font-medium">3. Ý kiến đóng góp, đề xuất giải pháp phát triển cán bộ</label>
               <Textarea value={suggestions} onChange={(e) => setSuggestions(e.target.value)} rows={2} disabled={!roundOpen} className="mt-1 text-sm bg-background" />
-            </div>
-            <div>
-              <label className="text-xs font-medium">4. Minh chứng ghi nhận (bắt buộc khi chấm điểm rất cao/rất thấp)</label>
-              <Textarea value={evidence} onChange={(e) => setEvidence(e.target.value)} rows={2} disabled={!roundOpen} className="mt-1 text-sm bg-background" placeholder="VD: Tỷ lệ GDV đạt chuẩn kỹ năng bán hàng tăng lên 95%; điểm hài lòng khách hàng 9.8/10…" />
             </div>
           </CardContent>
         </Card>

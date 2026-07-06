@@ -437,6 +437,7 @@ export type Database = {
           created_at: string
           criterion_id: string
           evaluation_id: string
+          evidence: string | null
           id: string
           score: number
           updated_at: string
@@ -445,6 +446,7 @@ export type Database = {
           created_at?: string
           criterion_id: string
           evaluation_id: string
+          evidence?: string | null
           id?: string
           score: number
           updated_at?: string
@@ -453,6 +455,7 @@ export type Database = {
           created_at?: string
           criterion_id?: string
           evaluation_id?: string
+          evidence?: string | null
           id?: string
           score?: number
           updated_at?: string

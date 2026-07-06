@@ -55,25 +55,12 @@ export interface ReportEvaluationRow {
   anon_code: string;
   member_group: CouncilMemberGroup;
   is_supervisor: boolean;
-  scores: Record<string, number>; // criterion_id -> điểm
+  scores: Record<string, number>;     // criterion_id -> điểm
+  evidences?: Record<string, string>; // criterion_id -> minh chứng (điểm rất cao/rất thấp)
   strengths: string | null;
   weaknesses: string | null;
   suggestions: string | null;
-  evidence: string | null;
-}
-
-export interface CouncilClassification {
-  grade: string;   // A / B / C / D
-  label: string;   // Hoàn thành Xuất sắc…
-}
-
-// Ngưỡng xếp loại thực thi đầu mối (quy thang 100) — tham chiếu Quy chế xếp hạng
-// cán bộ VietinBank; có thể điều chỉnh tại đây khi Chi nhánh ban hành ngưỡng khác.
-export function classifyCouncilScore(score100: number): CouncilClassification {
-  if (score100 >= 80) return { grade: 'A', label: 'Hoàn thành Xuất sắc (Loại A)' };
-  if (score100 >= 65) return { grade: 'B', label: 'Hoàn thành Tốt (Loại B)' };
-  if (score100 >= 50) return { grade: 'C', label: 'Hoàn thành (Loại C)' };
-  return { grade: 'D', label: 'Chưa hoàn thành (Loại D)' };
+  evidence: string | null; // minh chứng chung (dữ liệu cũ, giữ để tương thích)
 }
 
 export function weightBucketOf(row: Pick<ReportEvaluationRow, 'member_group' | 'is_supervisor'>, level: CouncilSubjectLevel): WeightBucket {
@@ -106,7 +93,6 @@ export interface CouncilReportSummary {
   buckets: BucketSummary[];
   totalWeightPresent: number; // tổng trọng số các nhóm đã bỏ phiếu
   score100: number | null;    // điểm quy thang 100 (đã chuẩn hóa theo trọng số hiện có)
-  classification: CouncilClassification | null;
   rowAverages: Map<string, number>; // anon_code -> điểm TB thô của phiếu
 }
 
@@ -150,13 +136,7 @@ export function computeCouncilReport(
   }
 
   const score100 = totalWeightPresent > 0 ? (weightedSum / totalWeightPresent) * 10 : null;
-  return {
-    buckets,
-    totalWeightPresent,
-    score100,
-    classification: score100 == null ? null : classifyCouncilScore(score100),
-    rowAverages,
-  };
+  return { buckets, totalWeightPresent, score100, rowAverages };
 }
 
 /** Các tiêu chí chấm rất cao/rất thấp — bắt buộc kèm nhận xét & minh chứng. */

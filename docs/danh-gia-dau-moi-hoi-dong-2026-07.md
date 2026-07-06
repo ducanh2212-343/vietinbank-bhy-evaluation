@@ -25,12 +25,16 @@ Tính năng được xây dựng theo 4 tài liệu Chi nhánh cung cấp: **Cơ
   (Giám đốc / Phó Giám đốc / Thành viên khác). Đã nạp sẵn từ hồ sơ hiện có: GĐ Trần Đức Anh; 3 PGĐ
   (Thùy Linh, Thái Hoàng, Minh Hải); TP Đỗ Việt Anh; TP Vũ Thị Thu Hà; **bà Nguyễn Thị Phượng (đầu mối KPI)**.
 - **Phiếu chấm điểm:** chọn kỳ → chọn đầu mối → chấm 10 tiêu chí (0–10, bước 0,5; nút nhanh 10/8/6/3/0 kèm
-  tooltip chuẩn hành vi) → nhận xét 3 mục theo Mẫu phiếu (ưu điểm/hạn chế/đề xuất) + minh chứng ghi nhận →
-  Lưu nháp hoặc Gửi. **Không tự chấm bản thân** (ẩn khỏi danh sách + chặn ở tầng CSDL). Đúng cơ chế mục I.3:
-  điểm **≥ 9,5 hoặc ≤ 3 bắt buộc kèm nhận xét và minh chứng** mới gửi được. Phiếu đã gửi vẫn sửa được khi kỳ còn mở.
+  tooltip chuẩn hành vi) → nhận xét 3 mục theo Mẫu phiếu (ưu điểm/hạn chế/đề xuất) → Lưu nháp hoặc Gửi.
+  **Không tự chấm bản thân** (ẩn khỏi danh sách + chặn ở tầng CSDL). Đúng cơ chế mục I.3: tiêu chí chấm
+  **≥ 9,5 hoặc ≤ 3 bắt buộc nhập minh chứng ngay tại tiêu chí đó** mới gửi được (ô minh chứng hiện ra
+  dưới từng câu hỏi khi chấm điểm rất cao/rất thấp). Phiếu đã gửi vẫn sửa được khi kỳ còn mở.
+- **Admin xóa phiếu để làm lại:** tại tab *Tiến độ*, admin bấm nút xóa ở từng ô để xóa phiếu (điểm + nhận xét)
+  của một thành viên cho một đầu mối — thành viên chấm lại từ đầu.
 - **Báo cáo trọng số:** đúng bố cục mẫu — bảng chi tiết từng phiếu (người chấm **ẩn danh** dạng "Thành viên
-  ẩn danh #xxx", trọng số, TC1–TC10, TB thô, ý kiến, minh chứng), bảng phân tích nhóm theo trọng số, điểm quy
-  thang 100, xếp loại, khối ký xác nhận, nút **In báo cáo**.
+  ẩn danh #xxx", trọng số, TC1–TC10, TB thô, ý kiến, minh chứng theo tiêu chí), bảng phân tích nhóm theo
+  trọng số, điểm quy thang 100, khối ký xác nhận, nút **In báo cáo**. (Không hiển thị xếp loại A/B/C/D
+  theo yêu cầu Chi nhánh — chỉ thể hiện điểm.)
 
 ## 2. Trọng số và công thức (đã kiểm chứng bằng unit test)
 
@@ -44,10 +48,9 @@ Theo mục III của Cơ chế đánh giá:
 - Điểm TB thô mỗi phiếu = trung bình 10 tiêu chí. Điểm nhóm = trung bình các phiếu trong nhóm.
 - **Điểm thang 100 = Σ(điểm nhóm × trọng số) ÷ Σ(trọng số các nhóm đã bỏ phiếu) × 10** — nhóm chưa bỏ phiếu
   được chuẩn hóa lại đúng như dòng "Tổng trọng số bỏ phiếu hiện có" của mẫu báo cáo.
-- Unit test `src/lib/council.test.ts` tái lập chính xác số liệu mẫu Quý 1/2026: nhóm 8,75/8,45/8,12 → **82,93 điểm → Loại A**.
-- **Ngưỡng xếp loại (giả định, cần Chi nhánh xác nhận):** ≥80 Hoàn thành Xuất sắc (A); 65–79,99 Hoàn thành Tốt (B);
-  50–64,99 Hoàn thành (C); <50 Chưa hoàn thành (D). Mẫu báo cáo chỉ thể hiện 82,93 → Loại A nên các mốc còn lại
-  được suy luận theo thông lệ xếp hạng — chỉnh tại `classifyCouncilScore` trong `src/lib/council.ts` nếu Quy chế khác.
+- Unit test `src/lib/council.test.ts` tái lập chính xác số liệu mẫu Quý 1/2026: nhóm 8,75/8,45/8,12 → **82,93 điểm**.
+- Báo cáo chỉ thể hiện điểm quy thang 100, **không xếp loại A/B/C/D** (bỏ theo yêu cầu Chi nhánh 07/2026);
+  việc phân loại do Hội đồng quyết định ngoài hệ thống.
 
 ## 3. Phân quyền & bảo mật
 
@@ -81,7 +84,6 @@ Theo mục III của Cơ chế đánh giá:
 - **Đính kèm báo cáo tự đánh giá/hồ sơ minh chứng của đầu mối** vào phiếu để Hội đồng tra cứu khi chấm.
 - **Tách quyền xem báo cáo** khỏi vai trò `bgd` nếu muốn giới hạn chỉ GĐ + Thư ký Hội đồng.
 - **Trang lịch sử qua các kỳ** (so sánh điểm Quý II→III→IV của từng đầu mối, xu hướng cải thiện).
-- Khi có Quy chế xếp hạng chính thức: cập nhật ngưỡng A/B/C/D tại `src/lib/council.ts`.
 
 ## 6. Ghi chú kỹ thuật
 
