@@ -64,6 +64,7 @@ const EmailAdmin = lazyWithRetry(() => import("./pages/EmailAdmin"));
 const CycleManagementPage = lazyWithRetry(() => import("./pages/CycleManagementPage"));
 const OrgStructurePage = lazyWithRetry(() => import("./pages/OrgStructurePage"));
 const OneOnOneQuestionsAdminPage = lazyWithRetry(() => import("./pages/OneOnOneQuestionsAdminPage"));
+const EvaluatorAssignmentPage = lazyWithRetry(() => import("./pages/EvaluatorAssignmentPage"));
 const SubmissionTimeReportPage = lazyWithRetry(() => import("./pages/SubmissionTimeReportPage"));
 const VtbCoursesAdminPage = lazyWithRetry(() => import("./pages/VtbCoursesAdminPage"));
 const PersonalKanbanPage = lazyWithRetry(() => import("./pages/PersonalKanbanPage"));
@@ -171,6 +172,7 @@ const App = () => (
                 <Route path="/quan-ly-ky-danh-gia" element={<CycleManagementPage />} />
                 <Route path="/quan-ly-phong-ban" element={<OrgStructurePage />} />
                 <Route path="/quan-tri-cau-hoi-1-1" element={<OneOnOneQuestionsAdminPage />} />
+                <Route path="/phan-cong-danh-gia" element={<EvaluatorAssignmentPage />} />
                 <Route path="/ban-tin-quy" element={<QuarterlyNewsletterPage />} />
               </Route>
 
