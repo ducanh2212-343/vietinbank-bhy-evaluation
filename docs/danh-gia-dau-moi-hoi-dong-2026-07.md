@@ -54,11 +54,15 @@ Tính năng được xây dựng theo 4 tài liệu Chi nhánh cung cấp: **Cơ
 - **Biên bản toàn kỳ + Xuất Excel:** trên *Báo cáo đầu mối*, admin chọn "📋 Biên bản toàn kỳ" để in một
   trang tổng hợp tất cả đầu mối (điểm nhóm GĐ/PGĐ/TV, điểm thang 100, chữ ký Thư ký + BGĐ); nút
   "Xuất Excel" tạo file 3 sheet: Tổng hợp / Chi tiết phiếu ẩn danh / Danh mục tiêu chí.
-- **Báo cáo trọng số:** đúng bố cục mẫu — bảng chi tiết từng phiếu (người chấm **ẩn danh** dạng "Thành viên
-  ẩn danh #xxx", trọng số, TC1–TC10, TB thô, ý kiến, minh chứng theo tiêu chí), bảng phân tích nhóm theo
-  trọng số, điểm quy thang 100, khối ký xác nhận (Thư ký Hội đồng + Đại diện BGĐ — **đã bỏ phần ký của
-  cán bộ được đánh giá** theo yêu cầu 07/2026), nút **In báo cáo**. Ý kiến/minh chứng dài tự xuống dòng,
-  tách mục Ưu điểm/Hạn chế/Đề xuất, không phá bố cục bảng. (Không hiển thị xếp loại A/B/C/D — chỉ thể hiện điểm.)
+- **Báo cáo — ẩn danh toàn diện (điều chỉnh 07/2026):** KHÔNG hiển thị điểm của từng phiếu hay từng nhóm
+  vị trí (tránh lộ điểm Giám đốc/PGĐ chấm — nhóm chỉ 1 người sẽ bị nhận diện). Thay vào đó:
+  - **2 biểu đồ radar** theo điểm trung bình mỗi tiêu chí: Phần I (Năng lực TC1-5) và Phần II (Hiệu quả TC6-10).
+  - **Điểm quy thang 100** (đã xử lý trọng số) — con số tổng, không phân rã theo nhóm.
+  - **Nhận xét & góp ý tổng hợp** gộp ẩn danh: Ưu điểm / Hạn chế / Đề xuất / Minh chứng (không gắn mã phiếu, nhóm).
+  - Khối ký Thư ký Hội đồng + Đại diện BGĐ (đã bỏ phần ký của cán bộ được đánh giá).
+  - Biên bản toàn kỳ chỉ hiện điểm thang 100 mỗi đầu mối (bỏ 4 cột điểm nhóm).
+  - Email kết quả + file Excel cũng ẩn danh tương ứng: điểm 100 + điểm TB theo tiêu chí + nhận xét gộp,
+    không có bảng nhóm/điểm từng phiếu. (Không hiển thị xếp loại A/B/C/D — chỉ thể hiện điểm.)
 
 ## 2. Trọng số và công thức (đã kiểm chứng bằng unit test)
 

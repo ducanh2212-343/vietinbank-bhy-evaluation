@@ -1,12 +1,11 @@
-// Xuất Excel kết quả đánh giá đầu mối: sheet Tổng hợp (mỗi đầu mối một dòng)
-// + sheet Chi tiết (mỗi phiếu ẩn danh một dòng). Lazy-import xlsx như các trang khác.
+// Xuất Excel kết quả đánh giá đầu mối — ẩn danh toàn diện:
+// KHÔNG xuất điểm từng phiếu hay điểm theo nhóm vị trí (tránh lộ ai chấm bao nhiêu).
+// Chỉ xuất: điểm thang 100, điểm TB theo từng tiêu chí (tổng hợp), và nhận xét gộp.
 import {
-  MEMBER_GROUP_LABELS, WEIGHT_BUCKET_LABELS, effectiveRowWeight, formatPercent,
-  type CouncilReportSummary, type CouncilSubjectLevel, type CouncilWeightConfig,
-  type ReportEvaluationRow, type WeightBucket,
+  computeCriterionAverages, formatPercent,
+  type CouncilReportSummary, type CouncilSubjectLevel,
+  type ReportEvaluationRow,
 } from '@/lib/council';
-
-const BUCKET_ORDER: WeightBucket[] = ['giam_doc', 'pgd_phu_trach', 'pgd_khac', 'thanh_vien'];
 
 export interface CouncilExportItem {
   subjectName: string;
@@ -27,19 +26,25 @@ export async function exportCouncilExcel(
   roundName: string,
   criteria: CouncilExportCriterion[],
   items: CouncilExportItem[],
-  weightConfig: CouncilWeightConfig | null,
 ): Promise<void> {
   const XLSX = await import('xlsx');
   const wb = XLSX.utils.book_new();
+  const critIds = criteria.map((c) => c.id);
+  const idxOf = new Map(criteria.map((c, i) => [c.id, i]));
 
-  // Sheet 1 — Tổng hợp theo đầu mối (cột nhóm cố định để trộn được cấp PGĐ và cấp TP)
+  // Sheet 1 — Tổng hợp: điểm thang 100 + điểm TB từng tiêu chí (ẩn danh)
+  const header1 = [
+    'STT', 'Cán bộ đầu mối', 'Chức vụ', 'Số phiếu', 'Điểm quy thang 100', 'Tổng trọng số hiện có',
+    ...criteria.map((_, i) => `TC${i + 1}`),
+  ];
   const summaryRows: (string | number)[][] = [
-    [`BIÊN BẢN TỔNG HỢP KẾT QUẢ ĐÁNH GIÁ CÔNG TÁC ĐẦU MỐI — KỲ ${roundName.toUpperCase()}`],
+    [`BẢNG TỔNG HỢP KẾT QUẢ ĐÁNH GIÁ CÔNG TÁC ĐẦU MỐI — KỲ ${roundName.toUpperCase()}`],
+    ['Điểm chấm của từng thành viên/nhóm được ẩn danh; chỉ hiển thị điểm trung bình tổng hợp.'],
     [],
-    ['STT', 'Cán bộ đầu mối', 'Chức vụ', 'Số phiếu', 'Điểm quy thang 100', 'Tổng trọng số hiện có',
-      ...BUCKET_ORDER.map((b) => `Điểm nhóm: ${WEIGHT_BUCKET_LABELS[b]}`)],
+    header1,
   ];
   items.forEach((item, i) => {
+    const avgs = computeCriterionAverages(item.evaluations, critIds);
     summaryRows.push([
       i + 1,
       item.subjectName,
@@ -47,52 +52,35 @@ export async function exportCouncilExcel(
       `${item.submittedCount}/${item.totalMembers}`,
       round2(item.summary.score100),
       formatPercent(item.summary.totalWeightPresent),
-      ...BUCKET_ORDER.map((bucket) => {
-        const b = item.summary.buckets.find((x) => x.bucket === bucket);
-        return b && b.votes > 0 ? round2(b.rawAvg) : '';
-      }),
+      ...criteria.map((c) => (avgs.has(c.id) ? round2(avgs.get(c.id)) : '')),
     ]);
   });
   const ws1 = XLSX.utils.aoa_to_sheet(summaryRows);
-  ws1['!cols'] = [{ wch: 5 }, { wch: 26 }, { wch: 26 }, { wch: 10 }, { wch: 18 }, { wch: 18 }, ...BUCKET_ORDER.map(() => ({ wch: 26 }))];
+  ws1['!cols'] = [{ wch: 5 }, { wch: 26 }, { wch: 24 }, { wch: 10 }, { wch: 16 }, { wch: 16 }, ...criteria.map(() => ({ wch: 6 }))];
   XLSX.utils.book_append_sheet(wb, ws1, 'Tổng hợp');
 
-  // Sheet 2 — Chi tiết từng phiếu (ẩn danh)
-  const detailHeader = [
-    'Cán bộ đầu mối', 'Mã phiếu ẩn danh', 'Nhóm đánh giá', 'Trọng số phiếu (nhóm chia đều)',
-    ...criteria.map((_, i) => `TC${i + 1}`),
-    'TB thô', 'Ưu điểm', 'Hạn chế', 'Đề xuất', 'Minh chứng',
-  ];
-  const detailRows: (string | number)[][] = [detailHeader];
+  // Sheet 2 — Nhận xét & góp ý gộp (ẩn danh, không gắn người chấm)
+  const detailRows: (string | number)[][] = [['Cán bộ đầu mối', 'Ưu điểm nổi bật', 'Mặt hạn chế', 'Đề xuất phát triển', 'Minh chứng ghi nhận']];
   for (const item of items) {
+    const s: string[] = [], w: string[] = [], g: string[] = [], e: string[] = [];
     for (const ev of item.evaluations) {
-      const evidence = [
-        ...criteria.map((c, i) => (ev.evidences?.[c.id] ? `TC${i + 1}: ${ev.evidences[c.id]}` : null)).filter(Boolean),
-        ev.evidence,
-      ].filter(Boolean).join(' | ');
-      detailRows.push([
-        item.subjectName,
-        ev.anon_code,
-        MEMBER_GROUP_LABELS[ev.member_group] + (ev.is_supervisor ? ' (PGĐ phụ trách)' : ''),
-        formatPercent(effectiveRowWeight(ev, item.subjectLevel, item.summary.buckets, weightConfig)),
-        ...criteria.map((c) => (ev.scores[c.id] != null ? Number(ev.scores[c.id]) : '')),
-        round2(item.summary.rowAverages.get(ev.anon_code)),
-        ev.strengths || '',
-        ev.weaknesses || '',
-        ev.suggestions || '',
-        evidence,
-      ]);
+      if (ev.strengths?.trim()) s.push(`• ${ev.strengths.trim()}`);
+      if (ev.weaknesses?.trim()) w.push(`• ${ev.weaknesses.trim()}`);
+      if (ev.suggestions?.trim()) g.push(`• ${ev.suggestions.trim()}`);
+      if (ev.evidences) {
+        for (const [cid, txt] of Object.entries(ev.evidences)) {
+          if (txt?.trim()) e.push(`• TC${(idxOf.get(cid) ?? 0) + 1}: ${txt.trim()}`);
+        }
+      }
+      if (ev.evidence?.trim()) e.push(`• ${ev.evidence.trim()}`);
     }
+    detailRows.push([item.subjectName, s.join('\n'), w.join('\n'), g.join('\n'), e.join('\n')]);
   }
   const ws2 = XLSX.utils.aoa_to_sheet(detailRows);
-  ws2['!cols'] = [
-    { wch: 24 }, { wch: 12 }, { wch: 30 }, { wch: 9 },
-    ...criteria.map(() => ({ wch: 5 })),
-    { wch: 8 }, { wch: 40 }, { wch: 40 }, { wch: 40 }, { wch: 50 },
-  ];
-  XLSX.utils.book_append_sheet(wb, ws2, 'Chi tiết phiếu');
+  ws2['!cols'] = [{ wch: 24 }, { wch: 45 }, { wch: 45 }, { wch: 45 }, { wch: 50 }];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Nhận xét tổng hợp');
 
-  // Sheet 3 — Danh mục tiêu chí (để tra cứu TC1..TCn)
+  // Sheet 3 — Danh mục tiêu chí (tra cứu TC1..TCn)
   const ws3 = XLSX.utils.aoa_to_sheet([
     ['Mã', 'Tên tiêu chí'],
     ...criteria.map((c, i) => [`TC${i + 1}`, c.title]),

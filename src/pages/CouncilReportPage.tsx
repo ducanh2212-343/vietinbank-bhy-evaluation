@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useCouncilAccess } from '@/hooks/useCouncilAccess';
+import { useTheme } from '@/hooks/useTheme';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,10 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { BarChart3, FileSpreadsheet, Loader2, Mail, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  ROUND_STATUS_LABELS,
-  computeCouncilReport, effectiveRowWeight, formatPercent, formatScore,
-  type CouncilReportSummary, type CouncilRoundStatus, type CouncilSubjectLevel, type CouncilWeightConfig,
-  type ReportEvaluationRow, type WeightBucket,
+  PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer, Tooltip,
+} from 'recharts';
+import {
+  ROUND_STATUS_LABELS, SECTION_LABELS,
+  computeCouncilReport, computeCriterionAverages, formatPercent, formatScore,
+  type CouncilRoundStatus, type CouncilSection, type CouncilSubjectLevel, type CouncilWeightConfig,
+  type ReportEvaluationRow,
 } from '@/lib/council';
 import { exportCouncilExcel, type CouncilExportItem } from '@/lib/councilExport';
 
@@ -21,7 +25,7 @@ const ROUND_ALL = '__round__';
 
 interface RoundRow { id: string; name: string; status: CouncilRoundStatus; weight_config: CouncilWeightConfig | null; }
 interface SubjectOption { id: string; full_name: string; position: string | null; profile_id: string | null; sort_order: number; }
-interface CriterionLite { id: string; title: string; sort_order: number; }
+interface CriterionLite { id: string; title: string; sort_order: number; section: CouncilSection; }
 
 interface ReportPayload {
   subject: {
@@ -34,15 +38,50 @@ interface ReportPayload {
   evaluations: ReportEvaluationRow[];
 }
 
-const GROUP_ROW_LABEL: Record<WeightBucket, string> = {
-  giam_doc: 'Giám đốc Chi nhánh',
-  pgd_phu_trach: 'PGĐ phụ trách',
-  pgd_khac: 'Phó Giám đốc khác',
-  thanh_vien: 'Thành viên Hội đồng',
-};
+interface RadarDatum { criterion: string; title: string; score: number | null }
+
+// Biểu đồ radar điểm TB theo tiêu chí cho một phần (Năng lực / Hiệu quả).
+// Chỉ dùng điểm trung bình tổng hợp (ẩn danh — không lộ ai chấm bao nhiêu).
+function CriterionRadar({ data, title, color, gridColor, ink }: {
+  data: RadarDatum[]; title: string; color: string; gridColor: string; ink: string;
+}) {
+  const hasData = data.some((d) => d.score != null);
+  return (
+    <div className="border rounded-lg p-3">
+      <p className="text-xs font-semibold text-center mb-1">{title}</p>
+      {!hasData ? (
+        <p className="text-xs text-muted-foreground text-center py-8">Chưa có dữ liệu.</p>
+      ) : (
+        <div className="h-60">
+          <ResponsiveContainer width="100%" height="100%">
+            <RadarChart data={data} margin={{ top: 8, right: 22, bottom: 8, left: 22 }}>
+              <PolarGrid stroke={gridColor} />
+              <PolarAngleAxis dataKey="criterion" tick={{ fontSize: 11, fill: ink }} />
+              <PolarRadiusAxis domain={[0, 10]} tick={{ fontSize: 10, fill: ink }} tickCount={6} />
+              <Tooltip
+                formatter={(v: number) => [formatScore(v), 'Điểm TB']}
+                labelFormatter={(l: string) => { const it = data.find((d) => d.criterion === l); return it ? `${l}. ${it.title}` : l; }}
+                contentStyle={{ fontSize: 12, borderRadius: 8, maxWidth: 320 }}
+              />
+              <Radar dataKey="score" stroke={color} strokeWidth={2} fill={color} fillOpacity={0.18} />
+            </RadarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <ul className="mt-1.5 space-y-0.5">
+        {data.map((d) => (
+          <li key={d.criterion} className="text-[10px] text-muted-foreground leading-snug">
+            <strong>{d.criterion}.</strong> {d.title}{d.score != null ? ` — ${formatScore(d.score)}đ` : ''}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export default function CouncilReportPage() {
   const { isAdmin, profileId } = useAuth();
+  const { theme } = useTheme();
   const access = useCouncilAccess();
   const [rounds, setRounds] = useState<RoundRow[]>([]);
   const [roundId, setRoundId] = useState('');
@@ -96,7 +135,7 @@ export default function CouncilReportPage() {
     if (!subjectId) { setReport(null); setRoundReports(null); return; }
     setLoading(true);
     const criteriaRes = await supabase.from('council_criteria')
-      .select('id, title, sort_order')
+      .select('id, title, sort_order, section')
       .eq('round_id', roundId).eq('is_active', true).order('sort_order');
     if (criteriaRes.error) { toast.error('Lỗi tải tiêu chí: ' + criteriaRes.error.message); setLoading(false); return; }
     setCriteria((criteriaRes.data || []) as CriterionLite[]);
@@ -133,6 +172,52 @@ export default function CouncilReportPage() {
     return computeCouncilReport(report.evaluations, criteria.map((c) => c.id), report.subject.subject_level, weightConfig);
   }, [report, criteria, weightConfig]);
 
+  // Điểm trung bình tổng hợp từng tiêu chí (ẩn danh) — nguồn cho 2 radar
+  const criterionAverages = useMemo(
+    () => (report ? computeCriterionAverages(report.evaluations, criteria.map((c) => c.id)) : new Map<string, number>()),
+    [report, criteria],
+  );
+
+  // Chia tiêu chí theo Phần I (năng lực) / Phần II (hiệu quả) để vẽ radar
+  const radarBySection = useMemo(() => {
+    const idxOf = new Map(criteria.map((c, i) => [c.id, i]));
+    const build = (section: CouncilSection): RadarDatum[] => criteria
+      .filter((c) => c.section === section)
+      .map((c) => ({
+        criterion: `TC${(idxOf.get(c.id) ?? 0) + 1}`,
+        title: c.title,
+        score: criterionAverages.has(c.id) ? Number(criterionAverages.get(c.id)!.toFixed(2)) : null,
+      }));
+    return { nang_luc: build('nang_luc'), hieu_qua: build('hieu_qua') };
+  }, [criteria, criterionAverages]);
+
+  // Nhận xét & minh chứng gộp ẩn danh (không gắn nhóm/mã người chấm)
+  const pooledComments = useMemo(() => {
+    const strengths: string[] = [], weaknesses: string[] = [], suggestions: string[] = [], evidences: string[] = [];
+    if (report) {
+      const idxOf = new Map(criteria.map((c, i) => [c.id, i]));
+      for (const ev of report.evaluations) {
+        if (ev.strengths?.trim()) strengths.push(ev.strengths.trim());
+        if (ev.weaknesses?.trim()) weaknesses.push(ev.weaknesses.trim());
+        if (ev.suggestions?.trim()) suggestions.push(ev.suggestions.trim());
+        if (ev.evidences) {
+          for (const [cid, txt] of Object.entries(ev.evidences)) {
+            if (txt?.trim()) evidences.push(`TC${(idxOf.get(cid) ?? 0) + 1}: ${txt.trim()}`);
+          }
+        }
+        if (ev.evidence?.trim()) evidences.push(ev.evidence.trim());
+      }
+    }
+    return { strengths, weaknesses, suggestions, evidences };
+  }, [report, criteria]);
+
+  const themeColors = useMemo(() => ({
+    part1: theme === 'dark' ? '#3987e5' : '#2a78d6',
+    part2: theme === 'dark' ? '#199e70' : '#1baf7a',
+    grid: theme === 'dark' ? 'hsl(0 0% 100% / 0.12)' : 'hsl(0 0% 0% / 0.08)',
+    ink: theme === 'dark' ? '#c3c2b7' : '#5a6577',
+  }), [theme]);
+
   // Biên bản toàn kỳ: tổng hợp trọng số cho từng đầu mối
   const roundSummaries = useMemo(() => {
     if (!roundReports) return null;
@@ -158,7 +243,7 @@ export default function CouncilReportPage() {
     if (items.length === 0) { toast.info('Chưa có dữ liệu để xuất.'); return; }
     setExporting(true);
     try {
-      await exportCouncilExcel(roundName, criteria.map((c) => ({ id: c.id, title: c.title })), items, weightConfig);
+      await exportCouncilExcel(roundName, criteria.map((c) => ({ id: c.id, title: c.title })), items);
       toast.success('Đã xuất file Excel.');
     } catch (e) {
       toast.error('Lỗi xuất Excel: ' + (e instanceof Error ? e.message : String(e)));
@@ -178,11 +263,6 @@ export default function CouncilReportPage() {
     );
   }
 
-  // Trọng số THỰC mỗi phiếu = trọng số nhóm chia đều số phiếu trong nhóm
-  // (VD 2 PGĐ khác cùng bỏ phiếu, nhóm 15% → mỗi phiếu 7,5%)
-  const weightOf = (row: ReportEvaluationRow) =>
-    report && summary ? effectiveRowWeight(row, report.subject.subject_level, summary.buckets, weightConfig) : 0;
-
   const subjectProfileId = subjects.find((s) => s.id === subjectId)?.profile_id || null;
 
   // Gửi email kết quả đánh giá cho chính cán bộ được đánh giá (admin bấm)
@@ -200,13 +280,15 @@ export default function CouncilReportPage() {
           submitted_count: report.submitted_count,
           total_members: report.total_members,
           weight_present: formatPercent(summary.totalWeightPresent),
-          groups: summary.buckets.filter((b) => b.votes > 0).map((b) => ({
-            label: GROUP_ROW_LABEL[b.bucket],
-            votes: b.votes,
-            raw_avg: formatScore(b.rawAvg),
-            weight: formatPercent(b.weight),
-            contribution: formatScore(b.contribution, 4),
-          })),
+          // Điểm TB theo tiêu chí (ẩn danh) + nhận xét gộp — KHÔNG gửi phân tích theo nhóm
+          criteria_avg: [...radarBySection.nang_luc, ...radarBySection.hieu_qua]
+            .filter((d) => d.score != null)
+            .map((d) => ({ code: d.criterion, title: d.title, score: formatScore(d.score as number) })),
+          comments: {
+            strengths: pooledComments.strengths,
+            weaknesses: pooledComments.weaknesses,
+            suggestions: pooledComments.suggestions,
+          },
         },
       });
       if (error) throw error;
@@ -300,7 +382,7 @@ export default function CouncilReportPage() {
               Kỳ đánh giá: {rounds.find((r) => r.id === roundId)?.name} — Chi nhánh Bắc Hưng Yên · Xuất lúc {new Date().toLocaleString('vi-VN')}
             </p>
 
-            <div className="overflow-x-auto mt-4">
+            <div className="overflow-x-auto mt-4 max-w-2xl mx-auto">
               <table className="w-full text-xs border">
                 <thead>
                   <tr className="bg-muted/40">
@@ -308,46 +390,32 @@ export default function CouncilReportPage() {
                     <th className="border px-2 py-1.5 text-left">Cán bộ đầu mối</th>
                     <th className="border px-2 py-1.5 text-left">Chức vụ</th>
                     <th className="border px-2 py-1.5">Số phiếu</th>
-                    <th className="border px-2 py-1.5">Điểm nhóm GĐ</th>
-                    <th className="border px-2 py-1.5">PGĐ phụ trách</th>
-                    <th className="border px-2 py-1.5">PGĐ khác</th>
-                    <th className="border px-2 py-1.5">Thành viên</th>
                     <th className="border px-2 py-1.5">Điểm thang 100</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {roundSummaries.map(({ report: rp, summary: sm }, idx) => {
-                    const bucketAvg = (bucket: WeightBucket) => {
-                      const b = sm.buckets.find((x) => x.bucket === bucket);
-                      return b && b.votes > 0 ? formatScore(b.rawAvg) : '—';
-                    };
-                    return (
-                      <tr key={rp.subject.id}>
-                        <td className="border px-2 py-1.5 text-center">{idx + 1}</td>
-                        <td className="border px-2 py-1.5 font-medium whitespace-nowrap">{rp.subject.full_name}</td>
-                        <td className="border px-2 py-1.5">{rp.subject.position || '—'}</td>
-                        <td className="border px-2 py-1.5 text-center">{rp.submitted_count}/{rp.total_members}</td>
-                        <td className="border px-2 py-1.5 text-center">{bucketAvg('giam_doc')}</td>
-                        <td className="border px-2 py-1.5 text-center">{bucketAvg('pgd_phu_trach')}</td>
-                        <td className="border px-2 py-1.5 text-center">{bucketAvg('pgd_khac')}</td>
-                        <td className="border px-2 py-1.5 text-center">{bucketAvg('thanh_vien')}</td>
-                        <td className="border px-2 py-1.5 text-center font-semibold">
-                          {sm.score100 != null ? formatScore(sm.score100) : '—'}
-                          {sm.score100 != null && sm.totalWeightPresent < 1 && (
-                            <span className="block text-[10px] font-normal text-muted-foreground">
-                              (trọng số {formatPercent(sm.totalWeightPresent)})
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {roundSummaries.map(({ report: rp, summary: sm }, idx) => (
+                    <tr key={rp.subject.id}>
+                      <td className="border px-2 py-1.5 text-center">{idx + 1}</td>
+                      <td className="border px-2 py-1.5 font-medium whitespace-nowrap">{rp.subject.full_name}</td>
+                      <td className="border px-2 py-1.5">{rp.subject.position || '—'}</td>
+                      <td className="border px-2 py-1.5 text-center">{rp.submitted_count}/{rp.total_members}</td>
+                      <td className="border px-2 py-1.5 text-center font-semibold">
+                        {sm.score100 != null ? formatScore(sm.score100) : '—'}
+                        {sm.score100 != null && sm.totalWeightPresent < 1 && (
+                          <span className="block text-[10px] font-normal text-muted-foreground">
+                            (trọng số {formatPercent(sm.totalWeightPresent)})
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-2">
-              Điểm nhóm là điểm trung bình thô (thang 10) của các phiếu trong nhóm; điểm thang 100 đã xử lý
-              trọng số theo cấp đánh giá và chuẩn hóa theo tổng trọng số các nhóm đã bỏ phiếu.
+            <p className="text-[11px] text-muted-foreground mt-2 text-center">
+              Điểm thang 100 đã xử lý trọng số theo cấp đánh giá và chuẩn hóa theo tổng trọng số các nhóm đã bỏ phiếu.
+              Điểm chấm của từng nhóm/thành viên được ẩn danh, không hiển thị để bảo đảm tính khách quan.
             </p>
 
             <h3 className="text-sm font-bold mt-6 mb-2 text-primary">CÁC THÀNH VIÊN THAM DỰ HỘI ĐỒNG KÝ XÁC NHẬN</h3>
@@ -405,122 +473,68 @@ export default function CouncilReportPage() {
               )}
             </div>
 
-            {/* II. Bảng chi tiết */}
-            <h3 className="text-sm font-bold mt-5 mb-2 text-primary">II. BẢNG CHI TIẾT ĐIỂM CHẤM TỪ CÁC THÀNH VIÊN HỘI ĐỒNG</h3>
             {report.evaluations.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Chưa có phiếu đánh giá nào được gửi.</p>
+              <p className="text-sm text-muted-foreground mt-4">Chưa có phiếu đánh giá nào được gửi.</p>
             ) : (
-              /* Cuộn tự chứa trên màn hình (dễ vuốt trên điện thoại); khi in bung toàn bộ */
-              <div className="overflow-auto max-h-[70vh] overscroll-contain print:max-h-none print:overflow-visible">
-                <table className="w-full text-xs border">
-                  <thead>
-                    <tr>
-                      <th className="border px-1.5 py-1.5 sticky top-0 bg-muted z-10">STT</th>
-                      <th className="border px-1.5 py-1.5 whitespace-nowrap sticky top-0 bg-muted z-10">Người đánh giá</th>
-                      <th className="border px-1.5 py-1.5 sticky top-0 bg-muted z-10 whitespace-nowrap">Trọng số phiếu</th>
-                      {criteria.map((c, i) => (
-                        <th key={c.id} className="border px-1 py-1.5 sticky top-0 bg-muted z-10" title={c.title}>TC{i + 1}</th>
+              <>
+                {/* II. Phân tích điểm theo tiêu chí — 2 radar tổng hợp (ẩn danh) */}
+                <h3 className="text-sm font-bold mt-5 mb-2 text-primary">II. PHÂN TÍCH ĐIỂM TRUNG BÌNH THEO TỪNG TIÊU CHÍ</h3>
+                <p className="text-[11px] text-muted-foreground mb-2">
+                  Biểu đồ thể hiện điểm trung bình của Hội đồng theo từng tiêu chí (thang 10), tổng hợp từ
+                  toàn bộ {report.submitted_count} phiếu đã gửi. Điểm chấm của từng thành viên được ẩn danh
+                  hoàn toàn — báo cáo không hiển thị điểm của bất kỳ cá nhân hay nhóm vị trí nào.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <CriterionRadar data={radarBySection.nang_luc} title={SECTION_LABELS.nang_luc}
+                    color={themeColors.part1} gridColor={themeColors.grid} ink={themeColors.ink} />
+                  <CriterionRadar data={radarBySection.hieu_qua} title={SECTION_LABELS.hieu_qua}
+                    color={themeColors.part2} gridColor={themeColors.grid} ink={themeColors.ink} />
+                </div>
+
+                <div className="border rounded-lg p-3 text-center mt-4">
+                  <p className="text-[11px] uppercase text-muted-foreground">Điểm quy về thang 100</p>
+                  <p className="text-2xl font-bold mt-1">{summary.score100 != null ? formatScore(summary.score100) : '—'} điểm</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Đã xử lý trọng số theo cấp đánh giá · Tổng trọng số bỏ phiếu hiện có: {formatPercent(summary.totalWeightPresent)}
+                  </p>
+                </div>
+                {summary.totalWeightPresent < 1 && summary.score100 != null && (
+                  <p className="text-[11px] text-amber-600 dark:text-amber-500 mt-2">
+                    Một số nhóm chưa bỏ phiếu — điểm được chuẩn hóa theo tổng trọng số hiện có ({formatPercent(summary.totalWeightPresent)}).
+                  </p>
+                )}
+
+                {/* III. Nhận xét và góp ý tổng hợp (ẩn danh) */}
+                <h3 className="text-sm font-bold mt-5 mb-2 text-primary">III. NHẬN XÉT VÀ GÓP Ý TỔNG HỢP CỦA HỘI ĐỒNG</h3>
+                {(() => {
+                  const blocks: { label: string; items: string[] }[] = [
+                    { label: '1. Ưu điểm nổi bật', items: pooledComments.strengths },
+                    { label: '2. Mặt hạn chế, khuyết điểm', items: pooledComments.weaknesses },
+                    { label: '3. Ý kiến đóng góp, đề xuất phát triển', items: pooledComments.suggestions },
+                    { label: '4. Minh chứng ghi nhận', items: pooledComments.evidences },
+                  ];
+                  const anyContent = blocks.some((b) => b.items.length > 0);
+                  if (!anyContent) return <p className="text-sm text-muted-foreground">Chưa có nhận xét, góp ý nào từ Hội đồng.</p>;
+                  return (
+                    <div className="space-y-2.5">
+                      {blocks.map((b) => (
+                        <div key={b.label}>
+                          <p className="text-xs font-semibold">{b.label}</p>
+                          {b.items.length === 0 ? (
+                            <p className="text-xs text-muted-foreground pl-3">—</p>
+                          ) : (
+                            <ul className="list-disc pl-6 mt-0.5 space-y-1">
+                              {b.items.map((t, i) => (
+                                <li key={i} className="text-xs leading-snug whitespace-pre-wrap break-words">{t}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
                       ))}
-                      <th className="border px-1.5 py-1.5 whitespace-nowrap sticky top-0 bg-muted z-10">TB thô</th>
-                      <th className="border px-1.5 py-1.5 min-w-48 w-[24%] sticky top-0 bg-muted z-10">Ý kiến đóng góp</th>
-                      <th className="border px-1.5 py-1.5 min-w-40 w-[20%] sticky top-0 bg-muted z-10">Minh chứng ghi nhận</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {report.evaluations.map((ev, idx) => {
-                      // Ý kiến câu hỏi mở tách theo mục để text dài không phá bố cục bảng
-                      const commentItems = [
-                        ev.strengths && { label: 'Ưu điểm', text: ev.strengths },
-                        ev.weaknesses && { label: 'Hạn chế', text: ev.weaknesses },
-                        ev.suggestions && { label: 'Đề xuất', text: ev.suggestions },
-                      ].filter(Boolean) as { label: string; text: string }[];
-                      // Minh chứng theo tiêu chí (TC1: …) + minh chứng chung của phiếu cũ (nếu có)
-                      const evidenceItems = criteria
-                        .map((c, i) => (ev.evidences?.[c.id] ? `TC${i + 1}: ${ev.evidences[c.id]}` : null))
-                        .filter(Boolean) as string[];
-                      if (ev.evidence) evidenceItems.push(ev.evidence);
-                      return (
-                        <tr key={ev.anon_code} className="align-top">
-                          <td className="border px-1.5 py-1.5 text-center">{idx + 1}</td>
-                          <td className="border px-1.5 py-1.5 whitespace-nowrap">
-                            Thành viên ẩn danh {ev.anon_code}
-                            {ev.is_supervisor && <span className="block text-[10px] text-muted-foreground">(PGĐ phụ trách)</span>}
-                          </td>
-                          <td className="border px-1.5 py-1.5 text-center">{formatPercent(weightOf(ev))}</td>
-                          {criteria.map((c) => (
-                            <td key={c.id} className="border px-1 py-1.5 text-center">
-                              {ev.scores[c.id] != null ? Number(ev.scores[c.id]) : '—'}
-                            </td>
-                          ))}
-                          <td className="border px-1.5 py-1.5 text-center font-semibold">
-                            {formatScore(summary.rowAverages.get(ev.anon_code) ?? null)}
-                          </td>
-                          <td className="border px-1.5 py-1.5 whitespace-pre-wrap break-words max-w-[280px]">
-                            {commentItems.length === 0 ? '—' : commentItems.map((item) => (
-                              <p key={item.label} className="mb-1 last:mb-0 leading-snug">
-                                <strong>{item.label}:</strong> {item.text}
-                              </p>
-                            ))}
-                          </td>
-                          <td className="border px-1.5 py-1.5 whitespace-pre-wrap break-words max-w-[240px]">
-                            {evidenceItems.length === 0 ? '—' : evidenceItems.map((t, i) => (
-                              <p key={i} className="mb-1 last:mb-0 leading-snug">{t}</p>
-                            ))}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            <p className="text-[11px] text-muted-foreground mt-1.5">
-              Trọng số phiếu = trọng số nhóm chia đều cho số phiếu trong nhóm
-              (VD nhóm "PGĐ khác" 15% có 2 phiếu → mỗi phiếu 7,5%). Tổng trọng số phiếu của các nhóm đã bỏ phiếu
-              đúng bằng trọng số nhóm ở mục III.
-            </p>
-
-            {/* III. Phân tích trọng số */}
-            <h3 className="text-sm font-bold mt-5 mb-2 text-primary">
-              III. PHÂN TÍCH VÀ KIỂM CHỨNG KẾT QUẢ CHẤM ĐIỂM THEO TRỌNG SỐ VỊ TRÍ
-            </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs border">
-                <thead>
-                  <tr className="bg-muted/40">
-                    <th className="border px-2 py-1.5 text-left">Nhóm người đánh giá</th>
-                    <th className="border px-2 py-1.5">Số phiếu hiện có</th>
-                    <th className="border px-2 py-1.5">Điểm TB nhóm thô (thang 10)</th>
-                    <th className="border px-2 py-1.5">Trọng số áp dụng (%)</th>
-                    <th className="border px-2 py-1.5">Điểm thành phần có trọng số</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {summary.buckets.map((b) => (
-                    <tr key={b.bucket}>
-                      <td className="border px-2 py-1.5">{GROUP_ROW_LABEL[b.bucket]}</td>
-                      <td className="border px-2 py-1.5 text-center">{b.votes}</td>
-                      <td className="border px-2 py-1.5 text-center">{b.votes ? formatScore(b.rawAvg) : '—'}</td>
-                      <td className="border px-2 py-1.5 text-center">{formatPercent(b.weight)}</td>
-                      <td className="border px-2 py-1.5 text-center">{b.votes ? formatScore(b.contribution, 4) : '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="border rounded-lg p-3 text-center mt-3">
-              <p className="text-[11px] uppercase text-muted-foreground">Điểm quy về thang 100 kiểm chứng</p>
-              <p className="text-lg font-bold mt-1">{summary.score100 != null ? formatScore(summary.score100) : '—'} điểm</p>
-              <p className="text-[10px] text-muted-foreground mt-1">
-                Tổng trọng số bỏ phiếu hiện có: {formatPercent(summary.totalWeightPresent)}
-              </p>
-            </div>
-            {summary.totalWeightPresent < 1 && summary.score100 != null && (
-              <p className="text-[11px] text-amber-600 dark:text-amber-500 mt-2">
-                Một số nhóm chưa bỏ phiếu — điểm được chuẩn hóa theo tổng trọng số hiện có ({formatPercent(summary.totalWeightPresent)}).
-              </p>
+                    </div>
+                  );
+                })()}
+              </>
             )}
 
             {/* Ký xác nhận */}

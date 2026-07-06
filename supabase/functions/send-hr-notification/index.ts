@@ -145,48 +145,58 @@ Deno.serve(async (req) => {
       const submittedCount = Number(body.submitted_count) || 0;
       const totalMembers = Number(body.total_members) || 0;
       const weightPresent = (body.weight_present as string || '').trim();
-      const groups = Array.isArray(body.groups) ? body.groups as {
-        label: string; votes: number; raw_avg: string; weight: string; contribution: string;
+      // Điểm TB theo tiêu chí (ẩn danh) — KHÔNG nhận dữ liệu theo nhóm vị trí
+      const criteriaAvg = Array.isArray(body.criteria_avg) ? body.criteria_avg as {
+        code: string; title: string; score: string;
       }[] : [];
-      if (!scoreText || groups.length === 0) return json({ error: 'Thiếu score_text / groups' }, 400);
+      const comments = (body.comments || {}) as { strengths?: string[]; weaknesses?: string[]; suggestions?: string[] };
+      if (!scoreText) return json({ error: 'Thiếu score_text' }, 400);
       label = 'council-report';
       subject = `📊 Kết quả đánh giá công tác đầu mối ${cycleName} — 343 Phát triển nhân sự`;
       const today = new Date().toISOString().slice(0, 10);
       // Cho phép gửi lại trong ngày nếu điểm thay đổi (có thêm phiếu mới)
       idempotencyKey = `creport-${cycleName}-${profileId}-${today}-${scoreText}`;
-      const groupRows = groups.map((g) => `
+      const criteriaRows = criteriaAvg.map((c) => `
         <tr>
-          <td style="border:1px solid #d7dde6;padding:6px 8px;">${escapeHtml(g.label)}</td>
-          <td style="border:1px solid #d7dde6;padding:6px 8px;text-align:center;">${escapeHtml(String(g.votes))}</td>
-          <td style="border:1px solid #d7dde6;padding:6px 8px;text-align:center;">${escapeHtml(g.raw_avg)}</td>
-          <td style="border:1px solid #d7dde6;padding:6px 8px;text-align:center;">${escapeHtml(g.weight)}</td>
-          <td style="border:1px solid #d7dde6;padding:6px 8px;text-align:center;">${escapeHtml(g.contribution)}</td>
+          <td style="border:1px solid #d7dde6;padding:5px 8px;">${escapeHtml(c.code)}. ${escapeHtml(c.title)}</td>
+          <td style="border:1px solid #d7dde6;padding:5px 8px;text-align:center;font-weight:bold;">${escapeHtml(c.score)}</td>
         </tr>`).join('');
+      const commentBlock = (heading: string, items?: string[]) => {
+        const list = (items || []).filter((s) => typeof s === 'string' && s.trim());
+        if (list.length === 0) return '';
+        return `<p style="margin:12px 0 4px;font-weight:bold;color:#0b2e59;font-size:13px;">${escapeHtml(heading)}</p>
+<ul style="margin:0;padding-left:20px;">${list.map((s) => `<li style="margin:3px 0;line-height:1.5;">${escapeHtml(s)}</li>`).join('')}</ul>`;
+      };
       const ctaUrl = `${APP_URL}/bao-cao-dau-moi`;
       bodyHtml = `
 <p style="margin:8px 0;line-height:1.6;">Kính gửi <strong>${escapeHtml(firstName)}</strong>,</p>
 <p style="margin:8px 0;line-height:1.6;">Hội đồng đánh giá công tác đầu mối đã tổng hợp kết quả kỳ
-<strong>${escapeHtml(cycleName)}</strong> của ông/bà (${submittedCount}/${totalMembers} phiếu, danh tính người chấm được ẩn danh).</p>
+<strong>${escapeHtml(cycleName)}</strong> của ông/bà (${submittedCount}/${totalMembers} phiếu). Điểm chấm của
+từng thành viên được ẩn danh, chỉ thể hiện điểm trung bình tổng hợp.</p>
 <div style="text-align:center;margin:16px 0;padding:14px;background:#f2f6fc;border-radius:8px;">
   <div style="font-size:12px;color:#5a6577;">ĐIỂM QUY VỀ THANG 100</div>
   <div style="font-size:28px;font-weight:bold;color:#0b2e59;">${escapeHtml(scoreText)}</div>
   ${weightPresent ? `<div style="font-size:11px;color:#8a94a6;">Tổng trọng số bỏ phiếu hiện có: ${escapeHtml(weightPresent)}</div>` : ''}
 </div>
+${criteriaRows ? `<p style="margin:12px 0 4px;font-weight:bold;color:#0b2e59;font-size:13px;">Điểm trung bình theo từng tiêu chí (thang 10)</p>
 <table style="border-collapse:collapse;width:100%;font-size:12px;">
   <tr style="background:#eef1f6;">
-    <th style="border:1px solid #d7dde6;padding:6px 8px;text-align:left;">Nhóm đánh giá</th>
-    <th style="border:1px solid #d7dde6;padding:6px 8px;">Số phiếu</th>
-    <th style="border:1px solid #d7dde6;padding:6px 8px;">Điểm TB nhóm</th>
-    <th style="border:1px solid #d7dde6;padding:6px 8px;">Trọng số</th>
-    <th style="border:1px solid #d7dde6;padding:6px 8px;">Điểm thành phần</th>
+    <th style="border:1px solid #d7dde6;padding:5px 8px;text-align:left;">Tiêu chí</th>
+    <th style="border:1px solid #d7dde6;padding:5px 8px;">Điểm TB</th>
   </tr>
-  ${groupRows}
-</table>
+  ${criteriaRows}
+</table>` : ''}
+${commentBlock('Ưu điểm nổi bật', comments.strengths)}
+${commentBlock('Mặt hạn chế, khuyết điểm', comments.weaknesses)}
+${commentBlock('Ý kiến đóng góp, đề xuất phát triển', comments.suggestions)}
 <p style="margin:18px 0;text-align:center;">
-  <a href="${ctaUrl}" style="background:#0b2e59;color:#ffffff;text-decoration:none;padding:11px 26px;border-radius:6px;font-weight:bold;display:inline-block;">Xem báo cáo chi tiết trên hệ thống</a>
-</p>
-<p style="margin:8px 0;line-height:1.6;font-size:12px;color:#5a6577;">Báo cáo chi tiết gồm điểm từng tiêu chí, ý kiến đóng góp và minh chứng ghi nhận từ các thành viên Hội đồng (ẩn danh).</p>`;
-      text = `Kính gửi ${firstName},\n\nKết quả đánh giá công tác đầu mối ${cycleName}: ${scoreText} điểm (thang 100), tổng hợp từ ${submittedCount}/${totalMembers} phiếu.\n\n${groups.map((g) => `- ${g.label}: ${g.votes} phiếu, TB ${g.raw_avg}, trọng số ${g.weight}`).join('\n')}\n\nXem báo cáo chi tiết: ${ctaUrl}`;
+  <a href="${ctaUrl}" style="background:#0b2e59;color:#ffffff;text-decoration:none;padding:11px 26px;border-radius:6px;font-weight:bold;display:inline-block;">Xem báo cáo đầy đủ trên hệ thống</a>
+</p>`;
+      const commentText = (heading: string, items?: string[]) => {
+        const list = (items || []).filter((s) => typeof s === 'string' && s.trim());
+        return list.length ? `\n${heading}:\n${list.map((s) => `- ${s}`).join('\n')}` : '';
+      };
+      text = `Kính gửi ${firstName},\n\nKết quả đánh giá công tác đầu mối ${cycleName}: ${scoreText} điểm (thang 100), tổng hợp từ ${submittedCount}/${totalMembers} phiếu (ẩn danh).\n\nĐiểm TB theo tiêu chí:\n${criteriaAvg.map((c) => `- ${c.code}. ${c.title}: ${c.score}`).join('\n')}${commentText('Ưu điểm nổi bật', comments.strengths)}${commentText('Mặt hạn chế', comments.weaknesses)}${commentText('Đề xuất phát triển', comments.suggestions)}\n\nXem báo cáo đầy đủ: ${ctaUrl}`;
     } else if (kind === 'council_vote_reminder') {
       const pendingSubjects = Array.isArray(body.pending_subjects)
         ? (body.pending_subjects as string[]).filter((s) => typeof s === 'string' && s.trim())
