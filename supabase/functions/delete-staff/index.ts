@@ -3,7 +3,7 @@
 // Irreversible: profile, auth account, evaluations, plans, kanban, etc.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { HttpError, requireRole } from "../_shared/auth.ts";
-import { STAFF_CREATOR_ROLES } from "../_shared/roles.ts";
+import { STAFF_DELETER_ROLES } from "../_shared/roles.ts";
 import { writeAuditLog } from "../_shared/staff.ts";
 
 Deno.serve(async (req) => {
@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const caller = await requireRole(req, STAFF_CREATOR_ROLES);
+    const caller = await requireRole(req, STAFF_DELETER_ROLES);
     const adminClient = caller.adminClient;
 
     const body = await req.json().catch(() => ({}));

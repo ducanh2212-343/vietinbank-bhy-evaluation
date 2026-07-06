@@ -47,5 +47,19 @@ Lệnh khác: `npm run test` (vitest), `npm run build`, `npm run lint`.
 - Edge function `send-hr-notification` **đã deploy**; `ai-advisor` trên server
   là bản cũ nhưng 3 mode mới chạy qua template trong `ai_prompts.content`
   (fallback code trong repo sẽ có hiệu lực ở lần deploy function kế tiếp).
+- **Nhà cung cấp AI linh hoạt (07/2026):** ngoài Lovable/Gemini/OpenAI còn có
+  **DeepSeek** và Gateway tùy chỉnh (OpenAI-compatible — OpenRouter, Groq...).
+  Thêm provider mới = 1 entry `PROVIDER_PRESETS` trong
+  `supabase/functions/ai-advisor/index.ts` + 1 entry `PROVIDER_OPTIONS` trong
+  `src/pages/AIPromptsAdmin.tsx`. Cần áp migration
+  `20260706130000_ai_provider_flexible.sql` (nới CHECK `ai_settings.provider`)
+  và deploy lại `ai-advisor` trước khi chuyển sang DeepSeek.
+- **Quản trị chi phí AI (07/2026):** đo token thực (đọc `usage` từ provider, có
+  tee stream cho chat), bảng giá model `ai_model_pricing`, ngân sách tháng trong
+  `ai_settings` (`monthly_budget`/`budget_enforce`), dashboard token+tiền trong
+  màn hình Quản trị AI (component `AICostPanel`, RPC `get_ai_usage_summary`).
+  Cần áp migration `20260706140000_ai_cost_management.sql` và deploy lại
+  `ai-advisor`. **Giá seed chỉ là tham khảo — admin phải cập nhật theo bảng giá
+  chính thức của nhà cung cấp** (đơn vị mặc định USD, chỉnh ở ô "Đơn vị tiền").
 
 Tài liệu thiết kế gamification mục skill: `docs/nghien-cuu-gamification-muc-anh-skill.md`.

@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from '@/hooks/use-toast';
 import { Loader2, Save, RotateCcw, Coins, KeyRound, PlugZap } from 'lucide-react';
 import { BrandMascotAI } from '@/components/branding/BrandAssets';
+import AICostPanel from '@/components/ai/AICostPanel';
 
 interface AIPrompt {
   mode: string;
@@ -31,6 +32,7 @@ const MODEL_TIERS: { tier: string; hint: string; models: { value: string; label:
     models: [
       { value: 'google/gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
       { value: 'openai/gpt-5-nano', label: 'GPT-5 Nano' },
+      { value: 'deepseek/deepseek-chat', label: 'DeepSeek V3 (Chat)' },
     ],
   },
   {
@@ -41,6 +43,7 @@ const MODEL_TIERS: { tier: string; hint: string; models: { value: string; label:
       { value: 'google/gemini-3-flash-preview', label: 'Gemini 3 Flash (preview)' },
       { value: 'google/gemini-3.5-flash', label: 'Gemini 3.5 Flash' },
       { value: 'openai/gpt-5-mini', label: 'GPT-5 Mini' },
+      { value: 'deepseek/deepseek-reasoner', label: 'DeepSeek R1 (suy luận sâu, giá rẻ)' },
     ],
   },
   {
@@ -97,11 +100,34 @@ const PROVIDER_OPTIONS: { value: string; label: string; hint: string; keyUrl?: s
     hint: 'Gọi thẳng OpenAI — chỉ dùng được model GPT. Lấy key tại platform.openai.com/api-keys.',
   },
   {
+    value: 'deepseek',
+    label: 'DeepSeek (API trực tiếp)',
+    hint: 'Gọi thẳng DeepSeek — chi phí rất thấp, chỉ dùng được model DeepSeek (deepseek-chat, deepseek-reasoner). Lấy key tại platform.deepseek.com/api_keys.',
+  },
+  {
     value: 'custom',
     label: 'Gateway tùy chỉnh (OpenAI-compatible)',
-    hint: 'Gateway nội bộ hoặc bên thứ ba theo chuẩn OpenAI chat/completions. Cần nhập Base URL (ví dụ https://gateway.noibo.vn/v1).',
+    hint: 'Bất kỳ nhà cung cấp nào theo chuẩn OpenAI chat/completions (gateway nội bộ, OpenRouter, Groq...). Cần nhập Base URL (ví dụ https://gateway.noibo.vn/v1).',
   },
 ];
+
+// Tiền tố model theo provider — phản chiếu PROVIDER_PRESETS trong edge function
+// ai-advisor. null = gateway đa model (nhận mọi tên model).
+const PROVIDER_MODEL_PREFIX: Record<string, string | null> = {
+  lovable: null,
+  custom: null,
+  gemini: 'google/',
+  openai: 'openai/',
+  deepseek: 'deepseek/',
+};
+const KNOWN_MODEL_PREFIXES = ['google/', 'openai/', 'deepseek/'];
+
+/** Model có chạy được với provider đang chọn không (mirror logic normalizeModel server-side). */
+function modelWorksWithProvider(provider: string, model: string): boolean {
+  const own = PROVIDER_MODEL_PREFIX[provider];
+  if (own == null) return true; // gateway nhận mọi model
+  return !KNOWN_MODEL_PREFIXES.some((p) => p !== own && (model || '').startsWith(p));
+}
 
 interface ProviderSettings {
   provider: string;
@@ -361,12 +387,17 @@ export default function AIPromptsAdmin() {
 
         <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground space-y-1">
           <p>
-            <strong>Lưu ý model theo nhà cung cấp:</strong> danh sách model bên dưới giữ nguyên tên dạng <code>google/…</code> / <code>openai/…</code> —
-            hệ thống tự bỏ tiền tố khi gọi API trực tiếp.
+            <strong>Lưu ý model theo nhà cung cấp:</strong> danh sách model bên dưới giữ nguyên tên dạng{' '}
+            <code>google/…</code> / <code>openai/…</code> / <code>deepseek/…</code> — hệ thống tự bỏ tiền tố khi gọi API trực tiếp.
           </p>
           <p>
-            Chọn <strong>Google Gemini</strong> thì chỉ các model Gemini hoạt động; chọn <strong>OpenAI</strong> thì chỉ model GPT hoạt động.
-            Tác vụ đang gán model không thuộc nhà cung cấp sẽ báo lỗi rõ để đổi model.
+            Nhà cung cấp trực tiếp (Gemini/OpenAI/DeepSeek) chỉ chạy model của chính hãng — tác vụ đang gán model
+            không thuộc nhà cung cấp sẽ được cảnh báo ⚠ ngay bên dưới ô chọn model và báo lỗi rõ khi gọi.
+            Gateway (Lovable/tùy chỉnh) nhận mọi model mà gateway đó hỗ trợ.
+          </p>
+          <p>
+            Muốn dùng nhà cung cấp khác chưa có trong danh sách (OpenRouter, Groq, gateway nội bộ...)? Chọn{' '}
+            <strong>Gateway tùy chỉnh</strong> + Base URL OpenAI-compatible, rồi nhập tên model tùy chỉnh cho từng tác vụ.
           </p>
         </div>
 
@@ -381,6 +412,9 @@ export default function AIPromptsAdmin() {
           </Button>
         </div>
       </Card>
+
+      {/* Chi phí, ngân sách, bảng giá & thống kê token */}
+      <AICostPanel />
 
       {loading ? (
         <div className="flex items-center gap-2 text-muted-foreground p-8">
@@ -460,6 +494,13 @@ export default function AIPromptsAdmin() {
                           {recommended && d.model !== recommended && (
                             <p className="text-[10px] text-muted-foreground">
                               Khuyến nghị cho tác vụ này: <code>{recommended}</code>
+                            </p>
+                          )}
+                          {!modelWorksWithProvider(providerSettings.provider, d.model) && (
+                            <p className="text-[10px] text-destructive">
+                              ⚠ Model này không thuộc nhà cung cấp đang dùng
+                              ({PROVIDER_OPTIONS.find((o) => o.value === providerSettings.provider)?.label || providerSettings.provider})
+                              — tác vụ sẽ báo lỗi khi gọi. Chọn model phù hợp hoặc đổi nhà cung cấp.
                             </p>
                           )}
                         </>
