@@ -54,5 +54,12 @@ Lệnh khác: `npm run test` (vitest), `npm run build`, `npm run lint`.
   `src/pages/AIPromptsAdmin.tsx`. Cần áp migration
   `20260706130000_ai_provider_flexible.sql` (nới CHECK `ai_settings.provider`)
   và deploy lại `ai-advisor` trước khi chuyển sang DeepSeek.
+- **Quản trị chi phí AI (07/2026):** đo token thực (đọc `usage` từ provider, có
+  tee stream cho chat), bảng giá model `ai_model_pricing`, ngân sách tháng trong
+  `ai_settings` (`monthly_budget`/`budget_enforce`), dashboard token+tiền trong
+  màn hình Quản trị AI (component `AICostPanel`, RPC `get_ai_usage_summary`).
+  Cần áp migration `20260706140000_ai_cost_management.sql` và deploy lại
+  `ai-advisor`. **Giá seed chỉ là tham khảo — admin phải cập nhật theo bảng giá
+  chính thức của nhà cung cấp** (đơn vị mặc định USD, chỉnh ở ô "Đơn vị tiền").
 
 Tài liệu thiết kế gamification mục skill: `docs/nghien-cuu-gamification-muc-anh-skill.md`.

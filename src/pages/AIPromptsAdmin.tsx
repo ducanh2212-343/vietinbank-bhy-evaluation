@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from '@/hooks/use-toast';
 import { Loader2, Save, RotateCcw, Coins, KeyRound, PlugZap } from 'lucide-react';
 import { BrandMascotAI } from '@/components/branding/BrandAssets';
+import AICostPanel from '@/components/ai/AICostPanel';
 
 interface AIPrompt {
   mode: string;
@@ -411,6 +412,9 @@ export default function AIPromptsAdmin() {
           </Button>
         </div>
       </Card>
+
+      {/* Chi phí, ngân sách, bảng giá & thống kê token */}
+      <AICostPanel />
 
       {loading ? (
         <div className="flex items-center gap-2 text-muted-foreground p-8">

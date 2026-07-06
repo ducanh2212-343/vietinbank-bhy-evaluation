@@ -188,6 +188,54 @@ async function fetchWithTimeout(
   }
 }
 
+// ============ Đo token + tính chi phí ============
+interface Usage { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number }
+type PricingMap = Map<string, { input: number; output: number }>;
+
+/** Nạp bảng giá model (per 1M token) một lần cho mỗi lượt gọi. Soft-fail nếu bảng chưa có. */
+async function loadPricing(adminCli: any): Promise<PricingMap> {
+  const map: PricingMap = new Map();
+  try {
+    const { data } = await adminCli
+      .from('ai_model_pricing')
+      .select('model, input_price, output_price')
+      .eq('is_active', true);
+    for (const p of data || []) {
+      map.set(p.model, { input: Number(p.input_price) || 0, output: Number(p.output_price) || 0 });
+    }
+  } catch (e) {
+    console.warn('ai_model_pricing unavailable:', e);
+  }
+  return map;
+}
+
+/** Cập nhật dòng ai_usage_log đã tạo với token thực + chi phí ước tính. Best-effort. */
+async function recordUsage(
+  adminCli: any,
+  usageLogId: string | null,
+  provider: string,
+  model: string,
+  usage: Usage | undefined,
+  pricing: PricingMap,
+): Promise<void> {
+  if (!usageLogId) return;
+  try {
+    const inTok = usage?.prompt_tokens ?? null;
+    const outTok = usage?.completion_tokens ?? null;
+    const totTok = usage?.total_tokens ?? (inTok != null || outTok != null ? (inTok ?? 0) + (outTok ?? 0) : null);
+    const price = pricing.get(model);
+    const cost = price && (inTok != null || outTok != null)
+      ? Number((((inTok ?? 0) / 1_000_000) * price.input + ((outTok ?? 0) / 1_000_000) * price.output).toFixed(4))
+      : null;
+    await adminCli
+      .from('ai_usage_log')
+      .update({ provider, model, prompt_tokens: inTok, completion_tokens: outTok, total_tokens: totTok, cost })
+      .eq('id', usageLogId);
+  } catch (e) {
+    console.warn('recordUsage failed:', e);
+  }
+}
+
 const FALLBACK_SYSTEM = `Bạn là chuyên gia tư vấn phát triển năng lực ngành Ngân hàng tại Việt Nam.
 Trả lời bằng tiếng Việt, ngắn gọn, cụ thể, gợi ý hành động đo lường được (theo mô hình 70/20/10 và PDCA).
 Luôn nêu bằng chứng/cách kiểm chứng. Không bịa số liệu nội bộ.`;
@@ -470,8 +518,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ============ Rate limit theo user (kiểm soát chi phí) ============
+    // ============ Rate limit + trần ngân sách (kiểm soát chi phí) ============
     // Soft-fail: nếu bảng ai_usage_log chưa được tạo thì bỏ qua, không chặn tính năng.
+    // usageLogId: id dòng log vừa tạo — cập nhật token/chi phí sau khi gọi xong.
+    let usageLogId: string | null = null;
     try {
       const oneHourAgo = new Date(Date.now() - 3_600_000).toISOString();
       const { count, error: rlErr } = await adminCli
@@ -496,12 +546,36 @@ Deno.serve(async (req) => {
           });
         }
       }
+      // Trần ngân sách THÁNG (theo tiền) — chỉ chặn khi admin bật budget_enforce.
       if (!rlErr) {
-        await adminCli.from('ai_usage_log').insert({ user_id: user.id, mode });
+        const { data: budgetRow } = await adminCli
+          .from('ai_settings')
+          .select('monthly_budget, budget_enforce')
+          .eq('id', 1)
+          .maybeSingle();
+        if (budgetRow?.budget_enforce && budgetRow?.monthly_budget != null) {
+          const { data: spent } = await adminCli.rpc('get_ai_month_cost');
+          if (Number(spent ?? 0) >= Number(budgetRow.monthly_budget)) {
+            return new Response(JSON.stringify({ error: 'Đã đạt ngân sách AI của tháng này. Liên hệ quản trị viên để tăng hạn mức.' }), {
+              status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+        }
+      }
+      if (!rlErr) {
+        const { data: logRow } = await adminCli
+          .from('ai_usage_log')
+          .insert({ user_id: user.id, mode })
+          .select('id')
+          .single();
+        usageLogId = logRow?.id ?? null;
       }
     } catch (e) {
       console.warn('ai_usage_log unavailable, skipping rate limit:', e);
     }
+
+    // Bảng giá model — nạp một lần, dùng để tính chi phí khi ghi token thực tế.
+    const pricingMap = await loadPricing(adminCli);
 
     // ============ Load prompt config (mode + system_base) ============
     const { data: promptRows } = await adminCli
@@ -675,6 +749,7 @@ Hãy gọi tool select_courses để trả về tất cả khóa phù hợp, s�
         return new Response(JSON.stringify({ error: 'AI gateway lỗi' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       const aiData = await aiRes2.json();
+      await recordUsage(adminCli, usageLogId, providerCfg.provider, configuredModel, aiData.usage, pricingMap);
       const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
       let picks: Array<{ code: string; relevance_score: number; reason: string }> = [];
       try {
@@ -834,6 +909,7 @@ Gọi tool propose_criteria để trả kết quả.`;
         return new Response(JSON.stringify({ error: 'AI gateway lỗi' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       const critData = await critRes.json();
+      await recordUsage(adminCli, usageLogId, providerCfg.provider, configuredModel, critData.usage, pricingMap);
       const critCall = critData.choices?.[0]?.message?.tool_calls?.[0];
       let rawLevels: Array<{ level_no: number; criteria: Array<{ statement: string; is_gate: boolean; requires_evidence: boolean }> }> = [];
       try {
@@ -919,7 +995,10 @@ Gọi tool propose_criteria để trả kết quả.`;
     const aiRes = await fetchWithTimeout(providerCfg.endpoint, {
       method: 'POST',
       headers: { Authorization: `Bearer ${providerCfg.apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model, messages, stream }),
+      // stream_options.include_usage: yêu cầu provider trả token ở chunk cuối (chuẩn OpenAI)
+      body: JSON.stringify(stream
+        ? { model, messages, stream, stream_options: { include_usage: true } }
+        : { model, messages, stream }),
     });
 
     if (!aiRes.ok) {
@@ -932,10 +1011,43 @@ Gọi tool propose_criteria để trả kết quả.`;
     }
 
     if (stream) {
-      return new Response(aiRes.body, { headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' } });
+      // Tee SSE: chuyển thẳng byte cho client, đồng thời dò object `usage` ở các
+      // chunk cuối (khi bật include_usage) để ghi token/chi phí sau khi stream xong.
+      if (!aiRes.body) {
+        return new Response(aiRes.body, { headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' } });
+      }
+      const reader = aiRes.body.getReader();
+      const decoder = new TextDecoder();
+      let tail = '';
+      let capturedUsage: Usage | undefined;
+      const passthrough = new ReadableStream({
+        async pull(controller) {
+          const { done, value } = await reader.read();
+          if (done) {
+            await recordUsage(adminCli, usageLogId, providerCfg.provider, configuredModel, capturedUsage, pricingMap);
+            controller.close();
+            return;
+          }
+          tail = (tail + decoder.decode(value, { stream: true })).slice(-8000);
+          for (const line of tail.split('\n')) {
+            const s = line.trim();
+            if (!s.startsWith('data:')) continue;
+            const payload = s.slice(5).trim();
+            if (!payload || payload === '[DONE]') continue;
+            try {
+              const obj = JSON.parse(payload);
+              if (obj?.usage) capturedUsage = obj.usage; // dòng cuối mang usage khi include_usage
+            } catch { /* dòng chưa trọn JSON — bỏ qua, chunk sau sẽ đủ */ }
+          }
+          controller.enqueue(value);
+        },
+        cancel() { reader.cancel(); },
+      });
+      return new Response(passthrough, { headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' } });
     }
 
     const data = await aiRes.json();
+    await recordUsage(adminCli, usageLogId, providerCfg.provider, configuredModel, data.usage, pricingMap);
     const text = data.choices?.[0]?.message?.content || '';
     return new Response(JSON.stringify({ text }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e) {
