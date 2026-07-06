@@ -5,6 +5,8 @@
 //   kèm deep-link về trang Tự đánh giá
 // - kind = 'council_report': gửi kết quả đánh giá công tác đầu mối (điểm trọng số
 //   theo nhóm, ẩn danh người chấm) cho chính cán bộ được đánh giá
+// - kind = 'council_vote_reminder': nhắc thành viên Hội đồng còn phiếu đầu mối
+//   chưa gửi trong kỳ đang mở (tối đa 1 lần/ngày/kỳ/người)
 // Quyền gọi: BGĐ / TCTH admin / system admin / trưởng phòng TCTH (is_tcth_leader).
 // Tôn trọng suppressed_emails + unsubscribe token; chống gửi trùng theo idempotency_key
 // (thư: 1 lần/kỳ/người; nhắc hạn: tối đa 1 lần/ngày/kỳ/người).
@@ -109,7 +111,7 @@ Deno.serve(async (req) => {
     const kind = body.kind as string;
     const profileId = body.recipient_profile_id as string;
     const cycleName = (body.cycle_name as string) || '';
-    if (!['quarterly_letter', 'submission_reminder', 'council_report'].includes(kind) || !profileId || !cycleName) {
+    if (!['quarterly_letter', 'submission_reminder', 'council_report', 'council_vote_reminder'].includes(kind) || !profileId || !cycleName) {
       return json({ error: 'Thiếu kind / recipient_profile_id / cycle_name' }, 400);
     }
 
@@ -185,6 +187,29 @@ Deno.serve(async (req) => {
 </p>
 <p style="margin:8px 0;line-height:1.6;font-size:12px;color:#5a6577;">Báo cáo chi tiết gồm điểm từng tiêu chí, ý kiến đóng góp và minh chứng ghi nhận từ các thành viên Hội đồng (ẩn danh).</p>`;
       text = `Kính gửi ${firstName},\n\nKết quả đánh giá công tác đầu mối ${cycleName}: ${scoreText} điểm (thang 100), tổng hợp từ ${submittedCount}/${totalMembers} phiếu.\n\n${groups.map((g) => `- ${g.label}: ${g.votes} phiếu, TB ${g.raw_avg}, trọng số ${g.weight}`).join('\n')}\n\nXem báo cáo chi tiết: ${ctaUrl}`;
+    } else if (kind === 'council_vote_reminder') {
+      const pendingSubjects = Array.isArray(body.pending_subjects)
+        ? (body.pending_subjects as string[]).filter((s) => typeof s === 'string' && s.trim())
+        : [];
+      const deadlineText = (body.deadline_text as string || '').trim();
+      if (pendingSubjects.length === 0) return json({ error: 'Thiếu pending_subjects' }, 400);
+      label = 'council-vote-reminder';
+      subject = `🗳️ Nhắc chấm điểm đầu mối ${cycleName} — 343 Phát triển nhân sự`;
+      const today = new Date().toISOString().slice(0, 10);
+      idempotencyKey = `cvote-${cycleName}-${profileId}-${today}`;
+      const ctaUrl = `${APP_URL}/danh-gia-dau-moi`;
+      const subjectList = pendingSubjects.map((s) => `<li style="margin:3px 0;">${escapeHtml(s)}</li>`).join('');
+      bodyHtml = `
+<p style="margin:8px 0;line-height:1.6;">Kính gửi <strong>${escapeHtml(firstName)}</strong>,</p>
+<p style="margin:8px 0;line-height:1.6;">Kỳ đánh giá công tác đầu mối <strong>${escapeHtml(cycleName)}</strong> đang mở
+${deadlineText ? `— hạn bỏ phiếu: <strong>${escapeHtml(deadlineText)}</strong> ` : ''}và ông/bà còn
+<strong>${pendingSubjects.length} phiếu</strong> chưa gửi cho các cán bộ đầu mối:</p>
+<ul style="margin:6px 0;padding-left:20px;">${subjectList}</ul>
+<p style="margin:18px 0;text-align:center;">
+  <a href="${ctaUrl}" style="background:#0b2e59;color:#ffffff;text-decoration:none;padding:11px 26px;border-radius:6px;font-weight:bold;display:inline-block;">Mở phiếu chấm điểm</a>
+</p>
+<p style="margin:8px 0;line-height:1.6;font-size:12px;color:#5a6577;">Kết quả chấm được ẩn danh trong báo cáo tổng hợp. Nếu ông/bà vừa gửi phiếu hôm nay, vui lòng bỏ qua email này.</p>`;
+      text = `Kính gửi ${firstName},\n\nKỳ đánh giá đầu mối ${cycleName} đang mở${deadlineText ? ` (hạn bỏ phiếu: ${deadlineText})` : ''}. Ông/bà còn ${pendingSubjects.length} phiếu chưa gửi:\n${pendingSubjects.map((s) => `- ${s}`).join('\n')}\n\nChấm điểm tại: ${ctaUrl}`;
     } else {
       const deadlineText = (body.deadline_text as string || '').trim();
       const statusLabel = (body.status_label as string || 'Chưa nộp').trim();
@@ -268,7 +293,9 @@ Deno.serve(async (req) => {
         ? `Thư phát triển cá nhân ${cycleName}`
         : kind === 'council_report'
           ? `Kết quả đánh giá công tác đầu mối ${cycleName}`
-          : `Nhắc nộp phiếu đánh giá ${cycleName}`,
+          : kind === 'council_vote_reminder'
+            ? `Nhắc chấm điểm đầu mối ${cycleName}`
+            : `Nhắc nộp phiếu đánh giá ${cycleName}`,
       bodyHtml,
     );
 

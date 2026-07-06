@@ -20,7 +20,7 @@ export default function CouncilAdminPage() {
   const loadRounds = useCallback(async () => {
     const { data } = await supabase
       .from('council_rounds')
-      .select('id, name, description, start_date, end_date, status, weight_config')
+      .select('id, name, description, start_date, end_date, status, voting_deadline, weight_config')
       .order('start_date');
     const list = (data || []) as unknown as CouncilRound[];
     setRounds(list);
@@ -78,7 +78,12 @@ export default function CouncilAdminPage() {
               <CouncilSubjectsTab roundId={roundId} roundName={round?.name || ''} />
             )}
             {roundId && tab === 'progress' && (
-              <CouncilProgressTab roundId={roundId} roundName={round?.name || ''} />
+              <CouncilProgressTab
+                roundId={roundId}
+                roundName={round?.name || ''}
+                roundOpen={round?.status === 'open'}
+                votingDeadline={round?.voting_deadline ?? null}
+              />
             )}
           </TabsContent>
         ))}

@@ -5,7 +5,7 @@ import {
   Upload, Settings as SettingsIcon, BarChart3, Image, FileText,
   ChevronDown, ChevronRight, UserCheck, Sparkles, GraduationCap, ClipboardList, KeyRound, ListPlus,
   CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag, GitBranch,
-  ListChecks, Building2, Gavel
+  ListChecks, Building2, Gavel, TrendingUp
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubmissionReportAccess } from '@/hooks/useSubmissionReportAccess';
@@ -55,6 +55,7 @@ const navGroups: NavGroup[] = [
       // Hội đồng đánh giá đầu mối: thành viên HĐ chấm điểm; đầu mối + admin xem báo cáo
       { label: 'Đánh giá đầu mối', icon: Gavel, path: '/danh-gia-dau-moi', special: 'council-member' },
       { label: 'Báo cáo đầu mối', icon: BarChart3, path: '/bao-cao-dau-moi', special: 'council-report' },
+      { label: 'Phân tích đầu mối', icon: TrendingUp, path: '/phan-tich-dau-moi', minRole: 'admin' },
       { label: 'Thêm cán bộ', icon: UserPlus, path: '/them-can-bo', minRole: 'admin' },
       { label: 'Nhập nhanh theo phòng', icon: ListPlus, path: '/nhap-nhanh-can-bo', minRole: 'admin' },
       { label: 'Phân quyền', icon: Shield, path: '/phan-quyen', minRole: 'admin' },

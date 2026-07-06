@@ -592,6 +592,7 @@ export type Database = {
           start_date: string | null
           status: string
           updated_at: string
+          voting_deadline: string | null
           weight_config: Json | null
         }
         Insert: {
@@ -603,6 +604,7 @@ export type Database = {
           start_date?: string | null
           status?: string
           updated_at?: string
+          voting_deadline?: string | null
           weight_config?: Json | null
         }
         Update: {
@@ -614,6 +616,7 @@ export type Database = {
           start_date?: string | null
           status?: string
           updated_at?: string
+          voting_deadline?: string | null
           weight_config?: Json | null
         }
         Relationships: []

@@ -1,6 +1,9 @@
 // send-reminders — Nhắc việc qua email cho người phụ trách.
 // Gom "digest" theo từng người nhận: phiếu chờ rà soát (TP), phiếu chờ phê duyệt (PGĐ),
 // và thẻ Kanban chờ xác nhận (quản lý). Enqueue vào hàng đợi 'transactional_emails' có sẵn.
+// Đánh giá đầu mối (Hội đồng): tự chuyển kỳ 'open' quá voting_deadline sang 'closed';
+// nhắc thành viên còn phiếu chưa gửi khi còn <=3 ngày đến hạn (1 lần/ngày/kỳ/người,
+// chung idempotency_key với nút nhắc tay ở tab Tiến độ nên không gửi trùng).
 //
 // AN TOÀN: dry_run MẶC ĐỊNH = true → chỉ TRẢ VỀ danh sách sẽ gửi, KHÔNG gửi.
 //   Muốn gửi thật: gọi với body {"dry_run": false}. Idempotency theo ngày để chạy lại cùng ngày không gửi trùng.
@@ -131,10 +134,72 @@ Deno.serve(async (req) => {
 
     const list = [...digests.values()].filter((d) => d.reviews + d.approvals + d.kanban > 0);
 
+    // ---- Đánh giá đầu mối: kỳ quá hạn cần chốt + thành viên cần nhắc ----
+    const nowMs = Date.now();
+    const remindWindowMs = 3 * 24 * 3600 * 1000; // nhắc khi còn <=3 ngày đến hạn
+    const { data: openRounds } = await admin
+      .from('council_rounds')
+      .select('id, name, voting_deadline')
+      .eq('status', 'open');
+    const roundsToClose = (openRounds || []).filter(
+      (r: any) => r.voting_deadline && new Date(r.voting_deadline).getTime() < nowMs,
+    );
+    const roundsToRemind = (openRounds || []).filter((r: any) => {
+      if (!r.voting_deadline) return false;
+      const dl = new Date(r.voting_deadline).getTime();
+      return dl >= nowMs && dl - nowMs <= remindWindowMs;
+    });
+
+    interface CouncilReminder { roundName: string; deadline: string; profileId: string; name: string; email: string; pending: string[] }
+    const councilReminders: CouncilReminder[] = [];
+    if (roundsToRemind.length > 0) {
+      const roundIds = roundsToRemind.map((r: any) => r.id);
+      const [membersRes, subjectsRes, evalsRes] = await Promise.all([
+        admin.from('council_members').select('profile_id').eq('is_active', true),
+        admin.from('council_subjects').select('id, round_id, full_name, profile_id').eq('is_active', true).in('round_id', roundIds),
+        admin.from('council_evaluations').select('subject_id, evaluator_id').eq('status', 'submitted').in('round_id', roundIds),
+      ]);
+      const submitted = new Set(((evalsRes.data || []) as any[]).map((e) => `${e.subject_id}:${e.evaluator_id}`));
+      for (const round of roundsToRemind as any[]) {
+        const roundSubjects = ((subjectsRes.data || []) as any[]).filter((s) => s.round_id === round.id);
+        for (const m of (membersRes.data || []) as any[]) {
+          const p = byId.get(m.profile_id);
+          if (!p?.email) continue;
+          const pending = roundSubjects
+            .filter((s) => !(s.profile_id && s.profile_id === m.profile_id))
+            .filter((s) => !submitted.has(`${s.id}:${m.profile_id}`))
+            .map((s) => s.full_name);
+          if (pending.length > 0) {
+            councilReminders.push({
+              roundName: round.name,
+              deadline: new Date(round.voting_deadline).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
+              profileId: m.profile_id, name: p.full_name, email: p.email, pending,
+            });
+          }
+        }
+      }
+    }
+
     if (dryRun) {
-      return new Response(JSON.stringify({ dry_run: true, recipients: list.length, digests: list }), {
+      return new Response(JSON.stringify({
+        dry_run: true, recipients: list.length, digests: list,
+        council: {
+          rounds_to_close: roundsToClose.map((r: any) => r.name),
+          reminders: councilReminders.map((c) => ({ round: c.roundName, name: c.name, pending: c.pending.length })),
+        },
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Chốt kỳ quá hạn (chỉ khi chạy thật)
+    let roundsClosed = 0;
+    if (roundsToClose.length > 0) {
+      const { error: closeErr } = await admin
+        .from('council_rounds')
+        .update({ status: 'closed' })
+        .in('id', roundsToClose.map((r: any) => r.id));
+      if (!closeErr) roundsClosed = roundsToClose.length;
     }
 
     // ---- Gửi thật: enqueue mỗi người 1 email, idempotency theo ngày ----
@@ -159,7 +224,55 @@ Deno.serve(async (req) => {
       if (!error) enqueued++;
     }
 
-    return new Response(JSON.stringify({ dry_run: false, recipients: list.length, enqueued }), {
+    // ---- Nhắc thành viên Hội đồng còn phiếu chưa gửi (dedup 1 lần/ngày/kỳ/người) ----
+    let councilEnqueued = 0;
+    for (const c of councilReminders) {
+      const recipient = c.email.trim().toLowerCase();
+      const idempotencyKey = `cvote-${c.roundName}-${c.profileId}-${today}`;
+      const { data: dup } = await admin
+        .from('email_send_log')
+        .select('id')
+        .eq('template_name', 'council-vote-reminder')
+        .eq('recipient_email', recipient)
+        .in('status', ['pending', 'sent'])
+        .contains('metadata', { idempotency_key: idempotencyKey })
+        .limit(1);
+      if (dup && dup.length > 0) continue;
+      const { data: suppressed } = await admin
+        .from('suppressed_emails').select('id').eq('email', recipient).maybeSingle();
+      if (suppressed) continue;
+      const subjectList = c.pending.map((s) => `<li style="margin:3px 0">${s}</li>`).join('');
+      const subject = `🗳️ Nhắc chấm điểm đầu mối ${c.roundName} — 343 Phát triển nhân sự`;
+      const html = `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#1f2937;line-height:1.5">
+<p>Kính gửi <b>${c.name}</b>,</p>
+<p>Kỳ đánh giá công tác đầu mối <b>${c.roundName}</b> sẽ chốt phiếu lúc <b>${c.deadline}</b>.
+Ông/bà còn <b>${c.pending.length} phiếu</b> chưa gửi cho các cán bộ đầu mối:</p>
+<ul>${subjectList}</ul>
+<p><a href="${APP_URL}/danh-gia-dau-moi" style="display:inline-block;background:#0b3d91;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">Mở phiếu chấm điểm</a></p>
+<p style="color:#6b7280;font-size:12px">Email nhắc tự động; kết quả chấm được ẩn danh trong báo cáo tổng hợp.</p>
+</body></html>`;
+      const text = `Kính gửi ${c.name},\nKỳ đánh giá đầu mối ${c.roundName} chốt phiếu lúc ${c.deadline}. Ông/bà còn ${c.pending.length} phiếu chưa gửi:\n${c.pending.map((s) => `- ${s}`).join('\n')}\nChấm điểm tại: ${APP_URL}/danh-gia-dau-moi`;
+      const messageId = crypto.randomUUID();
+      await admin.from('email_send_log').insert({
+        message_id: messageId, template_name: 'council-vote-reminder', recipient_email: recipient,
+        status: 'pending', metadata: { idempotency_key: idempotencyKey },
+      });
+      const { error } = await admin.rpc('enqueue_email', {
+        queue_name: 'transactional_emails',
+        payload: {
+          message_id: messageId, to: recipient, from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
+          sender_domain: SENDER_DOMAIN, subject, html, text,
+          purpose: 'transactional', label: 'council-vote-reminder',
+          idempotency_key: idempotencyKey, queued_at: new Date().toISOString(),
+        },
+      });
+      if (!error) councilEnqueued++;
+    }
+
+    return new Response(JSON.stringify({
+      dry_run: false, recipients: list.length, enqueued,
+      council: { rounds_closed: roundsClosed, reminders_enqueued: councilEnqueued },
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {

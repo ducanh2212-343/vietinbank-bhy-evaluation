@@ -3,13 +3,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, Trash2 } from 'lucide-react';
+import { BellRing, Loader2, Mail, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { MEMBER_GROUP_LABELS, type CouncilMemberGroup } from '@/lib/council';
 
 interface Props {
   roundId: string;
   roundName: string;
+  roundOpen: boolean;
+  votingDeadline: string | null;
 }
 
 interface MemberRow { id: string; profile_id: string; member_group: CouncilMemberGroup; full_name: string; }
@@ -18,11 +20,14 @@ interface EvalRow { id: string; subject_id: string; evaluator_id: string; status
 
 // Bảng theo dõi tiến độ bỏ phiếu — chỉ hiển thị AI đã gửi phiếu (phục vụ đôn đốc),
 // KHÔNG hiển thị điểm số để giữ nguyên tính ẩn danh của kết quả chấm.
-export function CouncilProgressTab({ roundId, roundName }: Props) {
+export function CouncilProgressTab({ roundId, roundName, roundOpen, votingDeadline }: Props) {
   const [loading, setLoading] = useState(true);
   const [members, setMembers] = useState<MemberRow[]>([]);
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
   const [evals, setEvals] = useState<EvalRow[]>([]);
+  const [remindingIds, setRemindingIds] = useState<Set<string>>(new Set());
+  const [remindedIds, setRemindedIds] = useState<Set<string>>(new Set());
+  const [remindingAll, setRemindingAll] = useState(false);
 
   const load = useCallback(async () => {
     if (!roundId) return;
@@ -48,6 +53,65 @@ export function CouncilProgressTab({ roundId, roundName }: Props) {
   if (loading) {
     return <div className="text-sm text-muted-foreground flex items-center gap-2 py-4"><Loader2 className="w-4 h-4 animate-spin" /> Đang tải…</div>;
   }
+
+  // Các đầu mối mà thành viên này chưa GỬI phiếu (nháp vẫn tính là chưa gửi)
+  const pendingSubjectsOf = (member: MemberRow): SubjectRow[] =>
+    subjects.filter((s) => {
+      if (s.profile_id && s.profile_id === member.profile_id) return false;
+      const ev = evals.find((e) => e.subject_id === s.id && e.evaluator_id === member.profile_id);
+      return ev?.status !== 'submitted';
+    });
+
+  const remindMember = async (member: MemberRow): Promise<'sent' | 'skipped' | 'error'> => {
+    const pending = pendingSubjectsOf(member);
+    if (pending.length === 0) return 'skipped';
+    setRemindingIds((prev) => new Set(prev).add(member.profile_id));
+    try {
+      const { data, error } = await supabase.functions.invoke('send-hr-notification', {
+        body: {
+          kind: 'council_vote_reminder',
+          recipient_profile_id: member.profile_id,
+          cycle_name: roundName,
+          pending_subjects: pending.map((s) => s.full_name),
+          deadline_text: votingDeadline ? new Date(votingDeadline).toLocaleString('vi-VN') : '',
+        },
+      });
+      if (error) throw error;
+      const res = data as { success?: boolean; skipped?: string };
+      if (res?.success || res?.skipped === 'duplicate') {
+        setRemindedIds((prev) => new Set(prev).add(member.profile_id));
+        return res?.success ? 'sent' : 'skipped';
+      }
+      return 'skipped';
+    } catch {
+      return 'error';
+    } finally {
+      setRemindingIds((prev) => { const n = new Set(prev); n.delete(member.profile_id); return n; });
+    }
+  };
+
+  const remindOne = async (member: MemberRow) => {
+    const result = await remindMember(member);
+    if (result === 'sent') toast.success(`Đã gửi email nhắc ${member.full_name}.`);
+    else if (result === 'skipped') toast.info(`${member.full_name} đã được nhắc hôm nay hoặc chưa có email.`);
+    else toast.error(`Không gửi được email nhắc ${member.full_name}.`);
+  };
+
+  const remindAll = async () => {
+    const targets = members.filter((m) => pendingSubjectsOf(m).length > 0);
+    if (targets.length === 0) { toast.info('Tất cả thành viên đã gửi đủ phiếu.'); return; }
+    if (!window.confirm(`Gửi email nhắc ${targets.length} thành viên còn phiếu chưa gửi?`)) return;
+    setRemindingAll(true);
+    let sent = 0, skipped = 0, failed = 0;
+    for (const m of targets) {
+      const r = await remindMember(m);
+      if (r === 'sent') sent++;
+      else if (r === 'skipped') skipped++;
+      else failed++;
+    }
+    setRemindingAll(false);
+    toast.success(`Nhắc phiếu: ${sent} đã gửi, ${skipped} bỏ qua (đã nhắc/thiếu email)${failed ? `, ${failed} lỗi` : ''}.`);
+  };
 
   const deleteEvaluation = async (ev: EvalRow, memberName: string, subjectName: string) => {
     if (!window.confirm(
@@ -92,12 +156,20 @@ export function CouncilProgressTab({ roundId, roundName }: Props) {
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">
-        Tiến độ bỏ phiếu kỳ <strong>{roundName}</strong>: đã gửi <strong>{totalSubmitted}/{totalExpected}</strong> phiếu.
-        Bảng chỉ hiển thị trạng thái gửi phiếu để đôn đốc — không hiển thị điểm nhằm giữ tính ẩn danh.
-        Dấu × là ô cán bộ không tự đánh giá bản thân. Nút <Trash2 className="w-3 h-3 inline text-destructive" /> xóa
-        phiếu (điểm + nhận xét) để thành viên chấm lại từ đầu.
-      </p>
+      <div className="flex items-start gap-2 flex-wrap">
+        <p className="text-sm text-muted-foreground flex-1 min-w-[260px]">
+          Tiến độ bỏ phiếu kỳ <strong>{roundName}</strong>: đã gửi <strong>{totalSubmitted}/{totalExpected}</strong> phiếu.
+          Bảng chỉ hiển thị trạng thái gửi phiếu để đôn đốc — không hiển thị điểm nhằm giữ tính ẩn danh.
+          Dấu × là ô cán bộ không tự đánh giá bản thân. Nút <Trash2 className="w-3 h-3 inline text-destructive" /> xóa
+          phiếu (điểm + nhận xét) để thành viên chấm lại từ đầu.
+        </p>
+        {roundOpen && (
+          <Button size="sm" variant="outline" onClick={remindAll} disabled={remindingAll}>
+            {remindingAll ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <BellRing className="w-4 h-4 mr-1" />}
+            Nhắc tất cả chưa gửi
+          </Button>
+        )}
+      </div>
       <Card>
         <CardContent className="p-0 overflow-x-auto">
           <table className="w-full text-sm">
@@ -115,7 +187,21 @@ export function CouncilProgressTab({ roundId, roundName }: Props) {
               {members.map((m) => (
                 <tr key={m.id} className="border-b last:border-0">
                   <td className="px-3 py-2 whitespace-nowrap">
-                    <div className="font-medium">{m.full_name}</div>
+                    <div className="font-medium flex items-center gap-1.5">
+                      {m.full_name}
+                      {roundOpen && pendingSubjectsOf(m).length > 0 && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className={`h-6 w-6 p-0 ${remindedIds.has(m.profile_id) ? 'text-emerald-600' : 'text-muted-foreground'}`}
+                          title={`Nhắc email ${m.full_name} — còn ${pendingSubjectsOf(m).length} phiếu chưa gửi`}
+                          disabled={remindingIds.has(m.profile_id) || remindingAll}
+                          onClick={() => remindOne(m)}
+                        >
+                          {remindingIds.has(m.profile_id) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
+                        </Button>
+                      )}
+                    </div>
                     <div className="text-[10px] text-muted-foreground">{MEMBER_GROUP_LABELS[m.member_group]}</div>
                   </td>
                   {subjects.map((s) => (

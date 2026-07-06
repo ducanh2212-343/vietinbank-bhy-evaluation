@@ -198,6 +198,21 @@ export function computeCouncilReport(
   return { buckets, totalWeightPresent, score100, rowAverages };
 }
 
+/** Điểm trung bình từng tiêu chí của một tập phiếu (cho radar/phân tích). */
+export function computeCriterionAverages(
+  rows: ReportEvaluationRow[],
+  criterionIds: string[],
+): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const id of criterionIds) {
+    const vals = rows
+      .map((r) => r.scores[id])
+      .filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
+    if (vals.length > 0) out.set(id, vals.reduce((a, b) => a + b, 0) / vals.length);
+  }
+  return out;
+}
+
 /** Các tiêu chí chấm rất cao/rất thấp — bắt buộc kèm nhận xét & minh chứng. */
 export function extremeScoreCriteria(
   scores: Record<string, number>,

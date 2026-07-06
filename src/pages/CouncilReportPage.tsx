@@ -6,13 +6,18 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BarChart3, Loader2, Mail, Printer } from 'lucide-react';
+import { BarChart3, FileSpreadsheet, Loader2, Mail, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   ROUND_STATUS_LABELS,
   computeCouncilReport, formatPercent, formatScore, resolveWeightScheme, weightBucketOf,
-  type CouncilRoundStatus, type CouncilSubjectLevel, type CouncilWeightConfig, type ReportEvaluationRow, type WeightBucket,
+  type CouncilReportSummary, type CouncilRoundStatus, type CouncilSubjectLevel, type CouncilWeightConfig,
+  type ReportEvaluationRow, type WeightBucket,
 } from '@/lib/council';
+import { exportCouncilExcel, type CouncilExportItem } from '@/lib/councilExport';
+
+// Giá trị đặc biệt của picker: xem biên bản tổng hợp toàn kỳ (admin)
+const ROUND_ALL = '__round__';
 
 interface RoundRow { id: string; name: string; status: CouncilRoundStatus; weight_config: CouncilWeightConfig | null; }
 interface SubjectOption { id: string; full_name: string; position: string | null; profile_id: string | null; sort_order: number; }
@@ -45,8 +50,10 @@ export default function CouncilReportPage() {
   const [subjectId, setSubjectId] = useState('');
   const [criteria, setCriteria] = useState<CriterionLite[]>([]);
   const [report, setReport] = useState<ReportPayload | null>(null);
+  const [roundReports, setRoundReports] = useState<ReportPayload[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const allowed = isAdmin || access.isSubject;
 
@@ -78,25 +85,41 @@ export default function CouncilReportPage() {
       // Cán bộ đầu mối (không phải admin) chỉ xem được báo cáo của chính mình
       if (!isAdmin) list = list.filter((s) => s.profile_id === profileId);
       setSubjects(list);
-      setSubjectId((prev) => (list.some((s) => s.id === prev) ? prev : list[0]?.id || ''));
+      setSubjectId((prev) => {
+        if (isAdmin && prev === ROUND_ALL) return prev;
+        return list.some((s) => s.id === prev) ? prev : list[0]?.id || '';
+      });
     })();
   }, [roundId, allowed, isAdmin, profileId]);
 
   const loadReport = useCallback(async () => {
-    if (!subjectId) { setReport(null); return; }
+    if (!subjectId) { setReport(null); setRoundReports(null); return; }
     setLoading(true);
-    const [reportRes, criteriaRes] = await Promise.all([
-      supabase.rpc('get_council_subject_report', { p_subject_id: subjectId }),
-      supabase.from('council_criteria')
-        .select('id, title, sort_order')
-        .eq('round_id', roundId).eq('is_active', true).order('sort_order'),
-    ]);
+    const criteriaRes = await supabase.from('council_criteria')
+      .select('id, title, sort_order')
+      .eq('round_id', roundId).eq('is_active', true).order('sort_order');
+    if (criteriaRes.error) { toast.error('Lỗi tải tiêu chí: ' + criteriaRes.error.message); setLoading(false); return; }
+    setCriteria((criteriaRes.data || []) as CriterionLite[]);
+
+    if (subjectId === ROUND_ALL) {
+      // Biên bản toàn kỳ: gộp báo cáo của tất cả đầu mối trong kỳ
+      const responses = await Promise.all(
+        subjects.map((s) => supabase.rpc('get_council_subject_report', { p_subject_id: s.id })),
+      );
+      setLoading(false);
+      const failed = responses.find((r) => r.error);
+      if (failed?.error) { toast.error('Lỗi tải biên bản: ' + failed.error.message); setRoundReports(null); return; }
+      setReport(null);
+      setRoundReports(responses.map((r) => r.data as unknown as ReportPayload));
+      return;
+    }
+
+    const reportRes = await supabase.rpc('get_council_subject_report', { p_subject_id: subjectId });
     setLoading(false);
     if (reportRes.error) { toast.error('Lỗi tải báo cáo: ' + reportRes.error.message); setReport(null); return; }
-    if (criteriaRes.error) { toast.error('Lỗi tải tiêu chí: ' + criteriaRes.error.message); return; }
+    setRoundReports(null);
     setReport(reportRes.data as unknown as ReportPayload);
-    setCriteria((criteriaRes.data || []) as CriterionLite[]);
-  }, [subjectId, roundId]);
+  }, [subjectId, roundId, subjects]);
 
   useEffect(() => { loadReport(); }, [loadReport]);
 
@@ -109,6 +132,40 @@ export default function CouncilReportPage() {
     if (!report) return null;
     return computeCouncilReport(report.evaluations, criteria.map((c) => c.id), report.subject.subject_level, weightConfig);
   }, [report, criteria, weightConfig]);
+
+  // Biên bản toàn kỳ: tổng hợp trọng số cho từng đầu mối
+  const roundSummaries = useMemo(() => {
+    if (!roundReports) return null;
+    const ids = criteria.map((c) => c.id);
+    return roundReports.map((rp) => ({
+      report: rp,
+      summary: computeCouncilReport(rp.evaluations, ids, rp.subject.subject_level, weightConfig),
+    }));
+  }, [roundReports, criteria, weightConfig]);
+
+  const exportExcel = async () => {
+    const roundName = rounds.find((r) => r.id === roundId)?.name || '';
+    const source = roundSummaries ?? (report && summary ? [{ report, summary }] : []);
+    const items: CouncilExportItem[] = source.map(({ report: rp, summary: sm }) => ({
+      subjectName: rp.subject.full_name,
+      position: rp.subject.position,
+      subjectLevel: rp.subject.subject_level,
+      submittedCount: rp.submitted_count,
+      totalMembers: rp.total_members,
+      evaluations: rp.evaluations,
+      summary: sm,
+    }));
+    if (items.length === 0) { toast.info('Chưa có dữ liệu để xuất.'); return; }
+    setExporting(true);
+    try {
+      await exportCouncilExcel(roundName, criteria.map((c) => ({ id: c.id, title: c.title })), items, weightConfig);
+      toast.success('Đã xuất file Excel.');
+    } catch (e) {
+      toast.error('Lỗi xuất Excel: ' + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setExporting(false);
+    }
+  };
 
   if (access.loading) {
     return <div className="p-6 text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Đang tải…</div>;
@@ -191,12 +248,21 @@ export default function CouncilReportPage() {
           <Select value={subjectId} onValueChange={setSubjectId}>
             <SelectTrigger className="w-[230px] h-9"><SelectValue placeholder="Chọn cán bộ đầu mối" /></SelectTrigger>
             <SelectContent>
+              {isAdmin && subjects.length > 0 && (
+                <SelectItem value={ROUND_ALL}>📋 Biên bản toàn kỳ (tất cả đầu mối)</SelectItem>
+              )}
               {subjects.map((s) => <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Button size="sm" variant="outline" onClick={() => window.print()} disabled={!report}>
-            <Printer className="w-4 h-4 mr-1" /> In báo cáo
+          <Button size="sm" variant="outline" onClick={() => window.print()} disabled={!report && !roundSummaries}>
+            <Printer className="w-4 h-4 mr-1" /> In
           </Button>
+          {isAdmin && (
+            <Button size="sm" variant="outline" onClick={exportExcel} disabled={exporting || loading || (!report && !roundSummaries)}>
+              {exporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <FileSpreadsheet className="w-4 h-4 mr-1" />}
+              Xuất Excel
+            </Button>
+          )}
           {isAdmin && (
             <Button
               size="sm"
@@ -213,6 +279,89 @@ export default function CouncilReportPage() {
 
       {loading ? (
         <div className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Đang tải báo cáo…</div>
+      ) : subjectId === ROUND_ALL && roundSummaries ? (
+        <Card>
+          <CardContent className="p-5" id="council-report">
+            <div className="flex justify-between gap-4 text-[11px] uppercase leading-snug">
+              <div className="text-center">
+                <p className="font-semibold">Ngân hàng TMCP Công Thương Việt Nam</p>
+                <p>Chi nhánh Bắc Hưng Yên — Hội đồng đánh giá</p>
+              </div>
+              <div className="text-center">
+                <p className="font-semibold">Cộng hòa xã hội chủ nghĩa Việt Nam</p>
+                <p className="normal-case">Độc lập - Tự do - Hạnh phúc</p>
+              </div>
+            </div>
+            <h2 className="text-center text-base font-bold mt-4">
+              BIÊN BẢN TỔNG HỢP KẾT QUẢ ĐÁNH GIÁ CÔNG TÁC ĐẦU MỐI
+            </h2>
+            <p className="text-center text-sm text-muted-foreground">
+              Kỳ đánh giá: {rounds.find((r) => r.id === roundId)?.name} — Chi nhánh Bắc Hưng Yên · Xuất lúc {new Date().toLocaleString('vi-VN')}
+            </p>
+
+            <div className="overflow-x-auto mt-4">
+              <table className="w-full text-xs border">
+                <thead>
+                  <tr className="bg-muted/40">
+                    <th className="border px-2 py-1.5">STT</th>
+                    <th className="border px-2 py-1.5 text-left">Cán bộ đầu mối</th>
+                    <th className="border px-2 py-1.5 text-left">Chức vụ</th>
+                    <th className="border px-2 py-1.5">Số phiếu</th>
+                    <th className="border px-2 py-1.5">Điểm nhóm GĐ</th>
+                    <th className="border px-2 py-1.5">PGĐ phụ trách</th>
+                    <th className="border px-2 py-1.5">PGĐ khác</th>
+                    <th className="border px-2 py-1.5">Thành viên</th>
+                    <th className="border px-2 py-1.5">Điểm thang 100</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {roundSummaries.map(({ report: rp, summary: sm }, idx) => {
+                    const bucketAvg = (bucket: WeightBucket) => {
+                      const b = sm.buckets.find((x) => x.bucket === bucket);
+                      return b && b.votes > 0 ? formatScore(b.rawAvg) : '—';
+                    };
+                    return (
+                      <tr key={rp.subject.id}>
+                        <td className="border px-2 py-1.5 text-center">{idx + 1}</td>
+                        <td className="border px-2 py-1.5 font-medium whitespace-nowrap">{rp.subject.full_name}</td>
+                        <td className="border px-2 py-1.5">{rp.subject.position || '—'}</td>
+                        <td className="border px-2 py-1.5 text-center">{rp.submitted_count}/{rp.total_members}</td>
+                        <td className="border px-2 py-1.5 text-center">{bucketAvg('giam_doc')}</td>
+                        <td className="border px-2 py-1.5 text-center">{bucketAvg('pgd_phu_trach')}</td>
+                        <td className="border px-2 py-1.5 text-center">{bucketAvg('pgd_khac')}</td>
+                        <td className="border px-2 py-1.5 text-center">{bucketAvg('thanh_vien')}</td>
+                        <td className="border px-2 py-1.5 text-center font-semibold">
+                          {sm.score100 != null ? formatScore(sm.score100) : '—'}
+                          {sm.score100 != null && sm.totalWeightPresent < 1 && (
+                            <span className="block text-[10px] font-normal text-muted-foreground">
+                              (trọng số {formatPercent(sm.totalWeightPresent)})
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-2">
+              Điểm nhóm là điểm trung bình thô (thang 10) của các phiếu trong nhóm; điểm thang 100 đã xử lý
+              trọng số theo cấp đánh giá và chuẩn hóa theo tổng trọng số các nhóm đã bỏ phiếu.
+            </p>
+
+            <h3 className="text-sm font-bold mt-6 mb-2 text-primary">CÁC THÀNH VIÊN THAM DỰ HỘI ĐỒNG KÝ XÁC NHẬN</h3>
+            <div className="grid grid-cols-2 gap-4 text-center text-xs mt-4 mb-2 max-w-xl mx-auto">
+              <div>
+                <p className="font-semibold uppercase">Thư ký Hội đồng / Kiểm soát</p>
+                <p className="text-muted-foreground italic">(Ký và ghi rõ họ tên)</p>
+              </div>
+              <div>
+                <p className="font-semibold uppercase">Đại diện Ban Giám đốc / Chi nhánh</p>
+                <p className="text-muted-foreground italic">(Ký, đóng dấu xác nhận)</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       ) : !report || !summary ? (
         <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">
           {subjects.length === 0 ? 'Không có dữ liệu đầu mối cho kỳ này.' : 'Chọn kỳ và cán bộ đầu mối để xem báo cáo.'}

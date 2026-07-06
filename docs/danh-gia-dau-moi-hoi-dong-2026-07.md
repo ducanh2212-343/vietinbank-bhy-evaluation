@@ -10,7 +10,8 @@ Tính năng được xây dựng theo 4 tài liệu Chi nhánh cung cấp: **Cơ
 | Trang | Đường dẫn | Ai dùng |
 | --- | --- | --- |
 | Đánh giá đầu mối (chấm điểm) | `/danh-gia-dau-moi` | Thành viên Hội đồng |
-| Báo cáo đầu mối (xử lý trọng số, in được) | `/bao-cao-dau-moi` | Admin (BGĐ/TCTH/System) + cán bộ đầu mối xem kết quả của chính mình |
+| Báo cáo đầu mối (xử lý trọng số, in + Excel + biên bản toàn kỳ) | `/bao-cao-dau-moi` | Admin (BGĐ/TCTH/System) + cán bộ đầu mối xem kết quả của chính mình |
+| Phân tích đầu mối (xu hướng, so sánh, radar) | `/phan-tich-dau-moi` | Admin |
 | Quản trị Hội đồng đầu mối | `/quan-tri-hoi-dong-dau-moi` | Admin |
 
 - **Kỳ đánh giá:** đã khởi tạo sẵn 3 kỳ **Quý II/2026 (đang mở)**, **Quý III/2026**, **Quý IV/2026** (chưa mở).
@@ -41,6 +42,16 @@ Tính năng được xây dựng theo 4 tài liệu Chi nhánh cung cấp: **Cơ
   chính cán bộ được đánh giá (theo email hồ sơ): điểm thang 100, bảng nhóm trọng số, link xem báo cáo chi
   tiết; tôn trọng chặn thư/hủy đăng ký và chống gửi trùng trong ngày (gửi lại được khi điểm thay đổi).
   Yêu cầu đầu mối đã liên kết tài khoản.
+- **Phân tích đầu mối** (`/phan-tich-dau-moi`, admin): biểu đồ điểm thang 100 qua các kỳ, bảng so sánh
+  đầu mối × kỳ kèm mức tăng/giảm so kỳ trước, radar 10 tiêu chí của từng đầu mối đối chiếu mặt bằng
+  chung trong kỳ (palette đã kiểm định an toàn mù màu, hỗ trợ dark mode).
+- **Hạn bỏ phiếu + tự động hóa:** mỗi kỳ đặt được "Hạn bỏ phiếu" (tab *Kỳ đánh giá*). Cron
+  `send-reminders` hàng ngày: (a) kỳ quá hạn tự chuyển "Đã chốt"; (b) còn ≤3 ngày đến hạn thì email nhắc
+  các thành viên còn phiếu chưa gửi (1 lần/ngày/kỳ/người). Tab *Tiến độ* có nút nhắc tay từng người +
+  "Nhắc tất cả chưa gửi" — dùng chung khóa chống trùng với nhắc tự động nên không gửi đúp trong ngày.
+- **Biên bản toàn kỳ + Xuất Excel:** trên *Báo cáo đầu mối*, admin chọn "📋 Biên bản toàn kỳ" để in một
+  trang tổng hợp tất cả đầu mối (điểm nhóm GĐ/PGĐ/TV, điểm thang 100, chữ ký Thư ký + BGĐ); nút
+  "Xuất Excel" tạo file 3 sheet: Tổng hợp / Chi tiết phiếu ẩn danh / Danh mục tiêu chí.
 - **Báo cáo trọng số:** đúng bố cục mẫu — bảng chi tiết từng phiếu (người chấm **ẩn danh** dạng "Thành viên
   ẩn danh #xxx", trọng số, TC1–TC10, TB thô, ý kiến, minh chứng theo tiêu chí), bảng phân tích nhóm theo
   trọng số, điểm quy thang 100, khối ký xác nhận (Thư ký Hội đồng + Đại diện BGĐ — **đã bỏ phần ký của

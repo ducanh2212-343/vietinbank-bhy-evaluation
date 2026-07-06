@@ -76,6 +76,7 @@ const LearningCampaignsPage = lazyWithRetry(() => import("./pages/LearningCampai
 const CouncilEvaluationPage = lazyWithRetry(() => import("./pages/CouncilEvaluationPage"));
 const CouncilReportPage = lazyWithRetry(() => import("./pages/CouncilReportPage"));
 const CouncilAdminPage = lazyWithRetry(() => import("./pages/CouncilAdminPage"));
+const CouncilAnalyticsPage = lazyWithRetry(() => import("./pages/CouncilAnalyticsPage"));
 const ChangePassword = lazyWithRetry(() => import("./pages/ChangePassword"));
 const ForgotPassword = lazyWithRetry(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
@@ -181,6 +182,7 @@ const App = () => (
                 <Route path="/quan-tri-cau-hoi-1-1" element={<OneOnOneQuestionsAdminPage />} />
                 <Route path="/phan-cong-danh-gia" element={<EvaluatorAssignmentPage />} />
                 <Route path="/quan-tri-hoi-dong-dau-moi" element={<CouncilAdminPage />} />
+                <Route path="/phan-tich-dau-moi" element={<CouncilAnalyticsPage />} />
                 <Route path="/ban-tin-quy" element={<QuarterlyNewsletterPage />} />
               </Route>
 

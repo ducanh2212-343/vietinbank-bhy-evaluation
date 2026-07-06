@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   computeCouncilReport,
+  computeCriterionAverages,
   extremeScoreCriteria,
   rawAverage,
   resolveWeightScheme,
@@ -122,6 +123,20 @@ describe('trọng số tùy chỉnh theo kỳ (weight_config)', () => {
     expect(scheme.giam_doc).toBeCloseTo(0.25, 5);
     expect(scheme.pgd_phu_trach).toBeCloseTo(0.1, 5);
     expect(scheme.thanh_vien).toBeCloseTo(0.55, 5);
+  });
+});
+
+describe('computeCriterionAverages — điểm TB từng tiêu chí (radar/phân tích)', () => {
+  it('tính TB theo tiêu chí và bỏ qua tiêu chí chưa ai chấm', () => {
+    const rows: ReportEvaluationRow[] = [
+      row('#1', 'giam_doc', [9, 7, 5, 3, 1, 9, 7, 5, 3, 1]),
+      row('#2', 'thanh_vien', [7, 9, 5, 5, 3, 7, 9, 5, 5, 3]),
+    ];
+    const avgs = computeCriterionAverages(rows, [...CRITERIA, 'c_moi']);
+    expect(avgs.get('c1')).toBeCloseTo(8, 5);
+    expect(avgs.get('c2')).toBeCloseTo(8, 5);
+    expect(avgs.get('c5')).toBeCloseTo(2, 5);
+    expect(avgs.has('c_moi')).toBe(false);
   });
 });
 

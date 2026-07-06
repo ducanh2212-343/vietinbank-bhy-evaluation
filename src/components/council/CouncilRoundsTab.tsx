@@ -19,7 +19,22 @@ export interface CouncilRound {
   start_date: string | null;
   end_date: string | null;
   status: CouncilRoundStatus;
+  voting_deadline: string | null;
   weight_config: CouncilWeightConfig | null;
+}
+
+/** ISO timestamptz → giá trị cho <input type="datetime-local"> theo giờ máy người dùng. */
+function isoToLocalInput(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function localInputToIso(local: string): string | null {
+  if (!local) return null;
+  const d = new Date(local);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
 // Các nhóm trọng số áp dụng cho từng cấp đánh giá
@@ -194,6 +209,7 @@ export function CouncilRoundsTab({ rounds, onChanged }: Props) {
                 <th className="px-3 py-2 font-medium">Từ ngày</th>
                 <th className="px-3 py-2 font-medium">Đến ngày</th>
                 <th className="px-3 py-2 font-medium">Trạng thái</th>
+                <th className="px-3 py-2 font-medium">Hạn bỏ phiếu</th>
                 <th className="px-3 py-2 font-medium">Trọng số</th>
               </tr>
             </thead>
@@ -232,6 +248,18 @@ export function CouncilRoundsTab({ rounds, onChanged }: Props) {
                       </Select>
                     </td>
                     <td className="px-3 py-2">
+                      <Input
+                        type="datetime-local"
+                        defaultValue={isoToLocalInput(r.voting_deadline)}
+                        onBlur={(e) => {
+                          const iso = localInputToIso(e.target.value);
+                          if (iso !== r.voting_deadline) updateRound(r.id, { voting_deadline: iso });
+                        }}
+                        className="h-8 w-48 text-xs"
+                        title="Quá hạn này kỳ sẽ tự chuyển sang Đã chốt; hệ thống nhắc email thành viên chưa gửi phiếu khi còn ≤3 ngày"
+                      />
+                    </td>
+                    <td className="px-3 py-2">
                       <Button
                         size="sm"
                         variant={weightEditId === r.id ? 'default' : 'outline'}
@@ -245,7 +273,7 @@ export function CouncilRoundsTab({ rounds, onChanged }: Props) {
                   </tr>
                   {weightEditId === r.id && (
                     <tr className="border-b last:border-0">
-                      <td colSpan={5} className="px-3 py-3">
+                      <td colSpan={6} className="px-3 py-3">
                         <WeightEditor round={r} onSaved={onChanged} />
                       </td>
                     </tr>
@@ -253,7 +281,7 @@ export function CouncilRoundsTab({ rounds, onChanged }: Props) {
                 </Fragment>
               ))}
               {rounds.length === 0 && (
-                <tr><td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">Chưa có kỳ đánh giá.</td></tr>
+                <tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">Chưa có kỳ đánh giá.</td></tr>
               )}
             </tbody>
           </table>
