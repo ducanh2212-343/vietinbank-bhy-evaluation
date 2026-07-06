@@ -47,8 +47,11 @@ export const WEIGHT_SCHEMES: Record<CouncilSubjectLevel, Partial<Record<WeightBu
   truong_phong: { giam_doc: 0.2, pgd_phu_trach: 0.1, pgd_khac: 0.15, thanh_vien: 0.55 },
 };
 
-// Điểm chấm rất cao/rất thấp phải kèm nhận xét & minh chứng (Cơ chế đánh giá, mục I.3)
-export const EXTREME_HIGH = 9.5;
+// Thang điểm chấm chi tiết: 10 nấc rời rạc từ 1 đến 10 (theo mẫu khảo sát ẩn danh)
+export const SCORE_SCALE: number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+// Điểm chấm rất cao/rất thấp phải kèm minh chứng (Cơ chế đánh giá, mục I.3)
+export const EXTREME_HIGH = 10;
 export const EXTREME_LOW = 3;
 
 export interface ReportEvaluationRow {

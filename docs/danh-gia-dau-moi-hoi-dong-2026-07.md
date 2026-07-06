@@ -24,10 +24,11 @@ Tính năng được xây dựng theo 4 tài liệu Chi nhánh cung cấp: **Cơ
 - **Thành viên Hội đồng:** quản lý tại tab *Thành viên HĐ*, mỗi người thuộc một nhóm trọng số
   (Giám đốc / Phó Giám đốc / Thành viên khác). Đã nạp sẵn từ hồ sơ hiện có: GĐ Trần Đức Anh; 3 PGĐ
   (Thùy Linh, Thái Hoàng, Minh Hải); TP Đỗ Việt Anh; TP Vũ Thị Thu Hà; **bà Nguyễn Thị Phượng (đầu mối KPI)**.
-- **Phiếu chấm điểm:** chọn kỳ → chọn đầu mối → chấm 10 tiêu chí (0–10, bước 0,5; nút nhanh 10/8/6/3/0 kèm
-  tooltip chuẩn hành vi) → nhận xét 3 mục theo Mẫu phiếu (ưu điểm/hạn chế/đề xuất) → Lưu nháp hoặc Gửi.
+- **Phiếu chấm điểm:** chọn kỳ → chọn đầu mối → chấm 10 tiêu chí theo **thang điểm chi tiết 10 nấc từ 1 đến 10**
+  (bấm chọn nấc như khảo sát ẩn danh; nấc 10/8/6/3/1 có tooltip chuẩn hành vi tương ứng; bấm lại nấc đang chọn
+  để bỏ chấm) → nhận xét 3 mục theo Mẫu phiếu (ưu điểm/hạn chế/đề xuất) → Lưu nháp hoặc Gửi.
   **Không tự chấm bản thân** (ẩn khỏi danh sách + chặn ở tầng CSDL). Đúng cơ chế mục I.3: tiêu chí chấm
-  **≥ 9,5 hoặc ≤ 3 bắt buộc nhập minh chứng ngay tại tiêu chí đó** mới gửi được (ô minh chứng hiện ra
+  **10 điểm hoặc ≤ 3 điểm bắt buộc nhập minh chứng ngay tại tiêu chí đó** mới gửi được (ô minh chứng hiện ra
   dưới từng câu hỏi khi chấm điểm rất cao/rất thấp). Phiếu đã gửi vẫn sửa được khi kỳ còn mở.
 - **Admin xóa phiếu để làm lại:** tại tab *Tiến độ*, admin bấm nút xóa ở từng ô để xóa phiếu (điểm + nhận xét)
   của một thành viên cho một đầu mối — thành viên chấm lại từ đầu.

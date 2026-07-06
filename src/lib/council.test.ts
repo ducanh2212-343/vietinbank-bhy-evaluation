@@ -95,9 +95,9 @@ describe('điểm cấp TP dùng scheme 20/10/15/55', () => {
   });
 });
 
-describe('extremeScoreCriteria — chấm rất cao/rất thấp phải kèm nhận xét', () => {
-  it('bắt các tiêu chí >= 9.5 hoặc <= 3', () => {
-    const scores = { c1: 9.5, c2: 3, c3: 8, c4: 10, c5: 0 };
-    expect(extremeScoreCriteria(scores, ['c1', 'c2', 'c3', 'c4', 'c5'])).toEqual(['c1', 'c2', 'c4', 'c5']);
+describe('extremeScoreCriteria — chấm rất cao/rất thấp phải kèm minh chứng', () => {
+  it('bắt các tiêu chí chấm 10 hoặc <= 3 (thang 10 nấc)', () => {
+    const scores = { c1: 10, c2: 3, c3: 8, c4: 9, c5: 1 };
+    expect(extremeScoreCriteria(scores, ['c1', 'c2', 'c3', 'c4', 'c5'])).toEqual(['c1', 'c2', 'c5']);
   });
 });

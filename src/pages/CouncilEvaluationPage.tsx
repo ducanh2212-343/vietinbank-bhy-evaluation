@@ -5,13 +5,12 @@ import { useCouncilAccess } from '@/hooks/useCouncilAccess';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, CheckCircle2, ClipboardCheck, Gavel, Loader2, Save, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  EXTREME_HIGH, EXTREME_LOW, ROUND_STATUS_LABELS, SECTION_LABELS,
+  EXTREME_HIGH, EXTREME_LOW, ROUND_STATUS_LABELS, SCORE_SCALE, SECTION_LABELS,
   extremeScoreCriteria, formatScore, rawAverage,
   type CouncilRoundStatus, type CouncilSection,
 } from '@/lib/council';
@@ -31,13 +30,20 @@ interface MyEvaluation {
   strengths: string | null; weaknesses: string | null; suggestions: string | null;
 }
 
-const ANCHOR_LEVELS: { score: number; field: keyof Pick<CriterionRow, 'anchor_10' | 'anchor_8' | 'anchor_6' | 'anchor_3' | 'anchor_0'> }[] = [
+type AnchorField = keyof Pick<CriterionRow, 'anchor_10' | 'anchor_8' | 'anchor_6' | 'anchor_3' | 'anchor_0'>;
+
+const ANCHOR_LEVELS: { score: number; field: AnchorField }[] = [
   { score: 10, field: 'anchor_10' },
   { score: 8, field: 'anchor_8' },
   { score: 6, field: 'anchor_6' },
   { score: 3, field: 'anchor_3' },
   { score: 0, field: 'anchor_0' },
 ];
+
+// Tooltip cho các nấc điểm trùng mốc chuẩn hành vi (nấc 1 tham chiếu mức 0đ)
+const SCALE_ANCHOR_FIELD: Record<number, AnchorField> = {
+  10: 'anchor_10', 8: 'anchor_8', 6: 'anchor_6', 3: 'anchor_3', 1: 'anchor_0',
+};
 
 export default function CouncilEvaluationPage() {
   const { profileId } = useAuth();
@@ -133,11 +139,9 @@ export default function CouncilEvaluationPage() {
     setSubjectId(sid);
   };
 
-  const setScore = (criterionId: string, value: string) => {
-    if (value === '') { setScores((p) => ({ ...p, [criterionId]: '' })); return; }
-    const num = Number(value);
-    if (Number.isNaN(num)) return;
-    setScores((p) => ({ ...p, [criterionId]: Math.min(10, Math.max(0, num)) }));
+  // Chọn nấc điểm 1-10; bấm lại nấc đang chọn để bỏ chấm
+  const pickScore = (criterionId: string, value: number) => {
+    setScores((p) => ({ ...p, [criterionId]: p[criterionId] === value ? '' : value }));
   };
 
   const numericScores = useMemo(() => {
@@ -164,7 +168,7 @@ export default function CouncilEvaluationPage() {
           .map((cid) => criteria.find((c) => c.id === cid)?.title || '')
           .filter(Boolean);
         toast.error(
-          `Tiêu chí chấm rất cao (≥${EXTREME_HIGH}) hoặc rất thấp (≤${EXTREME_LOW}) phải kèm minh chứng. Còn thiếu: ${names.slice(0, 3).join('; ')}${names.length > 3 ? '…' : ''}`,
+          `Tiêu chí chấm rất cao (${EXTREME_HIGH} điểm) hoặc rất thấp (≤${EXTREME_LOW} điểm) phải kèm minh chứng. Còn thiếu: ${names.slice(0, 3).join('; ')}${names.length > 3 ? '…' : ''}`,
         );
         return;
       }
@@ -308,33 +312,37 @@ export default function CouncilEvaluationPage() {
                           <p className="text-sm font-medium">{idx + 1}. {c.title}</p>
                           {c.description && <p className="text-xs text-muted-foreground mt-0.5">{c.description}</p>}
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          {ANCHOR_LEVELS.map((a) => (
+                        {typeof value === 'number' && (
+                          <Badge variant={isExtreme ? 'destructive' : 'default'} className="text-[11px]">
+                            {value} điểm
+                          </Badge>
+                        )}
+                      </div>
+                      {/* Thang điểm chi tiết 10 nấc (1 → 10) */}
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <span className="text-[10px] text-muted-foreground mr-0.5">Thấp</span>
+                        {SCORE_SCALE.map((n) => {
+                          const anchorField = SCALE_ANCHOR_FIELD[n];
+                          return (
                             <Button
-                              key={a.score}
+                              key={n}
                               size="sm"
-                              variant={value === a.score ? 'default' : 'outline'}
-                              className="h-7 px-2 text-xs"
+                              variant={value === n ? 'default' : 'outline'}
+                              className={`h-8 w-9 px-0 text-sm font-semibold ${value === n ? '' : 'text-foreground/80'}`}
                               disabled={!roundOpen}
-                              onClick={() => setScore(c.id, String(a.score))}
-                              title={c[a.field] || undefined}
+                              onClick={() => pickScore(c.id, n)}
+                              title={anchorField ? c[anchorField] || undefined : undefined}
                             >
-                              {a.score}
+                              {n}
                             </Button>
-                          ))}
-                          <Input
-                            type="number"
-                            inputMode="decimal"
-                            min={0}
-                            max={10}
-                            step={0.5}
-                            disabled={!roundOpen}
-                            value={value === undefined ? '' : value}
-                            onChange={(e) => setScore(c.id, e.target.value)}
-                            className={`w-20 h-8 text-sm text-center ${isExtreme ? 'border-amber-500' : ''}`}
-                            placeholder="0-10"
-                          />
-                        </div>
+                          );
+                        })}
+                        <span className="text-[10px] text-muted-foreground ml-0.5">Cao</span>
+                        {typeof value === 'number' && !SCORE_SCALE.includes(value) && (
+                          <span className="text-[11px] text-muted-foreground ml-1">
+                            (điểm cũ {formatScore(value, 1)} — chọn lại nấc 1-10 để cập nhật)
+                          </span>
+                        )}
                       </div>
                       <details className="text-xs">
                         <summary className="cursor-pointer text-muted-foreground select-none">Chuẩn hành vi tham chiếu (mốc điểm)</summary>
@@ -347,7 +355,7 @@ export default function CouncilEvaluationPage() {
                       {(isExtreme || (evidences[c.id] || '').trim()) && (
                         <div>
                           <label className={`text-[11px] font-medium ${isExtreme ? 'text-amber-600 dark:text-amber-500' : ''}`}>
-                            Minh chứng cho tiêu chí này {isExtreme && <>(bắt buộc khi chấm ≥{EXTREME_HIGH} hoặc ≤{EXTREME_LOW})</>}
+                            Minh chứng cho tiêu chí này {isExtreme && <>(bắt buộc khi chấm {EXTREME_HIGH} điểm hoặc ≤{EXTREME_LOW} điểm)</>}
                           </label>
                           <Textarea
                             value={evidences[c.id] || ''}
@@ -417,7 +425,8 @@ export default function CouncilEvaluationPage() {
           <Gavel className="w-5 h-5 text-primary" /> Đánh giá năng lực thực thi đầu mối
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Hội đồng chấm điểm các cán bộ đầu mối theo bộ câu hỏi định hướng (thang điểm 0-10, tham chiếu chuẩn hành vi).
+          Hội đồng chấm điểm các cán bộ đầu mối theo bộ câu hỏi định hướng — thang điểm chi tiết
+          <strong> 10 nấc từ 1 đến 10</strong> (1 = thấp nhất, 10 = cao nhất), tham chiếu chuẩn hành vi từng mốc.
           Việc chấm điểm dựa trên báo cáo tự đánh giá, hồ sơ minh chứng, nội dung trình bày tại phiên họp Hội đồng và kết quả thực tế —
           không đánh giá theo cảm tính.
         </p>
