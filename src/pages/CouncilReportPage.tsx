@@ -1,0 +1,329 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { useCouncilAccess } from '@/hooks/useCouncilAccess';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { BarChart3, Loader2, Printer } from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  ROUND_STATUS_LABELS, WEIGHT_SCHEMES,
+  computeCouncilReport, formatPercent, formatScore, weightBucketOf,
+  type CouncilRoundStatus, type CouncilSubjectLevel, type ReportEvaluationRow, type WeightBucket,
+} from '@/lib/council';
+
+interface RoundRow { id: string; name: string; status: CouncilRoundStatus; }
+interface SubjectOption { id: string; full_name: string; position: string | null; profile_id: string | null; sort_order: number; }
+interface CriterionLite { id: string; title: string; sort_order: number; }
+
+interface ReportPayload {
+  subject: {
+    id: string; round_id: string; round_name: string; round_status: string;
+    full_name: string; position: string | null; subject_level: CouncilSubjectLevel;
+    task_summary: string | null; measurement: string | null;
+  };
+  total_members: number;
+  submitted_count: number;
+  evaluations: ReportEvaluationRow[];
+}
+
+const GROUP_ROW_LABEL: Record<WeightBucket, string> = {
+  giam_doc: 'Giám đốc Chi nhánh',
+  pgd_phu_trach: 'PGĐ phụ trách',
+  pgd_khac: 'Phó Giám đốc khác',
+  thanh_vien: 'Thành viên Hội đồng',
+};
+
+export default function CouncilReportPage() {
+  const { isAdmin, profileId } = useAuth();
+  const access = useCouncilAccess();
+  const [rounds, setRounds] = useState<RoundRow[]>([]);
+  const [roundId, setRoundId] = useState('');
+  const [subjects, setSubjects] = useState<SubjectOption[]>([]);
+  const [subjectId, setSubjectId] = useState('');
+  const [criteria, setCriteria] = useState<CriterionLite[]>([]);
+  const [report, setReport] = useState<ReportPayload | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const allowed = isAdmin || access.isSubject;
+
+  useEffect(() => {
+    if (!allowed) return;
+    (async () => {
+      const { data } = await supabase
+        .from('council_rounds')
+        .select('id, name, status')
+        .neq('status', 'draft')
+        .order('start_date');
+      const list = (data || []) as RoundRow[];
+      setRounds(list);
+      setRoundId((prev) => prev || list.find((r) => r.status === 'open')?.id || list[list.length - 1]?.id || '');
+    })();
+  }, [allowed]);
+
+  useEffect(() => {
+    if (!roundId || !allowed) return;
+    (async () => {
+      const { data, error } = await supabase
+        .from('council_subjects')
+        .select('id, full_name, position, profile_id, sort_order')
+        .eq('round_id', roundId)
+        .eq('is_active', true)
+        .order('sort_order');
+      if (error) { toast.error('Lỗi tải danh sách đầu mối: ' + error.message); return; }
+      let list = (data || []) as SubjectOption[];
+      // Cán bộ đầu mối (không phải admin) chỉ xem được báo cáo của chính mình
+      if (!isAdmin) list = list.filter((s) => s.profile_id === profileId);
+      setSubjects(list);
+      setSubjectId((prev) => (list.some((s) => s.id === prev) ? prev : list[0]?.id || ''));
+    })();
+  }, [roundId, allowed, isAdmin, profileId]);
+
+  const loadReport = useCallback(async () => {
+    if (!subjectId) { setReport(null); return; }
+    setLoading(true);
+    const [reportRes, criteriaRes] = await Promise.all([
+      supabase.rpc('get_council_subject_report', { p_subject_id: subjectId }),
+      supabase.from('council_criteria')
+        .select('id, title, sort_order')
+        .eq('round_id', roundId).eq('is_active', true).order('sort_order'),
+    ]);
+    setLoading(false);
+    if (reportRes.error) { toast.error('Lỗi tải báo cáo: ' + reportRes.error.message); setReport(null); return; }
+    if (criteriaRes.error) { toast.error('Lỗi tải tiêu chí: ' + criteriaRes.error.message); return; }
+    setReport(reportRes.data as unknown as ReportPayload);
+    setCriteria((criteriaRes.data || []) as CriterionLite[]);
+  }, [subjectId, roundId]);
+
+  useEffect(() => { loadReport(); }, [loadReport]);
+
+  const summary = useMemo(() => {
+    if (!report) return null;
+    return computeCouncilReport(report.evaluations, criteria.map((c) => c.id), report.subject.subject_level);
+  }, [report, criteria]);
+
+  if (access.loading) {
+    return <div className="p-6 text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Đang tải…</div>;
+  }
+  if (!allowed) {
+    return (
+      <div className="p-6 text-sm text-muted-foreground">
+        Trang này dành cho Ban Giám đốc/quản trị hệ thống và các cán bộ đầu mối (xem kết quả của chính mình).
+      </div>
+    );
+  }
+
+  const scheme = report ? WEIGHT_SCHEMES[report.subject.subject_level] : null;
+  const weightOf = (row: ReportEvaluationRow) =>
+    scheme?.[weightBucketOf(row, report!.subject.subject_level)] ?? 0;
+
+  return (
+    <div className="space-y-4 max-w-6xl">
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          #council-report, #council-report * { visibility: visible; }
+          #council-report { position: absolute; left: 0; top: 0; width: 100%; padding: 0 8px; }
+        }
+      `}</style>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <h1 className="text-xl font-semibold flex items-center gap-2">
+          <BarChart3 className="w-5 h-5 text-primary" /> Báo cáo kết quả đánh giá đầu mối
+        </h1>
+        <div className="ml-auto flex items-center gap-2">
+          <Select value={roundId} onValueChange={setRoundId}>
+            <SelectTrigger className="w-[180px] h-9"><SelectValue placeholder="Chọn kỳ" /></SelectTrigger>
+            <SelectContent>
+              {rounds.map((r) => (
+                <SelectItem key={r.id} value={r.id}>{r.name} — {ROUND_STATUS_LABELS[r.status]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={subjectId} onValueChange={setSubjectId}>
+            <SelectTrigger className="w-[230px] h-9"><SelectValue placeholder="Chọn cán bộ đầu mối" /></SelectTrigger>
+            <SelectContent>
+              {subjects.map((s) => <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Button size="sm" variant="outline" onClick={() => window.print()} disabled={!report}>
+            <Printer className="w-4 h-4 mr-1" /> In báo cáo
+          </Button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Đang tải báo cáo…</div>
+      ) : !report || !summary ? (
+        <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">
+          {subjects.length === 0 ? 'Không có dữ liệu đầu mối cho kỳ này.' : 'Chọn kỳ và cán bộ đầu mối để xem báo cáo.'}
+        </CardContent></Card>
+      ) : (
+        <Card>
+          <CardContent className="p-5" id="council-report">
+            {/* Tiêu đề báo cáo */}
+            <div className="flex justify-between gap-4 text-[11px] uppercase leading-snug">
+              <div className="text-center">
+                <p className="font-semibold">Ngân hàng TMCP Công Thương Việt Nam</p>
+                <p>Chi nhánh Bắc Hưng Yên — Hội đồng đánh giá</p>
+              </div>
+              <div className="text-center">
+                <p className="font-semibold">Cộng hòa xã hội chủ nghĩa Việt Nam</p>
+                <p className="normal-case">Độc lập - Tự do - Hạnh phúc</p>
+              </div>
+            </div>
+            <h2 className="text-center text-base font-bold mt-4">
+              BÁO CÁO KẾT QUẢ ĐÁNH GIÁ CHI TIẾT CÁN BỘ ĐẦU MỐI (XỬ LÝ TRỌNG SỐ)
+            </h2>
+            <p className="text-center text-sm text-muted-foreground">
+              Kỳ đánh giá: {report.subject.round_name} — Chi nhánh Bắc Hưng Yên
+            </p>
+
+            {/* I. Thông tin cán bộ */}
+            <h3 className="text-sm font-bold mt-5 mb-2 text-primary">I. THÔNG TIN CÁN BỘ ĐƯỢC ĐÁNH GIÁ</h3>
+            <div className="text-sm space-y-1">
+              <div className="grid sm:grid-cols-2 gap-x-6 gap-y-1">
+                <p><span className="text-muted-foreground">Họ và tên cán bộ:</span> <strong>{report.subject.full_name}</strong></p>
+                <p><span className="text-muted-foreground">Chức vụ công tác:</span> {report.subject.position || '—'}</p>
+                <p><span className="text-muted-foreground">Số phiếu đã tổng hợp:</span> {report.submitted_count}/{report.total_members} thành viên</p>
+                <p><span className="text-muted-foreground">Thời điểm xuất báo cáo:</span> {new Date().toLocaleString('vi-VN')}</p>
+              </div>
+              {report.subject.task_summary && (
+                <p><span className="text-muted-foreground">Nhiệm vụ trọng tâm đầu mối:</span> {report.subject.task_summary}</p>
+              )}
+              {report.subject.measurement && (
+                <p><span className="text-muted-foreground">Phương thức đo lường / Cam kết:</span> {report.subject.measurement}</p>
+              )}
+            </div>
+
+            {/* II. Bảng chi tiết */}
+            <h3 className="text-sm font-bold mt-5 mb-2 text-primary">II. BẢNG CHI TIẾT ĐIỂM CHẤM TỪ CÁC THÀNH VIÊN HỘI ĐỒNG</h3>
+            {report.evaluations.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Chưa có phiếu đánh giá nào được gửi.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs border">
+                  <thead>
+                    <tr className="bg-muted/40">
+                      <th className="border px-1.5 py-1.5">STT</th>
+                      <th className="border px-1.5 py-1.5 whitespace-nowrap">Người đánh giá</th>
+                      <th className="border px-1.5 py-1.5">Trọng số</th>
+                      {criteria.map((c, i) => (
+                        <th key={c.id} className="border px-1 py-1.5" title={c.title}>TC{i + 1}</th>
+                      ))}
+                      <th className="border px-1.5 py-1.5 whitespace-nowrap">TB thô</th>
+                      <th className="border px-1.5 py-1.5 min-w-40">Ý kiến đóng góp</th>
+                      <th className="border px-1.5 py-1.5 min-w-32">Minh chứng ghi nhận</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {report.evaluations.map((ev, idx) => {
+                      const comments = [ev.strengths, ev.weaknesses, ev.suggestions].filter(Boolean).join(' · ');
+                      return (
+                        <tr key={ev.anon_code}>
+                          <td className="border px-1.5 py-1.5 text-center">{idx + 1}</td>
+                          <td className="border px-1.5 py-1.5 whitespace-nowrap">
+                            Thành viên ẩn danh {ev.anon_code}
+                            {ev.is_supervisor && <span className="block text-[10px] text-muted-foreground">(PGĐ phụ trách)</span>}
+                          </td>
+                          <td className="border px-1.5 py-1.5 text-center">{formatPercent(weightOf(ev))}</td>
+                          {criteria.map((c) => (
+                            <td key={c.id} className="border px-1 py-1.5 text-center">
+                              {ev.scores[c.id] != null ? Number(ev.scores[c.id]) : '—'}
+                            </td>
+                          ))}
+                          <td className="border px-1.5 py-1.5 text-center font-semibold">
+                            {formatScore(summary.rowAverages.get(ev.anon_code) ?? null)}
+                          </td>
+                          <td className="border px-1.5 py-1.5">{comments || '—'}</td>
+                          <td className="border px-1.5 py-1.5">{ev.evidence || '—'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* III. Phân tích trọng số */}
+            <h3 className="text-sm font-bold mt-5 mb-2 text-primary">
+              III. PHÂN TÍCH VÀ KIỂM CHỨNG KẾT QUẢ CHẤM ĐIỂM THEO TRỌNG SỐ VỊ TRÍ
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs border">
+                <thead>
+                  <tr className="bg-muted/40">
+                    <th className="border px-2 py-1.5 text-left">Nhóm người đánh giá</th>
+                    <th className="border px-2 py-1.5">Số phiếu hiện có</th>
+                    <th className="border px-2 py-1.5">Điểm TB nhóm thô (thang 10)</th>
+                    <th className="border px-2 py-1.5">Trọng số áp dụng (%)</th>
+                    <th className="border px-2 py-1.5">Điểm thành phần có trọng số</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {summary.buckets.map((b) => (
+                    <tr key={b.bucket}>
+                      <td className="border px-2 py-1.5">{GROUP_ROW_LABEL[b.bucket]}</td>
+                      <td className="border px-2 py-1.5 text-center">{b.votes}</td>
+                      <td className="border px-2 py-1.5 text-center">{b.votes ? formatScore(b.rawAvg) : '—'}</td>
+                      <td className="border px-2 py-1.5 text-center">{formatPercent(b.weight)}</td>
+                      <td className="border px-2 py-1.5 text-center">{b.votes ? formatScore(b.contribution, 4) : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-3 mt-3">
+              <div className="border rounded-lg p-3 text-center">
+                <p className="text-[11px] uppercase text-muted-foreground">Xếp loại thực thi đầu mối</p>
+                <p className="text-lg font-bold mt-1">{summary.classification?.label || 'Chưa đủ dữ liệu'}</p>
+                <p className="text-[10px] text-muted-foreground mt-1">Phân loại dựa trên Quy chế xếp hạng cán bộ VietinBank</p>
+              </div>
+              <div className="border rounded-lg p-3 text-center">
+                <p className="text-[11px] uppercase text-muted-foreground">Điểm quy về thang 100 kiểm chứng</p>
+                <p className="text-lg font-bold mt-1">{summary.score100 != null ? formatScore(summary.score100) : '—'} điểm</p>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Tổng trọng số bỏ phiếu hiện có: {formatPercent(summary.totalWeightPresent)}
+                </p>
+              </div>
+            </div>
+            {summary.totalWeightPresent < 1 && summary.score100 != null && (
+              <p className="text-[11px] text-amber-600 dark:text-amber-500 mt-2">
+                Một số nhóm chưa bỏ phiếu — điểm được chuẩn hóa theo tổng trọng số hiện có ({formatPercent(summary.totalWeightPresent)}).
+              </p>
+            )}
+
+            {/* Ký xác nhận */}
+            <h3 className="text-sm font-bold mt-6 mb-2 text-primary">IV. CÁC THÀNH VIÊN THAM DỰ HỘI ĐỒNG KÝ XÁC NHẬN KẾT QUẢ ĐÁNH GIÁ</h3>
+            <div className="grid grid-cols-3 gap-4 text-center text-xs mt-4 mb-2">
+              <div>
+                <p className="font-semibold uppercase">Cán bộ được đánh giá</p>
+                <p className="text-muted-foreground italic">(Ký và ghi rõ họ tên)</p>
+                <p className="mt-14 font-medium">{report.subject.full_name}</p>
+                <p className="text-muted-foreground">{report.subject.position || ''}</p>
+              </div>
+              <div>
+                <p className="font-semibold uppercase">Thư ký Hội đồng / Kiểm soát</p>
+                <p className="text-muted-foreground italic">(Ký và ghi rõ họ tên)</p>
+              </div>
+              <div>
+                <p className="font-semibold uppercase">Đại diện Ban Giám đốc / Chi nhánh</p>
+                <p className="text-muted-foreground italic">(Ký, đóng dấu xác nhận)</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {report && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground pb-4">
+          <Badge variant="outline" className="text-[10px]">{report.submitted_count}/{report.total_members} phiếu đã gửi</Badge>
+          Kết quả cập nhật theo thời gian thực; danh tính người chấm được ẩn danh theo cơ chế đánh giá của Hội đồng.
+        </div>
+      )}
+    </div>
+  );
+}
