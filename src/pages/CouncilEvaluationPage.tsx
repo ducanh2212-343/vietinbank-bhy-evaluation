@@ -11,7 +11,7 @@ import { ArrowLeft, CheckCircle2, ClipboardCheck, Gavel, Loader2, Save, Send } f
 import { toast } from 'sonner';
 import {
   EXTREME_HIGH, EXTREME_LOW, ROUND_STATUS_LABELS, SCORE_SCALE, SECTION_LABELS,
-  extremeScoreCriteria, formatScore, rawAverage,
+  extremeScoreCriteria, formatScore, rawAverage, scoreBandOf,
   type CouncilRoundStatus, type CouncilSection,
 } from '@/lib/council';
 
@@ -44,6 +44,10 @@ const ANCHOR_LEVELS: { score: number; field: AnchorField }[] = [
 const SCALE_ANCHOR_FIELD: Record<number, AnchorField> = {
   10: 'anchor_10', 8: 'anchor_8', 6: 'anchor_6', 3: 'anchor_3', 1: 'anchor_0',
 };
+
+// Bấm vào mô tả hành vi → chấm mốc điểm tương ứng (mức 0đ → nấc 1, thang bắt đầu từ 1)
+const ANCHOR_PICK_SCORE: Record<number, number> = { 10: 10, 8: 8, 6: 6, 3: 3, 0: 1 };
+const ANCHOR_RANGE_LABEL: Record<number, string> = { 10: '9–10', 8: '7–8', 6: '5–6', 3: '2–4', 0: '1' };
 
 export default function CouncilEvaluationPage() {
   const { profileId } = useAuth();
@@ -305,19 +309,50 @@ export default function CouncilEvaluationPage() {
                   const idx = criteria.findIndex((x) => x.id === c.id);
                   const value = scores[c.id];
                   const isExtreme = typeof value === 'number' && (value >= EXTREME_HIGH || value <= EXTREME_LOW);
+                  const band = typeof value === 'number' ? scoreBandOf(value) : null;
                   return (
-                    <div key={c.id} className="border rounded-lg p-3 space-y-2 bg-muted/20">
+                    <div key={c.id} className="border rounded-lg p-3 space-y-2.5 bg-muted/20">
                       <div className="flex items-start gap-2 flex-wrap">
                         <div className="flex-1 min-w-[240px]">
                           <p className="text-sm font-medium">{idx + 1}. {c.title}</p>
                           {c.description && <p className="text-xs text-muted-foreground mt-0.5">{c.description}</p>}
                         </div>
-                        {typeof value === 'number' && (
-                          <Badge variant={isExtreme ? 'destructive' : 'default'} className="text-[11px]">
-                            {value} điểm
+                        {typeof value === 'number' && band && (
+                          <Badge className={`text-[11px] ${band.badgeClass}`}>
+                            {SCORE_SCALE.includes(value) ? value : formatScore(value, 1)} điểm · {band.label}
                           </Badge>
                         )}
                       </div>
+
+                      {/* Chuẩn hành vi hiển thị trước — bấm vào mô tả phù hợp để chấm mốc điểm tương ứng */}
+                      <div className="space-y-1">
+                        <p className="text-[11px] text-muted-foreground">
+                          Chọn mô tả hành vi sát thực tế nhất (tự điền mốc điểm), sau đó tinh chỉnh trên thang 1-10:
+                        </p>
+                        {ANCHOR_LEVELS.map((a) => {
+                          const text = c[a.field];
+                          if (!text) return null;
+                          const active = typeof value === 'number' && band?.anchorScore === a.score;
+                          return (
+                            <button
+                              key={a.score}
+                              type="button"
+                              disabled={!roundOpen}
+                              onClick={() => pickScore(c.id, ANCHOR_PICK_SCORE[a.score])}
+                              className={`w-full text-left text-xs rounded-md border px-2.5 py-1.5 transition-all ${
+                                active
+                                  ? 'border-primary bg-primary/10 ring-1 ring-primary shadow-sm'
+                                  : 'bg-background hover:border-primary/60 hover:bg-primary/5'
+                              } ${roundOpen ? 'cursor-pointer active:scale-[0.99]' : 'cursor-default opacity-80'}`}
+                            >
+                              <span className={`font-semibold ${active ? 'text-primary' : ''}`}>Mức {a.score}đ</span>
+                              <span className="text-muted-foreground"> (nấc {ANCHOR_RANGE_LABEL[a.score]})</span>
+                              {': '}{text}
+                            </button>
+                          );
+                        })}
+                      </div>
+
                       {/* Thang điểm chi tiết 10 nấc (1 → 10) */}
                       <div className="flex items-center gap-1 flex-wrap">
                         <span className="text-[10px] text-muted-foreground mr-0.5">Thấp</span>
@@ -328,7 +363,7 @@ export default function CouncilEvaluationPage() {
                               key={n}
                               size="sm"
                               variant={value === n ? 'default' : 'outline'}
-                              className={`h-8 w-9 px-0 text-sm font-semibold ${value === n ? '' : 'text-foreground/80'}`}
+                              className={`h-8 w-9 px-0 text-sm font-semibold transition-all ${value === n ? 'scale-110' : 'text-foreground/80'}`}
                               disabled={!roundOpen}
                               onClick={() => pickScore(c.id, n)}
                               title={anchorField ? c[anchorField] || undefined : undefined}
@@ -344,14 +379,6 @@ export default function CouncilEvaluationPage() {
                           </span>
                         )}
                       </div>
-                      <details className="text-xs">
-                        <summary className="cursor-pointer text-muted-foreground select-none">Chuẩn hành vi tham chiếu (mốc điểm)</summary>
-                        <ul className="mt-1.5 space-y-1 pl-1">
-                          {ANCHOR_LEVELS.map((a) => c[a.field] && (
-                            <li key={a.score}><strong>Mức {a.score}đ:</strong> {c[a.field]}</li>
-                          ))}
-                        </ul>
-                      </details>
                       {(isExtreme || (evidences[c.id] || '').trim()) && (
                         <div>
                           <label className={`text-[11px] font-medium ${isExtreme ? 'text-amber-600 dark:text-amber-500' : ''}`}>

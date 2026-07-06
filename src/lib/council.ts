@@ -54,6 +54,28 @@ export const SCORE_SCALE: number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 export const EXTREME_HIGH = 10;
 export const EXTREME_LOW = 3;
 
+// Ngưỡng diễn giải điểm từng tiêu chí (thang 10 nấc), neo theo 5 mốc chuẩn hành vi:
+//   9-10 → mức 10đ · 7-8 → mức 8đ · 5-6 → mức 6đ · 2-4 → mức 3đ · 1 → mức 0đ
+export interface CriterionScoreBand {
+  min: number;          // điểm tối thiểu thuộc dải
+  anchorScore: number;  // mốc chuẩn hành vi tương ứng (10/8/6/3/0)
+  label: string;
+  rangeLabel: string;   // nhãn dải nấc hiển thị
+  badgeClass: string;   // màu hiển thị
+}
+
+export const CRITERION_SCORE_BANDS: CriterionScoreBand[] = [
+  { min: 9, anchorScore: 10, label: 'Xuất sắc', rangeLabel: '9–10', badgeClass: 'bg-emerald-600 hover:bg-emerald-600 text-white' },
+  { min: 7, anchorScore: 8, label: 'Tốt', rangeLabel: '7–8', badgeClass: 'bg-sky-600 hover:bg-sky-600 text-white' },
+  { min: 5, anchorScore: 6, label: 'Đạt', rangeLabel: '5–6', badgeClass: 'bg-slate-500 hover:bg-slate-500 text-white' },
+  { min: 2, anchorScore: 3, label: 'Cần cải thiện', rangeLabel: '2–4', badgeClass: 'bg-amber-600 hover:bg-amber-600 text-white' },
+  { min: 0, anchorScore: 0, label: 'Không đạt', rangeLabel: '1', badgeClass: 'bg-red-600 hover:bg-red-600 text-white' },
+];
+
+export function scoreBandOf(score: number): CriterionScoreBand {
+  return CRITERION_SCORE_BANDS.find((b) => score >= b.min) ?? CRITERION_SCORE_BANDS[CRITERION_SCORE_BANDS.length - 1];
+}
+
 export interface ReportEvaluationRow {
   anon_code: string;
   member_group: CouncilMemberGroup;

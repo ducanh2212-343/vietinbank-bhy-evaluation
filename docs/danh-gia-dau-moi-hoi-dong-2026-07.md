@@ -24,9 +24,11 @@ Tính năng được xây dựng theo 4 tài liệu Chi nhánh cung cấp: **Cơ
 - **Thành viên Hội đồng:** quản lý tại tab *Thành viên HĐ*, mỗi người thuộc một nhóm trọng số
   (Giám đốc / Phó Giám đốc / Thành viên khác). Đã nạp sẵn từ hồ sơ hiện có: GĐ Trần Đức Anh; 3 PGĐ
   (Thùy Linh, Thái Hoàng, Minh Hải); TP Đỗ Việt Anh; TP Vũ Thị Thu Hà; **bà Nguyễn Thị Phượng (đầu mối KPI)**.
-- **Phiếu chấm điểm:** chọn kỳ → chọn đầu mối → chấm 10 tiêu chí theo **thang điểm chi tiết 10 nấc từ 1 đến 10**
-  (bấm chọn nấc như khảo sát ẩn danh; nấc 10/8/6/3/1 có tooltip chuẩn hành vi tương ứng; bấm lại nấc đang chọn
-  để bỏ chấm) → nhận xét 3 mục theo Mẫu phiếu (ưu điểm/hạn chế/đề xuất) → Lưu nháp hoặc Gửi.
+- **Phiếu chấm điểm:** chọn kỳ → chọn đầu mối → với mỗi tiêu chí, **5 mô tả chuẩn hành vi hiển thị trước**;
+  người chấm **bấm vào mô tả sát thực tế nhất → hệ thống tự điền mốc điểm tương ứng** (mức 10đ→nấc 10,
+  8đ→8, 6đ→6, 3đ→3, 0đ→nấc 1), rồi tinh chỉnh trên **thang chi tiết 10 nấc từ 1 đến 10**. Mô tả hành vi
+  ứng với dải điểm đang chọn được tô sáng; điểm hiện màu theo dải diễn giải. Bấm lại nấc đang chọn để bỏ chấm.
+  Sau đó nhập nhận xét 3 mục theo Mẫu phiếu (ưu điểm/hạn chế/đề xuất) → Lưu nháp hoặc Gửi.
   **Không tự chấm bản thân** (ẩn khỏi danh sách + chặn ở tầng CSDL). Đúng cơ chế mục I.3: tiêu chí chấm
   **10 điểm hoặc ≤ 3 điểm bắt buộc nhập minh chứng ngay tại tiêu chí đó** mới gửi được (ô minh chứng hiện ra
   dưới từng câu hỏi khi chấm điểm rất cao/rất thấp). Phiếu đã gửi vẫn sửa được khi kỳ còn mở.
@@ -52,6 +54,22 @@ Theo mục III của Cơ chế đánh giá:
 - Unit test `src/lib/council.test.ts` tái lập chính xác số liệu mẫu Quý 1/2026: nhóm 8,75/8,45/8,12 → **82,93 điểm**.
 - Báo cáo chỉ thể hiện điểm quy thang 100, **không xếp loại A/B/C/D** (bỏ theo yêu cầu Chi nhánh 07/2026);
   việc phân loại do Hội đồng quyết định ngoài hệ thống.
+
+### Ngưỡng điểm khuyến nghị (neo theo 5 mốc chuẩn hành vi của Mẫu phiếu)
+
+**Từng tiêu chí (thang 10 nấc)** — đang áp dụng trên phiếu chấm (màu badge + tô sáng hành vi):
+
+| Nấc | Mốc hành vi | Diễn giải | Ràng buộc |
+| --- | --- | --- | --- |
+| 9–10 | Mức 10đ | Xuất sắc | chấm 10 bắt buộc minh chứng |
+| 7–8 | Mức 8đ | Tốt | |
+| 5–6 | Mức 6đ | Đạt | |
+| 2–4 | Mức 3đ | Cần cải thiện | ≤3 bắt buộc minh chứng |
+| 1 | Mức 0đ | Không đạt | bắt buộc minh chứng |
+
+**Tổng hợp thang 100 (khuyến nghị tham khảo, chưa hiển thị trên báo cáo vì Chi nhánh đã bỏ xếp loại):**
+≥ 80 Xuất sắc (khớp mẫu Quý 1: 82,93 → Loại A) · 65–79 Tốt · 50–64 Đạt · < 50 Chưa đạt.
+Khi Chi nhánh chốt, bật lại hiển thị bằng cách thêm bảng ngưỡng vào `src/lib/council.ts`.
 
 ## 3. Phân quyền & bảo mật
 
