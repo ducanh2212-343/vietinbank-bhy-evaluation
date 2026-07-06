@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, CheckCircle2, ClipboardCheck, Gavel, Loader2, Save, Send } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ClipboardCheck, Gavel, Loader2, Save, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   EXTREME_HIGH, EXTREME_LOW, ROUND_STATUS_LABELS, SCORE_SCALE, SECTION_LABELS,
@@ -155,6 +155,23 @@ export default function CouncilEvaluationPage() {
   }, [scores]);
 
   const currentAvg = useMemo(() => rawAverage(numericScores, criterionIds), [numericScores, criterionIds]);
+
+  // Xóa bản nháp của chính mình (phiếu đã gửi chỉ admin xóa được)
+  const deleteDraft = async () => {
+    const ev = subject ? myEvalFor(subject.id) : undefined;
+    if (!ev || ev.status !== 'draft') return;
+    if (!window.confirm(`Xóa bản nháp phiếu đánh giá ${subject!.full_name}? Điểm và nhận xét đã lưu nháp sẽ bị xóa vĩnh viễn để làm lại từ đầu.`)) return;
+    setSaving(true);
+    const { error } = await supabase.from('council_evaluations').delete().eq('id', ev.id);
+    setSaving(false);
+    if (error) { toast.error('Lỗi xóa bản nháp: ' + error.message); return; }
+    toast.success('Đã xóa bản nháp — có thể chấm lại từ đầu.');
+    setMyEvals((prev) => prev.filter((e) => e.id !== ev.id));
+    setScores({});
+    setEvidences({});
+    setSavedScoreIds({});
+    setStrengths(''); setWeaknesses(''); setSuggestions('');
+  };
 
   const persist = async (submit: boolean) => {
     if (!subject || !profileId || !roundId) return;
@@ -429,6 +446,11 @@ export default function CouncilEvaluationPage() {
           </span>
           {roundOpen && (
             <div className="ml-auto flex items-center gap-2">
+              {ev?.status === 'draft' && (
+                <Button size="sm" variant="ghost" className="text-destructive" onClick={deleteDraft} disabled={saving} title="Xóa bản nháp để chấm lại từ đầu">
+                  <Trash2 className="w-4 h-4 mr-1" /> Xóa nháp
+                </Button>
+              )}
               <Button size="sm" variant="outline" onClick={() => persist(false)} disabled={saving}>
                 {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />} Lưu nháp
               </Button>

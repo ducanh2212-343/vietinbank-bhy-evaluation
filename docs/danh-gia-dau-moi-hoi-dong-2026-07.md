@@ -33,10 +33,10 @@ Tính năng được xây dựng theo 4 tài liệu Chi nhánh cung cấp: **Cơ
   **Không tự chấm bản thân** (ẩn khỏi danh sách + chặn ở tầng CSDL). Đúng cơ chế mục I.3: tiêu chí chấm
   **10 điểm hoặc ≤ 3 điểm bắt buộc nhập minh chứng ngay tại tiêu chí đó** mới gửi được (ô minh chứng hiện ra
   dưới từng câu hỏi khi chấm điểm rất cao/rất thấp). Phiếu đã gửi vẫn sửa được khi kỳ còn mở.
-- **Xóa phiếu — CHỈ admin, xóa vĩnh viễn:** tại tab *Tiến độ*, admin bấm nút xóa ở từng ô để xóa phiếu
-  (điểm + nhận xét + minh chứng xóa theo ngay ở tầng CSDL, không xóa mềm) — thành viên chấm lại từ đầu.
-  Thành viên KHÔNG tự xóa được phiếu của mình (kể cả bản nháp) — cưỡng chế bằng RLS. Báo cáo/phân tích
-  luôn tính từ dữ liệu hiện tại nên kết quả cập nhật ngay sau khi xóa.
+- **Xóa phiếu (xóa vĩnh viễn, cascade điểm + minh chứng):** phiếu **đã gửi** chỉ admin xóa được
+  (nút xóa ở tab *Tiến độ*); bản **nháp** thì chính người chấm tự xóa được khi kỳ đang mở
+  (nút "Xóa nháp" trên phiếu chấm) — nháp chưa vào báo cáo nên là giấy nháp cá nhân.
+  Cưỡng chế bằng RLS. Báo cáo/phân tích luôn tính từ dữ liệu hiện tại nên kết quả cập nhật ngay sau khi xóa.
 - **Trọng số điều chỉnh được theo kỳ:** tab *Kỳ đánh giá* → nút *Trọng số* của từng kỳ: chỉnh % của
   Giám đốc / PGĐ phụ trách / PGĐ khác / Thành viên cho cả 2 cấp đánh giá (tổng mỗi cấp phải bằng 100%);
   có nút khôi phục mặc định theo Cơ chế. Trọng số áp dụng ngay khi tính báo cáo, kể cả phiếu đã chấm.
