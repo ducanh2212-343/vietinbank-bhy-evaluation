@@ -126,6 +126,48 @@ describe('trọng số tùy chỉnh theo kỳ (weight_config)', () => {
   });
 });
 
+describe('kịch bản đối chiếu chéo với SQL trên database (06-07/07/2026)', () => {
+  // Cùng bộ số đã bơm vào DB thật và tính độc lập bằng SQL: kết quả SQL = 74.8750.
+  // Test này bảo đảm thư viện của app cho ra ĐÚNG con số đó.
+  const alt = (a: number, b: number) => [a, b, a, b, a, b, a, b, a, b];
+  const rows: ReportEvaluationRow[] = [
+    row('#gd', 'giam_doc', alt(9, 9)),                    // GĐ: TB 9.0
+    row('#sup', 'pho_giam_doc', alt(8, 9), true),         // PGĐ phụ trách: TB 8.5
+    row('#pgd1', 'pho_giam_doc', alt(7, 7)),              // PGĐ khác: 7.0
+    row('#pgd2', 'pho_giam_doc', alt(8, 8)),              // PGĐ khác: 8.0 -> nhóm 7.5
+    row('#tv1', 'thanh_vien', alt(6, 7)),                 // TV: 6.5
+    row('#tv2', 'thanh_vien', alt(7, 7)),                 // TV: 7.0 -> nhóm 6.75
+  ];
+
+  it('khớp kết quả SQL độc lập: 74.875 điểm (9*20% + 8.5*10% + 7.5*15% + 6.75*55%)', () => {
+    const r = computeCouncilReport(rows, CRITERIA, 'truong_phong');
+    const byBucket = Object.fromEntries(r.buckets.map((b) => [b.bucket, b]));
+    expect(byBucket.giam_doc.rawAvg).toBeCloseTo(9, 5);
+    expect(byBucket.pgd_phu_trach.rawAvg).toBeCloseTo(8.5, 5);
+    expect(byBucket.pgd_khac.rawAvg).toBeCloseTo(7.5, 5);
+    expect(byBucket.thanh_vien.rawAvg).toBeCloseTo(6.75, 5);
+    expect(r.totalWeightPresent).toBeCloseTo(1, 5);
+    expect(r.score100).toBeCloseTo(74.875, 4);
+  });
+
+  it('phiếu thiếu điểm một tiêu chí: TB thô tính trên các tiêu chí ĐÃ chấm', () => {
+    const partial: ReportEvaluationRow = {
+      ...row('#p', 'thanh_vien', Array(10).fill(8)),
+      scores: { c1: 10, c2: 6 }, // chỉ chấm 2/10 tiêu chí
+    };
+    expect(rawAverage(partial.scores, CRITERIA)).toBeCloseTo(8, 5);
+  });
+
+  it('tiêu chí đã ẩn (inactive) bị loại khỏi tính điểm', () => {
+    const r1 = computeCouncilReport(rows, CRITERIA, 'truong_phong');
+    // Nếu tiêu chí c10 bị ẩn thì chỉ tính trên 9 tiêu chí còn lại
+    const r2 = computeCouncilReport(rows, CRITERIA.slice(0, 9), 'truong_phong');
+    // Với dữ liệu xen kẽ a,b: bỏ c10 (giá trị b) làm TB thay đổi khi a != b
+    expect(r2.score100).not.toBeNull();
+    expect(r1.score100).not.toBeCloseTo(r2.score100!, 4);
+  });
+});
+
 describe('computeCriterionAverages — điểm TB từng tiêu chí (radar/phân tích)', () => {
   it('tính TB theo tiêu chí và bỏ qua tiêu chí chưa ai chấm', () => {
     const rows: ReportEvaluationRow[] = [
