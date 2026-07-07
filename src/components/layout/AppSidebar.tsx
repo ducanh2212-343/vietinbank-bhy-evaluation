@@ -151,7 +151,7 @@ export function AppSidebar({ onNavigate }: Props) {
             if (item.special === 'submission-report') return reportAccess.allowed;
             if (item.special === 'strategic-hr') return strategicAccess.allowed;
             if (item.special === 'council-member') return councilAccess.isMember;
-            if (item.special === 'council-report') return isAdmin || councilAccess.isSubject;
+            if (item.special === 'council-report') return isAdmin || councilAccess.isSubject || councilAccess.isSupervisor;
             if (item.special === 'council-analytics') return isFullCouncilAdmin;
             if (item.minRole === 'admin' && !isAdmin) return false;
             if (item.minRole === 'manager' && !canSeeManagerItems) return false;

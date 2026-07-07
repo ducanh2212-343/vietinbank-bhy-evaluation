@@ -76,12 +76,13 @@ function CriterionBars({ data, title, color }: { data: CriterionScore[]; title: 
 }
 
 export default function CouncilReportPage() {
-  const { isAdmin, profileId, roles } = useAuth();
+  const { profileId, roles } = useAuth();
   const access = useCouncilAccess();
   // Giám đốc Chi nhánh + tcth_admin/system_admin: xem toàn bộ báo cáo.
-  // Phó Giám đốc (role 'bgd' nhưng không phải Giám đốc): chỉ xem đầu mối mình phụ trách + báo cáo của chính mình.
+  // Phó Giám đốc phụ trách (đã hạ quyền admin, chỉ còn role 'pgd'): chỉ xem đầu mối mình phụ trách
+  // + báo cáo của chính mình. Nhận diện bằng dữ liệu phụ trách (isSupervisor), độc lập với vai trò.
   const isFullAdmin = roles.includes('tcth_admin') || roles.includes('system_admin') || access.memberGroup === 'giam_doc';
-  const isPgdSupervisor = isAdmin && !isFullAdmin;
+  const isPgdSupervisor = !isFullAdmin && access.isSupervisor;
   const [rounds, setRounds] = useState<RoundRow[]>([]);
   const [roundId, setRoundId] = useState('');
   const [subjects, setSubjects] = useState<SubjectOption[]>([]);
@@ -94,7 +95,7 @@ export default function CouncilReportPage() {
   const [exporting, setExporting] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
 
-  const allowed = isAdmin || access.isSubject;
+  const allowed = isFullAdmin || isPgdSupervisor || access.isSubject;
 
   useEffect(() => {
     if (!allowed) return;
