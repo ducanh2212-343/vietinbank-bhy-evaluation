@@ -292,6 +292,63 @@
     /* Vạch gold bên trái — dấu vị trí hiện tại */
     box-shadow: inset 3px 0 0 0 hsl(var(--brand-gold));
   }
+
+  /* === Menu dạng cây: nhóm (accordion) + thư mục con + mục lá ===
+     Mỗi nhóm mang biến --gc (màu nhận diện) đặt inline. Các nền nhấn dùng
+     color-mix để tự dịu trên nền navy; nếu trình duyệt không hỗ trợ, phần
+     nền bị bỏ qua nhưng chữ + vạch gold vẫn đọc rõ (thoái hoá an toàn). */
+  .nav-group-head {
+    @apply flex items-center gap-2 px-2 py-2.5 min-h-[46px] rounded-xl text-[13px] font-semibold transition-colors duration-200 cursor-pointer;
+    color: hsl(var(--sidebar-foreground));
+  }
+  .nav-group-head:hover { background: hsl(0 0% 100% / 0.06); }
+  .nav-group.open > .nav-group-head { background: color-mix(in srgb, var(--gc) 14%, transparent); }
+  .nav-group.open > .nav-group-head .nav-group-label { color: #fff; }
+  .nav-group-icon {
+    @apply flex items-center justify-center w-7 h-7 rounded-lg flex-shrink-0;
+    background: color-mix(in srgb, var(--gc) 22%, transparent);
+    color: var(--gc);
+  }
+  .nav-group-chev {
+    @apply w-4 h-4 flex-shrink-0 transition-transform duration-200;
+    color: hsl(var(--sidebar-muted));
+  }
+  .nav-group.open > .nav-group-head .nav-group-chev { transform: rotate(90deg); color: var(--gc); }
+
+  /* Khối con của nhóm — vạch màu nhận diện bên trái */
+  .nav-group-body {
+    @apply mt-0.5 mb-1 ml-3.5 pl-2.5 space-y-0.5;
+    border-left: 2px solid color-mix(in srgb, var(--gc) 40%, transparent);
+  }
+
+  .nav-leaf {
+    @apply flex items-center gap-2.5 px-2.5 py-2 min-h-[36px] rounded-lg text-[12.5px] font-medium transition-colors duration-200 cursor-pointer text-left;
+    color: hsl(var(--sidebar-foreground) / 0.85);
+  }
+  .nav-leaf-ico { color: var(--gc); opacity: 0.9; }
+  .nav-leaf:hover { background: hsl(0 0% 100% / 0.08); color: #fff; }
+  .nav-leaf.active {
+    background: color-mix(in srgb, var(--gc) 20%, transparent);
+    color: #fff;
+    font-weight: 600;
+    box-shadow: inset 3px 0 0 0 hsl(var(--brand-gold));
+  }
+
+  /* Thư mục con (cấp 2) */
+  .nav-folder-head {
+    @apply flex items-center gap-2.5 px-2.5 py-2 min-h-[36px] rounded-lg text-[12.5px] font-semibold transition-colors duration-200 cursor-pointer;
+    color: hsl(var(--sidebar-foreground));
+  }
+  .nav-folder-head:hover { background: hsl(0 0% 100% / 0.06); }
+  .nav-folder-chev {
+    @apply w-3.5 h-3.5 transition-transform duration-200;
+    color: hsl(var(--sidebar-muted));
+  }
+  .nav-folder.open > .nav-folder-head .nav-folder-chev { transform: rotate(90deg); }
+  .nav-folder-body {
+    @apply ml-3 pl-2 space-y-0.5;
+    border-left: 1px dashed color-mix(in srgb, var(--gc) 32%, transparent);
+  }
   .level-badge {
     @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold;
   }
