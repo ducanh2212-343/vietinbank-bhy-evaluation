@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BarChart3, FileDown, FileSpreadsheet, Loader2, Mail, Printer } from 'lucide-react';
+import { BarChart3, FileDown, FileSpreadsheet, Loader2, Lock, LockOpen, Mail, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   ROUND_STATUS_LABELS, SECTION_LABELS,
@@ -22,7 +22,7 @@ const ROUND_ALL = '__round__';
 const COLOR_PART1 = '#2a78d6';
 const COLOR_PART2 = '#1baf7a';
 
-interface RoundRow { id: string; name: string; status: CouncilRoundStatus; weight_config: CouncilWeightConfig | null; }
+interface RoundRow { id: string; name: string; status: CouncilRoundStatus; weight_config: CouncilWeightConfig | null; results_published: boolean; }
 interface SubjectOption {
   id: string; full_name: string; position: string | null; profile_id: string | null;
   supervisor_pgd_id: string | null; sort_order: number;
@@ -83,6 +83,8 @@ export default function CouncilReportPage() {
   // + báo cáo của chính mình. Nhận diện bằng dữ liệu phụ trách (isSupervisor), độc lập với vai trò.
   const isFullAdmin = roles.includes('tcth_admin') || roles.includes('system_admin') || access.memberGroup === 'giam_doc';
   const isPgdSupervisor = !isFullAdmin && access.isSupervisor;
+  // Vượt khóa embargo (xem kết quả kể cả khi Hội đồng đang chấm): Giám đốc Chi nhánh + Quản trị hệ thống.
+  const canBypassEmbargo = roles.includes('system_admin') || access.memberGroup === 'giam_doc';
   const [rounds, setRounds] = useState<RoundRow[]>([]);
   const [roundId, setRoundId] = useState('');
   const [subjects, setSubjects] = useState<SubjectOption[]>([]);
@@ -94,22 +96,29 @@ export default function CouncilReportPage() {
   const [sendingEmail, setSendingEmail] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [publishing, setPublishing] = useState(false);
 
   const allowed = isFullAdmin || isPgdSupervisor || access.isSubject;
 
+  const loadRounds = useCallback(async () => {
+    const { data } = await supabase
+      .from('council_rounds')
+      .select('id, name, status, weight_config, results_published')
+      .neq('status', 'draft')
+      .order('start_date');
+    const list = (data || []) as unknown as RoundRow[];
+    setRounds(list);
+    setRoundId((prev) => prev || list.find((r) => r.status === 'open')?.id || list[list.length - 1]?.id || '');
+  }, []);
+
   useEffect(() => {
     if (!allowed) return;
-    (async () => {
-      const { data } = await supabase
-        .from('council_rounds')
-        .select('id, name, status, weight_config')
-        .neq('status', 'draft')
-        .order('start_date');
-      const list = (data || []) as unknown as RoundRow[];
-      setRounds(list);
-      setRoundId((prev) => prev || list.find((r) => r.status === 'open')?.id || list[list.length - 1]?.id || '');
-    })();
-  }, [allowed]);
+    loadRounds();
+  }, [allowed, loadRounds]);
+
+  const selectedRound = useMemo(() => rounds.find((r) => r.id === roundId) ?? null, [rounds, roundId]);
+  // Kết quả đang khóa với người dùng này? (chưa công bố và không thuộc nhóm vượt khóa)
+  const embargoed = !!selectedRound && !selectedRound.results_published && !canBypassEmbargo;
 
   useEffect(() => {
     if (!roundId || !allowed || access.loading) return;
@@ -138,6 +147,7 @@ export default function CouncilReportPage() {
   }, [roundId, allowed, access.loading, isFullAdmin, isPgdSupervisor, profileId]);
 
   const loadReport = useCallback(async () => {
+    if (embargoed) { setReport(null); setRoundReports(null); setLoading(false); return; }
     if (!subjectId) { setReport(null); setRoundReports(null); return; }
     setLoading(true);
     const criteriaRes = await supabase.from('council_criteria')
@@ -164,7 +174,32 @@ export default function CouncilReportPage() {
     if (reportRes.error) { toast.error('Lỗi tải báo cáo: ' + reportRes.error.message); setReport(null); return; }
     setRoundReports(null);
     setReport(reportRes.data as unknown as ReportPayload);
-  }, [subjectId, roundId, subjects]);
+  }, [subjectId, roundId, subjects, embargoed]);
+
+  // Công bố / khóa lại kết quả kỳ (chỉ Giám đốc Chi nhánh + Quản trị hệ thống)
+  const togglePublish = async (publish: boolean) => {
+    if (!selectedRound) return;
+    if (publish && !window.confirm(
+      `Mở kết quả kỳ "${selectedRound.name}" cho các nhóm được phân quyền xem?\n`
+      + 'Sau khi mở, TCTH / PGĐ phụ trách / cán bộ đầu mối sẽ xem được (theo phạm vi của họ).',
+    )) return;
+    if (!publish && !window.confirm(
+      `Khóa lại kết quả kỳ "${selectedRound.name}"? Chỉ Giám đốc và Quản trị hệ thống còn xem được.`,
+    )) return;
+    setPublishing(true);
+    try {
+      const { error } = await supabase.rpc('set_council_results_published', {
+        p_round_id: selectedRound.id, p_published: publish,
+      });
+      if (error) throw error;
+      toast.success(publish ? 'Đã mở kết quả cho các nhóm được phân quyền.' : 'Đã khóa lại kết quả.');
+      await loadRounds();
+    } catch (e) {
+      toast.error('Lỗi cập nhật trạng thái công bố: ' + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setPublishing(false);
+    }
+  };
 
   useEffect(() => { loadReport(); }, [loadReport]);
 
@@ -426,10 +461,50 @@ export default function CouncilReportPage() {
               Gửi email kết quả
             </Button>
           )}
+          {canBypassEmbargo && selectedRound && (
+            selectedRound.results_published ? (
+              <Button size="sm" variant="outline" onClick={() => togglePublish(false)} disabled={publishing}
+                title="Kết quả đang mở cho các nhóm được phân quyền — bấm để khóa lại">
+                {publishing ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Lock className="w-4 h-4 mr-1" />}
+                Khóa lại
+              </Button>
+            ) : (
+              <Button size="sm" onClick={() => togglePublish(true)} disabled={publishing}
+                title="Kết quả đang khóa (chỉ Giám đốc & Quản trị hệ thống xem) — bấm để công bố cho các nhóm">
+                {publishing ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <LockOpen className="w-4 h-4 mr-1" />}
+                Mở kết quả cho mọi người
+              </Button>
+            )
+          )}
         </div>
       </div>
 
-      {loading ? (
+      {selectedRound && (
+        <div className="flex items-center gap-2 text-xs flex-wrap -mt-1">
+          {selectedRound.results_published ? (
+            <Badge variant="outline" className="text-[10px] border-emerald-500 text-emerald-600 dark:text-emerald-500">
+              <LockOpen className="w-3 h-3 mr-1" /> Đã công bố kết quả — các nhóm được phân quyền xem
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-[10px] border-amber-500 text-amber-600 dark:text-amber-500">
+              <Lock className="w-3 h-3 mr-1" /> Kết quả đang khóa trong thời gian chấm — chỉ Giám đốc &amp; Quản trị hệ thống xem
+            </Badge>
+          )}
+        </div>
+      )}
+
+      {embargoed ? (
+        <Card>
+          <CardContent className="py-10 text-center">
+            <Lock className="w-8 h-8 mx-auto text-amber-500 mb-3" />
+            <p className="text-sm font-medium">Kết quả kỳ này đang được khóa</p>
+            <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
+              Trong thời gian Hội đồng chấm điểm, kết quả được tạm khóa để bảo đảm khách quan.
+              Báo cáo sẽ hiển thị sau khi Ban tổ chức (Giám đốc/Quản trị hệ thống) công bố.
+            </p>
+          </CardContent>
+        </Card>
+      ) : loading ? (
         <div className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Đang tải báo cáo…</div>
       ) : subjectId === ROUND_ALL && roundSummaries ? (
         <Card>
