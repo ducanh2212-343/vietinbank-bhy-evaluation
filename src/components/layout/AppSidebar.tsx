@@ -5,11 +5,12 @@ import {
   Upload, Settings as SettingsIcon, BarChart3, Image, FileText,
   ChevronDown, ChevronRight, UserCheck, Sparkles, GraduationCap, ClipboardList, KeyRound, ListPlus,
   CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag, GitBranch,
-  ListChecks, Building2
+  ListChecks, Building2, Gavel, TrendingUp
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubmissionReportAccess } from '@/hooks/useSubmissionReportAccess';
 import { useStrategicHrAccess } from '@/hooks/useStrategicHrAccess';
+import { useCouncilAccess } from '@/hooks/useCouncilAccess';
 import { useState } from 'react';
 import vtbLogo from '@/assets/vietinbank-bhy-logo.png';
 import { BrandBadge } from '@/components/branding/BrandAssets';
@@ -18,7 +19,7 @@ type MinRole = 'manager' | 'admin';
 
 interface NavGroup {
   label: string;
-  items: { label: string; icon: any; path: string; minRole?: MinRole; special?: 'submission-report' | 'strategic-hr' }[];
+  items: { label: string; icon: any; path: string; minRole?: MinRole; special?: 'submission-report' | 'strategic-hr' | 'council-member' | 'council-report' | 'council-analytics' }[];
 }
 
 // Menu tinh gọn theo thực tế sử dụng của cán bộ.
@@ -51,6 +52,10 @@ const navGroups: NavGroup[] = [
       { label: 'Báo cáo', icon: BarChart3, path: '/bao-cao', minRole: 'manager' },
       // Hiển thị theo phạm vi: GĐ/PGĐ (phòng phụ trách), lãnh đạo Phòng TCTH + admin (full chi nhánh)
       { label: 'Báo cáo nộp biểu mẫu', icon: Timer, path: '/bao-cao-nop-bieu-mau', special: 'submission-report' },
+      // Hội đồng đánh giá đầu mối: thành viên HĐ chấm điểm; đầu mối + admin xem báo cáo
+      { label: 'Đánh giá đầu mối', icon: Gavel, path: '/danh-gia-dau-moi', special: 'council-member' },
+      { label: 'Báo cáo đầu mối', icon: BarChart3, path: '/bao-cao-dau-moi', special: 'council-report' },
+      { label: 'Phân tích đầu mối', icon: TrendingUp, path: '/phan-tich-dau-moi', minRole: 'admin', special: 'council-analytics' },
       { label: 'Thêm cán bộ', icon: UserPlus, path: '/them-can-bo', minRole: 'admin' },
       { label: 'Nhập nhanh theo phòng', icon: ListPlus, path: '/nhap-nhanh-can-bo', minRole: 'admin' },
       { label: 'Phân quyền', icon: Shield, path: '/phan-quyen', minRole: 'admin' },
@@ -71,6 +76,7 @@ const navGroups: NavGroup[] = [
       { label: 'Phòng ban & Chức danh', icon: Building2, path: '/quan-ly-phong-ban', minRole: 'admin' },
       { label: 'Quản lý kỳ đánh giá', icon: CalendarClock, path: '/quan-ly-ky-danh-gia', minRole: 'admin' },
       { label: 'Câu hỏi 1-1 theo kỳ', icon: MessagesSquare, path: '/quan-tri-cau-hoi-1-1', minRole: 'admin' },
+      { label: 'Quản trị Hội đồng đầu mối', icon: Gavel, path: '/quan-tri-hoi-dong-dau-moi', minRole: 'admin' },
       { label: 'Bản tin quý', icon: Newspaper, path: '/ban-tin-quy', minRole: 'admin' },
       { label: 'Upload danh sách CB', icon: Upload, path: '/upload-danh-sach-cb', minRole: 'admin' },
       { label: 'Cấu hình skill lõi', icon: Target, path: '/cau-hinh-skill-loi', minRole: 'admin' },
@@ -92,9 +98,14 @@ interface Props {
 export function AppSidebar({ onNavigate }: Props) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut, isAdmin, isManager, isPgd } = useAuth();
+  const { signOut, isAdmin, isManager, isPgd, roles } = useAuth();
   const reportAccess = useSubmissionReportAccess();
   const strategicAccess = useStrategicHrAccess();
+  const councilAccess = useCouncilAccess();
+  // Quản trị/tổng hợp Hội đồng đầu mối: chỉ Giám đốc Chi nhánh + TCTH/System admin.
+  // Phó Giám đốc (role 'bgd' nhưng không phải Giám đốc) là user quản lý, không có quyền tổng hợp toàn chi nhánh.
+  const isFullCouncilAdmin =
+    roles.includes('tcth_admin') || roles.includes('system_admin') || councilAccess.memberGroup === 'giam_doc';
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const toggleGroup = (label: string) => {
@@ -139,6 +150,9 @@ export function AppSidebar({ onNavigate }: Props) {
           const visibleItems = group.items.filter((item) => {
             if (item.special === 'submission-report') return reportAccess.allowed;
             if (item.special === 'strategic-hr') return strategicAccess.allowed;
+            if (item.special === 'council-member') return councilAccess.isMember;
+            if (item.special === 'council-report') return isAdmin || councilAccess.isSubject || councilAccess.isSupervisor;
+            if (item.special === 'council-analytics') return isFullCouncilAdmin;
             if (item.minRole === 'admin' && !isAdmin) return false;
             if (item.minRole === 'manager' && !canSeeManagerItems) return false;
             return true;

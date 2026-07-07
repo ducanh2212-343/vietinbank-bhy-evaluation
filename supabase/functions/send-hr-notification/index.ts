@@ -3,6 +3,10 @@
 //   admin duyệt/sửa từ AI trước khi gửi)
 // - kind = 'submission_reminder': nhắc cán bộ chưa nộp phiếu trước hạn chu kỳ,
 //   kèm deep-link về trang Tự đánh giá
+// - kind = 'council_report': gửi kết quả đánh giá công tác đầu mối (điểm trọng số
+//   theo nhóm, ẩn danh người chấm) cho chính cán bộ được đánh giá
+// - kind = 'council_vote_reminder': nhắc thành viên Hội đồng còn phiếu đầu mối
+//   chưa gửi trong kỳ đang mở (tối đa 1 lần/ngày/kỳ/người)
 // Quyền gọi: BGĐ / TCTH admin / system admin / trưởng phòng TCTH (is_tcth_leader).
 // Tôn trọng suppressed_emails + unsubscribe token; chống gửi trùng theo idempotency_key
 // (thư: 1 lần/kỳ/người; nhắc hạn: tối đa 1 lần/ngày/kỳ/người).
@@ -107,7 +111,7 @@ Deno.serve(async (req) => {
     const kind = body.kind as string;
     const profileId = body.recipient_profile_id as string;
     const cycleName = (body.cycle_name as string) || '';
-    if (!['quarterly_letter', 'submission_reminder'].includes(kind) || !profileId || !cycleName) {
+    if (!['quarterly_letter', 'submission_reminder', 'council_report', 'council_vote_reminder'].includes(kind) || !profileId || !cycleName) {
       return json({ error: 'Thiếu kind / recipient_profile_id / cycle_name' }, 400);
     }
 
@@ -136,6 +140,84 @@ Deno.serve(async (req) => {
       idempotencyKey = `qletter-${cycleName}-${profileId}`;
       bodyHtml = letterMarkdownToHtml(letter);
       text = letter;
+    } else if (kind === 'council_report') {
+      const scoreText = (body.score_text as string || '').trim();
+      const submittedCount = Number(body.submitted_count) || 0;
+      const totalMembers = Number(body.total_members) || 0;
+      const weightPresent = (body.weight_present as string || '').trim();
+      // Điểm TB theo tiêu chí (ẩn danh) — KHÔNG nhận dữ liệu theo nhóm vị trí.
+      // Nhận xét/góp ý KHÔNG gửi cho cán bộ (đưa vào phụ lục nội bộ). Chỉ kèm Lời chúc EQ.
+      const criteriaAvg = Array.isArray(body.criteria_avg) ? body.criteria_avg as {
+        code: string; title: string; score: string;
+      }[] : [];
+      const wishes = Array.isArray(body.wishes)
+        ? (body.wishes as string[]).filter((s) => typeof s === 'string' && s.trim())
+        : [];
+      if (!scoreText) return json({ error: 'Thiếu score_text' }, 400);
+      label = 'council-report';
+      subject = `📊 Kết quả đánh giá công tác đầu mối ${cycleName} — 343 Phát triển nhân sự`;
+      const today = new Date().toISOString().slice(0, 10);
+      // Cho phép gửi lại trong ngày nếu điểm thay đổi (có thêm phiếu mới)
+      idempotencyKey = `creport-${cycleName}-${profileId}-${today}-${scoreText}`;
+      const criteriaRows = criteriaAvg.map((c) => `
+        <tr>
+          <td style="border:1px solid #d7dde6;padding:5px 8px;">${escapeHtml(c.code)}. ${escapeHtml(c.title)}</td>
+          <td style="border:1px solid #d7dde6;padding:5px 8px;text-align:center;font-weight:bold;">${escapeHtml(c.score)}</td>
+        </tr>`).join('');
+      // Khối Lời chúc EQ ở cuối email (ấm áp) — gom ẩn danh từ các thành viên Hội đồng
+      const wishesBlock = wishes.length ? `
+<div style="margin:20px 0 4px;padding:16px;background:#fff7ed;border:1px solid #fdba74;border-radius:10px;">
+  <p style="margin:0 0 8px;font-weight:bold;color:#b45309;font-size:14px;">💌 Lời chúc gửi tới anh/chị</p>
+  ${wishes.map((w) => `<p style="margin:6px 0;line-height:1.6;color:#7c4a03;font-style:italic;">“${escapeHtml(w)}”</p>`).join('')}
+</div>` : '';
+      const ctaUrl = `${APP_URL}/bao-cao-dau-moi`;
+      bodyHtml = `
+<p style="margin:8px 0;line-height:1.6;">Kính gửi <strong>${escapeHtml(firstName)}</strong>,</p>
+<p style="margin:8px 0;line-height:1.6;">Hội đồng đánh giá công tác đầu mối đã tổng hợp kết quả kỳ
+<strong>${escapeHtml(cycleName)}</strong> của ông/bà (${submittedCount}/${totalMembers} phiếu). Điểm chấm của
+từng thành viên được ẩn danh, chỉ thể hiện điểm trung bình tổng hợp.</p>
+<div style="text-align:center;margin:16px 0;padding:14px;background:#f2f6fc;border-radius:8px;">
+  <div style="font-size:12px;color:#5a6577;">ĐIỂM QUY VỀ THANG 100</div>
+  <div style="font-size:28px;font-weight:bold;color:#0b2e59;">${escapeHtml(scoreText)}</div>
+  ${weightPresent ? `<div style="font-size:11px;color:#8a94a6;">Tổng trọng số bỏ phiếu hiện có: ${escapeHtml(weightPresent)}</div>` : ''}
+</div>
+${criteriaRows ? `<p style="margin:12px 0 4px;font-weight:bold;color:#0b2e59;font-size:13px;">Điểm trung bình theo từng tiêu chí (thang 10)</p>
+<table style="border-collapse:collapse;width:100%;font-size:12px;">
+  <tr style="background:#eef1f6;">
+    <th style="border:1px solid #d7dde6;padding:5px 8px;text-align:left;">Tiêu chí</th>
+    <th style="border:1px solid #d7dde6;padding:5px 8px;">Điểm TB</th>
+  </tr>
+  ${criteriaRows}
+</table>` : ''}
+<p style="margin:14px 0 0;text-align:center;">
+  <a href="${ctaUrl}" style="background:#0b2e59;color:#ffffff;text-decoration:none;padding:11px 26px;border-radius:6px;font-weight:bold;display:inline-block;">Xem báo cáo đầy đủ trên hệ thống</a>
+</p>
+${wishesBlock}`;
+      const wishesText = wishes.length ? `\n\n💌 Lời chúc gửi tới anh/chị:\n${wishes.map((w) => `- ${w}`).join('\n')}` : '';
+      text = `Kính gửi ${firstName},\n\nKết quả đánh giá công tác đầu mối ${cycleName}: ${scoreText} điểm (thang 100), tổng hợp từ ${submittedCount}/${totalMembers} phiếu (ẩn danh).\n\nĐiểm TB theo tiêu chí:\n${criteriaAvg.map((c) => `- ${c.code}. ${c.title}: ${c.score}`).join('\n')}\n\nXem báo cáo đầy đủ: ${ctaUrl}${wishesText}`;
+    } else if (kind === 'council_vote_reminder') {
+      const pendingSubjects = Array.isArray(body.pending_subjects)
+        ? (body.pending_subjects as string[]).filter((s) => typeof s === 'string' && s.trim())
+        : [];
+      const deadlineText = (body.deadline_text as string || '').trim();
+      if (pendingSubjects.length === 0) return json({ error: 'Thiếu pending_subjects' }, 400);
+      label = 'council-vote-reminder';
+      subject = `🗳️ Nhắc chấm điểm đầu mối ${cycleName} — 343 Phát triển nhân sự`;
+      const today = new Date().toISOString().slice(0, 10);
+      idempotencyKey = `cvote-${cycleName}-${profileId}-${today}`;
+      const ctaUrl = `${APP_URL}/danh-gia-dau-moi`;
+      const subjectList = pendingSubjects.map((s) => `<li style="margin:3px 0;">${escapeHtml(s)}</li>`).join('');
+      bodyHtml = `
+<p style="margin:8px 0;line-height:1.6;">Kính gửi <strong>${escapeHtml(firstName)}</strong>,</p>
+<p style="margin:8px 0;line-height:1.6;">Kỳ đánh giá công tác đầu mối <strong>${escapeHtml(cycleName)}</strong> đang mở
+${deadlineText ? `— hạn bỏ phiếu: <strong>${escapeHtml(deadlineText)}</strong> ` : ''}và ông/bà còn
+<strong>${pendingSubjects.length} phiếu</strong> chưa gửi cho các cán bộ đầu mối:</p>
+<ul style="margin:6px 0;padding-left:20px;">${subjectList}</ul>
+<p style="margin:18px 0;text-align:center;">
+  <a href="${ctaUrl}" style="background:#0b2e59;color:#ffffff;text-decoration:none;padding:11px 26px;border-radius:6px;font-weight:bold;display:inline-block;">Mở phiếu chấm điểm</a>
+</p>
+<p style="margin:8px 0;line-height:1.6;font-size:12px;color:#5a6577;">Kết quả chấm được ẩn danh trong báo cáo tổng hợp. Nếu ông/bà vừa gửi phiếu hôm nay, vui lòng bỏ qua email này.</p>`;
+      text = `Kính gửi ${firstName},\n\nKỳ đánh giá đầu mối ${cycleName} đang mở${deadlineText ? ` (hạn bỏ phiếu: ${deadlineText})` : ''}. Ông/bà còn ${pendingSubjects.length} phiếu chưa gửi:\n${pendingSubjects.map((s) => `- ${s}`).join('\n')}\n\nChấm điểm tại: ${ctaUrl}`;
     } else {
       const deadlineText = (body.deadline_text as string || '').trim();
       const statusLabel = (body.status_label as string || 'Chưa nộp').trim();
@@ -215,7 +297,13 @@ Deno.serve(async (req) => {
     }
 
     const html = wrapEmail(
-      kind === 'quarterly_letter' ? `Thư phát triển cá nhân ${cycleName}` : `Nhắc nộp phiếu đánh giá ${cycleName}`,
+      kind === 'quarterly_letter'
+        ? `Thư phát triển cá nhân ${cycleName}`
+        : kind === 'council_report'
+          ? `Kết quả đánh giá công tác đầu mối ${cycleName}`
+          : kind === 'council_vote_reminder'
+            ? `Nhắc chấm điểm đầu mối ${cycleName}`
+            : `Nhắc nộp phiếu đánh giá ${cycleName}`,
       bodyHtml,
     );
 

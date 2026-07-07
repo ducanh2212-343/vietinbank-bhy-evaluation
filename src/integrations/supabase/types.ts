@@ -370,6 +370,330 @@ export type Database = {
         }
         Relationships: []
       }
+      council_criteria: {
+        Row: {
+          anchor_0: string | null
+          anchor_10: string | null
+          anchor_3: string | null
+          anchor_6: string | null
+          anchor_8: string | null
+          created_at: string
+          criterion_key: string
+          description: string | null
+          id: string
+          is_active: boolean
+          round_id: string
+          section: string
+          sort_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          anchor_0?: string | null
+          anchor_10?: string | null
+          anchor_3?: string | null
+          anchor_6?: string | null
+          anchor_8?: string | null
+          created_at?: string
+          criterion_key: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          round_id: string
+          section?: string
+          sort_order?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          anchor_0?: string | null
+          anchor_10?: string | null
+          anchor_3?: string | null
+          anchor_6?: string | null
+          anchor_8?: string | null
+          created_at?: string
+          criterion_key?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          round_id?: string
+          section?: string
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "council_criteria_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "council_rounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      council_evaluation_scores: {
+        Row: {
+          created_at: string
+          criterion_id: string
+          evaluation_id: string
+          evidence: string | null
+          id: string
+          score: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          criterion_id: string
+          evaluation_id: string
+          evidence?: string | null
+          id?: string
+          score: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          criterion_id?: string
+          evaluation_id?: string
+          evidence?: string | null
+          id?: string
+          score?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "council_evaluation_scores_criterion_id_fkey"
+            columns: ["criterion_id"]
+            isOneToOne: false
+            referencedRelation: "council_criteria"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "council_evaluation_scores_evaluation_id_fkey"
+            columns: ["evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "council_evaluations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      council_evaluations: {
+        Row: {
+          created_at: string
+          evaluator_id: string
+          evidence: string | null
+          id: string
+          round_id: string
+          status: string
+          strengths: string | null
+          subject_id: string
+          submitted_at: string | null
+          suggestions: string | null
+          updated_at: string
+          weaknesses: string | null
+          wish: string | null
+        }
+        Insert: {
+          created_at?: string
+          evaluator_id: string
+          evidence?: string | null
+          id?: string
+          round_id: string
+          status?: string
+          strengths?: string | null
+          subject_id: string
+          submitted_at?: string | null
+          suggestions?: string | null
+          updated_at?: string
+          weaknesses?: string | null
+          wish?: string | null
+        }
+        Update: {
+          created_at?: string
+          evaluator_id?: string
+          evidence?: string | null
+          id?: string
+          round_id?: string
+          status?: string
+          strengths?: string | null
+          subject_id?: string
+          submitted_at?: string | null
+          suggestions?: string | null
+          updated_at?: string
+          weaknesses?: string | null
+          wish?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "council_evaluations_evaluator_id_fkey"
+            columns: ["evaluator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "council_evaluations_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "council_rounds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "council_evaluations_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "council_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      council_members: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          member_group: string
+          note: string | null
+          profile_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          member_group?: string
+          note?: string | null
+          profile_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          member_group?: string
+          note?: string | null
+          profile_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "council_members_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      council_rounds: {
+        Row: {
+          created_at: string
+          description: string | null
+          end_date: string | null
+          id: string
+          name: string
+          start_date: string | null
+          status: string
+          updated_at: string
+          voting_deadline: string | null
+          weight_config: Json | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          voting_deadline?: string | null
+          weight_config?: Json | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name?: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          voting_deadline?: string | null
+          weight_config?: Json | null
+        }
+        Relationships: []
+      }
+      council_subjects: {
+        Row: {
+          created_at: string
+          full_name: string
+          id: string
+          is_active: boolean
+          measurement: string | null
+          position: string | null
+          profile_id: string | null
+          round_id: string
+          sort_order: number
+          subject_level: string
+          supervisor_pgd_id: string | null
+          task_summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          full_name: string
+          id?: string
+          is_active?: boolean
+          measurement?: string | null
+          position?: string | null
+          profile_id?: string | null
+          round_id: string
+          sort_order?: number
+          subject_level?: string
+          supervisor_pgd_id?: string | null
+          task_summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          measurement?: string | null
+          position?: string | null
+          profile_id?: string | null
+          round_id?: string
+          sort_order?: number
+          subject_level?: string
+          supervisor_pgd_id?: string | null
+          task_summary?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "council_subjects_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "council_subjects_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "council_rounds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "council_subjects_supervisor_pgd_id_fkey"
+            columns: ["supervisor_pgd_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       departments: {
         Row: {
           code: string
@@ -2825,6 +3149,10 @@ export type Database = {
           total_members: number
         }[]
       }
+      get_council_subject_report: {
+        Args: { p_subject_id: string }
+        Returns: Json
+      }
       get_my_department_id: { Args: never; Returns: string }
       get_my_pgd_scope_dept_ids: { Args: never; Returns: string[] }
       get_my_profile_id: { Args: never; Returns: string }
@@ -2837,6 +3165,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_council_member: { Args: never; Returns: boolean }
       is_tcth_leader: { Args: { _user_id: string }; Returns: boolean }
       kanban_upsert_card: {
         Args: {
