@@ -592,6 +592,7 @@ export type Database = {
           end_date: string | null
           id: string
           name: string
+          results_published: boolean
           start_date: string | null
           status: string
           updated_at: string
@@ -604,6 +605,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           name: string
+          results_published?: boolean
           start_date?: string | null
           status?: string
           updated_at?: string
@@ -616,6 +618,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           name?: string
+          results_published?: boolean
           start_date?: string | null
           status?: string
           updated_at?: string
@@ -3152,6 +3155,10 @@ export type Database = {
       get_council_subject_report: {
         Args: { p_subject_id: string }
         Returns: Json
+      }
+      set_council_results_published: {
+        Args: { p_round_id: string; p_published: boolean }
+        Returns: undefined
       }
       get_my_department_id: { Args: never; Returns: string }
       get_my_pgd_scope_dept_ids: { Args: never; Returns: string[] }

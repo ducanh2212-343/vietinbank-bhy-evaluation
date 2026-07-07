@@ -22,7 +22,7 @@ import {
 const SERIES_LIGHT = ['#2a78d6', '#1baf7a', '#eda100', '#008300', '#4a3aa7', '#e34948', '#e87ba4', '#eb6834'];
 const SERIES_DARK = ['#3987e5', '#199e70', '#c98500', '#008300', '#9085e9', '#e66767', '#d55181', '#d95926'];
 
-interface RoundRow { id: string; name: string; status: string; weight_config: CouncilWeightConfig | null; start_date: string | null; }
+interface RoundRow { id: string; name: string; status: string; weight_config: CouncilWeightConfig | null; start_date: string | null; results_published: boolean; }
 interface SubjectRow {
   id: string; round_id: string; full_name: string; profile_id: string | null;
   subject_level: CouncilSubjectLevel; supervisor_pgd_id: string | null; is_active: boolean; sort_order: number;
@@ -50,6 +50,8 @@ export default function CouncilAnalyticsPage() {
   // thông tin đầu mối giữa các Phó Giám đốc với nhau.
   const isFullAdmin =
     roles.includes('tcth_admin') || roles.includes('system_admin') || councilAccess.memberGroup === 'giam_doc';
+  // Vượt khóa embargo: chỉ Giám đốc + Quản trị hệ thống thấy kỳ chưa công bố. TCTH admin phải chờ công bố.
+  const canBypassEmbargo = roles.includes('system_admin') || councilAccess.memberGroup === 'giam_doc';
   const [loading, setLoading] = useState(true);
   const [rounds, setRounds] = useState<RoundRow[]>([]);
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
@@ -61,11 +63,11 @@ export default function CouncilAnalyticsPage() {
   const [radarRoundId, setRadarRoundId] = useState('');
 
   useEffect(() => {
-    if (!isFullAdmin) return;
+    if (!isFullAdmin || councilAccess.loading) return;
     (async () => {
       setLoading(true);
       const [roundsRes, subjectsRes, criteriaRes, membersRes, evalsRes, scoresRes] = await Promise.all([
-        supabase.from('council_rounds').select('id, name, status, weight_config, start_date').neq('status', 'draft').order('start_date'),
+        supabase.from('council_rounds').select('id, name, status, weight_config, start_date, results_published').neq('status', 'draft').order('start_date'),
         supabase.from('council_subjects').select('id, round_id, full_name, profile_id, subject_level, supervisor_pgd_id, is_active, sort_order').eq('is_active', true),
         supabase.from('council_criteria').select('id, round_id, criterion_key, title, sort_order').eq('is_active', true).order('sort_order'),
         supabase.from('council_members').select('profile_id, member_group').eq('is_active', true),
@@ -74,15 +76,25 @@ export default function CouncilAnalyticsPage() {
       ]);
       const err = roundsRes.error || subjectsRes.error || criteriaRes.error || membersRes.error || evalsRes.error || scoresRes.error;
       if (err) { toast.error('Lỗi tải dữ liệu phân tích: ' + err.message); setLoading(false); return; }
-      setRounds((roundsRes.data || []) as unknown as RoundRow[]);
-      setSubjects((subjectsRes.data || []) as SubjectRow[]);
+      let roundList = (roundsRes.data || []) as unknown as RoundRow[];
+      let subjectList = (subjectsRes.data || []) as SubjectRow[];
+      let evalList = (evalsRes.data || []) as EvalRow[];
+      // Embargo: TCTH admin (không vượt khóa) chỉ thấy các kỳ đã công bố; ẩn kỳ đang chấm.
+      if (!canBypassEmbargo) {
+        const publishedRoundIds = new Set(roundList.filter((r) => r.results_published).map((r) => r.id));
+        roundList = roundList.filter((r) => publishedRoundIds.has(r.id));
+        subjectList = subjectList.filter((s) => publishedRoundIds.has(s.round_id));
+        evalList = evalList.filter((e) => publishedRoundIds.has(e.round_id));
+      }
+      setRounds(roundList);
+      setSubjects(subjectList);
       setCriteria((criteriaRes.data || []) as CriterionRow[]);
       setMemberGroups(new Map((membersRes.data || []).map((m) => [m.profile_id, m.member_group as CouncilMemberGroup])));
-      setEvals((evalsRes.data || []) as EvalRow[]);
+      setEvals(evalList);
       setScores((scoresRes.data || []).map((s) => ({ ...s, score: Number(s.score) })) as ScoreRow[]);
       setLoading(false);
     })();
-  }, [isFullAdmin]);
+  }, [isFullAdmin, councilAccess.loading, canBypassEmbargo]);
 
   // Kết quả trọng số của từng (đầu mối × kỳ) — tái dùng đúng logic của báo cáo
   const results = useMemo(() => {
