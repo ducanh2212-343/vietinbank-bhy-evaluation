@@ -262,7 +262,20 @@ export default function CouncilReportPage() {
         import('html2canvas'),
         import('jspdf'),
       ]);
-      const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        // Ép bản chụp về giao diện sáng, chữ đen trên nền trắng (tránh chữ trắng/xám khi đang ở dark mode)
+        onclone: (doc) => {
+          doc.documentElement.classList.remove('dark');
+          const style = doc.createElement('style');
+          style.textContent =
+            '#council-report, #council-report * { color:#111827 !important; }' +
+            '#council-report { background:#ffffff !important; }';
+          doc.head.appendChild(style);
+        },
+      });
       const pdf = new JsPDF('p', 'mm', 'a4');
       const pw = pdf.internal.pageSize.getWidth();
       const ph = pdf.internal.pageSize.getHeight();
