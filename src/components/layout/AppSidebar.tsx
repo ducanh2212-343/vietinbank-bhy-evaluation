@@ -19,7 +19,7 @@ type MinRole = 'manager' | 'admin';
 
 interface NavGroup {
   label: string;
-  items: { label: string; icon: any; path: string; minRole?: MinRole; special?: 'submission-report' | 'strategic-hr' | 'council-member' | 'council-report' }[];
+  items: { label: string; icon: any; path: string; minRole?: MinRole; special?: 'submission-report' | 'strategic-hr' | 'council-member' | 'council-report' | 'council-analytics' }[];
 }
 
 // Menu tinh gọn theo thực tế sử dụng của cán bộ.
@@ -55,7 +55,7 @@ const navGroups: NavGroup[] = [
       // Hội đồng đánh giá đầu mối: thành viên HĐ chấm điểm; đầu mối + admin xem báo cáo
       { label: 'Đánh giá đầu mối', icon: Gavel, path: '/danh-gia-dau-moi', special: 'council-member' },
       { label: 'Báo cáo đầu mối', icon: BarChart3, path: '/bao-cao-dau-moi', special: 'council-report' },
-      { label: 'Phân tích đầu mối', icon: TrendingUp, path: '/phan-tich-dau-moi', minRole: 'admin' },
+      { label: 'Phân tích đầu mối', icon: TrendingUp, path: '/phan-tich-dau-moi', minRole: 'admin', special: 'council-analytics' },
       { label: 'Thêm cán bộ', icon: UserPlus, path: '/them-can-bo', minRole: 'admin' },
       { label: 'Nhập nhanh theo phòng', icon: ListPlus, path: '/nhap-nhanh-can-bo', minRole: 'admin' },
       { label: 'Phân quyền', icon: Shield, path: '/phan-quyen', minRole: 'admin' },
@@ -98,10 +98,14 @@ interface Props {
 export function AppSidebar({ onNavigate }: Props) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut, isAdmin, isManager, isPgd } = useAuth();
+  const { signOut, isAdmin, isManager, isPgd, roles } = useAuth();
   const reportAccess = useSubmissionReportAccess();
   const strategicAccess = useStrategicHrAccess();
   const councilAccess = useCouncilAccess();
+  // Quản trị/tổng hợp Hội đồng đầu mối: chỉ Giám đốc Chi nhánh + TCTH/System admin.
+  // Phó Giám đốc (role 'bgd' nhưng không phải Giám đốc) là user quản lý, không có quyền tổng hợp toàn chi nhánh.
+  const isFullCouncilAdmin =
+    roles.includes('tcth_admin') || roles.includes('system_admin') || councilAccess.memberGroup === 'giam_doc';
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const toggleGroup = (label: string) => {
@@ -148,6 +152,7 @@ export function AppSidebar({ onNavigate }: Props) {
             if (item.special === 'strategic-hr') return strategicAccess.allowed;
             if (item.special === 'council-member') return councilAccess.isMember;
             if (item.special === 'council-report') return isAdmin || councilAccess.isSubject;
+            if (item.special === 'council-analytics') return isFullCouncilAdmin;
             if (item.minRole === 'admin' && !isAdmin) return false;
             if (item.minRole === 'manager' && !canSeeManagerItems) return false;
             return true;

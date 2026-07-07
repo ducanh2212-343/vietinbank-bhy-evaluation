@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useCouncilAccess } from '@/hooks/useCouncilAccess';
 import { useTheme } from '@/hooks/useTheme';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -41,8 +42,14 @@ interface SubjectRoundResult {
 }
 
 export default function CouncilAnalyticsPage() {
-  const { isAdmin } = useAuth();
+  const { roles } = useAuth();
+  const councilAccess = useCouncilAccess();
   const { theme } = useTheme();
+  // Trang tổng hợp/so sánh toàn chi nhánh: chỉ Giám đốc Chi nhánh + TCTH/System admin.
+  // Phó Giám đốc (role 'bgd' nhưng không phải Giám đốc) không có quyền xem tổng hợp — bảo mật
+  // thông tin đầu mối giữa các Phó Giám đốc với nhau.
+  const isFullAdmin =
+    roles.includes('tcth_admin') || roles.includes('system_admin') || councilAccess.memberGroup === 'giam_doc';
   const [loading, setLoading] = useState(true);
   const [rounds, setRounds] = useState<RoundRow[]>([]);
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
@@ -54,7 +61,7 @@ export default function CouncilAnalyticsPage() {
   const [radarRoundId, setRadarRoundId] = useState('');
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isFullAdmin) return;
     (async () => {
       setLoading(true);
       const [roundsRes, subjectsRes, criteriaRes, membersRes, evalsRes, scoresRes] = await Promise.all([
@@ -75,7 +82,7 @@ export default function CouncilAnalyticsPage() {
       setScores((scoresRes.data || []).map((s) => ({ ...s, score: Number(s.score) })) as ScoreRow[]);
       setLoading(false);
     })();
-  }, [isAdmin]);
+  }, [isFullAdmin]);
 
   // Kết quả trọng số của từng (đầu mối × kỳ) — tái dùng đúng logic của báo cáo
   const results = useMemo(() => {
@@ -172,8 +179,16 @@ export default function CouncilAnalyticsPage() {
     });
   }, [radarSubject, radarRoundId, results, criteria]);
 
-  if (!isAdmin) {
-    return <div className="p-6 text-sm text-muted-foreground">Bạn không có quyền truy cập trang này.</div>;
+  if (councilAccess.loading) {
+    return <div className="p-6 text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Đang tải…</div>;
+  }
+  if (!isFullAdmin) {
+    return (
+      <div className="p-6 text-sm text-muted-foreground">
+        Trang phân tích tổng hợp đầu mối dành cho Giám đốc Chi nhánh và quản trị hệ thống.
+        Phó Giám đốc xem báo cáo của đầu mối mình phụ trách tại mục “Báo cáo đầu mối”.
+      </div>
+    );
   }
   if (loading) {
     return <div className="p-6 text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Đang tải…</div>;
