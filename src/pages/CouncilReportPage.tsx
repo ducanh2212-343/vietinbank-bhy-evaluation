@@ -23,7 +23,10 @@ const COLOR_PART1 = '#2a78d6';
 const COLOR_PART2 = '#1baf7a';
 
 interface RoundRow { id: string; name: string; status: CouncilRoundStatus; weight_config: CouncilWeightConfig | null; }
-interface SubjectOption { id: string; full_name: string; position: string | null; profile_id: string | null; sort_order: number; }
+interface SubjectOption {
+  id: string; full_name: string; position: string | null; profile_id: string | null;
+  supervisor_pgd_id: string | null; sort_order: number;
+}
 interface CriterionLite { id: string; title: string; sort_order: number; section: CouncilSection; }
 
 interface ReportPayload {
@@ -73,8 +76,12 @@ function CriterionBars({ data, title, color }: { data: CriterionScore[]; title: 
 }
 
 export default function CouncilReportPage() {
-  const { isAdmin, profileId } = useAuth();
+  const { isAdmin, profileId, roles } = useAuth();
   const access = useCouncilAccess();
+  // Giám đốc Chi nhánh + tcth_admin/system_admin: xem toàn bộ báo cáo.
+  // Phó Giám đốc (role 'bgd' nhưng không phải Giám đốc): chỉ xem đầu mối mình phụ trách + báo cáo của chính mình.
+  const isFullAdmin = roles.includes('tcth_admin') || roles.includes('system_admin') || access.memberGroup === 'giam_doc';
+  const isPgdSupervisor = isAdmin && !isFullAdmin;
   const [rounds, setRounds] = useState<RoundRow[]>([]);
   const [roundId, setRoundId] = useState('');
   const [subjects, setSubjects] = useState<SubjectOption[]>([]);
@@ -104,25 +111,30 @@ export default function CouncilReportPage() {
   }, [allowed]);
 
   useEffect(() => {
-    if (!roundId || !allowed) return;
+    if (!roundId || !allowed || access.loading) return;
     (async () => {
       const { data, error } = await supabase
         .from('council_subjects')
-        .select('id, full_name, position, profile_id, sort_order')
+        .select('id, full_name, position, profile_id, supervisor_pgd_id, sort_order')
         .eq('round_id', roundId)
         .eq('is_active', true)
         .order('sort_order');
       if (error) { toast.error('Lỗi tải danh sách đầu mối: ' + error.message); return; }
       let list = (data || []) as SubjectOption[];
-      // Cán bộ đầu mối (không phải admin) chỉ xem được báo cáo của chính mình
-      if (!isAdmin) list = list.filter((s) => s.profile_id === profileId);
+      // Giám đốc/tcth_admin/system_admin: xem tất cả. Phó Giám đốc: chỉ đầu mối mình phụ trách
+      // (supervisor_pgd_id) + báo cáo của chính mình. Người khác: chỉ báo cáo của chính mình.
+      if (isPgdSupervisor) {
+        list = list.filter((s) => s.supervisor_pgd_id === profileId || s.profile_id === profileId);
+      } else if (!isFullAdmin) {
+        list = list.filter((s) => s.profile_id === profileId);
+      }
       setSubjects(list);
       setSubjectId((prev) => {
-        if (isAdmin && prev === ROUND_ALL) return prev;
+        if ((isFullAdmin || isPgdSupervisor) && prev === ROUND_ALL) return prev;
         return list.some((s) => s.id === prev) ? prev : list[0]?.id || '';
       });
     })();
-  }, [roundId, allowed, isAdmin, profileId]);
+  }, [roundId, allowed, access.loading, isFullAdmin, isPgdSupervisor, profileId]);
 
   const loadReport = useCallback(async () => {
     if (!subjectId) { setReport(null); setRoundReports(null); return; }
@@ -381,8 +393,10 @@ export default function CouncilReportPage() {
           <Select value={subjectId} onValueChange={setSubjectId}>
             <SelectTrigger className="w-[230px] h-9"><SelectValue placeholder="Chọn cán bộ đầu mối" /></SelectTrigger>
             <SelectContent>
-              {isAdmin && subjects.length > 0 && (
-                <SelectItem value={ROUND_ALL}>📋 Biên bản toàn kỳ (tất cả đầu mối)</SelectItem>
+              {(isFullAdmin || isPgdSupervisor) && subjects.length > 0 && (
+                <SelectItem value={ROUND_ALL}>
+                  📋 {isFullAdmin ? 'Biên bản toàn kỳ (tất cả đầu mối)' : 'Biên bản đầu mối tôi phụ trách'}
+                </SelectItem>
               )}
               {subjects.map((s) => <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>)}
             </SelectContent>
@@ -394,13 +408,13 @@ export default function CouncilReportPage() {
             {exportingPdf ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <FileDown className="w-4 h-4 mr-1" />}
             Xuất PDF
           </Button>
-          {isAdmin && (
+          {(isFullAdmin || isPgdSupervisor) && (
             <Button size="sm" variant="outline" onClick={exportExcel} disabled={exporting || loading || (!report && !roundSummaries)}>
               {exporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <FileSpreadsheet className="w-4 h-4 mr-1" />}
               Xuất Excel
             </Button>
           )}
-          {isAdmin && (
+          {(isFullAdmin || isPgdSupervisor) && (
             <Button
               size="sm"
               onClick={sendReportEmail}
