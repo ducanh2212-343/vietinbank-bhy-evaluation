@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hướng dẫn Quản trị — Đánh giá đầu mối</title>
+<style>
+  :root{
+    --paper:#f6f8fb; --card:#fff; --ink:#12233a; --ink-soft:#45566d; --muted:#6b7c93;
+    --line:#e2e8f1; --line-2:#cdd7e6; --brand:#0b4d8f; --brand-soft:#eaf1f9; --brand-ink:#08396b;
+    --gold:#a4670f; --gold-soft:#f8f0e2; --danger:#c0122e; --danger-soft:#fbe9ec; --ok:#137a4b;
+    --radius:14px;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --mono:ui-monospace,"SFMono-Regular","Cascadia Code",Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.6;font-size:15.5px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:820px;margin:0 auto;padding:0 22px 60px}
+
+  header.mast{background:radial-gradient(120% 150% at 100% 0%,color-mix(in srgb,var(--brand) 16%,transparent),transparent 55%),var(--card);border-bottom:1px solid var(--line)}
+  header.mast .in{max-width:820px;margin:0 auto;padding:28px 22px 24px}
+  .brandrow{display:flex;align-items:center;gap:12px}
+  .mark{width:42px;height:42px;border-radius:11px;flex:none;background:linear-gradient(150deg,var(--brand),var(--brand-ink));color:#fff;display:grid;place-items:center;font-weight:800;font-size:15px}
+  .who b{font-size:13px} .who span{display:block;font-size:11.5px;color:var(--muted)}
+  .pill-role{margin-left:auto;font-size:11px;font-weight:700;color:#fff;background:var(--brand);padding:5px 12px;border-radius:999px}
+  h1{font-size:clamp(24px,4vw,32px);line-height:1.14;margin:18px 0 8px;letter-spacing:-.02em;font-weight:800;text-wrap:balance}
+  .lede{margin:0;color:var(--ink-soft);max-width:60ch}
+  .meta{display:flex;flex-wrap:wrap;gap:7px;margin-top:15px}
+  .chip{font-size:11.5px;font-weight:600;border:1px solid var(--line-2);color:var(--ink-soft);background:var(--card);padding:4px 10px;border-radius:999px}
+  .chip b{color:var(--ink)}
+
+  .step{margin-top:34px;break-inside:avoid}
+  .step-h{display:flex;align-items:center;gap:12px;margin-bottom:4px}
+  .num{width:34px;height:34px;border-radius:9px;flex:none;display:grid;place-items:center;font-family:var(--mono);font-weight:700;font-size:14px;color:#fff;background:var(--brand)}
+  .step-h h2{margin:0;font-size:19px;letter-spacing:-.01em}
+  .step > p{color:var(--ink-soft);margin:6px 0 0}
+  .path{font-family:var(--mono);font-size:12px;background:var(--brand-soft);color:var(--brand-ink);padding:1.5px 7px;border-radius:6px;font-weight:600;white-space:nowrap}
+  .req{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--danger);background:var(--danger-soft);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);padding:1px 6px;border-radius:5px}
+
+  /* ---- mockup frame ("ảnh minh họa") ---- */
+  figure.shot{margin:14px 0 0;border:1px solid var(--line-2);border-radius:var(--radius);overflow:hidden;background:var(--card);box-shadow:0 10px 26px -16px rgba(16,35,58,.35)}
+  .bar{display:flex;align-items:center;gap:6px;padding:9px 12px;background:#eef2f8;border-bottom:1px solid var(--line)}
+  .bar i{width:10px;height:10px;border-radius:50%;background:#cdd7e6;display:inline-block}
+  .bar .t{margin-left:8px;font-size:11px;color:var(--muted);font-family:var(--mono)}
+  figure.shot .body{padding:16px}
+  figcaption{font-size:11.5px;color:var(--muted);padding:8px 12px 12px;text-align:center;font-style:italic}
+
+  /* sidebar mock */
+  .ui-app{display:flex;gap:14px}
+  .ui-side{width:190px;flex:none;background:linear-gradient(180deg,#0d2f52,#0b2038);border-radius:10px;padding:10px 8px}
+  .ui-side .grp{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#8fb4d8;padding:8px 8px 4px}
+  .ui-navi{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:7px;font-size:12px;color:#cddcec;margin:2px 0}
+  .ui-navi .dot{width:14px;height:14px;border-radius:4px;background:#2b527a;flex:none}
+  .ui-navi.active{background:#fff;color:#0b2038;font-weight:700}
+  .ui-navi.active .dot{background:var(--brand)}
+  .ui-main{flex:1;min-width:0}
+
+  /* tabs mock */
+  .ui-tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+  .ui-tab{font-size:12px;padding:6px 11px;border-radius:8px;border:1px solid var(--line-2);color:var(--ink-soft);background:#fff}
+  .ui-tab.active{background:var(--brand);color:#fff;border-color:var(--brand);font-weight:600}
+  .ui-card{border:1px solid var(--line);border-radius:11px;padding:13px;background:#ffdfd;background:#fff}
+  .ui-card h4{margin:0 0 9px;font-size:13px}
+  .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--ink-soft)}
+  .tagx{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px}
+  .tagx.open{background:#e4f4ea;color:var(--ok)}
+  .tagx.gray{background:#eef1f6;color:var(--muted)}
+  .field{border:1px solid var(--line-2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--ink);background:#fff;flex:1;min-width:90px}
+  .field .k{color:var(--muted);font-size:10.5px;display:block}
+
+  .btnrow{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+  .btn{font-size:12px;font-weight:600;padding:7px 12px;border-radius:8px;border:1px solid var(--line-2);background:#fff;color:var(--ink);display:inline-flex;align-items:center;gap:5px}
+  .btn.primary{background:var(--brand);color:#fff;border-color:var(--brand)}
+  .btn .ic{font-size:12px}
+
+  /* mini charts */
+  .charts{display:flex;gap:14px;flex-wrap:wrap}
+  .cbox{flex:1;min-width:150px;border:1px solid var(--line);border-radius:10px;padding:11px}
+  .cbox .ct{font-size:11px;color:var(--muted);margin-bottom:6px}
+  .barline{display:flex;align-items:center;gap:7px;margin:5px 0;font-size:11px}
+  .barline .lb{width:34px;color:var(--ink-soft)}
+  .barline .track{flex:1;height:8px;border-radius:4px;background:#eef2f8;overflow:hidden}
+  .barline .fill{height:100%;border-radius:4px}
+  .score100{border:1px solid var(--line);border-radius:10px;text-align:center;padding:12px;min-width:130px}
+  .score100 .v{font-size:24px;font-weight:800;color:var(--brand)}
+  .score100 .l{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+
+  /* process flow */
+  .flow{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch}
+  .fstep{flex:1;min-width:120px;border:1px solid var(--line);border-radius:10px;padding:10px;background:#fff;position:relative}
+  .fstep .fn{width:22px;height:22px;border-radius:50%;background:var(--brand-soft);color:var(--brand-ink);font-family:var(--mono);font-weight:700;font-size:11px;display:grid;place-items:center;margin-bottom:6px}
+  .fstep p{margin:0;font-size:11.5px;color:var(--ink-soft)}
+  .fstep b{color:var(--ink)}
+
+  ul.feat{list-style:none;margin:8px 0 0;padding:0}
+  ul.feat>li{position:relative;padding:5px 0 5px 20px;color:var(--ink-soft);font-size:14.5px}
+  ul.feat>li::before{content:"";position:absolute;left:2px;top:12px;width:7px;height:7px;background:var(--brand);transform:rotate(45deg);border-radius:2px}
+  ul.feat>li strong{color:var(--ink)}
+
+  .note{margin-top:30px;border-radius:var(--radius);padding:15px 18px;font-size:14px;background:var(--gold-soft);border:1px solid color-mix(in srgb,var(--gold) 32%,transparent);color:#7c4d09}
+  .note b{color:var(--ink)} .note code{font-family:var(--mono);font-size:12.5px;background:color-mix(in srgb,var(--gold) 16%,transparent);padding:1px 6px;border-radius:5px}
+  footer{margin-top:34px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}
+
+  @media (max-width:620px){ .ui-side{display:none} }
+  @media print{ body{background:#fff} figure.shot{box-shadow:none} .step{break-inside:avoid} }
+</style>
+</head>
+<body>
+<header class="mast">
+  <div class="in">
+    <div class="brandrow">
+      <div class="mark">HĐ</div>
+      <div class="who"><b>VietinBank — Chi nhánh Bắc Hưng Yên</b><span>Hội đồng đánh giá công tác đầu mối</span></div>
+      <div class="pill-role">Nhóm QUẢN TRỊ</div>
+    </div>
+    <h1>Hướng dẫn cho Quản trị<br>Điều hành kỳ đánh giá đầu mối</h1>
+    <p class="lede">Dành cho Giám đốc Chi nhánh · Phòng TCTH · Quản trị hệ thống. Mở kỳ, theo dõi tiến độ, xuất báo cáo và gửi kết quả.</p>
+    <div class="meta">
+      <span class="chip">Menu: <b>Quản trị Hội đồng đầu mối</b></span>
+      <span class="chip"><b>Báo cáo đầu mối</b></span>
+      <span class="chip"><b>Phân tích đầu mối</b></span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- STEP 1 -->
+  <section class="step">
+    <div class="step-h"><div class="num">1</div><h2>Mở màn Quản trị Hội đồng</h2></div>
+    <p>Trên thanh menu bên trái, mở <span class="path">Quản trị Hội đồng đầu mối</span>. Trang gồm 5 thẻ: <b>Kỳ đánh giá · Bộ câu hỏi · Đầu mối · Thành viên HĐ · Tiến độ</b>.</p>
+    <figure class="shot">
+      <div class="bar"><i></i><i></i><i></i><span class="t">343 Phát triển nhân sự · Quản trị Hội đồng đầu mối</span></div>
+      <div class="body">
+        <div class="ui-app">
+          <div class="ui-side">
+            <div class="grp">Hội đồng đầu mối</div>
+            <div class="ui-navi"><span class="dot"></span>Đánh giá đầu mối</div>
+            <div class="ui-navi"><span class="dot"></span>Báo cáo đầu mối</div>
+            <div class="ui-navi"><span class="dot"></span>Phân tích đầu mối</div>
+            <div class="ui-navi active"><span class="dot"></span>Quản trị Hội đồng đầu mối</div>
+          </div>
+          <div class="ui-main">
+            <div class="ui-tabs">
+              <span class="ui-tab active">Kỳ đánh giá</span>
+              <span class="ui-tab">Bộ câu hỏi</span>
+              <span class="ui-tab">Đầu mối</span>
+              <span class="ui-tab">Thành viên HĐ</span>
+              <span class="ui-tab">Tiến độ</span>
+            </div>
+            <div class="ui-card">
+              <h4>Kỳ Quý II/2026</h4>
+              <div class="row">
+                <span class="tagx open">● Đang mở</span>
+                <span class="field"><span class="k">Hạn bỏ phiếu</span>30/06/2026</span>
+                <span class="field"><span class="k">Trọng số nhóm</span>GĐ 20% · PGĐ 15% · TV 65%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption>Menu Quản trị và 5 thẻ điều hành kỳ đánh giá</figcaption>
+    </figure>
+  </section>
+
+  <!-- STEP 2 -->
+  <section class="step">
+    <div class="step-h"><div class="num">2</div><h2>Chuẩn bị kỳ &amp; danh sách</h2></div>
+    <p>Ở các thẻ tương ứng: <b>Đầu mối</b> — thêm cán bộ được đánh giá, gán <b>PGĐ phụ trách</b>, liên kết tài khoản; <b>Thành viên HĐ</b> — thêm người chấm và nhóm của họ (nhóm quyết định trọng số); <b>Bộ câu hỏi</b> — chỉnh 10 tiêu chí.</p>
+    <figure class="shot">
+      <div class="bar"><i></i><i></i><i></i><span class="t">Thẻ “Đầu mối” — danh sách cán bộ được đánh giá</span></div>
+      <div class="body">
+        <div class="ui-tabs">
+          <span class="ui-tab">Kỳ đánh giá</span><span class="ui-tab">Bộ câu hỏi</span>
+          <span class="ui-tab active">Đầu mối</span><span class="ui-tab">Thành viên HĐ</span><span class="ui-tab">Tiến độ</span>
+        </div>
+        <div class="ui-card" style="margin-bottom:8px">
+          <div class="row" style="justify-content:space-between">
+            <b style="font-size:12.5px;color:var(--ink)">Đỗ Việt Anh — Trưởng phòng</b>
+            <span class="field" style="flex:none"><span class="k">PGĐ phụ trách</span>Nguyễn Đức Thái Hoàng</span>
+            <span class="tagx open">Đã liên kết TK</span>
+          </div>
+        </div>
+        <div class="ui-card">
+          <div class="row" style="justify-content:space-between">
+            <b style="font-size:12.5px;color:var(--ink)">Nguyễn Thị Huyền — PTP DVKH</b>
+            <span class="field" style="flex:none"><span class="k">PGĐ phụ trách</span>Phạm Minh Hải</span>
+            <span class="tagx gray">Chưa liên kết</span>
+          </div>
+        </div>
+        <div class="btnrow"><span class="btn primary"><span class="ic">＋</span> Thêm đầu mối</span><span class="btn">Gán PGĐ phụ trách</span></div>
+      </div>
+      <figcaption>Gán “PGĐ phụ trách” quyết định phạm vi PGĐ được xem báo cáo</figcaption>
+    </figure>
+  </section>
+
+  <!-- STEP 3 -->
+  <section class="step">
+    <div class="step-h"><div class="num">3</div><h2>Theo dõi tiến độ &amp; nhắc phiếu</h2></div>
+    <p>Thẻ <b>Tiến độ</b> hiển thị <b>ai đã gửi phiếu</b> cho từng đầu mối (không hiển thị điểm). Bấm <span class="path">Nhắc email</span> từng người hoặc nhắc tất cả người chưa gửi.</p>
+    <figure class="shot">
+      <div class="bar"><i></i><i></i><i></i><span class="t">Thẻ “Tiến độ” — ma trận thành viên × đầu mối</span></div>
+      <div class="body">
+        <div class="ui-card">
+          <div class="row" style="justify-content:space-between;margin-bottom:8px"><b style="font-size:12.5px;color:var(--ink)">Thành viên Hội đồng</b><span style="font-size:11px;color:var(--muted)">Trạng thái phiếu</span></div>
+          <div class="row" style="justify-content:space-between;border-top:1px solid var(--line);padding-top:7px"><span>Nguyễn Thị Phượng</span><span class="tagx open">Đã gửi</span></div>
+          <div class="row" style="justify-content:space-between;border-top:1px solid var(--line);padding-top:7px;margin-top:7px"><span>Vũ Thị Thu Hà</span><span style="display:flex;gap:6px;align-items:center"><span class="tagx gray">Chưa gửi</span><span class="btn" style="padding:4px 9px"><span class="ic">✉</span> Nhắc email</span></span></div>
+        </div>
+        <div class="btnrow"><span class="btn primary"><span class="ic">✉</span> Nhắc tất cả người chưa gửi</span></div>
+      </div>
+      <figcaption>Đôn đốc người chưa gửi; hệ thống cũng tự nhắc &amp; tự đóng kỳ khi quá hạn</figcaption>
+    </figure>
+  </section>
+
+  <!-- STEP 4 -->
+  <section class="step">
+    <div class="step-h"><div class="num">4</div><h2>Xem &amp; xuất báo cáo</h2></div>
+    <p>Menu <span class="path">Báo cáo đầu mối</span>: chọn kỳ và cán bộ để xem điểm trung bình từng tiêu chí và điểm <b>thang 100</b>. Xuất <b>PDF/Excel</b>, hoặc chọn <b>“📋 Biên bản toàn kỳ”</b> để xem toàn bộ đầu mối.</p>
+    <figure class="shot">
+      <div class="bar"><i></i><i></i><i></i><span class="t">Báo cáo kết quả đánh giá đầu mối</span></div>
+      <div class="body">
+        <div class="charts">
+          <div class="cbox">
+            <div class="ct">Phần I — Năng lực (thang 10)</div>
+            <div class="barline"><span class="lb">TC1</span><span class="track"><span class="fill" style="width:86%;background:#2a78d6"></span></span><span>8.6</span></div>
+            <div class="barline"><span class="lb">TC2</span><span class="track"><span class="fill" style="width:78%;background:#2a78d6"></span></span><span>7.8</span></div>
+            <div class="barline"><span class="lb">TC3</span><span class="track"><span class="fill" style="width:90%;background:#2a78d6"></span></span><span>9.0</span></div>
+          </div>
+          <div class="score100">
+            <div class="l">Điểm quy thang 100</div>
+            <div class="v">82.9</div>
+            <div style="font-size:10px;color:var(--muted)">6/6 phiếu · đã xử lý trọng số</div>
+          </div>
+        </div>
+        <div class="btnrow">
+          <span class="btn"><span class="ic">🖨</span> In</span>
+          <span class="btn"><span class="ic">⬇</span> Xuất PDF</span>
+          <span class="btn"><span class="ic">▦</span> Xuất Excel</span>
+          <span class="btn primary"><span class="ic">✉</span> Gửi email kết quả</span>
+        </div>
+      </div>
+      <figcaption>Điểm ẩn danh theo tiêu chí + nút In/PDF/Excel/Gửi email. Email có kèm 💌 Lời chúc</figcaption>
+    </figure>
+  </section>
+
+  <!-- STEP 5 -->
+  <section class="step">
+    <div class="step-h"><div class="num">5</div><h2>Phân tích tổng hợp toàn chi nhánh</h2></div>
+    <p>Menu <span class="path">Phân tích đầu mối</span>: xu hướng điểm qua các kỳ, bảng so sánh và radar 10 tiêu chí. <b>Chỉ Giám đốc CN + TCTH/Quản trị hệ thống</b> — Phó Giám đốc không truy cập.</p>
+    <figure class="shot">
+      <div class="bar"><i></i><i></i><i></i><span class="t">Phân tích đánh giá đầu mối</span></div>
+      <div class="body">
+        <div class="charts">
+          <div class="cbox">
+            <div class="ct">Xu hướng điểm qua các kỳ</div>
+            <svg viewBox="0 0 220 90" width="100%" height="90" role="img" aria-label="Đường xu hướng điểm tăng dần">
+              <line x1="10" y1="75" x2="210" y2="75" stroke="#e2e8f1"/>
+              <line x1="10" y1="45" x2="210" y2="45" stroke="#eef2f8"/>
+              <polyline points="30,62 110,44 190,26" fill="none" stroke="#0b4d8f" stroke-width="2.5" stroke-linecap="round"/>
+              <circle cx="30" cy="62" r="4" fill="#0b4d8f"/><circle cx="110" cy="44" r="4" fill="#0b4d8f"/><circle cx="190" cy="26" r="4" fill="#0b4d8f"/>
+              <text x="24" y="87" font-size="9" fill="#6b7c93">QII</text><text x="103" y="87" font-size="9" fill="#6b7c93">QIII</text><text x="182" y="87" font-size="9" fill="#6b7c93">QIV</text>
+            </svg>
+          </div>
+          <div class="cbox">
+            <div class="ct">Radar 10 tiêu chí vs mặt bằng</div>
+            <svg viewBox="0 0 120 90" width="100%" height="90" role="img" aria-label="Radar hồ sơ tiêu chí">
+              <polygon points="60,14 96,34 88,74 32,74 24,34" fill="none" stroke="#e2e8f1"/>
+              <polygon points="60,26 84,38 78,66 40,66 34,40" fill="rgba(11,77,143,.16)" stroke="#0b4d8f" stroke-width="2"/>
+              <polygon points="60,34 74,42 70,60 48,60 44,44" fill="none" stroke="#a4670f" stroke-width="1.5" stroke-dasharray="4 3"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <figcaption>Xu hướng · so sánh · radar — chỉ hiển thị cho cấp quản trị toàn chi nhánh</figcaption>
+    </figure>
+  </section>
+
+  <!-- Quy trình -->
+  <section class="step">
+    <div class="step-h"><div class="num">✓</div><h2>Quy trình khuyến nghị mỗi quý</h2></div>
+    <div class="flow" style="margin-top:14px">
+      <div class="fstep"><div class="fn">1</div><p>Đầu mối <b>trình bày slide</b> tại phiên họp</p></div>
+      <div class="fstep"><div class="fn">2</div><p>Admin <b>mở kỳ</b> + đặt hạn bỏ phiếu</p></div>
+      <div class="fstep"><div class="fn">3</div><p>Thành viên <b>chấm điểm</b></p></div>
+      <div class="fstep"><div class="fn">4</div><p>Theo dõi <b>Tiến độ</b>, nhắc phiếu</p></div>
+      <div class="fstep"><div class="fn">5</div><p>Đủ phiếu → <b>đóng kỳ</b></p></div>
+      <div class="fstep"><div class="fn">6</div><p><b>Xuất PDF/Excel</b>, gửi email, lưu hồ sơ</p></div>
+    </div>
+  </section>
+
+  <div class="note"><b>Lưu ý email nhắc / kết quả.</b> Thư gửi từ <code>noreply@343skill.com</code>. Với Gmail, <b>lần đầu thường vào Spam/Quảng cáo</b> — đánh dấu “Không phải spam” một lần là các thư sau vào Inbox. Nếu chưa nhận, đối chiếu email trong hồ sơ ở mục <em>Danh sách cán bộ</em>.</div>
+
+  <footer>VietinBank Bắc Hưng Yên · Hội đồng đánh giá công tác đầu mối · Hướng dẫn cho nhóm Quản trị · Áp dụng Quý II/III/IV 2026. Ảnh trong tài liệu là hình minh họa mô phỏng giao diện.</footer>
+</div>
+</body>
+</html>
