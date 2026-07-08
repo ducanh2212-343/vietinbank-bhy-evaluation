@@ -17,6 +17,7 @@ import {
 import { BellRing, CalendarClock, Download, Loader2, Timer } from 'lucide-react';
 import { toast } from 'sonner';
 import { filterQuarterCycles, pickDefaultCycle } from '@/lib/evaluationCycles';
+import { isSessionExpiredError, SESSION_EXPIRED_MESSAGE } from '@/lib/invokeError';
 import {
   TIMING_LABEL,
   computeSubmissionTiming,
@@ -422,7 +423,8 @@ export default function SubmissionTimeReportPage() {
         return 'skipped';
       }
       return 'skipped';
-    } catch {
+    } catch (e) {
+      if (isSessionExpiredError(e)) toast.error(SESSION_EXPIRED_MESSAGE, { id: 'session-expired' });
       return 'error';
     } finally {
       setRemindingIds((prev) => { const n = new Set(prev); n.delete(r.profileId); return n; });
