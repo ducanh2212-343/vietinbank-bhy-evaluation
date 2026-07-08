@@ -91,6 +91,42 @@ export interface SignatureInfo {
   date?: string | null;
 }
 
+/** Một hành động trong kế hoạch phát triển kỳ tới */
+export interface PlanActionExport {
+  typeLabel: string;
+  actionText: string;
+  expectedResult: string;
+  deadline: string;
+  support: string;
+  statusLabel: string;
+}
+
+export interface PlanSkillExport {
+  skillLabel: string;
+  currentLevel: number | null;
+  targetLevel: number | null;
+  reason: string;
+  actions: PlanActionExport[];
+}
+
+export interface PlanAttitudeExport {
+  name: string;
+  issue: string;
+  goal: string;
+  actions: PlanActionExport[];
+}
+
+export interface PlanAiExport extends PlanActionExport {
+  linkedLabel: string;
+}
+
+/** Kế hoạch phát triển kỳ tới (mục D/E/F trên web) */
+export interface BM01PlanExport {
+  skills: PlanSkillExport[];
+  attitudes: PlanAttitudeExport[];
+  ai: PlanAiExport[];
+}
+
 /** Dữ liệu bổ sung lấy từ form_submissions (xem lib/exportBM01Data.ts) */
 export interface BM01ExportExtras {
   previousActions?: { cycleName?: string; items: PreviousActionExportItem[] };
@@ -100,6 +136,12 @@ export interface BM01ExportExtras {
   };
   /** Bộ câu hỏi 1-1 của kỳ (quản trị theo kỳ); thiếu thì dùng bộ mặc định */
   oneOnOneQuestions?: OneOnOneQuestion[];
+  /** Kế hoạch phát triển kỳ tới (skill / thái độ / AI) */
+  plan?: BM01PlanExport;
+  /** Trạng thái phiếu tại thời điểm xuất (draft/submitted/reviewed/approved/closed…) */
+  formStatus?: string;
+  /** Mã tham chiếu phiếu (formId) để đối chiếu hồ sơ giấy ↔ hệ thống */
+  formCode?: string;
   overallReviews?: OverallReviewExport[];
   comments?: { employee?: string; manager?: string; pgd?: string };
   signatures?: {

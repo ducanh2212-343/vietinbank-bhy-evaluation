@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Search, Eye, ArrowRight } from 'lucide-react';
+import { Search, Eye, ArrowRight, FileDown, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { KpiCards } from '@/components/evaluation-tracking/KpiCards';
 import { StatusBadge } from '@/components/evaluation-tracking/StatusBadge';
 import {
@@ -79,6 +80,9 @@ export default function EvaluationTrackingPage() {
   const [statusFilter, setStatusFilter] = useState<DisplayStatus | 'all' | 'overdue'>('all');
   const [actorFilter, setActorFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
+  // Xuất gộp PDF hồ sơ toàn bộ phiếu đã phê duyệt của kỳ đang chọn
+  const [bulkExporting, setBulkExporting] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState('');
   // Ref giữ intent focus=pending qua suốt vòng load() async (URL param có thể đã bị xoá)
   const focusPendingRef = useRef<boolean>(searchParams.get('focus') === 'pending');
 
@@ -289,6 +293,38 @@ export default function EvaluationTrackingPage() {
     ? 'Theo dõi cán bộ thuộc phạm vi PGĐ phụ trách'
     : 'Theo dõi cán bộ thuộc phòng bạn phụ trách';
 
+  // Xuất MỘT file PDF gộp toàn bộ phiếu đã phê duyệt của kỳ đang chọn — in lưu hồ sơ nhân sự
+  const exportCycleArchive = async () => {
+    if (cycleFilter === 'all') {
+      toast.info('Chọn một kỳ cụ thể ở bộ lọc "Kỳ đánh giá" để xuất hồ sơ.');
+      return;
+    }
+    setBulkExporting(true);
+    setBulkProgress('Đang nạp dữ liệu…');
+    try {
+      const [{ loadApprovedFormsForCycle }, { exportBM01BatchToPdf }] = await Promise.all([
+        import('@/lib/exportBM01Bulk'),
+        import('@/lib/exportBM01Pdf'),
+      ]);
+      const { cycleName, items } = await loadApprovedFormsForCycle(cycleFilter, (d, t) => setBulkProgress(`Nạp dữ liệu ${d}/${t}…`));
+      if (!items.length) {
+        toast.info('Kỳ này chưa có phiếu nào được phê duyệt — hồ sơ chỉ lưu phiếu đã duyệt.');
+        return;
+      }
+      await exportBM01BatchToPdf(
+        items,
+        `BM01_HoSo_${cycleName.replace(/[/\s]+/g, '_')}.pdf`,
+        (d, t) => setBulkProgress(`Dựng bản in ${d}/${t}…`),
+      );
+      toast.success(`Đã tải file PDF hồ sơ gồm ${items.length} phiếu đã phê duyệt.`);
+    } catch (e) {
+      toast.error('Lỗi xuất hồ sơ: ' + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setBulkExporting(false);
+      setBulkProgress('');
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div>
@@ -361,6 +397,17 @@ export default function EvaluationTrackingPage() {
                 <SelectItem value="done">Đã hoàn tất</SelectItem>
               </SelectContent>
             </Select>
+            <Button
+              variant="outline"
+              onClick={exportCycleArchive}
+              disabled={bulkExporting || cycleFilter === 'all'}
+              title={cycleFilter === 'all'
+                ? 'Chọn một kỳ cụ thể để xuất hồ sơ'
+                : 'Tải một file PDF gộp toàn bộ phiếu ĐÃ PHÊ DUYỆT của kỳ — in lưu hồ sơ nhân sự'}
+            >
+              {bulkExporting ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <FileDown className="w-4 h-4 mr-1.5" />}
+              {bulkExporting ? (bulkProgress || 'Đang xuất…') : 'Xuất PDF hồ sơ kỳ'}
+            </Button>
           </div>
 
           {/* Table desktop */}
