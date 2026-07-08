@@ -1,17 +1,26 @@
 // Xuất biểu mẫu đánh giá năng lực ra Word — dạng MẪU IN đầy đủ theo quy trình:
 // luôn hiển thị đủ các mục (trống thì chừa chỗ ghi tay), trường văn bản dài
 // được bố trí khối rộng toàn trang thay vì cột hẹp.
-import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, AlignmentType, HeadingLevel, WidthType, BorderStyle, ShadingType, PageOrientation } from 'docx';
+import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, AlignmentType, HeadingLevel, WidthType, BorderStyle, ShadingType, PageOrientation, TableLayoutType } from 'docx';
 import { saveAs } from 'file-saver';
 import type { CoreSkillAssessment } from '@/components/evaluation/EvalSectionB';
 import type { AttitudeAssessment } from '@/components/evaluation/EvalSectionC';
 import { ATTITUDE_FOCUS_OPTIONS } from '@/components/evaluation/attitudeFocusOptions';
 import { DEFAULT_ONE_ON_ONE_QUESTIONS, type OneOnOneQuestion } from '@/lib/oneOnOneDefaults';
+import { LEVEL_LABELS } from '@/lib/skillLevels';
 
 const border = { style: BorderStyle.SINGLE, size: 4, color: 'BFBFBF' };
 const cellBorders = { top: border, bottom: border, left: border, right: border };
 
-const PAGE_W = 14360; // vùng nội dung landscape A4 (DXA)
+// Khổ A4 nằm ngang: 16838 x 11906 DXA, lề 1cm (567) mỗi bên → vùng in ≈ 15704.
+// Giữ bảng ở 15300 để luôn còn lề an toàn, tránh tràn/cắt cột phải khi in.
+const PAGE_A4_LANDSCAPE_W = 16838;
+const PAGE_A4_LANDSCAPE_H = 11906;
+const PAGE_MARGIN = 567;
+const PAGE_W = 15300; // bề rộng nội dung bảng (DXA) — nhỏ hơn vùng in để chừa lề an toàn
+
+/** Mức năng lực dạng chữ rõ nghĩa cho bản in (thay cho ký hiệu L1/L2…) */
+const fmtLevel = (n: number | null | undefined) => (n == null ? '' : `Mức ${n}`);
 
 const ATTITUDE_LABEL: Record<string, string> = {
   noi_bat: 'Nổi bật',
@@ -176,17 +185,17 @@ export async function exportBM01ToWord(data: BM01ExportData) {
   const extras = data.extras;
 
   // ===== A. Kỹ năng: mỗi kỹ năng = 1 dòng mức điểm + 1 khối chữ rộng =====
-  // Grid: TT 700 | Kỹ năng 7660 | L_min 1500 | L_adv 1500 | Tự ĐG 1500 | QL ĐG 1500
-  const SKILL_GRID = [700, 7660, 1500, 1500, 1500, 1500];
+  // Grid: TT 700 | Kỹ năng 8600 | Mức tối thiểu 1500 | Mức mục tiêu 1500 | Tự ĐG 1500 | LĐ ĐG 1500
+  const SKILL_GRID = [700, 8600, 1500, 1500, 1500, 1500];
   const skillHeader = new TableRow({
     tableHeader: true,
     children: [
       cell('TT', { bold: true, shade: 'E7E6E6', width: 700, align: AlignmentType.CENTER }),
-      cell('Kỹ năng', { bold: true, shade: 'E7E6E6', width: 7660 }),
-      cell('L_min', { bold: true, shade: 'E7E6E6', width: 1500, align: AlignmentType.CENTER }),
-      cell('L_adv', { bold: true, shade: 'E7E6E6', width: 1500, align: AlignmentType.CENTER }),
-      cell('Tự ĐG', { bold: true, shade: 'E7E6E6', width: 1500, align: AlignmentType.CENTER }),
-      cell('Lãnh đạo ĐG', { bold: true, shade: 'E7E6E6', width: 1500, align: AlignmentType.CENTER }),
+      cell('Kỹ năng', { bold: true, shade: 'E7E6E6', width: 8600 }),
+      cell('Mức tối thiểu', { bold: true, shade: 'E7E6E6', width: 1500, align: AlignmentType.CENTER }),
+      cell('Mức mục tiêu', { bold: true, shade: 'E7E6E6', width: 1500, align: AlignmentType.CENTER }),
+      cell('Tự đánh giá', { bold: true, shade: 'E7E6E6', width: 1500, align: AlignmentType.CENTER }),
+      cell('Lãnh đạo đánh giá', { bold: true, shade: 'E7E6E6', width: 1500, align: AlignmentType.CENTER }),
     ],
   });
   const skillRowsOf = (list: CoreSkillAssessment[], hasLevels: boolean) =>
@@ -195,10 +204,10 @@ export async function exportBM01ToWord(data: BM01ExportData) {
         children: [
           cell(String(i + 1), { align: AlignmentType.CENTER }),
           cell(`${a.skill_code ? a.skill_code + '. ' : ''}${a.skill_name}`, { bold: true }),
-          cell(hasLevels ? `L${a.minimum_level}` : '—', { align: AlignmentType.CENTER }),
-          cell(hasLevels ? `L${a.advanced_level}` : '—', { align: AlignmentType.CENTER }),
-          cell(a.self_assessed_level == null ? '' : `L${a.self_assessed_level}`, { align: AlignmentType.CENTER }),
-          cell(a.manager_assessed_level == null ? '' : `L${a.manager_assessed_level}`, { align: AlignmentType.CENTER }),
+          cell(hasLevels ? fmtLevel(a.minimum_level) : '—', { align: AlignmentType.CENTER }),
+          cell(hasLevels ? fmtLevel(a.advanced_level) : '—', { align: AlignmentType.CENTER }),
+          cell(fmtLevel(a.self_assessed_level), { align: AlignmentType.CENTER }),
+          cell(fmtLevel(a.manager_assessed_level), { align: AlignmentType.CENTER }),
         ],
       }),
       new TableRow({
@@ -214,14 +223,14 @@ export async function exportBM01ToWord(data: BM01ExportData) {
     ]);
 
   // ===== B. Thái độ: dòng chấm + khối kế hoạch cải thiện rộng =====
-  const ATT_GRID = [700, 9660, 2000, 2000];
+  const ATT_GRID = [700, 10600, 2000, 2000];
   const attitudeHeader = new TableRow({
     tableHeader: true,
     children: [
       cell('TT', { bold: true, shade: 'E7E6E6', width: 700, align: AlignmentType.CENTER }),
-      cell('Nhóm thái độ', { bold: true, shade: 'E7E6E6', width: 9660 }),
-      cell('Tự ĐG', { bold: true, shade: 'E7E6E6', width: 2000, align: AlignmentType.CENTER }),
-      cell('Lãnh đạo ĐG', { bold: true, shade: 'E7E6E6', width: 2000, align: AlignmentType.CENTER }),
+      cell('Nhóm thái độ', { bold: true, shade: 'E7E6E6', width: 10600 }),
+      cell('Tự đánh giá', { bold: true, shade: 'E7E6E6', width: 2000, align: AlignmentType.CENTER }),
+      cell('Lãnh đạo đánh giá', { bold: true, shade: 'E7E6E6', width: 2000, align: AlignmentType.CENTER }),
     ],
   });
   const attitudeRows = attitudeAssessments.flatMap((a, i) => [
@@ -260,9 +269,9 @@ export async function exportBM01ToWord(data: BM01ExportData) {
     tableHeader: true,
     children: [
       cell('TT', { bold: true, shade: 'E7E6E6', width: 700, align: AlignmentType.CENTER }),
-      cell('Hành động đã cam kết kỳ trước', { bold: true, shade: 'E7E6E6', width: 9660 }),
-      cell('Tự ĐG', { bold: true, shade: 'E7E6E6', width: 2000, align: AlignmentType.CENTER }),
-      cell('Lãnh đạo ĐG', { bold: true, shade: 'E7E6E6', width: 2000, align: AlignmentType.CENTER }),
+      cell('Hành động đã cam kết kỳ trước', { bold: true, shade: 'E7E6E6', width: 10600 }),
+      cell('Tự đánh giá', { bold: true, shade: 'E7E6E6', width: 2000, align: AlignmentType.CENTER }),
+      cell('Lãnh đạo đánh giá', { bold: true, shade: 'E7E6E6', width: 2000, align: AlignmentType.CENTER }),
     ],
   });
   const prevRows = prevItems.flatMap((it, i) => [
@@ -292,6 +301,7 @@ export async function exportBM01ToWord(data: BM01ExportData) {
   const comments = extras?.comments;
   const commentTable = new Table({
     width: { size: PAGE_W, type: WidthType.DXA },
+    layout: TableLayoutType.FIXED,
     columnWidths: [3600, PAGE_W - 3600],
     rows: [
       new TableRow({ children: [
@@ -334,6 +344,7 @@ export async function exportBM01ToWord(data: BM01ExportData) {
     return [
       new Table({
         width: { size: PAGE_W, type: WidthType.DXA },
+        layout: TableLayoutType.FIXED,
         columnWidths: [3600, PAGE_W - 3600],
         rows: [
           new TableRow({
@@ -370,6 +381,7 @@ export async function exportBM01ToWord(data: BM01ExportData) {
     oneOnOneChildren.push(
       new Table({
         width: { size: PAGE_W, type: WidthType.DXA },
+        layout: TableLayoutType.FIXED,
         columnWidths: [PAGE_W / 2, PAGE_W / 2],
         rows: [
           new TableRow({
@@ -410,8 +422,8 @@ export async function exportBM01ToWord(data: BM01ExportData) {
     sections: [{
       properties: {
         page: {
-          size: { width: 15840, height: 12240, orientation: PageOrientation.LANDSCAPE },
-          margin: { top: 720, bottom: 720, left: 720, right: 720 },
+          size: { width: PAGE_A4_LANDSCAPE_W, height: PAGE_A4_LANDSCAPE_H, orientation: PageOrientation.LANDSCAPE },
+          margin: { top: PAGE_MARGIN, bottom: PAGE_MARGIN, left: PAGE_MARGIN, right: PAGE_MARGIN },
         },
       },
       children: [
@@ -427,8 +439,10 @@ export async function exportBM01ToWord(data: BM01ExportData) {
         spacer(),
 
         p('A. ĐÁNH GIÁ KỸ NĂNG LÕI THEO VỊ TRÍ', { bold: true, size: 24 }),
+        p(`Chú thích mức năng lực: ${[1, 2, 3, 4].map((n) => `Mức ${n} – ${LEVEL_LABELS[n]}`).join(' · ')}. Mức tối thiểu = yêu cầu của vị trí; Mức mục tiêu = mức nâng cao cần hướng tới.`, { italics: true, size: 18 }),
         new Table({
           width: { size: PAGE_W, type: WidthType.DXA },
+          layout: TableLayoutType.FIXED,
           columnWidths: SKILL_GRID,
           rows: [skillHeader, ...skillRowsOf(coreAssessments, true)],
         }),
@@ -438,6 +452,7 @@ export async function exportBM01ToWord(data: BM01ExportData) {
           p('A2. SKILL BỔ TRỢ (NGOÀI CHUẨN VỊ TRÍ)', { bold: true, size: 24 }),
           new Table({
             width: { size: PAGE_W, type: WidthType.DXA },
+            layout: TableLayoutType.FIXED,
             columnWidths: SKILL_GRID,
             rows: [skillHeader, ...skillRowsOf(supplementaryAssessments, false)],
           }),
@@ -447,6 +462,7 @@ export async function exportBM01ToWord(data: BM01ExportData) {
         p('B. ĐÁNH GIÁ 6 NHÓM THÁI ĐỘ & KẾ HOẠCH CẢI THIỆN', { bold: true, size: 24 }),
         new Table({
           width: { size: PAGE_W, type: WidthType.DXA },
+          layout: TableLayoutType.FIXED,
           columnWidths: ATT_GRID,
           rows: [attitudeHeader, ...attitudeRows],
         }),
@@ -455,6 +471,7 @@ export async function exportBM01ToWord(data: BM01ExportData) {
         p(`C. RÀ SOÁT KẾ HOẠCH HÀNH ĐỘNG KỲ TRƯỚC${extras?.previousActions?.cycleName ? ` (${extras.previousActions.cycleName})` : ''}`, { bold: true, size: 24 }),
         new Table({
           width: { size: PAGE_W, type: WidthType.DXA },
+          layout: TableLayoutType.FIXED,
           columnWidths: ATT_GRID,
           rows: [prevHeader, ...prevRows],
         }),
@@ -472,25 +489,26 @@ export async function exportBM01ToWord(data: BM01ExportData) {
         // Thành phần ký theo quy trình: CB tự đánh giá → lãnh đạo đánh giá → PGĐ phê duyệt
         new Table({
           width: { size: PAGE_W, type: WidthType.DXA },
-          columnWidths: [4787, 4787, 4786],
+          layout: TableLayoutType.FIXED,
+          columnWidths: [5100, 5100, 5100],
           rows: [new TableRow({ children: [
             signatureCell(
               'CÁN BỘ TỰ ĐÁNH GIÁ',
               { name: extras?.signatures?.employee.name || profile.full_name, date: extras?.signatures?.employee.date },
               'Đã nộp trên hệ thống',
-              4787,
+              5100,
             ),
             signatureCell(
               'LÃNH ĐẠO ĐÁNH GIÁ',
               { name: extras?.signatures?.reviewer.name || profile.manager_name, date: extras?.signatures?.reviewer.date },
               'Đã duyệt trên hệ thống',
-              4787,
+              5100,
             ),
             signatureCell(
               'PHÓ GIÁM ĐỐC PHÊ DUYỆT',
               { name: extras?.signatures?.approver.name || profile.pgd_name, date: extras?.signatures?.approver.date },
               'Đã phê duyệt trên hệ thống',
-              4786,
+              5100,
             ),
           ] })],
         }),
