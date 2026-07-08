@@ -5,9 +5,9 @@ import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, Align
 import { saveAs } from 'file-saver';
 import type { CoreSkillAssessment } from '@/components/evaluation/EvalSectionB';
 import type { AttitudeAssessment } from '@/components/evaluation/EvalSectionC';
-import { ATTITUDE_FOCUS_OPTIONS } from '@/components/evaluation/attitudeFocusOptions';
 import { DEFAULT_ONE_ON_ONE_QUESTIONS, type OneOnOneQuestion } from '@/lib/oneOnOneDefaults';
 import { LEVEL_LABELS } from '@/lib/skillLevels';
+import { ATTITUDE_LABEL, IMPROVEMENT_STATUS_LABEL, focusLabels, fmtSignDate } from '@/lib/exportBM01Labels';
 
 const border = { style: BorderStyle.SINGLE, size: 4, color: 'BFBFBF' };
 const cellBorders = { top: border, bottom: border, left: border, right: border };
@@ -21,29 +21,6 @@ const PAGE_W = 15300; // bề rộng nội dung bảng (DXA) — nhỏ hơn vùn
 
 /** Mức năng lực dạng chữ rõ nghĩa cho bản in (thay cho ký hiệu L1/L2…) */
 const fmtLevel = (n: number | null | undefined) => (n == null ? '' : `Mức ${n}`);
-
-const ATTITUDE_LABEL: Record<string, string> = {
-  noi_bat: 'Nổi bật',
-  dat_mong_doi: 'Đạt mong đợi',
-  can_cai_thien: 'Cần cải thiện',
-  // legacy
-  dat: 'Đạt',
-  chua_dat: 'Chưa đạt',
-};
-
-const IMPROVEMENT_STATUS_LABEL: Record<string, string> = {
-  not_started: 'Chưa bắt đầu',
-  in_progress: 'Đang thực hiện',
-  completed: 'Đã hoàn thành',
-};
-
-function focusLabels(dimId: number, codes: string[] | undefined, other: string | undefined): string {
-  if (!codes || codes.length === 0) return '';
-  const opts = ATTITUDE_FOCUS_OPTIONS[dimId] || [];
-  return codes
-    .map(c => (c === 'other' ? (other?.trim() || 'Khác') : (opts.find(o => o.code === c)?.label || c)))
-    .join(' • ');
-}
 
 function p(text: string, opts: { bold?: boolean; italics?: boolean; size?: number; align?: (typeof AlignmentType)[keyof typeof AlignmentType] } = {}) {
   return new Paragraph({
@@ -152,11 +129,6 @@ export interface BM01ExportData {
   };
   extras?: BM01ExportExtras;
 }
-
-const fmtSignDate = (iso: string | null | undefined) =>
-  iso
-    ? new Date(iso).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-    : '';
 
 /** Ô chữ ký: chức danh + hướng dẫn ký + khoảng trống + họ tên + dấu thời gian hệ thống (nếu có) */
 function signatureCell(title: string, sig: SignatureInfo | undefined, systemLabel: string, width: number) {
