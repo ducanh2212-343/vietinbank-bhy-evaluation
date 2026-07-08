@@ -903,9 +903,9 @@ export function BMFormPage({ config }: Props) {
               });
             }
             await exportBM01ToPdf({ profile: profile || {}, cycleName: targetCycleName, coreAssessments, supplementaryAssessments: suppAssessments, attitudeAssessments, oneOnOne: oneOnOneEnabled ? { enabled: true, answers: oneOnOneAnswers } : undefined, extras });
-            toast.success('Đang mở hộp thoại in — chọn "Lưu thành PDF"');
+            toast.success('Đã tải file PDF');
           } catch (e: any) { toast.error('Lỗi xuất PDF: ' + (e.message || '')); }
-        }} disabled={isBusy} title="Xuất biểu mẫu PDF (in / lưu PDF)">
+        }} disabled={isBusy} title="Xuất biểu mẫu PDF">
           <FileDown className="w-4 h-4" />
         </Button>
         <Button onClick={saveDraft} disabled={isBusy} className="flex-1 min-w-[140px]">

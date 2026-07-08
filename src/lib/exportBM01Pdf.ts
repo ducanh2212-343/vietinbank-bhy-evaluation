@@ -290,9 +290,43 @@ export function buildBM01PrintHtml(data: BM01ExportData, docTitle = 'BM01'): str
 <body>${body}</body></html>`;
 }
 
+// Bề rộng bố cục (px) khi dựng bản in để chụp — tỉ lệ ~ A4 ngang, cho chữ đủ rộng.
+const LAYOUT_WIDTH_PX = 1400;
+
+/** Dựng HTML bản in trong iframe ẩn, đợi layout ổn định, trả về iframe đã sẵn sàng chụp. */
+function renderInHiddenIframe(html: string): Promise<HTMLIFrameElement> {
+  return new Promise((resolve, reject) => {
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('aria-hidden', 'true');
+    iframe.style.position = 'fixed';
+    iframe.style.left = '-10000px';
+    iframe.style.top = '0';
+    iframe.style.width = `${LAYOUT_WIDTH_PX}px`;
+    iframe.style.height = '1000px';
+    iframe.style.border = '0';
+    iframe.style.background = '#ffffff';
+    document.body.appendChild(iframe);
+
+    iframe.onload = () => {
+      // Đợi 1 nhịp để trình duyệt hoàn tất layout/độ cao thực tế
+      setTimeout(() => resolve(iframe), 200);
+    };
+    const doc = iframe.contentWindow?.document;
+    if (!doc) {
+      iframe.remove();
+      reject(new Error('Không khởi tạo được khung in.'));
+      return;
+    }
+    doc.open();
+    doc.write(html);
+    doc.close();
+  });
+}
+
 /**
- * Xuất biểu mẫu ra PDF qua hộp thoại in của trình duyệt (chọn "Lưu thành PDF").
- * Dùng iframe ẩn nên không bị chặn popup; layout A4 ngang cố định, không tràn.
+ * Xuất biểu mẫu ra file PDF và tải xuống trực tiếp (một chạm, không qua hộp thoại in).
+ * Dựng bản in HTML khổ A4 ngang trong iframe ẩn → chụp bằng html2canvas → ghép vào
+ * jsPDF A4 ngang đa trang. Bản in do ta kiểm soát nên không tràn ngang / cắt cột.
  */
 export async function exportBM01ToPdf(data: BM01ExportData): Promise<void> {
   const safeName = (data.profile.full_name || 'CanBo').replace(/\s+/g, '_');
@@ -300,49 +334,47 @@ export async function exportBM01ToPdf(data: BM01ExportData): Promise<void> {
   const docTitle = `BM01_${safeName}_${safeCycle}`;
   const html = buildBM01PrintHtml(data, docTitle);
 
-  const iframe = document.createElement('iframe');
-  iframe.setAttribute('aria-hidden', 'true');
-  iframe.style.position = 'fixed';
-  iframe.style.right = '0';
-  iframe.style.bottom = '0';
-  iframe.style.width = '0';
-  iframe.style.height = '0';
-  iframe.style.border = '0';
-  document.body.appendChild(iframe);
+  const iframe = await renderInHiddenIframe(html);
+  try {
+    const body = iframe.contentDocument?.body;
+    if (!body) throw new Error('Không dựng được nội dung bản in.');
+    // Cho iframe cao bằng nội dung để html2canvas chụp trọn vẹn
+    iframe.style.height = `${body.scrollHeight + 40}px`;
 
-  await new Promise<void>((resolve) => {
-    let done = false;
-    const finish = () => {
-      if (done) return;
-      done = true;
-      resolve();
-    };
-    iframe.onload = () => {
-      const win = iframe.contentWindow;
-      if (!win) return finish();
-      // Dọn iframe sau khi in/hủy để không rò rỉ DOM
-      win.addEventListener('afterprint', () => {
-        setTimeout(() => iframe.remove(), 0);
-        finish();
-      });
-      // Đợi font/layout ổn định rồi mới in
-      setTimeout(() => {
-        win.focus();
-        win.print();
-        // Fallback dọn dẹp nếu trình duyệt không phát afterprint
-        setTimeout(() => {
-          if (document.body.contains(iframe)) iframe.remove();
-          finish();
-        }, 60000);
-      }, 250);
-    };
-    const doc = iframe.contentWindow?.document;
-    if (doc) {
-      doc.open();
-      doc.write(html);
-      doc.close();
-    } else {
-      finish();
+    const [{ default: html2canvas }, { default: JsPDF }] = await Promise.all([
+      import('html2canvas'),
+      import('jspdf'),
+    ]);
+
+    const canvas = await html2canvas(body, {
+      scale: 2,
+      backgroundColor: '#ffffff',
+      useCORS: true,
+      windowWidth: LAYOUT_WIDTH_PX,
+      width: LAYOUT_WIDTH_PX,
+    });
+
+    const pdf = new JsPDF('l', 'mm', 'a4'); // khổ A4 nằm ngang
+    const margin = 8; // lề trái/phải 8mm — bản chụp fit vừa bề ngang, không tràn
+    const pw = pdf.internal.pageSize.getWidth();
+    const ph = pdf.internal.pageSize.getHeight();
+    const contentW = pw - margin * 2;
+    const imgH = (canvas.height * contentW) / canvas.width;
+    const img = canvas.toDataURL('image/jpeg', 0.92);
+
+    // Ghép ảnh cao vào nhiều trang: mỗi trang là một "cửa sổ" cao ph nhìn vào ảnh.
+    let heightLeft = imgH;
+    let position = 0;
+    pdf.addImage(img, 'JPEG', margin, position, contentW, imgH);
+    heightLeft -= ph;
+    while (heightLeft > 0) {
+      position -= ph;
+      pdf.addPage();
+      pdf.addImage(img, 'JPEG', margin, position, contentW, imgH);
+      heightLeft -= ph;
     }
-  });
+    pdf.save(`${docTitle}.pdf`);
+  } finally {
+    iframe.remove();
+  }
 }
