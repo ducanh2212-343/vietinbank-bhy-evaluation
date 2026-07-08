@@ -14,6 +14,7 @@ import { Loader2, Mail, MailCheck, Newspaper, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { filterQuarterCycles, pickDefaultCycle, type QuarterCycleOption } from '@/lib/evaluationCycles';
 import { effectiveLevel } from '@/lib/skillInsights';
+import { isSessionExpiredError, SESSION_EXPIRED_MESSAGE } from '@/lib/invokeError';
 import { BrandMascotAI } from '@/components/branding/BrandAssets';
 
 interface ProfileRow {
@@ -187,7 +188,8 @@ export default function QuarterlyNewsletterPage() {
       setLetter(p.id, { status: 'skipped', note: reason });
       return false;
     } catch (e) {
-      setLetter(p.id, { status: 'error', note: e instanceof Error ? e.message : String(e) });
+      if (isSessionExpiredError(e)) toast.error(SESSION_EXPIRED_MESSAGE, { id: 'session-expired' });
+      setLetter(p.id, { status: 'error', note: isSessionExpiredError(e) ? SESSION_EXPIRED_MESSAGE : (e instanceof Error ? e.message : String(e)) });
       return false;
     }
   };

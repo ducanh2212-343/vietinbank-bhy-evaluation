@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { BellRing, Loader2, Mail, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { MEMBER_GROUP_LABELS, type CouncilMemberGroup } from '@/lib/council';
+import { isSessionExpiredError, SESSION_EXPIRED_MESSAGE } from '@/lib/invokeError';
 
 interface Props {
   roundId: string;
@@ -86,7 +87,8 @@ export function CouncilProgressTab({ roundId, roundName, roundOpen, votingDeadli
         return res?.success ? 'sent' : 'skipped';
       }
       return 'skipped';
-    } catch {
+    } catch (e) {
+      if (isSessionExpiredError(e)) toast.error(SESSION_EXPIRED_MESSAGE, { id: 'session-expired' });
       return 'error';
     } finally {
       setRemindingIds((prev) => { const n = new Set(prev); n.delete(member.profile_id); return n; });

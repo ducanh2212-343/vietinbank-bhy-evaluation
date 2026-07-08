@@ -15,6 +15,7 @@ import {
   type ReportEvaluationRow,
 } from '@/lib/council';
 import { exportCouncilExcel, type CouncilExportItem } from '@/lib/councilExport';
+import { invokeErrorMessage } from '@/lib/invokeError';
 
 // Giá trị đặc biệt của picker: xem biên bản tổng hợp toàn kỳ (admin)
 const ROUND_ALL = '__round__';
@@ -395,7 +396,7 @@ export default function CouncilReportPage() {
       else if (res?.skipped === 'suppressed') toast.error('Địa chỉ email này đã từ chối nhận thư của hệ thống.');
       else toast.error('Không gửi được email: ' + (res?.error || 'lỗi không xác định'));
     } catch (e) {
-      toast.error('Lỗi gửi email: ' + (e instanceof Error ? e.message : String(e)));
+      toast.error(invokeErrorMessage(e, 'Lỗi gửi email'));
     } finally {
       setSendingEmail(false);
     }
