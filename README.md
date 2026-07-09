@@ -63,3 +63,6 @@ Lệnh khác: `npm run test` (vitest), `npm run build`, `npm run lint`.
   chính thức của nhà cung cấp** (đơn vị mặc định USD, chỉnh ở ô "Đơn vị tiền").
 
 Tài liệu thiết kế gamification mục skill: `docs/nghien-cuu-gamification-muc-anh-skill.md`.
+
+Quy trình vận hành Kanban "Hành động phát triển" & kế hoạch hành động quý:
+`docs/nghien-cuu-quy-trinh-van-hanh-kanban-2026-07.md`.
