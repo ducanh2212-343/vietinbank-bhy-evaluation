@@ -89,7 +89,11 @@ export default function Login() {
               </p>
             </div>
 
-            <form onSubmit={handleLogin} className="mt-6 space-y-4">
+            <div className="mt-5 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+              <strong>Hệ thống nội bộ — KHÔNG phải cổng giao dịch/khách hàng của ngân hàng.</strong> Tài khoản do quản trị viên cấp, chỉ dành cho cán bộ được phân quyền. Hệ thống không yêu cầu và không thu thập thông tin thẻ, số tài khoản, mã OTP hay thông tin thanh toán.
+            </div>
+
+            <form onSubmit={handleLogin} className="mt-5 space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Mã đăng nhập / Email</Label>
                 <Input
@@ -125,10 +129,6 @@ export default function Login() {
                 </Link>
               </div>
             </form>
-
-            <div className="mt-4 text-center text-xs sm:text-sm text-muted-foreground">
-              Tài khoản do quản trị viên cấp. Hệ thống chỉ dành cho cán bộ được phân quyền; không dành cho khách hàng và không yêu cầu thông tin thẻ, tài khoản ngân hàng hoặc thông tin thanh toán.
-            </div>
           </div>
         </div>
       </div>

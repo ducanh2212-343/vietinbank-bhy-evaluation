@@ -1,14 +1,3 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
+# Hệ thống nội bộ — không cần và không cho phép lập chỉ mục công khai
 User-agent: *
-Allow: /
+Disallow: /
