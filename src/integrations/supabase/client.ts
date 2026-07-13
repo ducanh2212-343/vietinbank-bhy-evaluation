@@ -2,8 +2,15 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+// Ưu tiên biến môi trường (Vercel/Cloudflare); fallback là cấu hình công khai của
+// project Supabase để tránh trắng màn hình khi build thiếu biến. Anon key được thiết
+// kế để công khai (đã nằm trong bundle phía client) — bảo mật dựa vào RLS, không phải
+// giữ bí mật key.
+const SUPABASE_URL =
+  import.meta.env.VITE_SUPABASE_URL ?? 'https://whlysprzsguehxmrjwha.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY =
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndobHlzcHJ6c2d1ZWh4bXJqd2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3NTk5NDksImV4cCI6MjA5NzMzNTk0OX0.9VArZm-Pq7Nq0-fJSo1l65SNcAGM8P87jE99b6xIEws';
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
