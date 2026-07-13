@@ -1,0 +1,10 @@
+{
+  // Cấu hình để Cloudflare Workers Builds deploy SPA tĩnh (thư mục dist)
+  // mà không cần plugin Vite / Vite >= 6. Vercel bỏ qua file này (dùng vercel.json).
+  "name": "343-noi-bo",
+  "compatibility_date": "2025-06-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}
