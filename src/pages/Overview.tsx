@@ -11,6 +11,7 @@ import { ReviewerActionAlert } from '@/components/evaluation-tracking/ReviewerAc
 import { PersonalKanbanMini } from '@/components/kanban/PersonalKanbanMini';
 import { TeamPendingAlert } from '@/components/kanban/TeamPendingAlert';
 import { EvaluationPipelineCard } from '@/components/evaluation-tracking/EvaluationPipelineCard';
+import { EnablePushBanner } from '@/components/EnablePushBanner';
 import { fetchDefaultCycle, fetchStarByEmployee } from '@/lib/starClassification';
 import { AnniversaryBanner } from '@/components/branding/AnniversaryBanner';
 import { SkillCollectionStrip } from '@/components/profile/SkillCollectionStrip';
@@ -70,6 +71,9 @@ function OverviewSelf({ profileId }: { profileId: string }) {
       </div>
 
       <AnniversaryBanner />
+
+      {/* Bật thông báo đẩy trên thiết bị (ẩn khi đã bật) */}
+      <EnablePushBanner profileId={profileId} />
 
       <ReviewerActionAlert />
 
@@ -222,6 +226,9 @@ export default function Overview() {
       </div>
 
       <AnniversaryBanner />
+
+      {/* Bật thông báo đẩy trên thiết bị (ẩn khi đã bật) */}
+      {profileId && <EnablePushBanner profileId={profileId} />}
 
       <ReviewerActionAlert />
 

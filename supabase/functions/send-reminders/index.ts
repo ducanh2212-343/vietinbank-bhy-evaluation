@@ -12,11 +12,56 @@
 //   Muốn gửi thật: gọi với body {"dry_run": false}. Idempotency theo ngày để chạy lại cùng ngày không gửi trùng.
 // Quyền: service_role (cron) hoặc user admin (system_admin/bgd/tcth_admin).
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { buildPushPayload } from 'npm:@block65/webcrypto-web-push@1.0.2';
 import { APP_URL, FROM_DOMAIN, SENDER_DOMAIN } from '../_shared/email-config.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const SITE_NAME = 'chieuthuc3';
+
+// Web Push (07/2026): kênh nhắc chính cho TỪNG cán bộ (email cá nhân đã tắt để giữ
+// Resend trong ngưỡng miễn phí — email chỉ còn gửi cấp quản lý TP/PGĐ/TCTH/BGĐ).
+// Public key khớp src/lib/pushNotifications.ts; private key nằm trong Vault
+// (RPC get_vapid_private_key, chỉ service_role gọi được).
+const VAPID_PUBLIC_KEY =
+  'BB5f9DtRA7ezR7W3vbUkFBHwLIQZ-Xv2sKBSQQo3dmAgouQaKiHk2JoXNTdt8qEIHh5N26DtlhigrQmvKgpWMR8';
+const VAPID_SUBJECT = 'mailto:ducanh2212@gmail.com';
+
+interface PushSub { id: string; profile_id: string; endpoint: string; p256dh: string; auth: string }
+interface PushMsg { title: string; body: string; url: string; tag: string }
+
+/** Gửi push tới mọi thiết bị của 1 cán bộ; tự vô hiệu hóa đăng ký chết (404/410). */
+async function sendPushToProfile(
+  admin: any,
+  subsByProfile: Map<string, PushSub[]>,
+  vapidPrivateKey: string | null,
+  profileId: string,
+  msg: PushMsg,
+): Promise<number> {
+  if (!vapidPrivateKey) return 0;
+  const subs = subsByProfile.get(profileId) || [];
+  let sent = 0;
+  for (const s of subs) {
+    try {
+      const init = await buildPushPayload(
+        { data: JSON.stringify(msg), options: { ttl: 12 * 3600, urgency: 'normal' } },
+        { endpoint: s.endpoint, expirationTime: null, keys: { p256dh: s.p256dh, auth: s.auth } },
+        { subject: VAPID_SUBJECT, publicKey: VAPID_PUBLIC_KEY, privateKey: vapidPrivateKey },
+      );
+      const res = await fetch(s.endpoint, init);
+      if (res.status === 404 || res.status === 410) {
+        await admin.from('push_subscriptions').update({ is_active: false }).eq('id', s.id);
+      } else if (res.ok) {
+        sent++;
+      } else {
+        console.error('Push bị từ chối', { status: res.status, endpoint: s.endpoint.slice(0, 60) });
+      }
+    } catch (e) {
+      console.error('Push lỗi', { error: String(e) });
+    }
+  }
+  return sent;
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -56,7 +101,7 @@ interface Digest {
   deadlineText?: string;
 }
 
-function renderHtml(d: Digest): { subject: string; html: string; text: string } {
+function renderHtml(d: Digest): { subject: string; html: string; text: string; summary: string } {
   const lines: string[] = [];
   if (d.reviews) lines.push(`${d.reviews} phiếu đánh giá đang chờ bạn rà soát`);
   if (d.approvals) lines.push(`${d.approvals} phiếu đánh giá đang chờ bạn phê duyệt`);
@@ -77,7 +122,7 @@ function renderHtml(d: Digest): { subject: string; html: string; text: string } 
 <p style="color:#6b7280;font-size:12px">Email nhắc việc tự động. Vui lòng không trả lời email này.</p>
 </body></html>`;
   const text = `Kính gửi ${d.name},\nBạn đang có: ${lines.join('; ')}.\nĐăng nhập: ${APP_URL}`;
-  return { subject, html, text };
+  return { subject, html, text, summary: lines.join('; ') };
 }
 
 Deno.serve(async (req) => {
@@ -275,9 +320,41 @@ Deno.serve(async (req) => {
     const leadershipNeeded =
       globalWaitTP + globalWaitPGD + kanbanWaitingTotal > 0 || (dueWindow && notSubmitted.length > 0);
 
+    // ---- Web Push: tải đăng ký thiết bị của mọi người liên quan (1 query) ----
+    const pushTargetIds = new Set<string>();
+    for (const d of list) pushTargetIds.add(d.profileId);
+    for (const l of leaders) pushTargetIds.add(l.id);
+    if (inWindow) for (const p of notSubmitted) pushTargetIds.add(p.id);
+    const subsByProfile = new Map<string, PushSub[]>();
+    if (pushTargetIds.size > 0) {
+      const { data: pushRows } = await admin
+        .from('push_subscriptions')
+        .select('id, profile_id, endpoint, p256dh, auth')
+        .eq('is_active', true)
+        .in('profile_id', [...pushTargetIds]);
+      for (const r of (pushRows || []) as PushSub[]) {
+        const arr = subsByProfile.get(r.profile_id) || [];
+        arr.push(r);
+        subsByProfile.set(r.profile_id, arr);
+      }
+    }
+    let vapidPrivateKey: string | null = Deno.env.get('VAPID_PRIVATE_KEY') || null;
+    if (!vapidPrivateKey) {
+      const { data: vk } = await admin.rpc('get_vapid_private_key');
+      vapidPrivateKey = (vk as string) || null;
+    }
+    const staffWithDevice = inWindow
+      ? notSubmitted.filter((p) => (subsByProfile.get(p.id) || []).length > 0).length
+      : 0;
+
     if (dryRun) {
       return new Response(JSON.stringify({
         dry_run: true, recipients: list.length, digests: list,
+        push: {
+          vapid_ready: !!vapidPrivateKey,
+          devices_registered: [...subsByProfile.values()].reduce((n, a) => n + a.length, 0),
+          staff_with_device: staffWithDevice,
+        },
         cycle: cycle ? {
           name: cycle.name, end_date: cycle.end_date,
           staff_remind_window: inWindow, digest_window: dueWindow,
@@ -311,11 +388,12 @@ Deno.serve(async (req) => {
       if (!closeErr) roundsClosed = roundsToClose.length;
     }
 
-    // ---- Gửi thật: enqueue mỗi người 1 email, idempotency theo ngày ----
+    // ---- Gửi thật: digest cấp quản lý = EMAIL (trong ngưỡng Resend) + PUSH ----
     const today = new Date().toISOString().slice(0, 10);
     let enqueued = 0;
+    let digestPushSent = 0;
     for (const d of list) {
-      const { subject, html, text } = renderHtml(d);
+      const { subject, html, text, summary } = renderHtml(d);
       const messageId = crypto.randomUUID();
       const idempotencyKey = `reminder:${d.profileId}:${today}`;
       await admin.from('email_send_log').insert({
@@ -331,6 +409,9 @@ Deno.serve(async (req) => {
         },
       });
       if (!error) enqueued++;
+      digestPushSent += await sendPushToProfile(admin, subsByProfile, vapidPrivateKey, d.profileId, {
+        title: subject, body: summary, url: '/tong-quan', tag: 'digest-quan-ly',
+      });
     }
 
     // ---- Nhắc thành viên Hội đồng còn phiếu chưa gửi (dedup 1 lần/ngày/kỳ/người) ----
@@ -378,56 +459,27 @@ Deno.serve(async (req) => {
       if (!error) councilEnqueued++;
     }
 
-    // ---- Nhắc TỪNG cán bộ chưa nộp phiếu (15 ngày trước hạn + tiếp tục khi quá hạn) ----
-    // Dedup dùng CHUNG định dạng idempotency với nút nhắc tay ở Báo cáo nộp biểu mẫu
-    // (send-hr-notification, label 'submission-reminder') → không gửi trùng trong ngày.
+    // ---- Nhắc TỪNG cán bộ chưa nộp phiếu: WEB PUSH (15 ngày trước hạn + khi quá hạn) ----
+    // 07/2026: email nhắc cá nhân ĐÃ TẮT (giữ Resend trong ngưỡng miễn phí — email chỉ
+    // còn cho cấp quản lý). Cán bộ nhận push trên thiết bị đã bật thông báo; ai chưa bật
+    // sẽ được nhắc gián tiếp qua digest của TP (số chưa nộp trong phòng).
     const { data: suppressedRows } = await admin.from('suppressed_emails').select('email');
     const suppressedSet = new Set(((suppressedRows || []) as any[]).map((r) => String(r.email).toLowerCase()));
-    let staffRemindersEnqueued = 0;
+    let staffPushSent = 0;
     if (inWindow && cycle) {
       for (const p of notSubmitted) {
-        const recipient = String(p.email || '').trim().toLowerCase();
-        if (!recipient || suppressedSet.has(recipient)) continue;
-        const idempotencyKey = `reminder-${cycle.name}-${p.id}-${today}`;
-        const { data: dup } = await admin
-          .from('email_send_log')
-          .select('id')
-          .eq('template_name', 'submission-reminder')
-          .eq('recipient_email', recipient)
-          .in('status', ['pending', 'sent'])
-          .contains('metadata', { idempotency_key: idempotencyKey })
-          .limit(1);
-        if (dup && dup.length > 0) continue;
-        const ctaUrl = `${APP_URL}/tu-danh-gia`;
-        const subject = `⏰ Nhắc nộp phiếu đánh giá ${cycle.name} — 343 Phát triển nhân sự`;
-        const html = `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#1f2937;line-height:1.5">
-<p>Chào <b>${p.full_name}</b>,</p>
-<p>Phiếu tự đánh giá <b>${cycle.name}</b> của bạn CHƯA được nộp — hạn nộp: <b>${deadlineText}</b>.</p>
-<p>Nộp sau hạn sẽ bị trừ điểm KPI nộp biểu mẫu của kỳ. Bạn chỉ cần vài phút để hoàn tất:</p>
-<p><a href="${ctaUrl}" style="display:inline-block;background:#0b3d91;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">Mở phiếu Tự đánh giá</a></p>
-<p style="color:#6b7280;font-size:12px">Nếu bạn vừa nộp hôm nay, vui lòng bỏ qua email này. Email nhắc tự động — không trả lời email này.</p>
-</body></html>`;
-        const text = `Chào ${p.full_name},\nPhiếu tự đánh giá ${cycle.name} của bạn CHƯA nộp (hạn: ${deadlineText}). Hoàn tất tại: ${ctaUrl}`;
-        const messageId = crypto.randomUUID();
-        await admin.from('email_send_log').insert({
-          message_id: messageId, template_name: 'submission-reminder', recipient_email: recipient,
-          status: 'pending', metadata: { idempotency_key: idempotencyKey },
+        staffPushSent += await sendPushToProfile(admin, subsByProfile, vapidPrivateKey, p.id, {
+          title: `⏰ Nhắc nộp phiếu đánh giá ${cycle.name}`,
+          body: `Phiếu tự đánh giá của bạn CHƯA nộp — hạn ${deadlineText}. Nộp muộn bị trừ điểm KPI. Bấm để mở phiếu.`,
+          url: '/tu-danh-gia',
+          tag: 'nop-phieu',
         });
-        const { error } = await admin.rpc('enqueue_email', {
-          queue_name: 'transactional_emails',
-          payload: {
-            message_id: messageId, to: recipient, from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
-            sender_domain: SENDER_DOMAIN, subject, html, text,
-            purpose: 'transactional', label: 'submission-reminder',
-            idempotency_key: idempotencyKey, queued_at: new Date().toISOString(),
-          },
-        });
-        if (!error) staffRemindersEnqueued++;
       }
     }
 
     // ---- Digest toàn cảnh cho BGĐ / TCTH admin (1 lần/ngày/người khi có tồn đọng) ----
     let leadershipEnqueued = 0;
+    let leadershipPushSent = 0;
     if (leadershipNeeded) {
       const rows: string[] = [];
       if (cycle) {
@@ -476,12 +528,23 @@ ${bodyHtml}
           },
         });
         if (!error) leadershipEnqueued++;
+        leadershipPushSent += await sendPushToProfile(admin, subsByProfile, vapidPrivateKey, l.id, {
+          title: `📊 Toàn cảnh xử lý đánh giá${cycle ? ` — kỳ ${cycle.name}` : ''}`,
+          body: text,
+          url: '/tong-quan',
+          tag: 'toan-canh',
+        });
       }
     }
 
     return new Response(JSON.stringify({
       dry_run: false, recipients: list.length, enqueued,
-      staff_reminders_enqueued: staffRemindersEnqueued,
+      push: {
+        vapid_ready: !!vapidPrivateKey,
+        staff_push_sent: staffPushSent,
+        digest_push_sent: digestPushSent,
+        leadership_push_sent: leadershipPushSent,
+      },
       leadership_enqueued: leadershipEnqueued,
       council: { rounds_closed: roundsClosed, reminders_enqueued: councilEnqueued },
     }), {

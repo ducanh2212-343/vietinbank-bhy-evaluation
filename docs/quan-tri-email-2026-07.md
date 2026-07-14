@@ -130,17 +130,24 @@ Trang Quên mật khẩu (`/quen-mat-khau`) + trang đặt lại (`/dat-lai-mat-
 
 **Các tầng nhắc việc tự động (send-reminders, cron 08:00 — nâng cấp 14/07/2026):**
 
-| Tầng | Ai nhận | Khi nào | Nội dung |
-|---|---|---|---|
-| Digest đích danh | TP / PGĐ / quản lý | Hằng ngày khi có việc | Phiếu chờ rà soát, phiếu chờ phê duyệt, thẻ Kanban chờ xác nhận; **gần hạn kỳ**: cộng thêm số cán bộ trong phòng/khối CHƯA NỘP |
-| Nhắc cá nhân | Từng cán bộ chưa nộp phiếu | Kỳ `in_progress` còn ≤3 ngày đến hạn HOẶC đã quá hạn (tới khi admin đóng kỳ) | Nhắc nộp phiếu Tự đánh giá; dedup chung với nút nhắc tay (1 lần/ngày/người) |
-| Digest toàn cảnh | BGĐ + TCTH admin | Hằng ngày khi có tồn đọng | Số chưa nộp kỳ hiện tại; phiếu chờ TP/PGĐ (MỌI KỲ — không mất dấu kỳ cũ); thẻ Kanban chờ xác nhận + quá hạn |
-| Hội đồng đầu mối | Thành viên còn phiếu | Còn ≤3 ngày đến hạn bỏ phiếu | Danh sách phiếu chưa gửi (như cũ) |
+| Tầng | Ai nhận | Kênh | Khi nào | Nội dung |
+|---|---|---|---|---|
+| Digest đích danh | TP / PGĐ / quản lý | **Email + Push** | Hằng ngày khi có việc | Phiếu chờ rà soát, phiếu chờ phê duyệt, thẻ Kanban chờ xác nhận; trong cửa sổ nhắc: cộng thêm số cán bộ trong phòng/khối CHƯA NỘP |
+| Nhắc cá nhân | Từng cán bộ chưa nộp phiếu | **CHỈ Web Push** (email cá nhân đã tắt 14/07 — giữ Resend miễn phí) | Kỳ `in_progress` còn ≤15 ngày đến hạn HOẶC đã quá hạn (tới khi admin đóng kỳ) | Nhắc nộp phiếu Tự đánh giá, bấm mở thẳng `/tu-danh-gia` |
+| Digest toàn cảnh | BGĐ + TCTH admin | **Email + Push** | Hằng ngày khi có tồn đọng | Số chưa nộp kỳ hiện tại; phiếu chờ TP/PGĐ (MỌI KỲ); thẻ Kanban chờ xác nhận + quá hạn |
+| Hội đồng đầu mối | Thành viên còn phiếu | Email | Còn ≤3 ngày đến hạn bỏ phiếu | Danh sách phiếu chưa gửi (như cũ) |
 
-"Kỳ hiện tại" = kỳ phủ ngày hôm nay (ưu tiên `in_progress`); mọi email đều idempotent
-theo ngày và tôn trọng suppressed_emails. Xem trước không gửi: gọi `send-reminders`
-body `{"dry_run": true}`. Màn hình **Tổng quan** của lãnh đạo có khối "Cần xử lý trong kỳ"
-(component `EvaluationPipelineCard`) hiển thị cùng các con số này.
+"Kỳ đang đánh giá" = kỳ `in_progress` mới nhất (admin mở/đóng thủ công ở Quản lý chu kỳ —
+đóng kỳ là DỪNG toàn bộ nhắc). Email chỉ còn gửi CẤP QUẢN LÝ (TP/PGĐ/TCTH/BGĐ) → ~15-20
+email/ngày, thoải mái trong ngưỡng miễn phí Resend 3.000/tháng. Xem trước không gửi:
+gọi `send-reminders` body `{"dry_run": true}`. Màn hình **Tổng quan** có khối "Cần xử lý
+trong kỳ" (`EvaluationPipelineCard`) hiển thị cùng các con số này.
+
+**Web Push (PWA, 14/07/2026):** cán bộ bật ở dải "Bật thông báo nhắc việc" trên Tổng quan
+(iPhone: mở app từ biểu tượng đã Thêm vào màn hình chính rồi mới bật được). Hạ tầng:
+bảng `push_subscriptions` (RLS theo người), service worker `public/sw.js`, manifest PWA,
+VAPID private key trong Vault (`vapid_private_key`, RPC `get_vapid_private_key` chỉ
+service_role). Thiết bị chết (404/410) tự bị vô hiệu. Đăng ký lại: chỉ cần bấm lại nút.
 
 - **Xem sức khỏe email**: Sidebar → *Quản trị Email*. Nhìn 3 thứ:
   1. "Lỗi 7 ngày" > 0 → xem cột Lỗi của bảng 30 email gần nhất.

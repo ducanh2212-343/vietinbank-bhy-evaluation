@@ -1,0 +1,14 @@
+{
+  "name": "343 Phát triển nhân sự — VietinBank Bắc Hưng Yên",
+  "short_name": "343 Nhân sự",
+  "description": "Hệ thống quản trị năng lực nhân sự — VietinBank Chi nhánh Bắc Hưng Yên",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#003A8C",
+  "lang": "vi",
+  "icons": [
+    { "src": "/vietinbank-favicon.png", "sizes": "any", "type": "image/png", "purpose": "any" }
+  ]
+}
