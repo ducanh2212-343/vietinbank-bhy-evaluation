@@ -63,3 +63,15 @@ Lệnh khác: `npm run test` (vitest), `npm run build`, `npm run lint`.
   chính thức của nhà cung cấp** (đơn vị mặc định USD, chỉnh ở ô "Đơn vị tiền").
 
 Tài liệu thiết kế gamification mục skill: `docs/nghien-cuu-gamification-muc-anh-skill.md`.
+
+## Kỳ Quý II/2026 — BM02 đánh giá lại từ đầu (07/2026)
+
+- Quý I/2026 thực hiện BM01 trên **bản Word/PDF** (không nhập app). Các kế hoạch
+  hành động Quý I được trích xuất và nhập lại vào database (cycle "Quý I/2026",
+  phiếu có marker `[IMPORT-BM01-Q1]` trong `manager_comment`) — xem
+  `scripts/import-bm01-q1/README.md`.
+- BM02 đặt `autoCarryOver: false` (`src/pages/BM02Page.tsx`): KHÔNG tự kéo kế
+  hoạch/level từ kỳ trước — cán bộ đánh giá lại toàn bộ 38 skill (Mục B) và
+  nhóm thái độ (Mục C) từ đầu. Hành động Quý I hiển thị ở mục "Rà soát hành
+  động kỳ trước" để PDCA và chuyển tay hành động chưa hoàn thành sang Quý III.
+  BM03 giữ nguyên auto carry-over.
