@@ -4,8 +4,9 @@
 // Đánh giá đầu mối (Hội đồng): tự chuyển kỳ 'open' quá voting_deadline sang 'closed';
 // nhắc thành viên còn phiếu chưa gửi khi còn <=3 ngày đến hạn (1 lần/ngày/kỳ/người,
 // chung idempotency_key với nút nhắc tay ở tab Tiến độ nên không gửi trùng).
-// Bổ sung 07/2026: (1) 15 ngày trước hạn đóng kỳ — nhắc TỪNG cán bộ chưa nộp phiếu;
-// (2) digest TP/PGĐ kèm số cán bộ chưa nộp thuộc phạm vi; (3) digest toàn cảnh cho BGĐ/TCTH.
+// Bổ sung 07/2026: (1) từ 15 ngày trước hạn đóng kỳ (kể cả khi đã quá hạn, tới khi đóng
+// kỳ) — nhắc TỪNG cán bộ chưa nộp phiếu; (2) digest TP/PGĐ kèm số cán bộ chưa nộp thuộc
+// phạm vi; (3) digest toàn cảnh cho BGĐ/TCTH.
 //
 // AN TOÀN: dry_run MẶC ĐỊNH = true → chỉ TRẢ VỀ danh sách sẽ gửi, KHÔNG gửi.
 //   Muốn gửi thật: gọi với body {"dry_run": false}. Idempotency theo ngày để chạy lại cùng ngày không gửi trùng.
@@ -145,10 +146,10 @@ Deno.serve(async (req) => {
     // ---- Kỳ đánh giá hiện tại: cán bộ CHƯA NỘP + số tồn theo cấp (gần hạn/quá hạn) ----
     // Kỳ ĐANG ĐÁNH GIÁ = kỳ in_progress mới nhất (admin mở/đóng thủ công — kỳ Quý II có
     // thể đánh giá vào đầu tháng 7; ngày trên kỳ chỉ là nhãn quý). Không có kỳ mở → không nhắc.
-    // "Cửa sổ nhắc" = kỳ in_progress và còn <= 15 NGÀY đến hạn đóng:
-    //   • Nhắc TỪNG cán bộ chưa nộp: chỉ TRƯỚC hạn (0..15 ngày) — quá hạn không dội bom cá nhân.
-    //   • Số tồn trong digest TP/PGĐ/BGĐ: từ 15 ngày trước hạn và TIẾP TỤC khi quá hạn,
-    //     tới khi admin đóng kỳ (đúng yêu cầu "đến hạn rồi mà còn bao nhiêu chưa đánh giá").
+    // "Cửa sổ nhắc" = kỳ in_progress và còn <= 15 NGÀY đến hạn đóng, và TIẾP TỤC khi
+    // quá hạn cho tới khi admin đóng kỳ — áp dụng cho CẢ nhắc từng cán bộ chưa nộp
+    // lẫn số tồn trong digest TP/PGĐ/BGĐ ("chưa nộp đúng hạn thì vẫn nhắc").
+    // Mỗi người tối đa 1 email/ngày (idempotent); đóng kỳ là dừng toàn bộ.
     const REMIND_BEFORE_DAYS = 15;
     const todayStr = new Date().toISOString().slice(0, 10);
     const { data: cycleRows } = await admin
@@ -162,14 +163,14 @@ Deno.serve(async (req) => {
     const cycle = pickCycle(cycleRows || []);
     let notSubmitted: any[] = [];
     let cycleWaitTP = 0, cycleWaitPGD = 0;
-    let inWindow = false;      // cửa sổ nhắc cá nhân: 0..15 ngày TRƯỚC hạn
-    let dueWindow = false;     // cửa sổ digest cấp quản lý: <=15 ngày trước hạn HOẶC quá hạn
+    let inWindow = false;      // cửa sổ nhắc cá nhân: <=15 ngày trước hạn HOẶC quá hạn (tới khi đóng kỳ)
+    let dueWindow = false;     // cửa sổ digest cấp quản lý: giống trên
     let deadlineText = '';
     if (cycle) {
       deadlineText = new Date(cycle.end_date).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
       const daysLeft = Math.floor((new Date(cycle.end_date).getTime() - new Date(todayStr).getTime()) / 86400000);
-      inWindow = daysLeft >= 0 && daysLeft <= REMIND_BEFORE_DAYS;
       dueWindow = daysLeft <= REMIND_BEFORE_DAYS;
+      inWindow = dueWindow;
       const { data: cycleSubs } = await admin
         .from('form_submissions')
         .select('employee_id, status')
@@ -377,7 +378,7 @@ Deno.serve(async (req) => {
       if (!error) councilEnqueued++;
     }
 
-    // ---- Nhắc TỪNG cán bộ chưa nộp phiếu (chỉ trong 15 ngày trước hạn đóng) ----
+    // ---- Nhắc TỪNG cán bộ chưa nộp phiếu (15 ngày trước hạn + tiếp tục khi quá hạn) ----
     // Dedup dùng CHUNG định dạng idempotency với nút nhắc tay ở Báo cáo nộp biểu mẫu
     // (send-hr-notification, label 'submission-reminder') → không gửi trùng trong ngày.
     const { data: suppressedRows } = await admin.from('suppressed_emails').select('email');
