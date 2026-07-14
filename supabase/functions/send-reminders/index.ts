@@ -4,7 +4,7 @@
 // Đánh giá đầu mối (Hội đồng): tự chuyển kỳ 'open' quá voting_deadline sang 'closed';
 // nhắc thành viên còn phiếu chưa gửi khi còn <=3 ngày đến hạn (1 lần/ngày/kỳ/người,
 // chung idempotency_key với nút nhắc tay ở tab Tiến độ nên không gửi trùng).
-// Bổ sung 07/2026: (1) gần hạn/quá hạn kỳ — nhắc TỪNG cán bộ chưa nộp phiếu;
+// Bổ sung 07/2026: (1) 15 ngày trước hạn đóng kỳ — nhắc TỪNG cán bộ chưa nộp phiếu;
 // (2) digest TP/PGĐ kèm số cán bộ chưa nộp thuộc phạm vi; (3) digest toàn cảnh cho BGĐ/TCTH.
 //
 // AN TOÀN: dry_run MẶC ĐỊNH = true → chỉ TRẢ VỀ danh sách sẽ gửi, KHÔNG gửi.
@@ -143,29 +143,33 @@ Deno.serve(async (req) => {
     }
 
     // ---- Kỳ đánh giá hiện tại: cán bộ CHƯA NỘP + số tồn theo cấp (gần hạn/quá hạn) ----
-    // Kỳ hiện tại = kỳ phủ hôm nay (ưu tiên in_progress), không có thì in_progress mới nhất.
-    // "Cửa sổ nhắc" = kỳ in_progress và còn <= 3 ngày đến hạn HOẶC đã quá hạn (nhắc tới khi admin đóng kỳ).
+    // Kỳ ĐANG ĐÁNH GIÁ = kỳ in_progress mới nhất (admin mở/đóng thủ công — kỳ Quý II có
+    // thể đánh giá vào đầu tháng 7; ngày trên kỳ chỉ là nhãn quý). Không có kỳ mở → không nhắc.
+    // "Cửa sổ nhắc" = kỳ in_progress và còn <= 15 NGÀY đến hạn đóng:
+    //   • Nhắc TỪNG cán bộ chưa nộp: chỉ TRƯỚC hạn (0..15 ngày) — quá hạn không dội bom cá nhân.
+    //   • Số tồn trong digest TP/PGĐ/BGĐ: từ 15 ngày trước hạn và TIẾP TỤC khi quá hạn,
+    //     tới khi admin đóng kỳ (đúng yêu cầu "đến hạn rồi mà còn bao nhiêu chưa đánh giá").
+    const REMIND_BEFORE_DAYS = 15;
     const todayStr = new Date().toISOString().slice(0, 10);
     const { data: cycleRows } = await admin
       .from('evaluation_cycles')
       .select('id, name, start_date, end_date, status');
     const pickCycle = (rows: any[]): any | null => {
-      if (!rows?.length) return null;
-      const covering = rows.filter((c) => c.start_date <= todayStr && todayStr <= c.end_date);
-      if (covering.length) return covering.find((c) => c.status === 'in_progress') || covering[0];
-      const inProg = rows.filter((c) => c.status === 'in_progress');
-      const pool = inProg.length ? inProg : rows;
-      return [...pool].sort((a, b) => String(b.start_date).localeCompare(String(a.start_date)))[0];
+      const inProg = (rows || []).filter((c) => c.status === 'in_progress');
+      if (!inProg.length) return null;
+      return [...inProg].sort((a, b) => String(b.start_date).localeCompare(String(a.start_date)))[0];
     };
     const cycle = pickCycle(cycleRows || []);
     let notSubmitted: any[] = [];
     let cycleWaitTP = 0, cycleWaitPGD = 0;
-    let inWindow = false;
+    let inWindow = false;      // cửa sổ nhắc cá nhân: 0..15 ngày TRƯỚC hạn
+    let dueWindow = false;     // cửa sổ digest cấp quản lý: <=15 ngày trước hạn HOẶC quá hạn
     let deadlineText = '';
     if (cycle) {
       deadlineText = new Date(cycle.end_date).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
       const daysLeft = Math.floor((new Date(cycle.end_date).getTime() - new Date(todayStr).getTime()) / 86400000);
-      inWindow = cycle.status === 'in_progress' && daysLeft <= 3;
+      inWindow = daysLeft >= 0 && daysLeft <= REMIND_BEFORE_DAYS;
+      dueWindow = daysLeft <= REMIND_BEFORE_DAYS;
       const { data: cycleSubs } = await admin
         .from('form_submissions')
         .select('employee_id, status')
@@ -182,8 +186,8 @@ Deno.serve(async (req) => {
       });
       cycleWaitTP = [...best.values()].filter((s) => s === 'submitted').length;
       cycleWaitPGD = [...best.values()].filter((s) => s === 'reviewed').length;
-      // Trong cửa sổ nhắc: cộng số "chưa nộp" vào digest của TP (theo phòng) và PGĐ (theo khối)
-      if (inWindow) {
+      // Trong cửa sổ digest: cộng số "chưa nộp" vào digest của TP (theo phòng) và PGĐ (theo khối)
+      if (dueWindow) {
         for (const p of notSubmitted) {
           const dTp = ensure(p.manager_id);
           if (dTp) {
@@ -268,13 +272,14 @@ Deno.serve(async (req) => {
     const globalWaitTP = ((subRes.data || []) as any[]).filter((s) => s.status === 'submitted').length;
     const globalWaitPGD = ((subRes.data || []) as any[]).filter((s) => s.status === 'reviewed').length;
     const leadershipNeeded =
-      globalWaitTP + globalWaitPGD + kanbanWaitingTotal > 0 || (inWindow && notSubmitted.length > 0);
+      globalWaitTP + globalWaitPGD + kanbanWaitingTotal > 0 || (dueWindow && notSubmitted.length > 0);
 
     if (dryRun) {
       return new Response(JSON.stringify({
         dry_run: true, recipients: list.length, digests: list,
         cycle: cycle ? {
-          name: cycle.name, end_date: cycle.end_date, in_window: inWindow,
+          name: cycle.name, end_date: cycle.end_date,
+          staff_remind_window: inWindow, digest_window: dueWindow,
           not_submitted: notSubmitted.length, waiting_tp: cycleWaitTP, waiting_pgd: cycleWaitPGD,
           staff_reminders: inWindow ? notSubmitted.filter((p) => p.email).map((p) => p.full_name) : [],
         } : null,
@@ -372,7 +377,7 @@ Deno.serve(async (req) => {
       if (!error) councilEnqueued++;
     }
 
-    // ---- Nhắc TỪNG cán bộ chưa nộp phiếu (chỉ trong cửa sổ gần hạn/quá hạn) ----
+    // ---- Nhắc TỪNG cán bộ chưa nộp phiếu (chỉ trong 15 ngày trước hạn đóng) ----
     // Dedup dùng CHUNG định dạng idempotency với nút nhắc tay ở Báo cáo nộp biểu mẫu
     // (send-hr-notification, label 'submission-reminder') → không gửi trùng trong ngày.
     const { data: suppressedRows } = await admin.from('suppressed_emails').select('email');

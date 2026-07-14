@@ -25,12 +25,9 @@ interface PipelineStats {
 
 function pickCurrentCycle(cycles: CycleRow[]): CycleRow | null {
   if (!cycles.length) return null;
-  const today = new Date().toISOString().slice(0, 10);
-  const covering = cycles.filter(c => c.start_date <= today && today <= c.end_date);
-  if (covering.length) {
-    // Ưu tiên kỳ đang in_progress trong số kỳ phủ hôm nay
-    return covering.find(c => c.status === 'in_progress') || covering[0];
-  }
+  // Vận hành thực tế: admin mở/đóng kỳ thủ công — kỳ Quý II có thể đánh giá vào đầu
+  // tháng 7 (ngày trên kỳ chỉ là nhãn quý). Vì vậy ƯU TIÊN kỳ in_progress MỚI NHẤT;
+  // không có kỳ nào mở thì rơi về kỳ mới nhất theo ngày để khối không trống.
   const inProgress = cycles.filter(c => c.status === 'in_progress');
   const pool = inProgress.length ? inProgress : cycles;
   return [...pool].sort((a, b) => b.start_date.localeCompare(a.start_date))[0];
