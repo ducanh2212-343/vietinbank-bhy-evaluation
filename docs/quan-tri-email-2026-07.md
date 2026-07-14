@@ -44,9 +44,20 @@ Frontend: tin nhắn bàn giao lấy `window.location.origin` (hết hardcode do
    `redirect_to=https://chieuthuc3.com/dat-lai-mat-khau` → bấm vào đúng form;
    sáng hôm sau email nhắc việc 08:00 mang from + link domain mới.
 
+**Bài học khi cutover thật (14/07):**
+- **API key Resend bị scope theo domain cũ** → lần gửi đầu từ `@chieuthuc3.com` lỗi
+  `Resend 400: The associated domain with your API key is not verified`. Xử lý: tạo API key
+  mới **Full access** (Resend → API Keys) → thay secret `RESEND_API_KEY` ở Supabase (hiệu
+  lực ngay, không cần deploy). Key cũ scoped-343skill nên xóa sau khi ổn định.
+- `sender_domain` trong payload email **không ảnh hưởng đường Resend** (chỉ đường Lovable
+  cũ dùng) — Resend tự chọn return-path theo domain đã verify (`send.chieuthuc3.com`).
+- **Đã kiểm chứng 14/07:** email test từ `noreply@chieuthuc3.com` vào **Inbox** Gmail
+  (message "sent" trong `email_send_log`, không vào Spam).
+
 **Rollback khẩn cấp** (Resend domain mới trục trặc): set secret
 `EMAIL_FROM_DOMAIN=343skill.com` (+ `EMAIL_SENDER_DOMAIN=notify.343skill.com`) — có hiệu
-lực ngay, không cần deploy lại; link đích giữ nguyên `APP_URL`.
+lực ngay, không cần deploy lại; link đích giữ nguyên `APP_URL`. (Key Full access mới gửi
+được cả 2 domain nên rollback không vướng.)
 
 **Lưu ý sau chuyển:**
 - Domain mới chưa có "uy tín gửi" → 1–2 tuần đầu email có thể vào Spam; dặn người dùng
