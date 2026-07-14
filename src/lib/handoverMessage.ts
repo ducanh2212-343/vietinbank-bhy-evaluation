@@ -2,7 +2,12 @@
 // qua kênh nội bộ (Zalo/SMS). Dùng chung cho: tạo 1 cán bộ, tạo hàng loạt,
 // và cấp lại mật khẩu tạm.
 
-export const SITE_LOGIN_URL = 'https://343skill.com';
+// Lấy theo domain đang chạy (chieuthuc3.com / domain dự phòng) — không hardcode
+// để đổi domain không phải sửa code. Fallback cho môi trường không có window (test).
+export const SITE_LOGIN_URL =
+  typeof window !== 'undefined' && window.location?.origin
+    ? window.location.origin
+    : 'https://chieuthuc3.com';
 
 export interface HandoverInfo {
   fullName?: string | null;

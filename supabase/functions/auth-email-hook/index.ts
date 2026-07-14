@@ -3,7 +3,7 @@
 // Supabase Auth gọi hook này cho MỌI email xác thực (đặt lại mật khẩu, xác nhận
 // đăng ký, magic link, đổi email, mã xác minh). Hook render template tiếng Việt
 // rồi enqueue vào hàng đợi 'auth_emails' (ưu tiên cao) — dispatcher
-// process-email-queue gửi qua Resend từ noreply@343skill.com.
+// process-email-queue gửi qua Resend từ noreply@<FROM_DOMAIN> (xem _shared/email-config.ts).
 //
 // Xác thực: chữ ký standardwebhooks với secret SEND_EMAIL_HOOK_SECRET
 // (Dashboard → Authentication → Hooks → Send Email → tạo hook HTTPS sẽ sinh secret).
@@ -19,10 +19,9 @@ import { RecoveryEmail } from './email-templates/recovery.tsx'
 import { EmailChangeEmail } from './email-templates/email-change.tsx'
 import { ReauthenticationEmail } from './email-templates/reauthentication.tsx'
 
+import { APP_URL, FROM_DOMAIN, SENDER_DOMAIN } from '../_shared/email-config.ts'
+
 const SITE_NAME = '343 Phát triển nhân sự'
-const FROM_DOMAIN = '343skill.com'
-const SENDER_DOMAIN = 'notify.343skill.com'
-const APP_URL = Deno.env.get('APP_URL') || 'https://343skill.com'
 
 const EMAIL_SUBJECTS: Record<string, string> = {
   signup: 'Xác nhận email đăng ký — 343 Phát triển nhân sự',
