@@ -193,7 +193,7 @@ cho bối cảnh chi nhánh (~110 cán bộ, đang pilot):
 | ~~P0~~ ✅ | ~~Bật lịch nhắc việc `send-reminders`~~ **ĐÃ XONG** (cron chạy hằng ngày 08:00 — kiểm chứng 14/07) | Vòng phản hồi Kanban đã khép kín | Còn lại: theo dõi email về đúng người sau khi chuyển domain `chieuthuc3.com` | — |
 | **P0** | Ban hành SOP §3 tới cán bộ & quản lý | Công cụ đủ nhưng thiếu thói quen dùng | Phổ biến SOP; đặt kỳ vọng "cập nhật tuần" thành chuẩn | Tài liệu này |
 | **P1** | Nguồn `manager_assigned` (giao việc) | Kiểu đã có, chưa có đường tạo thẻ | Bổ sung đường tạo thẻ lãnh đạo giao (trigger/RPC + UI) | Thiết kế quyền & phạm vi |
-| **P1** | Bảng chỉ số vận hành Kanban | Chưa đo được §5 một cách hệ thống | Dựng view/RPC tổng hợp: % cập nhật tuần, thời gian chờ xác nhận, tỉ lệ quá hạn/hoàn thành/carry-over | Dữ liệu `kanban_card_logs` |
+| **P1** (một phần ✅ 14/07) | Bảng chỉ số vận hành Kanban | Chưa đo được §5 một cách hệ thống | ✅ Đã có: khối "Cần xử lý trong kỳ" trên Tổng quan (`EvaluationPipelineCard`) + digest toàn cảnh BGĐ/TCTH + nhắc cán bộ chưa nộp gần hạn (send-reminders 14/07). Còn lại: % cập nhật tuần, thời gian chờ xác nhận, tỉ lệ carry-over | Dữ liệu `kanban_card_logs` |
 | **P2** | Cưỡng chế/nhắc mềm WIP limit | Hiện chỉ là kỷ luật vận hành | Cảnh báo khi >4 thẻ "Đang làm" (không chặn cứng) | Sau khi có thói quen §3.1 |
 | **P2** | Nút "Gửi nhắc việc ngay" cho admin | Chủ động hơn cron | Thêm nút gọi `send-reminders` ở trang Cài đặt | Sau P0 nhắc việc |
 

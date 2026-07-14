@@ -4,6 +4,8 @@
 // Đánh giá đầu mối (Hội đồng): tự chuyển kỳ 'open' quá voting_deadline sang 'closed';
 // nhắc thành viên còn phiếu chưa gửi khi còn <=3 ngày đến hạn (1 lần/ngày/kỳ/người,
 // chung idempotency_key với nút nhắc tay ở tab Tiến độ nên không gửi trùng).
+// Bổ sung 07/2026: (1) gần hạn/quá hạn kỳ — nhắc TỪNG cán bộ chưa nộp phiếu;
+// (2) digest TP/PGĐ kèm số cán bộ chưa nộp thuộc phạm vi; (3) digest toàn cảnh cho BGĐ/TCTH.
 //
 // AN TOÀN: dry_run MẶC ĐỊNH = true → chỉ TRẢ VỀ danh sách sẽ gửi, KHÔNG gửi.
 //   Muốn gửi thật: gọi với body {"dry_run": false}. Idempotency theo ngày để chạy lại cùng ngày không gửi trùng.
@@ -46,6 +48,11 @@ interface Digest {
   reviews: number;   // phiếu chờ TP rà soát
   approvals: number; // phiếu chờ PGĐ phê duyệt
   kanban: number;    // thẻ chờ quản lý xác nhận
+  // Gần hạn kỳ: số cán bộ CHƯA NỘP phiếu thuộc phạm vi mình phụ trách
+  deptNotSubmitted?: number;  // TP — trong phòng
+  blockNotSubmitted?: number; // PGĐ — trong khối
+  cycleName?: string;
+  deadlineText?: string;
 }
 
 function renderHtml(d: Digest): { subject: string; html: string; text: string } {
@@ -53,7 +60,12 @@ function renderHtml(d: Digest): { subject: string; html: string; text: string } 
   if (d.reviews) lines.push(`${d.reviews} phiếu đánh giá đang chờ bạn rà soát`);
   if (d.approvals) lines.push(`${d.approvals} phiếu đánh giá đang chờ bạn phê duyệt`);
   if (d.kanban) lines.push(`${d.kanban} thẻ hành động phát triển đang chờ bạn xác nhận hoàn thành`);
-  const total = d.reviews + d.approvals + d.kanban;
+  const dueSuffix = d.cycleName
+    ? ` kỳ ${d.cycleName}${d.deadlineText ? ` (hạn nộp ${d.deadlineText})` : ''}`
+    : '';
+  if (d.deptNotSubmitted) lines.push(`${d.deptNotSubmitted} cán bộ trong phòng CHƯA NỘP phiếu${dueSuffix}`);
+  if (d.blockNotSubmitted) lines.push(`${d.blockNotSubmitted} cán bộ trong khối phụ trách CHƯA NỘP phiếu${dueSuffix}`);
+  const total = d.reviews + d.approvals + d.kanban + (d.deptNotSubmitted || 0) + (d.blockNotSubmitted || 0);
   const subject = `[343 Phát triển nhân sự] Bạn có ${total} việc cần xử lý`;
   const items = lines.map((l) => `<li style="margin:4px 0">${l}</li>`).join('');
   const html = `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#1f2937;line-height:1.5">
@@ -100,7 +112,7 @@ Deno.serve(async (req) => {
 
     // ---- Thu thập việc cần xử lý ----
     const [profRes, subRes, kanRes] = await Promise.all([
-      admin.from('profiles').select('id, full_name, email, manager_id, pgd_id').eq('status', 'active'),
+      admin.from('profiles').select('id, user_id, full_name, email, manager_id, pgd_id').eq('status', 'active'),
       admin.from('form_submissions').select('employee_id, reviewer_id, status').in('status', ['submitted', 'reviewed']),
       admin.from('kanban_cards').select('profile_id').eq('is_active', true).eq('completion_status', 'waiting_manager_confirmation'),
     ]);
@@ -130,7 +142,68 @@ Deno.serve(async (req) => {
       const d = ensure(owner?.manager_id || owner?.pgd_id); if (d) d.kanban++;
     }
 
-    const list = [...digests.values()].filter((d) => d.reviews + d.approvals + d.kanban > 0);
+    // ---- Kỳ đánh giá hiện tại: cán bộ CHƯA NỘP + số tồn theo cấp (gần hạn/quá hạn) ----
+    // Kỳ hiện tại = kỳ phủ hôm nay (ưu tiên in_progress), không có thì in_progress mới nhất.
+    // "Cửa sổ nhắc" = kỳ in_progress và còn <= 3 ngày đến hạn HOẶC đã quá hạn (nhắc tới khi admin đóng kỳ).
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const { data: cycleRows } = await admin
+      .from('evaluation_cycles')
+      .select('id, name, start_date, end_date, status');
+    const pickCycle = (rows: any[]): any | null => {
+      if (!rows?.length) return null;
+      const covering = rows.filter((c) => c.start_date <= todayStr && todayStr <= c.end_date);
+      if (covering.length) return covering.find((c) => c.status === 'in_progress') || covering[0];
+      const inProg = rows.filter((c) => c.status === 'in_progress');
+      const pool = inProg.length ? inProg : rows;
+      return [...pool].sort((a, b) => String(b.start_date).localeCompare(String(a.start_date)))[0];
+    };
+    const cycle = pickCycle(cycleRows || []);
+    let notSubmitted: any[] = [];
+    let cycleWaitTP = 0, cycleWaitPGD = 0;
+    let inWindow = false;
+    let deadlineText = '';
+    if (cycle) {
+      deadlineText = new Date(cycle.end_date).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+      const daysLeft = Math.floor((new Date(cycle.end_date).getTime() - new Date(todayStr).getTime()) / 86400000);
+      inWindow = cycle.status === 'in_progress' && daysLeft <= 3;
+      const { data: cycleSubs } = await admin
+        .from('form_submissions')
+        .select('employee_id, status')
+        .eq('cycle_id', cycle.id);
+      const rank: Record<string, number> = { draft: 1, submitted: 2, reviewed: 3, approved: 4 };
+      const best = new Map<string, string>();
+      (cycleSubs || []).forEach((s: any) => {
+        const prev = best.get(s.employee_id);
+        if (!prev || (rank[s.status] || 0) > (rank[prev] || 0)) best.set(s.employee_id, s.status);
+      });
+      notSubmitted = profiles.filter((p) => {
+        const st = best.get(p.id);
+        return !st || st === 'draft';
+      });
+      cycleWaitTP = [...best.values()].filter((s) => s === 'submitted').length;
+      cycleWaitPGD = [...best.values()].filter((s) => s === 'reviewed').length;
+      // Trong cửa sổ nhắc: cộng số "chưa nộp" vào digest của TP (theo phòng) và PGĐ (theo khối)
+      if (inWindow) {
+        for (const p of notSubmitted) {
+          const dTp = ensure(p.manager_id);
+          if (dTp) {
+            dTp.deptNotSubmitted = (dTp.deptNotSubmitted || 0) + 1;
+            dTp.cycleName = cycle.name; dTp.deadlineText = deadlineText;
+          }
+          if (p.pgd_id && p.pgd_id !== p.manager_id) {
+            const dPgd = ensure(p.pgd_id);
+            if (dPgd) {
+              dPgd.blockNotSubmitted = (dPgd.blockNotSubmitted || 0) + 1;
+              dPgd.cycleName = cycle.name; dPgd.deadlineText = deadlineText;
+            }
+          }
+        }
+      }
+    }
+
+    const list = [...digests.values()].filter(
+      (d) => d.reviews + d.approvals + d.kanban + (d.deptNotSubmitted || 0) + (d.blockNotSubmitted || 0) > 0,
+    );
 
     // ---- Đánh giá đầu mối: kỳ quá hạn cần chốt + thành viên cần nhắc ----
     const nowMs = Date.now();
@@ -178,9 +251,41 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ---- Người nhận digest toàn cảnh: BGĐ + TCTH admin ----
+    const { data: leaderRoles } = await admin
+      .from('user_roles').select('user_id').in('role', ['bgd', 'tcth_admin']);
+    const leaderUserIds = new Set(((leaderRoles || []) as any[]).map((r) => r.user_id));
+    const leaders = profiles.filter((p) => p.user_id && leaderUserIds.has(p.user_id) && p.email);
+    const kanbanWaitingTotal = (kanRes.data || []).length;
+    const { count: kanbanOverdueTotal } = await admin
+      .from('kanban_cards')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_active', true)
+      .neq('kanban_status', 'done')
+      .lt('deadline', todayStr);
+    // Số tồn TOÀN CỤC (mọi kỳ) — phiếu đã nộp chờ TP / đã rà soát chờ PGĐ, kể cả kỳ cũ
+    // chưa đóng, để BGĐ không mất dấu tồn đọng kỳ trước.
+    const globalWaitTP = ((subRes.data || []) as any[]).filter((s) => s.status === 'submitted').length;
+    const globalWaitPGD = ((subRes.data || []) as any[]).filter((s) => s.status === 'reviewed').length;
+    const leadershipNeeded =
+      globalWaitTP + globalWaitPGD + kanbanWaitingTotal > 0 || (inWindow && notSubmitted.length > 0);
+
     if (dryRun) {
       return new Response(JSON.stringify({
         dry_run: true, recipients: list.length, digests: list,
+        cycle: cycle ? {
+          name: cycle.name, end_date: cycle.end_date, in_window: inWindow,
+          not_submitted: notSubmitted.length, waiting_tp: cycleWaitTP, waiting_pgd: cycleWaitPGD,
+          staff_reminders: inWindow ? notSubmitted.filter((p) => p.email).map((p) => p.full_name) : [],
+        } : null,
+        leadership: {
+          needed: leadershipNeeded,
+          recipients: leadershipNeeded ? leaders.map((l) => l.full_name) : [],
+          waiting_tp_all: globalWaitTP,
+          waiting_pgd_all: globalWaitPGD,
+          kanban_waiting: kanbanWaitingTotal,
+          kanban_overdue: kanbanOverdueTotal || 0,
+        },
         council: {
           rounds_to_close: roundsToClose.map((r: any) => r.name),
           reminders: councilReminders.map((c) => ({ round: c.roundName, name: c.name, pending: c.pending.length })),
@@ -267,8 +372,111 @@ Deno.serve(async (req) => {
       if (!error) councilEnqueued++;
     }
 
+    // ---- Nhắc TỪNG cán bộ chưa nộp phiếu (chỉ trong cửa sổ gần hạn/quá hạn) ----
+    // Dedup dùng CHUNG định dạng idempotency với nút nhắc tay ở Báo cáo nộp biểu mẫu
+    // (send-hr-notification, label 'submission-reminder') → không gửi trùng trong ngày.
+    const { data: suppressedRows } = await admin.from('suppressed_emails').select('email');
+    const suppressedSet = new Set(((suppressedRows || []) as any[]).map((r) => String(r.email).toLowerCase()));
+    let staffRemindersEnqueued = 0;
+    if (inWindow && cycle) {
+      for (const p of notSubmitted) {
+        const recipient = String(p.email || '').trim().toLowerCase();
+        if (!recipient || suppressedSet.has(recipient)) continue;
+        const idempotencyKey = `reminder-${cycle.name}-${p.id}-${today}`;
+        const { data: dup } = await admin
+          .from('email_send_log')
+          .select('id')
+          .eq('template_name', 'submission-reminder')
+          .eq('recipient_email', recipient)
+          .in('status', ['pending', 'sent'])
+          .contains('metadata', { idempotency_key: idempotencyKey })
+          .limit(1);
+        if (dup && dup.length > 0) continue;
+        const ctaUrl = `${APP_URL}/tu-danh-gia`;
+        const subject = `⏰ Nhắc nộp phiếu đánh giá ${cycle.name} — 343 Phát triển nhân sự`;
+        const html = `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#1f2937;line-height:1.5">
+<p>Chào <b>${p.full_name}</b>,</p>
+<p>Phiếu tự đánh giá <b>${cycle.name}</b> của bạn CHƯA được nộp — hạn nộp: <b>${deadlineText}</b>.</p>
+<p>Nộp sau hạn sẽ bị trừ điểm KPI nộp biểu mẫu của kỳ. Bạn chỉ cần vài phút để hoàn tất:</p>
+<p><a href="${ctaUrl}" style="display:inline-block;background:#0b3d91;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">Mở phiếu Tự đánh giá</a></p>
+<p style="color:#6b7280;font-size:12px">Nếu bạn vừa nộp hôm nay, vui lòng bỏ qua email này. Email nhắc tự động — không trả lời email này.</p>
+</body></html>`;
+        const text = `Chào ${p.full_name},\nPhiếu tự đánh giá ${cycle.name} của bạn CHƯA nộp (hạn: ${deadlineText}). Hoàn tất tại: ${ctaUrl}`;
+        const messageId = crypto.randomUUID();
+        await admin.from('email_send_log').insert({
+          message_id: messageId, template_name: 'submission-reminder', recipient_email: recipient,
+          status: 'pending', metadata: { idempotency_key: idempotencyKey },
+        });
+        const { error } = await admin.rpc('enqueue_email', {
+          queue_name: 'transactional_emails',
+          payload: {
+            message_id: messageId, to: recipient, from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
+            sender_domain: SENDER_DOMAIN, subject, html, text,
+            purpose: 'transactional', label: 'submission-reminder',
+            idempotency_key: idempotencyKey, queued_at: new Date().toISOString(),
+          },
+        });
+        if (!error) staffRemindersEnqueued++;
+      }
+    }
+
+    // ---- Digest toàn cảnh cho BGĐ / TCTH admin (1 lần/ngày/người khi có tồn đọng) ----
+    let leadershipEnqueued = 0;
+    if (leadershipNeeded) {
+      const rows: string[] = [];
+      if (cycle) {
+        rows.push(`Kỳ <b>${cycle.name}</b> (hạn nộp ${deadlineText}): ${notSubmitted.length} cán bộ CHƯA NỘP phiếu`);
+      }
+      rows.push(`• ${globalWaitTP} phiếu đang chờ Trưởng phòng rà soát (mọi kỳ)`);
+      rows.push(`• ${globalWaitPGD} phiếu đang chờ PGĐ phê duyệt (mọi kỳ)`);
+      rows.push(`• ${kanbanWaitingTotal} thẻ hành động phát triển chờ quản lý xác nhận`);
+      rows.push(`• ${kanbanOverdueTotal || 0} thẻ hành động phát triển QUÁ HẠN`);
+      const subject = `📊 Toàn cảnh xử lý đánh giá${cycle ? ` — kỳ ${cycle.name}` : ''} — 343 Phát triển nhân sự`;
+      const bodyHtml = rows.map((r) => `<p style="margin:4px 0">${r}</p>`).join('');
+      const text = rows.map((r) => r.replace(/<[^>]+>/g, '')).join('\n');
+      for (const l of leaders) {
+        const recipient = String(l.email).trim().toLowerCase();
+        if (suppressedSet.has(recipient)) continue;
+        const idempotencyKey = `leaderdigest:${l.id}:${today}`;
+        const { data: dup } = await admin
+          .from('email_send_log')
+          .select('id')
+          .eq('template_name', 'leadership-digest')
+          .eq('recipient_email', recipient)
+          .in('status', ['pending', 'sent'])
+          .contains('metadata', { idempotency_key: idempotencyKey })
+          .limit(1);
+        if (dup && dup.length > 0) continue;
+        const html = `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#1f2937;line-height:1.5">
+<p>Kính gửi <b>${l.full_name}</b>,</p>
+<p>Bức tranh xử lý đánh giá toàn chi nhánh hôm nay:</p>
+${bodyHtml}
+<p><a href="${APP_URL}/tong-quan" style="display:inline-block;background:#0b3d91;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">Mở Tổng quan để xem chi tiết</a></p>
+<p style="color:#6b7280;font-size:12px">Email tổng hợp tự động hằng ngày (chỉ gửi khi có tồn đọng). Vui lòng không trả lời email này.</p>
+</body></html>`;
+        const messageId = crypto.randomUUID();
+        await admin.from('email_send_log').insert({
+          message_id: messageId, template_name: 'leadership-digest', recipient_email: recipient,
+          status: 'pending', metadata: { idempotency_key: idempotencyKey },
+        });
+        const { error } = await admin.rpc('enqueue_email', {
+          queue_name: 'transactional_emails',
+          payload: {
+            message_id: messageId, to: recipient, from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
+            sender_domain: SENDER_DOMAIN, subject, html,
+            text: `Kính gửi ${l.full_name},\n${text}\nXem chi tiết: ${APP_URL}/tong-quan`,
+            purpose: 'transactional', label: 'leadership-digest',
+            idempotency_key: idempotencyKey, queued_at: new Date().toISOString(),
+          },
+        });
+        if (!error) leadershipEnqueued++;
+      }
+    }
+
     return new Response(JSON.stringify({
       dry_run: false, recipients: list.length, enqueued,
+      staff_reminders_enqueued: staffRemindersEnqueued,
+      leadership_enqueued: leadershipEnqueued,
       council: { rounds_closed: roundsClosed, reminders_enqueued: councilEnqueued },
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

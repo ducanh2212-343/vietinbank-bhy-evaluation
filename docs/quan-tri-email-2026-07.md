@@ -128,6 +128,20 @@ Trang Quên mật khẩu (`/quen-mat-khau`) + trang đặt lại (`/dat-lai-mat-
 
 ## 3. Vận hành hằng ngày (runbook)
 
+**Các tầng nhắc việc tự động (send-reminders, cron 08:00 — nâng cấp 14/07/2026):**
+
+| Tầng | Ai nhận | Khi nào | Nội dung |
+|---|---|---|---|
+| Digest đích danh | TP / PGĐ / quản lý | Hằng ngày khi có việc | Phiếu chờ rà soát, phiếu chờ phê duyệt, thẻ Kanban chờ xác nhận; **gần hạn kỳ**: cộng thêm số cán bộ trong phòng/khối CHƯA NỘP |
+| Nhắc cá nhân | Từng cán bộ chưa nộp phiếu | Kỳ `in_progress` còn ≤3 ngày đến hạn HOẶC đã quá hạn (tới khi admin đóng kỳ) | Nhắc nộp phiếu Tự đánh giá; dedup chung với nút nhắc tay (1 lần/ngày/người) |
+| Digest toàn cảnh | BGĐ + TCTH admin | Hằng ngày khi có tồn đọng | Số chưa nộp kỳ hiện tại; phiếu chờ TP/PGĐ (MỌI KỲ — không mất dấu kỳ cũ); thẻ Kanban chờ xác nhận + quá hạn |
+| Hội đồng đầu mối | Thành viên còn phiếu | Còn ≤3 ngày đến hạn bỏ phiếu | Danh sách phiếu chưa gửi (như cũ) |
+
+"Kỳ hiện tại" = kỳ phủ ngày hôm nay (ưu tiên `in_progress`); mọi email đều idempotent
+theo ngày và tôn trọng suppressed_emails. Xem trước không gửi: gọi `send-reminders`
+body `{"dry_run": true}`. Màn hình **Tổng quan** của lãnh đạo có khối "Cần xử lý trong kỳ"
+(component `EvaluationPipelineCard`) hiển thị cùng các con số này.
+
 - **Xem sức khỏe email**: Sidebar → *Quản trị Email*. Nhìn 3 thứ:
   1. "Lỗi 7 ngày" > 0 → xem cột Lỗi của bảng 30 email gần nhất.
   2. Cảnh báo DLQ đỏ → email hỏng lặp lại (thường do `RESEND_API_KEY` hết hạn / địa chỉ sai).

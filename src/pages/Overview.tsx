@@ -10,6 +10,7 @@ import { StatusBadge, StatusNoteBanner } from '@/components/profile/StatusBadge'
 import { ReviewerActionAlert } from '@/components/evaluation-tracking/ReviewerActionAlert';
 import { PersonalKanbanMini } from '@/components/kanban/PersonalKanbanMini';
 import { TeamPendingAlert } from '@/components/kanban/TeamPendingAlert';
+import { EvaluationPipelineCard } from '@/components/evaluation-tracking/EvaluationPipelineCard';
 import { fetchDefaultCycle, fetchStarByEmployee } from '@/lib/starClassification';
 import { AnniversaryBanner } from '@/components/branding/AnniversaryBanner';
 import { SkillCollectionStrip } from '@/components/profile/SkillCollectionStrip';
@@ -226,6 +227,9 @@ export default function Overview() {
 
       {/* Nhắc gọn việc đội ngũ cần duyệt (chỉ hiện khi có) */}
       <TeamPendingAlert />
+
+      {/* Pipeline phiếu đánh giá kỳ hiện tại theo phạm vi — việc thực sự cần xử lý */}
+      <EvaluationPipelineCard />
 
       {/* Kanban phát triển của CHÍNH lãnh đạo/quản lý — như cán bộ thường có ở Tổng quan cá nhân */}
       {profileId && <PersonalKanbanMini profileId={profileId} />}
