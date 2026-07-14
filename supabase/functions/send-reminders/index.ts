@@ -9,13 +9,11 @@
 //   Muốn gửi thật: gọi với body {"dry_run": false}. Idempotency theo ngày để chạy lại cùng ngày không gửi trùng.
 // Quyền: service_role (cron) hoặc user admin (system_admin/bgd/tcth_admin).
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { APP_URL, FROM_DOMAIN, SENDER_DOMAIN } from '../_shared/email-config.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const SITE_NAME = 'chieuthuc3';
-const FROM_DOMAIN = '343skill.com';
-const SENDER_DOMAIN = 'notify.343skill.com';
-const APP_URL = Deno.env.get('APP_URL') || 'https://343skill.com';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

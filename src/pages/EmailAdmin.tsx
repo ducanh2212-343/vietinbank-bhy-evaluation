@@ -77,7 +77,7 @@ export default function EmailAdmin() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2"><Mail className="w-6 h-6" /> Quản trị Email</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Theo dõi email hệ thống: đặt lại mật khẩu, nhắc việc, duyệt đăng ký — gửi từ noreply@343skill.com (Resend).
+            Theo dõi email hệ thống: đặt lại mật khẩu, nhắc việc, duyệt đăng ký — gửi từ noreply@chieuthuc3.com (Resend).
           </p>
         </div>
         <Button variant="outline" onClick={load} disabled={loading}>

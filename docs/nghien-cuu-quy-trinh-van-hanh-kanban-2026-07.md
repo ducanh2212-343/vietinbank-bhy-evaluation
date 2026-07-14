@@ -105,13 +105,14 @@ tổng quan theo cán bộ), deep-link `?view=team` từ dải nhắc trên Tổ
 (`TeamPendingAlert`). Mọi ranh giới truy cập được siết ở tầng server bằng RLS +
 `can_view_profile()`, không chỉ ẩn/hiện ở UI.
 
-### 1.5. Hạ tầng nhắc việc (đã dựng, CHƯA bật)
+### 1.5. Hạ tầng nhắc việc (ĐÃ BẬT — đính chính 14/07)
 
 Edge function `send-reminders` (`supabase/functions/send-reminders/index.ts`) gom digest
 theo người nhận, **bao gồm "thẻ Kanban chờ quản lý xác nhận"**, đẩy vào hàng đợi email.
-Trạng thái (theo `docs/cai-tien-dot-4-2026-07.md` §4.4): **đã deploy**, `dry_run` mặc định
-`true`, idempotent theo ngày, **chưa lên lịch cron** → chưa tự gửi. Đây là mắt xích còn
-thiếu để "vòng phản hồi" của Kanban khép kín.
+**Đính chính 14/07/2026:** cron `send-reminders-daily` **đã được bật và chạy hằng ngày
+08:00 giờ VN** (kiểm chứng: digest về hộp thư đều đặn 08–14/07). Vòng phản hồi của Kanban
+đã khép kín. Lưu ý 07/2026: hệ thống chuyển sang domain `chieuthuc3.com` — link trong
+email nhắc việc trỏ theo secret `APP_URL` (xem `docs/quan-tri-email-2026-07.md` mục 0).
 
 ---
 
@@ -189,7 +190,7 @@ cho bối cảnh chi nhánh (~110 cán bộ, đang pilot):
 
 | Mức | Hạng mục | Vì sao | Việc cần làm | Phụ thuộc |
 | --- | --- | --- | --- | --- |
-| **P0** | Bật lịch nhắc việc `send-reminders` | Vòng phản hồi Kanban chưa khép kín; quản lý dễ bỏ sót "chờ xác nhận" | Chạy dry-run → gửi thật 1 lần kiểm định → lên cron hằng ngày (quy trình ở `cai-tien-dot-4-2026-07.md` §4.4) | Đã xác nhận SPF/DKIM/DMARC PASS |
+| ~~P0~~ ✅ | ~~Bật lịch nhắc việc `send-reminders`~~ **ĐÃ XONG** (cron chạy hằng ngày 08:00 — kiểm chứng 14/07) | Vòng phản hồi Kanban đã khép kín | Còn lại: theo dõi email về đúng người sau khi chuyển domain `chieuthuc3.com` | — |
 | **P0** | Ban hành SOP §3 tới cán bộ & quản lý | Công cụ đủ nhưng thiếu thói quen dùng | Phổ biến SOP; đặt kỳ vọng "cập nhật tuần" thành chuẩn | Tài liệu này |
 | **P1** | Nguồn `manager_assigned` (giao việc) | Kiểu đã có, chưa có đường tạo thẻ | Bổ sung đường tạo thẻ lãnh đạo giao (trigger/RPC + UI) | Thiết kế quyền & phạm vi |
 | **P1** | Bảng chỉ số vận hành Kanban | Chưa đo được §5 một cách hệ thống | Dựng view/RPC tổng hợp: % cập nhật tuần, thời gian chờ xác nhận, tỉ lệ quá hạn/hoàn thành/carry-over | Dữ liệu `kanban_card_logs` |
@@ -198,7 +199,8 @@ cho bối cảnh chi nhánh (~110 cán bộ, đang pilot):
 
 **Lộ trình theo tuần trong quý:**
 
-- **Tuần 1–2:** ban hành SOP (P0); bật nhắc việc theo 3 bước an toàn (P0). *(≈1–2 ngày công)*
+- **Tuần 1–2:** ban hành SOP (P0); ~~bật nhắc việc~~ đã xong — chỉ còn theo dõi nhắc việc
+  ổn định trên domain mới. *(≈0,5–1 ngày công)*
 - **Tuần 3–6:** dựng bảng chỉ số vận hành (P1); thiết kế + làm nguồn `manager_assigned` (P1).
   *(≈4–6 ngày công)*
 - **Tuần 7–12:** nhắc mềm WIP + nút gửi nhắc thủ công (P2); rà soát theo số liệu và tinh chỉnh

@@ -168,7 +168,7 @@ export default function AddStaff() {
           <Alert className="mb-4">
             <Info className="h-4 w-4" />
             <AlertDescription>
-              Tài khoản sau khi tạo sẽ có thể đăng nhập vào hệ thống 343skill.com theo vai trò được cấp. Mỗi cán bộ cần có email đăng nhập duy nhất.
+              Tài khoản sau khi tạo sẽ có thể đăng nhập vào hệ thống chieuthuc3.com theo vai trò được cấp. Mỗi cán bộ cần có email đăng nhập duy nhất.
             </AlertDescription>
           </Alert>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -269,7 +269,7 @@ export default function AddStaff() {
                 <Label>Gửi email đặt mật khẩu cho cán bộ</Label>
                 <p className="text-xs text-muted-foreground">
                   Khuyến nghị <strong>tắt</strong>: hệ thống hiển thị mật khẩu tạm kèm tin nhắn bàn giao để bạn gửi riêng cho cán bộ.
-                  Chỉ bật khi đã cấu hình email tên miền 343skill.com — khi bật, mật khẩu tạm sẽ không hiển thị mà gửi qua email đặt lại mật khẩu.
+                  Chỉ bật khi đã cấu hình email tên miền chieuthuc3.com — khi bật, mật khẩu tạm sẽ không hiển thị mà gửi qua email đặt lại mật khẩu.
                 </p>
               </div>
               <Switch checked={form.send_password_email} onCheckedChange={(v) => set('send_password_email', v)} />
