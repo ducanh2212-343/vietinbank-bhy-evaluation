@@ -1,10 +1,11 @@
 // Cấu hình deploy lên Cloudflare Workers (Workers Builds chạy: npm run build → wrangler).
-// Worker phục vụ THUẦN static assets từ dist/ — không có script backend.
+// Worker phục vụ THUẦN static assets từ dist/ — không có script backend. Vercel bỏ qua
+// file này (dùng vercel.json).
 // "single-page-application": mọi route không khớp file (VD /dat-lai-mat-khau,
 // /hanh-dong-phat-trien) đều trả về index.html để React Router xử lý — không 404.
 {
   "name": "343-noi-bo",
-  "compatibility_date": "2026-07-14",
+  "compatibility_date": "2025-06-01",
   "assets": {
     "directory": "./dist",
     "not_found_handling": "single-page-application"

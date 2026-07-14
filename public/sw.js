@@ -16,12 +16,11 @@ self.addEventListener('push', (event) => {
   } catch (_e) {
     data = { body: event.data ? event.data.text() : '' };
   }
-  const title = data.title || '343 Phát triển nhân sự';
+  const title = data.title || '343 Nội bộ';
   event.waitUntil(
     self.registration.showNotification(title, {
       body: data.body || '',
-      icon: '/vietinbank-favicon.png',
-      badge: '/vietinbank-favicon.png',
+      icon: '/favicon.svg',
       // tag: gộp thông báo trùng chủ đề trong ngày (VD nhắc nộp phiếu) thay vì xếp chồng
       tag: data.tag || 'chieuthuc3-reminder',
       data: { url: data.url || '/' },
