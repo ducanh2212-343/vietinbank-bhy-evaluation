@@ -44,9 +44,10 @@ Lệnh khác: `npm run test` (vitest), `npm run build`, `npm run lint`.
   Các migration đến `20260705170000_ai_mode_templates.sql` **đã được áp** vào
   project `whlysprzsguehxmrjwha` (05/07/2026), kèm regenerate
   `src/integrations/supabase/types.ts`.
-- Edge function `send-hr-notification` **đã deploy**; `ai-advisor` trên server
-  là bản cũ nhưng 3 mode mới chạy qua template trong `ai_prompts.content`
-  (fallback code trong repo sẽ có hiệu lực ở lần deploy function kế tiếp).
+- Edge function `send-hr-notification` **đã deploy**; `ai-advisor` **đã deploy
+  lại bản mới nhất (v9, 15/07/2026)** — provider registry + bỏ tiền tố model +
+  đo token/chi phí. Hai migration `20260706130000_ai_provider_flexible.sql` và
+  `20260706140000_ai_cost_management.sql` **đã áp** vào project (15/07/2026).
 - **Nhà cung cấp AI linh hoạt (07/2026):** ngoài Lovable/Gemini/OpenAI còn có
   **DeepSeek** và Gateway tùy chỉnh (OpenAI-compatible — OpenRouter, Groq...).
   Thêm provider mới = 1 entry `PROVIDER_PRESETS` trong
