@@ -2,18 +2,11 @@ import * as React from 'npm:react@18.3.1'
 import { renderAsync } from 'npm:@react-email/components@0.0.22'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { TEMPLATES } from '../_shared/transactional-email-templates/registry.ts'
+// Domain gửi + link đích cấu hình tập trung (secret APP_URL / EMAIL_FROM_DOMAIN /
+// EMAIL_SENDER_DOMAIN) — xem _shared/email-config.ts.
+import { FROM_DOMAIN, SENDER_DOMAIN } from '../_shared/email-config.ts'
 
-// Configuration baked in at scaffold time — do NOT change these manually.
-// To update, re-run the email domain setup flow.
 const SITE_NAME = "chieuthuc3"
-// SENDER_DOMAIN is the verified sender subdomain FQDN (e.g., "notify.example.com").
-// It MUST match the subdomain delegated to Lovable's nameservers — never the root domain.
-// The email API looks up this exact domain; a mismatch causes "No email domain record found".
-const SENDER_DOMAIN = "notify.343skill.com"
-// FROM_DOMAIN is the domain shown in the From: header (e.g., "example.com").
-// When display_from_root is enabled, this can be the root domain for cleaner branding,
-// even though actual sending uses the subdomain above.
-const FROM_DOMAIN = "343skill.com"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

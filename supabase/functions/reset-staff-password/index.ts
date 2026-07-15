@@ -9,11 +9,12 @@ import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { HttpError, requireRole } from "../_shared/auth.ts";
 import { STAFF_CREATOR_ROLES } from "../_shared/roles.ts";
 import { generatePassword, writeAuditLog } from "../_shared/staff.ts";
+import { APP_URL } from "../_shared/email-config.ts";
 
 // Chỉ chấp nhận redirect https tới đúng trang đặt lại mật khẩu (chống open-redirect).
 // Allow-list của Supabase Auth là chốt chặn cuối; đây là lớp phòng vệ thêm.
 function safeResetRedirect(input: unknown): string {
-  const fallback = "https://343skill.com/dat-lai-mat-khau";
+  const fallback = `${APP_URL}/dat-lai-mat-khau`;
   if (typeof input !== "string") return fallback;
   try {
     const u = new URL(input);

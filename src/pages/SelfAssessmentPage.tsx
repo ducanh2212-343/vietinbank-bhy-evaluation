@@ -32,7 +32,7 @@ import {
   filterQuarterCycles,
   getQuarterFormSubmission,
   mergeAllSkillAssessments,
-  pickDefaultCycle,
+  pickActiveCycle,
   buildSkillAssessmentRows,
   saveEvaluationChildren,
 } from '@/lib/evaluationPersistence';
@@ -50,6 +50,8 @@ export default function SelfAssessmentPage() {
   const [submitting, setSubmitting] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [cycles, setCycles] = useState<{ id: string; name: string }[]>([]);
+  // Toàn bộ kỳ (kể cả đã đóng) — chỉ dùng tra cứu tên kỳ cho phiếu cũ/export
+  const [allCycles, setAllCycles] = useState<{ id: string; name: string }[]>([]);
   const [allSkills, setAllSkills] = useState<any[]>([]);
   const [coreSkillConfigs, setCoreSkillConfigs] = useState<any[]>([]);
 
@@ -95,7 +97,7 @@ export default function SelfAssessmentPage() {
     const [profRes, skillRes, cycleRes] = await Promise.all([
       supabase.from('profiles').select('*, departments!profiles_department_id_fkey(name), positions!profiles_position_id_fkey(name)').eq('id', profileId).maybeSingle(),
       supabase.from('skill_catalog').select('*').eq('is_active', true).order('sort_order'),
-      supabase.from('evaluation_cycles').select('id, name').eq('cycle_type', 'quarterly').order('start_date'),
+      supabase.from('evaluation_cycles').select('id, name, status').eq('cycle_type', 'quarterly').order('start_date'),
     ]);
 
     let prof = profRes.data;
@@ -170,9 +172,14 @@ export default function SelfAssessmentPage() {
     setSelectedReviewerId(prev => prev && opts.some(o => o.id === prev) ? prev : (opts[0]?.id || ''));
 
     const quarterCycles = filterQuarterCycles(cycleRes.data || []);
-    setCycles(quarterCycles);
+    setAllCycles(quarterCycles);
+    // Chỉ cho chọn kỳ ĐANG MỞ (in_progress) — kỳ admin đã đóng không hiện trong phần
+    // đánh giá nữa (quy trình: admin mở/đóng kỳ thủ công ở Quản lý chu kỳ). Nếu không
+    // còn kỳ nào mở thì tạm hiện toàn bộ để trang không bị kẹt.
+    const openCycles = quarterCycles.filter((c: any) => c.status === 'in_progress');
+    setCycles(openCycles.length ? openCycles : quarterCycles);
 
-    const activeCycleId = cycleId || pickDefaultCycle(quarterCycles)?.id || '';
+    const activeCycleId = cycleId || pickActiveCycle(quarterCycles)?.id || '';
     if (activeCycleId && activeCycleId !== cycleId) {
       setCycleId(activeCycleId);
     }
@@ -901,7 +908,8 @@ export default function SelfAssessmentPage() {
       >
         <Button variant="outline" onClick={async () => {
           try {
-            const cycleName = cycles.find(c => c.id === cycleId)?.name || 'Quý';
+            const cycleName = allCycles.find(c => c.id === cycleId)?.name
+              || cycles.find(c => c.id === cycleId)?.name || 'Quý';
             const { exportBM01ToWord } = await import('@/lib/exportBM01');
             // Lấy đủ nội dung theo quy trình: rà soát KH kỳ trước, câu hỏi 1-1,
             // nhận xét/đánh giá tổng thể của lãnh đạo và các mốc ký

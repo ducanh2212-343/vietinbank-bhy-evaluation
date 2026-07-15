@@ -349,9 +349,10 @@ export async function writeAuditLog(
 
 /** Resolve the public site URL for password-reset redirects. */
 export function resolveSiteUrl(req: Request): string {
-  const fromEnv = Deno.env.get("SITE_URL");
+  // Ưu tiên secret APP_URL (cấu hình domain tập trung), giữ SITE_URL để tương thích cũ.
+  const fromEnv = Deno.env.get("APP_URL") || Deno.env.get("SITE_URL");
   if (fromEnv) return fromEnv.replace(/\/$/, "");
   const origin = req.headers.get("origin");
   if (origin) return origin.replace(/\/$/, "");
-  return "https://343skill.com";
+  return "https://chieuthuc3.com";
 }
