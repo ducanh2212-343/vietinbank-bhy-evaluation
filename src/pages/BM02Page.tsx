@@ -9,6 +9,9 @@ export default function BM02Page() {
       quarterLabel: 'Quý III/2026',
       cycleType: 'quarterly',
       previousFormNumber: '01',
+      // Quý I thực hiện trên bản Word/PDF (đã nhập lại vào hệ thống) — kỳ này
+      // đánh giá lại từ đầu, không tự động kéo kế hoạch/level từ kỳ trước.
+      autoCarryOver: false,
     }} />
   );
 }

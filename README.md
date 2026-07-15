@@ -47,9 +47,10 @@ Lệnh khác: `npm run test` (vitest), `npm run build`, `npm run lint`.
   Các migration đến `20260705170000_ai_mode_templates.sql` **đã được áp** vào
   project `whlysprzsguehxmrjwha` (05/07/2026), kèm regenerate
   `src/integrations/supabase/types.ts`.
-- Edge function `send-hr-notification` **đã deploy**; `ai-advisor` trên server
-  là bản cũ nhưng 3 mode mới chạy qua template trong `ai_prompts.content`
-  (fallback code trong repo sẽ có hiệu lực ở lần deploy function kế tiếp).
+- Edge function `send-hr-notification` **đã deploy**; `ai-advisor` **đã deploy
+  lại bản mới nhất (v9, 15/07/2026)** — provider registry + bỏ tiền tố model +
+  đo token/chi phí. Hai migration `20260706130000_ai_provider_flexible.sql` và
+  `20260706140000_ai_cost_management.sql` **đã áp** vào project (15/07/2026).
 - **Nhà cung cấp AI linh hoạt (07/2026):** ngoài Lovable/Gemini/OpenAI còn có
   **DeepSeek** và Gateway tùy chỉnh (OpenAI-compatible — OpenRouter, Groq...).
   Thêm provider mới = 1 entry `PROVIDER_PRESETS` trong
@@ -69,3 +70,15 @@ Tài liệu thiết kế gamification mục skill: `docs/nghien-cuu-gamification
 
 Quy trình vận hành Kanban "Hành động phát triển" & kế hoạch hành động quý:
 `docs/nghien-cuu-quy-trinh-van-hanh-kanban-2026-07.md`.
+
+## Kỳ Quý II/2026 — BM02 đánh giá lại từ đầu (07/2026)
+
+- Quý I/2026 thực hiện BM01 trên **bản Word/PDF** (không nhập app). Các kế hoạch
+  hành động Quý I được trích xuất và nhập lại vào database (cycle "Quý I/2026",
+  phiếu có marker `[IMPORT-BM01-Q1]` trong `manager_comment`) — xem
+  `scripts/import-bm01-q1/README.md`.
+- BM02 đặt `autoCarryOver: false` (`src/pages/BM02Page.tsx`): KHÔNG tự kéo kế
+  hoạch/level từ kỳ trước — cán bộ đánh giá lại toàn bộ 38 skill (Mục B) và
+  nhóm thái độ (Mục C) từ đầu. Hành động Quý I hiển thị ở mục "Rà soát hành
+  động kỳ trước" để PDCA và chuyển tay hành động chưa hoàn thành sang Quý III.
+  BM03 giữ nguyên auto carry-over.
