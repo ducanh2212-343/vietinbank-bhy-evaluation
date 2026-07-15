@@ -8,9 +8,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
+import { getEffectiveDeadline } from '@/lib/submissionKpi';
 import { ClipboardList, FileWarning, UserCheck, BadgeCheck, Hourglass } from 'lucide-react';
 
-interface CycleRow { id: string; name: string; start_date: string; end_date: string; status: string }
+interface CycleRow {
+  id: string; name: string; start_date: string; end_date: string; status: string;
+  submission_deadline: string | null;
+}
 
 interface PipelineStats {
   cycleName: string;
@@ -42,7 +46,7 @@ export function EvaluationPipelineCard() {
     const load = async () => {
       const { data: cycles } = await supabase
         .from('evaluation_cycles')
-        .select('id, name, start_date, end_date, status');
+        .select('id, name, start_date, end_date, status, submission_deadline');
       const cycle = pickCurrentCycle((cycles as CycleRow[]) || []);
       if (!cycle) return;
 
@@ -71,11 +75,13 @@ export function EvaluationPipelineCard() {
         else if (st === 'reviewed') waitingApprove++;
         else if (st === 'approved') approved++;
       });
-      const today = new Date().toISOString().slice(0, 10);
+      // Hạn nộp HIỆU LỰC = submission_deadline (TCTH thiết đặt), fallback cuối ngày end_date.
+      // KHÔNG dùng end_date (ngày cuối quý) làm hạn nộp — chúng có thể khác nhau.
+      const effectiveDeadline = getEffectiveDeadline(cycle);
       setStats({
         cycleName: cycle.name,
-        deadline: new Date(cycle.end_date).toLocaleDateString('vi-VN'),
-        overdue: cycle.status === 'in_progress' && today > cycle.end_date,
+        deadline: effectiveDeadline.toLocaleDateString('vi-VN'),
+        overdue: cycle.status === 'in_progress' && Date.now() > effectiveDeadline.getTime(),
         totalStaff: staffIds.size,
         notSubmitted, waitingReview, waitingApprove, approved,
       });
