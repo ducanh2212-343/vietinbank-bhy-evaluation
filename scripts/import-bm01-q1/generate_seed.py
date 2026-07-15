@@ -61,6 +61,27 @@ def norm_name(s: str) -> str:
     return ' '.join(s.upper().split())
 
 
+PLACEHOLDERS = {'chưa nhập', 'chưa đặt tên', '(chưa đặt tên)', 'chưa có nội dung', 'chưa có nội dung hành động'}
+
+
+def dedup_action_text(text: str, scope_key, seen: dict) -> str:
+    """Chống vi phạm unique index chống trùng hành động (uniq_ai_action_per_form /
+    uniq_skill_action_per_priority): nếu cùng scope đã có hành động trùng nguyên văn
+    (so sánh lower/btrim như index), thêm hậu tố " (hành động N)" để giữ đủ các dòng
+    thật sự khác nhau (VD: 2 hành động AI cùng tên skill nhưng khác kết quả mục tiêu)."""
+    base = (text or '').strip()
+    norm = base.lower()
+    if not norm or norm in PLACEHOLDERS:
+        return text
+    n = 1
+    out = base
+    while (scope_key, out.lower()) in seen:
+        n += 1
+        out = f"{base} (hành động {n})"
+    seen[(scope_key, out.lower())] = True
+    return out
+
+
 def sql_str(s):
     if s is None or s == '':
         return 'NULL'
@@ -200,6 +221,7 @@ def main():
                 f"{sql_str('Hành động BM01 Quý I (bản Word/PDF)')}, 'core_skill', 'planned');"
             )
         row_no = {}
+        seen_texts = {}
         for r, code in f['skill_actions']:
             prio_id = f['priorities'][code]
             row_no[code] = row_no.get(code, 0) + 1
@@ -207,9 +229,10 @@ def main():
             target = r['target']
             if r['deadline'] and not dl:
                 target = (target + f" (Thời hạn gốc: {r['deadline']})").strip()
+            action_text = dedup_action_text(r['action'] or 'Chưa nhập', ('skill', prio_id), seen_texts)
             out.append(
                 "INSERT INTO form_skill_actions (form_id, skill_priority_id, row_no, action_type, action_text, expected_result, deadline, requested_support, status) VALUES "
-                f"({sql_str(f['form_id'])}, {sql_str(prio_id)}, {row_no[code]}, '70', {sql_str(r['action'] or 'Chưa nhập')}, "
+                f"({sql_str(f['form_id'])}, {sql_str(prio_id)}, {row_no[code]}, '70', {sql_str(action_text)}, "
                 f"{sql_str(target)}, {sql_str(dl)}, {sql_str(r['support'])}, 'planned');"
             )
         for i, r in enumerate(f['ai_actions'], 1):
@@ -217,9 +240,10 @@ def main():
             target = r['target']
             if r['deadline'] and not dl:
                 target = (target + f" (Thời hạn gốc: {r['deadline']})").strip()
+            action_text = dedup_action_text(r['action'] or 'Chưa nhập', ('ai', f['form_id']), seen_texts)
             out.append(
                 "INSERT INTO form_ai_actions_v2 (form_id, row_no, ai_action_text, expected_result, deadline, requested_support, status) VALUES "
-                f"({sql_str(f['form_id'])}, {i}, {sql_str(r['action'] or 'Chưa nhập')}, "
+                f"({sql_str(f['form_id'])}, {i}, {sql_str(action_text)}, "
                 f"{sql_str(target)}, {sql_str(dl)}, {sql_str(r['support'])}, 'planned');"
             )
 
