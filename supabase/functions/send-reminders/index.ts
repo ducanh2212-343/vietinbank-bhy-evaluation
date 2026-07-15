@@ -196,14 +196,24 @@ Deno.serve(async (req) => {
     // lẫn số tồn trong digest TP/PGĐ/BGĐ ("chưa nộp đúng hạn thì vẫn nhắc").
     // Mỗi người tối đa 1 email/ngày (idempotent); đóng kỳ là dừng toàn bộ.
     const REMIND_BEFORE_DAYS = 15;
+    const nowTs = Date.now();
     const todayStr = new Date().toISOString().slice(0, 10);
     const { data: cycleRows } = await admin
       .from('evaluation_cycles')
-      .select('id, name, start_date, end_date, status');
+      .select('id, name, start_date, end_date, status, submission_deadline');
     const pickCycle = (rows: any[]): any | null => {
       const inProg = (rows || []).filter((c) => c.status === 'in_progress');
       if (!inProg.length) return null;
       return [...inProg].sort((a, b) => String(b.start_date).localeCompare(String(a.start_date)))[0];
+    };
+    // Hạn nộp HIỆU LỰC = submission_deadline (TCTH thiết đặt), fallback cuối ngày end_date.
+    // Trùng logic getEffectiveDeadline (src/lib/submissionKpi.ts) — KHÔNG dùng end_date
+    // (ngày cuối quý) làm hạn nộp vì hai mốc có thể khác nhau (VD Quý II: cuối quý 30/6,
+    // hạn nộp thật 26/7).
+    const effectiveDeadlineTs = (c: any): number => {
+      if (c.submission_deadline) return new Date(c.submission_deadline).getTime();
+      const [y, m, d] = String(c.end_date).split('-').map(Number);
+      return new Date(Date.UTC(y, (m || 1) - 1, d || 1, 16, 59, 59)).getTime(); // 23:59:59 giờ VN
     };
     const cycle = pickCycle(cycleRows || []);
     let notSubmitted: any[] = [];
@@ -212,8 +222,9 @@ Deno.serve(async (req) => {
     let dueWindow = false;     // cửa sổ digest cấp quản lý: giống trên
     let deadlineText = '';
     if (cycle) {
-      deadlineText = new Date(cycle.end_date).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
-      const daysLeft = Math.floor((new Date(cycle.end_date).getTime() - new Date(todayStr).getTime()) / 86400000);
+      const deadlineTs = effectiveDeadlineTs(cycle);
+      deadlineText = new Date(deadlineTs).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+      const daysLeft = Math.floor((deadlineTs - nowTs) / 86400000);
       dueWindow = daysLeft <= REMIND_BEFORE_DAYS;
       inWindow = dueWindow;
       const { data: cycleSubs } = await admin

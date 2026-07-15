@@ -138,7 +138,10 @@ Trang Quên mật khẩu (`/quen-mat-khau`) + trang đặt lại (`/dat-lai-mat-
 | Hội đồng đầu mối | Thành viên còn phiếu | Email | Còn ≤3 ngày đến hạn bỏ phiếu | Danh sách phiếu chưa gửi (như cũ) |
 
 "Kỳ đang đánh giá" = kỳ `in_progress` mới nhất (admin mở/đóng thủ công ở Quản lý chu kỳ —
-đóng kỳ là DỪNG toàn bộ nhắc). Email chỉ còn gửi CẤP QUẢN LÝ (TP/PGĐ/TCTH/BGĐ) → ~15-20
+đóng kỳ là DỪNG toàn bộ nhắc). **Hạn nộp** dùng `submission_deadline` (TCTH thiết đặt ở
+Quản lý chu kỳ), KHÔNG dùng `end_date` (ngày cuối quý) — hai mốc có thể khác nhau (VD Quý
+II: cuối quý 30/6 nhưng hạn nộp thật 26/7). Trùng logic `getEffectiveDeadline`
+(`src/lib/submissionKpi.ts`). Email chỉ còn gửi CẤP QUẢN LÝ (TP/PGĐ/TCTH/BGĐ) → ~15-20
 email/ngày, thoải mái trong ngưỡng miễn phí Resend 3.000/tháng. Xem trước không gửi:
 gọi `send-reminders` body `{"dry_run": true}`. Màn hình **Tổng quan** có khối "Cần xử lý
 trong kỳ" (`EvaluationPipelineCard`) hiển thị cùng các con số này.
