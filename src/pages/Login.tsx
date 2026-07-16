@@ -6,8 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { BrandTree, BrandBadge } from '@/components/branding/BrandAssets';
-
-const VALUES = ['Chính trực', 'Trí tuệ', 'Tận tâm', 'Thấu cảm', 'Thích ứng'];
+import { CORE_VALUES as VALUES } from '@/lib/coreValues';
 
 export default function Login() {
   const [email, setEmail] = useState('');

@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { CardDetailDialog } from './CardDetailDialog';
-import { computeBadges, dedupeCards, SOURCE_LABEL, type KanbanCard } from '@/lib/kanban';
+import { computeBadges, dedupeCards, getSourceLabel, type KanbanCard } from '@/lib/kanban';
 import { toast } from 'sonner';
 import { Clock, AlertTriangle, Inbox } from 'lucide-react';
 
@@ -155,7 +155,7 @@ export function TeamReviewPanel() {
                 <div className="text-sm font-medium leading-snug">{card.title}</div>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                   <span className="font-medium text-foreground">{profile.full_name}</span>
-                  <Badge variant="secondary" className="text-[10px] py-0">{SOURCE_LABEL[card.source_type]}</Badge>
+                  <Badge variant="secondary" className="text-[10px] py-0">{getSourceLabel(card)}</Badge>
                   <span className="flex items-center gap-1"><Clock className="w-3 h-3" />Gửi: {fmtDate(card.last_progress_at)}</span>
                 </div>
               </div>
@@ -201,7 +201,7 @@ export function TeamReviewPanel() {
                             <div className="min-w-0 space-y-1">
                               <div className="text-sm font-medium leading-snug">{c.title}</div>
                               <div className="flex flex-wrap items-center gap-1">
-                                <Badge variant="secondary" className="text-[10px] py-0">{SOURCE_LABEL[c.source_type]}</Badge>
+                                <Badge variant="secondary" className="text-[10px] py-0">{getSourceLabel(c)}</Badge>
                                 <Badge variant="outline" className="text-[10px] py-0">{STATUS_LABEL[c.kanban_status]}</Badge>
                                 <Badge variant="outline" className="text-[10px] py-0">{c.progress_percent}%</Badge>
                                 {b.overdue && <Badge variant="destructive" className="text-[10px] py-0 flex items-center gap-1"><AlertTriangle className="w-3 h-3" />Quá hạn</Badge>}

@@ -27,6 +27,8 @@ export interface KanbanCard {
   next_update_due_at: string | null;
   manager_confirmed_by: string | null;
   manager_confirmed_at: string | null;
+  /** Thẻ sinh từ "Dấu ấn Bắc Hưng Yên Mark" thì trỏ về leadership_marks.id */
+  leadership_mark_id?: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -49,6 +51,12 @@ export const SOURCE_LABEL: Record<SourceType, string> = {
   manager_assigned: 'Lãnh đạo giao',
   carry_over: 'Chuyển tiếp',
 };
+
+/** Nhãn nguồn của thẻ: thẻ sinh từ dấu ấn BGĐ giao hiển thị "Dấu ấn" thay vì nhãn chung. */
+export function getSourceLabel(card: Pick<KanbanCard, 'source_type' | 'leadership_mark_id'>): string {
+  if (card.leadership_mark_id) return 'Dấu ấn';
+  return SOURCE_LABEL[card.source_type];
+}
 
 export const QUICK_STATUS_OPTIONS = [
   'Bình thường',
