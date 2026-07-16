@@ -72,3 +72,15 @@ rồi insert lại, nên có thể sửa mapping và chạy lại nhiều lần.
 - **NGUYỄN THỊ PHƯỢNG (Phòng TCTH)**: đã gộp/xoá tài khoản trùng; tài khoản
   đúng là `phuongnt5151089@gmail.com` (profile `cf9cdd38`) — chính là tài khoản
   mà seed đã trỏ vào, dữ liệu Q1 của chị nguyên vẹn.
+
+## Cập nhật ngày 16/07/2026 — bổ sung hành động AI của BGĐ
+
+Thư mục hồ sơ Ban Giám đốc (`1MhUJsY_wwsvWyl0imwif75cZ3g9ICsu6`) **tách riêng**
+khỏi thư mục cán bộ chung, nên bản Excel trích xuất ban đầu bị **thiếu nhóm
+hành động 2.2 (AI)** của một PGĐ. Đối chiếu lại 3 file Word gốc:
+- **Nguyễn Đức Thái Hoàng**: Excel thiếu 2 hành động AI → đã bổ sung
+  (MyGennie/AI hàng ngày; cùng Tổ FDI lưu đồ hóa quy trình bán & chăm sóc KH FDI).
+- Nguyễn Thị Thùy Linh (4 skill + 2 AI) và Phạm Minh Hải (6 skill + 1 AI): đã
+  khớp đầy đủ với file Word, không cần sửa.
+
+Tổng hành động AI kỳ Q1 sau bổ sung: **186** (skill 2.1 vẫn 263, phiếu 95).
