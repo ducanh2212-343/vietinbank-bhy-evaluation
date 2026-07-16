@@ -23,7 +23,7 @@ import {
 import { toast } from 'sonner';
 import { Award, Download, Pencil, Plus, Sparkles, Archive, CalendarCheck, AlertTriangle, History } from 'lucide-react';
 import { exportLeadershipJourney } from '@/lib/exportLeadershipJourney';
-import { fetchWeeklyUpdateMap, type KanbanCard, type WeeklyUpdateMap } from '@/lib/kanban';
+import { fetchWeeklyUpdateMap, rpcMove, type KanbanCard, type WeeklyUpdateMap } from '@/lib/kanban';
 import { UpdateProgressDialog } from '@/components/kanban/UpdateProgressDialog';
 
 const sb = supabase as any;
@@ -543,7 +543,14 @@ export default function LeadershipMarksPage() {
           card={updateCard}
           open={!!updateCard}
           onClose={() => setUpdateCard(null)}
-          onSaved={load}
+          onSaved={async () => {
+            // Có cập nhật đầu tiên nghĩa là đã bắt đầu: kéo thẻ 'Phải làm' → 'Đang làm'
+            // để bảng Kanban cá nhân phản ánh đúng (đồng bộ 2 nơi).
+            if (updateCard.kanban_status === 'todo') {
+              try { await rpcMove(updateCard.id, 'doing'); } catch { /* không chặn reload */ }
+            }
+            load();
+          }}
           dialogTitle="Cập nhật tuần — Dấu ấn"
           hint={STAR_HINT}
           suggestions={STAR_SUGGESTIONS}
