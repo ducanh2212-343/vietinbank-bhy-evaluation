@@ -16,11 +16,15 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onSaved: () => void;
+  /** Tùy biến cho ngữ cảnh khác Kanban (VD: dấu ấn — gợi ý theo khung STAR) */
+  dialogTitle?: string;
+  hint?: string;
+  suggestions?: string[];
 }
 
 const PERCENTS = [0, 25, 50, 75, 100] as const;
 
-export function UpdateProgressDialog({ card, open, onClose, onSaved }: Props) {
+export function UpdateProgressDialog({ card, open, onClose, onSaved, dialogTitle, hint, suggestions }: Props) {
   const [note, setNote] = useState('');
   const [percent, setPercent] = useState<number>(card.progress_percent || 0);
   const [quick, setQuick] = useState<Set<QuickStatus>>(new Set());
@@ -72,7 +76,7 @@ export function UpdateProgressDialog({ card, open, onClose, onSaved }: Props) {
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Cập nhật tiến độ</DialogTitle>
+          <DialogTitle>{dialogTitle || 'Cập nhật tiến độ'}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 text-sm">
@@ -86,10 +90,10 @@ export function UpdateProgressDialog({ card, open, onClose, onSaved }: Props) {
               placeholder="Hôm nay/tuần này tôi đã làm gì, kết quả ra sao, còn vướng gì hoặc bước tiếp theo là gì?"
             />
             <p className="text-xs text-muted-foreground">
-              Gợi ý: đã làm gì, kết quả hiện tại, vướng mắc, việc tiếp theo, cần hỗ trợ nếu có.
+              {hint || 'Gợi ý: đã làm gì, kết quả hiện tại, vướng mắc, việc tiếp theo, cần hỗ trợ nếu có.'}
             </p>
             <div className="flex flex-wrap gap-1.5 pt-1">
-              {QUICK_SUGGESTIONS.map(s => (
+              {(suggestions || QUICK_SUGGESTIONS).map(s => (
                 <button
                   key={s}
                   type="button"
