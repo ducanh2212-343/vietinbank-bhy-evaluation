@@ -21,10 +21,56 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Award, Download, Pencil, Plus, Sparkles, Archive } from 'lucide-react';
+import { Award, Download, Pencil, Plus, Sparkles, Archive, CalendarCheck, AlertTriangle, History } from 'lucide-react';
 import { exportLeadershipJourney } from '@/lib/exportLeadershipJourney';
+import { fetchWeeklyUpdateMap, rpcMove, type KanbanCard, type WeeklyUpdateMap } from '@/lib/kanban';
+import { UpdateProgressDialog } from '@/components/kanban/UpdateProgressDialog';
 
 const sb = supabase as any;
+
+// Nhịp hằng tuần: cập nhật viết theo khung STAR, tích lũy thành dòng thời gian của dấu ấn
+const STAR_SUGGESTIONS = [
+  'Bối cảnh tuần này:',
+  'Hành động lãnh đạo của tôi:',
+  'Đối tượng chịu tác động:',
+  'Kết quả / chuyển biến đo được:',
+  'Vướng mắc cần Giám đốc hỗ trợ:',
+  'Sản phẩm quản trị để lại:',
+];
+const STAR_HINT = 'Viết theo khung STAR: Bối cảnh → Nhiệm vụ → Hành động lãnh đạo cá nhân → Kết quả. Mỗi cập nhật là một mốc trên dòng thời gian minh chứng cho dấu ấn cuối kỳ.';
+
+const LOG_LABEL: Record<string, string> = {
+  created: 'Tạo thẻ', status_change: 'Chuyển trạng thái', progress_update: 'Cập nhật tiến độ',
+  completion_requested: 'Gửi hoàn thành', completion_confirmed: 'Lãnh đạo xác nhận',
+  returned: 'Trả lại bổ sung', evidence_added: 'Bổ sung bằng chứng',
+};
+const KANBAN_LABEL: Record<string, string> = { todo: 'Chưa bắt đầu', doing: 'Đang làm', done: 'Hoàn thành' };
+
+interface LogRow {
+  card_id: string;
+  log_type: string;
+  new_status: string | null;
+  progress_percent: number | null;
+  progress_note: string | null;
+  current_result: string | null;
+  blocker_note: string | null;
+  support_needed: string | null;
+  evidence_text: string | null;
+  evidence_url: string | null;
+  created_at: string;
+}
+
+function logNote(l: LogRow): string {
+  const parts: string[] = [];
+  if (l.new_status) parts.push(KANBAN_LABEL[l.new_status] || l.new_status);
+  if (l.progress_percent != null) parts.push(`${l.progress_percent}%`);
+  if (l.progress_note) parts.push(l.progress_note);
+  if (l.current_result) parts.push(`Kết quả: ${l.current_result}`);
+  if (l.blocker_note) parts.push(`Vướng mắc: ${l.blocker_note}`);
+  if (l.support_needed) parts.push(`Cần hỗ trợ: ${l.support_needed}`);
+  if (l.evidence_text) parts.push(`Bằng chứng: ${l.evidence_text}`);
+  return parts.join(' · ');
+}
 
 interface Option { id: string; code?: string | null; name: string }
 interface MarkRow {
@@ -81,8 +127,13 @@ const EMPTY_FRAME: FrameForm = {
 };
 
 export default function LeadershipMarksPage() {
-  const { profileId, isAdmin, loading: authLoading } = useAuth();
+  const { profileId, isAdmin, roles, loading: authLoading } = useAuth();
   const [marks, setMarks] = useState<MarkRow[]>([]);
+  const [cardByMark, setCardByMark] = useState<Record<string, KanbanCard>>({});
+  const [weekly, setWeekly] = useState<WeeklyUpdateMap>({});
+  const [logsByMark, setLogsByMark] = useState<Record<string, LogRow[]>>({});
+  const [updateCard, setUpdateCard] = useState<KanbanCard | null>(null);
+  const [openTimeline, setOpenTimeline] = useState<Record<string, boolean>>({});
   const [competencies, setCompetencies] = useState<Option[]>([]);
   const [coreValues, setCoreValues] = useState<Option[]>([]);
   const [skills, setSkills] = useState<Option[]>([]);
@@ -116,7 +167,34 @@ export default function LeadershipMarksPage() {
     if (marksRes.error) {
       toast.error('Không tải được dấu ấn: ' + marksRes.error.message);
     } else {
-      setMarks((marksRes.data as MarkRow[]) || []);
+      const markRows = (marksRes.data as MarkRow[]) || [];
+      setMarks(markRows);
+      // Thẻ Kanban của từng dấu ấn + trạng thái "đã cập nhật tuần này" + dòng thời gian
+      const ids = markRows.map(m => m.id);
+      if (ids.length) {
+        const { data: cardRows } = await sb.from('kanban_cards')
+          .select('*').in('leadership_mark_id', ids).eq('is_active', true);
+        const byMark: Record<string, KanbanCard> = {};
+        ((cardRows || []) as any[]).forEach(c => { if (c.leadership_mark_id) byMark[c.leadership_mark_id] = c; });
+        setCardByMark(byMark);
+        const cardList = Object.values(byMark);
+        setWeekly(await fetchWeeklyUpdateMap(cardList));
+        if (cardList.length) {
+          const cardToMark: Record<string, string> = {};
+          Object.entries(byMark).forEach(([mid, c]) => { cardToMark[c.id] = mid; });
+          const { data: logRows } = await sb.from('kanban_card_logs')
+            .select('card_id, log_type, new_status, progress_percent, progress_note, current_result, blocker_note, support_needed, evidence_text, evidence_url, created_at')
+            .in('card_id', cardList.map(c => c.id))
+            .order('created_at', { ascending: false });
+          const lbm: Record<string, LogRow[]> = {};
+          ((logRows || []) as LogRow[]).forEach(l => {
+            const mid = cardToMark[l.card_id];
+            if (!mid) return;
+            (lbm[mid] = lbm[mid] || []).push(l);
+          });
+          setLogsByMark(lbm);
+        }
+      }
     }
     setCompetencies((compRes.data as Option[]) || []);
     setCoreValues((cvRes.data as Option[]) || []);
@@ -290,6 +368,12 @@ export default function LeadershipMarksPage() {
             Khung dấu ấn Ban Giám đốc giao — mỗi dấu ấn gắn 1 năng lực lãnh đạo, 1 giá trị cốt lõi
             và tối đa 2 Skill; tiến độ theo dõi trên thẻ <Link className="underline" to="/hanh-dong-phat-trien">Kanban</Link> của từng PGĐ.
           </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            <span className="font-medium text-foreground">Nhịp vận hành:</span> cập nhật tiến độ tối thiểu
+            <span className="font-medium"> 1 lần/tuần</span> (giống thẻ Kanban tự đánh giá) — tuần chưa cập nhật sẽ
+            <span className="text-destructive font-medium"> báo đỏ</span>. Cập nhật viết theo khung STAR và
+            tự xếp thành dòng thời gian của dấu ấn.
+          </p>
         </div>
         {isAdmin && (
           <Button onClick={() => openFrameDialog(null)}>
@@ -331,12 +415,31 @@ export default function LeadershipMarksPage() {
               const sk = [...(m.leadership_mark_skills || [])].sort((a, b) => a.sort_order - b.sort_order);
               const starDone = [m.star_situation, m.star_task, m.star_action, m.star_result].filter(Boolean).length;
               const isOwner = m.profile_id === profileId;
+              const card = cardByMark[m.id];
+              // Nhịp hằng tuần áp dụng khi dấu ấn đang chạy và thẻ chưa hoàn thành
+              const needsWeekly = m.status === 'active' && !!card && card.kanban_status !== 'done';
+              const updatedThisWeek = card ? !!weekly[card.id] : false;
+              const weeklyRed = needsWeekly && !updatedThisWeek;
+              const logs = logsByMark[m.id] || [];
+              const canUpdate = !!card && m.status === 'active' && (isOwner || roles.includes('system_admin'));
               return (
-                <div key={m.id} className="rounded-lg border p-3 space-y-2">
+                <div key={m.id}
+                     className={`rounded-lg border p-3 space-y-2 ${weeklyRed ? 'border-destructive/60 bg-destructive/5' : ''}`}>
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <p className="font-medium">{m.sort_order}. {m.title}</p>
-                    <span className={`text-[11px] px-2 py-0.5 rounded-full ${STATUS_TONE[m.status] || ''}`}>
-                      {STATUS_LABEL[m.status] || m.status}
+                    <span className="flex items-center gap-1.5">
+                      {needsWeekly && (updatedThisWeek ? (
+                        <Badge className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border-0">
+                          <CalendarCheck className="w-3 h-3 mr-1" /> Đã cập nhật tuần này
+                        </Badge>
+                      ) : (
+                        <Badge variant="destructive" className="text-[10px]">
+                          <AlertTriangle className="w-3 h-3 mr-1" /> Chưa cập nhật tuần này
+                        </Badge>
+                      ))}
+                      <span className={`text-[11px] px-2 py-0.5 rounded-full ${STATUS_TONE[m.status] || ''}`}>
+                        {STATUS_LABEL[m.status] || m.status}
+                      </span>
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-1.5 text-[11px]">
@@ -364,9 +467,26 @@ export default function LeadershipMarksPage() {
                     <Badge variant={starDone === 4 ? 'default' : 'secondary'} className="text-[10px]">
                       STAR {starDone}/4{m.deliverable ? ' · có sản phẩm để lại' : ''}
                     </Badge>
+                    {card && (
+                      <Badge variant="outline" className="text-[10px]">
+                        {KANBAN_LABEL[card.kanban_status] || card.kanban_status} · {card.progress_percent}%
+                      </Badge>
+                    )}
+                    {canUpdate && (
+                      <Button size="sm" variant={weeklyRed ? 'destructive' : 'default'}
+                              onClick={() => setUpdateCard(card)}>
+                        <CalendarCheck className="w-3.5 h-3.5 mr-1" /> Cập nhật tuần
+                      </Button>
+                    )}
                     {(isOwner || isAdmin) && (
                       <Button size="sm" variant="outline" onClick={() => openStarDialog(m)}>
                         <Sparkles className="w-3.5 h-3.5 mr-1" /> Cập nhật STAR
+                      </Button>
+                    )}
+                    {logs.length > 0 && (
+                      <Button size="sm" variant="ghost"
+                              onClick={() => setOpenTimeline(prev => ({ ...prev, [m.id]: !prev[m.id] }))}>
+                        <History className="w-3.5 h-3.5 mr-1" /> Dòng thời gian ({logs.length})
                       </Button>
                     )}
                     {isAdmin && (
@@ -387,6 +507,24 @@ export default function LeadershipMarksPage() {
                       </>
                     )}
                   </div>
+                  {openTimeline[m.id] && logs.length > 0 && (
+                    <div className="mt-2 border-l-2 border-muted pl-3 space-y-2">
+                      {logs.map((l, i) => (
+                        <div key={i} className="text-xs">
+                          <p className="text-muted-foreground">
+                            {new Date(l.created_at).toLocaleString('vi-VN')}
+                            <span className="ml-1.5 font-medium text-foreground">{LOG_LABEL[l.log_type] || l.log_type}</span>
+                          </p>
+                          {logNote(l) && <p className="whitespace-pre-wrap">{logNote(l)}</p>}
+                          {l.evidence_url && (
+                            <a href={l.evidence_url} target="_blank" rel="noreferrer" className="underline text-primary">
+                              Bằng chứng đính kèm
+                            </a>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -398,6 +536,26 @@ export default function LeadershipMarksPage() {
           </CardContent>
         </Card>
       ))}
+
+      {/* ── Dialog cập nhật tuần (tái dùng cơ chế Kanban, gợi ý STAR) ───── */}
+      {updateCard && (
+        <UpdateProgressDialog
+          card={updateCard}
+          open={!!updateCard}
+          onClose={() => setUpdateCard(null)}
+          onSaved={async () => {
+            // Có cập nhật đầu tiên nghĩa là đã bắt đầu: kéo thẻ 'Phải làm' → 'Đang làm'
+            // để bảng Kanban cá nhân phản ánh đúng (đồng bộ 2 nơi).
+            if (updateCard.kanban_status === 'todo') {
+              try { await rpcMove(updateCard.id, 'doing'); } catch { /* không chặn reload */ }
+            }
+            load();
+          }}
+          dialogTitle="Cập nhật tuần — Dấu ấn"
+          hint={STAR_HINT}
+          suggestions={STAR_SUGGESTIONS}
+        />
+      )}
 
       {/* ── Dialog khung dấu ấn (admin) ─────────────────────────────────── */}
       <Dialog open={!!frame} onOpenChange={(o) => !o && setFrame(null)}>
