@@ -16,7 +16,7 @@ import vtbLogo from '@/assets/vietinbank-bhy-logo.png';
 import { BrandBadge } from '@/components/branding/BrandAssets';
 
 type MinRole = 'manager' | 'admin';
-type Special = 'submission-report' | 'strategic-hr' | 'council-member' | 'council-report' | 'council-analytics';
+type Special = 'submission-report' | 'strategic-hr' | 'council-member' | 'council-report' | 'council-analytics' | 'leadership-marks';
 
 interface NavLeaf {
   label: string;
@@ -80,6 +80,8 @@ const navGroups: NavGroup[] = [
       { label: 'Báo cáo', icon: BarChart3, path: '/bao-cao', minRole: 'manager' },
       // Hiển thị theo phạm vi: GĐ/PGĐ (phòng phụ trách), lãnh đạo Phòng TCTH + admin (full chi nhánh)
       { label: 'Báo cáo nộp biểu mẫu', icon: Timer, path: '/bao-cao-nop-bieu-mau', special: 'submission-report' },
+      // Khung dấu ấn BGĐ giao PGĐ — chỉ GĐ/PGĐ/TCTH admin thấy menu (RLS vẫn là lớp chặn chính)
+      { label: 'Dấu ấn BHY Mark', icon: Star, path: '/dau-an', special: 'leadership-marks' },
       {
         id: 'hoi-dong-dau-moi',
         folder: 'Hội đồng đầu mối',
@@ -198,6 +200,7 @@ export function AppSidebar({ onNavigate }: Props) {
     if (item.special === 'council-member') return councilAccess.isMember;
     if (item.special === 'council-report') return isAdmin || councilAccess.isSubject || councilAccess.isSupervisor;
     if (item.special === 'council-analytics') return isFullCouncilAdmin;
+    if (item.special === 'leadership-marks') return isAdmin || isPgd;
     if (item.minRole === 'admin' && !isAdmin) return false;
     if (item.minRole === 'manager' && !canSeeManagerItems) return false;
     return true;

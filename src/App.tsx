@@ -68,6 +68,7 @@ const EvaluatorAssignmentPage = lazyWithRetry(() => import("./pages/EvaluatorAss
 const SubmissionTimeReportPage = lazyWithRetry(() => import("./pages/SubmissionTimeReportPage"));
 const VtbCoursesAdminPage = lazyWithRetry(() => import("./pages/VtbCoursesAdminPage"));
 const PersonalKanbanPage = lazyWithRetry(() => import("./pages/PersonalKanbanPage"));
+const LeadershipMarksPage = lazyWithRetry(() => import("./pages/LeadershipMarksPage"));
 const SkillRiskHeatmapPage = lazyWithRetry(() => import("./pages/SkillRiskHeatmapPage"));
 const CareerPathPage = lazyWithRetry(() => import("./pages/CareerPathPage"));
 const TransferSimulationPage = lazyWithRetry(() => import("./pages/TransferSimulationPage"));
@@ -135,6 +136,7 @@ const App = () => (
               <Route path="/ung-dung-ai" element={<AIApplicationPage />} />
               <Route path="/thai-do-tu-duy" element={<AttitudeMindset />} />
               <Route path="/hanh-dong-phat-trien" element={<PersonalKanbanPage />} />
+              <Route path="/dau-an" element={<LeadershipMarksPage />} />
               <Route path="/chien-dich-hoc-tap" element={<LearningCampaignsPage />} />
 
               {/* Hội đồng đánh giá đầu mối — trang tự gác quyền: thành viên HĐ chấm điểm, đầu mối/admin xem báo cáo */}

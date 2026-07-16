@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { computeBadges, rpcConfirm, SOURCE_LABEL, type KanbanCard } from '@/lib/kanban';
+import { computeBadges, rpcConfirm, getSourceLabel, type KanbanCard } from '@/lib/kanban';
 import { ReturnCardDialog } from './ReturnCardDialog';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -79,7 +79,7 @@ export function CardDetailDialog({ card, open, onClose, onChanged, ownerName }: 
         </DialogHeader>
         <div className="space-y-4 text-sm">
           <div className="flex flex-wrap gap-2">
-            <Badge variant="secondary">{SOURCE_LABEL[card.source_type]}</Badge>
+            <Badge variant="secondary">{getSourceLabel(card)}</Badge>
             {card.learning_mode && <Badge variant="outline">Hình thức: {card.learning_mode}%</Badge>}
             {card.deadline && <Badge variant="outline">Deadline: {card.deadline}</Badge>}
             <Badge variant="outline">Tiến độ: {card.progress_percent}%</Badge>

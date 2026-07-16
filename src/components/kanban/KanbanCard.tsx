@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  computeBadges, SOURCE_LABEL, getAttitudeLabel, getSkillLabel,
+  computeBadges, getSourceLabel, getAttitudeLabel, getSkillLabel,
   type KanbanCard as Card, type SkillMetaMap, type CardActivityFlags,
 } from '@/lib/kanban';
 import { Calendar, Clock, FileWarning } from 'lucide-react';
@@ -62,7 +62,7 @@ export function KanbanCardItem({ card, skillMap = {}, flags, weeklyUpdated, onUp
       )}
 
       <div className="flex flex-wrap gap-1">
-        <Badge variant="secondary" className="text-[10px] py-0">{SOURCE_LABEL[card.source_type]}</Badge>
+        <Badge variant="secondary" className="text-[10px] py-0">{getSourceLabel(card)}</Badge>
         {card.learning_mode && <Badge variant="outline" className="text-[10px] py-0">{card.learning_mode}%</Badge>}
         {b.overdue && <Badge variant="destructive" className="text-[10px] py-0">Quá hạn</Badge>}
         {b.notUpdatedThisWeek && <Badge className="text-[10px] py-0 bg-amber-500 hover:bg-amber-500">Chưa cập nhật tuần này</Badge>}

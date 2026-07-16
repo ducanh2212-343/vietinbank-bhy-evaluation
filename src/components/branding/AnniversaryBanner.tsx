@@ -1,6 +1,5 @@
 import { BrandTree, BrandBadge } from './BrandAssets';
-
-const VALUES = ['Chính trực', 'Trí tuệ', 'Tận tâm', 'Thấu cảm', 'Thích ứng'];
+import { CORE_VALUES as VALUES } from '@/lib/coreValues';
 
 /**
  * Banner kỷ niệm 20 năm — motif Cây ký ức, dùng ở đầu trang Tổng quan.
