@@ -61,6 +61,14 @@ rồi insert lại, nên có thể sửa mapping và chạy lại nhiều lần.
 
 - Tạo cycle "Quý I/2026" (01/01–31/03/2026, status `closed`).
 - Seed 94/95 cán bộ (447 hành động trừ cán bộ chưa có tài khoản).
-- **CHU THỊ THỦY (Phòng TCTH, 7 hành động)** chưa có profile trong app —
-  sau khi tạo tài khoản cho cán bộ này, chạy lại script để bổ sung.
 - Báo cáo khớp tên + mapping skill đã gửi quản trị viên soát.
+
+## Cập nhật ngày 15/07/2026
+
+- **CHU THỊ THỦY (Phòng TCTH)** đã được tạo tài khoản — đã bổ sung phiếu Q1
+  (5 hành động 2.1 + 2 hành động AI) đọc trực tiếp từ file Word gốc
+  `CHU THI THUY_BM01.docx`. Tổng dữ liệu Q1 giờ đủ **95 phiếu / 263 hành động
+  2.1 / 184 hành động 2.2** — khớp file Excel tổng hợp.
+- **NGUYỄN THỊ PHƯỢNG (Phòng TCTH)**: đã gộp/xoá tài khoản trùng; tài khoản
+  đúng là `phuongnt5151089@gmail.com` (profile `cf9cdd38`) — chính là tài khoản
+  mà seed đã trỏ vào, dữ liệu Q1 của chị nguyên vẹn.
