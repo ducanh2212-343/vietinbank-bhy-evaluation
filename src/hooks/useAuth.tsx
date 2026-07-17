@@ -216,6 +216,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [isAdmin, profileId]);
 
   const signOut = async () => {
+    // Xóa mốc "hoạt động cuối" để lần đăng nhập sau không bị guard idle đăng xuất oan
+    try { localStorage.removeItem('343skill:last-activity'); } catch { /* noop */ }
     await supabase.auth.signOut();
     setUser(null);
     setRoles([]);

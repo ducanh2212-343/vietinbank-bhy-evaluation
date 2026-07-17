@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { BrandTree, BrandBadge } from '@/components/branding/BrandAssets';
 import { CORE_VALUES as VALUES } from '@/lib/coreValues';
+import { markActivity } from '@/lib/idleSession';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -23,6 +24,7 @@ export default function Login() {
     if (error) {
       toast({ title: 'Đăng nhập thất bại', description: error.message, variant: 'destructive' });
     } else {
+      markActivity(); // đăng nhập mới = mốc hoạt động mới (tránh guard idle đăng xuất oan vì mốc cũ)
       navigate('/');
     }
   };
