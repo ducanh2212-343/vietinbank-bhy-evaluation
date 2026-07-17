@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { KeyRound, AlertTriangle } from 'lucide-react';
+import { markActivity } from '@/lib/idleSession';
 
 /**
  * Trang đặt lại mật khẩu qua liên kết email (phiên recovery).
@@ -67,6 +68,7 @@ export default function ResetPassword() {
       return;
     }
     toast({ title: 'Đã đặt lại mật khẩu thành công' });
+    markActivity(); // phiên mới sau khi đặt lại mật khẩu — tránh guard idle đăng xuất oan vì mốc cũ
     navigate('/tong-quan', { replace: true });
   };
 
