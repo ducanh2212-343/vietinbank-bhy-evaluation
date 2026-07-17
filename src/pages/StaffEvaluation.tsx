@@ -34,7 +34,7 @@ import {
   filterQuarterCycles,
   getQuarterFormSubmission,
   mergeAllSkillAssessments,
-  pickDefaultCycle,
+  pickActiveCycle,
   buildSkillAssessmentRows,
   saveEvaluationChildren,
 } from '@/lib/evaluationPersistence';
@@ -56,7 +56,7 @@ export default function StaffEvaluation() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<any>(null);
-  const [cycles, setCycles] = useState<{ id: string; name: string }[]>([]);
+  const [cycles, setCycles] = useState<{ id: string; name: string; status?: string }[]>([]);
   const [allSkills, setAllSkills] = useState<any[]>([]);
   const [coreSkillConfigs, setCoreSkillConfigs] = useState<any[]>([]);
 
@@ -140,8 +140,11 @@ export default function StaffEvaluation() {
 
   // Cán bộ tự mở phiếu của mình: chỉ sửa khi nháp hoặc bị trả lại
   const canEmployeeEditSelf = isSelfEval && (formStatus === 'draft' || formStatus === 'returned');
+  // Khái niệm chốt: MỞ KỲ = admin bật in_progress (có thể từ ~20 tháng cuối quý cho TP kịp
+  // đánh giá) → được nhập; ĐÓNG KỲ = chỉ xem. Ngày trên kỳ là nhãn, không chặn nhập theo ngày.
+  const cycleOpen = cycles.find((c) => c.id === cycleId)?.status === 'in_progress';
   // Ai được bấm "Lưu nháp" phiếu này
-  const canSaveForm = isSelfEval ? canEmployeeEditSelf : (canEditManagerAssessment || isAdmin);
+  const canSaveForm = cycleOpen && (isSelfEval ? canEmployeeEditSelf : (canEditManagerAssessment || isAdmin));
 
   // Can the manager confirm review? Needs all core skills graded, all 6 attitudes graded,
   // and at least one of overallReview / remark / managerConclusion filled.
@@ -172,7 +175,7 @@ export default function StaffEvaluation() {
     const [profRes, skillRes, cycleRes] = await Promise.all([
       supabase.from('profiles').select('*, departments!profiles_department_id_fkey(name), positions!profiles_position_id_fkey(name)').eq('id', id).maybeSingle(),
       supabase.from('skill_catalog').select('*').eq('is_active', true).order('sort_order'),
-      supabase.from('evaluation_cycles').select('id, name').eq('cycle_type', 'quarterly').order('start_date'),
+      supabase.from('evaluation_cycles').select('id, name, status').eq('cycle_type', 'quarterly').order('start_date'),
     ]);
 
     let prof = profRes.data;
@@ -201,7 +204,8 @@ export default function StaffEvaluation() {
     const quarterCycles = filterQuarterCycles(cycleRes.data || []);
     setCycles(quarterCycles);
 
-    const activeCycleId = cycleId || pickDefaultCycle(quarterCycles)?.id || '';
+    // Mặc định là kỳ ĐANG MỞ (in_progress) — không lấy kỳ mới nhất theo ngày (VD Quý III đã đóng)
+    const activeCycleId = cycleId || pickActiveCycle(quarterCycles)?.id || '';
     if (activeCycleId && activeCycleId !== cycleId) {
       setCycleId(activeCycleId);
     }
@@ -509,6 +513,14 @@ export default function StaffEvaluation() {
 
   const handleSave = async (submit = false): Promise<boolean> => {
     if (!id || !cycleId) return false;
+    if (!cycleOpen) {
+      toast({
+        title: 'Kỳ đánh giá chưa mở hoặc đã đóng',
+        description: 'Quyền nhập phụ thuộc việc TCTH mở kỳ: kỳ đang mở mới được đánh giá. Cần chỉnh sửa kỳ đã đóng thì mở lại kỳ trong Quản lý kỳ đánh giá.',
+        variant: 'destructive',
+      });
+      return false;
+    }
     if (!canSaveForm) {
       toast({
         title: 'Bạn không có quyền lưu phiếu này',
@@ -751,6 +763,14 @@ export default function StaffEvaluation() {
   // --- Status action handlers (TP / PGĐ) ---
   const updateFormStatus = async (payload: Record<string, any>, successMsg: string) => {
     if (!formId) return;
+    if (!cycleOpen) {
+      toast({
+        title: 'Kỳ đánh giá chưa mở hoặc đã đóng',
+        description: 'Không thể duyệt/trả phiếu của kỳ không mở. Mở lại kỳ trong Quản lý kỳ đánh giá nếu cần.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setActionLoading(true);
     const { error } = await supabase.from('form_submissions').update(payload as any).eq('id', formId);
     setActionLoading(false);
