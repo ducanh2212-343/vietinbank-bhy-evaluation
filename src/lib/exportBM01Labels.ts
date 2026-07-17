@@ -53,6 +53,13 @@ export const FORM_STATUS_PRINT_LABEL: Record<string, string> = {
 export const isApprovedFormStatus = (status: string | null | undefined) =>
   status === 'reviewed' || status === 'approved' || status === 'closed';
 
+/** Số biểu mẫu theo kỳ quý: Quý I → 01, Quý II → 02, Quý III → 03, Quý IV → 04 */
+export function bmNumberForCycle(cycleName: string | null | undefined): string {
+  const m = (cycleName || '').match(/Quý\s+(IV|III|II|I)\b/i);
+  const map: Record<string, string> = { I: '01', II: '02', III: '03', IV: '04' };
+  return m ? map[m[1].toUpperCase()] : '01';
+}
+
 export const fmtSignDate = (iso: string | null | undefined) =>
   iso
     ? new Date(iso).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })

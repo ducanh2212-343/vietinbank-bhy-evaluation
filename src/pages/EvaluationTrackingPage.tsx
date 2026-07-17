@@ -312,7 +312,8 @@ export default function EvaluationTrackingPage() {
         return;
       }
       setBulkProgress('Đang dựng file Word…');
-      await exportBM01BatchToWord(items, `BM01_HoSo_${cycleName.replace(/[/\s]+/g, '_')}.docx`);
+      const { bmNumberForCycle } = await import('@/lib/exportBM01Labels');
+      await exportBM01BatchToWord(items, `BM${bmNumberForCycle(cycleName)}_HoSo_${cycleName.replace(/[/\s]+/g, '_')}.docx`);
       toast.success(`Đã tải file Word hồ sơ gồm ${items.length} phiếu đã phê duyệt.`);
     } catch (e) {
       toast.error('Lỗi xuất hồ sơ: ' + (e instanceof Error ? e.message : String(e)));

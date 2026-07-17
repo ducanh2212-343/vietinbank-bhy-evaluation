@@ -16,7 +16,7 @@ import { DEFAULT_ONE_ON_ONE_QUESTIONS, type OneOnOneQuestion } from '@/lib/oneOn
 import { LEVEL_LABELS } from '@/lib/skillLevels';
 import {
   ATTITUDE_LABEL, IMPROVEMENT_STATUS_LABEL, FORM_STATUS_PRINT_LABEL,
-  focusLabels, fmtSignDate, isApprovedFormStatus,
+  focusLabels, fmtSignDate, isApprovedFormStatus, bmNumberForCycle,
 } from '@/lib/exportBM01Labels';
 
 const border = { style: BorderStyle.SINGLE, size: 4, color: 'BFBFBF' };
@@ -389,7 +389,7 @@ function headerChildren(data: BM01ExportData, exportedAtText: string): (Paragrap
   return [
     quocHieu,
     new Paragraph({ alignment: AlignmentType.CENTER, heading: HeadingLevel.HEADING_1,
-      children: [new TextRun({ text: 'PHIẾU ĐÁNH GIÁ NĂNG LỰC CÁN BỘ (BM01)', bold: true, size: 28 })] }),
+      children: [new TextRun({ text: `PHIẾU ĐÁNH GIÁ NĂNG LỰC CÁN BỘ — BIỂU MẪU ${bmNumberForCycle(cycleName)}`, bold: true, size: 28 })] }),
     new Paragraph({ alignment: AlignmentType.CENTER,
       children: [new TextRun({ text: `Kỳ đánh giá: ${cycleName}`, italics: true, size: 24 })] }),
     new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({
@@ -756,7 +756,7 @@ const fmtExportedAt = () => new Date().toLocaleString('vi-VN', {
 export function buildBM01WordDoc(items: BM01ExportData[], exportedAtText = fmtExportedAt()): Document {
   const sections: ISectionOptions[] = items.map((data) => {
     const code = rutGonMa(data.extras?.formCode);
-    const footerLabel = `Biểu mẫu BM01 · ${data.profile.full_name || ''} · Kỳ: ${data.cycleName}${code ? ` · Mã: ${code}` : ''}`;
+    const footerLabel = `Biểu mẫu ${bmNumberForCycle(data.cycleName)} · ${data.profile.full_name || ''} · Kỳ: ${data.cycleName}${code ? ` · Mã: ${code}` : ''}`;
     const header = makeHeader(data.extras?.formStatus);
     return {
       properties: {
@@ -785,7 +785,7 @@ const safeFilePart = (s: string) => s.replace(/[/\s]+/g, '_');
 export async function exportBM01ToWord(data: BM01ExportData) {
   const doc = buildBM01WordDoc([data]);
   const blob = await Packer.toBlob(doc);
-  saveAs(blob, `BM01_${safeFilePart(data.profile.full_name || 'CanBo')}_${safeFilePart(data.cycleName)}.docx`);
+  saveAs(blob, `BM${bmNumberForCycle(data.cycleName)}_${safeFilePart(data.profile.full_name || 'CanBo')}_${safeFilePart(data.cycleName)}.docx`);
 }
 
 /** Gộp nhiều phiếu của một kỳ thành MỘT file Word để in lưu hồ sơ. */

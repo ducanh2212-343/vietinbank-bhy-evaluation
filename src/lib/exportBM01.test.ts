@@ -4,6 +4,7 @@ const saveAsMock = vi.fn();
 vi.mock('file-saver', () => ({ saveAs: (...args: unknown[]) => saveAsMock(...args) }));
 
 import { exportBM01ToWord } from './exportBM01';
+import { bmNumberForCycle } from './exportBM01Labels';
 
 async function blobToArrayBuffer(blob: Blob): Promise<ArrayBuffer> {
   if (typeof blob.arrayBuffer === 'function') return blob.arrayBuffer();
@@ -49,6 +50,16 @@ const baseAttitude = {
   support_needed: 'Thời gian', improvement_status: 'in_progress' as const,
 };
 
+describe('bmNumberForCycle', () => {
+  it('suy số biểu mẫu từ tên kỳ quý', () => {
+    expect(bmNumberForCycle('Quý I/2026')).toBe('01');
+    expect(bmNumberForCycle('Quý II/2026')).toBe('02');
+    expect(bmNumberForCycle('Quý III/2026')).toBe('03');
+    expect(bmNumberForCycle('Quý IV/2026')).toBe('04');
+    expect(bmNumberForCycle('')).toBe('01'); // không rõ kỳ → mặc định 01
+  });
+});
+
 describe('exportBM01ToWord', () => {
   it('sinh biểu mẫu Word đầy đủ mục, thể thức hành chính và kế hoạch kỳ tới', async () => {
     saveAsMock.mockClear();
@@ -85,13 +96,14 @@ describe('exportBM01ToWord', () => {
 
     expect(saveAsMock).toHaveBeenCalledTimes(1);
     const [blob, filename] = saveAsMock.mock.calls[0] as [Blob, string];
-    expect(filename).toBe('BM01_Vũ_Thị_Thu_Hà_Quý_III_2026.docx');
+    // Kỳ Quý III → Biểu mẫu 03 (tên biểu mẫu theo kỳ quý)
+    expect(filename).toBe('BM03_Vũ_Thị_Thu_Hà_Quý_III_2026.docx');
 
     const xml = await extractDocumentXml(blob);
     for (const marker of [
       'NGÂN HÀNG TMCP CÔNG THƯƠNG VIỆT NAM',
       'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM',
-      'PHIẾU ĐÁNH GIÁ NĂNG LỰC CÁN BỘ (BM01)',
+      'PHIẾU ĐÁNH GIÁ NĂNG LỰC CÁN BỘ — BIỂU MẪU 03',
       'Đã duyệt cấp PGĐ/GĐ', // trạng thái phiếu
       'KẾT QUẢ TỔNG HỢP',
       'A. ĐÁNH GIÁ KỸ NĂNG LÕI THEO VỊ TRÍ',
