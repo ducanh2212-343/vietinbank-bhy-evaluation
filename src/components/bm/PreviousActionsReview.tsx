@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Plus, Save, Trash2, History } from 'lucide-react';
 import { toast } from 'sonner';
+import { viErrorMessage } from '@/lib/viError';
 
 type SourceType = 'skill' | 'attitude' | 'ai';
 
@@ -260,7 +261,7 @@ export function PreviousActionsReview({ formId, previousFormId, previousCycleNam
       await load();
     } catch (e: any) {
       console.error(e);
-      toast.error(e.message || 'Lỗi khi lưu');
+      toast.error(viErrorMessage(e));
     } finally { setSaving(false); }
   };
 

@@ -41,6 +41,7 @@ import {
 import { OverallReviewBlock, type OverallReviewValue } from '@/components/evaluation/OverallReviewBlock';
 import { StarClassificationBlock } from '@/components/evaluation/StarClassificationBlock';
 import { getReviewerLevel, getOverallReviewField } from '@/lib/reviewerScope';
+import { viErrorMessage } from '@/lib/viError';
 import { useCycleOneOnOneQuestions } from '@/hooks/useCycleOneOnOneQuestions';
 
 const hasEmployeeOneOnOneAnswers = (answers: OneOnOneAnswers) =>
@@ -730,9 +731,11 @@ export default function StaffEvaluation() {
       const { data: existingEval } = await supabase.from('admin_evaluations')
         .select('id').eq('employee_id', id).eq('cycle_id', cycleId).limit(1);
       if (existingEval?.[0]) {
-        await supabase.from('admin_evaluations').update(evalPayload).eq('id', existingEval[0].id);
+        const { error: evalErr } = await supabase.from('admin_evaluations').update(evalPayload).eq('id', existingEval[0].id);
+        if (evalErr) throw evalErr;
       } else {
-        await supabase.from('admin_evaluations').insert(evalPayload);
+        const { error: evalErr } = await supabase.from('admin_evaluations').insert(evalPayload);
+        if (evalErr) throw evalErr;
       }
 
       // status will be refreshed by loadData()
@@ -741,7 +744,7 @@ export default function StaffEvaluation() {
       return true;
     } catch (err: any) {
       console.error(err);
-      toast({ title: 'Lỗi khi lưu', description: err.message, variant: 'destructive' });
+      toast({ title: 'Lỗi khi lưu', description: viErrorMessage(err), variant: 'destructive' });
       return false;
     } finally {
       setSaving(false);
@@ -755,7 +758,7 @@ export default function StaffEvaluation() {
     const { error } = await supabase.from('form_submissions').update(payload as any).eq('id', formId);
     setActionLoading(false);
     if (error) {
-      toast({ title: 'Lỗi cập nhật trạng thái', description: error.message, variant: 'destructive' });
+      toast({ title: 'Lỗi cập nhật trạng thái', description: viErrorMessage(error), variant: 'destructive' });
       return;
     }
     toast({ title: successMsg });

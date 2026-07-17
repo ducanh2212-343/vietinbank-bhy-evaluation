@@ -40,6 +40,7 @@ import { validateSubmission, validateSubmissionDetailed } from '@/lib/evaluation
 import { useCycleOneOnOneQuestions } from '@/hooks/useCycleOneOnOneQuestions';
 import { SubmissionChecklist } from '@/components/evaluation/SubmissionChecklist';
 import { useHistoricalSkillLevels, mergeAssessedLevels } from '@/hooks/useHistoricalSkillLevels';
+import { viErrorMessage } from '@/lib/viError';
 
 export default function SelfAssessmentPage() {
   const { user, profileId } = useAuth();
@@ -678,7 +679,7 @@ export default function SelfAssessmentPage() {
       await loadData();
     } catch (err: any) {
       console.error('Save error:', err);
-      toast.error(err.message || 'Lỗi khi lưu. Vui lòng thử lại.');
+      toast.error(viErrorMessage(err));
     } finally {
       setSaving(false);
       setSubmitting(false);

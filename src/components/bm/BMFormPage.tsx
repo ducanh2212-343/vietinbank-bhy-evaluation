@@ -20,6 +20,7 @@ import { AttitudeActionsBlock, type AttitudeAction } from './AttitudeActionsBloc
 import { AIActionsBlock, type AIAction } from './AIActionsBlock';
 import { AICompetencyPortrait } from './AICompetencyPortrait';
 import { PreviousActionsReview } from './PreviousActionsReview';
+import { viErrorMessage } from '@/lib/viError';
 import { ATTITUDE_DIMENSIONS } from './AttitudeConstants';
 import {
   filterQuarterCycles,
@@ -639,7 +640,7 @@ export function BMFormPage({ config }: Props) {
       await loadData();
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || 'Lỗi khi lưu. Vui lòng thử lại.');
+      toast.error(viErrorMessage(err));
     } finally {
       setSaving(false);
     }
