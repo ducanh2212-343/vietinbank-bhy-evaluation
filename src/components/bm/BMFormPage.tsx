@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Save, Send, Loader2, FileDown } from 'lucide-react';
 import { AIAdvisorPanel } from '@/components/ai/AIAdvisorPanel';
-// exportBM01ToWord imported lazily on demand (keeps docx out of main bundle)
+// exportBM01ToWord imported lazily on demand (giữ docx ngoài bundle chính)
 import { EvalSectionA } from '@/components/evaluation/EvalSectionA';
 import { EvalSectionB, type CoreSkillAssessment } from '@/components/evaluation/EvalSectionB';
 import { EvalSectionC, type AttitudeAssessment } from '@/components/evaluation/EvalSectionC';
@@ -930,7 +930,7 @@ export function BMFormPage({ config }: Props) {
             await exportBM01ToWord({ profile: profile || {}, cycleName: targetCycleName, coreAssessments, supplementaryAssessments: suppAssessments, attitudeAssessments, oneOnOne: oneOnOneEnabled ? { enabled: true, answers: oneOnOneAnswers } : undefined, extras });
             toast.success('Đã tải file Word');
           } catch (e: any) { toast.error('Lỗi xuất Word: ' + (e.message || '')); }
-        }} disabled={isBusy} title="Xuất biểu mẫu Word">
+        }} disabled={isBusy} title="Xuất biểu mẫu Word (bản nháp có dấu chìm, chỉ phiếu đã duyệt in sạch để ký)">
           <FileDown className="w-4 h-4" />
         </Button>
         <Button onClick={saveDraft} disabled={isBusy} className="flex-1 min-w-[140px]">

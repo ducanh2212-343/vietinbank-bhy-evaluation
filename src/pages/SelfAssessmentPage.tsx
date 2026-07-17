@@ -27,7 +27,7 @@ import { EvalSectionReviewer } from '@/components/evaluation/EvalSectionReviewer
 import { EvalSectionPGD } from '@/components/evaluation/EvalSectionPGD';
 import { STATUS_FROM_DB, STATUS_TO_DB, sanitizeRating } from '@/components/evaluation/attitudeFocusOptions';
 import { AIAdvisorPanel } from '@/components/ai/AIAdvisorPanel';
-// exportBM01ToWord imported lazily on demand (keeps docx out of main bundle)
+// exportBM01ToWord imported lazily on demand (giữ docx ngoài bundle chính)
 import {
   filterQuarterCycles,
   getQuarterFormSubmission,
@@ -940,7 +940,7 @@ export default function SelfAssessmentPage() {
             });
             toast.success('Đã tải file Word');
           } catch (e: any) { toast.error('Lỗi xuất Word: ' + (e.message || '')); }
-        }} disabled={isBusy} title="Xuất biểu mẫu Word">
+        }} disabled={isBusy} title="Xuất biểu mẫu Word (bản nháp có dấu chìm, chỉ phiếu đã duyệt in sạch để ký)">
           <FileDown className="w-4 h-4" />
         </Button>
         <Button
