@@ -227,13 +227,14 @@ function plainCell(paras: Paragraph[], width: number, align?: (typeof AlignmentT
 const sectionTitle = (text: string) => p(text, { bold: true, size: 24 });
 
 // ===== Watermark theo trạng thái phiếu =====
-/** Chữ watermark theo trạng thái; trả null nếu phiếu đã phê duyệt (in sạch để ký chính thức) */
+/** Chữ watermark theo trạng thái — dùng chữ NGẮN để không che nội dung khi đọc.
+ *  Trả null nếu phiếu đã phê duyệt (in sạch để ký chính thức). */
 function watermarkTextForStatus(status?: string): string | null {
   if (isApprovedFormStatus(status)) return null;
   switch (status) {
     case 'submitted': return 'CHỜ DUYỆT';
-    case 'returned': return 'TRẢ LẠI — CHỈNH SỬA';
-    default: return 'DỰ THẢO — CHƯA PHÊ DUYỆT';
+    case 'returned': return 'TRẢ LẠI';
+    default: return 'DRAFT';
   }
 }
 
@@ -255,9 +256,9 @@ function watermarkPng(text: string): Uint8Array {
     if (!ctx) return TRANSPARENT_PNG;
     ctx.translate(c.width / 2, c.height / 2);
     ctx.rotate(-Math.atan2(c.height, c.width));
-    const size = text.length > 14 ? 120 : 170;
+    const size = text.length > 14 ? 120 : 200;
     ctx.font = `bold ${size}px "Times New Roman", serif`;
-    ctx.fillStyle = 'rgba(200, 40, 40, 0.13)';
+    ctx.fillStyle = 'rgba(200, 40, 40, 0.10)';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(text, 0, 0);
