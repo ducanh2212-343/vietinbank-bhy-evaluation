@@ -40,7 +40,7 @@ export function ReviewerActionAlert({ onActionClick }: Props) {
   async function load() {
     const { data: cyclesData } = await supabase
       .from('evaluation_cycles')
-      .select('id, name, end_date, start_date, submission_deadline')
+      .select('id, name, end_date, start_date, submission_deadline, status')
       .order('start_date', { ascending: false });
 
     let profilesQuery = supabase
@@ -59,7 +59,8 @@ export function ReviewerActionAlert({ onActionClick }: Props) {
 
     const profileIds = new Set((profilesRes.data || []).map((p) => p.id));
     const cycleMap = new Map((cyclesData || []).map((c) => [c.id, c]));
-    const activeCycle = (cyclesData || [])[0];
+    // Kỳ đang làm việc = kỳ in_progress mới nhất (không lấy kỳ mới nhất theo ngày — có thể đã đóng)
+    const activeCycle = (cyclesData || []).find((c: any) => c.status === 'in_progress') || (cyclesData || [])[0];
 
     // Latest submission per employee+cycle
     const subKey = (eid: string, cid: string) => `${eid}|${cid}`;
@@ -82,6 +83,9 @@ export function ReviewerActionAlert({ onActionClick }: Props) {
       for (const cid of cyclesForEmp) {
         const sub = subMap.get(subKey(pid, cid)) || null;
         const cycle = cycleMap.get(cid);
+        // Chỉ nhắc việc thuộc kỳ ĐANG MỞ — kỳ đã đóng (Quý I đã khóa, Quý III chưa tới đợt)
+        // không còn/chưa có việc để xử lý, đếm vào chỉ gây nhiễu ("24 bản cần xử lý").
+        if ((cycle as any)?.status !== 'in_progress') continue;
         const display = sub ? toDisplayStatus(sub) : 'not_started';
         out.push({
           display,

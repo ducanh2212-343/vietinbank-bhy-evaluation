@@ -161,7 +161,11 @@ export default function EvaluationTrackingPage() {
     (evalsRes.data || []).forEach((e) => evalMap.set(subKey(e.employee_id, e.cycle_id || ''), e));
 
     // 5. Build rows: one per (employee × cycle) for any cycle with a submission, OR active cycle only if none
-    const activeCycle = (cyclesData || [])[0]; // most recent by start_date desc
+    // Kỳ "đang làm việc" = kỳ in_progress MỚI NHẤT (admin mở/đóng thủ công) — KHÔNG lấy kỳ
+    // mới nhất theo ngày: Quý III/2026 tạo sẵn nhưng đã đóng, phải hết 30/9 mới đánh giá.
+    // Trước đây lấy cyclesData[0] khiến dòng "Chưa bắt đầu" sinh cho kỳ Quý III và
+    // lãnh đạo bấm Mở là tạo được phiếu ở kỳ chưa tới đợt.
+    const activeCycle = (cyclesData || []).find((c) => c.status === 'in_progress') || (cyclesData || [])[0];
     const rowsOut: Row[] = [];
     for (const p of profiles) {
       // Determine which cycles to include for this employee

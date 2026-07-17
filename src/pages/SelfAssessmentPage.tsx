@@ -177,9 +177,11 @@ export default function SelfAssessmentPage() {
     // đánh giá nữa (quy trình: admin mở/đóng kỳ thủ công ở Quản lý chu kỳ). Nếu không
     // còn kỳ nào mở thì tạm hiện toàn bộ để trang không bị kẹt.
     const openCycles = quarterCycles.filter((c: any) => c.status === 'in_progress');
-    setCycles(openCycles.length ? openCycles : quarterCycles);
+    // KHÔNG fallback về toàn bộ kỳ: không còn kỳ mở thì phần tự đánh giá tạm nghỉ,
+    // tránh cán bộ chọn nhầm kỳ đã đóng/chưa tới đợt (Quý III chỉ đánh giá sau 30/9).
+    setCycles(openCycles);
 
-    const activeCycleId = cycleId || pickActiveCycle(quarterCycles)?.id || '';
+    const activeCycleId = cycleId || (openCycles.length ? pickActiveCycle(quarterCycles)?.id || '' : '');
     if (activeCycleId && activeCycleId !== cycleId) {
       setCycleId(activeCycleId);
     }
@@ -583,6 +585,12 @@ export default function SelfAssessmentPage() {
   const handleSave = async (submit = false, reviewerIdOverride?: string) => {
     if (!profileId || !cycleId) {
       toast.error('Thiếu thông tin kỳ đánh giá hoặc hồ sơ cán bộ');
+      return;
+    }
+    // Kỳ phải ĐANG MỞ mới được ghi — phiếu trót tạo ở kỳ đã đóng (VD Quý III trước bản vá) chỉ xem
+    const cycleStatus = (allCycles as any[]).find((c) => c.id === cycleId)?.status;
+    if (cycleStatus && cycleStatus !== 'in_progress') {
+      toast.error('Kỳ này chưa mở hoặc đã đóng — quý kết thúc rồi mới đánh giá (VD Quý III đánh giá sau 30/9). Vui lòng chọn kỳ đang mở.');
       return;
     }
     if (!canEmployeeEdit) {
