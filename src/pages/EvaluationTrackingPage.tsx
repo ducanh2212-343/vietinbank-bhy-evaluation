@@ -302,21 +302,18 @@ export default function EvaluationTrackingPage() {
     setBulkExporting(true);
     setBulkProgress('Đang nạp dữ liệu…');
     try {
-      const [{ loadApprovedFormsForCycle }, { exportBM01BatchToPdf }] = await Promise.all([
+      const [{ loadApprovedFormsForCycle }, { exportBM01BatchToWord }] = await Promise.all([
         import('@/lib/exportBM01Bulk'),
-        import('@/lib/exportBM01Pdf'),
+        import('@/lib/exportBM01'),
       ]);
       const { cycleName, items } = await loadApprovedFormsForCycle(cycleFilter, (d, t) => setBulkProgress(`Nạp dữ liệu ${d}/${t}…`));
       if (!items.length) {
         toast.info('Kỳ này chưa có phiếu nào được phê duyệt — hồ sơ chỉ lưu phiếu đã duyệt.');
         return;
       }
-      await exportBM01BatchToPdf(
-        items,
-        `BM01_HoSo_${cycleName.replace(/[/\s]+/g, '_')}.pdf`,
-        (d, t) => setBulkProgress(`Dựng bản in ${d}/${t}…`),
-      );
-      toast.success(`Đã tải file PDF hồ sơ gồm ${items.length} phiếu đã phê duyệt.`);
+      setBulkProgress('Đang dựng file Word…');
+      await exportBM01BatchToWord(items, `BM01_HoSo_${cycleName.replace(/[/\s]+/g, '_')}.docx`);
+      toast.success(`Đã tải file Word hồ sơ gồm ${items.length} phiếu đã phê duyệt.`);
     } catch (e) {
       toast.error('Lỗi xuất hồ sơ: ' + (e instanceof Error ? e.message : String(e)));
     } finally {
@@ -403,10 +400,10 @@ export default function EvaluationTrackingPage() {
               disabled={bulkExporting || cycleFilter === 'all'}
               title={cycleFilter === 'all'
                 ? 'Chọn một kỳ cụ thể để xuất hồ sơ'
-                : 'Tải một file PDF gộp toàn bộ phiếu ĐÃ PHÊ DUYỆT của kỳ — in lưu hồ sơ nhân sự'}
+                : 'Tải một file Word gộp toàn bộ phiếu ĐÃ PHÊ DUYỆT của kỳ — in lưu hồ sơ nhân sự'}
             >
               {bulkExporting ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <FileDown className="w-4 h-4 mr-1.5" />}
-              {bulkExporting ? (bulkProgress || 'Đang xuất…') : 'Xuất PDF hồ sơ kỳ'}
+              {bulkExporting ? (bulkProgress || 'Đang xuất…') : 'Xuất Word hồ sơ kỳ'}
             </Button>
           </div>
 

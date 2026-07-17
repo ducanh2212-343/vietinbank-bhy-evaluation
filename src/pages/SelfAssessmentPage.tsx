@@ -27,7 +27,7 @@ import { EvalSectionReviewer } from '@/components/evaluation/EvalSectionReviewer
 import { EvalSectionPGD } from '@/components/evaluation/EvalSectionPGD';
 import { STATUS_FROM_DB, STATUS_TO_DB, sanitizeRating } from '@/components/evaluation/attitudeFocusOptions';
 import { AIAdvisorPanel } from '@/components/ai/AIAdvisorPanel';
-// exportBM01ToPdf imported lazily on demand (giữ code xuất bản in ngoài bundle chính)
+// exportBM01ToWord imported lazily on demand (giữ docx ngoài bundle chính)
 import {
   filterQuarterCycles,
   getQuarterFormSubmission,
@@ -902,7 +902,7 @@ export default function SelfAssessmentPage() {
         <Button variant="outline" onClick={async () => {
           try {
             const cycleName = cycles.find(c => c.id === cycleId)?.name || 'Quý';
-            const { exportBM01ToPdf } = await import('@/lib/exportBM01Pdf');
+            const { exportBM01ToWord } = await import('@/lib/exportBM01');
             // Lấy đủ nội dung theo quy trình: rà soát KH kỳ trước, câu hỏi 1-1,
             // nhận xét/đánh giá tổng thể của lãnh đạo và các mốc ký
             let extras;
@@ -915,7 +915,7 @@ export default function SelfAssessmentPage() {
                 previousCycleName,
               });
             }
-            await exportBM01ToPdf({
+            await exportBM01ToWord({
               profile: profile || {},
               cycleName,
               coreAssessments,
@@ -924,9 +924,9 @@ export default function SelfAssessmentPage() {
               oneOnOne: oneOnOneEnabled ? { enabled: true, answers: oneOnOneAnswers as any } : undefined,
               extras,
             });
-            toast.success('Đã tải file PDF');
-          } catch (e: any) { toast.error('Lỗi xuất PDF: ' + (e.message || '')); }
-        }} disabled={isBusy} title="Xuất biểu mẫu PDF">
+            toast.success('Đã tải file Word');
+          } catch (e: any) { toast.error('Lỗi xuất Word: ' + (e.message || '')); }
+        }} disabled={isBusy} title="Xuất biểu mẫu Word (bản nháp có dấu chìm, chỉ phiếu đã duyệt in sạch để ký)">
           <FileDown className="w-4 h-4" />
         </Button>
         <Button

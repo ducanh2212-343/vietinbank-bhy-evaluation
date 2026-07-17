@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Save, Send, Loader2, FileDown } from 'lucide-react';
 import { AIAdvisorPanel } from '@/components/ai/AIAdvisorPanel';
-// exportBM01ToPdf imported lazily on demand (giữ code xuất bản in ngoài bundle chính)
+// exportBM01ToWord imported lazily on demand (giữ docx ngoài bundle chính)
 import { EvalSectionA } from '@/components/evaluation/EvalSectionA';
 import { EvalSectionB, type CoreSkillAssessment } from '@/components/evaluation/EvalSectionB';
 import { EvalSectionC, type AttitudeAssessment } from '@/components/evaluation/EvalSectionC';
@@ -891,7 +891,7 @@ export function BMFormPage({ config }: Props) {
       >
         <Button variant="outline" onClick={async () => {
           try {
-            const { exportBM01ToPdf } = await import('@/lib/exportBM01Pdf');
+            const { exportBM01ToWord } = await import('@/lib/exportBM01');
             let extras;
             if (formId) {
               const { fetchBM01Extras } = await import('@/lib/exportBM01Data');
@@ -902,10 +902,10 @@ export function BMFormPage({ config }: Props) {
                 previousCycleName,
               });
             }
-            await exportBM01ToPdf({ profile: profile || {}, cycleName: targetCycleName, coreAssessments, supplementaryAssessments: suppAssessments, attitudeAssessments, oneOnOne: oneOnOneEnabled ? { enabled: true, answers: oneOnOneAnswers } : undefined, extras });
-            toast.success('Đã tải file PDF');
-          } catch (e: any) { toast.error('Lỗi xuất PDF: ' + (e.message || '')); }
-        }} disabled={isBusy} title="Xuất biểu mẫu PDF">
+            await exportBM01ToWord({ profile: profile || {}, cycleName: targetCycleName, coreAssessments, supplementaryAssessments: suppAssessments, attitudeAssessments, oneOnOne: oneOnOneEnabled ? { enabled: true, answers: oneOnOneAnswers } : undefined, extras });
+            toast.success('Đã tải file Word');
+          } catch (e: any) { toast.error('Lỗi xuất Word: ' + (e.message || '')); }
+        }} disabled={isBusy} title="Xuất biểu mẫu Word (bản nháp có dấu chìm, chỉ phiếu đã duyệt in sạch để ký)">
           <FileDown className="w-4 h-4" />
         </Button>
         <Button onClick={saveDraft} disabled={isBusy} className="flex-1 min-w-[140px]">
