@@ -1,3 +1,3 @@
-# 343 Phát triển nhân sự
+# 343 — Hệ thống quản trị năng lực nội bộ
 
-> Hệ thống quản trị năng lực nhân sự — VietinBank Chi nhánh Bắc Hưng Yên. Hỗ trợ đánh giá kỹ năng, thái độ, lập kế hoạch phát triển cá nhân (IDP) và quản lý tiềm năng cán bộ nhân viên.
+> Hệ thống nội bộ quản trị năng lực nhân sự — chỉ dành cho cán bộ được phân quyền. Hỗ trợ tự đánh giá kỹ năng, thái độ, lập kế hoạch phát triển cá nhân (IDP) và quản lý tiềm năng. Không phải cổng dịch vụ cho khách hàng và không thu thập thông tin thẻ/tài khoản/thanh toán.

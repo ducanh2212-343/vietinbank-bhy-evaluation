@@ -6,6 +6,7 @@ export {
   QUARTER_CYCLE_NAME_REGEX,
   filterQuarterCycles,
   pickDefaultCycle,
+  pickActiveCycle,
   quarterCycleOrder,
   type QuarterCycleOption,
 } from '@/lib/evaluationCycles';

@@ -3,6 +3,8 @@
 export interface QuarterCycleOption {
   id: string;
   name: string;
+  /** Trạng thái kỳ (in_progress/closed/...) — tùy nơi gọi có truyền hay không. */
+  status?: string;
 }
 
 export const QUARTER_CYCLE_NAME_REGEX = /^Quý (I|II|III|IV)\/(\d{4})$/;
@@ -24,6 +26,17 @@ export const filterQuarterCycles = <T extends QuarterCycleOption>(cycles: T[]): 
 /** Kỳ mặc định khi mở trang đánh giá: kỳ mới nhất (đã sắp theo quý tăng dần). */
 export const pickDefaultCycle = <T extends QuarterCycleOption>(sortedCycles: T[]): T | undefined =>
   sortedCycles.length ? sortedCycles[sortedCycles.length - 1] : undefined;
+
+/**
+ * Kỳ ĐANG ĐÁNH GIÁ theo vận hành thực tế: admin mở/đóng kỳ thủ công, và kỳ Quý II
+ * có thể được đánh giá vào đầu tháng 7 (ngày trên kỳ chỉ là nhãn quý, không phải
+ * cửa sổ nhập liệu). Vì vậy ưu tiên kỳ `in_progress` MỚI NHẤT; không có kỳ nào
+ * đang mở thì rơi về kỳ mới nhất để trang không trống.
+ */
+export const pickActiveCycle = <T extends QuarterCycleOption>(sortedCycles: T[]): T | undefined => {
+  const open = sortedCycles.filter((c) => c.status === 'in_progress');
+  return open.length ? open[open.length - 1] : pickDefaultCycle(sortedCycles);
+};
 
 /** Tên quý kế tiếp, ví dụ "Quý III/2026" → "Quý IV/2026", "Quý IV/2026" → "Quý I/2027". */
 export function nextQuarterName(name: string): string | null {

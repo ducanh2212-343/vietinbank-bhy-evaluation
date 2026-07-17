@@ -1,0 +1,14 @@
+{
+  "name": "343 — Hệ thống quản trị năng lực nội bộ",
+  "short_name": "343 Nội bộ",
+  "description": "Hệ thống nội bộ quản trị năng lực nhân sự — chỉ dành cho cán bộ được phân quyền.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1f2937",
+  "lang": "vi",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

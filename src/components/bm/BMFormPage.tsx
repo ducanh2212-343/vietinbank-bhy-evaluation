@@ -37,6 +37,13 @@ interface BMFormConfig {
   quarterLabel: string;
   cycleType: string;
   previousFormNumber?: '01' | '02';
+  /**
+   * Khi false: KHÔNG tự động kéo priorities/hành động kỳ trước vào Mục D và
+   * không kế thừa/bump level Mục B — cán bộ đánh giá lại từ đầu. Việc chuyển
+   * hành động chưa hoàn thành sang kỳ này chỉ thực hiện thủ công qua nút trong
+   * mục "Rà soát hành động kỳ trước". Mặc định true (giữ hành vi cũ cho BM03).
+   */
+  autoCarryOver?: boolean;
 }
 
 interface Props {
@@ -327,8 +334,10 @@ export function BMFormPage({ config }: Props) {
             priority_order: a.priority_order, status: a.status,
           })));
 
+          const allowAutoCarryOver = config.autoCarryOver !== false;
+
           // ====== AUTO CARRY-OVER (only on fresh current form) ======
-          if (isFreshCurrentForm && psp.data && psp.data.length > 0) {
+          if (allowAutoCarryOver && isFreshCurrentForm && psp.data && psp.data.length > 0) {
             const reviewMap = new Map<string, string>(); // source_action_id -> manager status
             (prv.data || []).forEach((r: any) => {
               if (r.source_action_type === 'skill' && r.source_action_id) {
@@ -427,7 +436,7 @@ export function BMFormPage({ config }: Props) {
           }
 
           // ====== AUTO CARRY-OVER for Section B (assessments) ======
-          if (prevSa.data && prevSa.data.length > 0) {
+          if (allowAutoCarryOver && prevSa.data && prevSa.data.length > 0) {
             const bumpMap = new Map<string, number>();
             const reviewMap2 = new Map<string, string>();
             (prv.data || []).forEach((r: any) => {
@@ -674,6 +683,22 @@ export function BMFormPage({ config }: Props) {
         <h1 className="page-header">Biểu mẫu {config.formNumber}: Rà soát {config.reviewQuarter} & Kế hoạch {config.planQuarter}</h1>
         <p className="page-subtitle">Kế hoạch hành động phát triển năng lực đến hết {config.quarterLabel}</p>
       </div>
+
+      {/* Banner: kỳ đánh giá lại từ đầu (BM02 — Quý I làm trên bản Word/PDF, không nhập app) */}
+      {config.autoCarryOver === false && (
+        <div className="rounded-lg border border-sky-300 bg-sky-50 p-3 text-sm space-y-1">
+          <div className="font-semibold text-sky-900">
+            Kỳ này đánh giá lại từ đầu toàn bộ kỹ năng &amp; thái độ
+          </div>
+          <p className="text-xs text-sky-800">
+            Biểu mẫu 01 kỳ trước thực hiện trên bản Word/PDF nên chưa đánh giá theo từng skill và nhóm thái độ.
+            Kỳ này anh/chị tự đánh giá đầy đủ Mục B (kỹ năng) và Mục C (thái độ) — hệ thống không điền sẵn từ kỳ trước.
+            Các hành động đã cam kết trong Biểu mẫu 01 (bản Word/PDF) đã được nhập sẵn ở mục
+            {' '}<span className="font-medium">"Rà soát hành động kỳ trước"</span> bên dưới: hãy cập nhật kết quả thực tế
+            từng hành động, và dùng nút chuyển để đưa hành động chưa hoàn thành vào kế hoạch kỳ này.
+          </p>
+        </div>
+      )}
 
       {/* A: Thông tin đánh giá - locked to this BM's quarter */}
       <EvalSectionA profile={profile} cycleId={cycleId} onCycleChange={setCycleId} cycles={cycles} lockedQuarter={targetCycleName} />

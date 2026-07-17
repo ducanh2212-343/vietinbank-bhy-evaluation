@@ -32,7 +32,7 @@ import {
   filterQuarterCycles,
   getQuarterFormSubmission,
   mergeAllSkillAssessments,
-  pickDefaultCycle,
+  pickActiveCycle,
   buildSkillAssessmentRows,
   saveEvaluationChildren,
 } from '@/lib/evaluationPersistence';
@@ -50,6 +50,8 @@ export default function SelfAssessmentPage() {
   const [submitting, setSubmitting] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [cycles, setCycles] = useState<{ id: string; name: string }[]>([]);
+  // Toàn bộ kỳ (kể cả đã đóng) — chỉ dùng tra cứu tên kỳ cho phiếu cũ/export
+  const [allCycles, setAllCycles] = useState<{ id: string; name: string }[]>([]);
   const [allSkills, setAllSkills] = useState<any[]>([]);
   const [coreSkillConfigs, setCoreSkillConfigs] = useState<any[]>([]);
 
@@ -95,7 +97,7 @@ export default function SelfAssessmentPage() {
     const [profRes, skillRes, cycleRes] = await Promise.all([
       supabase.from('profiles').select('*, departments!profiles_department_id_fkey(name), positions!profiles_position_id_fkey(name)').eq('id', profileId).maybeSingle(),
       supabase.from('skill_catalog').select('*').eq('is_active', true).order('sort_order'),
-      supabase.from('evaluation_cycles').select('id, name').eq('cycle_type', 'quarterly').order('start_date'),
+      supabase.from('evaluation_cycles').select('id, name, status').eq('cycle_type', 'quarterly').order('start_date'),
     ]);
 
     let prof = profRes.data;
@@ -170,9 +172,14 @@ export default function SelfAssessmentPage() {
     setSelectedReviewerId(prev => prev && opts.some(o => o.id === prev) ? prev : (opts[0]?.id || ''));
 
     const quarterCycles = filterQuarterCycles(cycleRes.data || []);
-    setCycles(quarterCycles);
+    setAllCycles(quarterCycles);
+    // Chỉ cho chọn kỳ ĐANG MỞ (in_progress) — kỳ admin đã đóng không hiện trong phần
+    // đánh giá nữa (quy trình: admin mở/đóng kỳ thủ công ở Quản lý chu kỳ). Nếu không
+    // còn kỳ nào mở thì tạm hiện toàn bộ để trang không bị kẹt.
+    const openCycles = quarterCycles.filter((c: any) => c.status === 'in_progress');
+    setCycles(openCycles.length ? openCycles : quarterCycles);
 
-    const activeCycleId = cycleId || pickDefaultCycle(quarterCycles)?.id || '';
+    const activeCycleId = cycleId || pickActiveCycle(quarterCycles)?.id || '';
     if (activeCycleId && activeCycleId !== cycleId) {
       setCycleId(activeCycleId);
     }
@@ -631,22 +638,27 @@ export default function SelfAssessmentPage() {
           submitPayload.return_reason = null;
           submitPayload.return_target = null;
         }
-        const { error } = await supabase.from('form_submissions').update(submitPayload).eq('id', fId);
+        const { data: uf, error } = await supabase.from('form_submissions')
+          .update(submitPayload).eq('id', fId).select('updated_at').single();
         if (error) throw error;
+        // Làm mới mốc khóa lạc quan sau chính lần ghi của mình (tránh chặn oan khi bước sau lỗi)
+        formUpdatedAtRef.current = (uf as any)?.updated_at ?? formUpdatedAtRef.current;
         setFormStatus('submitted');
 
         // Giám đốc chi nhánh không có cấp trên: tự đánh giá — tự phê duyệt.
         // Chạy đủ chuỗi trạng thái để giữ nguyên các mốc thời gian (nộp/duyệt/phê duyệt).
         if (isGdcnSelf && reviewerId === profileId) {
           const now = new Date().toISOString();
-          const { error: e1 } = await supabase.from('form_submissions')
+          const { data: uf1, error: e1 } = await supabase.from('form_submissions')
             .update({ status: 'reviewed', reviewer_id: profileId, reviewed_at: now })
-            .eq('id', fId);
+            .eq('id', fId).select('updated_at').single();
           if (e1) throw e1;
-          const { error: e2 } = await supabase.from('form_submissions')
+          formUpdatedAtRef.current = (uf1 as any)?.updated_at ?? formUpdatedAtRef.current;
+          const { data: uf2, error: e2 } = await supabase.from('form_submissions')
             .update({ status: 'approved', pgd_review_status: 'approved', pgd_reviewed_at: now })
-            .eq('id', fId);
+            .eq('id', fId).select('updated_at').single();
           if (e2) throw e2;
+          formUpdatedAtRef.current = (uf2 as any)?.updated_at ?? formUpdatedAtRef.current;
           setFormStatus('approved');
           toast.success('Giám đốc tự đánh giá — phiếu đã hoàn tất phê duyệt');
         } else {
@@ -654,11 +666,12 @@ export default function SelfAssessmentPage() {
         }
       } else {
         // Lưu nháp: KHÔNG đổi trạng thái (draft giữ draft, returned giữ returned)
-        const { error } = await supabase.from('form_submissions').update({
+        const { data: uf, error } = await supabase.from('form_submissions').update({
           one_on_one_enabled: oneOnOneEnabledPayload,
           one_on_one_answers: oneOnOneAnswers as any,
-        }).eq('id', fId);
+        }).eq('id', fId).select('updated_at').single();
         if (error) throw error;
+        formUpdatedAtRef.current = (uf as any)?.updated_at ?? formUpdatedAtRef.current;
         toast.success('Đã lưu nháp');
       }
 
@@ -901,7 +914,8 @@ export default function SelfAssessmentPage() {
       >
         <Button variant="outline" onClick={async () => {
           try {
-            const cycleName = cycles.find(c => c.id === cycleId)?.name || 'Quý';
+            const cycleName = allCycles.find(c => c.id === cycleId)?.name
+              || cycles.find(c => c.id === cycleId)?.name || 'Quý';
             const { exportBM01ToWord } = await import('@/lib/exportBM01');
             // Lấy đủ nội dung theo quy trình: rà soát KH kỳ trước, câu hỏi 1-1,
             // nhận xét/đánh giá tổng thể của lãnh đạo và các mốc ký

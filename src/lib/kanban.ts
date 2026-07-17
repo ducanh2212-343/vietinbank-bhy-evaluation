@@ -27,6 +27,8 @@ export interface KanbanCard {
   next_update_due_at: string | null;
   manager_confirmed_by: string | null;
   manager_confirmed_at: string | null;
+  /** Thẻ sinh từ "Dấu ấn Bắc Hưng Yên Mark" thì trỏ về leadership_marks.id */
+  leadership_mark_id?: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -49,6 +51,12 @@ export const SOURCE_LABEL: Record<SourceType, string> = {
   manager_assigned: 'Lãnh đạo giao',
   carry_over: 'Chuyển tiếp',
 };
+
+/** Nhãn nguồn của thẻ: thẻ sinh từ dấu ấn BGĐ giao hiển thị "Dấu ấn" thay vì nhãn chung. */
+export function getSourceLabel(card: Pick<KanbanCard, 'source_type' | 'leadership_mark_id'>): string {
+  if (card.leadership_mark_id) return 'Dấu ấn';
+  return SOURCE_LABEL[card.source_type];
+}
 
 export const QUICK_STATUS_OPTIONS = [
   'Bình thường',
@@ -140,8 +148,19 @@ export async function fetchWeeklyUpdateMap(cards: KanbanCard[]): Promise<WeeklyU
   return out;
 }
 
+/**
+ * Thẻ nào phải theo nhịp cập nhật hằng tuần?
+ * - Thẻ 'doing' (luồng tự đánh giá quen thuộc).
+ * - Thẻ DẤU ẤN (leadership_mark_id) tính từ lúc được giao — kể cả còn ở 'todo',
+ *   để bảng Kanban cá nhân và trang /dau-an báo đỏ NHẤT QUÁN với nhau.
+ */
+export function isWeeklyTracked(card: Pick<KanbanCard, 'kanban_status' | 'leadership_mark_id'>): boolean {
+  if (card.kanban_status === 'done') return false;
+  return card.kanban_status === 'doing' || !!card.leadership_mark_id;
+}
+
 export function getWeeklyUpdateStatus(card: KanbanCard, updated: boolean | undefined): WeeklyUpdateStatus {
-  if (card.kanban_status !== 'doing') return 'not_applicable';
+  if (!isWeeklyTracked(card)) return 'not_applicable';
   return updated ? 'updated_this_week' : 'not_updated_this_week';
 }
 
@@ -154,7 +173,7 @@ export function computeBadges(c: KanbanCard, now = new Date(), weeklyUpdated?: b
   const needsUpdate =
     c.kanban_status === 'doing' &&
     (!c.last_progress_at || daysBetween(now, new Date(c.last_progress_at)) > 7);
-  const isDoing = c.kanban_status === 'doing';
+  const weeklyTracked = isWeeklyTracked(c);
   return {
     needsUpdate,
     overdue,
@@ -163,8 +182,8 @@ export function computeBadges(c: KanbanCard, now = new Date(), weeklyUpdated?: b
     confirmed: c.completion_status === 'confirmed',
     returned: c.completion_status === 'returned',
     needsContent: isTitleMissing(c.title),
-    notUpdatedThisWeek: isDoing && weeklyUpdated === false,
-    updatedThisWeek: isDoing && weeklyUpdated === true,
+    notUpdatedThisWeek: weeklyTracked && weeklyUpdated === false,
+    updatedThisWeek: weeklyTracked && weeklyUpdated === true,
   };
 }
 

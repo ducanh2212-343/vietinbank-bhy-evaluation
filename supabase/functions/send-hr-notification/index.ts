@@ -11,11 +11,9 @@
 // Tôn trọng suppressed_emails + unsubscribe token; chống gửi trùng theo idempotency_key
 // (thư: 1 lần/kỳ/người; nhắc hạn: tối đa 1 lần/ngày/kỳ/người).
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { APP_URL, FROM_DOMAIN, SENDER_DOMAIN } from '../_shared/email-config.ts';
 
 const SITE_NAME = 'chieuthuc3';
-const SENDER_DOMAIN = 'notify.343skill.com';
-const FROM_DOMAIN = '343skill.com';
-const APP_URL = 'https://343skill.com';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

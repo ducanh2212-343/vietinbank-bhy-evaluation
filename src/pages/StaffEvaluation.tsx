@@ -578,8 +578,12 @@ export default function StaffEvaluation() {
       }
       // Cờ needs_manager_review_update chỉ tắt khi TP bấm "Xác nhận rà soát" (xem handleConfirmReview)
 
-      const { error: formError } = await supabase.from('form_submissions').update(formPayload).eq('id', fId);
+      const { data: updatedForm, error: formError } = await supabase
+        .from('form_submissions').update(formPayload).eq('id', fId).select('updated_at').single();
       if (formError) throw formError;
+      // Chính lần ghi này cũng đổi updated_at — làm mới mốc NGAY, để nếu bước lưu bảng con
+      // phía dưới lỗi giữa chừng thì lần bấm lưu lại không bị chặn oan "đã cập nhật ở nơi khác".
+      formUpdatedAtRef.current = (updatedForm as any)?.updated_at ?? formUpdatedAtRef.current;
 
       // Lưu toàn bộ bảng con qua RPC atomic (giữ UUID hành động → Kanban không reset; rollback nếu lỗi).
       // Business logic (dòng nào giữ, giá trị field, carry-over, remap) vẫn ở client; RPC chỉ ghi atomic.

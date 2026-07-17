@@ -1,7 +1,72 @@
 # Quản trị Email — Luồng tổng thể & Sổ tay vận hành
 
-**Ngày:** 05/07/2026. Domain `343skill.com` (đã transfer về Vercel), gửi qua **Resend** riêng
-(SPF/DKIM/DMARC = PASS), không còn phụ thuộc Lovable ở đường gửi.
+**Ngày:** 05/07/2026 — **cập nhật 14/07/2026: chuyển domain sang `chieuthuc3.com` (mục 0)**.
+Gửi qua **Resend** riêng, không còn phụ thuộc Lovable ở đường gửi.
+
+## 0. Chuyển domain sang chieuthuc3.com (14/07/2026)
+
+**Bối cảnh:** `343skill.com` không còn truy cập được (web chết); app chạy tạm tại
+`https://343-noi-bo.ducanh2212.workers.dev` (Cloudflare Worker `343-noi-bo`). Đường GỬI
+email domain cũ lúc đó vẫn sống (nhắc việc về Inbox đều 08:00 hằng ngày 08–14/07) nhưng
+phụ thuộc DNS của domain đã mất kiểm soát → chuyển hẳn sang domain mới **`chieuthuc3.com`**
+(mua trên Cloudflare): cả link đích trong email lẫn địa chỉ gửi
+(`noreply@343skill.com` → `noreply@chieuthuc3.com`).
+
+**Code (đã sửa trong repo):** cấu hình domain tập trung ở
+`supabase/functions/_shared/email-config.ts` — đọc secret `APP_URL` /
+`EMAIL_FROM_DOMAIN` / `EMAIL_SENDER_DOMAIN`, fallback `chieuthuc3.com`. Các function
+`auth-email-hook`, `send-reminders`, `send-hr-notification`, `send-transactional-email`,
+`reset-staff-password` (+ `resolveSiteUrl` trong `_shared/staff.ts`) dùng chung config này.
+Frontend: tin nhắn bàn giao lấy `window.location.origin` (hết hardcode domain).
+
+**Runbook cutover (thứ tự an toàn — làm đúng thứ tự thì email không bao giờ ngừng gửi):**
+
+1. **Gắn domain vào app:** Cloudflare → Workers & Pages → worker `343-noi-bo` → Settings →
+   **Domains & Routes** → *Add* → **Custom Domain** → `chieuthuc3.com` (thêm cả
+   `www.chieuthuc3.com` nếu muốn). Domain cùng tài khoản Cloudflare nên DNS + chứng chỉ
+   tự cấu hình sau ~1 phút. Kiểm tra: mở `https://chieuthuc3.com` thấy app; mở thẳng
+   `https://chieuthuc3.com/dat-lai-mat-khau` không bị 404 (SPA fallback của Worker).
+2. **Verify Resend:** Resend → Domains → Add `chieuthuc3.com` → copy đủ các bản ghi
+   (SPF TXT, DKIM, MX của return-path — thường trên `send`/`notify` subdomain) vào
+   Cloudflare DNS (**DNS only — tắt đám mây cam** cho các bản ghi này) → thêm TXT
+   `_dmarc.chieuthuc3.com` = `v=DMARC1; p=none; rua=mailto:ducanh2212@gmail.com`
+   → bấm Verify tới khi tất cả xanh.
+3. **Supabase:** Edge Functions → Secrets → `APP_URL = https://chieuthuc3.com`.
+   Authentication → URL Configuration → **Site URL** = `https://chieuthuc3.com`;
+   **Redirect URLs** thêm `https://chieuthuc3.com/dat-lai-mat-khau` và
+   `https://343-noi-bo.ducanh2212.workers.dev/dat-lai-mat-khau` (đường lui khi cần
+   vào bằng workers.dev).
+4. **Deploy** các function: `auth-email-hook`, `send-reminders`, `send-hr-notification`,
+   `send-transactional-email`, `reset-staff-password`, `create-staff-user`,
+   `bulk-create-staff-users`, `approve-registration`. (Chỉ deploy SAU khi bước 2 xanh.)
+5. **Kiểm chứng:** gửi email test → from `noreply@chieuthuc3.com`, vào Inbox, link trỏ
+   `https://chieuthuc3.com`; Quên mật khẩu → email mới có
+   `redirect_to=https://chieuthuc3.com/dat-lai-mat-khau` → bấm vào đúng form;
+   sáng hôm sau email nhắc việc 08:00 mang from + link domain mới.
+
+**Bài học khi cutover thật (14/07):**
+- **API key Resend bị scope theo domain cũ** → lần gửi đầu từ `@chieuthuc3.com` lỗi
+  `Resend 400: The associated domain with your API key is not verified`. Xử lý: tạo API key
+  mới **Full access** (Resend → API Keys) → thay secret `RESEND_API_KEY` ở Supabase (hiệu
+  lực ngay, không cần deploy). Key cũ scoped-343skill nên xóa sau khi ổn định.
+- `sender_domain` trong payload email **không ảnh hưởng đường Resend** (chỉ đường Lovable
+  cũ dùng) — Resend tự chọn return-path theo domain đã verify (`send.chieuthuc3.com`).
+- **Đã kiểm chứng 14/07:** email test từ `noreply@chieuthuc3.com` vào **Inbox** Gmail
+  (message "sent" trong `email_send_log`, không vào Spam).
+
+**Rollback khẩn cấp** (Resend domain mới trục trặc): set secret
+`EMAIL_FROM_DOMAIN=343skill.com` (+ `EMAIL_SENDER_DOMAIN=notify.343skill.com`) — có hiệu
+lực ngay, không cần deploy lại; link đích giữ nguyên `APP_URL`. (Key Full access mới gửi
+được cả 2 domain nên rollback không vướng.)
+
+**Lưu ý sau chuyển:**
+- Domain mới chưa có "uy tín gửi" → 1–2 tuần đầu email có thể vào Spam; dặn người dùng
+  kiểm tra Spam + bấm "Not spam"; theo dõi trang Quản trị Email. DMARC giữ `p=none`
+  giai đoạn đầu, ổn định rồi nâng `p=quarantine` (sửa TXT `_dmarc` ở Cloudflare).
+- **Tài khoản đăng nhập dạng `...@343skill.com` KHÔNG bị ảnh hưởng** — email đăng nhập chỉ
+  là định danh tài khoản, không phải hộp thư nhận.
+- Link trong các email CŨ đã gửi vẫn trỏ domain cũ (không sửa được); email mới sẽ đúng.
+- Các mốc "343skill.com" trong các mục dưới đây là lịch sử cấu hình cũ (giữ để tra cứu).
 
 ## 1. Bản đồ luồng email (4 đường)
 
@@ -62,6 +127,30 @@ sinh ngẫu nhiên phía server → hiện 1 lần → bàn giao ngoài luồng 
 Trang Quên mật khẩu (`/quen-mat-khau`) + trang đặt lại (`/dat-lai-mat-khau`) hoạt động sẵn.
 
 ## 3. Vận hành hằng ngày (runbook)
+
+**Các tầng nhắc việc tự động (send-reminders, cron 08:00 — nâng cấp 14/07/2026):**
+
+| Tầng | Ai nhận | Kênh | Khi nào | Nội dung |
+|---|---|---|---|---|
+| Digest đích danh | TP / PGĐ / quản lý | **Email + Push** | Hằng ngày khi có việc | Phiếu chờ rà soát, phiếu chờ phê duyệt, thẻ Kanban chờ xác nhận; trong cửa sổ nhắc: cộng thêm số cán bộ trong phòng/khối CHƯA NỘP |
+| Nhắc cá nhân | Từng cán bộ chưa nộp phiếu | **CHỈ Web Push** (email cá nhân đã tắt 14/07 — giữ Resend miễn phí) | Kỳ `in_progress` còn ≤15 ngày đến hạn HOẶC đã quá hạn (tới khi admin đóng kỳ) | Nhắc nộp phiếu Tự đánh giá, bấm mở thẳng `/tu-danh-gia` |
+| Digest toàn cảnh | BGĐ + TCTH admin | **Email + Push** | Hằng ngày khi có tồn đọng | Số chưa nộp kỳ hiện tại; phiếu chờ TP/PGĐ (MỌI KỲ); thẻ Kanban chờ xác nhận + quá hạn |
+| Hội đồng đầu mối | Thành viên còn phiếu | Email | Còn ≤3 ngày đến hạn bỏ phiếu | Danh sách phiếu chưa gửi (như cũ) |
+
+"Kỳ đang đánh giá" = kỳ `in_progress` mới nhất (admin mở/đóng thủ công ở Quản lý chu kỳ —
+đóng kỳ là DỪNG toàn bộ nhắc). **Hạn nộp** dùng `submission_deadline` (TCTH thiết đặt ở
+Quản lý chu kỳ), KHÔNG dùng `end_date` (ngày cuối quý) — hai mốc có thể khác nhau (VD Quý
+II: cuối quý 30/6 nhưng hạn nộp thật 26/7). Trùng logic `getEffectiveDeadline`
+(`src/lib/submissionKpi.ts`). Email chỉ còn gửi CẤP QUẢN LÝ (TP/PGĐ/TCTH/BGĐ) → ~15-20
+email/ngày, thoải mái trong ngưỡng miễn phí Resend 3.000/tháng. Xem trước không gửi:
+gọi `send-reminders` body `{"dry_run": true}`. Màn hình **Tổng quan** có khối "Cần xử lý
+trong kỳ" (`EvaluationPipelineCard`) hiển thị cùng các con số này.
+
+**Web Push (PWA, 14/07/2026):** cán bộ bật ở dải "Bật thông báo nhắc việc" trên Tổng quan
+(iPhone: mở app từ biểu tượng đã Thêm vào màn hình chính rồi mới bật được). Hạ tầng:
+bảng `push_subscriptions` (RLS theo người), service worker `public/sw.js`, manifest PWA,
+VAPID private key trong Vault (`vapid_private_key`, RPC `get_vapid_private_key` chỉ
+service_role). Thiết bị chết (404/410) tự bị vô hiệu. Đăng ký lại: chỉ cần bấm lại nút.
 
 - **Xem sức khỏe email**: Sidebar → *Quản trị Email*. Nhìn 3 thứ:
   1. "Lỗi 7 ngày" > 0 → xem cột Lỗi của bảng 30 email gần nhất.
