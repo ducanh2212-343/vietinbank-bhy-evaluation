@@ -140,8 +140,8 @@ export default function StaffEvaluation() {
 
   // Cán bộ tự mở phiếu của mình: chỉ sửa khi nháp hoặc bị trả lại
   const canEmployeeEditSelf = isSelfEval && (formStatus === 'draft' || formStatus === 'returned');
-  // Quy tắc kỳ: chỉ kỳ ĐANG MỞ (admin mở ở Quản lý kỳ) mới được ghi phiếu.
-  // Kỳ đã đóng (VD Quý III chưa tới đợt, Quý I đã khóa) chỉ xem — muốn sửa phải mở lại kỳ.
+  // Khái niệm chốt: MỞ KỲ = admin bật in_progress (có thể từ ~20 tháng cuối quý cho TP kịp
+  // đánh giá) → được nhập; ĐÓNG KỲ = chỉ xem. Ngày trên kỳ là nhãn, không chặn nhập theo ngày.
   const cycleOpen = cycles.find((c) => c.id === cycleId)?.status === 'in_progress';
   // Ai được bấm "Lưu nháp" phiếu này
   const canSaveForm = cycleOpen && (isSelfEval ? canEmployeeEditSelf : (canEditManagerAssessment || isAdmin));
@@ -516,7 +516,7 @@ export default function StaffEvaluation() {
     if (!cycleOpen) {
       toast({
         title: 'Kỳ đánh giá chưa mở hoặc đã đóng',
-        description: 'Chỉ đánh giá trong kỳ đang mở (quý kết thúc rồi mới đánh giá — VD Quý III đánh giá sau 30/9). Cần chỉnh sửa kỳ đã đóng thì mở lại kỳ trong Quản lý kỳ đánh giá.',
+        description: 'Quyền nhập phụ thuộc việc TCTH mở kỳ: kỳ đang mở mới được đánh giá. Cần chỉnh sửa kỳ đã đóng thì mở lại kỳ trong Quản lý kỳ đánh giá.',
         variant: 'destructive',
       });
       return false;

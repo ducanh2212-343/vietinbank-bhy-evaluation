@@ -197,6 +197,11 @@ export default function CycleManagementPage() {
           Thời gian nộp cuối cùng tính theo thời điểm <strong>Phó giám đốc duyệt</strong>: biểu mẫu được duyệt sau mốc
           (hoặc chưa duyệt xong khi đã quá mốc) sẽ bị tính chậm trong "Báo cáo nộp biểu mẫu".
         </p>
+        <p className="text-sm text-muted-foreground mt-1">
+          <strong>Mở kỳ</strong> (Đang diễn ra) = cho phép toàn chi nhánh nhập/sửa/nộp phiếu của kỳ — có thể mở sớm
+          từ ~ngày 20 tháng cuối quý để Trưởng phòng kịp đánh giá. <strong>Đóng kỳ</strong> = phiếu chỉ xem, muốn
+          sửa phải mở lại kỳ. Ngày đầu/cuối kỳ chỉ là nhãn quý, không tự chặn việc nhập.
+        </p>
       </div>
 
       <div className="flex justify-end">

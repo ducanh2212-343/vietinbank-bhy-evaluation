@@ -177,8 +177,8 @@ export default function SelfAssessmentPage() {
     // đánh giá nữa (quy trình: admin mở/đóng kỳ thủ công ở Quản lý chu kỳ). Nếu không
     // còn kỳ nào mở thì tạm hiện toàn bộ để trang không bị kẹt.
     const openCycles = quarterCycles.filter((c: any) => c.status === 'in_progress');
-    // KHÔNG fallback về toàn bộ kỳ: không còn kỳ mở thì phần tự đánh giá tạm nghỉ,
-    // tránh cán bộ chọn nhầm kỳ đã đóng/chưa tới đợt (Quý III chỉ đánh giá sau 30/9).
+    // KHÔNG fallback về toàn bộ kỳ: không còn kỳ mở thì phần tự đánh giá tạm nghỉ.
+    // Quyền nhập phụ thuộc duy nhất việc admin MỞ KỲ — ngày trên kỳ chỉ là nhãn quý.
     setCycles(openCycles);
 
     const activeCycleId = cycleId || (openCycles.length ? pickActiveCycle(quarterCycles)?.id || '' : '');
@@ -590,7 +590,7 @@ export default function SelfAssessmentPage() {
     // Kỳ phải ĐANG MỞ mới được ghi — phiếu trót tạo ở kỳ đã đóng (VD Quý III trước bản vá) chỉ xem
     const cycleStatus = (allCycles as any[]).find((c) => c.id === cycleId)?.status;
     if (cycleStatus && cycleStatus !== 'in_progress') {
-      toast.error('Kỳ này chưa mở hoặc đã đóng — quý kết thúc rồi mới đánh giá (VD Quý III đánh giá sau 30/9). Vui lòng chọn kỳ đang mở.');
+      toast.error('Kỳ này chưa được mở hoặc đã đóng — chỉ nhập được khi TCTH mở kỳ. Vui lòng chọn kỳ đang mở.');
       return;
     }
     if (!canEmployeeEdit) {
