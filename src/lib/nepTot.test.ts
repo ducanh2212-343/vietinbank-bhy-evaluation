@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   parseStructuringResponse, validateQuickNote, toDatetimeLocalValue,
+  saveQuickNoteDraft, loadQuickNoteDraft, clearQuickNoteDraft, QUICK_NOTE_DRAFT_KEY,
   MAX_ATTITUDES_PER_NOTE, MAX_SKILLS_PER_NOTE,
 } from './nepTot';
 
@@ -104,6 +105,40 @@ describe('parseStructuringResponse', () => {
 
   it('trả null khi JSON rỗng nội dung', () => {
     expect(parseStructuringResponse('{"skill_codes": []}')).toBeNull();
+  });
+});
+
+describe('quick note draft (localStorage)', () => {
+  it('lưu và khôi phục nháp kèm cờ riêng tư', () => {
+    clearQuickNoteDraft();
+    saveQuickNoteDraft({
+      employeeId: 'e1', rawText: 'nội dung nháp', behaviorType: 'tich_cuc',
+      occurredAt: new Date().toISOString(), isPrivate: true,
+    });
+    const d = loadQuickNoteDraft();
+    expect(d?.rawText).toBe('nội dung nháp');
+    expect(d?.isPrivate).toBe(true);
+    clearQuickNoteDraft();
+  });
+
+  it('nháp cũ không có isPrivate vẫn đọc được (mặc định undefined/false)', () => {
+    localStorage.setItem(QUICK_NOTE_DRAFT_KEY, JSON.stringify({
+      employeeId: 'e1', rawText: 'nháp phiên bản cũ', behaviorType: 'can_cai_thien',
+      occurredAt: new Date().toISOString(), savedAt: new Date().toISOString(),
+    }));
+    const d = loadQuickNoteDraft();
+    expect(d?.rawText).toBe('nháp phiên bản cũ');
+    expect(d?.isPrivate === true).toBe(false);
+    clearQuickNoteDraft();
+  });
+
+  it('nháp rỗng không được lưu', () => {
+    clearQuickNoteDraft();
+    saveQuickNoteDraft({
+      employeeId: null, rawText: '  ', behaviorType: null,
+      occurredAt: new Date().toISOString(), isPrivate: false,
+    });
+    expect(loadQuickNoteDraft()).toBeNull();
   });
 });
 

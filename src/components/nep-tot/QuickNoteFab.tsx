@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Plus, Search, ThumbsUp, Wrench } from 'lucide-react';
+import { Building2, ChevronLeft, Lock, Plus, Search, ThumbsUp, Wrench } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNepTotAccess, type ObservableProfile } from '@/hooks/useNepTotAccess';
 import {
@@ -31,6 +31,10 @@ export function QuickNoteFab() {
   const [behaviorType, setBehaviorType] = useState<BehaviorType | null>(null);
   const [occurredLocal, setOccurredLocal] = useState(() => toDatetimeLocalValue(new Date()));
   const [staffQuery, setStaffQuery] = useState('');
+  // Picker 2 bước: chọn Phòng mình quản lý → chọn cán bộ (bỏ qua nếu chỉ 1 phòng)
+  const [deptFilter, setDeptFilter] = useState<string | null>(null);
+  // true = 'rieng_tu': cấp trên không xem được bản ghi này (mặc định cấp trên xem được)
+  const [isPrivate, setIsPrivate] = useState(false);
   const restoredRef = useRef(false);
 
   // Khôi phục nháp khi mở sheet lần đầu
@@ -42,6 +46,7 @@ export function QuickNoteFab() {
       setEmployeeId(draft.employeeId);
       setRawText(draft.rawText);
       setBehaviorType(draft.behaviorType);
+      setIsPrivate(draft.isPrivate === true);
       if (draft.occurredAt) setOccurredLocal(toDatetimeLocalValue(new Date(draft.occurredAt)));
       if (draft.rawText.trim()) toast.info('Đã khôi phục mẩu nhớ đang viết dở.');
     } else {
@@ -57,17 +62,37 @@ export function QuickNoteFab() {
       rawText,
       behaviorType,
       occurredAt: new Date(occurredLocal).toISOString(),
+      isPrivate,
     });
-  }, [open, employeeId, rawText, behaviorType, occurredLocal]);
+  }, [open, employeeId, rawText, behaviorType, occurredLocal, isPrivate]);
 
+  // Danh sách phòng trong phạm vi ghi nhận (nhóm theo tên phòng)
+  const departments = useMemo(() => {
+    const map = new Map<string, number>();
+    staff.forEach((s) => {
+      const d = s.department_name || 'Chưa rõ phòng';
+      map.set(d, (map.get(d) ?? 0) + 1);
+    });
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0], 'vi'));
+  }, [staff]);
+
+  const singleDept = departments.length <= 1;
+
+  // Gõ tìm kiếm → tìm xuyên phòng; không gõ → theo phòng đã chọn
   const filteredStaff = useMemo(() => {
     const q = staffQuery.trim().toLowerCase();
-    if (!q) return staff;
-    return staff.filter((s) =>
-      s.full_name.toLowerCase().includes(q)
-      || (s.employee_code ?? '').toLowerCase().includes(q)
-      || (s.department_name ?? '').toLowerCase().includes(q));
-  }, [staff, staffQuery]);
+    if (q) {
+      return staff.filter((s) =>
+        s.full_name.toLowerCase().includes(q)
+        || (s.employee_code ?? '').toLowerCase().includes(q)
+        || (s.department_name ?? '').toLowerCase().includes(q));
+    }
+    if (singleDept) return staff;
+    if (!deptFilter) return [];
+    return staff.filter((s) => (s.department_name || 'Chưa rõ phòng') === deptFilter);
+  }, [staff, staffQuery, deptFilter, singleDept]);
+
+  const showDeptStep = !staffQuery.trim() && !singleDept && !deptFilter;
 
   const selected: ObservableProfile | undefined = useMemo(
     () => staff.find((s) => s.id === employeeId),
@@ -82,6 +107,8 @@ export function QuickNoteFab() {
     setBehaviorType(null);
     setOccurredLocal(toDatetimeLocalValue(new Date()));
     setStaffQuery('');
+    setDeptFilter(null);
+    setIsPrivate(false);
     clearQuickNoteDraft();
   };
 
@@ -105,6 +132,7 @@ export function QuickNoteFab() {
         raw_text: rawText.trim(),
         behavior_type: behaviorType!,
         status: 'nhap',
+        visibility: isPrivate ? 'rieng_tu' : 'quan_ly',
       });
       if (error) throw error;
       resetForm();
@@ -162,29 +190,58 @@ export function QuickNoteFab() {
                   <Input
                     value={staffQuery}
                     onChange={(e) => setStaffQuery(e.target.value)}
-                    placeholder="Tìm cán bộ theo tên, mã, phòng..."
+                    placeholder="Tìm nhanh theo tên, mã cán bộ..."
                     className="pl-9 border-0 focus-visible:ring-0 rounded-b-none"
                   />
                 </div>
-                <div className="max-h-40 overflow-y-auto border-t divide-y">
+                <div className="max-h-44 overflow-y-auto border-t divide-y">
                   {staffLoading && <div className="px-3 py-2 text-sm text-muted-foreground">Đang tải danh sách...</div>}
-                  {!staffLoading && filteredStaff.length === 0 && (
-                    <div className="px-3 py-2 text-sm text-muted-foreground">
-                      {staff.length === 0
-                        ? 'Chưa có cán bộ nào trong phạm vi ghi nhận của bạn.'
-                        : 'Không tìm thấy cán bộ phù hợp.'}
-                    </div>
-                  )}
-                  {filteredStaff.map((s) => (
+
+                  {/* Bước 1: chọn Phòng mình quản lý (bỏ qua khi chỉ có 1 phòng hoặc đang tìm kiếm) */}
+                  {!staffLoading && showDeptStep && departments.map(([dept, count]) => (
                     <button
-                      key={s.id}
-                      onClick={() => setEmployeeId(s.id)}
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
+                      key={dept}
+                      onClick={() => setDeptFilter(dept)}
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-muted flex items-center gap-2"
                     >
-                      <span className="font-medium">{s.full_name}</span>
-                      <span className="text-muted-foreground"> · {s.department_name || '—'}</span>
+                      <Building2 className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      <span className="font-medium flex-1 truncate">{dept}</span>
+                      <span className="text-xs text-muted-foreground">{count} CB</span>
                     </button>
                   ))}
+
+                  {/* Bước 2: chọn cán bộ trong phòng */}
+                  {!staffLoading && !showDeptStep && (
+                    <>
+                      {deptFilter && !staffQuery.trim() && (
+                        <button
+                          onClick={() => setDeptFilter(null)}
+                          className="w-full px-3 py-1.5 text-left text-xs text-primary hover:bg-muted flex items-center gap-1"
+                        >
+                          <ChevronLeft className="w-3.5 h-3.5" /> {deptFilter} — chọn phòng khác
+                        </button>
+                      )}
+                      {filteredStaff.length === 0 && (
+                        <div className="px-3 py-2 text-sm text-muted-foreground">
+                          {staff.length === 0
+                            ? 'Chưa có cán bộ nào trong phạm vi ghi nhận của bạn.'
+                            : 'Không tìm thấy cán bộ phù hợp.'}
+                        </div>
+                      )}
+                      {filteredStaff.map((s) => (
+                        <button
+                          key={s.id}
+                          onClick={() => setEmployeeId(s.id)}
+                          className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
+                        >
+                          <span className="font-medium">{s.full_name}</span>
+                          <span className="text-muted-foreground">
+                            {' '}· {staffQuery.trim() ? (s.department_name || '—') : (s.position_title || 'Cán bộ')}
+                          </span>
+                        </button>
+                      ))}
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -236,6 +293,23 @@ export function QuickNoteFab() {
                 className="h-9 text-sm"
               />
             </div>
+
+            {/* Riêng tư: cấp trên của cán bộ không xem được bản ghi này */}
+            <button
+              onClick={() => setIsPrivate((v) => !v)}
+              className={`w-full flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-xs transition-colors ${
+                isPrivate
+                  ? 'border-slate-500 bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300'
+                  : 'text-muted-foreground hover:bg-muted'
+              }`}
+            >
+              <Lock className="w-3.5 h-3.5 flex-shrink-0" />
+              <span className="flex-1">
+                {isPrivate
+                  ? 'Riêng tư — chỉ mình tôi xem, cấp trên không thấy'
+                  : 'Mặc định: Trưởng phòng và cấp trên xem được (sau khi xác nhận). Bấm để chuyển riêng tư.'}
+              </span>
+            </button>
 
             <Button onClick={handleSave} disabled={saving} className="w-full h-11 rounded-xl">
               {saving ? 'Đang lưu...' : 'Lưu mẩu nhớ'}

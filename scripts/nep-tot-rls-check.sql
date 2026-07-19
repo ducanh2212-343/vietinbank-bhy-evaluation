@@ -42,9 +42,20 @@ BEGIN;
 SELECT set_config('request.jwt.claims', json_build_object('sub', '<USER_ID_PHO_PHONG>', 'role', 'authenticated')::text, true);
 SET LOCAL ROLE authenticated;
 
--- 2a. KỲ VỌNG: danh sách RỖNG (PP scope chặt — chỉ thấy cán bộ khi được phân công
---     trong management_scopes hoặc là manager_id trực tiếp)
-SELECT * FROM public.get_observable_profiles();
+-- 2a. KỲ VỌNG (sau 20260727092000): danh sách = các CÁN BỘ THƯỜNG cùng phòng
+--     (position không bắt đầu 'Trưởng'/'Phó') — PP ghi được cả phòng không cần
+--     phân công; KHÔNG chứa Trưởng phòng/Phó phòng khác.
+SELECT full_name, position_title FROM public.get_observable_profiles();
+
+-- 2b. PP ghi 1 cán bộ cùng phòng: KỲ VỌNG = thành công
+INSERT INTO public.behavior_notes (employee_id, observer_id, raw_text, behavior_type)
+VALUES ('<PROFILE_ID_CB_TRONG_PHONG>', public.get_my_profile_id(),
+        '[TEST-RLS] pp ghi cán bộ cùng phòng', 'tich_cuc');
+
+-- 2c. QUYỀN XEM chặt: PP KHÔNG thấy bản ghi do người khác tạo về cán bộ cùng phòng
+--     KỲ VỌNG: chỉ thấy bản ghi observer_id = chính PP
+SELECT observer_id = public.get_my_profile_id() AS is_mine, count(*)
+FROM public.behavior_notes GROUP BY 1;
 
 ROLLBACK;
 
@@ -82,8 +93,9 @@ BEGIN;
 SELECT set_config('request.jwt.claims', json_build_object('sub', '<USER_ID_SYSTEM_ADMIN>', 'role', 'authenticated')::text, true);
 SET LOCAL ROLE authenticated;
 
--- 5a. KỲ VỌNG: 0 dòng — admin kỹ thuật KHÔNG đọc được nội dung bản ghi hành vi
-SELECT count(*) AS should_be_zero FROM public.behavior_notes;
+-- 5a. KỲ VỌNG (sau 20260727092000): admin chi nhánh CHỈ thấy bản đã xác nhận
+--     loại 'quan_ly'; KHÔNG thấy bản nháp và bản 'rieng_tu'
+SELECT status, visibility, count(*) FROM public.behavior_notes GROUP BY 1, 2;
 
 -- 5b. KỲ VỌNG: LỖI RLS — không còn tự chèn audit_logs được (đã vá WITH CHECK(true))
 -- INSERT INTO public.audit_logs (action) VALUES ('[TEST-RLS] fake');
@@ -91,6 +103,19 @@ SELECT count(*) AS should_be_zero FROM public.behavior_notes;
 -- 5c. KỲ VỌNG: quản lý được management_scopes
 SELECT count(*) FROM public.management_scopes;
 
+ROLLBACK;
+
+-- ===== Khối 5bis: kiểm tra visibility 'rieng_tu' =============================
+-- (chạy bằng quyền admin/postgres) Tạo 1 bản ghi đã xác nhận, riêng tư, của PP:
+-- INSERT INTO public.behavior_notes (employee_id, observer_id, raw_text, behavior_type, status, visibility)
+-- VALUES ('<PROFILE_ID_CB>', '<PROFILE_ID_PHO_PHONG>', '[TEST-RLS] riêng tư', 'can_cai_thien', 'da_xac_nhan', 'rieng_tu');
+--
+-- Rồi giả lập Trưởng phòng của cán bộ đó:
+-- KỲ VỌNG: KHÔNG thấy bản ghi trên (dù đã xác nhận và trong scope) — vì 'rieng_tu'
+BEGIN;
+SELECT set_config('request.jwt.claims', json_build_object('sub', '<USER_ID_TRUONG_PHONG>', 'role', 'authenticated')::text, true);
+SET LOCAL ROLE authenticated;
+SELECT count(*) AS should_not_include_rieng_tu FROM public.behavior_notes WHERE visibility = 'rieng_tu' AND observer_id <> public.get_my_profile_id();
 ROLLBACK;
 
 -- ===== Khối 6: PGĐ ==========================================================

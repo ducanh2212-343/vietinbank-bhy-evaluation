@@ -217,8 +217,8 @@ export function AppSidebar({ onNavigate }: Props) {
     if (item.special === 'council-report') return isAdmin || councilAccess.isSubject || councilAccess.isSupervisor;
     if (item.special === 'council-analytics') return isFullCouncilAdmin;
     if (item.special === 'leadership-marks') return isAdmin || isPgd;
-    // Nếp Tốt: người có phạm vi ghi nhận nghiệp vụ — KHÔNG gồm tcth/system admin thuần
-    if (item.special === 'nep-tot-journal') return isManager || isPgd || roles.includes('bgd');
+    // Nếp Tốt: lãnh đạo có phạm vi ghi nhận + admin chi nhánh (đọc bản đã xác nhận)
+    if (item.special === 'nep-tot-journal') return isManager || isPgd || isAdmin;
     if (item.minRole === 'admin' && !isAdmin) return false;
     if (item.minRole === 'manager' && !canSeeManagerItems) return false;
     return true;

@@ -391,6 +391,7 @@ export type Database = {
           skill_ids: string[]
           status: string
           updated_at: string
+          visibility: string
         }
         Insert: {
           ai_draft?: Json | null
@@ -412,6 +413,7 @@ export type Database = {
           skill_ids?: string[]
           status?: string
           updated_at?: string
+          visibility?: string
         }
         Update: {
           ai_draft?: Json | null
@@ -433,6 +435,7 @@ export type Database = {
           skill_ids?: string[]
           status?: string
           updated_at?: string
+          visibility?: string
         }
         Relationships: [
           {
@@ -3946,6 +3949,10 @@ export type Database = {
     Functions: {
       admin_email_overview: { Args: never; Returns: Json }
       can_observe_profile: {
+        Args: { _target: string }
+        Returns: boolean
+      }
+      can_record_profile: {
         Args: { _target: string }
         Returns: boolean
       }

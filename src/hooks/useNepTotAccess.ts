@@ -21,6 +21,9 @@ export interface ObservableProfile {
 export function useNepTotAccess() {
   const { roles, profileId, loading: authLoading } = useAuth();
   const canRecord = roles.some((r) => r === 'manager' || r === 'pgd' || r === 'bgd');
+  // Admin chi nhánh (TCTH/System) đọc được nhật ký (bản đã xác nhận, loại
+  // 'quan_ly' — RLS quyết định), nhưng không ghi nhận nghiệp vụ
+  const canViewJournal = canRecord || roles.some((r) => r === 'tcth_admin' || r === 'system_admin');
 
   const [staff, setStaff] = useState<ObservableProfile[]>([]);
   const [staffLoading, setStaffLoading] = useState(false);
@@ -47,5 +50,5 @@ export function useNepTotAccess() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, canRecord, staffLoaded]);
 
-  return { canRecord, profileId, staff, staffLoading, staffLoaded, reloadStaff: loadStaff };
+  return { canRecord, canViewJournal, profileId, staff, staffLoading, staffLoaded, reloadStaff: loadStaff };
 }

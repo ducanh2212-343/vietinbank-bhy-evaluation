@@ -4,6 +4,9 @@
 export type BehaviorType = 'tich_cuc' | 'can_cai_thien';
 export type BehaviorNoteStatus = 'nhap' | 'da_xac_nhan' | 'luu_tru';
 export type ImpactLevel = 'thap' | 'vua' | 'cao';
+/** quan_ly: TP và cấp trên của cán bộ nhìn được bản đã xác nhận (mặc định);
+ *  rieng_tu: chỉ người ghi thấy — dùng khi chưa muốn cấp trên nắm. */
+export type NoteVisibility = 'quan_ly' | 'rieng_tu';
 
 export const BEHAVIOR_TYPE_LABELS: Record<BehaviorType, string> = {
   tich_cuc: 'Hành vi tích cực',
@@ -20,6 +23,11 @@ export const IMPACT_LEVEL_LABELS: Record<ImpactLevel, string> = {
   thap: 'Tác động thấp',
   vua: 'Tác động vừa',
   cao: 'Tác động cao',
+};
+
+export const VISIBILITY_LABELS: Record<NoteVisibility, string> = {
+  quan_ly: 'Cấp trên xem được',
+  rieng_tu: 'Riêng tư — chỉ mình tôi',
 };
 
 /** Giới hạn gắn nhãn để bản ghi tập trung (khớp prompt AI) */
@@ -121,6 +129,8 @@ export interface QuickNoteDraft {
   rawText: string;
   behaviorType: BehaviorType | null;
   occurredAt: string;
+  /** true = 'rieng_tu' (nháp cũ không có trường này → mặc định false) */
+  isPrivate?: boolean;
   savedAt: string;
 }
 

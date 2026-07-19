@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { NotebookPen, Sparkles, ThumbsUp, Wrench, RotateCcw, Archive, Share2, CheckCircle2 } from 'lucide-react';
+import { NotebookPen, Sparkles, ThumbsUp, Wrench, RotateCcw, Archive, Share2, CheckCircle2, Lock, LockOpen } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
 import { useNepTotAccess } from '@/hooks/useNepTotAccess';
@@ -38,7 +38,7 @@ function fmtDateTime(iso: string) {
  * AI, xác nhận, chia sẻ cho cán bộ, lưu trữ. Không có xếp hạng/đếm công khai.
  */
 export default function BehaviorJournalPage() {
-  const { canRecord, profileId, staff } = useNepTotAccess();
+  const { canRecord, canViewJournal, profileId, staff } = useNepTotAccess();
 
   const [notes, setNotes] = useState<BehaviorNote[]>([]);
   const [loading, setLoading] = useState(true);
@@ -208,6 +208,18 @@ export default function BehaviorJournalPage() {
     else void load();
   };
 
+  const toggleVisibility = async (n: BehaviorNote) => {
+    const next = n.visibility === 'rieng_tu' ? 'quan_ly' : 'rieng_tu';
+    const { error } = await supabase.from('behavior_notes').update({ visibility: next }).eq('id', n.id);
+    if (error) toast.error(`Lỗi: ${error.message}`);
+    else {
+      toast.success(next === 'rieng_tu'
+        ? 'Đã chuyển riêng tư — cấp trên không xem được bản ghi này.'
+        : 'Đã mở lại cho cấp trên xem (sau khi xác nhận).');
+      void load();
+    }
+  };
+
   const toggleShare = async (n: BehaviorNote, share: boolean) => {
     const { error } = await supabase.from('behavior_notes').update({ shared_with_employee: share }).eq('id', n.id);
     if (error) toast.error(`Lỗi: ${error.message}`);
@@ -217,11 +229,11 @@ export default function BehaviorJournalPage() {
     }
   };
 
-  if (!canRecord) {
+  if (!canViewJournal) {
     return (
       <div className="max-w-2xl mx-auto mt-10 text-center text-muted-foreground">
         <NotebookPen className="w-10 h-10 mx-auto mb-3 opacity-40" />
-        Nhật ký hành vi dành cho lãnh đạo có phạm vi ghi nhận (Trưởng/Phó phòng, PGĐ, Giám đốc).
+        Nhật ký hành vi dành cho lãnh đạo có phạm vi ghi nhận (Trưởng/Phó phòng, PGĐ, Giám đốc) và quản trị chi nhánh.
       </div>
     );
   }
@@ -269,7 +281,13 @@ export default function BehaviorJournalPage() {
             <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Cán bộ" /></SelectTrigger>
             <SelectContent>
               <SelectItem value={ALL}>Tất cả cán bộ</SelectItem>
-              {staff.map((s) => <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>)}
+              {/* Hợp danh sách scope + tên xuất hiện trong nhật ký (admin không có scope ghi) */}
+              {Array.from(new Map([
+                ...staff.map((s) => [s.id, s.full_name] as const),
+                ...Object.entries(nameMap),
+              ]).entries())
+                .sort((a, b) => a[1].localeCompare(b[1], 'vi'))
+                .map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={typeFilter} onValueChange={setTypeFilter}>
@@ -328,6 +346,9 @@ export default function BehaviorJournalPage() {
                       </Badge>
                       <span className="text-xs text-muted-foreground">{fmtDateTime(n.occurred_at)}</span>
                       {n.observer_id !== profileId && <Badge variant="secondary" className="text-[10px]">Người khác ghi</Badge>}
+                      {n.visibility === 'rieng_tu' && (
+                        <Badge variant="secondary" className="text-[10px]"><Lock className="w-3 h-3 mr-0.5" />Riêng tư</Badge>
+                      )}
                       {n.shared_with_employee && (
                         <Badge variant="secondary" className="text-[10px]"><Share2 className="w-3 h-3 mr-0.5" />Đã chia sẻ</Badge>
                       )}
@@ -349,6 +370,13 @@ export default function BehaviorJournalPage() {
 
                   {n.observer_id === profileId && (
                     <div className="flex flex-wrap gap-1.5 flex-shrink-0">
+                      <Button
+                        size="sm" variant="ghost" className="h-8"
+                        title={n.visibility === 'rieng_tu' ? 'Đang riêng tư — bấm để cho cấp trên xem' : 'Cấp trên đang xem được — bấm để chuyển riêng tư'}
+                        onClick={() => toggleVisibility(n)}
+                      >
+                        {n.visibility === 'rieng_tu' ? <Lock className="w-3.5 h-3.5" /> : <LockOpen className="w-3.5 h-3.5" />}
+                      </Button>
                       {n.status === 'nhap' && (
                         <Button size="sm" variant="default" className="h-8" onClick={() => openEdit(n)}>
                           Hoàn thiện
