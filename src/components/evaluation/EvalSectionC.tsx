@@ -59,6 +59,8 @@ interface Props {
   assessments: AttitudeAssessment[];
   onChange: (a: AttitudeAssessment[]) => void;
   isManager: boolean;
+  /** Duyệt theo ngoại lệ (quản lý): nút "Đồng ý theo cán bộ" khi QL chưa chấm */
+  showAgreeControls?: boolean;
 }
 
 /* ── 3 mức mới ── */
@@ -99,7 +101,7 @@ function isComplete(a: AttitudeAssessment): boolean {
 }
 
 /* ── Component ── */
-export function EvalSectionC({ assessments, onChange, isManager }: Props) {
+export function EvalSectionC({ assessments, onChange, isManager, showAgreeControls }: Props) {
   const [openId, setOpenId] = useState<number | null>(null);
   const [catalog, setCatalog] = useState<Record<number, AttitudeCatalogRow>>({});
 
@@ -184,6 +186,28 @@ export function EvalSectionC({ assessments, onChange, isManager }: Props) {
                     )}
                     {mismatch && (
                       <Badge className="text-[10px] border bg-orange-100 text-orange-700 border-orange-200" title="Chênh lệch đánh giá cán bộ vs lãnh đạo">Chênh lệch</Badge>
+                    )}
+                    {showAgreeControls && isManager && a.self_status && !a.manager_status && (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          update(a.attitude_dimension_id, { manager_status: a.self_status });
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            update(a.attitude_dimension_id, { manager_status: a.self_status });
+                          }
+                        }}
+                        className="inline-flex items-center min-h-[30px] px-2 rounded-md border border-emerald-300 dark:border-emerald-500/40 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-[11px] font-medium cursor-pointer"
+                        title={`Đồng ý theo tự đánh giá của cán bộ — ${getRatingOption(a.self_status)?.label || ''}`}
+                      >
+                        Đồng ý
+                      </span>
                     )}
                     {complete ? (
                       <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />

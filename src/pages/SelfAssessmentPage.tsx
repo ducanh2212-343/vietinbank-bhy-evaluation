@@ -8,9 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Save, Send, Loader2, FileDown, UserCheck } from 'lucide-react';
+import { Save, Send, Loader2, FileDown, UserCheck, Sparkles } from 'lucide-react';
 import { EvalSectionA } from '@/components/evaluation/EvalSectionA';
-import { EvalSectionB, type CoreSkillAssessment } from '@/components/evaluation/EvalSectionB';
+import { EvalSectionB, skillRowDomId, type CoreSkillAssessment } from '@/components/evaluation/EvalSectionB';
 import { EvalSectionC, type AttitudeAssessment } from '@/components/evaluation/EvalSectionC';
 import { EvalSection1on1, type OneOnOneAnswers } from '@/components/evaluation/EvalSection1on1';
 import { type SkillPriority } from '@/components/bm/SkillPriorityPicker';
@@ -36,10 +36,18 @@ import {
   buildSkillAssessmentRows,
   saveEvaluationChildren,
 } from '@/lib/evaluationPersistence';
-import { validateSubmission, validateSubmissionDetailed } from '@/lib/evaluationValidation';
+import { validateSubmissionDetailed } from '@/lib/evaluationValidation';
 import { useCycleOneOnOneQuestions } from '@/hooks/useCycleOneOnOneQuestions';
 import { SubmissionChecklist } from '@/components/evaluation/SubmissionChecklist';
 import { useHistoricalSkillLevels, mergeAssessedLevels } from '@/hooks/useHistoricalSkillLevels';
+import { useEvaluationAutosave } from '@/hooks/useEvaluationAutosave';
+import { AutosaveStatusBar } from '@/components/evaluation/AutosaveStatusBar';
+import {
+  fetchPreviousFormBundle,
+  computeSkillCarryForward,
+  hasAnySelfAssessmentData,
+  type CarryForwardResult,
+} from '@/lib/carryForward';
 
 export default function SelfAssessmentPage() {
   const { user, profileId } = useAuth();
@@ -78,6 +86,12 @@ export default function SelfAssessmentPage() {
   const [oneOnOneAnswers, setOneOnOneAnswers] = useState<OneOnOneAnswers>({});
   const [previousFormId, setPreviousFormId] = useState<string | null>(null);
   const [previousCycleName, setPreviousCycleName] = useState<string>('');
+  // Kế thừa kỳ trước: prefill mục B + badge "Kỳ trước: Lx" + chèn minh chứng cũ
+  const [carryForward, setCarryForward] = useState<CarryForwardResult | null>(null);
+  // Điều khiển hàng đang mở của mục B (checklist jump-to-skill)
+  const [sectionBOpenId, setSectionBOpenId] = useState<string | null>(null);
+  // Bỏ qua lượt render hydrate sau loadData khi theo dõi dirty cho autosave
+  const hydratingRef = useRef(true);
 
   type ReviewerOption = { id: string; name: string; role_label: string };
   const [reviewerOptions, setReviewerOptions] = useState<ReviewerOption[]>([]);
@@ -242,6 +256,10 @@ export default function SelfAssessmentPage() {
 
     let resolvedCoreAssessments = initialCoreAssessments;
     let resolvedSuppAssessments: CoreSkillAssessment[] = [];
+    // Trạng thái phiếu hiện tại — quyết định có prefill kỳ trước hay không
+    let currentFormId: string | null = null;
+    let currentFormStatus = 'draft';
+    let currentSaRows: any[] | null = null;
 
     // Load existing form
     if (activeCycleId) {
@@ -252,6 +270,8 @@ export default function SelfAssessmentPage() {
       });
 
       if (form) {
+        currentFormId = form.id;
+        currentFormStatus = form.status;
         setFormId(form.id);
         setFormStatus(form.status);
         formUpdatedAtRef.current = (form as any).updated_at ?? null;
@@ -297,6 +317,7 @@ export default function SelfAssessmentPage() {
           (apRes.data || []).map((p: any) => [p.id as string, p.attitude_dimension_id as number]),
         );
 
+        currentSaRows = saRes.data;
         const merged = mergeAllSkillAssessments(initialCoreAssessments, saRes.data, skillRes.data || []);
         resolvedCoreAssessments = merged.core;
         resolvedSuppAssessments = merged.supplementary;
@@ -415,13 +436,50 @@ export default function SelfAssessmentPage() {
     // Find previous cycle and its form (for review block)
     setPreviousFormId(null);
     setPreviousCycleName('');
+    setCarryForward(null);
+    let prevFidLocal: string | null = null;
     const curIdx = quarterCycles.findIndex(c => c.id === activeCycleId);
     if (curIdx > 0) {
       const prev = quarterCycles[curIdx - 1];
       setPreviousCycleName(prev.name);
       const { data: prevForms } = await supabase.from('form_submissions').select('id')
         .eq('cycle_id', prev.id).eq('employee_id', profileId).limit(1);
-      if (prevForms?.[0]) setPreviousFormId(prevForms[0].id);
+      if (prevForms?.[0]) {
+        prevFidLocal = prevForms[0].id;
+        setPreviousFormId(prevFidLocal);
+      }
+    }
+
+    // ====== Kế thừa mục B từ kỳ trước ======
+    // Điền sẵn CHỈ khi phiếu kỳ này chưa có dữ liệu mục B (chưa có phiếu, hoặc draft trống);
+    // các trường hợp khác vẫn giữ prevInfo để hiện badge "Kỳ trước: Lx" + nút chèn minh chứng cũ.
+    if (prevFidLocal) {
+      try {
+        const bundle = await fetchPreviousFormBundle(prevFidLocal, currentFormId);
+        const cf = computeSkillCarryForward({
+          baseCore: resolvedCoreAssessments,
+          baseSupp: resolvedSuppAssessments,
+          bundle,
+          skillCatalog: skillRes.data || [],
+        });
+        const freshB = !currentFormId
+          || (currentFormStatus === 'draft' && !hasAnySelfAssessmentData(currentSaRows));
+        if (freshB) {
+          resolvedCoreAssessments = cf.core;
+          resolvedSuppAssessments = cf.supplementary;
+          setCarryForward(cf);
+        } else {
+          setCarryForward({
+            core: resolvedCoreAssessments,
+            supplementary: resolvedSuppAssessments,
+            levelUps: [],
+            prefilledSkillIds: new Set(),
+            prevInfo: cf.prevInfo,
+          });
+        }
+      } catch (e) {
+        console.error('Carry-forward error (bỏ qua — không chặn form):', e);
+      }
     }
 
     setCoreAssessments(resolvedCoreAssessments);
@@ -582,6 +640,101 @@ export default function SelfAssessmentPage() {
   // Cán bộ chỉ được sửa khi phiếu ở trạng thái nháp hoặc bị trả lại
   const canEmployeeEdit = formStatus === 'draft' || formStatus === 'returned';
 
+  // ===== Autosave nháp =====
+  const autosaveNow = async (): Promise<'ok' | 'conflict'> => {
+    if (!profileId || !cycleId || !canEmployeeEdit || saving || submitting) return 'ok';
+    // Kỳ phải ĐANG MỞ mới được ghi (cùng luật với handleSave) — kỳ đóng chỉ xem, autosave im lặng bỏ qua
+    const cycleStatus = (allCycles as any[]).find((c) => c.id === cycleId)?.status;
+    if (cycleStatus && cycleStatus !== 'in_progress') return 'ok';
+    let fId = formId;
+    if (!fId) {
+      // Phiếu chỉ được tạo khi user đã sửa gì đó (autosave chỉ nổ theo dirty) — mở xem không tạo phiếu
+      const form = await getQuarterFormSubmission({
+        employeeId: profileId,
+        cycleId,
+        createIfMissing: true,
+        reviewerId: null,
+      });
+      fId = form?.id || null;
+      if (!fId || !form) throw new Error('Không tạo được phiếu');
+      setFormId(fId);
+      setFormStatus(form.status);
+      formUpdatedAtRef.current = (form as any).updated_at ?? null;
+    } else {
+      // Khóa lạc quan (select nhẹ): phiếu bị tab/người khác sửa → dừng autosave, không ghi đè
+      const { data: cur, error } = await supabase
+        .from('form_submissions')
+        .select('updated_at')
+        .eq('id', fId)
+        .maybeSingle();
+      if (error) throw error;
+      if (formUpdatedAtRef.current && cur?.updated_at && cur.updated_at !== formUpdatedAtRef.current) {
+        return 'conflict';
+      }
+    }
+    await persistAllData(fId);
+    const hasOneOnOneAnswers = Object.values(oneOnOneAnswers || {}).some(
+      (a: any) => (a?.employee || '').trim().length > 0,
+    );
+    // Chỉ update field nội dung — KHÔNG đụng status/submitted_at; lấy updated_at mới refresh mốc khóa
+    const { data: upd, error: upErr } = await supabase
+      .from('form_submissions')
+      .update({
+        one_on_one_enabled: oneOnOneEnabled || hasOneOnOneAnswers,
+        one_on_one_answers: oneOnOneAnswers as any,
+      })
+      .eq('id', fId)
+      .select('updated_at')
+      .single();
+    if (upErr) throw upErr;
+    formUpdatedAtRef.current = (upd as any)?.updated_at ?? formUpdatedAtRef.current;
+    return 'ok';
+  };
+
+  const cycleIsOpen = cycles.some((c) => c.id === cycleId);
+  const autosave = useEvaluationAutosave({ enabled: !loading && canEmployeeEdit && cycleIsOpen, save: autosaveNow });
+
+  // Theo dõi thay đổi form → đánh dấu dirty (bỏ qua lượt hydrate ngay sau loadData)
+  useEffect(() => {
+    if (loading) {
+      hydratingRef.current = true;
+      return;
+    }
+    if (hydratingRef.current) {
+      hydratingRef.current = false;
+      return;
+    }
+    autosave.markDirty();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coreAssessments, suppAssessments, attitudeAssessments, skillPriorities, skillActions,
+      attitudePriorities, attitudeActions, aiActions, oneOnOneAnswers, oneOnOneEnabled, loading]);
+
+  // Đổi kỳ: lưu nốt thay đổi đang chờ của kỳ cũ rồi mới chuyển (tránh mất/ghi nhầm kỳ)
+  const handleCycleChange = async (id: string) => {
+    await autosave.flush();
+    setCycleId(id);
+  };
+
+  // Chèn lại minh chứng kỳ trước (chủ đích 1 click, kèm nhãn kỳ để người duyệt biết nguồn)
+  const handleCopyPrevEvidence = (kind: 'core' | 'supp', skillId: string) => {
+    const prev = carryForward?.prevInfo.get(skillId);
+    if (!prev?.evidence) return;
+    const prefix = previousCycleName ? `(Kỳ trước ${previousCycleName}) ` : '(Kỳ trước) ';
+    const apply = (list: CoreSkillAssessment[]) =>
+      list.map((a) => (a.skill_id === skillId ? { ...a, evidence: `${prefix}${prev.evidence}` } : a));
+    if (kind === 'core') setCoreAssessments(apply);
+    else setSuppAssessments(apply);
+  };
+
+  // Checklist / lỗi nộp → mở + cuộn tới đúng hàng skill trong mục B
+  const navigateToSkill = (skillId: string) => {
+    const kind: 'core' | 'supp' = coreAssessments.some((a) => a.skill_id === skillId) ? 'core' : 'supp';
+    setSectionBOpenId(`${kind}-${skillId}`);
+    requestAnimationFrame(() => {
+      document.getElementById(skillRowDomId(kind, skillId))?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  };
+
   const handleSave = async (submit = false, reviewerIdOverride?: string) => {
     if (!profileId || !cycleId) {
       toast.error('Thiếu thông tin kỳ đánh giá hoặc hồ sơ cán bộ');
@@ -606,6 +759,10 @@ export default function SelfAssessmentPage() {
 
     if (submit) setSubmitting(true);
     else setSaving(true);
+
+    // Tránh 2 đường ghi song song: dừng autosave + đợi lượt đang chạy xong
+    autosave.suspend();
+    await autosave.waitForIdle();
 
     try {
       const form = await getQuarterFormSubmission({
@@ -683,11 +840,13 @@ export default function SelfAssessmentPage() {
         toast.success('Đã lưu nháp');
       }
 
+      autosave.markClean();
       await loadData();
     } catch (err: any) {
       console.error('Save error:', err);
       toast.error(err.message || 'Lỗi khi lưu. Vui lòng thử lại.');
     } finally {
+      autosave.resume();
       setSaving(false);
       setSubmitting(false);
     }
@@ -698,16 +857,24 @@ export default function SelfAssessmentPage() {
       toast.error('Phiếu đã được nộp hoặc đã duyệt — không thể nộp lại.');
       return;
     }
-    const errors = validateSubmission({
+    const detailed = validateSubmissionDetailed({
       coreAssessments, attitudeAssessments,
       skillPriorities, skillActions,
       supplementaryAssessments: suppAssessments,
     });
-    if (errors.length > 0) {
+    if (detailed.errors.length > 0) {
       toast.error('Chưa thể nộp đánh giá', {
-        description: errors.map((e) => `• ${e}`).join('\n'),
+        description: detailed.errors.map((e) => `• ${e}`).join('\n'),
         duration: 10000,
       });
+      // Tự điều hướng tới lỗi đầu tiên để sửa ngay, không bắt người dùng tự tìm
+      if (detailed.coreMissing.length > 0) {
+        navigateToSkill(detailed.coreMissing[0].skill_id);
+      } else if (detailed.highLevelEvidenceMissing.length > 0) {
+        navigateToSkill(detailed.highLevelEvidenceMissing[0].skill_id);
+      } else {
+        document.getElementById('section-c')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
       return;
     }
     if (reviewerOptions.length === 0) {
@@ -737,6 +904,11 @@ export default function SelfAssessmentPage() {
       supplementaryAssessments: suppAssessments,
     }),
     [coreAssessments, attitudeAssessments, skillPriorities, skillActions, suppAssessments],
+  );
+
+  const carryLevelUpIds = useMemo(
+    () => new Set((carryForward?.levelUps || []).map((l) => l.skill_id)),
+    [carryForward],
   );
 
   if (loading) return <div className="p-6 text-muted-foreground">Đang tải...</div>;
@@ -778,7 +950,7 @@ export default function SelfAssessmentPage() {
           <EvalSectionA
             profile={profile}
             cycleId={cycleId}
-            onCycleChange={setCycleId}
+            onCycleChange={handleCycleChange}
             cycles={cycles}
             reviewerName={displayName}
             reviewerRole={displayRole}
@@ -845,6 +1017,21 @@ export default function SelfAssessmentPage() {
         isManager={false}
       />
 
+      {carryForward && carryForward.prefilledSkillIds.size > 0 && canEmployeeEdit && (
+        <div className="rounded-md border border-sky-300/70 bg-sky-50 dark:bg-sky-500/10 dark:border-sky-500/40 p-3 text-sm text-sky-900 dark:text-sky-200">
+          <p className="font-medium flex items-center gap-1.5">
+            <Sparkles className="w-4 h-4" />
+            Đã điền sẵn {carryForward.prefilledSkillIds.size} skill ở mục B theo kết quả {previousCycleName || 'kỳ trước'}
+          </p>
+          <p className="mt-1 text-xs text-sky-800/80 dark:text-sky-300/80">
+            Chỉ cần rà lại và chỉnh những skill có thay đổi trong quý — không phải chấm lại từ đầu.
+            Skill tự chấm L3+ cần minh chứng của quý này (có nút chèn lại minh chứng kỳ trước để sửa nhanh).
+            {carryForward.levelUps.length > 0 &&
+              ` ${carryForward.levelUps.length} skill được nâng level nhờ hoàn thành kế hoạch kỳ trước.`}
+          </p>
+        </div>
+      )}
+
       <div id="section-b">
       <EvalSectionB
         assessments={coreAssessments}
@@ -855,6 +1042,14 @@ export default function SelfAssessmentPage() {
         onSupplementaryChange={setSuppAssessments}
         allSkills={allSkills}
         formId={formId}
+        openId={sectionBOpenId}
+        onOpenIdChange={setSectionBOpenId}
+        quickRate
+        quickRateTarget="self"
+        prevInfo={carryForward?.prevInfo}
+        prevCycleName={previousCycleName}
+        onCopyPrevEvidence={handleCopyPrevEvidence}
+        levelUpSkillIds={carryLevelUpIds}
       />
       </div>
       <div id="section-c">
@@ -872,7 +1067,10 @@ export default function SelfAssessmentPage() {
       />
 
       <div id="section-d">
-        <h2 className="text-sm font-semibold mb-2 px-1">D. Kế hoạch phát triển kỹ năng trong quý (tối đa 3 skill)</h2>
+        <h2 className="text-sm font-semibold mb-0.5 px-1">D. Kế hoạch phát triển kỹ năng trong quý (tối đa 3 skill)</h2>
+        <p className="text-[11px] text-muted-foreground mb-2 px-1">
+          Khuyến khích — không bắt buộc để nộp phiếu. Chỉ mục B (skill) và C (thái độ) là bắt buộc.
+        </p>
         <SkillDevelopmentBlock
           priorities={skillPriorities}
           actions={skillActions}
@@ -912,7 +1110,7 @@ export default function SelfAssessmentPage() {
         reviewedAt={pgdReviewedAt}
       />
 
-      <SubmissionChecklist {...checklist} />
+      <SubmissionChecklist {...checklist} onNavigateToSkill={navigateToSkill} />
 
 
       {/* Sticky bottom action bar */}
@@ -920,6 +1118,9 @@ export default function SelfAssessmentPage() {
         className="fixed bottom-0 left-0 right-0 lg:left-60 bg-background border-t p-3 flex flex-wrap gap-2 z-50 max-w-4xl mx-auto"
         style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
       >
+        <div className="w-full empty:hidden">
+          <AutosaveStatusBar state={autosave.state} lastSavedAt={autosave.lastSavedAt} dirty={autosave.dirty} />
+        </div>
         <Button variant="outline" onClick={async () => {
           try {
             const cycleName = allCycles.find(c => c.id === cycleId)?.name
@@ -963,9 +1164,9 @@ export default function SelfAssessmentPage() {
         <Button
           variant="default"
           onClick={onSubmitClick}
-          disabled={isBusy || !canEmployeeEdit || !checklist.canSubmit}
-          title={!canEmployeeEdit ? 'Phiếu đã nộp/duyệt — chỉ xem' : !checklist.canSubmit ? 'Hoàn tất các mục còn thiếu để nộp' : undefined}
-          className="flex-1 min-w-[140px] bg-green-600 hover:bg-green-700"
+          disabled={isBusy || !canEmployeeEdit}
+          title={!canEmployeeEdit ? 'Phiếu đã nộp/duyệt — chỉ xem' : !checklist.canSubmit ? 'Còn mục chưa hoàn tất — bấm để xem và đi tới chỗ cần sửa' : undefined}
+          className={`flex-1 min-w-[140px] ${checklist.canSubmit ? 'bg-green-600 hover:bg-green-700' : 'bg-amber-500 hover:bg-amber-600'}`}
         >
           {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
           {submitting ? 'Đang nộp...' : formStatus === 'returned' ? 'Nộp lại tự đánh giá' : 'Nộp tự đánh giá'}

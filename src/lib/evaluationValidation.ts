@@ -87,6 +87,62 @@ export interface DetailedValidation {
   highLevelEvidenceMissing: CoreSkillAssessment[];
 }
 
+/* ═══════════ Gate của Trưởng phòng khi "Xác nhận rà soát" ═══════════ */
+
+export interface ManagerReviewInput {
+  coreAssessments: CoreSkillAssessment[];
+  supplementaryAssessments?: CoreSkillAssessment[];
+  attitudeAssessments: AttitudeAssessment[];
+  /** Đã có ít nhất một trong: đánh giá tổng thể / nhận xét / kết luận */
+  overallFilled: boolean;
+}
+
+/** Skill quản lý chấm LỆCH với tự đánh giá nhưng chưa ghi nhận xét trao đổi */
+export function skillMismatchNeedsNote(a: CoreSkillAssessment): boolean {
+  return (
+    a.self_assessed_level != null &&
+    a.manager_assessed_level != null &&
+    a.self_assessed_level !== a.manager_assessed_level &&
+    !(a.manager_note || '').trim()
+  );
+}
+
+/**
+ * Điều kiện để Trưởng phòng bấm "Xác nhận rà soát":
+ *  1. 100% skill lõi có đánh giá của quản lý.
+ *  2. Đủ 6 nhóm thái độ có mức đánh giá của quản lý.
+ *  3. Có ít nhất một nhận xét/kết luận tổng thể.
+ *  4. CHỐNG HÌNH THỨC: skill nào quản lý chấm LỆCH với cán bộ thì bắt buộc ghi
+ *     "Nhận xét của quản lý" (lý do/định hướng) — đây là căn cứ trao đổi 1-1
+ *     để cán bộ hiểu vì sao và upskill đúng hướng, không phải chấm cho xong.
+ */
+export function validateManagerReview(input: ManagerReviewInput): string[] {
+  const { coreAssessments, supplementaryAssessments = [], attitudeAssessments, overallFilled } = input;
+  const missing: string[] = [];
+
+  if (coreAssessments.length === 0 || !coreAssessments.every((c) => c.manager_assessed_level != null)) {
+    missing.push('Còn skill lõi chưa được Trưởng phòng đánh giá');
+  }
+  if (attitudeAssessments.length < 6 || !attitudeAssessments.every((a) => !!a.manager_status)) {
+    missing.push('Còn nhóm thái độ chưa được Trưởng phòng đánh giá');
+  }
+  if (!overallFilled) {
+    missing.push('Chưa có nhận xét/kết luận của Trưởng phòng');
+  }
+
+  const mismatchNoNote = [...coreAssessments, ...supplementaryAssessments].filter(skillMismatchNeedsNote);
+  if (mismatchNoNote.length > 0) {
+    missing.push(
+      `Còn ${mismatchNoNote.length} skill bạn chấm lệch với cán bộ nhưng chưa ghi nhận xét trao đổi: ${mismatchNoNote
+        .slice(0, 3)
+        .map((c) => c.skill_name)
+        .join(', ')}${mismatchNoNote.length > 3 ? '…' : ''}`,
+    );
+  }
+
+  return missing;
+}
+
 export function validateSubmissionDetailed(input: SubmitValidationInput): DetailedValidation {
   const { coreAssessments, attitudeAssessments, skillPriorities, skillActions, supplementaryAssessments = [] } = input;
   const errors: string[] = [];

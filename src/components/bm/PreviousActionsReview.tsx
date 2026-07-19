@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Plus, Save, Trash2, History } from 'lucide-react';
 import { toast } from 'sonner';
+import { useEvaluationAutosave } from '@/hooks/useEvaluationAutosave';
+import { AutosaveStatusBar } from '@/components/evaluation/AutosaveStatusBar';
 
 type SourceType = 'skill' | 'attitude' | 'ai';
 
@@ -187,8 +189,20 @@ export function PreviousActionsReview({ formId, previousFormId, previousCycleNam
 
   useEffect(() => { load(); }, [load]);
 
+  // Autosave nội bộ: bảng form_previous_action_reviews có nút lưu riêng — trước đây quên bấm là mất.
+  // Không cần khóa lạc quan: upsert theo id từng dòng, xung đột 2 tab chỉ đè field-level (chấp nhận được).
+  const autosaveHook = useEvaluationAutosave({
+    enabled: !!formId && !!previousFormId && !loading,
+    save: async () => {
+      if (!formId) return 'ok';
+      await persistRows(rows);
+      return 'ok';
+    },
+  });
+
   const update = (idx: number, patch: Partial<ReviewRow>) => {
     setRows(prev => prev.map((r, i) => i === idx ? { ...r, ...patch } : r));
+    autosaveHook.markDirty();
   };
 
   const addExtra = () => {
@@ -200,6 +214,7 @@ export function PreviousActionsReview({ formId, previousFormId, previousCycleNam
       evidence: '', employee_note: '', manager_note: '',
       row_no: prev.length + 1,
     }]);
+    autosaveHook.markDirty();
   };
 
   const removeExtra = async (idx: number) => {
@@ -213,31 +228,51 @@ export function PreviousActionsReview({ formId, previousFormId, previousCycleNam
     toast.success('Đã xoá hành động');
   };
 
+  // Ghi toàn bộ dòng rà soát; dòng insert mới lấy id trả về ghi ngược vào state
+  // để lần lưu sau (autosave lặp) update thay vì nhân bản dòng.
+  const persistRows = async (list: ReviewRow[]) => {
+    for (let i = 0; i < list.length; i++) {
+      const r = list[i];
+      const payload: any = {
+        form_id: r.form_id, source_form_id: r.source_form_id,
+        source_action_id: r.source_action_id, source_action_type: r.source_action_type,
+        is_extra: r.is_extra,
+        action_text: r.action_text || null,
+        expected_result: r.expected_result || null,
+        actual_result: r.actual_result || null,
+        status: r.status, self_status: r.self_status, evidence: r.evidence || null,
+        employee_note: r.employee_note || null,
+        manager_note: r.manager_note || null,
+        row_no: r.row_no,
+      };
+      if (r.id) {
+        const { error } = await supabase.from('form_previous_action_reviews').update(payload).eq('id', r.id);
+        if (error) throw error;
+      } else {
+        const { data: created, error } = await supabase
+          .from('form_previous_action_reviews')
+          .insert(payload)
+          .select('id')
+          .single();
+        if (error) throw error;
+        const newId = (created as any)?.id as string | undefined;
+        if (newId) {
+          r.id = newId;
+          const idx = i;
+          setRows(prev => prev.map((x, j) => (j === idx && !x.id ? { ...x, id: newId } : x)));
+        }
+      }
+    }
+  };
+
   const saveAll = async () => {
     if (!formId) return;
     setSaving(true);
     try {
-      for (const r of rows) {
-        const payload: any = {
-          form_id: r.form_id, source_form_id: r.source_form_id,
-          source_action_id: r.source_action_id, source_action_type: r.source_action_type,
-          is_extra: r.is_extra,
-          action_text: r.action_text || null,
-          expected_result: r.expected_result || null,
-          actual_result: r.actual_result || null,
-          status: r.status, self_status: r.self_status, evidence: r.evidence || null,
-          employee_note: r.employee_note || null,
-          manager_note: r.manager_note || null,
-          row_no: r.row_no,
-        };
-        if (r.id) {
-          const { error } = await supabase.from('form_previous_action_reviews').update(payload).eq('id', r.id);
-          if (error) throw error;
-        } else {
-          const { error } = await supabase.from('form_previous_action_reviews').insert(payload);
-          if (error) throw error;
-        }
-      }
+      autosaveHook.suspend();
+      await autosaveHook.waitForIdle();
+      await persistRows(rows);
+      autosaveHook.markClean();
       toast.success('Đã lưu rà soát hành động kỳ trước');
 
       // Auto carry-over: when manager marks any row as not completed, push them to current plan
@@ -261,7 +296,10 @@ export function PreviousActionsReview({ formId, previousFormId, previousCycleNam
     } catch (e: any) {
       console.error(e);
       toast.error(e.message || 'Lỗi khi lưu');
-    } finally { setSaving(false); }
+    } finally {
+      autosaveHook.resume();
+      setSaving(false);
+    }
   };
 
   if (!formId || !previousFormId) return null;
@@ -440,10 +478,13 @@ export function PreviousActionsReview({ formId, previousFormId, previousCycleNam
               Chuyển hành động chưa hoàn thành → KH kỳ này
             </Button>
           )}
-          <Button size="sm" onClick={saveAll} disabled={saving} className="ml-auto">
-            {saving ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Save className="w-3 h-3 mr-1" />}
-            Lưu rà soát
-          </Button>
+          <div className="ml-auto flex items-center gap-2">
+            <AutosaveStatusBar state={autosaveHook.state} lastSavedAt={autosaveHook.lastSavedAt} dirty={autosaveHook.dirty} />
+            <Button size="sm" onClick={saveAll} disabled={saving}>
+              {saving ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Save className="w-3 h-3 mr-1" />}
+              Lưu rà soát
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

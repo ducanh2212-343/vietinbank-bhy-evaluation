@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,11 +9,11 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { ArrowLeft, Save, Send, Loader2, AlertTriangle, CheckCircle2, XCircle, Info } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Save, Send, Loader2, AlertTriangle, CheckCircle2, XCircle, Info } from 'lucide-react';
 import { ReturnDialog } from '@/components/evaluation/ReturnDialog';
 
 import { EvalSectionA } from '@/components/evaluation/EvalSectionA';
-import { EvalSectionB, type CoreSkillAssessment } from '@/components/evaluation/EvalSectionB';
+import { EvalSectionB, skillRowDomId, type CoreSkillAssessment } from '@/components/evaluation/EvalSectionB';
 import { EvalSectionC, type AttitudeAssessment } from '@/components/evaluation/EvalSectionC';
 import { EvalSection1on1, type OneOnOneAnswers } from '@/components/evaluation/EvalSection1on1';
 import { type SkillPriority } from '@/components/bm/SkillPriorityPicker';
@@ -39,9 +39,20 @@ import {
   saveEvaluationChildren,
 } from '@/lib/evaluationPersistence';
 import { OverallReviewBlock, type OverallReviewValue } from '@/components/evaluation/OverallReviewBlock';
+import { validateManagerReview } from '@/lib/evaluationValidation';
 import { StarClassificationBlock } from '@/components/evaluation/StarClassificationBlock';
 import { getReviewerLevel, getOverallReviewField } from '@/lib/reviewerScope';
 import { useCycleOneOnOneQuestions } from '@/hooks/useCycleOneOnOneQuestions';
+import { useEvaluationAutosave } from '@/hooks/useEvaluationAutosave';
+import { AutosaveStatusBar } from '@/components/evaluation/AutosaveStatusBar';
+import { ReviewDiffSummary } from '@/components/evaluation/ReviewDiffSummary';
+import { fetchReviewQueue, type QueueItem } from '@/lib/reviewQueue';
+
+const ATTITUDE_RATING_LABELS: Record<string, string> = {
+  noi_bat: 'Nổi bật',
+  dat_mong_doi: 'Đạt mong đợi',
+  can_cai_thien: 'Cần cải thiện',
+};
 
 const hasEmployeeOneOnOneAnswers = (answers: OneOnOneAnswers) =>
   Object.values(answers || {}).some((a: any) => (a?.employee || '').trim().length > 0);
@@ -63,7 +74,9 @@ export default function StaffEvaluation() {
   const [formId, setFormId] = useState<string | null>(null);
   // Khóa lạc quan: mốc updated_at của phiếu lúc mở, để phát hiện tab khác/người khác đã lưu
   const formUpdatedAtRef = useRef<string | null>(null);
-  const [cycleId, setCycleId] = useState('');
+  const [searchParams] = useSearchParams();
+  // Nhận kỳ từ ?cycle= để "Phiếu tiếp theo" mở đúng kỳ đang duyệt
+  const [cycleId, setCycleId] = useState(() => searchParams.get('cycle') || '');
   const oneOnOneQuestions = useCycleOneOnOneQuestions(cycleId);
   const [formStatus, setFormStatus] = useState('draft');
 
@@ -84,10 +97,14 @@ export default function StaffEvaluation() {
   const [remark, setRemark] = useState('');
   const [managerConclusion, setManagerConclusion] = useState('');
   const [overallReview, setOverallReview] = useState<OverallReviewValue>({});
-  const [savingOverall, setSavingOverall] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [returnEmpOpen, setReturnEmpOpen] = useState(false);
   const [confirmReviewOpen, setConfirmReviewOpen] = useState(false);
+  // Duyệt theo ngoại lệ + hàng đợi phiếu
+  const [nextDialogOpen, setNextDialogOpen] = useState(false);
+  const [queue, setQueue] = useState<QueueItem[] | null>(null);
+  const [sectionBOpenId, setSectionBOpenId] = useState<string | null>(null);
+  const hydratingRef = useRef(true);
 
 
   // Extended form metadata for review/return workflow
@@ -146,25 +163,58 @@ export default function StaffEvaluation() {
   // Ai được bấm "Lưu nháp" phiếu này
   const canSaveForm = cycleOpen && (isSelfEval ? canEmployeeEditSelf : (canEditManagerAssessment || isAdmin));
 
-  // Can the manager confirm review? Needs all core skills graded, all 6 attitudes graded,
-  // and at least one of overallReview / remark / managerConclusion filled.
+  // Gate "Xác nhận rà soát" của TP — logic thuần ở evaluationValidation.validateManagerReview
+  // (gồm luật chống hình thức: skill chấm lệch bắt buộc ghi nhận xét trao đổi).
   const reviewMissing = useMemo(() => {
-    const missing: string[] = [];
-    if (coreAssessments.length === 0 || !coreAssessments.every(c => c.manager_assessed_level != null)) {
-      missing.push('Còn skill lõi chưa được Trưởng phòng đánh giá');
-    }
-    if (attitudeAssessments.length < 6 || !attitudeAssessments.every(a => !!a.manager_status)) {
-      missing.push('Còn nhóm thái độ chưa được Trưởng phòng đánh giá');
-    }
-    const overallFilled = Object.values(overallReview || {}).some(v => typeof v === 'string' && v.trim().length > 0);
-    const remarkFilled = (remark || '').trim().length > 0;
-    const conclusionFilled = (managerConclusion || '').trim().length > 0;
-    if (!overallFilled && !remarkFilled && !conclusionFilled) {
-      missing.push('Chưa có nhận xét/kết luận của Trưởng phòng');
-    }
-    return missing;
-  }, [coreAssessments, attitudeAssessments, overallReview, remark, managerConclusion]);
+    const overallFilled =
+      Object.values(overallReview || {}).some(v => typeof v === 'string' && v.trim().length > 0) ||
+      (remark || '').trim().length > 0 ||
+      (managerConclusion || '').trim().length > 0;
+    return validateManagerReview({
+      coreAssessments,
+      supplementaryAssessments: suppAssessments,
+      attitudeAssessments,
+      overallFilled,
+    });
+  }, [coreAssessments, suppAssessments, attitudeAssessments, overallReview, remark, managerConclusion]);
   const canConfirmReview = reviewMissing.length === 0;
+
+  // Duyệt theo ngoại lệ: đối chiếu tự đánh giá vs đánh giá quản lý trên toàn bộ skill + thái độ
+  const reviewDiff = useMemo(() => {
+    const all = [...coreAssessments, ...suppAssessments];
+    const agreeableSkills = all.filter((a) => a.manager_assessed_level == null && a.self_assessed_level != null);
+    const agreedSkillCount = all.filter(
+      (a) => a.manager_assessed_level != null && a.self_assessed_level != null && a.manager_assessed_level === a.self_assessed_level,
+    ).length;
+    const mismatchSkills = all
+      .filter((a) => a.manager_assessed_level != null && a.self_assessed_level != null && a.manager_assessed_level !== a.self_assessed_level)
+      .map((a) => ({
+        skill_id: a.skill_id,
+        skill_name: a.skill_name,
+        selfLevel: a.self_assessed_level as number,
+        managerLevel: a.manager_assessed_level as number,
+      }));
+    const unratedSelfCount = all.filter((a) => a.self_assessed_level == null).length;
+    const agreeableAttitudes = attitudeAssessments.filter((a) => a.self_status && !a.manager_status);
+    const mismatchAttitudes = attitudeAssessments
+      .filter((a) => a.self_status && a.manager_status && a.self_status !== a.manager_status)
+      .map((a) => ({
+        id: a.attitude_dimension_id,
+        name: a.attitude_name,
+        selfLabel: ATTITUDE_RATING_LABELS[a.self_status] || a.self_status,
+        managerLabel: ATTITUDE_RATING_LABELS[a.manager_status] || a.manager_status,
+      }));
+    return { agreeableSkills, agreedSkillCount, mismatchSkills, unratedSelfCount, agreeableAttitudes, mismatchAttitudes };
+  }, [coreAssessments, suppAssessments, attitudeAssessments]);
+
+  // Mở + cuộn tới đúng hàng skill trong mục B (từ panel tóm tắt lệch)
+  const navigateToSkillB = (skillId: string) => {
+    const kind: 'core' | 'supp' = coreAssessments.some((a) => a.skill_id === skillId) ? 'core' : 'supp';
+    setSectionBOpenId(`${kind}-${skillId}`);
+    requestAnimationFrame(() => {
+      document.getElementById(skillRowDomId(kind, skillId))?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  };
 
 
   const loadData = useCallback(async () => {
@@ -511,6 +561,250 @@ export default function StaffEvaluation() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // ===== Autosave nháp (chỉ khi phiếu đã tồn tại — trang này không tự tạo phiếu hộ cán bộ) =====
+  const autosaveNow = async (): Promise<'ok' | 'conflict'> => {
+    if (!formId || saving || actionLoading) return 'ok';
+    if (!cycleOpen) return 'ok'; // kỳ đóng: chỉ xem — cùng luật với canSaveForm
+    const canChildren = canEditManagerAssessment || canEmployeeEditSelf;
+    const canParentOverall = isManagerMode && !!reviewField;
+    if (!canChildren && !canParentOverall) return 'ok';
+
+    // Khóa lạc quan (select nhẹ): phiếu bị tab/người khác sửa → dừng autosave, không ghi đè
+    const { data: cur, error } = await supabase
+      .from('form_submissions')
+      .select('updated_at')
+      .eq('id', formId)
+      .maybeSingle();
+    if (error) throw error;
+    if (formUpdatedAtRef.current && cur?.updated_at && cur.updated_at !== formUpdatedAtRef.current) {
+      return 'conflict';
+    }
+
+    if (canChildren) {
+      await saveEvaluationChildren(formId, buildChildrenPayload());
+    }
+    // Phiếu cha: CHỈ field nội dung — không đụng status/reviewer_id/mốc thời gian duyệt
+    const parentPayload: any = {};
+    if (canChildren) {
+      parentPayload.manager_comment = managerConclusion || null;
+      parentPayload.one_on_one_answers = oneOnOneAnswers as any;
+      if (oneOnOneEnabled || hasEmployeeAnswers) parentPayload.one_on_one_enabled = true;
+    }
+    if (canParentOverall && reviewField) {
+      parentPayload[reviewField] = overallReview;
+    }
+    const { data: upd, error: upErr } = await supabase
+      .from('form_submissions')
+      .update(parentPayload)
+      .eq('id', formId)
+      .select('updated_at')
+      .single();
+    if (upErr) throw upErr;
+    formUpdatedAtRef.current = (upd as any)?.updated_at ?? formUpdatedAtRef.current;
+    return 'ok';
+  };
+
+  const autosaveEnabled =
+    !loading && !!formId && cycleOpen &&
+    (canEditManagerAssessment || canEmployeeEditSelf || (isManagerMode && !!reviewField));
+  const autosave = useEvaluationAutosave({ enabled: autosaveEnabled, save: autosaveNow });
+
+  // Theo dõi thay đổi form → đánh dấu dirty (bỏ qua lượt hydrate ngay sau loadData)
+  useEffect(() => {
+    if (loading) {
+      hydratingRef.current = true;
+      return;
+    }
+    if (hydratingRef.current) {
+      hydratingRef.current = false;
+      return;
+    }
+    autosave.markDirty();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coreAssessments, suppAssessments, attitudeAssessments, skillPriorities, skillActions,
+      attitudePriorities, attitudeActions, aiActions, oneOnOneAnswers, oneOnOneEnabled,
+      classification, remark, managerConclusion, overallReview, loading]);
+
+  // ===== Hàng đợi duyệt: các phiếu khác đang chờ chính người xem xử lý trong kỳ =====
+  useEffect(() => {
+    if (!isManagerMode || !cycleId || !profileId || loading) return;
+    let alive = true;
+    fetchReviewQueue({
+      viewer: { profileId, isManager, isPgd, isAdmin },
+      cycleId,
+      excludeProfileId: id,
+    })
+      .then((q) => { if (alive) setQueue(q); })
+      .catch(() => { /* hàng đợi là tiện ích — lỗi không chặn trang */ });
+    return () => { alive = false; };
+  }, [isManagerMode, cycleId, profileId, id, loading, formStatus, isManager, isPgd, isAdmin]);
+
+  // Đổi kỳ: lưu nốt thay đổi đang chờ của kỳ cũ rồi mới chuyển (tránh mất/ghi nhầm kỳ)
+  const handleCycleChange = async (newCycleId: string) => {
+    await autosave.flush();
+    setCycleId(newCycleId);
+  };
+
+  const goToNextForm = async () => {
+    const next = queue?.[0];
+    if (!next) return;
+    setNextDialogOpen(false);
+    await autosave.flush();
+    navigate(`/danh-gia/${next.profileId}?cycle=${cycleId}`);
+  };
+
+  // Sau khi xử lý xong một phiếu — mời mở phiếu kế tiếp nếu còn hàng đợi
+  const offerNextForm = async () => {
+    if (!profileId || !cycleId || !id) return;
+    try {
+      const q = await fetchReviewQueue({
+        viewer: { profileId, isManager, isPgd, isAdmin },
+        cycleId,
+        excludeProfileId: id,
+      });
+      setQueue(q);
+      if (q.length > 0) setNextDialogOpen(true);
+    } catch { /* im lặng */ }
+  };
+
+  // Toàn bộ payload bảng con dựng từ state hiện tại — dùng chung cho Lưu tay lẫn autosave.
+  // Business logic (dòng nào giữ, remap khóa tự nhiên, chống trùng) giữ nguyên từ handleSave cũ.
+  const buildChildrenPayload = () => {
+    // Business logic (dòng nào giữ, giá trị field, carry-over, remap) vẫn ở client; RPC chỉ ghi atomic.
+
+    // Map khóa priority phía client (id thật hoặc tmp-, và skill_id) → skill_id
+    const spKeyToSkillId = new Map<string, string>();
+    for (const sp of skillPriorities) {
+      if (sp.id) spKeyToSkillId.set(sp.id, sp.skill_id);
+      spKeyToSkillId.set(sp.skill_id, sp.skill_id);
+    }
+    // id priority thái độ (đã load) → attitude_dimension_id, để nối liên kết AI theo khóa tự nhiên
+    const attPidToDim = new Map<string, number>();
+    for (const p of attitudePriorities) {
+      if (p.id) attPidToDim.set(p.id, p.attitude_dimension_id);
+    }
+
+    const skillAssessmentsPayload = buildSkillAssessmentRows(coreAssessments, suppAssessments);
+
+    const skillPrioritiesPayload = skillPriorities.map(sp => ({
+      skill_id: sp.skill_id, current_level: sp.current_level, target_level: sp.target_level,
+      priority_order: sp.priority_order, reason_text: sp.reason_text || null,
+      source_type: sp.source_type, status: sp.status,
+    }));
+
+    const skillActionsPayload = skillActions
+      .map(a => ({
+        id: a.id || null,
+        skill_id: spKeyToSkillId.get(a.skill_priority_id) || null,
+        row_no: a.row_no, action_type: a.action_type, action_text: a.action_text || 'Chưa nhập',
+        expected_result: a.expected_result || null, deadline: a.deadline || null,
+        requested_support: a.requested_support || null, evidence_expected: a.evidence_expected || null,
+        status: a.status, actual_result: a.actual_result || null, manager_review: a.manager_review || null,
+      }))
+      .filter(r => r.skill_id);
+
+    const attitudePrioritiesPayload: any[] = [];
+    const attitudeActionsPayload: any[] = [];
+    const seenAttActionKey = new Set<string>();
+    for (const aa of attitudeAssessments) {
+      const improvementP = attitudePriorities.find(p => p.attitude_dimension_id === aa.attitude_dimension_id);
+      const hasFocus = (aa.improvement_focus && aa.improvement_focus.length) || !!aa.improvement_focus_other;
+      const focusPayload = hasFocus
+        ? JSON.stringify({ focus: aa.improvement_focus || [], other: aa.improvement_focus_other || '' })
+        : null;
+      // Giữ issue_summary legacy dạng text; payload focus JSON cũ thì bỏ (đã bỏ chọn focus)
+      const legacyIssueSummary = (() => {
+        const raw = aa.issue_summary || '';
+        if (!raw) return null;
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed && Array.isArray(parsed.focus)) return null;
+        } catch { /* text thường → giữ lại */ }
+        return raw;
+      })();
+      attitudePrioritiesPayload.push({
+        attitude_dimension_id: aa.attitude_dimension_id,
+        attitude_name: aa.attitude_name,
+        self_status: aa.self_status || null,
+        manager_status: aa.manager_status || null,
+        current_status: aa.current_status || null,
+        desired_status: aa.desired_status || null,
+        issue_summary: focusPayload ?? legacyIssueSummary,
+        improvement_goal: aa.improvement_action || aa.improvement_goal || improvementP?.improvement_goal || null,
+        evidence: aa.evidence_text || aa.evidence || null,
+        employee_comment: aa.employee_comment || null,
+        manager_comment: aa.manager_comment || null,
+        priority_order: aa.attitude_dimension_id,
+        status: STATUS_TO_DB[aa.improvement_status || 'not_started'] || improvementP?.status || 'planned',
+      });
+
+      const dim = aa.attitude_dimension_id;
+      const loadedRows = improvementP?.id ? attitudeActions.filter(x => x.attitude_priority_id === improvementP.id) : [];
+      const planActive = aa.self_status === 'can_cai_thien' || aa.manager_status === 'can_cai_thien' || !!aa.improvement_required;
+      const hasActionFields = !!(aa.improvement_action || aa.improvement_deadline || aa.expected_evidence || aa.support_needed || aa.progress_note);
+      const pushAtt = (row: any) => {
+        const key = `${dim}|${(row.action_text || '').trim().toLowerCase()}`;
+        if (seenAttActionKey.has(key)) return;
+        seenAttActionKey.add(key);
+        attitudeActionsPayload.push(row);
+      };
+      let rowNo = 1;
+      if (planActive && hasActionFields) {
+        // Dòng 1 từ mục C; GIỮ id cũ (Kanban) + GIỮ nhận xét TP của dòng 1
+        pushAtt({
+          id: loadedRows[0]?.id || null, attitude_dimension_id: dim, row_no: rowNo++,
+          action_text: aa.improvement_action || 'Chưa nhập',
+          expected_evidence: aa.expected_evidence || null,
+          deadline: aa.improvement_deadline || null,
+          requested_support: aa.support_needed || null,
+          status: STATUS_TO_DB[aa.improvement_status || 'not_started'] || 'planned',
+          actual_result: aa.progress_note || null,
+          manager_review: loadedRows[0]?.manager_review || null,
+        });
+        loadedRows.slice(1).forEach(r => pushAtt({
+          id: r.id || null, attitude_dimension_id: dim, row_no: rowNo++,
+          action_text: r.action_text || 'Chưa nhập',
+          expected_evidence: r.expected_evidence || null,
+          deadline: r.deadline || null,
+          requested_support: r.requested_support || null,
+          status: r.status, actual_result: r.actual_result || null,
+          manager_review: r.manager_review || null,
+        }));
+      } else {
+        loadedRows.forEach(r => pushAtt({
+          id: r.id || null, attitude_dimension_id: dim, row_no: rowNo++,
+          action_text: r.action_text || 'Chưa nhập',
+          expected_evidence: r.expected_evidence || null,
+          deadline: r.deadline || null,
+          requested_support: r.requested_support || null,
+          status: r.status, actual_result: r.actual_result || null,
+          manager_review: r.manager_review || null,
+        }));
+      }
+    }
+
+    const aiActionsPayload = aiActions.map(a => ({
+      id: a.id || null,
+      linked_skill_id: (a.linked_skill_priority_id && spKeyToSkillId.get(a.linked_skill_priority_id)) || null,
+      linked_attitude_dimension_id:
+        (a.linked_attitude_priority_id && attPidToDim.get(a.linked_attitude_priority_id)) ?? null,
+      row_no: a.row_no, ai_action_text: a.ai_action_text || 'Chưa nhập',
+      expected_result: a.expected_result || null, deadline: a.deadline || null,
+      requested_support: a.requested_support || null, evidence_expected: a.evidence_expected || null,
+      status: a.status, actual_result: a.actual_result || null,
+      manager_review: a.manager_review || null, unlinked_reason: a.unlinked_reason || null,
+    }));
+
+    return {
+      skillAssessments: skillAssessmentsPayload,
+      skillPriorities: skillPrioritiesPayload,
+      skillActions: skillActionsPayload,
+      attitudePriorities: attitudePrioritiesPayload,
+      attitudeActions: attitudeActionsPayload,
+      aiActions: aiActionsPayload,
+    };
+  };
+
   const handleSave = async (submit = false): Promise<boolean> => {
     if (!id || !cycleId) return false;
     if (!cycleOpen) {
@@ -530,6 +824,10 @@ export default function StaffEvaluation() {
       return false;
     }
     setSaving(true);
+
+    // Tránh 2 đường ghi song song: dừng autosave + đợi lượt đang chạy xong
+    autosave.suspend();
+    await autosave.waitForIdle();
 
     try {
       const form = await getQuarterFormSubmission({
@@ -598,139 +896,7 @@ export default function StaffEvaluation() {
       formUpdatedAtRef.current = (updatedForm as any)?.updated_at ?? formUpdatedAtRef.current;
 
       // Lưu toàn bộ bảng con qua RPC atomic (giữ UUID hành động → Kanban không reset; rollback nếu lỗi).
-      // Business logic (dòng nào giữ, giá trị field, carry-over, remap) vẫn ở client; RPC chỉ ghi atomic.
-
-      // Map khóa priority phía client (id thật hoặc tmp-, và skill_id) → skill_id
-      const spKeyToSkillId = new Map<string, string>();
-      for (const sp of skillPriorities) {
-        if (sp.id) spKeyToSkillId.set(sp.id, sp.skill_id);
-        spKeyToSkillId.set(sp.skill_id, sp.skill_id);
-      }
-      // id priority thái độ (đã load) → attitude_dimension_id, để nối liên kết AI theo khóa tự nhiên
-      const attPidToDim = new Map<string, number>();
-      for (const p of attitudePriorities) {
-        if (p.id) attPidToDim.set(p.id, p.attitude_dimension_id);
-      }
-
-      const skillAssessmentsPayload = buildSkillAssessmentRows(coreAssessments, suppAssessments);
-
-      const skillPrioritiesPayload = skillPriorities.map(sp => ({
-        skill_id: sp.skill_id, current_level: sp.current_level, target_level: sp.target_level,
-        priority_order: sp.priority_order, reason_text: sp.reason_text || null,
-        source_type: sp.source_type, status: sp.status,
-      }));
-
-      const skillActionsPayload = skillActions
-        .map(a => ({
-          id: a.id || null,
-          skill_id: spKeyToSkillId.get(a.skill_priority_id) || null,
-          row_no: a.row_no, action_type: a.action_type, action_text: a.action_text || 'Chưa nhập',
-          expected_result: a.expected_result || null, deadline: a.deadline || null,
-          requested_support: a.requested_support || null, evidence_expected: a.evidence_expected || null,
-          status: a.status, actual_result: a.actual_result || null, manager_review: a.manager_review || null,
-        }))
-        .filter(r => r.skill_id);
-
-      const attitudePrioritiesPayload: any[] = [];
-      const attitudeActionsPayload: any[] = [];
-      const seenAttActionKey = new Set<string>();
-      for (const aa of attitudeAssessments) {
-        const improvementP = attitudePriorities.find(p => p.attitude_dimension_id === aa.attitude_dimension_id);
-        const hasFocus = (aa.improvement_focus && aa.improvement_focus.length) || !!aa.improvement_focus_other;
-        const focusPayload = hasFocus
-          ? JSON.stringify({ focus: aa.improvement_focus || [], other: aa.improvement_focus_other || '' })
-          : null;
-        // Giữ issue_summary legacy dạng text; payload focus JSON cũ thì bỏ (đã bỏ chọn focus)
-        const legacyIssueSummary = (() => {
-          const raw = aa.issue_summary || '';
-          if (!raw) return null;
-          try {
-            const parsed = JSON.parse(raw);
-            if (parsed && Array.isArray(parsed.focus)) return null;
-          } catch { /* text thường → giữ lại */ }
-          return raw;
-        })();
-        attitudePrioritiesPayload.push({
-          attitude_dimension_id: aa.attitude_dimension_id,
-          attitude_name: aa.attitude_name,
-          self_status: aa.self_status || null,
-          manager_status: aa.manager_status || null,
-          current_status: aa.current_status || null,
-          desired_status: aa.desired_status || null,
-          issue_summary: focusPayload ?? legacyIssueSummary,
-          improvement_goal: aa.improvement_action || aa.improvement_goal || improvementP?.improvement_goal || null,
-          evidence: aa.evidence_text || aa.evidence || null,
-          employee_comment: aa.employee_comment || null,
-          manager_comment: aa.manager_comment || null,
-          priority_order: aa.attitude_dimension_id,
-          status: STATUS_TO_DB[aa.improvement_status || 'not_started'] || improvementP?.status || 'planned',
-        });
-
-        const dim = aa.attitude_dimension_id;
-        const loadedRows = improvementP?.id ? attitudeActions.filter(x => x.attitude_priority_id === improvementP.id) : [];
-        const planActive = aa.self_status === 'can_cai_thien' || aa.manager_status === 'can_cai_thien' || !!aa.improvement_required;
-        const hasActionFields = !!(aa.improvement_action || aa.improvement_deadline || aa.expected_evidence || aa.support_needed || aa.progress_note);
-        const pushAtt = (row: any) => {
-          const key = `${dim}|${(row.action_text || '').trim().toLowerCase()}`;
-          if (seenAttActionKey.has(key)) return;
-          seenAttActionKey.add(key);
-          attitudeActionsPayload.push(row);
-        };
-        let rowNo = 1;
-        if (planActive && hasActionFields) {
-          // Dòng 1 từ mục C; GIỮ id cũ (Kanban) + GIỮ nhận xét TP của dòng 1
-          pushAtt({
-            id: loadedRows[0]?.id || null, attitude_dimension_id: dim, row_no: rowNo++,
-            action_text: aa.improvement_action || 'Chưa nhập',
-            expected_evidence: aa.expected_evidence || null,
-            deadline: aa.improvement_deadline || null,
-            requested_support: aa.support_needed || null,
-            status: STATUS_TO_DB[aa.improvement_status || 'not_started'] || 'planned',
-            actual_result: aa.progress_note || null,
-            manager_review: loadedRows[0]?.manager_review || null,
-          });
-          loadedRows.slice(1).forEach(r => pushAtt({
-            id: r.id || null, attitude_dimension_id: dim, row_no: rowNo++,
-            action_text: r.action_text || 'Chưa nhập',
-            expected_evidence: r.expected_evidence || null,
-            deadline: r.deadline || null,
-            requested_support: r.requested_support || null,
-            status: r.status, actual_result: r.actual_result || null,
-            manager_review: r.manager_review || null,
-          }));
-        } else {
-          loadedRows.forEach(r => pushAtt({
-            id: r.id || null, attitude_dimension_id: dim, row_no: rowNo++,
-            action_text: r.action_text || 'Chưa nhập',
-            expected_evidence: r.expected_evidence || null,
-            deadline: r.deadline || null,
-            requested_support: r.requested_support || null,
-            status: r.status, actual_result: r.actual_result || null,
-            manager_review: r.manager_review || null,
-          }));
-        }
-      }
-
-      const aiActionsPayload = aiActions.map(a => ({
-        id: a.id || null,
-        linked_skill_id: (a.linked_skill_priority_id && spKeyToSkillId.get(a.linked_skill_priority_id)) || null,
-        linked_attitude_dimension_id:
-          (a.linked_attitude_priority_id && attPidToDim.get(a.linked_attitude_priority_id)) ?? null,
-        row_no: a.row_no, ai_action_text: a.ai_action_text || 'Chưa nhập',
-        expected_result: a.expected_result || null, deadline: a.deadline || null,
-        requested_support: a.requested_support || null, evidence_expected: a.evidence_expected || null,
-        status: a.status, actual_result: a.actual_result || null,
-        manager_review: a.manager_review || null, unlinked_reason: a.unlinked_reason || null,
-      }));
-
-      await saveEvaluationChildren(fId, {
-        skillAssessments: skillAssessmentsPayload,
-        skillPriorities: skillPrioritiesPayload,
-        skillActions: skillActionsPayload,
-        attitudePriorities: attitudePrioritiesPayload,
-        attitudeActions: attitudeActionsPayload,
-        aiActions: aiActionsPayload,
-      });
+      await saveEvaluationChildren(fId, buildChildrenPayload());
 
       // Save classification/remark
       const evalPayload = {
@@ -749,6 +915,7 @@ export default function StaffEvaluation() {
 
       // status will be refreshed by loadData()
       toast({ title: submit ? 'Đã nộp đánh giá' : 'Đã lưu bản nháp' });
+      autosave.markClean();
       await loadData();
       return true;
     } catch (err: any) {
@@ -756,6 +923,7 @@ export default function StaffEvaluation() {
       toast({ title: 'Lỗi khi lưu', description: err.message, variant: 'destructive' });
       return false;
     } finally {
+      autosave.resume();
       setSaving(false);
     }
   };
@@ -805,6 +973,7 @@ export default function StaffEvaluation() {
       return_reason: null,
       return_target: null,
     }, 'Đã xác nhận rà soát · chuyển PGĐ');
+    await offerNextForm();
   };
 
   const handleReturnToEmployee = (reason: string) =>
@@ -816,8 +985,8 @@ export default function StaffEvaluation() {
       return_target: 'employee',
     }, 'Đã trả lại cán bộ');
 
-  const handleApprove = () =>
-    updateFormStatus({
+  const handleApprove = async () => {
+    await updateFormStatus({
       status: 'approved' as any,
       pgd_review_status: 'approved',
       pgd_reviewed_at: new Date().toISOString(),
@@ -826,6 +995,8 @@ export default function StaffEvaluation() {
       return_reason: null,
       return_target: null,
     }, 'Đã phê duyệt phiếu đánh giá');
+    await offerNextForm();
+  };
 
   // Luồng rút gọn cho cán bộ không có TP trung gian (TP/PGĐ): người đánh giá
   // cấp PGĐ/GĐ chấm điểm xong bấm một nút — hệ thống chạy đủ hai bước
@@ -857,6 +1028,7 @@ export default function StaffEvaluation() {
       if (e2) throw e2;
       toast({ title: 'Đã đánh giá và phê duyệt phiếu' });
       await loadData();
+      await offerNextForm();
     } catch (e) {
       toast({ title: 'Lỗi phê duyệt', description: e instanceof Error ? e.message : String(e), variant: 'destructive' });
     } finally {
@@ -878,9 +1050,21 @@ export default function StaffEvaluation() {
 
   return (
     <div className="max-w-4xl space-y-4 pb-24">
-      <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-        <ArrowLeft className="w-4 h-4 mr-1" /> Quay lại
-      </Button>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+          <ArrowLeft className="w-4 h-4 mr-1" /> Quay lại
+        </Button>
+        {isManagerMode && (queue?.length || 0) > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={goToNextForm}
+            title={`Tiếp theo: ${queue![0].fullName}${queue![0].deptName ? ` (${queue![0].deptName})` : ''}`}
+          >
+            Phiếu tiếp theo (còn {queue!.length}) <ArrowRight className="w-4 h-4 ml-1" />
+          </Button>
+        )}
+      </div>
 
       <div className="space-y-2">
         <h1 className="page-header">Đánh giá cán bộ</h1>
@@ -918,7 +1102,7 @@ export default function StaffEvaluation() {
 
 
       {/* A */}
-      <EvalSectionA profile={profile} cycleId={cycleId} onCycleChange={setCycleId} cycles={cycles} />
+      <EvalSectionA profile={profile} cycleId={cycleId} onCycleChange={handleCycleChange} cycles={cycles} />
 
       {/* Reviewer/PGĐ summary cards */}
       {formId && (
@@ -1073,10 +1257,20 @@ export default function StaffEvaluation() {
         supplementary={suppAssessments}
         onSupplementaryChange={setSuppAssessments}
         allSkills={allSkills}
+        openId={sectionBOpenId}
+        onOpenIdChange={setSectionBOpenId}
+        quickRate={canEditManagerAssessment}
+        quickRateTarget="manager"
+        showAgreeControls={canEditManagerAssessment}
       />
 
       {/* C — như trên */}
-      <EvalSectionC assessments={attitudeAssessments} onChange={setAttitudeAssessments} isManager={canEditManagerAssessment} />
+      <EvalSectionC
+        assessments={attitudeAssessments}
+        onChange={setAttitudeAssessments}
+        isManager={canEditManagerAssessment}
+        showAgreeControls={canEditManagerAssessment}
+      />
 
       <AICompetencyPortrait
         profile={profile}
@@ -1147,36 +1341,18 @@ export default function StaffEvaluation() {
         onApproveDirect={handleReviewAndApprove}
       />
 
-      {/* H — Đánh giá tổng thể của lãnh đạo (chỉ hiện khi actor là cấp trên của target) */}
+      {/* H — Đánh giá tổng thể của lãnh đạo (chỉ hiện khi actor là cấp trên của target).
+          Nội dung được tự lưu cùng phiếu (autosave + Lưu nháp) — đã bỏ nút lưu riêng dễ quên. */}
       {reviewerLevel && reviewField && formId && (
-        <div className="space-y-3">
+        <div className="space-y-1">
           <OverallReviewBlock
             title={`Đánh giá tổng thể (${reviewerLevel === 'manager' ? 'Trưởng phòng' : reviewerLevel === 'pgd' ? 'Phó giám đốc' : 'Giám đốc'})`}
             value={overallReview}
             onChange={setOverallReview}
-            disabled={savingOverall}
           />
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={savingOverall}
-            onClick={async () => {
-              if (!formId) return;
-              setSavingOverall(true);
-              const payload: any = {
-                [reviewField]: overallReview,
-                reviewer_id: profileId,
-                reviewed_at: new Date().toISOString(),
-              };
-              const { error } = await supabase.from('form_submissions').update(payload).eq('id', formId);
-              setSavingOverall(false);
-              if (error) toast({ title: 'Lỗi lưu đánh giá tổng thể', description: error.message, variant: 'destructive' });
-              else toast({ title: 'Đã lưu đánh giá tổng thể' });
-            }}
-          >
-            {savingOverall ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-            Lưu đánh giá tổng thể
-          </Button>
+          <p className="text-[11px] text-muted-foreground px-1">
+            Nội dung mục này được tự lưu cùng phiếu — không cần nút lưu riêng.
+          </p>
         </div>
       )}
 
@@ -1194,6 +1370,17 @@ export default function StaffEvaluation() {
         />
       )}
 
+      {/* Tóm tắt duyệt-theo-ngoại-lệ cho TP trước khi xác nhận */}
+      {canEditManagerAssessment && (
+        <ReviewDiffSummary
+          agreedSkillCount={reviewDiff.agreedSkillCount}
+          mismatchSkills={reviewDiff.mismatchSkills}
+          unratedSelfCount={reviewDiff.unratedSelfCount}
+          mismatchAttitudes={reviewDiff.mismatchAttitudes}
+          onJumpToSkill={navigateToSkillB}
+        />
+      )}
+
       {/* Sticky bottom bar */}
       {(() => {
         const tpCanAct = canEditManagerAssessment;
@@ -1206,6 +1393,9 @@ export default function StaffEvaluation() {
             style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
           >
             <div className="max-w-4xl mx-auto flex flex-col gap-2">
+              <div className="empty:hidden">
+                <AutosaveStatusBar state={autosave.state} lastSavedAt={autosave.lastSavedAt} dirty={autosave.dirty} />
+              </div>
               {tpWaitingEmployee && (
                 <div className="text-xs text-muted-foreground flex items-center gap-1">
                   <Info className="w-3.5 h-3.5" /> Đang chờ cán bộ chỉnh sửa và nộp lại. Bạn có thể lưu nháp ghi chú.
@@ -1284,6 +1474,38 @@ export default function StaffEvaluation() {
                 ? 'Bạn là cấp trên trực tiếp duy nhất của cán bộ này — phiếu sẽ được xác nhận đánh giá và phê duyệt hoàn tất trong một bước. Tiếp tục?'
                 : 'Sau khi xác nhận rà soát, bản đánh giá sẽ chuyển PGĐ duyệt. Bạn có chắc chắn tiếp tục?'}
             </AlertDialogDescription>
+            <ReviewDiffSummary
+              compact
+              agreedSkillCount={reviewDiff.agreedSkillCount}
+              mismatchSkills={reviewDiff.mismatchSkills}
+              unratedSelfCount={reviewDiff.unratedSelfCount}
+              mismatchAttitudes={reviewDiff.mismatchAttitudes}
+            />
+            {/* Nhắc vai trò đồng hành: phiếu chỉ có giá trị khi kèm kế hoạch upskill được theo dõi */}
+            {(() => {
+              const gapped = coreAssessments.filter(
+                (a) => a.self_assessed_level != null && a.self_assessed_level < (a.minimum_level ?? 0),
+              ).length;
+              const planSkills = skillPriorities.length;
+              const planActions = skillActions.length;
+              return (
+                <div className="text-left space-y-1">
+                  <p className="text-xs text-muted-foreground">
+                    Kế hoạch phát triển kỳ này: <strong className="text-foreground">{planSkills} skill · {planActions} hành động</strong>
+                    {gapped > 0 && <> · cán bộ còn <strong className="text-amber-700 dark:text-amber-400">{gapped} skill GAP</strong> so với chuẩn vị trí</>}.
+                  </p>
+                  {gapped > 0 && planSkills === 0 && (
+                    <p className="text-xs text-amber-700 dark:text-amber-400">
+                      ⚠ Còn GAP nhưng CHƯA có kế hoạch phát triển nào — nên trao đổi 1-1 và thống nhất
+                      kế hoạch (mục D) với cán bộ trước khi chuyển duyệt, tránh phiếu chỉ mang tính hình thức.
+                    </p>
+                  )}
+                  <p className="text-[11px] text-muted-foreground">
+                    Sau khi duyệt, hãy theo dõi tiến độ hành động của cán bộ tại "Hành động phát triển" (Kanban) hằng tuần.
+                  </p>
+                </div>
+              );
+            })()}
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={actionLoading}>Hủy</AlertDialogCancel>
@@ -1296,6 +1518,27 @@ export default function StaffEvaluation() {
               disabled={actionLoading}
             >
               {isSoleApprover ? 'Phê duyệt hoàn tất' : 'Chuyển PGĐ duyệt'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Mời mở phiếu kế tiếp sau khi xử lý xong một phiếu */}
+      <AlertDialog open={nextDialogOpen} onOpenChange={setNextDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Đã xử lý xong phiếu này</AlertDialogTitle>
+            <AlertDialogDescription>
+              Còn {queue?.length || 0} phiếu đang chờ bạn trong kỳ này.
+              {queue?.[0] && (
+                <> Tiếp theo: <strong>{queue[0].fullName}</strong>{queue[0].deptName ? ` (${queue[0].deptName})` : ''}.</>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Ở lại phiếu này</AlertDialogCancel>
+            <AlertDialogAction onClick={goToNextForm}>
+              Mở phiếu tiếp theo <ArrowRight className="w-4 h-4 ml-1" />
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
