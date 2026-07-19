@@ -643,6 +643,9 @@ export default function SelfAssessmentPage() {
   // ===== Autosave nháp =====
   const autosaveNow = async (): Promise<'ok' | 'conflict'> => {
     if (!profileId || !cycleId || !canEmployeeEdit || saving || submitting) return 'ok';
+    // Kỳ phải ĐANG MỞ mới được ghi (cùng luật với handleSave) — kỳ đóng chỉ xem, autosave im lặng bỏ qua
+    const cycleStatus = (allCycles as any[]).find((c) => c.id === cycleId)?.status;
+    if (cycleStatus && cycleStatus !== 'in_progress') return 'ok';
     let fId = formId;
     if (!fId) {
       // Phiếu chỉ được tạo khi user đã sửa gì đó (autosave chỉ nổ theo dirty) — mở xem không tạo phiếu
@@ -688,7 +691,8 @@ export default function SelfAssessmentPage() {
     return 'ok';
   };
 
-  const autosave = useEvaluationAutosave({ enabled: !loading && canEmployeeEdit, save: autosaveNow });
+  const cycleIsOpen = cycles.some((c) => c.id === cycleId);
+  const autosave = useEvaluationAutosave({ enabled: !loading && canEmployeeEdit && cycleIsOpen, save: autosaveNow });
 
   // Theo dõi thay đổi form → đánh dấu dirty (bỏ qua lượt hydrate ngay sau loadData)
   useEffect(() => {

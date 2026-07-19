@@ -564,6 +564,7 @@ export default function StaffEvaluation() {
   // ===== Autosave nháp (chỉ khi phiếu đã tồn tại — trang này không tự tạo phiếu hộ cán bộ) =====
   const autosaveNow = async (): Promise<'ok' | 'conflict'> => {
     if (!formId || saving || actionLoading) return 'ok';
+    if (!cycleOpen) return 'ok'; // kỳ đóng: chỉ xem — cùng luật với canSaveForm
     const canChildren = canEditManagerAssessment || canEmployeeEditSelf;
     const canParentOverall = isManagerMode && !!reviewField;
     if (!canChildren && !canParentOverall) return 'ok';
@@ -604,7 +605,8 @@ export default function StaffEvaluation() {
   };
 
   const autosaveEnabled =
-    !loading && !!formId && (canEditManagerAssessment || canEmployeeEditSelf || (isManagerMode && !!reviewField));
+    !loading && !!formId && cycleOpen &&
+    (canEditManagerAssessment || canEmployeeEditSelf || (isManagerMode && !!reviewField));
   const autosave = useEvaluationAutosave({ enabled: autosaveEnabled, save: autosaveNow });
 
   // Theo dõi thay đổi form → đánh dấu dirty (bỏ qua lượt hydrate ngay sau loadData)
