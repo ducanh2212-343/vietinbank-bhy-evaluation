@@ -205,6 +205,41 @@ export function buildSkillAssessmentRows(
   ];
 }
 
+// Các nội dung "trống/placeholder" được unique index bỏ qua — cho phép trùng nhiều dòng.
+// Phải khớp đúng danh sách trong migration uniq_skill_action_per_priority.
+const SKILL_ACTION_PLACEHOLDER_TEXTS = new Set([
+  '', 'chưa nhập', 'chưa đặt tên', '(chưa đặt tên)', 'chưa có nội dung', 'chưa có nội dung hành động',
+]);
+
+/**
+ * Khử trùng hành động skill trước khi gửi RPC, khớp đúng unique index
+ * `uniq_skill_action_per_priority (form_id, skill_priority_id, lower(btrim(action_text)))`.
+ *
+ * Hai hành động cùng skill + cùng nội dung (không tính placeholder) sẽ đụng index và làm
+ * cả lần lưu rollback ("duplicate key ... uniq_skill_action_per_priority"). Client vốn đã
+ * khử trùng hành động THÁI ĐỘ nhưng bỏ sót hành động SKILL — đây là chỗ vá.
+ *
+ * Ưu tiên giữ dòng đã có `id` (hành động đã lưu → giữ nguyên thẻ Kanban), bỏ bản trùng mới.
+ * Dòng placeholder (chưa đặt tên) KHÔNG bị gộp vì index cũng không ràng buộc chúng.
+ */
+export function dedupeSkillActionRows<
+  T extends { id: string | null; skill_id: string | null; action_text: string | null },
+>(rows: T[]): T[] {
+  const seen = new Set<string>();
+  // Xét dòng có id trước để nó "thắng" khi trùng, nhưng vẫn trả về theo thứ tự gốc.
+  const ordered = [...rows].sort((a, b) => (a.id ? 0 : 1) - (b.id ? 0 : 1));
+  const kept = new Set<T>();
+  for (const r of ordered) {
+    const norm = (r.action_text || '').trim().toLowerCase();
+    if (SKILL_ACTION_PLACEHOLDER_TEXTS.has(norm)) { kept.add(r); continue; }
+    const key = `${r.skill_id}|${norm}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    kept.add(r);
+  }
+  return rows.filter((r) => kept.has(r));
+}
+
 export interface EvaluationChildrenPayload {
   skillAssessments?: any[];
   skillPriorities?: any[];
