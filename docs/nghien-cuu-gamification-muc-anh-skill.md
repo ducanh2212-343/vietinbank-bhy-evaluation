@@ -80,6 +80,13 @@ con đường), **Kết nối** (được ghi nhận). Ứng dụng:
 | Streak/phạt bỏ lỡ | Đánh giá theo quý, không phải app học hằng ngày — streak không hợp ngữ cảnh |
 | Gamification "cosmetic" trên dữ liệu chủ quan | Trang trí đẹp cho một con số dropdown = vô nghĩa; phải sửa gốc (cách xác định level) trước |
 
+> **Ghi chú phạm vi (07/2026):** hai anti-pattern "Leaderboard cá nhân công khai" và
+> "Streak/phạt bỏ lỡ" được viết cho ngữ cảnh **đánh giá năng lực theo quý** và vẫn giữ
+> nguyên hiệu lực ở đó. Tính năng **BHY Quizzi** (học tập theo tuần) là nhịp khác:
+> streak tuần hợp ngữ cảnh (có "đóng băng chuỗi", không phạt) và xếp hạng cá nhân
+> chỉ hiển thị **trong nội bộ phòng** — toàn chi nhánh vẫn chỉ thấy tổng hợp cấp phòng.
+> Xem thiết kế và lập luận đầy đủ tại `docs/nghien-cuu-bhy-quizzi.md`.
+
 ---
 
 ## 3. Thiết kế đề xuất cho mục ảnh Skill

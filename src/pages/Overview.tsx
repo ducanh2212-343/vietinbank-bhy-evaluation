@@ -16,6 +16,7 @@ import { fetchDefaultCycle, fetchStarByEmployee } from '@/lib/starClassification
 import { AnniversaryBanner } from '@/components/branding/AnniversaryBanner';
 import { SkillCollectionStrip } from '@/components/profile/SkillCollectionStrip';
 import { LevelUpReveal } from '@/components/profile/LevelUpReveal';
+import { QuizBadgeReveal } from '@/components/quizzi/QuizBadgeReveal';
 
 
 function OverviewSelf({ profileId }: { profileId: string }) {
@@ -79,6 +80,9 @@ function OverviewSelf({ profileId }: { profileId: string }) {
 
       {/* Modal chúc mừng khi có level mới được duyệt (hiện một lần) */}
       <LevelUpReveal profileId={profileId} />
+
+      {/* Modal huy hiệu Quizzi mới (hiện một lần) */}
+      <QuizBadgeReveal profileId={profileId} />
 
       {latestForm && (
         <SkillCollectionStrip formId={latestForm.id} cycleName={latestForm.cycle_name} />
