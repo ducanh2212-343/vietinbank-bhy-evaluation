@@ -18,6 +18,7 @@ import { BrandMascotAI } from '@/components/branding/BrandAssets';
 import { useSkillCriteria } from '@/hooks/useSkillCriteria';
 import { LevelCheckWizard, type WizardApplyPayload } from '@/components/evaluation/LevelCheckWizard';
 import { saveCriteriaResponses } from '@/lib/skillCriteria';
+import { LevelQuickPick } from '@/components/evaluation/LevelQuickPick';
 
 export interface CoreSkillAssessment {
   skill_id: string;
@@ -42,6 +43,19 @@ export interface CoreSkillAssessment {
   upskill_l3_l4?: string | null;
 }
 
+/** Thông tin skill ở kỳ trước — hiện badge tham chiếu và cho phép chèn lại minh chứng cũ. */
+export interface PrevSkillInfo {
+  level: number;
+  source: 'manager' | 'self';
+  approved: boolean;
+  evidence: string;
+}
+
+/** DOM id của hàng skill trong mục B — dùng chung với checklist để scroll tới đúng hàng. */
+export function skillRowDomId(kind: 'core' | 'supp', skillId: string) {
+  return `skill-row-${kind}-${skillId}`;
+}
+
 interface Props {
   assessments: CoreSkillAssessment[];
   onChange: (a: CoreSkillAssessment[]) => void;
@@ -55,6 +69,19 @@ interface Props {
   levelUpSkillIds?: Set<string>;
   /** Có formId thì câu trả lời wizard tiêu chí được lưu lại cho quản lý xem breakdown */
   formId?: string | null;
+  /** Điều khiển hàng đang mở từ ngoài (checklist jump-to-skill). Không truyền → tự quản lý như cũ. */
+  openId?: string | null;
+  onOpenIdChange?: (id: string | null) => void;
+  /** Bật dãy nút chấm nhanh L0-L4 ngay trên hàng đóng (1 click/skill, không cần mở accordion) */
+  quickRate?: boolean;
+  quickRateTarget?: 'self' | 'manager';
+  /** Level kỳ trước theo skill_id — badge "Kỳ trước: L2 ✓" + nút chèn minh chứng cũ */
+  prevInfo?: Map<string, PrevSkillInfo>;
+  prevCycleName?: string;
+  onCopyPrevEvidence?: (kind: 'core' | 'supp', skillId: string) => void;
+  /** Duyệt theo ngoại lệ (quản lý): nút "Đồng ý theo tự ĐG" per-skill + badge Lệch */
+  showAgreeControls?: boolean;
+  onAgreeAll?: () => void;
 }
 
 const LEVEL_OPTIONS = [
@@ -75,14 +102,31 @@ export function EvalSectionB({
   allSkills,
   levelUpSkillIds,
   formId,
+  openId: openIdProp,
+  onOpenIdChange,
+  quickRate,
+  quickRateTarget = 'self',
+  prevInfo,
+  prevCycleName,
+  onCopyPrevEvidence,
+  showAgreeControls,
+  onAgreeAll,
 }: Props) {
   const { isEnabled: isAiEnabled } = useAiFeatures();
   const { getCriteria } = useSkillCriteria();
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [internalOpenId, setInternalOpenId] = useState<string | null>(null);
+  // Controlled nếu cha truyền openId (để checklist mở đúng hàng); uncontrolled như cũ nếu không
+  const openId = openIdProp !== undefined ? openIdProp : internalOpenId;
+  const setOpenId = (id: string | null) => {
+    onOpenIdChange?.(id);
+    if (openIdProp === undefined) setInternalOpenId(id);
+  };
   const [aiLoading, setAiLoading] = useState<Record<string, boolean>>({});
   const [aiResults, setAiResults] = useState<Record<string, string>>({});
   const [evidenceAiLoading, setEvidenceAiLoading] = useState<Record<string, boolean>>({});
   const [evidenceAiResults, setEvidenceAiResults] = useState<Record<string, string>>({});
+  const [suggestEvLoading, setSuggestEvLoading] = useState<Record<string, boolean>>({});
+  const [suggestEvResults, setSuggestEvResults] = useState<Record<string, string>>({});
   const [pickerOpen, setPickerOpen] = useState(false);
   const [wizardTarget, setWizardTarget] = useState<{ kind: 'core' | 'supp'; idx: number; a: CoreSkillAssessment } | null>(null);
 
@@ -108,7 +152,20 @@ export function EvalSectionB({
   const suppList = supplementary || [];
 
   const toggleItem = (id: string) => {
-    setOpenId((prev) => (prev === id ? null : id));
+    setOpenId(openId === id ? null : id);
+  };
+
+  // Chấm nhanh từ hàng đóng; tự chấm L3+ chưa có minh chứng → mở hàng để nhập ngay
+  const handleQuickPick = (kind: 'core' | 'supp', idx: number, a: CoreSkillAssessment, lvl: number) => {
+    const field = quickRateTarget === 'manager' ? 'manager_assessed_level' : 'self_assessed_level';
+    updateRow(kind, idx, field, lvl);
+    if (quickRateTarget === 'self' && lvl >= 3 && !(a.evidence || '').trim()) {
+      const rowKey = `${kind}-${a.skill_id}`;
+      setOpenId(rowKey);
+      requestAnimationFrame(() => {
+        document.getElementById(skillRowDomId(kind, a.skill_id))?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    }
   };
 
   const updateRow = (
@@ -219,6 +276,33 @@ export function EvalSectionB({
   };
 
 
+  // Gợi ý DẠNG minh chứng phù hợp cho level đang tự chấm — chỉ tham khảo,
+  // KHÔNG chèn tự động (minh chứng phải là việc thật của chính cán bộ).
+  const suggestEvidenceAi = async (a: CoreSkillAssessment) => {
+    setSuggestEvLoading((prev) => ({ ...prev, [a.skill_id]: true }));
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-advisor', {
+        body: {
+          mode: 'suggest_evidence',
+          skill_name: a.skill_name,
+          level: a.self_assessed_level,
+          role: role || 'cán bộ',
+          context: a.employee_comment || '',
+        },
+      });
+      if (error) throw error;
+      const text = (data as { text?: string })?.text || '';
+      if (!text) throw new Error('AI không trả về nội dung');
+      setSuggestEvResults((prev) => ({ ...prev, [a.skill_id]: text }));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes('429')) toast.error('Quá nhiều yêu cầu AI, vui lòng thử lại sau.');
+      else toast.error(`Lỗi AI: ${msg || 'không kết nối được'}`);
+    } finally {
+      setSuggestEvLoading((prev) => ({ ...prev, [a.skill_id]: false }));
+    }
+  };
+
   const addSupplementary = (skillId: string) => {
     if (!onSupplementaryChange || !allSkills) return;
     if (suppList.some((s) => s.skill_id === skillId)) return;
@@ -241,6 +325,18 @@ export function EvalSectionB({
   ]);
   const availableForPicker = (allSkills || []).filter((s: any) => !usedSkillIds.has(s.id));
 
+  // Tiến độ chấm (null = chưa chấm; 0 vẫn tính là đã chấm)
+  const ratedField: keyof CoreSkillAssessment =
+    quickRateTarget === 'manager' ? 'manager_assessed_level' : 'self_assessed_level';
+  const coreRatedCount = assessments.filter((a) => a[ratedField] != null).length;
+  const suppRatedCount = suppList.filter((a) => a[ratedField] != null).length;
+  // Số skill quản lý có thể "đồng ý theo tự đánh giá" (NV đã chấm, QL chưa chấm)
+  const agreeableCount = showAgreeControls
+    ? [...assessments, ...suppList].filter(
+        (a) => a.manager_assessed_level == null && a.self_assessed_level != null,
+      ).length
+    : 0;
+
   const renderRow = (a: CoreSkillAssessment, idx: number, kind: 'core' | 'supp') => {
     const isSupp = kind === 'supp';
     const selfLvl = a.self_assessed_level ?? 0;
@@ -251,8 +347,12 @@ export function EvalSectionB({
     const numberLabel = isSupp ? `B${idx + 1}` : String(idx + 1);
     const isLevelUp = !!levelUpSkillIds?.has(a.skill_id);
 
+    const prev = prevInfo?.get(a.skill_id);
+    const rawSelf = a.self_assessed_level;
+    const rawMgr = a.manager_assessed_level;
+
     return (
-      <Collapsible key={rowKey} open={isOpen} onOpenChange={() => toggleItem(rowKey)}>
+      <Collapsible key={rowKey} id={skillRowDomId(kind, a.skill_id)} open={isOpen} onOpenChange={() => toggleItem(rowKey)}>
         <CollapsibleTrigger className="w-full">
           <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 border rounded-lg transition-colors ${isLevelUp ? 'border-emerald-300 bg-emerald-50/60 hover:bg-emerald-50' : 'hover:bg-muted/50'}`}>
             <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap">
@@ -278,8 +378,64 @@ export function EvalSectionB({
                 {a.skill_name}
               </span>
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-auto">
-              <SkillLevelBadge level={selfLvl} skillId={a.skill_id} />
+            <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-auto flex-wrap justify-end">
+              {prev && (
+                <Badge
+                  variant="outline"
+                  className="text-[9px] text-sky-700 dark:text-sky-300 border-sky-300 dark:border-sky-500/40 bg-sky-50 dark:bg-sky-500/10 flex-shrink-0"
+                  title={prev.approved ? 'Mức đã được quản lý duyệt ở kỳ trước' : 'Mức tự chấm ở kỳ trước'}
+                >
+                  Kỳ trước: L{prev.level}{prev.approved ? ' ✓' : ''}
+                </Badge>
+              )}
+              {quickRate ? (
+                <>
+                  {quickRateTarget === 'manager' && (
+                    <span className="inline-flex items-center gap-1" title="Mức tự đánh giá của cán bộ">
+                      <span className="text-[9px] text-muted-foreground font-medium">NV</span>
+                      <SkillLevelBadge level={rawSelf ?? 0} skillId={a.skill_id} />
+                    </span>
+                  )}
+                  <LevelQuickPick
+                    value={quickRateTarget === 'manager' ? rawMgr : rawSelf}
+                    onChange={(lvl) => handleQuickPick(kind, idx, a, lvl)}
+                    disabled={quickRateTarget === 'manager' ? !isManager : isManager}
+                    ariaLabelPrefix={a.skill_name}
+                  />
+                </>
+              ) : (
+                <SkillLevelBadge level={selfLvl} skillId={a.skill_id} />
+              )}
+              {showAgreeControls && rawSelf != null && rawMgr == null && (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    updateRow(kind, idx, 'manager_assessed_level', rawSelf);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      updateRow(kind, idx, 'manager_assessed_level', rawSelf);
+                    }
+                  }}
+                  className="inline-flex items-center min-h-[32px] px-2 rounded-md border border-emerald-300 dark:border-emerald-500/40 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-[11px] font-medium cursor-pointer flex-shrink-0"
+                  title={`Đồng ý theo tự đánh giá của cán bộ — ghi nhận L${rawSelf}`}
+                >
+                  Đồng ý L{rawSelf}
+                </span>
+              )}
+              {showAgreeControls && rawSelf == null && rawMgr == null && (
+                <Badge variant="outline" className="text-[9px] text-muted-foreground flex-shrink-0">NV chưa chấm</Badge>
+              )}
+              {showAgreeControls && rawSelf != null && rawMgr != null && rawSelf !== rawMgr && (
+                <Badge className="text-[9px] bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/40 hover:bg-amber-100 flex-shrink-0">
+                  Lệch · NV L{rawSelf}
+                </Badge>
+              )}
               {!isSupp && gapMin > 0 && (
                 <Badge variant="destructive" className="text-[9px]">
                   Gap -{gapMin}
@@ -384,6 +540,58 @@ export function EvalSectionB({
                 <p className="mt-1 text-[11px] text-orange-700">
                   Level Chuyên gia/Bậc thầy cần được chứng minh — phiếu sẽ không nộp được nếu bỏ trống minh chứng.
                 </p>
+              )}
+              {!isManager && selfLvl >= 3 && !(a.evidence || '').trim() && (
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {prev?.evidence && onCopyPrevEvidence && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={() => onCopyPrevEvidence(kind, a.skill_id)}
+                      title="Chèn lại minh chứng đã khai ở kỳ trước để cập nhật thay vì viết mới từ đầu"
+                    >
+                      Chèn minh chứng kỳ trước{prevCycleName ? ` (${prevCycleName})` : ''}
+                    </Button>
+                  )}
+                  {isAiEnabled('suggest_evidence') && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1.5"
+                      onClick={() => suggestEvidenceAi(a)}
+                      disabled={suggestEvLoading[a.skill_id]}
+                      title="AI gợi ý các DẠNG minh chứng phù hợp với level — tham khảo rồi tự viết bằng việc thật của bạn"
+                    >
+                      {suggestEvLoading[a.skill_id] ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BrandMascotAI className="w-4 h-4" />}
+                      AI gợi ý dạng minh chứng
+                    </Button>
+                  )}
+                </div>
+              )}
+              {suggestEvResults[a.skill_id] && (
+                <div className="mt-2 rounded-md border border-violet-200 bg-violet-50/60 dark:border-violet-500/30 dark:bg-violet-500/10 p-2.5 text-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-violet-800 dark:text-violet-300 flex items-center gap-1.5">
+                      <BrandMascotAI className="w-4 h-4" /> Gợi ý dạng minh chứng phù hợp L{selfLvl}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSuggestEvResults((prevR) => { const n = { ...prevR }; delete n[a.skill_id]; return n; })}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div className="prose prose-xs max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0 text-foreground">
+                    <ReactMarkdown>{suggestEvResults[a.skill_id]}</ReactMarkdown>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground italic">
+                    Chỉ là gợi ý dạng minh chứng — hãy tự viết bằng hồ sơ/việc thật của chính bạn.
+                  </p>
+                </div>
               )}
               {selfLvl >= 3 && (a.evidence || '').trim() && isAiEnabled('evidence_review') && (
                 <div className="mt-1.5">
@@ -502,14 +710,42 @@ export function EvalSectionB({
 
       {/* B1. Core skills */}
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Target className="w-4 h-4" /> B. Đánh giá Skill lõi theo vị trí
-          </CardTitle>
+        <CardHeader className={`pb-2 space-y-1.5 ${quickRate ? 'sticky top-0 z-10 bg-card rounded-t-xl border-b' : ''}`}>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Target className="w-4 h-4" /> B. Đánh giá Skill lõi theo vị trí
+            </CardTitle>
+            {quickRate && assessments.length > 0 && (
+              <span className={`text-xs font-semibold tabular-nums ${coreRatedCount === assessments.length ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+                Đã chấm {coreRatedCount}/{assessments.length}
+                {suppList.length > 0 ? ` · bổ trợ ${suppRatedCount}/${suppList.length}` : ''}
+              </span>
+            )}
+          </div>
           <p className="text-xs text-muted-foreground">
             {assessments.length} skill lõi
             {supportsSupplementary && suppList.length > 0 ? ` + ${suppList.length} skill bổ trợ` : ''}
+            {quickRate ? ' — chấm nhanh bằng dãy L0-L4 trên từng dòng, mở dòng khi cần xem mô tả/nhập minh chứng' : ''}
           </p>
+          {quickRate && assessments.length > 0 && (
+            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${coreRatedCount === assessments.length ? 'bg-emerald-500' : 'bg-primary'}`}
+                style={{ width: `${(coreRatedCount / assessments.length) * 100}%` }}
+              />
+            </div>
+          )}
+          {showAgreeControls && onAgreeAll && agreeableCount > 0 && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs w-fit border-emerald-300 dark:border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
+              onClick={onAgreeAll}
+            >
+              Đồng ý {agreeableCount} skill chưa chấm theo tự đánh giá
+            </Button>
+          )}
         </CardHeader>
         <CardContent className="space-y-2">
           {assessments.length === 0 ? (

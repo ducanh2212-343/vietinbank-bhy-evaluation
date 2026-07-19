@@ -66,7 +66,22 @@ export async function getQuarterFormSubmission(params: {
     .select(FORM_SUBMISSION_SELECT)
     .single();
 
-  if (createError) throw createError;
+  if (createError) {
+    // UNIQUE (employee_id, cycle_id): 2 tab/autosave đua nhau tạo phiếu — lấy bản đã có thay vì lỗi.
+    if ((createError as any).code === '23505') {
+      const { data: raced, error: refetchError } = await supabase
+        .from('form_submissions')
+        .select(FORM_SUBMISSION_SELECT)
+        .eq('employee_id', employeeId)
+        .eq('cycle_id', cycleId)
+        .order('updated_at', { ascending: false })
+        .limit(1);
+      if (refetchError) throw refetchError;
+      const winner = raced?.[0] as QuarterFormSummary | undefined;
+      if (winner) return winner;
+    }
+    throw createError;
+  }
 
   return created as QuarterFormSummary;
 }

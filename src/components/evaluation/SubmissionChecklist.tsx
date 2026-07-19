@@ -2,7 +2,10 @@ import { CheckCircle2, AlertCircle, Clock, ArrowDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { DetailedValidation } from '@/lib/evaluationValidation';
 
-interface Props extends DetailedValidation {}
+interface Props extends DetailedValidation {
+  /** Mở + cuộn tới đúng hàng skill trong mục B (thay vì chỉ cuộn tới đầu section) */
+  onNavigateToSkill?: (skillId: string) => void;
+}
 
 type CardState = 'pass' | 'fail' | 'waiting';
 
@@ -12,12 +15,14 @@ interface CardProps {
   statusLabel: string;
   description?: string;
   missingLabels?: string[];
+  /** Danh sách mục thiếu dạng bấm được — nhảy thẳng tới chỗ cần sửa */
+  items?: { label: string; onClick: () => void }[];
   warning?: string;
   hint?: string;
   anchor?: string;
 }
 
-function Card({ state, title, statusLabel, description, missingLabels, warning, hint, anchor }: CardProps) {
+function Card({ state, title, statusLabel, description, missingLabels, items, warning, hint, anchor }: CardProps) {
   const tone =
     state === 'pass'
       ? 'border-emerald-200/70 bg-emerald-50/70 dark:border-emerald-500/30 dark:bg-emerald-500/10'
@@ -46,6 +51,24 @@ function Card({ state, title, statusLabel, description, missingLabels, warning, 
               Còn thiếu: {missingLabels.slice(0, 3).join(', ')}
               {missingLabels.length > 3 ? '…' : ''}
             </p>
+          )}
+          {state === 'fail' && items && items.length > 0 && (
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {items.slice(0, 6).map((it) => (
+                <button
+                  key={it.label}
+                  type="button"
+                  onClick={it.onClick}
+                  className="inline-flex items-center gap-1 rounded-md border border-rose-300/70 dark:border-rose-500/40 bg-background px-2 py-1 text-[11px] text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                  title="Đi tới skill này để bổ sung"
+                >
+                  <ArrowDown className="h-3 w-3" /> {it.label}
+                </button>
+              ))}
+              {items.length > 6 && (
+                <span className="text-[11px] text-muted-foreground self-center">+{items.length - 6} mục khác</span>
+              )}
+            </div>
           )}
           {state === 'fail' && warning && (
             <p className="mt-1 text-xs text-destructive">{warning}</p>
@@ -78,7 +101,14 @@ export function SubmissionChecklist(props: Props) {
     attitudeTotal, attitudeRatingMissing, attitudeEvidenceMissing,
     gappedTotal,
     needsImprovementTotal, needsImprovementWithoutPlan,
+    highLevelEvidenceMissing,
+    onNavigateToSkill,
   } = props;
+
+  const skillItems = (list: { skill_id: string; skill_name: string }[]) =>
+    onNavigateToSkill
+      ? list.map((c) => ({ label: c.skill_name, onClick: () => onNavigateToSkill(c.skill_id) }))
+      : undefined;
 
   // Card 1 — Skill lõi đầy đủ
   const coreDone = coreTotal > 0 && coreMissing.length === 0;
@@ -92,9 +122,10 @@ export function SubmissionChecklist(props: Props) {
         state: 'fail',
         title: 'Skill lõi đã đánh giá đầy đủ',
         statusLabel: `Còn thiếu ${coreMissing.length} skill`,
-        missingLabels: coreMissing.map((c) => c.skill_name),
+        missingLabels: onNavigateToSkill ? undefined : coreMissing.map((c) => c.skill_name),
+        items: skillItems(coreMissing),
         warning: 'Anh/chị cần hoàn tất đánh giá tất cả skill lõi trước khi gửi cấp trên.',
-        anchor: 'section-b',
+        anchor: onNavigateToSkill ? undefined : 'section-b',
       };
 
   // Card 2 — 6 nhóm thái độ đã chọn mức đánh giá
@@ -144,6 +175,25 @@ export function SubmissionChecklist(props: Props) {
     };
   }
 
+  // Card 4 — Minh chứng cho skill tự chấm L3+ (trước đây chặn nộp NGẦM, không có thẻ hiển thị)
+  const card4: CardProps =
+    highLevelEvidenceMissing.length === 0
+      ? {
+          state: 'pass',
+          title: 'Minh chứng cho skill tự chấm L3+',
+          statusLabel: 'Đã đầy đủ',
+          description: 'Level Chuyên gia/Bậc thầy cần minh chứng cụ thể (hồ sơ thật, chứng chỉ, xác nhận…).',
+        }
+      : {
+          state: 'fail',
+          title: 'Minh chứng cho skill tự chấm L3+',
+          statusLabel: `Còn thiếu ${highLevelEvidenceMissing.length} skill`,
+          missingLabels: onNavigateToSkill ? undefined : highLevelEvidenceMissing.map((c) => c.skill_name),
+          items: skillItems(highLevelEvidenceMissing),
+          warning: 'Skill tự chấm L3+ phải kèm minh chứng — bấm tên skill để bổ sung ngay.',
+          anchor: onNavigateToSkill ? undefined : 'section-b',
+        };
+
   return (
     <div
       className={cn(
@@ -166,6 +216,7 @@ export function SubmissionChecklist(props: Props) {
         <Card {...card1} />
         <Card {...card2} />
         <Card {...card3} />
+        <Card {...card4} />
       </div>
       {coreDone && gappedTotal > 0 && (
         <p className="text-xs text-muted-foreground">
