@@ -5,7 +5,7 @@ import {
   Upload, Settings as SettingsIcon, BarChart3, Image, FileText,
   ChevronRight, UserCheck, Sparkles, GraduationCap, ClipboardList, KeyRound, ListPlus,
   CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag, GitBranch,
-  ListChecks, Building2, Gavel, TrendingUp
+  ListChecks, Building2, Gavel, TrendingUp, Lightbulb
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubmissionReportAccess } from '@/hooks/useSubmissionReportAccess';
@@ -63,6 +63,7 @@ const navGroups: NavGroup[] = [
       { label: 'Tự đánh giá', icon: FileText, path: '/tu-danh-gia' },
       { label: 'Hành động phát triển', icon: ClipboardList, path: '/hanh-dong-phat-trien' },
       { label: 'Chiến dịch học tập', icon: Flag, path: '/chien-dich-hoc-tap' },
+      { label: 'Mẹo hay', icon: Lightbulb, path: '/meo-hay' },
       { label: 'Skill lõi theo vị trí', icon: Target, path: '/skill-loi-theo-vi-tri' },
       { label: 'Hồ sơ cá nhân', icon: User, path: '/ho-so-ca-nhan' },
       { label: 'Đổi mật khẩu', icon: KeyRound, path: '/doi-mat-khau' },
@@ -143,6 +144,7 @@ const navGroups: NavGroup[] = [
         items: [
           { label: 'Quản trị Hội đồng đầu mối', icon: Gavel, path: '/quan-tri-hoi-dong-dau-moi', minRole: 'admin' },
           { label: 'Bản tin quý', icon: Newspaper, path: '/ban-tin-quy', minRole: 'admin' },
+          { label: 'Mẹo tính năng', icon: Lightbulb, path: '/quan-ly-meo-tinh-nang', minRole: 'admin' },
         ],
       },
       {

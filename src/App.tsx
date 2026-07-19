@@ -75,6 +75,8 @@ const CareerPathPage = lazyWithRetry(() => import("./pages/CareerPathPage"));
 const TransferSimulationPage = lazyWithRetry(() => import("./pages/TransferSimulationPage"));
 const QuarterlyNewsletterPage = lazyWithRetry(() => import("./pages/QuarterlyNewsletterPage"));
 const LearningCampaignsPage = lazyWithRetry(() => import("./pages/LearningCampaignsPage"));
+const FeatureTipsPage = lazyWithRetry(() => import("./pages/FeatureTipsPage"));
+const FeatureTipsAdminPage = lazyWithRetry(() => import("./pages/FeatureTipsAdminPage"));
 const CouncilEvaluationPage = lazyWithRetry(() => import("./pages/CouncilEvaluationPage"));
 const CouncilReportPage = lazyWithRetry(() => import("./pages/CouncilReportPage"));
 const CouncilAdminPage = lazyWithRetry(() => import("./pages/CouncilAdminPage"));
@@ -139,6 +141,7 @@ const App = () => (
               <Route path="/hanh-dong-phat-trien" element={<PersonalKanbanPage />} />
               <Route path="/dau-an" element={<LeadershipMarksPage />} />
               <Route path="/chien-dich-hoc-tap" element={<LearningCampaignsPage />} />
+              <Route path="/meo-hay" element={<FeatureTipsPage />} />
 
               {/* Hội đồng đánh giá đầu mối — trang tự gác quyền: thành viên HĐ chấm điểm, đầu mối/admin xem báo cáo */}
               <Route path="/danh-gia-dau-moi" element={<CouncilEvaluationPage />} />
@@ -188,6 +191,7 @@ const App = () => (
                 <Route path="/quan-tri-hoi-dong-dau-moi" element={<CouncilAdminPage />} />
                 <Route path="/phan-tich-dau-moi" element={<CouncilAnalyticsPage />} />
                 <Route path="/ban-tin-quy" element={<QuarterlyNewsletterPage />} />
+                <Route path="/quan-ly-meo-tinh-nang" element={<FeatureTipsAdminPage />} />
               </Route>
 
             </Route>

@@ -29,3 +29,6 @@ project_id = "whlysprzsguehxmrjwha"
     verify_jwt = true
   [functions.send-hr-notification]
     verify_jwt = true
+  [functions.send-feature-tip-push]
+    # Cron gửi service_role JWT; admin chạy tay bằng JWT của họ → verify_jwt = true
+    verify_jwt = true
