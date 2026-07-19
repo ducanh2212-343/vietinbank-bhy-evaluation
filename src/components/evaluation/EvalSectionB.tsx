@@ -79,9 +79,10 @@ interface Props {
   prevInfo?: Map<string, PrevSkillInfo>;
   prevCycleName?: string;
   onCopyPrevEvidence?: (kind: 'core' | 'supp', skillId: string) => void;
-  /** Duyệt theo ngoại lệ (quản lý): nút "Đồng ý theo tự ĐG" per-skill + badge Lệch */
+  /** Duyệt theo ngoại lệ (quản lý): nút "Đồng ý theo tự ĐG" per-skill + badge Lệch.
+   *  CHỦ ĐÍCH không có "đồng ý tất cả" — mỗi skill là một quyết định riêng; skill cán bộ
+   *  tự chấm L3+ phải mở hàng đọc minh chứng rồi mới đồng ý được (chống duyệt hình thức). */
   showAgreeControls?: boolean;
-  onAgreeAll?: () => void;
 }
 
 const LEVEL_OPTIONS = [
@@ -110,7 +111,6 @@ export function EvalSectionB({
   prevCycleName,
   onCopyPrevEvidence,
   showAgreeControls,
-  onAgreeAll,
 }: Props) {
   const { isEnabled: isAiEnabled } = useAiFeatures();
   const { getCriteria } = useSkillCriteria();
@@ -330,12 +330,23 @@ export function EvalSectionB({
     quickRateTarget === 'manager' ? 'manager_assessed_level' : 'self_assessed_level';
   const coreRatedCount = assessments.filter((a) => a[ratedField] != null).length;
   const suppRatedCount = suppList.filter((a) => a[ratedField] != null).length;
-  // Số skill quản lý có thể "đồng ý theo tự đánh giá" (NV đã chấm, QL chưa chấm)
-  const agreeableCount = showAgreeControls
-    ? [...assessments, ...suppList].filter(
-        (a) => a.manager_assessed_level == null && a.self_assessed_level != null,
-      ).length
-    : 0;
+
+  // Đồng ý theo tự đánh giá — TỪNG skill một. Mức L3+ (Chuyên gia/Bậc thầy) không cho
+  // đồng ý mù từ hàng đóng: mở hàng để đọc minh chứng trước, rồi đồng ý trong hàng.
+  const agreeToSelf = (kind: 'core' | 'supp', idx: number, a: CoreSkillAssessment) => {
+    if ((a.self_assessed_level ?? 0) >= 3) {
+      const rowKey = `${kind}-${a.skill_id}`;
+      if (openId !== rowKey) {
+        setOpenId(rowKey);
+        requestAnimationFrame(() => {
+          document.getElementById(skillRowDomId(kind, a.skill_id))?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+        toast.info(`${a.skill_name}: cán bộ tự chấm L${a.self_assessed_level} — hãy đọc minh chứng rồi bấm Đồng ý trong hàng.`);
+        return;
+      }
+    }
+    updateRow(kind, idx, 'manager_assessed_level', a.self_assessed_level);
+  };
 
   const renderRow = (a: CoreSkillAssessment, idx: number, kind: 'core' | 'supp') => {
     const isSupp = kind === 'supp';
@@ -413,19 +424,27 @@ export function EvalSectionB({
                   onClick={(e) => {
                     e.stopPropagation();
                     e.preventDefault();
-                    updateRow(kind, idx, 'manager_assessed_level', rawSelf);
+                    agreeToSelf(kind, idx, a);
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.stopPropagation();
                       e.preventDefault();
-                      updateRow(kind, idx, 'manager_assessed_level', rawSelf);
+                      agreeToSelf(kind, idx, a);
                     }
                   }}
-                  className="inline-flex items-center min-h-[32px] px-2 rounded-md border border-emerald-300 dark:border-emerald-500/40 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-[11px] font-medium cursor-pointer flex-shrink-0"
-                  title={`Đồng ý theo tự đánh giá của cán bộ — ghi nhận L${rawSelf}`}
+                  className={`inline-flex items-center min-h-[32px] px-2 rounded-md border text-[11px] font-medium cursor-pointer flex-shrink-0 ${
+                    rawSelf >= 3
+                      ? 'border-orange-300 dark:border-orange-500/40 text-orange-700 dark:text-orange-300 bg-orange-50 dark:bg-orange-500/10 hover:bg-orange-100 dark:hover:bg-orange-500/20'
+                      : 'border-emerald-300 dark:border-emerald-500/40 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20'
+                  }`}
+                  title={
+                    rawSelf >= 3
+                      ? `Cán bộ tự chấm L${rawSelf} (Chuyên gia/Bậc thầy) — mở hàng đọc minh chứng trước khi đồng ý`
+                      : `Đồng ý theo tự đánh giá của cán bộ — ghi nhận L${rawSelf}`
+                  }
                 >
-                  Đồng ý L{rawSelf}
+                  {rawSelf >= 3 ? `Xem minh chứng L${rawSelf}` : `Đồng ý L${rawSelf}`}
                 </span>
               )}
               {showAgreeControls && rawSelf == null && rawMgr == null && (
@@ -519,6 +538,18 @@ export function EvalSectionB({
                     {LEVEL_OPTIONS.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
+                {showAgreeControls && isManager && rawMgr == null && rawSelf != null && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="mt-1.5 h-7 text-xs border-emerald-300 dark:border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
+                    onClick={() => updateRow(kind, idx, 'manager_assessed_level', rawSelf)}
+                    title="Đã đọc minh chứng và nhất trí với mức cán bộ tự chấm"
+                  >
+                    Đồng ý L{rawSelf} theo tự đánh giá
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -677,15 +708,41 @@ export function EvalSectionB({
               )}
             </div>
 
-            <div>
-              <label className="text-xs text-muted-foreground">Nhận xét của quản lý</label>
-              <Textarea
-                value={a.manager_note}
-                onChange={(e) => updateRow(kind, idx, 'manager_note', e.target.value)}
-                className="min-h-[36px] text-xs"
-                disabled={!isManager}
-              />
-            </div>
+            {(() => {
+              const mismatchNeedsNote =
+                !!showAgreeControls &&
+                rawSelf != null &&
+                rawMgr != null &&
+                rawSelf !== rawMgr &&
+                !(a.manager_note || '').trim();
+              return (
+                <div>
+                  <label className="text-xs text-muted-foreground">
+                    Nhận xét của quản lý
+                    {mismatchNeedsNote && (
+                      <span className="text-amber-700 dark:text-amber-400 font-medium"> — bắt buộc khi chấm lệch với cán bộ</span>
+                    )}
+                  </label>
+                  <Textarea
+                    value={a.manager_note}
+                    onChange={(e) => updateRow(kind, idx, 'manager_note', e.target.value)}
+                    className={`min-h-[36px] text-xs ${mismatchNeedsNote ? 'border-amber-400 focus-visible:ring-amber-400' : ''}`}
+                    placeholder={
+                      showAgreeControls && isManager
+                        ? 'Vì sao bạn chấm mức này? Cán bộ cần làm gì để lên mức tiếp theo? (căn cứ trao đổi 1-1)'
+                        : undefined
+                    }
+                    disabled={!isManager}
+                  />
+                  {mismatchNeedsNote && (
+                    <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-400">
+                      Bạn chấm L{rawMgr} trong khi cán bộ tự chấm L{rawSelf} — ghi rõ lý do và định hướng upskill
+                      để cán bộ hiểu (phiếu sẽ không xác nhận rà soát được nếu bỏ trống).
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
 
           </div>
         </CollapsibleContent>
@@ -735,16 +792,11 @@ export function EvalSectionB({
               />
             </div>
           )}
-          {showAgreeControls && onAgreeAll && agreeableCount > 0 && (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs w-fit border-emerald-300 dark:border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
-              onClick={onAgreeAll}
-            >
-              Đồng ý {agreeableCount} skill chưa chấm theo tự đánh giá
-            </Button>
+          {showAgreeControls && (
+            <p className="text-[11px] text-muted-foreground">
+              Duyệt từng skill: bấm "Đồng ý Lx" khi nhất trí với cán bộ, hoặc chấm mức khác trên dãy L0-L4.
+              Skill tự chấm L3+ cần mở hàng đọc minh chứng trước. Chấm lệch thì ghi rõ nhận xét để trao đổi 1-1.
+            </p>
           )}
         </CardHeader>
         <CardContent className="space-y-2">

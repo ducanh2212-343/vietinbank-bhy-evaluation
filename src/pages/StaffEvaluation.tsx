@@ -39,6 +39,7 @@ import {
   saveEvaluationChildren,
 } from '@/lib/evaluationPersistence';
 import { OverallReviewBlock, type OverallReviewValue } from '@/components/evaluation/OverallReviewBlock';
+import { validateManagerReview } from '@/lib/evaluationValidation';
 import { StarClassificationBlock } from '@/components/evaluation/StarClassificationBlock';
 import { getReviewerLevel, getOverallReviewField } from '@/lib/reviewerScope';
 import { useCycleOneOnOneQuestions } from '@/hooks/useCycleOneOnOneQuestions';
@@ -100,7 +101,6 @@ export default function StaffEvaluation() {
   const [returnEmpOpen, setReturnEmpOpen] = useState(false);
   const [confirmReviewOpen, setConfirmReviewOpen] = useState(false);
   // Duyệt theo ngoại lệ + hàng đợi phiếu
-  const [agreeAllOpen, setAgreeAllOpen] = useState(false);
   const [nextDialogOpen, setNextDialogOpen] = useState(false);
   const [queue, setQueue] = useState<QueueItem[] | null>(null);
   const [sectionBOpenId, setSectionBOpenId] = useState<string | null>(null);
@@ -163,24 +163,20 @@ export default function StaffEvaluation() {
   // Ai được bấm "Lưu nháp" phiếu này
   const canSaveForm = cycleOpen && (isSelfEval ? canEmployeeEditSelf : (canEditManagerAssessment || isAdmin));
 
-  // Can the manager confirm review? Needs all core skills graded, all 6 attitudes graded,
-  // and at least one of overallReview / remark / managerConclusion filled.
+  // Gate "Xác nhận rà soát" của TP — logic thuần ở evaluationValidation.validateManagerReview
+  // (gồm luật chống hình thức: skill chấm lệch bắt buộc ghi nhận xét trao đổi).
   const reviewMissing = useMemo(() => {
-    const missing: string[] = [];
-    if (coreAssessments.length === 0 || !coreAssessments.every(c => c.manager_assessed_level != null)) {
-      missing.push('Còn skill lõi chưa được Trưởng phòng đánh giá');
-    }
-    if (attitudeAssessments.length < 6 || !attitudeAssessments.every(a => !!a.manager_status)) {
-      missing.push('Còn nhóm thái độ chưa được Trưởng phòng đánh giá');
-    }
-    const overallFilled = Object.values(overallReview || {}).some(v => typeof v === 'string' && v.trim().length > 0);
-    const remarkFilled = (remark || '').trim().length > 0;
-    const conclusionFilled = (managerConclusion || '').trim().length > 0;
-    if (!overallFilled && !remarkFilled && !conclusionFilled) {
-      missing.push('Chưa có nhận xét/kết luận của Trưởng phòng');
-    }
-    return missing;
-  }, [coreAssessments, attitudeAssessments, overallReview, remark, managerConclusion]);
+    const overallFilled =
+      Object.values(overallReview || {}).some(v => typeof v === 'string' && v.trim().length > 0) ||
+      (remark || '').trim().length > 0 ||
+      (managerConclusion || '').trim().length > 0;
+    return validateManagerReview({
+      coreAssessments,
+      supplementaryAssessments: suppAssessments,
+      attitudeAssessments,
+      overallFilled,
+    });
+  }, [coreAssessments, suppAssessments, attitudeAssessments, overallReview, remark, managerConclusion]);
   const canConfirmReview = reviewMissing.length === 0;
 
   // Duyệt theo ngoại lệ: đối chiếu tự đánh giá vs đánh giá quản lý trên toàn bộ skill + thái độ
@@ -210,21 +206,6 @@ export default function StaffEvaluation() {
       }));
     return { agreeableSkills, agreedSkillCount, mismatchSkills, unratedSelfCount, agreeableAttitudes, mismatchAttitudes };
   }, [coreAssessments, suppAssessments, attitudeAssessments]);
-
-  // Ghi nhận hàng loạt theo tự đánh giá (chỉ ô QL còn trống & NV đã chấm — không đè chỗ QL đã chấm lệch)
-  const applyAgreeAll = () => {
-    const agree = (list: CoreSkillAssessment[]) =>
-      list.map((a) =>
-        a.manager_assessed_level == null && a.self_assessed_level != null
-          ? { ...a, manager_assessed_level: a.self_assessed_level }
-          : a,
-      );
-    setCoreAssessments(agree);
-    setSuppAssessments(agree);
-    setAttitudeAssessments((prev) =>
-      prev.map((a) => (a.self_status && !a.manager_status ? { ...a, manager_status: a.self_status } : a)),
-    );
-  };
 
   // Mở + cuộn tới đúng hàng skill trong mục B (từ panel tóm tắt lệch)
   const navigateToSkillB = (skillId: string) => {
@@ -1279,7 +1260,6 @@ export default function StaffEvaluation() {
         quickRate={canEditManagerAssessment}
         quickRateTarget="manager"
         showAgreeControls={canEditManagerAssessment}
-        onAgreeAll={() => setAgreeAllOpen(true)}
       />
 
       {/* C — như trên */}
@@ -1499,6 +1479,31 @@ export default function StaffEvaluation() {
               unratedSelfCount={reviewDiff.unratedSelfCount}
               mismatchAttitudes={reviewDiff.mismatchAttitudes}
             />
+            {/* Nhắc vai trò đồng hành: phiếu chỉ có giá trị khi kèm kế hoạch upskill được theo dõi */}
+            {(() => {
+              const gapped = coreAssessments.filter(
+                (a) => a.self_assessed_level != null && a.self_assessed_level < (a.minimum_level ?? 0),
+              ).length;
+              const planSkills = skillPriorities.length;
+              const planActions = skillActions.length;
+              return (
+                <div className="text-left space-y-1">
+                  <p className="text-xs text-muted-foreground">
+                    Kế hoạch phát triển kỳ này: <strong className="text-foreground">{planSkills} skill · {planActions} hành động</strong>
+                    {gapped > 0 && <> · cán bộ còn <strong className="text-amber-700 dark:text-amber-400">{gapped} skill GAP</strong> so với chuẩn vị trí</>}.
+                  </p>
+                  {gapped > 0 && planSkills === 0 && (
+                    <p className="text-xs text-amber-700 dark:text-amber-400">
+                      ⚠ Còn GAP nhưng CHƯA có kế hoạch phát triển nào — nên trao đổi 1-1 và thống nhất
+                      kế hoạch (mục D) với cán bộ trước khi chuyển duyệt, tránh phiếu chỉ mang tính hình thức.
+                    </p>
+                  )}
+                  <p className="text-[11px] text-muted-foreground">
+                    Sau khi duyệt, hãy theo dõi tiến độ hành động của cán bộ tại "Hành động phát triển" (Kanban) hằng tuần.
+                  </p>
+                </div>
+              );
+            })()}
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={actionLoading}>Hủy</AlertDialogCancel>
@@ -1511,43 +1516,6 @@ export default function StaffEvaluation() {
               disabled={actionLoading}
             >
               {isSoleApprover ? 'Phê duyệt hoàn tất' : 'Chuyển PGĐ duyệt'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Đồng ý hàng loạt theo tự đánh giá — hành động tường minh, có tóm tắt trước khi ghi */}
-      <AlertDialog open={agreeAllOpen} onOpenChange={setAgreeAllOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Đồng ý theo tự đánh giá của cán bộ?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Sẽ ghi nhận {reviewDiff.agreeableSkills.length} skill
-              {reviewDiff.agreeableAttitudes.length > 0 ? ` và ${reviewDiff.agreeableAttitudes.length} nhóm thái độ` : ''}{' '}
-              theo đúng mức cán bộ tự chấm (chỉ những ô bạn CHƯA chấm — chỗ bạn đã chấm lệch được giữ nguyên).
-              Bạn vẫn có thể chỉnh từng skill sau đó.
-            </AlertDialogDescription>
-            {reviewDiff.mismatchSkills.length > 0 && (
-              <p className="text-xs text-amber-700 dark:text-amber-400 text-left">
-                Lưu ý: {reviewDiff.mismatchSkills.length} skill bạn đã chấm lệch sẽ giữ đánh giá của bạn.
-              </p>
-            )}
-            {reviewDiff.unratedSelfCount > 0 && (
-              <p className="text-xs text-muted-foreground text-left">
-                {reviewDiff.unratedSelfCount} skill cán bộ chưa tự chấm sẽ bỏ qua — bạn cần chấm trực tiếp.
-              </p>
-            )}
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Hủy</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                applyAgreeAll();
-                setAgreeAllOpen(false);
-                toast({ title: `Đã ghi nhận ${reviewDiff.agreeableSkills.length} skill theo tự đánh giá` });
-              }}
-            >
-              Đồng ý & ghi nhận
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
