@@ -124,6 +124,34 @@ UI hiện `QuizPledgeGate` (tick đủ mới bắt đầu); **server ép** ở `
 Admin sửa nội dung các mục cam kết trực tiếp trong bảng `quiz_pledge_items`.
 Migration `20260726090000`.
 
+## 3d. Quizzi Live tại cuộc họp — kiểu Wayground/Quizizz (bổ sung 07/2026)
+
+Kịch bản: quiz tạo trước → tại cuộc họp chủ trì bấm **"Mở tại cuộc họp"** → sảnh chờ hiện
+người tham gia join vào theo thời gian thực (poll 2s) → đủ người bấm **"Bắt đầu"** → cả
+phòng cùng làm (self-paced như Quizizz — mỗi người tiến độ riêng, đúng engine sẵn có) →
+chủ trì bấm **"Kết thúc"** → bục vinh danh Top 3 🥇🥈🥉 + bảng đầy đủ.
+
+| Khía cạnh | Thiết kế |
+|---|---|
+| Phạm vi phiên | `scope='department'` (họp phòng — chỉ thành viên phòng join) hoặc `scope='branch'` (giao ban tuần chi nhánh — cán bộ chủ chốt mọi phòng join được, thành phần dự họp tự xác định) |
+| Quyền mở/điều hành | Tác giả quiz + trưởng phòng (+ BGĐ/admin); nút ở trang **Quản trị Quizzi** (nhóm Quản trị đội ngũ) và trên card quiz |
+| Ẩn danh | Chủ trì bật khi mở phiên → hệ thống tự sinh biệt danh ("Đại Bàng Thần Tốc", "Sóc Tinh Anh"…), mapping tên↔biệt danh KHÔNG lộ ra client (bảng participants không có policy SELECT; mọi đọc qua RPC chỉ trả biệt danh); bảng xếp hạng tuần của quiz đó cũng tự ẩn danh hoá |
+| Điểm & Top | Công thức sẵn có: đúng = 100đ/câu + bonus tốc độ ≤50đ/câu (theo thời gian riêng từng câu); đồng điểm → tổng thời gian nhanh hơn xếp trên |
+| Tính vào hệ thống | Lượt làm live chính là `quiz_attempts` của tuần → streak/huy hiệu/xếp hạng tuần hoạt động bình thường; người đã làm async trong tuần không chơi lại được (1 lượt/người/quiz) |
+| Realtime | Polling 2s qua `quiz_live_get_state` — đủ mượt cho quy mô họp 10–30 người, không cần bật Supabase Realtime |
+
+Bảng `quiz_live_sessions` (1 phiên sống/quiz — unique partial index) + `quiz_live_participants`
+(nickname, pledge, attempt link). RPC: `quiz_live_open`, `quiz_live_join` (ép cam kết EQ),
+`quiz_live_set_status`, `quiz_live_start_my_attempt` (payload cùng shape → tái dùng
+`QuizPlayEngine` + `quiz_answer_question`), `quiz_live_get_state`. UI: `/quan-tri-quizzi`,
+`/quizzi/live/:id/dieu-hanh` (host), `/quizzi/live/:id` (người chơi). Migration `20260727090000`.
+
+**Tư vấn cho chiến dịch chi nhánh**: KHÔNG chạy live. Sức mạnh của chiến dịch là phủ toàn
+chi nhánh trong nhiều ngày + chống làm hộ bằng đề riêng từng người — gom trăm người vào một
+phiên live làm mất cả hai. Nếu muốn "sự kiện chung" cho chủ đề chiến dịch: tạo thêm 1 quiz
+cùng chủ đề và mở live tại giao ban (scope branch) — chiến dịch async vẫn chạy song song cho
+toàn thể cán bộ.
+
 ## 4. Kiến trúc kỹ thuật
 
 - **Bảng**: `quizzes`, `quiz_questions` (đáp án kín), `quiz_attempts` + `quiz_attempt_answers`

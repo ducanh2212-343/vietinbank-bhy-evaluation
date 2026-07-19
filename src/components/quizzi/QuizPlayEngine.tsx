@@ -48,6 +48,10 @@ export interface QuizPlayEngineProps {
   resultsPath: string;
   /** Ghi chú nhỏ ở màn kết thúc (mặc định nói về chuỗi tuần) */
   completionNote?: string;
+  /** Thay cho navigate(resultsPath) — dùng khi trang cha tự chuyển màn (live) */
+  onResults?: () => void;
+  /** Thay cho navigate(backPath) — dùng khi trang cha tự chuyển màn (live) */
+  onBack?: () => void;
 }
 
 /**
@@ -55,8 +59,10 @@ export interface QuizPlayEngineProps {
  * nhánh: mỗi lần một câu (server phát), đồng hồ đếm lùi, feedback tức thì
  * (đúng/sai + giải thích + điểm), màn kết thúc ăn mừng. Server chấm toàn bộ.
  */
-export function QuizPlayEngine({ start, answer, backPath, resultsPath, completionNote }: QuizPlayEngineProps) {
+export function QuizPlayEngine({ start, answer, backPath, resultsPath, completionNote, onResults, onBack }: QuizPlayEngineProps) {
   const navigate = useNavigate();
+  const goBack = () => (onBack ? onBack() : navigate(backPath));
+  const goResults = () => (onResults ? onResults() : navigate(resultsPath));
 
   const [phase, setPhase] = useState<'loading' | 'question' | 'feedback' | 'done' | 'error'>('loading');
   const [errorMsg, setErrorMsg] = useState('');
@@ -179,7 +185,7 @@ export function QuizPlayEngine({ start, answer, backPath, resultsPath, completio
         <Card>
           <CardContent className="py-8 text-center space-y-3">
             <p className="text-sm text-muted-foreground">{errorMsg}</p>
-            <Button variant="outline" onClick={() => navigate(backPath)}>
+            <Button variant="outline" onClick={() => goBack()}>
               <ArrowLeft className="w-4 h-4 mr-1" /> Quay lại
             </Button>
           </CardContent>
@@ -238,10 +244,10 @@ export function QuizPlayEngine({ start, answer, backPath, resultsPath, completio
               </div>
             )}
             <div className="flex gap-2 w-full">
-              <Button variant="outline" className="flex-1" onClick={() => navigate(backPath)}>
+              <Button variant="outline" className="flex-1" onClick={() => goBack()}>
                 Quay lại
               </Button>
-              <Button className="flex-1" onClick={() => navigate(resultsPath)}>
+              <Button className="flex-1" onClick={() => goResults()}>
                 <Trophy className="w-4 h-4 mr-1" /> Xem kết quả
               </Button>
             </div>
@@ -260,7 +266,7 @@ export function QuizPlayEngine({ start, answer, backPath, resultsPath, completio
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-4">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => navigate(backPath)}>
+        <Button variant="ghost" size="sm" onClick={() => goBack()}>
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <Progress value={progressPct} className="flex-1 h-2.5" />

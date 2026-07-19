@@ -5,7 +5,7 @@ import {
   Upload, Settings as SettingsIcon, BarChart3, Image, FileText,
   ChevronRight, UserCheck, Sparkles, GraduationCap, ClipboardList, KeyRound, ListPlus,
   CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag, GitBranch,
-  ListChecks, Building2, Gavel, TrendingUp, Zap
+  ListChecks, Building2, Gavel, TrendingUp, Zap, MonitorPlay
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubmissionReportAccess } from '@/hooks/useSubmissionReportAccess';
@@ -79,6 +79,8 @@ const navGroups: NavGroup[] = [
       { label: 'Phân nhóm cán bộ', icon: Star, path: '/phan-nhom-can-bo', minRole: 'manager' },
       { label: 'Danh sách cán bộ', icon: Users, path: '/danh-sach-can-bo', minRole: 'manager' },
       { label: 'Báo cáo', icon: BarChart3, path: '/bao-cao', minRole: 'manager' },
+      // Mở/điều hành phiên Quizzi live tại cuộc họp phòng hoặc giao ban chi nhánh
+      { label: 'Quản trị Quizzi', icon: MonitorPlay, path: '/quan-tri-quizzi', minRole: 'manager' },
       // Hiển thị theo phạm vi: GĐ/PGĐ (phòng phụ trách), lãnh đạo Phòng TCTH + admin (full chi nhánh)
       { label: 'Báo cáo nộp biểu mẫu', icon: Timer, path: '/bao-cao-nop-bieu-mau', special: 'submission-report' },
       // Khung dấu ấn BGĐ giao PGĐ — chỉ GĐ/PGĐ/TCTH admin thấy menu (RLS vẫn là lớp chặn chính)

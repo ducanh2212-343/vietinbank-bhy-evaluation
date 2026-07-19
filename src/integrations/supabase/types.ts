@@ -2715,6 +2715,109 @@ export type Database = {
           },
         ]
       }
+      quiz_live_participants: {
+        Row: {
+          attempt_id: string | null
+          id: string
+          joined_at: string
+          nickname: string
+          pledge_accepted_at: string | null
+          profile_id: string
+          session_id: string
+        }
+        Insert: {
+          attempt_id?: string | null
+          id?: string
+          joined_at?: string
+          nickname: string
+          pledge_accepted_at?: string | null
+          profile_id: string
+          session_id: string
+        }
+        Update: {
+          attempt_id?: string | null
+          id?: string
+          joined_at?: string
+          nickname?: string
+          pledge_accepted_at?: string | null
+          profile_id?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_live_participants_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_live_participants_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_live_participants_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_live_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_live_sessions: {
+        Row: {
+          anonymous: boolean
+          created_at: string
+          finished_at: string | null
+          host_profile_id: string
+          id: string
+          quiz_id: string
+          scope: string
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          anonymous?: boolean
+          created_at?: string
+          finished_at?: string | null
+          host_profile_id: string
+          id?: string
+          quiz_id: string
+          scope?: string
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          anonymous?: boolean
+          created_at?: string
+          finished_at?: string | null
+          host_profile_id?: string
+          id?: string
+          quiz_id?: string
+          scope?: string
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_live_sessions_host_profile_id_fkey"
+            columns: ["host_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_live_sessions_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quiz_pledge_items: {
         Row: {
           code: string
@@ -3887,6 +3990,20 @@ export type Database = {
       quiz_get_department_streaks: { Args: never; Returns: Json }
       quiz_get_my_streak: { Args: never; Returns: Json }
       quiz_get_ranking: { Args: { _quiz_id: string }; Returns: Json }
+      quiz_live_get_state: { Args: { _session_id: string }; Returns: Json }
+      quiz_live_join: {
+        Args: { _session_id: string; _pledge_accepted?: boolean }
+        Returns: Json
+      }
+      quiz_live_open: {
+        Args: { _quiz_id: string; _scope?: string; _anonymous?: boolean }
+        Returns: Json
+      }
+      quiz_live_set_status: {
+        Args: { _session_id: string; _status: string }
+        Returns: Json
+      }
+      quiz_live_start_my_attempt: { Args: { _session_id: string }; Returns: Json }
       quiz_start_attempt: {
         Args: { _quiz_id: string; _pledge_accepted?: boolean }
         Returns: Json
