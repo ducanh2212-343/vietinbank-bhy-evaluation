@@ -656,6 +656,12 @@ export default function StaffEvaluation() {
     return () => { alive = false; };
   }, [isManagerMode, cycleId, profileId, id, loading, formStatus, isManager, isPgd, isAdmin]);
 
+  // Đổi kỳ: lưu nốt thay đổi đang chờ của kỳ cũ rồi mới chuyển (tránh mất/ghi nhầm kỳ)
+  const handleCycleChange = async (newCycleId: string) => {
+    await autosave.flush();
+    setCycleId(newCycleId);
+  };
+
   const goToNextForm = async () => {
     const next = queue?.[0];
     if (!next) return;
@@ -1113,7 +1119,7 @@ export default function StaffEvaluation() {
 
 
       {/* A */}
-      <EvalSectionA profile={profile} cycleId={cycleId} onCycleChange={setCycleId} cycles={cycles} />
+      <EvalSectionA profile={profile} cycleId={cycleId} onCycleChange={handleCycleChange} cycles={cycles} />
 
       {/* Reviewer/PGĐ summary cards */}
       {formId && (
