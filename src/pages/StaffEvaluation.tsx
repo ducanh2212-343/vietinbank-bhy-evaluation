@@ -36,6 +36,7 @@ import {
   mergeAllSkillAssessments,
   pickActiveCycle,
   buildSkillAssessmentRows,
+  dedupeSkillActionRows,
   saveEvaluationChildren,
 } from '@/lib/evaluationPersistence';
 import { OverallReviewBlock, type OverallReviewValue } from '@/components/evaluation/OverallReviewBlock';
@@ -692,16 +693,18 @@ export default function StaffEvaluation() {
       source_type: sp.source_type, status: sp.status,
     }));
 
-    const skillActionsPayload = skillActions
-      .map(a => ({
-        id: a.id || null,
-        skill_id: spKeyToSkillId.get(a.skill_priority_id) || null,
-        row_no: a.row_no, action_type: a.action_type, action_text: a.action_text || 'Chưa nhập',
-        expected_result: a.expected_result || null, deadline: a.deadline || null,
-        requested_support: a.requested_support || null, evidence_expected: a.evidence_expected || null,
-        status: a.status, actual_result: a.actual_result || null, manager_review: a.manager_review || null,
-      }))
-      .filter(r => r.skill_id);
+    const skillActionsPayload = dedupeSkillActionRows(
+      skillActions
+        .map(a => ({
+          id: a.id || null,
+          skill_id: spKeyToSkillId.get(a.skill_priority_id) || null,
+          row_no: a.row_no, action_type: a.action_type, action_text: a.action_text || 'Chưa nhập',
+          expected_result: a.expected_result || null, deadline: a.deadline || null,
+          requested_support: a.requested_support || null, evidence_expected: a.evidence_expected || null,
+          status: a.status, actual_result: a.actual_result || null, manager_review: a.manager_review || null,
+        }))
+        .filter(r => r.skill_id),
+    );
 
     const attitudePrioritiesPayload: any[] = [];
     const attitudeActionsPayload: any[] = [];
