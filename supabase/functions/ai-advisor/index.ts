@@ -337,6 +337,27 @@ Trả lời markdown NGẮN GỌN theo đúng cấu trúc:
 ## 📌 Cần bổ sung gì
 (2-3 minh chứng cụ thể, kiểm chứng được, giúp người duyệt tin mức này)`;
   }
+  if (mode === 'behavior_structuring') {
+    // Nếp Tốt: hoàn thiện mẩu nhớ hành vi thành bản ghi có cấu trúc.
+    // Client KHÔNG gửi tên/mã cán bộ — chỉ vị trí + đơn vị (ẩn danh chủ động).
+    const { raw_text, behavior_type_label, occurred_at, position_title, department_name, skills_catalog, attitudes_catalog } = body;
+    if (!raw_text) return null;
+    return `Bạn giúp một lãnh đạo ngân hàng hoàn thiện MẨU NHỚ về hành vi của một cán bộ thành bản ghi có cấu trúc. Chỉ dựa trên nội dung mẩu nhớ — KHÔNG bịa thêm sự kiện, KHÔNG kết luận về tính cách, KHÔNG dùng các từ "thái độ kém", "thiếu trách nhiệm", "năng lực yếu", "không phù hợp". Viết theo logic: bằng chứng quan sát được → mô tả trung tính.
+
+MẨU NHỚ (loại: ${behavior_type_label || ''}, thời điểm: ${occurred_at || ''}):
+${String(raw_text).slice(0, 4000)}
+
+Bối cảnh cán bộ: vị trí ${position_title || 'cán bộ'}, đơn vị ${department_name || ''}.
+
+DANH MỤC SKILL (chọn tối đa 3 mã phù hợp nhất):
+${typeof skills_catalog === 'string' ? skills_catalog : JSON.stringify(skills_catalog ?? []).slice(0, 6000)}
+
+DANH MỤC 6 NHÓM THÁI ĐỘ (chọn tối đa 2 id phù hợp nhất):
+${typeof attitudes_catalog === 'string' ? attitudes_catalog : JSON.stringify(attitudes_catalog ?? []).slice(0, 2000)}
+
+Trả về DUY NHẤT một object JSON hợp lệ (không markdown, không giải thích ngoài JSON):
+{"situation":"bối cảnh/tình huống, 1-2 câu","behavior":"hành vi quan sát được, mô tả trung tính","impact":"tác động hoặc kết quả (nếu mẩu nhớ có nêu; không có thì chuỗi rỗng)","skill_codes":["SKxx"],"attitude_ids":[1],"impact_level":"thap|vua|cao","is_repeated_hint":"câu nhận xét ngắn: mẩu nhớ có dấu hiệu hành vi lặp lại không, hay chưa đủ dữ liệu","rewrite":"bản viết lại hoàn chỉnh 2-3 câu, giọng khách quan"}`;
+  }
   if (mode === 'one_on_one_prep') {
     const { payload } = body;
     return `Bạn là trợ lý của quản lý ngân hàng, chuẩn bị cho phiên trao đổi 1-1 với một cán bộ trong kỳ đánh giá. Dựa TOÀN BỘ trên dữ liệu JSON bên dưới (kỹ năng, gap, thái độ, hành động phát triển/Kanban, câu trả lời 1-1 kỳ trước nếu có), soạn TRANG CHUẨN BỊ ngắn gọn để quản lý đọc trong 2 phút.

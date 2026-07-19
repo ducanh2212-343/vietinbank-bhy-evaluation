@@ -370,6 +370,87 @@ export type Database = {
         }
         Relationships: []
       }
+      behavior_notes: {
+        Row: {
+          ai_draft: Json | null
+          attitude_dimension_ids: number[]
+          behavior: string | null
+          behavior_type: string
+          confirmed_at: string | null
+          created_at: string
+          employee_id: string
+          id: string
+          impact: string | null
+          impact_level: string | null
+          is_repeated: boolean | null
+          observer_id: string
+          occurred_at: string
+          raw_text: string
+          shared_with_employee: boolean
+          situation: string | null
+          skill_ids: string[]
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          ai_draft?: Json | null
+          attitude_dimension_ids?: number[]
+          behavior?: string | null
+          behavior_type: string
+          confirmed_at?: string | null
+          created_at?: string
+          employee_id: string
+          id?: string
+          impact?: string | null
+          impact_level?: string | null
+          is_repeated?: boolean | null
+          observer_id: string
+          occurred_at?: string
+          raw_text: string
+          shared_with_employee?: boolean
+          situation?: string | null
+          skill_ids?: string[]
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          ai_draft?: Json | null
+          attitude_dimension_ids?: number[]
+          behavior?: string | null
+          behavior_type?: string
+          confirmed_at?: string | null
+          created_at?: string
+          employee_id?: string
+          id?: string
+          impact?: string | null
+          impact_level?: string | null
+          is_repeated?: boolean | null
+          observer_id?: string
+          occurred_at?: string
+          raw_text?: string
+          shared_with_employee?: boolean
+          situation?: string | null
+          skill_ids?: string[]
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "behavior_notes_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "behavior_notes_observer_id_fkey"
+            columns: ["observer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       council_criteria: {
         Row: {
           anchor_0: string | null
@@ -1891,6 +1972,80 @@ export type Database = {
             columns: ["skill_id"]
             isOneToOne: false
             referencedRelation: "skill_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      management_scopes: {
+        Row: {
+          created_at: string
+          department_id: string | null
+          granted_by: string | null
+          grantee_profile_id: string
+          id: string
+          is_active: boolean
+          purpose: string
+          scope_type: string
+          staff_profile_id: string | null
+          updated_at: string
+          valid_from: string
+          valid_to: string | null
+        }
+        Insert: {
+          created_at?: string
+          department_id?: string | null
+          granted_by?: string | null
+          grantee_profile_id: string
+          id?: string
+          is_active?: boolean
+          purpose?: string
+          scope_type: string
+          staff_profile_id?: string | null
+          updated_at?: string
+          valid_from?: string
+          valid_to?: string | null
+        }
+        Update: {
+          created_at?: string
+          department_id?: string | null
+          granted_by?: string | null
+          grantee_profile_id?: string
+          id?: string
+          is_active?: boolean
+          purpose?: string
+          scope_type?: string
+          staff_profile_id?: string | null
+          updated_at?: string
+          valid_from?: string
+          valid_to?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "management_scopes_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "management_scopes_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "management_scopes_grantee_profile_id_fkey"
+            columns: ["grantee_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "management_scopes_staff_profile_id_fkey"
+            columns: ["staff_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -3790,6 +3945,10 @@ export type Database = {
     }
     Functions: {
       admin_email_overview: { Args: never; Returns: Json }
+      can_observe_profile: {
+        Args: { _target: string }
+        Returns: boolean
+      }
       can_view_profile: {
         Args: { _target_profile_id: string }
         Returns: boolean
@@ -3822,6 +3981,17 @@ export type Database = {
         Returns: undefined
       }
       get_my_department_id: { Args: never; Returns: string }
+      get_observable_profiles: {
+        Args: never
+        Returns: {
+          id: string
+          full_name: string
+          employee_code: string | null
+          department_id: string | null
+          department_name: string | null
+          position_title: string | null
+        }[]
+      }
       get_my_pgd_scope_dept_ids: { Args: never; Returns: string[] }
       get_my_profile_id: { Args: never; Returns: string }
       get_my_supervisor_ids: { Args: never; Returns: string[] }

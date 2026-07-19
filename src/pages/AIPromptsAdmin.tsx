@@ -68,6 +68,7 @@ const MODE_LABELS: Record<string, string> = {
   evidence_review: 'Thẩm định minh chứng level (L3+)',
   one_on_one_prep: 'Trang chuẩn bị phiên 1-1 cho quản lý',
   quarterly_letter: 'Thư tổng kết phát triển cá nhân cuối kỳ',
+  behavior_structuring: 'Nếp Tốt — cấu trúc hóa mẩu nhớ hành vi',
 };
 
 // Khuyến nghị model theo tác vụ để cân đối chi phí
@@ -80,6 +81,7 @@ const MODE_RECOMMENDED_MODEL: Record<string, string> = {
   evidence_review: 'google/gemini-2.5-flash',
   one_on_one_prep: 'google/gemini-2.5-flash',
   quarterly_letter: 'google/gemini-2.5-flash',
+  behavior_structuring: 'google/gemini-2.5-flash-lite',
 };
 
 // Nhà cung cấp AI — BYOK: admin tự nhập API key, không phụ thuộc Lovable.

@@ -5,7 +5,7 @@ import {
   Upload, Settings as SettingsIcon, BarChart3, Image, FileText,
   ChevronRight, UserCheck, Sparkles, GraduationCap, ClipboardList, KeyRound, ListPlus,
   CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag, GitBranch,
-  ListChecks, Building2, Gavel, TrendingUp, Zap
+  ListChecks, Building2, Gavel, TrendingUp, Zap, NotebookPen, Sprout
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubmissionReportAccess } from '@/hooks/useSubmissionReportAccess';
@@ -16,7 +16,7 @@ import vtbLogo from '@/assets/vietinbank-bhy-logo.png';
 import { BrandBadge } from '@/components/branding/BrandAssets';
 
 type MinRole = 'manager' | 'admin';
-type Special = 'submission-report' | 'strategic-hr' | 'council-member' | 'council-report' | 'council-analytics' | 'leadership-marks';
+type Special = 'submission-report' | 'strategic-hr' | 'council-member' | 'council-report' | 'council-analytics' | 'leadership-marks' | 'nep-tot-journal';
 
 interface NavLeaf {
   label: string;
@@ -105,6 +105,20 @@ const navGroups: NavGroup[] = [
           { label: 'Phân quyền', icon: Shield, path: '/phan-quyen', minRole: 'admin' },
         ],
       },
+    ],
+  },
+  {
+    // Nếp Tốt — Sổ tay hành vi BHY: ghi nhận & phát triển hành vi cán bộ.
+    // Ghi nhanh dùng nút nổi (FAB) toàn cục, không nằm trong menu.
+    // Sao Xứng Đáng là mô-đun quản trị riêng (Bước 2), KHÔNG thuộc nhóm này.
+    label: 'Nếp Tốt',
+    icon: NotebookPen,
+    accent: '#34D399',
+    items: [
+      // Lãnh đạo có phạm vi ghi nhận (TP/PP/PGĐ/GĐ) — RLS vẫn là lớp chặn chính
+      { label: 'Nhật ký hành vi', icon: NotebookPen, path: '/nep-tot/nhat-ky', special: 'nep-tot-journal' },
+      // Cán bộ: bản ghi được chia sẻ + (Bước 3) bản phân tích đã công bố
+      { label: 'Nếp Tốt của tôi', icon: Sprout, path: '/nep-tot/cua-toi' },
     ],
   },
   {
@@ -203,6 +217,8 @@ export function AppSidebar({ onNavigate }: Props) {
     if (item.special === 'council-report') return isAdmin || councilAccess.isSubject || councilAccess.isSupervisor;
     if (item.special === 'council-analytics') return isFullCouncilAdmin;
     if (item.special === 'leadership-marks') return isAdmin || isPgd;
+    // Nếp Tốt: người có phạm vi ghi nhận nghiệp vụ — KHÔNG gồm tcth/system admin thuần
+    if (item.special === 'nep-tot-journal') return isManager || isPgd || roles.includes('bgd');
     if (item.minRole === 'admin' && !isAdmin) return false;
     if (item.minRole === 'manager' && !canSeeManagerItems) return false;
     return true;
