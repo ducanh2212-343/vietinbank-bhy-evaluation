@@ -1,0 +1,50 @@
+-- ============================================================
+-- quiz-reminders — BƯỚC LÊN LỊCH CRON (thao tác vận hành, không tự chạy khi apply)
+-- ============================================================
+-- Edge function `quiz-reminders` phục vụ BHY Quizzi: chạy HẰNG NGÀY 08:00 giờ VN,
+-- tự rẽ nhánh theo thứ trong tuần (giờ VN):
+--   - Thứ Hai : áp "đóng băng chuỗi" cho tuần trước (quiz_apply_streak_freezes)
+--               + push mở tuần cho các phòng đang giữ chuỗi.
+--   - Thứ Năm : phòng CHƯA phát hành quiz tuần này → push mọi thành viên phòng
+--               (ai cũng tạo được quiz — giữ chuỗi của phòng).
+--   - Thứ Sáu : cá nhân CHƯA làm quiz tuần này (phòng đã có ≥1 quiz) → push
+--               cá nhân kèm số tuần chuỗi đang giữ.
+--   - Mọi ngày: dọn lượt làm treo (quiz_expire_stale_attempts).
+--
+-- Migration này CHỈ ghi lại bước lên/gỡ lịch để có dấu vết trong repo — toàn bộ
+-- là comment, apply không làm gì. Bật lịch là thao tác thủ công trong SQL Editor.
+-- Không có secret trong file: cron đọc service_role key từ Vault lúc chạy
+-- (name = 'email_queue_service_role_key', cùng key các cron hiện có).
+--
+-- ------------------------------------------------------------
+-- 1) XEM TRƯỚC (không gửi): body {"dry_run": true} → danh sách push sẽ gửi.
+--
+-- 2) BẬT LỊCH HẰNG NGÀY 08:00 giờ VN (= 01:00 UTC). Chạy 1 lần:
+--
+--    select cron.schedule(
+--      'quiz-reminders-daily',
+--      '0 1 * * *',
+--      $cron$
+--        select net.http_post(
+--          url := 'https://whlysprzsguehxmrjwha.supabase.co/functions/v1/quiz-reminders',
+--          headers := jsonb_build_object(
+--            'Authorization',
+--            'Bearer ' || (select decrypted_secret from vault.decrypted_secrets
+--                          where name = 'email_queue_service_role_key'),
+--            'Content-Type', 'application/json'
+--          ),
+--          body := '{"dry_run": false}'::jsonb
+--        );
+--      $cron$
+--    );
+--
+-- 3) GỠ LỊCH: select cron.unschedule('quiz-reminders-daily');
+--
+-- 4) KIỂM TRA:
+--    select jobname, schedule, active from cron.job where jobname = 'quiz-reminders-daily';
+--    select * from cron.job_run_details
+--      where jobid = (select jobid from cron.job where jobname = 'quiz-reminders-daily')
+--      order by start_time desc limit 5;
+--
+-- Idempotency theo ngày trong function → chạy lại cùng ngày không push trùng.
+-- ============================================================

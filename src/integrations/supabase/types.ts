@@ -2227,6 +2227,343 @@ export type Database = {
           },
         ]
       }
+      quiz_attempt_answers: {
+        Row: {
+          answered_at: string
+          attempt_id: string
+          elapsed_ms: number
+          id: string
+          is_correct: boolean
+          points: number
+          question_id: string
+          selected_index: number | null
+        }
+        Insert: {
+          answered_at?: string
+          attempt_id: string
+          elapsed_ms: number
+          id?: string
+          is_correct?: boolean
+          points?: number
+          question_id: string
+          selected_index?: number | null
+        }
+        Update: {
+          answered_at?: string
+          attempt_id?: string
+          elapsed_ms?: number
+          id?: string
+          is_correct?: boolean
+          points?: number
+          question_id?: string
+          selected_index?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_attempt_answers_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_attempt_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_attempts: {
+        Row: {
+          completed_at: string | null
+          correct_count: number
+          current_question_id: string | null
+          current_question_served_at: string | null
+          id: string
+          profile_id: string
+          quiz_id: string
+          score: number
+          started_at: string
+          status: string
+          total_questions: number
+          total_time_ms: number
+        }
+        Insert: {
+          completed_at?: string | null
+          correct_count?: number
+          current_question_id?: string | null
+          current_question_served_at?: string | null
+          id?: string
+          profile_id: string
+          quiz_id: string
+          score?: number
+          started_at?: string
+          status?: string
+          total_questions?: number
+          total_time_ms?: number
+        }
+        Update: {
+          completed_at?: string | null
+          correct_count?: number
+          current_question_id?: string | null
+          current_question_served_at?: string | null
+          id?: string
+          profile_id?: string
+          quiz_id?: string
+          score?: number
+          started_at?: string
+          status?: string
+          total_questions?: number
+          total_time_ms?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_attempts_current_question_id_fkey"
+            columns: ["current_question_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_attempts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_attempts_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_badge_awards: {
+        Row: {
+          awarded_at: string
+          badge_id: string
+          celebrated_at: string | null
+          id: string
+          profile_id: string
+          quiz_id: string | null
+        }
+        Insert: {
+          awarded_at?: string
+          badge_id: string
+          celebrated_at?: string | null
+          id?: string
+          profile_id: string
+          quiz_id?: string | null
+        }
+        Update: {
+          awarded_at?: string
+          badge_id?: string
+          celebrated_at?: string | null
+          id?: string
+          profile_id?: string
+          quiz_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_badge_awards_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_badge_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_badge_awards_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_badge_awards_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_badge_catalog: {
+        Row: {
+          code: string
+          created_at: string
+          criteria: Json
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          criteria?: Json
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          criteria?: Json
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      quiz_questions: {
+        Row: {
+          correct_index: number
+          created_at: string
+          explanation: string | null
+          id: string
+          options: Json
+          quiz_id: string
+          sort_order: number
+          statement: string
+        }
+        Insert: {
+          correct_index: number
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          options: Json
+          quiz_id: string
+          sort_order?: number
+          statement: string
+        }
+        Update: {
+          correct_index?: number
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          options?: Json
+          quiz_id?: string
+          sort_order?: number
+          statement?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_questions_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_streak_freezes: {
+        Row: {
+          earned_at: string
+          earned_reason: string
+          id: string
+          profile_id: string
+          used_week_start: string | null
+        }
+        Insert: {
+          earned_at?: string
+          earned_reason?: string
+          id?: string
+          profile_id: string
+          used_week_start?: string | null
+        }
+        Update: {
+          earned_at?: string
+          earned_reason?: string
+          id?: string
+          profile_id?: string
+          used_week_start?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_streak_freezes_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quizzes: {
+        Row: {
+          created_at: string
+          created_by: string
+          department_id: string
+          description: string | null
+          id: string
+          per_question_seconds: number
+          skill_id: string | null
+          source_ref: string | null
+          status: string
+          title: string
+          updated_at: string
+          week_start: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          department_id: string
+          description?: string | null
+          id?: string
+          per_question_seconds?: number
+          skill_id?: string | null
+          source_ref?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          week_start?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          department_id?: string
+          description?: string | null
+          id?: string
+          per_question_seconds?: number
+          skill_id?: string | null
+          source_ref?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quizzes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quizzes_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quizzes_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skill_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recognition_items: {
         Row: {
           created_at: string
@@ -3201,6 +3538,22 @@ export type Database = {
         }
         Returns: number
       }
+      quiz_answer_question: {
+        Args: { _attempt_id: string; _selected_index: number | null }
+        Returns: Json
+      }
+      quiz_apply_streak_freezes: { Args: never; Returns: number }
+      quiz_expire_stale_attempts: { Args: never; Returns: number }
+      quiz_get_attempt_review: { Args: { _attempt_id: string }; Returns: Json }
+      quiz_get_branch_overview: {
+        Args: { _week_start?: string }
+        Returns: Json
+      }
+      quiz_get_department_streaks: { Args: never; Returns: Json }
+      quiz_get_my_streak: { Args: never; Returns: Json }
+      quiz_get_ranking: { Args: { _quiz_id: string }; Returns: Json }
+      quiz_start_attempt: { Args: { _quiz_id: string }; Returns: Json }
+      quiz_week_start: { Args: { _ts?: string }; Returns: string }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {
