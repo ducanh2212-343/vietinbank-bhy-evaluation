@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { ArrowLeft, Loader2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -29,6 +30,7 @@ export default function QuizComposerPage() {
   const [sourceRef, setSourceRef] = useState('');
   const [skillId, setSkillId] = useState<string>('none');
   const [seconds, setSeconds] = useState(30);
+  const [requirePledge, setRequirePledge] = useState(true);
   const [status, setStatus] = useState<'published' | 'unpublished'>('published');
   const [questions, setQuestions] = useState<DraftQuestion[]>([emptyQuestion()]);
   const [skills, setSkills] = useState<{ id: string; code: string | null; name: string }[]>([]);
@@ -62,6 +64,7 @@ export default function QuizComposerPage() {
     setSourceRef(quiz.source_ref || '');
     setSkillId(quiz.skill_id || 'none');
     setSeconds(quiz.per_question_seconds);
+    setRequirePledge(quiz.require_pledge);
     setStatus(quiz.status as 'published' | 'unpublished');
     setQuestions(
       (qRes.data || []).map((q: any) => ({
@@ -70,6 +73,7 @@ export default function QuizComposerPage() {
         options: (q.options as string[]) || ['', ''],
         correctIndex: q.correct_index,
         explanation: q.explanation || '',
+        timeSeconds: q.time_seconds ?? null,
       })),
     );
     setHasAttempts((aRes.count ?? 0) > 0);
@@ -92,6 +96,7 @@ export default function QuizComposerPage() {
           source_ref: sourceRef.trim() || null,
           skill_id: skillId === 'none' ? null : skillId,
           per_question_seconds: seconds,
+          require_pledge: requirePledge,
           status,
         }).eq('id', editId);
         if (error) throw error;
@@ -103,6 +108,7 @@ export default function QuizComposerPage() {
           source_ref: sourceRef.trim() || null,
           skill_id: skillId === 'none' ? null : skillId,
           per_question_seconds: seconds,
+          require_pledge: requirePledge,
         }).select('id').single();
         if (error) throw error;
         quizId = data.id;
@@ -122,6 +128,7 @@ export default function QuizComposerPage() {
             correct_index: q.correctIndex,
             explanation: q.explanation.trim() || null,
             sort_order: i,
+            time_seconds: q.timeSeconds,
           })),
         );
         if (insErr) throw insErr;
@@ -192,7 +199,7 @@ export default function QuizComposerPage() {
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label>Thời gian mỗi câu (giây)</Label>
+              <Label>Thời gian mặc định mỗi câu (giây)</Label>
               <Select value={String(seconds)} onValueChange={(v) => setSeconds(Number(v))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -201,6 +208,7 @@ export default function QuizComposerPage() {
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">Từng câu chỉnh riêng được ở góc mỗi câu hỏi ⏱</p>
             </div>
             {editId && (
               <div className="space-y-1.5">
@@ -215,10 +223,19 @@ export default function QuizComposerPage() {
               </div>
             )}
           </div>
+          <div className="flex items-start justify-between gap-3 pt-1">
+            <div className="space-y-0.5">
+              <Label>Yêu cầu cam kết tự làm (checklist EQ)</Label>
+              <p className="text-xs text-muted-foreground">
+                Trước khi làm, cán bộ tick cam kết không dùng "phao" tài liệu — tự làm thì nhớ lâu hơn.
+              </p>
+            </div>
+            <Switch checked={requirePledge} onCheckedChange={setRequirePledge} />
+          </div>
         </CardContent>
       </Card>
 
-      <QuestionListEditor questions={questions} onChange={setQuestions} disabled={hasAttempts} />
+      <QuestionListEditor questions={questions} onChange={setQuestions} disabled={hasAttempts} defaultSeconds={seconds} />
 
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <Button variant="outline" disabled={hasAttempts}

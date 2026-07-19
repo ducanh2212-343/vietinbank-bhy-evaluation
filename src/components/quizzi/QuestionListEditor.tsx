@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { CheckCircle2, Plus, Trash2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CheckCircle2, Plus, Timer, Trash2 } from 'lucide-react';
 
 export interface DraftQuestion {
   id?: string;
@@ -11,11 +12,15 @@ export interface DraftQuestion {
   options: string[];
   correctIndex: number;
   explanation: string;
+  /** Thời gian riêng của câu (giây); null = dùng mặc định của quiz */
+  timeSeconds: number | null;
 }
 
 export const emptyQuestion = (): DraftQuestion => ({
-  statement: '', options: ['', ''], correctIndex: 0, explanation: '',
+  statement: '', options: ['', ''], correctIndex: 0, explanation: '', timeSeconds: null,
 });
+
+const TIME_CHOICES = [15, 20, 30, 45, 60, 90, 120, 180];
 
 /** Kiểm tra danh sách câu hỏi; trả về thông báo lỗi đầu tiên hoặc null */
 export function validateQuestions(questions: DraftQuestion[]): string | null {
@@ -39,10 +44,13 @@ export function QuestionListEditor({
   questions,
   onChange,
   disabled,
+  defaultSeconds,
 }: {
   questions: DraftQuestion[];
   onChange: (questions: DraftQuestion[]) => void;
   disabled: boolean;
+  /** Thời gian mặc định của quiz — hiển thị trong lựa chọn "Mặc định" */
+  defaultSeconds?: number;
 }) {
   const updateQuestion = (i: number, patch: Partial<DraftQuestion>) => {
     onChange(questions.map((q, idx) => (idx === i ? { ...q, ...patch } : q)));
@@ -54,10 +62,30 @@ export function QuestionListEditor({
         <Card key={i}>
           <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
             <CardTitle className="text-sm">Câu {i + 1}</CardTitle>
-            <Button variant="ghost" size="sm" disabled={disabled || questions.length <= 1}
-              onClick={() => onChange(questions.filter((_, idx) => idx !== i))}>
-              <Trash2 className="w-4 h-4 text-destructive" />
-            </Button>
+            <div className="flex items-center gap-1.5">
+              <Timer className="w-3.5 h-3.5 text-muted-foreground" />
+              <Select
+                value={q.timeSeconds == null ? 'default' : String(q.timeSeconds)}
+                onValueChange={(v) => updateQuestion(i, { timeSeconds: v === 'default' ? null : Number(v) })}
+                disabled={disabled}
+              >
+                <SelectTrigger className="h-7 w-[130px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">
+                    Mặc định{defaultSeconds ? ` (${defaultSeconds}s)` : ''}
+                  </SelectItem>
+                  {TIME_CHOICES.map((s) => (
+                    <SelectItem key={s} value={String(s)}>{s} giây</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button variant="ghost" size="sm" disabled={disabled || questions.length <= 1}
+                onClick={() => onChange(questions.filter((_, idx) => idx !== i))}>
+                <Trash2 className="w-4 h-4 text-destructive" />
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-3">
             <Textarea value={q.statement} disabled={disabled} rows={2}

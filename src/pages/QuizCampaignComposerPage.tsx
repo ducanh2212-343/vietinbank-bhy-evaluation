@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, EyeOff, Loader2, Plus, Send, Shuffle } from 'lucide-react';
+import { ArrowLeft, BookOpenCheck, EyeOff, Loader2, Plus, Send, Shuffle } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   DraftQuestion, QuestionListEditor, emptyQuestion, validateQuestions,
@@ -40,6 +40,7 @@ export default function QuizCampaignComposerPage() {
   const [poolSize, setPoolSize] = useState(10);
   const [shuffleOptions, setShuffleOptions] = useState(true);
   const [anonymousResults, setAnonymousResults] = useState(false);
+  const [requirePledge, setRequirePledge] = useState(true);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [status, setStatus] = useState('draft');
@@ -92,6 +93,7 @@ export default function QuizCampaignComposerPage() {
     setPoolSize(c.question_pool_size ?? 10);
     setShuffleOptions(c.shuffle_options);
     setAnonymousResults(c.anonymous_results);
+    setRequirePledge(c.require_pledge);
     setStartDate(c.start_date || '');
     setEndDate(c.end_date || '');
     setStatus(c.status);
@@ -103,6 +105,7 @@ export default function QuizCampaignComposerPage() {
         options: (q.options as string[]) || ['', ''],
         correctIndex: q.correct_index,
         explanation: q.explanation || '',
+        timeSeconds: q.time_seconds ?? null,
       })),
     );
     // Người khởi tạo không SELECT được attempts của người khác (ẩn danh) —
@@ -132,6 +135,7 @@ export default function QuizCampaignComposerPage() {
         question_pool_size: poolEnabled ? poolSize : null,
         shuffle_options: shuffleOptions,
         anonymous_results: anonymousResults,
+        require_pledge: requirePledge,
         start_date: startDate || null,
         end_date: endDate || null,
       };
@@ -160,6 +164,7 @@ export default function QuizCampaignComposerPage() {
             correct_index: q.correctIndex,
             explanation: q.explanation.trim() || null,
             sort_order: i,
+            time_seconds: q.timeSeconds,
           })),
         );
         if (insErr) throw insErr;
@@ -275,7 +280,7 @@ export default function QuizCampaignComposerPage() {
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="space-y-1.5">
-              <Label>Thời gian mỗi câu</Label>
+              <Label>Thời gian mặc định mỗi câu</Label>
               <Select value={String(seconds)} onValueChange={(v) => setSeconds(Number(v))} disabled={!configEditable && !!editId}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -333,6 +338,15 @@ export default function QuizCampaignComposerPage() {
           </div>
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-0.5">
+              <Label className="flex items-center gap-1.5"><BookOpenCheck className="w-4 h-4" /> Yêu cầu cam kết tự làm (checklist EQ)</Label>
+              <p className="text-xs text-muted-foreground">
+                Trước khi làm, cán bộ tick cam kết không dùng "phao" tài liệu — tự làm thì nhớ lâu hơn.
+              </p>
+            </div>
+            <Switch checked={requirePledge} disabled={!configEditable && !!editId} onCheckedChange={setRequirePledge} />
+          </div>
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-0.5">
               <Label className="flex items-center gap-1.5"><EyeOff className="w-4 h-4" /> Ẩn danh người làm bài</Label>
               <p className="text-xs text-muted-foreground">
                 Bật: không ai (kể cả người khởi tạo) thấy tên người làm — chỉ số liệu tổng hợp
@@ -344,7 +358,7 @@ export default function QuizCampaignComposerPage() {
         </CardContent>
       </Card>
 
-      <QuestionListEditor questions={questions} onChange={setQuestions} disabled={!!editId && !editable} />
+      <QuestionListEditor questions={questions} onChange={setQuestions} disabled={!!editId && !editable} defaultSeconds={seconds} />
 
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <Button variant="outline" disabled={!!editId && !editable}

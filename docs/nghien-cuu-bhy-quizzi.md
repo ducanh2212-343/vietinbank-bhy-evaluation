@@ -104,6 +104,26 @@ RPC: `quiz_campaign_start_attempt`, `quiz_campaign_answer`, `quiz_campaign_get_r
 `QuizPlayEngine`), `/quizzi/chien-dich/:id/ket-qua` (dashboard Mentimeter-style).
 Migrations `20260725090000` + `20260725091000`.
 
+## 3c. Thời gian riêng từng câu + Checklist EQ "cam kết tự làm" (bổ sung 07/2026)
+
+**Thời gian từng câu**: `quiz_questions.time_seconds` / `quiz_campaign_questions.time_seconds`
+(nullable, 10–300s; NULL = dùng mặc định `per_question_seconds` của quiz). Budget chấm điểm,
+bonus tốc độ và đồng hồ đếm trên UI đều tính `COALESCE(câu, mặc định)` — câu khó cho nhiều
+thời gian hơn, câu thuộc lòng rút ngắn. Người soạn chỉnh ngay ở góc từng card câu hỏi (⏱).
+
+**Checklist EQ — cam kết danh dự trước khi làm** (`quiz_pledge_items`, 4 mục seed):
+không mở tài liệu/"phao", không nhờ/làm hộ, hiểu rằng sai không bị phạt, sẽ đọc giải thích
+sau mỗi câu. Cơ sở tâm lý: (1) **consistency principle** — người đã chủ động tick cam kết
+có xu hướng giữ lời cao hơn hẳn so với bị giám sát; (2) **testing effect** — tự truy xuất
+từ trí nhớ (không phao) mới tạo trí nhớ dài hạn, đó là mục đích thật của Quizzi; (3) "sai
+không bị phạt" đưa vào chính checklist để triệt tiêu động cơ gian lận ngay từ khung tâm lý.
+Cơ chế: `require_pledge` (mặc định bật, người soạn tắt được) trên `quizzes`/`quiz_campaigns`;
+UI hiện `QuizPledgeGate` (tick đủ mới bắt đầu); **server ép** ở `quiz_start_attempt`/
+`quiz_campaign_start_attempt` (tham số `_pledge_accepted`, thiếu là RAISE) và lưu dấu
+`pledge_accepted_at` trên lượt làm; resume lượt dở dang không bắt cam kết lại.
+Admin sửa nội dung các mục cam kết trực tiếp trong bảng `quiz_pledge_items`.
+Migration `20260726090000`.
+
 ## 4. Kiến trúc kỹ thuật
 
 - **Bảng**: `quizzes`, `quiz_questions` (đáp án kín), `quiz_attempts` + `quiz_attempt_answers`

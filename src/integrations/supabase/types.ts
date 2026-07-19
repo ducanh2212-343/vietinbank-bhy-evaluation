@@ -2282,6 +2282,7 @@ export type Database = {
           current_question_id: string | null
           current_question_served_at: string | null
           id: string
+          pledge_accepted_at: string | null
           profile_id: string
           quiz_id: string
           score: number
@@ -2296,6 +2297,7 @@ export type Database = {
           current_question_id?: string | null
           current_question_served_at?: string | null
           id?: string
+          pledge_accepted_at?: string | null
           profile_id: string
           quiz_id: string
           score?: number
@@ -2310,6 +2312,7 @@ export type Database = {
           current_question_id?: string | null
           current_question_served_at?: string | null
           id?: string
+          pledge_accepted_at?: string | null
           profile_id?: string
           quiz_id?: string
           score?: number
@@ -2480,6 +2483,7 @@ export type Database = {
           current_pos: number
           current_served_at: string | null
           id: string
+          pledge_accepted_at: string | null
           option_orders: Json
           profile_id: string
           question_ids: string[]
@@ -2496,6 +2500,7 @@ export type Database = {
           current_pos?: number
           current_served_at?: string | null
           id?: string
+          pledge_accepted_at?: string | null
           option_orders?: Json
           profile_id: string
           question_ids: string[]
@@ -2512,6 +2517,7 @@ export type Database = {
           current_pos?: number
           current_served_at?: string | null
           id?: string
+          pledge_accepted_at?: string | null
           option_orders?: Json
           profile_id?: string
           question_ids?: string[]
@@ -2574,6 +2580,7 @@ export type Database = {
           options: Json
           sort_order: number
           statement: string
+          time_seconds: number | null
         }
         Insert: {
           campaign_id: string
@@ -2584,6 +2591,7 @@ export type Database = {
           options: Json
           sort_order?: number
           statement: string
+          time_seconds?: number | null
         }
         Update: {
           campaign_id?: string
@@ -2594,6 +2602,7 @@ export type Database = {
           options?: Json
           sort_order?: number
           statement?: string
+          time_seconds?: number | null
         }
         Relationships: [
           {
@@ -2617,6 +2626,7 @@ export type Database = {
           end_date: string | null
           id: string
           per_question_seconds: number
+          require_pledge: boolean
           question_pool_size: number | null
           rejected_reason: string | null
           shuffle_options: boolean
@@ -2639,6 +2649,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           per_question_seconds?: number
+          require_pledge?: boolean
           question_pool_size?: number | null
           rejected_reason?: string | null
           shuffle_options?: boolean
@@ -2661,6 +2672,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           per_question_seconds?: number
+          require_pledge?: boolean
           question_pool_size?: number | null
           rejected_reason?: string | null
           shuffle_options?: boolean
@@ -2703,6 +2715,33 @@ export type Database = {
           },
         ]
       }
+      quiz_pledge_items: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label: string
+          sort_order?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       quiz_questions: {
         Row: {
           correct_index: number
@@ -2713,6 +2752,7 @@ export type Database = {
           quiz_id: string
           sort_order: number
           statement: string
+          time_seconds: number | null
         }
         Insert: {
           correct_index: number
@@ -2723,6 +2763,7 @@ export type Database = {
           quiz_id: string
           sort_order?: number
           statement: string
+          time_seconds?: number | null
         }
         Update: {
           correct_index?: number
@@ -2733,6 +2774,7 @@ export type Database = {
           quiz_id?: string
           sort_order?: number
           statement?: string
+          time_seconds?: number | null
         }
         Relationships: [
           {
@@ -2784,6 +2826,7 @@ export type Database = {
           description: string | null
           id: string
           per_question_seconds: number
+          require_pledge: boolean
           skill_id: string | null
           source_ref: string | null
           status: string
@@ -2798,6 +2841,7 @@ export type Database = {
           description?: string | null
           id?: string
           per_question_seconds?: number
+          require_pledge?: boolean
           skill_id?: string | null
           source_ref?: string | null
           status?: string
@@ -2812,6 +2856,7 @@ export type Database = {
           description?: string | null
           id?: string
           per_question_seconds?: number
+          require_pledge?: boolean
           skill_id?: string | null
           source_ref?: string | null
           status?: string
@@ -3829,7 +3874,10 @@ export type Database = {
       quiz_campaign_get_results: { Args: { _campaign_id: string }; Returns: Json }
       quiz_campaign_get_review: { Args: { _attempt_id: string }; Returns: Json }
       quiz_campaign_is_open: { Args: { _campaign_id: string }; Returns: boolean }
-      quiz_campaign_start_attempt: { Args: { _campaign_id: string }; Returns: Json }
+      quiz_campaign_start_attempt: {
+        Args: { _campaign_id: string; _pledge_accepted?: boolean }
+        Returns: Json
+      }
       quiz_expire_stale_attempts: { Args: never; Returns: number }
       quiz_get_attempt_review: { Args: { _attempt_id: string }; Returns: Json }
       quiz_get_branch_overview: {
@@ -3839,7 +3887,10 @@ export type Database = {
       quiz_get_department_streaks: { Args: never; Returns: Json }
       quiz_get_my_streak: { Args: never; Returns: Json }
       quiz_get_ranking: { Args: { _quiz_id: string }; Returns: Json }
-      quiz_start_attempt: { Args: { _quiz_id: string }; Returns: Json }
+      quiz_start_attempt: {
+        Args: { _quiz_id: string; _pledge_accepted?: boolean }
+        Returns: Json
+      }
       quiz_week_start: { Args: { _ts?: string }; Returns: string }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
