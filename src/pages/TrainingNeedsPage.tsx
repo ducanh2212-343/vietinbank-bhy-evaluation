@@ -12,8 +12,9 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { GraduationCap, ChevronDown, ChevronUp, Users, Download } from 'lucide-react';
+import { GraduationCap, ChevronDown, ChevronUp, Users, Download, Target, Building2, Briefcase, Layers } from 'lucide-react';
 
 const sb = supabase as any;
 
@@ -43,6 +44,7 @@ interface Reg {
 }
 interface CourseRow {
   id: string; code: string; name: string; duration_days: number | null; format: string | null;
+  competency_type: string | null;
 }
 interface Plan { course_id: string; status: string; note: string | null }
 
@@ -72,7 +74,7 @@ export default function TrainingNeedsPage() {
     const courseIds = Array.from(new Set(regRows.map(r => r.course_id)));
     if (courseIds.length) {
       const { data: courseRows } = await sb.from('vtb_courses')
-        .select('id, code, name, duration_days, format').in('id', courseIds);
+        .select('id, code, name, duration_days, format, competency_type').in('id', courseIds);
       setCourses(Object.fromEntries((courseRows || []).map((c: CourseRow) => [c.id, c])));
     }
     setLoading(false);
@@ -80,11 +82,49 @@ export default function TrainingNeedsPage() {
 
   useEffect(() => { if (!authLoading) load(); }, [authLoading, load]);
 
+  const [deptFilter, setDeptFilter] = useState<string>('all');
+
+  const deptNames = useMemo(
+    () => Array.from(new Set(regs.map(r => r.profiles?.departments?.name).filter(Boolean) as string[])).sort(),
+    [regs],
+  );
+  // Bộ lọc phòng áp dụng cho MỌI chiều phân tích
+  const filteredRegs = useMemo(
+    () => deptFilter === 'all' ? regs : regs.filter(r => r.profiles?.departments?.name === deptFilter),
+    [regs, deptFilter],
+  );
+
   const byCourse = useMemo(() => {
     const map = new Map<string, Reg[]>();
-    regs.forEach(r => map.set(r.course_id, [...(map.get(r.course_id) || []), r]));
+    filteredRegs.forEach(r => map.set(r.course_id, [...(map.get(r.course_id) || []), r]));
     return Array.from(map.entries()).sort((a, b) => b[1].length - a[1].length);
-  }, [regs]);
+  }, [filteredRegs]);
+
+  // Gom đa chiều: key → { count, people(distinct), courses } — dùng chung cho các tab phân tích
+  const aggregate = (keyOf: (r: Reg) => string | null) => {
+    const map = new Map<string, { count: number; people: Set<string>; courses: Map<string, number> }>();
+    filteredRegs.forEach(r => {
+      const key = keyOf(r);
+      if (!key) return;
+      const e = map.get(key) || { count: 0, people: new Set<string>(), courses: new Map<string, number>() };
+      e.count++;
+      if (r.profiles?.full_name) e.people.add(r.profiles.full_name);
+      e.courses.set(r.course_id, (e.courses.get(r.course_id) || 0) + 1);
+      map.set(key, e);
+    });
+    return Array.from(map.entries()).sort((a, b) => b[1].count - a[1].count);
+  };
+  const bySkill = useMemo(() => aggregate(r => r.skill_catalog ? `${r.skill_catalog.code} · ${r.skill_catalog.name}` : 'Không gắn skill'), [filteredRegs]);
+  const byDept = useMemo(() => aggregate(r => r.profiles?.departments?.name || 'Chưa có phòng'), [filteredRegs]);
+  const byPosition = useMemo(() => aggregate(r => r.profiles?.position || 'Chưa có vị trí'), [filteredRegs]);
+  const byCompetency = useMemo(() => aggregate(r => courses[r.course_id]?.competency_type || 'Chưa phân nhóm'), [filteredRegs, courses]);
+
+  const stats = useMemo(() => ({
+    total: filteredRegs.length,
+    people: new Set(filteredRegs.map(r => r.profiles?.full_name).filter(Boolean)).size,
+    coursesCount: new Set(filteredRegs.map(r => r.course_id)).size,
+    pending: byCourse.filter(([cid]) => (plans[cid]?.status || 'new') === 'new').length,
+  }), [filteredRegs, byCourse, plans]);
 
   const savePlan = async (courseId: string, status: string) => {
     const { error } = await sb.from('vtb_course_training_plans').upsert({
@@ -115,6 +155,39 @@ export default function TrainingNeedsPage() {
     a.click();
   };
 
+  // Một tab phân tích: hàng xếp hạng theo lượt đăng ký, kèm thanh tỷ trọng và các khóa liên quan
+  const renderDimension = (rows: ReturnType<typeof aggregate>, emptyLabel: string) => {
+    if (!rows.length) return <Card><CardContent className="py-8 text-center text-muted-foreground">{emptyLabel}</CardContent></Card>;
+    const max = rows[0][1].count;
+    return (
+      <Card>
+        <CardContent className="pt-4 divide-y">
+          {rows.map(([key, e]) => (
+            <div key={key} className="py-2.5 space-y-1.5">
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="font-medium flex-1 min-w-0">{key}</span>
+                <Badge variant="secondary" className="text-[11px]">{e.count} lượt</Badge>
+                <span className="text-xs text-muted-foreground"><Users className="w-3 h-3 inline mr-0.5" />{e.people.size} cán bộ</span>
+              </div>
+              <div className="h-1.5 rounded bg-muted overflow-hidden">
+                <div className="h-full rounded bg-primary" style={{ width: `${Math.max(4, Math.round(e.count / max * 100))}%` }} />
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {Array.from(e.courses.entries())
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([cid, n]) => (
+                    <Badge key={cid} variant="outline" className="text-[10px] font-normal">
+                      {courses[cid]?.code} {courses[cid]?.name}{n > 1 ? ` ×${n}` : ''}
+                    </Badge>
+                  ))}
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    );
+  };
+
   if (authLoading || loading) return <div className="p-6 text-muted-foreground">Đang tải…</div>;
   if (!isAdmin) return <div className="p-6 text-muted-foreground">Chỉ TCTH/Ban Giám đốc truy cập màn hình này.</div>;
 
@@ -130,11 +203,59 @@ export default function TrainingNeedsPage() {
             chi nhánh tự tổ chức, đề nghị Trường ĐT tổ chức, hoặc ghi danh lớp Trường chuẩn bị mở.
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={exportCsv} disabled={!byCourse.length}>
-          <Download className="w-4 h-4 mr-1" /> Xuất CSV
-        </Button>
+        <div className="flex items-center gap-2">
+          <Select value={deptFilter} onValueChange={setDeptFilter}>
+            <SelectTrigger className="h-9 w-[210px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả phòng ban</SelectItem>
+              {deptNames.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Button variant="outline" size="sm" onClick={exportCsv} disabled={!byCourse.length}>
+            <Download className="w-4 h-4 mr-1" /> Xuất CSV
+          </Button>
+        </div>
       </div>
 
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: 'Lượt đăng ký', value: stats.total },
+          { label: 'Cán bộ có nhu cầu', value: stats.people },
+          { label: 'Khóa có nhu cầu', value: stats.coursesCount },
+          { label: 'Khóa chưa xử lý', value: stats.pending, tone: stats.pending > 0 ? 'text-amber-600 dark:text-amber-400' : '' },
+        ].map(t => (
+          <Card key={t.label}>
+            <CardContent className="py-3 px-4">
+              <div className={`text-2xl font-bold ${t.tone || ''}`}>{t.value}</div>
+              <div className="text-xs text-muted-foreground">{t.label}</div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Tabs defaultValue="courses">
+        <TabsList className="flex flex-wrap h-auto">
+          <TabsTrigger value="courses" className="text-xs sm:text-sm"><GraduationCap className="w-3.5 h-3.5 mr-1" /> Theo khóa học</TabsTrigger>
+          <TabsTrigger value="skills" className="text-xs sm:text-sm"><Target className="w-3.5 h-3.5 mr-1" /> Theo skill</TabsTrigger>
+          <TabsTrigger value="depts" className="text-xs sm:text-sm"><Building2 className="w-3.5 h-3.5 mr-1" /> Theo phòng ban</TabsTrigger>
+          <TabsTrigger value="positions" className="text-xs sm:text-sm"><Briefcase className="w-3.5 h-3.5 mr-1" /> Theo vị trí</TabsTrigger>
+          <TabsTrigger value="competency" className="text-xs sm:text-sm"><Layers className="w-3.5 h-3.5 mr-1" /> Theo nhóm năng lực</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="skills" className="mt-3">
+          {renderDimension(bySkill, 'Chưa có dữ liệu skill.')}
+        </TabsContent>
+        <TabsContent value="depts" className="mt-3">
+          {renderDimension(byDept, 'Chưa có dữ liệu phòng ban.')}
+        </TabsContent>
+        <TabsContent value="positions" className="mt-3">
+          {renderDimension(byPosition, 'Chưa có dữ liệu vị trí.')}
+        </TabsContent>
+        <TabsContent value="competency" className="mt-3">
+          {renderDimension(byCompetency, 'Chưa có dữ liệu nhóm năng lực.')}
+        </TabsContent>
+
+        <TabsContent value="courses" className="mt-3 space-y-3">
       {byCourse.length === 0 && (
         <Card><CardContent className="py-10 text-center text-muted-foreground">
           Chưa có cán bộ nào đăng ký nhu cầu học.
@@ -197,6 +318,8 @@ export default function TrainingNeedsPage() {
           </Card>
         );
       })}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
