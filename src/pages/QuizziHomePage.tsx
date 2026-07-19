@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, CheckCircle2, Flame, Loader2, Pencil, Play, Plus, Trophy, Zap } from 'lucide-react';
+import { Building2, CheckCircle2, Flame, Loader2, Megaphone, Pencil, Play, Plus, Trophy, Zap } from 'lucide-react';
 import { StreakFlame } from '@/components/quizzi/StreakFlame';
 import { QuizBadgeGrid } from '@/components/quizzi/QuizBadgeGrid';
 import { QuizBadgeReveal } from '@/components/quizzi/QuizBadgeReveal';
@@ -61,6 +61,7 @@ export default function QuizziHomePage() {
   const [deptStreaks, setDeptStreaks] = useState<DeptStreak[]>([]);
   const [branch, setBranch] = useState<BranchDept[]>([]);
   const [authorNames, setAuthorNames] = useState<Map<string, string>>(new Map());
+  const [campaignsTodo, setCampaignsTodo] = useState(0);
 
   const thisWeek = getVnWeekStart();
 
@@ -85,6 +86,19 @@ export default function QuizziHomePage() {
       const { data: authors } = await supabase.from('profiles').select('id, full_name').in('id', authorIds);
       setAuthorNames(new Map((authors || []).map((p) => [p.id, p.full_name])));
     }
+
+    // Chiến dịch chi nhánh đang chạy mà tôi chưa hoàn thành
+    const [campRes, campAttemptRes] = await Promise.all([
+      supabase.from('quiz_campaigns').select('id, created_by').eq('status', 'approved'),
+      supabase.from('quiz_campaign_attempts').select('campaign_id, status').eq('profile_id', profileId),
+    ]);
+    const doneCampaigns = new Set(
+      (campAttemptRes.data || []).filter((a: any) => a.status === 'completed').map((a: any) => a.campaign_id),
+    );
+    setCampaignsTodo(
+      ((campRes.data || []) as { id: string; created_by: string }[])
+        .filter((cp) => !doneCampaigns.has(cp.id) && cp.created_by !== profileId).length,
+    );
     setLoading(false);
   }, [profileId]);
 
@@ -186,6 +200,26 @@ export default function QuizziHomePage() {
           <Plus className="w-4 h-4 mr-1" /> Tạo quiz cho phòng
         </Button>
       </div>
+
+      <Card className={campaignsTodo > 0 ? 'border-primary/50' : undefined}>
+        <CardContent className="py-3 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 min-w-0">
+            <Megaphone className="w-5 h-5 text-primary shrink-0" />
+            <div className="min-w-0">
+              <p className="text-sm font-medium">Chiến dịch toàn chi nhánh</p>
+              <p className="text-xs text-muted-foreground">
+                {campaignsTodo > 0
+                  ? `${campaignsTodo} chiến dịch đang chờ bạn tham gia`
+                  : 'Quiz lớn do trụ sở phát động, Ban Giám đốc phê duyệt'}
+              </p>
+            </div>
+          </div>
+          <Button size="sm" variant={campaignsTodo > 0 ? 'default' : 'outline'}
+            onClick={() => navigate('/quizzi/chien-dich')}>
+            {campaignsTodo > 0 ? 'Tham gia ngay' : 'Xem chiến dịch'}
+          </Button>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>

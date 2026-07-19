@@ -8,18 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, CheckCircle2, Loader2, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
-
-interface DraftQuestion {
-  id?: string;
-  statement: string;
-  options: string[];
-  correctIndex: number;
-  explanation: string;
-}
-
-const emptyQuestion = (): DraftQuestion => ({ statement: '', options: ['', ''], correctIndex: 0, explanation: '' });
+import {
+  DraftQuestion, QuestionListEditor, emptyQuestion, validateQuestions,
+} from '@/components/quizzi/QuestionListEditor';
 
 /**
  * Soạn quiz cho phòng — bất kỳ thành viên phòng nào cũng tạo được, phát hành
@@ -85,26 +78,8 @@ export default function QuizComposerPage() {
 
   useEffect(() => { loadExisting(); }, [loadExisting]);
 
-  const updateQuestion = (i: number, patch: Partial<DraftQuestion>) => {
-    setQuestions((qs) => qs.map((q, idx) => (idx === i ? { ...q, ...patch } : q)));
-  };
-
-  const validate = (): string | null => {
-    if (!title.trim()) return 'Nhập tiêu đề quiz';
-    if (questions.length === 0) return 'Quiz cần ít nhất 1 câu hỏi';
-    for (let i = 0; i < questions.length; i++) {
-      const q = questions[i];
-      if (!q.statement.trim()) return `Câu ${i + 1}: chưa nhập nội dung`;
-      const filled = q.options.map((o) => o.trim());
-      if (filled.some((o) => !o)) return `Câu ${i + 1}: phương án còn trống`;
-      if (filled.length < 2) return `Câu ${i + 1}: cần ít nhất 2 phương án`;
-      if (q.correctIndex < 0 || q.correctIndex >= filled.length) return `Câu ${i + 1}: chưa chọn đáp án đúng`;
-    }
-    return null;
-  };
-
   const handleSave = async () => {
-    const err = validate();
+    const err = !title.trim() ? 'Nhập tiêu đề quiz' : validateQuestions(questions);
     if (err) { toast.error(err); return; }
     if (!departmentId || !profileId) { toast.error('Tài khoản chưa gắn phòng'); return; }
     setSaving(true);
@@ -243,63 +218,7 @@ export default function QuizComposerPage() {
         </CardContent>
       </Card>
 
-      {questions.map((q, i) => (
-        <Card key={i}>
-          <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-sm">Câu {i + 1}</CardTitle>
-            <Button variant="ghost" size="sm" disabled={hasAttempts || questions.length <= 1}
-              onClick={() => setQuestions((qs) => qs.filter((_, idx) => idx !== i))}>
-              <Trash2 className="w-4 h-4 text-destructive" />
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Textarea value={q.statement} disabled={hasAttempts} rows={2}
-              onChange={(e) => updateQuestion(i, { statement: e.target.value })}
-              placeholder="Nội dung câu hỏi" />
-            <div className="space-y-2">
-              {q.options.map((opt, oi) => (
-                <div key={oi} className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={hasAttempts}
-                    onClick={() => updateQuestion(i, { correctIndex: oi })}
-                    title="Chọn làm đáp án đúng"
-                    className={`shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-full border text-xs font-semibold transition-colors
-                      ${q.correctIndex === oi
-                        ? 'bg-emerald-500 border-emerald-500 text-white'
-                        : 'border-muted-foreground/30 text-muted-foreground hover:border-emerald-400'}`}
-                  >
-                    {q.correctIndex === oi ? <CheckCircle2 className="w-4 h-4" /> : String.fromCharCode(65 + oi)}
-                  </button>
-                  <Input value={opt} disabled={hasAttempts}
-                    onChange={(e) => updateQuestion(i, { options: q.options.map((o, x) => (x === oi ? e.target.value : o)) })}
-                    placeholder={`Phương án ${String.fromCharCode(65 + oi)}`} />
-                  <Button variant="ghost" size="sm" disabled={hasAttempts || q.options.length <= 2}
-                    onClick={() => {
-                      const opts = q.options.filter((_, x) => x !== oi);
-                      updateQuestion(i, {
-                        options: opts,
-                        correctIndex: q.correctIndex === oi ? 0 : q.correctIndex > oi ? q.correctIndex - 1 : q.correctIndex,
-                      });
-                    }}>
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-              ))}
-              <Button variant="outline" size="sm" disabled={hasAttempts || q.options.length >= 6}
-                onClick={() => updateQuestion(i, { options: [...q.options, ''] })}>
-                <Plus className="w-3.5 h-3.5 mr-1" /> Thêm phương án
-              </Button>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Giải thích sau khi trả lời (khuyến khích — đây là lúc "học")</Label>
-              <Textarea value={q.explanation} disabled={hasAttempts} rows={2}
-                onChange={(e) => updateQuestion(i, { explanation: e.target.value })}
-                placeholder="VD: Theo mục 2.1 của công văn, ..." />
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+      <QuestionListEditor questions={questions} onChange={setQuestions} disabled={hasAttempts} />
 
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <Button variant="outline" disabled={hasAttempts}
