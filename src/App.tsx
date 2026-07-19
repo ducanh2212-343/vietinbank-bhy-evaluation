@@ -80,6 +80,9 @@ const QuizComposerPage = lazyWithRetry(() => import("./pages/QuizComposerPage"))
 const QuizPlayPage = lazyWithRetry(() => import("./pages/QuizPlayPage"));
 const QuizResultsPage = lazyWithRetry(() => import("./pages/QuizResultsPage"));
 const QuizCampaignsPage = lazyWithRetry(() => import("./pages/QuizCampaignsPage"));
+const QuizziManagePage = lazyWithRetry(() => import("./pages/QuizziManagePage"));
+const QuizLiveHostPage = lazyWithRetry(() => import("./pages/QuizLiveHostPage"));
+const QuizLiveLobbyPage = lazyWithRetry(() => import("./pages/QuizLiveLobbyPage"));
 const QuizCampaignComposerPage = lazyWithRetry(() => import("./pages/QuizCampaignComposerPage"));
 const QuizCampaignPlayPage = lazyWithRetry(() => import("./pages/QuizCampaignPlayPage"));
 const QuizCampaignResultsPage = lazyWithRetry(() => import("./pages/QuizCampaignResultsPage"));
@@ -148,6 +151,9 @@ const App = () => (
               <Route path="/dau-an" element={<LeadershipMarksPage />} />
               <Route path="/chien-dich-hoc-tap" element={<LearningCampaignsPage />} />
               <Route path="/quizzi" element={<QuizziHomePage />} />
+              <Route path="/quan-tri-quizzi" element={<QuizziManagePage />} />
+              <Route path="/quizzi/live/:sessionId/dieu-hanh" element={<QuizLiveHostPage />} />
+              <Route path="/quizzi/live/:sessionId" element={<QuizLiveLobbyPage />} />
               <Route path="/quizzi/tao-moi" element={<QuizComposerPage />} />
               <Route path="/quizzi/chien-dich" element={<QuizCampaignsPage />} />
               <Route path="/quizzi/chien-dich/tao-moi" element={<QuizCampaignComposerPage />} />

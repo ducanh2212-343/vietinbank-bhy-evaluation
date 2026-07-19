@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, CheckCircle2, Flame, Loader2, Megaphone, Pencil, Play, Plus, Trophy, Zap } from 'lucide-react';
+import { Building2, CheckCircle2, Flame, Loader2, Megaphone, MonitorPlay, Pencil, Play, Plus, Radio, Trophy, Zap } from 'lucide-react';
 import { StreakFlame } from '@/components/quizzi/StreakFlame';
 import { QuizBadgeGrid } from '@/components/quizzi/QuizBadgeGrid';
 import { QuizBadgeReveal } from '@/components/quizzi/QuizBadgeReveal';
@@ -62,6 +62,9 @@ export default function QuizziHomePage() {
   const [branch, setBranch] = useState<BranchDept[]>([]);
   const [authorNames, setAuthorNames] = useState<Map<string, string>>(new Map());
   const [campaignsTodo, setCampaignsTodo] = useState(0);
+  const [liveSessions, setLiveSessions] = useState<
+    { id: string; quiz_id: string; status: string; scope: string; host_profile_id: string }[]
+  >([]);
 
   const thisWeek = getVnWeekStart();
 
@@ -87,11 +90,15 @@ export default function QuizziHomePage() {
       setAuthorNames(new Map((authors || []).map((p) => [p.id, p.full_name])));
     }
 
-    // Chiến dịch chi nhánh đang chạy mà tôi chưa hoàn thành
-    const [campRes, campAttemptRes] = await Promise.all([
+    // Chiến dịch chi nhánh đang chạy mà tôi chưa hoàn thành + phiên live đang mở
+    const [campRes, campAttemptRes, liveRes] = await Promise.all([
       supabase.from('quiz_campaigns').select('id, created_by').eq('status', 'approved'),
       supabase.from('quiz_campaign_attempts').select('campaign_id, status').eq('profile_id', profileId),
+      supabase.from('quiz_live_sessions')
+        .select('id, quiz_id, status, scope, host_profile_id')
+        .in('status', ['lobby', 'running']),
     ]);
+    setLiveSessions((liveRes.data || []) as any[]);
     const doneCampaigns = new Set(
       (campAttemptRes.data || []).filter((a: any) => a.status === 'completed').map((a: any) => a.campaign_id),
     );
@@ -131,10 +138,13 @@ export default function QuizziHomePage() {
     return <div className="p-6 text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Đang tải…</div>;
   }
 
+  const liveByQuiz = new Map(liveSessions.map((s) => [s.quiz_id, s]));
+
   const renderQuizCard = (q: QuizRow) => {
     const attempt = myAttempts.get(q.id);
     const isAuthor = q.created_by === profileId;
     const isThisWeek = q.week_start === thisWeek;
+    const live = liveByQuiz.get(q.id);
     return (
       <Card key={q.id}>
         <CardContent className="py-4 flex items-start justify-between gap-3 flex-wrap">
@@ -150,7 +160,15 @@ export default function QuizziHomePage() {
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {attempt?.status === 'completed' ? (
+            {live && attempt?.status !== 'completed' && !isAuthor ? (
+              <Button size="sm" onClick={() => navigate(`/quizzi/live/${live.id}`)}>
+                <Radio className="w-4 h-4 mr-1" /> Vào sảnh cuộc họp
+              </Button>
+            ) : live && isAuthor ? (
+              <Button size="sm" onClick={() => navigate(`/quizzi/live/${live.id}/dieu-hanh`)}>
+                <MonitorPlay className="w-4 h-4 mr-1" /> Điều hành
+              </Button>
+            ) : attempt?.status === 'completed' ? (
               <>
                 <span className="inline-flex items-center gap-1 text-sm text-emerald-600 font-medium">
                   <CheckCircle2 className="w-4 h-4" /> {attempt.score} điểm
@@ -200,6 +218,32 @@ export default function QuizziHomePage() {
           <Plus className="w-4 h-4 mr-1" /> Tạo quiz cho phòng
         </Button>
       </div>
+
+      {liveSessions
+        .filter((s) => !quizzes.some((q) => q.id === s.quiz_id) && s.host_profile_id !== profileId)
+        .map((s) => (
+          <Card key={s.id} className="border-primary/60">
+            <CardContent className="py-3 flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="relative flex h-2.5 w-2.5 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">
+                    {s.scope === 'branch' ? 'Giao ban chi nhánh đang mở Quizzi' : 'Quizzi đang mở tại cuộc họp'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {s.status === 'lobby' ? 'Sảnh chờ đang mở — vào ngay để kịp bắt đầu' : 'Đang diễn ra — vẫn vào kịp'}
+                  </p>
+                </div>
+              </div>
+              <Button size="sm" onClick={() => navigate(`/quizzi/live/${s.id}`)}>
+                <Radio className="w-4 h-4 mr-1" /> Vào sảnh
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
 
       <Card className={campaignsTodo > 0 ? 'border-primary/50' : undefined}>
         <CardContent className="py-3 flex items-center justify-between gap-3 flex-wrap">
