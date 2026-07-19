@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { GraduationCap, Plus, Loader2 } from 'lucide-react';
+import { GraduationCap, Loader2, CheckCircle2, Send } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAiFeatures } from '@/hooks/useAiFeatures';
+import { useAuth } from '@/hooks/useAuth';
 import { BrandMascotAI } from '@/components/branding/BrandAssets';
 import type { SkillPriority } from './SkillPriorityPicker';
 import type { SkillAction } from './SkillActionsBlock';
@@ -29,9 +30,42 @@ interface Props {
 
 export function VtbCourseSuggestion({ priority, positionId, onAddAction, existingActionsCount }: Props) {
   const { isEnabled } = useAiFeatures();
+  const { profileId } = useAuth();
   const [loading, setLoading] = useState(false);
   const [courses, setCourses] = useState<VtbCourse[] | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  // Khóa Trường ĐT: cán bộ KHÔNG tự tổ chức được → chỉ ĐĂNG KÝ NHU CẦU, TCTH tổng hợp
+  // và quyết cách tổ chức (tự tổ chức / đề nghị Trường / ghi danh lớp Trường sắp mở).
+  const [registeredCourseIds, setRegisteredCourseIds] = useState<Set<string>>(new Set());
+  const [registering, setRegistering] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!profileId) return;
+    (supabase as any).from('vtb_course_registrations')
+      .select('course_id').eq('profile_id', profileId)
+      .then(({ data }: any) => setRegisteredCourseIds(new Set((data || []).map((r: any) => r.course_id))));
+  }, [profileId]);
+
+  const registerNeed = async (c: VtbCourse) => {
+    if (!profileId) return;
+    setRegistering(c.id);
+    const { error } = await (supabase as any).from('vtb_course_registrations').upsert({
+      course_id: c.id, profile_id: profileId, skill_id: priority.skill_id || null,
+    }, { onConflict: 'course_id,profile_id' });
+    setRegistering(null);
+    if (error) { toast.error('Lỗi đăng ký: ' + error.message); return; }
+    setRegisteredCourseIds(prev => new Set(prev).add(c.id));
+    toast.success(`Đã đăng ký nhu cầu học "${c.name}" — Phòng TCTH sẽ tổng hợp và thông báo cách tổ chức`);
+  };
+
+  const cancelNeed = async (c: VtbCourse) => {
+    if (!profileId) return;
+    const { error } = await (supabase as any).from('vtb_course_registrations')
+      .delete().eq('course_id', c.id).eq('profile_id', profileId);
+    if (error) { toast.error(error.message); return; }
+    setRegisteredCourseIds(prev => { const n = new Set(prev); n.delete(c.id); return n; });
+    toast.success('Đã hủy đăng ký');
+  };
 
   const fetchSuggestions = async () => {
     if (!positionId) {
@@ -60,24 +94,6 @@ export function VtbCourseSuggestion({ priority, positionId, onAddAction, existin
     } finally {
       setLoading(false);
     }
-  };
-
-  const addAsAction = (c: VtbCourse) => {
-    const pid = priority.id || priority.skill_id;
-    onAddAction({
-      skill_priority_id: pid,
-      row_no: existingActionsCount + 1,
-      action_type: '10',
-      action_text: `[VTB-${c.code}] ${c.name}`,
-      expected_result: c.objective?.split('\n')[0]?.slice(0, 200) || '',
-      deadline: '',
-      requested_support: 'Đăng ký qua Trường ĐT VietinBank',
-      evidence_expected: 'Chứng nhận hoàn thành khóa học',
-      status: 'planned',
-      actual_result: '',
-      manager_review: '',
-    });
-    toast.success(`Đã thêm "${c.name}" vào hành động`);
   };
 
   // Admin tắt tác vụ "suggest_vtb_courses" trong Quản trị AI → ẩn hẳn khối gợi ý
@@ -140,14 +156,27 @@ export function VtbCourseSuggestion({ priority, positionId, onAddAction, existin
                 )}
               </div>
               <p className="text-xs text-muted-foreground italic">{c.reason}</p>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => addAsAction(c)}
-                className="h-7 text-xs w-full sm:w-auto"
-              >
-                <Plus className="w-3 h-3 mr-1" />Thêm vào hành động (10%)
-              </Button>
+              {registeredCourseIds.has(c.id) ? (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Đã đăng ký nhu cầu — TCTH đang tổng hợp
+                  </span>
+                  <Button size="sm" variant="ghost" onClick={() => cancelNeed(c)} className="h-7 text-xs text-muted-foreground">
+                    Hủy đăng ký
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => registerNeed(c)}
+                  disabled={registering === c.id}
+                  className="h-7 text-xs w-full sm:w-auto"
+                >
+                  <Send className="w-3 h-3 mr-1" />
+                  {registering === c.id ? 'Đang gửi…' : 'Đăng ký nhu cầu học'}
+                </Button>
+              )}
             </div>
           ))}
         </div>
