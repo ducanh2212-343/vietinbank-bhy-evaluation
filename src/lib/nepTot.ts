@@ -26,7 +26,7 @@ export const IMPACT_LEVEL_LABELS: Record<ImpactLevel, string> = {
 };
 
 export const VISIBILITY_LABELS: Record<NoteVisibility, string> = {
-  quan_ly: 'Cấp trên xem được',
+  quan_ly: 'Quản lý của cán bộ xem được',
   rieng_tu: 'Riêng tư — chỉ mình tôi',
 };
 

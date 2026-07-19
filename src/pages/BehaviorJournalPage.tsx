@@ -214,8 +214,8 @@ export default function BehaviorJournalPage() {
     if (error) toast.error(`Lỗi: ${error.message}`);
     else {
       toast.success(next === 'rieng_tu'
-        ? 'Đã chuyển riêng tư — cấp trên không xem được bản ghi này.'
-        : 'Đã mở lại cho cấp trên xem (sau khi xác nhận).');
+        ? 'Đã chuyển riêng tư — chỉ mình bạn xem được bản ghi này.'
+        : 'Đã mở lại cho các quản lý của cán bộ xem (sau khi xác nhận).');
       void load();
     }
   };
@@ -372,7 +372,9 @@ export default function BehaviorJournalPage() {
                     <div className="flex flex-wrap gap-1.5 flex-shrink-0">
                       <Button
                         size="sm" variant="ghost" className="h-8"
-                        title={n.visibility === 'rieng_tu' ? 'Đang riêng tư — bấm để cho cấp trên xem' : 'Cấp trên đang xem được — bấm để chuyển riêng tư'}
+                        title={n.visibility === 'rieng_tu'
+                          ? 'Đang riêng tư (chỉ mình tôi) — bấm để các quản lý của cán bộ xem được'
+                          : 'Các quản lý của cán bộ đang xem được — bấm để chuyển riêng tư'}
                         onClick={() => toggleVisibility(n)}
                       >
                         {n.visibility === 'rieng_tu' ? <Lock className="w-3.5 h-3.5" /> : <LockOpen className="w-3.5 h-3.5" />}

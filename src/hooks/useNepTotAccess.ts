@@ -28,10 +28,14 @@ export function useNepTotAccess() {
   const [staff, setStaff] = useState<ObservableProfile[]>([]);
   const [staffLoading, setStaffLoading] = useState(false);
   const [staffLoaded, setStaffLoaded] = useState(false);
+  // Lỗi khi gọi RPC (VD: database chưa áp migration Nếp Tốt) — UI phải phân
+  // biệt với trường hợp "phạm vi rỗng" để không báo nhầm "chưa có cán bộ"
+  const [staffError, setStaffError] = useState<string | null>(null);
 
   const loadStaff = useCallback(async () => {
     if (!canRecord || staffLoading) return;
     setStaffLoading(true);
+    setStaffError(null);
     try {
       const { data, error } = await supabase.rpc('get_observable_profiles');
       if (error) throw error;
@@ -39,6 +43,7 @@ export function useNepTotAccess() {
       setStaffLoaded(true);
     } catch (e) {
       console.error('get_observable_profiles error:', e);
+      setStaffError(e instanceof Error ? e.message : String(e));
     } finally {
       setStaffLoading(false);
     }
@@ -50,5 +55,5 @@ export function useNepTotAccess() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, canRecord, staffLoaded]);
 
-  return { canRecord, canViewJournal, profileId, staff, staffLoading, staffLoaded, reloadStaff: loadStaff };
+  return { canRecord, canViewJournal, profileId, staff, staffLoading, staffLoaded, staffError, reloadStaff: loadStaff };
 }

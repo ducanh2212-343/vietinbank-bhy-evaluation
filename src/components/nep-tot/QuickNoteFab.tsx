@@ -21,7 +21,7 @@ import {
  * thoại. Nháp autosave vào localStorage, khôi phục khi mở lại.
  */
 export function QuickNoteFab() {
-  const { canRecord, profileId, staff, staffLoading } = useNepTotAccess();
+  const { canRecord, profileId, staff, staffLoading, staffError, reloadStaff } = useNepTotAccess();
   const navigate = useNavigate();
 
   const [open, setOpen] = useState(false);
@@ -197,8 +197,18 @@ export function QuickNoteFab() {
                 <div className="max-h-44 overflow-y-auto border-t divide-y">
                   {staffLoading && <div className="px-3 py-2 text-sm text-muted-foreground">Đang tải danh sách...</div>}
 
+                  {/* Lỗi tải danh sách (VD server chưa cập nhật) — khác với phạm vi rỗng */}
+                  {!staffLoading && staffError && (
+                    <div className="px-3 py-2 text-sm">
+                      <p className="text-destructive">Không tải được danh sách cán bộ: {staffError}</p>
+                      <button onClick={() => void reloadStaff()} className="text-primary text-xs mt-1 underline">
+                        Thử lại
+                      </button>
+                    </div>
+                  )}
+
                   {/* Bước 1: chọn Phòng mình quản lý (bỏ qua khi chỉ có 1 phòng hoặc đang tìm kiếm) */}
-                  {!staffLoading && showDeptStep && departments.map(([dept, count]) => (
+                  {!staffLoading && !staffError && showDeptStep && departments.map(([dept, count]) => (
                     <button
                       key={dept}
                       onClick={() => setDeptFilter(dept)}
@@ -211,7 +221,7 @@ export function QuickNoteFab() {
                   ))}
 
                   {/* Bước 2: chọn cán bộ trong phòng */}
-                  {!staffLoading && !showDeptStep && (
+                  {!staffLoading && !staffError && !showDeptStep && (
                     <>
                       {deptFilter && !staffQuery.trim() && (
                         <button
@@ -306,8 +316,8 @@ export function QuickNoteFab() {
               <Lock className="w-3.5 h-3.5 flex-shrink-0" />
               <span className="flex-1">
                 {isPrivate
-                  ? 'Riêng tư — chỉ mình tôi xem, cấp trên không thấy'
-                  : 'Mặc định: Trưởng phòng và cấp trên xem được (sau khi xác nhận). Bấm để chuyển riêng tư.'}
+                  ? 'Riêng tư — chỉ mình tôi xem; các quản lý khác của cán bộ không thấy'
+                  : 'Mặc định: các cấp quản lý của cán bộ (TP, PGĐ phụ trách, GĐ) xem được sau khi xác nhận. Bấm để chuyển riêng tư.'}
               </span>
             </button>
 
