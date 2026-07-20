@@ -21,6 +21,8 @@ project_id = "whlysprzsguehxmrjwha"
     verify_jwt = true
   [functions.reset-staff-password]
     verify_jwt = true
+  [functions.update-staff-email]
+    verify_jwt = true
   [functions.delete-staff]
     verify_jwt = true
   [functions.send-reminders]

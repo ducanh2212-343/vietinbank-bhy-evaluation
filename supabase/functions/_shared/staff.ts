@@ -51,7 +51,7 @@ export interface StaffResult {
   message: string;
 }
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Cryptographically strong temporary password (mixed case + digits + symbol). */
 export function generatePassword(length = 16): string {
@@ -82,8 +82,8 @@ async function findExistingUserId(
   return null;
 }
 
-/** Page through auth.users to locate an email (used only on create conflict). */
-async function searchAuthByEmail(
+/** Page through auth.users to locate an email (used on create conflict + email change). */
+export async function searchAuthByEmail(
   adminClient: SupabaseClient,
   email: string,
 ): Promise<string | null> {
