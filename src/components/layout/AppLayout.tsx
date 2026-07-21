@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Search, Menu, X, LogOut, User, ChevronDown, KeyRound } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { QuickNoteFab } from '@/components/nep-tot/QuickNoteFab';
 
 export function AppLayout() {
   const { user, roles, signOut } = useAuth();
@@ -118,6 +119,8 @@ export function AppLayout() {
         <main className="flex-1 p-3 sm:p-6 overflow-y-auto safe-bottom">
           <Outlet />
         </main>
+        {/* Nếp Tốt: nút nổi Ghi nhanh hành vi — tự ẩn với người không có quyền ghi */}
+        <QuickNoteFab />
       </div>
     </div>
   );

@@ -90,6 +90,8 @@ const CouncilEvaluationPage = lazyWithRetry(() => import("./pages/CouncilEvaluat
 const CouncilReportPage = lazyWithRetry(() => import("./pages/CouncilReportPage"));
 const CouncilAdminPage = lazyWithRetry(() => import("./pages/CouncilAdminPage"));
 const CouncilAnalyticsPage = lazyWithRetry(() => import("./pages/CouncilAnalyticsPage"));
+const BehaviorJournalPage = lazyWithRetry(() => import("./pages/BehaviorJournalPage"));
+const MyNepTotPage = lazyWithRetry(() => import("./pages/MyNepTotPage"));
 const ChangePassword = lazyWithRetry(() => import("./pages/ChangePassword"));
 const ForgotPassword = lazyWithRetry(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
@@ -163,6 +165,11 @@ const App = () => (
               <Route path="/quizzi/:id/sua" element={<QuizComposerPage />} />
               <Route path="/quizzi/:id/ket-qua" element={<QuizResultsPage />} />
               <Route path="/quizzi/:id" element={<QuizPlayPage />} />
+
+              {/* Nếp Tốt — Sổ tay hành vi BHY. Nhật ký tự gác quyền trong trang
+                  (chỉ người có phạm vi ghi nhận); RLS là lớp chặn chính. */}
+              <Route path="/nep-tot/nhat-ky" element={<BehaviorJournalPage />} />
+              <Route path="/nep-tot/cua-toi" element={<MyNepTotPage />} />
 
               {/* Hội đồng đánh giá đầu mối — trang tự gác quyền: thành viên HĐ chấm điểm, đầu mối/admin xem báo cáo */}
               <Route path="/danh-gia-dau-moi" element={<CouncilEvaluationPage />} />
