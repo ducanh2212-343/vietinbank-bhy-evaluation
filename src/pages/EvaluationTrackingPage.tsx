@@ -164,7 +164,11 @@ export default function EvaluationTrackingPage() {
     const evalMap = new Map<string, any>();
     (evalsRes.data || []).forEach((e) => evalMap.set(subKey(e.employee_id, e.cycle_id || ''), e));
 
-    // 5. Build rows: one per (employee × cycle) for any cycle with a submission, OR active cycle only if none
+    // 5. Build rows: one per (employee × cycle) for any cycle with a submission,
+    // PLUS luôn thêm kỳ đang mở cho MỌI cán bộ active — để ai chưa tạo phiếu kỳ này
+    // vẫn hiện "Chưa bắt đầu" (trước đây chỉ thêm khi cán bộ chưa từng có phiếu ở
+    // BẤT KỲ kỳ nào, nên người có phiếu quý trước nhưng chưa làm quý này biến mất
+    // khỏi danh sách khi lọc theo kỳ → BGĐ/TP không thấy ai chưa làm).
     // Kỳ "đang làm việc" = kỳ in_progress MỚI NHẤT (admin mở/đóng thủ công) — KHÔNG lấy kỳ
     // mới nhất theo ngày: Quý III/2026 tạo sẵn nhưng đã đóng, phải hết 30/9 mới đánh giá.
     // Trước đây lấy cyclesData[0] khiến dòng "Chưa bắt đầu" sinh cho kỳ Quý III và
@@ -177,7 +181,8 @@ export default function EvaluationTrackingPage() {
       (subsRes.data || []).forEach((s) => {
         if (s.employee_id === p.id && s.cycle_id) cyclesForEmp.add(s.cycle_id);
       });
-      if (cyclesForEmp.size === 0 && activeCycle) cyclesForEmp.add(activeCycle.id);
+      // Cán bộ nghỉ việc: giữ các kỳ đã có phiếu (lịch sử), không sinh "chưa bắt đầu".
+      if (activeCycle && p.status === 'active') cyclesForEmp.add(activeCycle.id);
 
       for (const cid of cyclesForEmp) {
         const sub = subMap.get(subKey(p.id, cid)) || null;
@@ -348,6 +353,7 @@ export default function EvaluationTrackingPage() {
             overdue={counts.overdue}
             activeFilter={statusFilter}
             onFilter={(s) => setStatusFilter(s)}
+            totalLabel={cycleFilter === 'all' ? 'Tổng bản đánh giá (mọi kỳ)' : 'Tổng cán bộ'}
           />
 
           {(viewerRole === 'manager' || viewerRole === 'pgd' || viewerRole === 'admin') && (
@@ -499,6 +505,7 @@ export default function EvaluationTrackingPage() {
               counts={counts.counts}
               notStartedEmployees={counts.notStartedEmp}
               overdue={counts.overdue}
+              totalLabel={cycleFilter === 'all' ? 'Tổng bản đánh giá (mọi kỳ)' : 'Tổng cán bộ'}
             />
             <div className="bg-card rounded-lg border overflow-x-auto">
               <table className="w-full text-sm">
