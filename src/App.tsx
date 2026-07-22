@@ -77,6 +77,17 @@ const QuarterlyNewsletterPage = lazyWithRetry(() => import("./pages/QuarterlyNew
 const LearningCampaignsPage = lazyWithRetry(() => import("./pages/LearningCampaignsPage"));
 const FeatureTipsPage = lazyWithRetry(() => import("./pages/FeatureTipsPage"));
 const FeatureTipsAdminPage = lazyWithRetry(() => import("./pages/FeatureTipsAdminPage"));
+const QuizziHomePage = lazyWithRetry(() => import("./pages/QuizziHomePage"));
+const QuizComposerPage = lazyWithRetry(() => import("./pages/QuizComposerPage"));
+const QuizPlayPage = lazyWithRetry(() => import("./pages/QuizPlayPage"));
+const QuizResultsPage = lazyWithRetry(() => import("./pages/QuizResultsPage"));
+const QuizCampaignsPage = lazyWithRetry(() => import("./pages/QuizCampaignsPage"));
+const QuizziManagePage = lazyWithRetry(() => import("./pages/QuizziManagePage"));
+const QuizLiveHostPage = lazyWithRetry(() => import("./pages/QuizLiveHostPage"));
+const QuizLiveLobbyPage = lazyWithRetry(() => import("./pages/QuizLiveLobbyPage"));
+const QuizCampaignComposerPage = lazyWithRetry(() => import("./pages/QuizCampaignComposerPage"));
+const QuizCampaignPlayPage = lazyWithRetry(() => import("./pages/QuizCampaignPlayPage"));
+const QuizCampaignResultsPage = lazyWithRetry(() => import("./pages/QuizCampaignResultsPage"));
 const CouncilEvaluationPage = lazyWithRetry(() => import("./pages/CouncilEvaluationPage"));
 const CouncilReportPage = lazyWithRetry(() => import("./pages/CouncilReportPage"));
 const CouncilAdminPage = lazyWithRetry(() => import("./pages/CouncilAdminPage"));
@@ -142,6 +153,19 @@ const App = () => (
               <Route path="/dau-an" element={<LeadershipMarksPage />} />
               <Route path="/chien-dich-hoc-tap" element={<LearningCampaignsPage />} />
               <Route path="/meo-hay" element={<FeatureTipsPage />} />
+              <Route path="/quizzi" element={<QuizziHomePage />} />
+              <Route path="/quan-tri-quizzi" element={<QuizziManagePage />} />
+              <Route path="/quizzi/live/:sessionId/dieu-hanh" element={<QuizLiveHostPage />} />
+              <Route path="/quizzi/live/:sessionId" element={<QuizLiveLobbyPage />} />
+              <Route path="/quizzi/tao-moi" element={<QuizComposerPage />} />
+              <Route path="/quizzi/chien-dich" element={<QuizCampaignsPage />} />
+              <Route path="/quizzi/chien-dich/tao-moi" element={<QuizCampaignComposerPage />} />
+              <Route path="/quizzi/chien-dich/:id/sua" element={<QuizCampaignComposerPage />} />
+              <Route path="/quizzi/chien-dich/:id/ket-qua" element={<QuizCampaignResultsPage />} />
+              <Route path="/quizzi/chien-dich/:id" element={<QuizCampaignPlayPage />} />
+              <Route path="/quizzi/:id/sua" element={<QuizComposerPage />} />
+              <Route path="/quizzi/:id/ket-qua" element={<QuizResultsPage />} />
+              <Route path="/quizzi/:id" element={<QuizPlayPage />} />
 
               {/* Hội đồng đánh giá đầu mối — trang tự gác quyền: thành viên HĐ chấm điểm, đầu mối/admin xem báo cáo */}
               <Route path="/danh-gia-dau-moi" element={<CouncilEvaluationPage />} />

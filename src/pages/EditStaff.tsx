@@ -90,12 +90,16 @@ export default function EditStaff() {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<any>({});
   const [resetting, setResetting] = useState(false);
-  const [resetResult, setResetResult] = useState<{ email: string; full_name: string | null; temp_password: string } | null>(null);
+  const [resetResult, setResetResult] = useState<{
+    email: string; full_name: string | null; temp_password: string;
+    email_mismatch?: boolean; profile_email?: string | null;
+  } | null>(null);
   // Bật = gửi email link đặt lại cho cán bộ (cán bộ tự đặt); Tắt = sinh mã tạm để admin bàn giao.
   const [sendResetEmail, setSendResetEmail] = useState(false);
-  const [emailReset, setEmailReset] = useState<{ email: string } | null>(null);
-  // Bàn giao nhân sự: khi chuyển phòng / nghỉ việc mà cán bộ này đang là QL/PGĐ của người khác
-  const originalRef = useRef<{ status: string; department_id: string | null }>({ status: 'active', department_id: null });
+  const [emailReset, setEmailReset] = useState<{ email: string; email_mismatch?: boolean; profile_email?: string | null } | null>(null);
+  // Bàn giao nhân sự: khi chuyển phòng / nghỉ việc mà cán bộ này đang là QL/PGĐ của người khác.
+  // email gốc: để phát hiện đổi email → phải đồng bộ auth.users qua edge function.
+  const originalRef = useRef<{ status: string; department_id: string | null; email: string | null }>({ status: 'active', department_id: null, email: null });
   const [handoverSubs, setHandoverSubs] = useState<
     { id: string; full_name: string; position: string | null; asManager: boolean; asPgd: boolean }[] | null
   >(null);
@@ -110,7 +114,11 @@ export default function EditStaff() {
       ]);
       if (profileRes.data) {
         setForm(profileRes.data);
-        originalRef.current = { status: profileRes.data.status || 'active', department_id: profileRes.data.department_id || null };
+        originalRef.current = {
+          status: profileRes.data.status || 'active',
+          department_id: profileRes.data.department_id || null,
+          email: profileRes.data.email || null,
+        };
       }
       setDepartments(dRes.data || []);
       setPositions(posRes.data || []);
@@ -186,6 +194,15 @@ export default function EditStaff() {
       toast({ title: 'Thiếu thông tin bắt buộc', description: missing.join(', '), variant: 'destructive' });
       return;
     }
+    // Email là TÊN ĐĂNG NHẬP của cán bộ đã có tài khoản — không được để trống.
+    if (form.user_id && !(form.email || '').trim()) {
+      toast({
+        title: 'Không thể xóa email',
+        description: 'Cán bộ này đã có tài khoản đăng nhập — email chính là tên đăng nhập, không thể để trống.',
+        variant: 'destructive',
+      });
+      return;
+    }
     // Bàn giao: nếu cán bộ này chuyển phòng hoặc chuyển sang nghỉ việc mà đang là QL/PGĐ của người khác,
     // cảnh báo danh sách cấp dưới bị ảnh hưởng (phiếu kỳ tới có thể đi lạc người) và yêu cầu xác nhận.
     const becameInactive = form.status !== 'active' && originalRef.current.status === 'active';
@@ -213,11 +230,34 @@ export default function EditStaff() {
 
   const doSave = async () => {
     setSaving(true);
+    const newEmail = (form.email || '').trim().toLowerCase() || null;
+    const oldEmail = (originalRef.current.email || '').trim().toLowerCase() || null;
+    // Email là TÊN ĐĂNG NHẬP: đổi email của cán bộ đã có tài khoản phải đi qua edge
+    // function update-staff-email để đồng bộ auth.users (frontend chỉ sửa được
+    // profiles.email → hai email sẽ lệch nhau và cán bộ không đăng nhập được).
+    if (newEmail && newEmail !== oldEmail && form.user_id) {
+      const { data: emailData, error: emailErr } = await supabase.functions.invoke('update-staff-email', {
+        body: { profile_id: id, new_email: newEmail },
+      });
+      if (emailErr || emailData?.error) {
+        let message = emailData?.error || emailErr?.message || 'Lỗi không xác định';
+        try {
+          const ctx = (emailErr as { context?: Response } | null)?.context;
+          const body = ctx ? await ctx.json() : null;
+          if (body?.error) message = body.error;
+        } catch { /* keep default */ }
+        setSaving(false);
+        toast({ title: 'Không đổi được email đăng nhập', description: message, variant: 'destructive' });
+        return;
+      }
+      originalRef.current.email = newEmail;
+      toast({ title: 'Đã đổi email đăng nhập', description: `Tên đăng nhập mới: ${newEmail}` });
+    }
     const selectedPosition = positions.find((p) => p.id === form.position_id);
     const { error } = await supabase.from('profiles').update({
       employee_code: form.employee_code || null,
       full_name: form.full_name,
-      email: form.email || null,
+      email: newEmail,
       phone: form.phone || null,
       department_id: form.department_id || null,
       position_id: form.position_id || null,
@@ -264,10 +304,16 @@ export default function EditStaff() {
       return;
     }
     if (data.mode === 'email_link') {
-      setEmailReset({ email: data.email });
+      setEmailReset({ email: data.email, email_mismatch: data.email_mismatch, profile_email: data.profile_email });
       toast({ title: 'Đã gửi email link đặt lại mật khẩu' });
     } else {
-      setResetResult({ email: data.email, full_name: data.full_name, temp_password: data.temp_password });
+      setResetResult({
+        email: data.email,
+        full_name: data.full_name,
+        temp_password: data.temp_password,
+        email_mismatch: data.email_mismatch,
+        profile_email: data.profile_email,
+      });
       toast({ title: 'Đã cấp lại mật khẩu tạm' });
     }
   };
@@ -409,21 +455,46 @@ export default function EditStaff() {
         </CardHeader>
         <CardContent className="space-y-3">
           {emailReset ? (
-            <Alert>
-              <MailCheck className="h-4 w-4" />
-              <AlertDescription>
-                Đã gửi email chứa link đặt lại mật khẩu tới <strong>{emailReset.email}</strong>.
-                Cán bộ mở email, bấm link là vào thẳng trang đặt mật khẩu mới (không cần mật khẩu cũ).
-                Link có hiệu lực trong thời gian ngắn; nếu quá hạn, gửi lại hoặc dùng mã tạm.
-              </AlertDescription>
-            </Alert>
+            <>
+              {emailReset.email_mismatch && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    Email hồ sơ (<strong>{emailReset.profile_email}</strong>) khác email đăng nhập
+                    (<strong>{emailReset.email}</strong>). Link đặt lại đã gửi tới đúng email đăng nhập.
+                    Để đồng bộ, sửa ô Email ở form trên rồi bấm Cập nhật.
+                  </AlertDescription>
+                </Alert>
+              )}
+              <Alert>
+                <MailCheck className="h-4 w-4" />
+                <AlertDescription>
+                  Đã gửi email chứa link đặt lại mật khẩu tới <strong>{emailReset.email}</strong>.
+                  Cán bộ mở email, bấm link là vào thẳng trang đặt mật khẩu mới (không cần mật khẩu cũ).
+                  Link có hiệu lực trong thời gian ngắn; nếu quá hạn, gửi lại hoặc dùng mã tạm.
+                </AlertDescription>
+              </Alert>
+            </>
           ) : resetResult ? (
-            <TempPasswordHandover
-              fullName={resetResult.full_name}
-              email={resetResult.email}
-              tempPassword={resetResult.temp_password}
-              variant="reset"
-            />
+            <>
+              {resetResult.email_mismatch && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    Email hồ sơ (<strong>{resetResult.profile_email}</strong>) khác email đăng nhập
+                    (<strong>{resetResult.email}</strong>). Tin nhắn bàn giao dưới đây dùng đúng email
+                    đăng nhập — cán bộ phải đăng nhập bằng email này. Để đồng bộ, sửa ô Email ở form
+                    trên rồi bấm Cập nhật.
+                  </AlertDescription>
+                </Alert>
+              )}
+              <TempPasswordHandover
+                fullName={resetResult.full_name}
+                email={resetResult.email}
+                tempPassword={resetResult.temp_password}
+                variant="reset"
+              />
+            </>
           ) : (
             <>
               <div className="flex items-start gap-3 rounded-md border p-3">
