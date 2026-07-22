@@ -881,6 +881,12 @@ export default function StaffEvaluation() {
         formPayload.one_on_one_enabled = oneOnOneEnabled || hasEmployeeAnswers;
         formPayload.one_on_one_answers = oneOnOneAnswers as any;
       }
+      // Đánh giá tổng thể của cấp trên phải đi cùng cả đường "Lưu nháp"/nộp,
+      // không chỉ autosave — nếu bỏ sót, loadData sau khi lưu sẽ hydrate lại
+      // từ phiếu và mục này biến mất trên màn hình dù DB đã có.
+      if (isManagerMode && reviewField) {
+        formPayload[reviewField] = overallReview;
+      }
       // CB nộp lại sau khi bị trả → bật cờ cần TP cập nhật, xóa thông tin trả lại cũ
       if (submit && formStatus === 'returned' && isSelfEval) {
         formPayload.needs_manager_review_update = true;
