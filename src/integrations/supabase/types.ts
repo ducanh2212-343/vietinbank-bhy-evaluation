@@ -1028,6 +1028,102 @@ export type Database = {
           },
         ]
       }
+      feature_tip_states: {
+        Row: {
+          created_at: string
+          dismissed_at: string | null
+          id: string
+          profile_id: string
+          pushed_at: string | null
+          seen_at: string | null
+          tip_id: string
+        }
+        Insert: {
+          created_at?: string
+          dismissed_at?: string | null
+          id?: string
+          profile_id: string
+          pushed_at?: string | null
+          seen_at?: string | null
+          tip_id: string
+        }
+        Update: {
+          created_at?: string
+          dismissed_at?: string | null
+          id?: string
+          profile_id?: string
+          pushed_at?: string | null
+          seen_at?: string | null
+          tip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feature_tip_states_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feature_tip_states_tip_id_fkey"
+            columns: ["tip_id"]
+            isOneToOne: false
+            referencedRelation: "feature_tips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feature_tips: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          cta_label: string | null
+          cta_url: string | null
+          display_mode: string
+          ends_at: string | null
+          id: string
+          is_active: boolean
+          priority: number
+          starts_at: string | null
+          target_roles: Database["public"]["Enums"]["app_role"][]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string | null
+          cta_label?: string | null
+          cta_url?: string | null
+          display_mode?: string
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          priority?: number
+          starts_at?: string | null
+          target_roles?: Database["public"]["Enums"]["app_role"][]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          cta_label?: string | null
+          cta_url?: string | null
+          display_mode?: string
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          priority?: number
+          starts_at?: string | null
+          target_roles?: Database["public"]["Enums"]["app_role"][]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       form_attitude_actions: {
         Row: {
           action_text: string

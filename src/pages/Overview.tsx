@@ -16,6 +16,7 @@ import { fetchDefaultCycle, fetchStarByEmployee } from '@/lib/starClassification
 import { AnniversaryBanner } from '@/components/branding/AnniversaryBanner';
 import { SkillCollectionStrip } from '@/components/profile/SkillCollectionStrip';
 import { LevelUpReveal } from '@/components/profile/LevelUpReveal';
+import { FeatureTipSpot } from '@/components/tips/FeatureTipSpot';
 import { QuizBadgeReveal } from '@/components/quizzi/QuizBadgeReveal';
 
 
@@ -75,6 +76,9 @@ function OverviewSelf({ profileId }: { profileId: string }) {
 
       {/* Bật thông báo đẩy trên thiết bị (ẩn khi đã bật) */}
       <EnablePushBanner profileId={profileId} />
+
+      {/* Mẹo tính năng hay theo vai trò: banner đóng được + modal hiện 1 lần */}
+      <FeatureTipSpot />
 
       <ReviewerActionAlert />
 

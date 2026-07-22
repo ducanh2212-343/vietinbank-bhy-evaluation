@@ -75,6 +75,8 @@ const CareerPathPage = lazyWithRetry(() => import("./pages/CareerPathPage"));
 const TransferSimulationPage = lazyWithRetry(() => import("./pages/TransferSimulationPage"));
 const QuarterlyNewsletterPage = lazyWithRetry(() => import("./pages/QuarterlyNewsletterPage"));
 const LearningCampaignsPage = lazyWithRetry(() => import("./pages/LearningCampaignsPage"));
+const FeatureTipsPage = lazyWithRetry(() => import("./pages/FeatureTipsPage"));
+const FeatureTipsAdminPage = lazyWithRetry(() => import("./pages/FeatureTipsAdminPage"));
 const QuizziHomePage = lazyWithRetry(() => import("./pages/QuizziHomePage"));
 const QuizComposerPage = lazyWithRetry(() => import("./pages/QuizComposerPage"));
 const QuizPlayPage = lazyWithRetry(() => import("./pages/QuizPlayPage"));
@@ -150,6 +152,7 @@ const App = () => (
               <Route path="/hanh-dong-phat-trien" element={<PersonalKanbanPage />} />
               <Route path="/dau-an" element={<LeadershipMarksPage />} />
               <Route path="/chien-dich-hoc-tap" element={<LearningCampaignsPage />} />
+              <Route path="/meo-hay" element={<FeatureTipsPage />} />
               <Route path="/quizzi" element={<QuizziHomePage />} />
               <Route path="/quan-tri-quizzi" element={<QuizziManagePage />} />
               <Route path="/quizzi/live/:sessionId/dieu-hanh" element={<QuizLiveHostPage />} />
@@ -212,6 +215,7 @@ const App = () => (
                 <Route path="/quan-tri-hoi-dong-dau-moi" element={<CouncilAdminPage />} />
                 <Route path="/phan-tich-dau-moi" element={<CouncilAnalyticsPage />} />
                 <Route path="/ban-tin-quy" element={<QuarterlyNewsletterPage />} />
+                <Route path="/quan-ly-meo-tinh-nang" element={<FeatureTipsAdminPage />} />
               </Route>
 
             </Route>
