@@ -7,6 +7,9 @@ interface Props {
   overdue?: number;
   onFilter?: (s: DisplayStatus | 'all' | 'overdue') => void;
   activeFilter?: DisplayStatus | 'all' | 'overdue';
+  /** Nhãn ô tổng: "Tổng cán bộ" khi xem 1 kỳ (1 người = 1 dòng);
+   *  "Tổng bản đánh giá" khi xem mọi kỳ (1 người có thể nhiều dòng). */
+  totalLabel?: string;
 }
 
 const ORDER: DisplayStatus[] = [
@@ -14,7 +17,7 @@ const ORDER: DisplayStatus[] = [
   'returned_employee', 'returned_manager', 'approved', 'closed',
 ];
 
-export function KpiCards({ total, counts, notStartedEmployees, overdue, onFilter, activeFilter }: Props) {
+export function KpiCards({ total, counts, notStartedEmployees, overdue, onFilter, activeFilter, totalLabel = 'Tổng cán bộ' }: Props) {
   const Card = ({ label, value, k }: { label: string; value: number; k: DisplayStatus | 'all' | 'overdue' }) => (
     <button
       type="button"
@@ -27,7 +30,7 @@ export function KpiCards({ total, counts, notStartedEmployees, overdue, onFilter
   );
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-2">
-      <Card label="Tổng cán bộ" value={total} k="all" />
+      <Card label={totalLabel} value={total} k="all" />
       <Card label="Chưa bắt đầu" value={notStartedEmployees} k="not_started" />
       {ORDER.map((s) => <Card key={s} label={STATUS_LABEL[s]} value={counts[s] || 0} k={s} />)}
       {typeof overdue === 'number' && <Card label="Quá hạn" value={overdue} k="overdue" />}
