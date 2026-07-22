@@ -27,10 +27,16 @@ export interface QuarterFormSummary {
   return_reason?: string | null;
   returned_by?: string | null;
   updated_at?: string | null;
+  manager_overall_review?: any;
+  pgd_overall_review?: any;
+  director_overall_review?: any;
 }
 
+// LƯU Ý: 3 cột *_overall_review BẮT BUỘC nằm trong select này. Thiếu chúng,
+// StaffEvaluation hydrate "Đánh giá tổng thể" thành {} sau mỗi lần loadData,
+// rồi autosave ghi {} đè lên DB → mất nội dung cấp trên vừa nhập (sự cố 22/07).
 const FORM_SUBMISSION_SELECT =
-  'id, cycle_id, status, manager_comment, submitted_at, one_on_one_enabled, one_on_one_answers, reviewer_id, reviewed_at, pgd_comment, pgd_review_status, pgd_reviewed_at, return_reason, returned_by, updated_at';
+  'id, cycle_id, status, manager_comment, submitted_at, one_on_one_enabled, one_on_one_answers, reviewer_id, reviewed_at, pgd_comment, pgd_review_status, pgd_reviewed_at, return_reason, returned_by, updated_at, manager_overall_review, pgd_overall_review, director_overall_review';
 
 export async function getQuarterFormSubmission(params: {
   employeeId: string;
