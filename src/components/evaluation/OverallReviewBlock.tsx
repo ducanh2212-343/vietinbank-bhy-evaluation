@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { MessageSquareQuote } from 'lucide-react';
+import { MessageSquareQuote, History } from 'lucide-react';
 
 export interface OverallReviewValue {
   strengths?: string;
@@ -20,18 +20,29 @@ interface Props {
   disabled?: boolean;
 }
 
+// Khối nhập RÚT GỌN (điều chỉnh 07/2026 theo yêu cầu BGĐ): chỉ còn MỘT ô định hướng.
+// 6 field cũ vẫn nằm trong JSON *_overall_review (32 phiếu Quý II đã điền đủ 7 mục) —
+// hiển thị read-only bên dưới để không mất tham chiếu; BM01/hồ sơ cá nhân in như cũ.
 const FIELDS: { key: keyof OverallReviewValue; label: string; placeholder: string; rows?: number }[] = [
-  { key: 'strengths', label: 'Điểm mạnh cần phát huy', placeholder: 'Cán bộ có thế mạnh gì cần phát huy…', rows: 2 },
-  { key: 'improvements', label: 'Điểm cần cải thiện', placeholder: 'Những điểm cần cải thiện…', rows: 2 },
-  { key: 'next_focus', label: 'Trọng tâm phát triển kỳ tới', placeholder: 'Định hướng phát triển kỳ tới…', rows: 2 },
-  { key: 'upskill_note', label: 'Ý kiến về lộ trình upskill', placeholder: 'Nhận xét về lộ trình upskill cán bộ đã chọn…', rows: 2 },
-  { key: 'attitude_note', label: 'Nhận xét thái độ / tinh thần phối hợp', placeholder: 'Nhận xét về thái độ làm việc…', rows: 2 },
-  { key: 'support_note', label: 'Hỗ trợ / định hướng từ lãnh đạo', placeholder: 'Lãnh đạo sẽ hỗ trợ gì…', rows: 2 },
-  { key: 'conclusion', label: 'Kết luận / định hướng phát triển', placeholder: 'Kết luận tổng thể…', rows: 2 },
+  { key: 'next_focus', label: 'Định hướng phát triển kỳ tới', placeholder: 'Kết luận ngắn và định hướng phát triển cán bộ trong kỳ tới…', rows: 3 },
 ];
 
-export function OverallReviewBlock({ title = 'Đánh giá tổng thể & định hướng phát triển', value, onChange, disabled }: Props) {
+// Nhãn các field cũ — chỉ dùng để hiển thị lại nội dung đã nhập (không cho sửa).
+const LEGACY_LABELS: Record<string, string> = {
+  strengths: 'Điểm mạnh cần phát huy',
+  improvements: 'Điểm cần cải thiện',
+  upskill_note: 'Ý kiến về lộ trình upskill',
+  attitude_note: 'Nhận xét thái độ / tinh thần phối hợp',
+  support_note: 'Hỗ trợ / định hướng từ lãnh đạo',
+  conclusion: 'Kết luận / định hướng phát triển',
+};
+
+export function OverallReviewBlock({ title = 'Kết luận & định hướng phát triển', value, onChange, disabled }: Props) {
   const set = (k: keyof OverallReviewValue, v: string) => onChange({ ...value, [k]: v });
+  const activeKeys = new Set(FIELDS.map(f => f.key as string));
+  const legacyEntries = Object.entries(value || {}).filter(
+    ([k, v]) => !activeKeys.has(k) && typeof v === 'string' && v.trim() !== '',
+  );
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -51,6 +62,23 @@ export function OverallReviewBlock({ title = 'Đánh giá tổng thể & định
             />
           </div>
         ))}
+
+        {legacyEntries.length > 0 && (
+          <details className="rounded-md border bg-muted/30 px-3 py-2">
+            <summary className="cursor-pointer text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+              <History className="w-3.5 h-3.5" />
+              Nội dung đã nhập theo mẫu cũ ({legacyEntries.length} mục — chỉ đọc)
+            </summary>
+            <div className="mt-2 space-y-2">
+              {legacyEntries.map(([k, v]) => (
+                <div key={k} className="text-sm">
+                  <span className="text-xs font-medium text-muted-foreground block">{LEGACY_LABELS[k] || k}</span>
+                  <span className="whitespace-pre-wrap">{v as string}</span>
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
       </CardContent>
     </Card>
   );

@@ -907,13 +907,15 @@ export default function StaffEvaluation() {
       // Lưu toàn bộ bảng con qua RPC atomic (giữ UUID hành động → Kanban không reset; rollback nếu lỗi).
       await saveEvaluationChildren(fId, buildChildrenPayload());
 
-      // Save classification/remark
-      const evalPayload = {
+      // Save classification/remark. classification giờ do luồng duyệt nhóm sao đồng bộ
+      // (StarClassificationBlock.syncClassification) — chỉ ghi khi state có giá trị
+      // (dữ liệu cũ đã load), tuyệt đối không ghi đè null làm mất nhóm đã duyệt.
+      const evalPayload: any = {
         employee_id: id, cycle_id: cycleId || null,
-        classification: (classification || null) as any,
         remark: remark || null, updated_by: user?.id || null,
         completion_status: submit ? 'submitted' : 'draft',
       };
+      if (classification) evalPayload.classification = classification as any;
       const { data: existingEval } = await supabase.from('admin_evaluations')
         .select('id').eq('employee_id', id).eq('cycle_id', cycleId).limit(1);
       if (existingEval?.[0]) {
@@ -1325,23 +1327,19 @@ export default function StaffEvaluation() {
       {/* F */}
       <AIActionsBlock aiActions={aiActions} onChange={setAiActions} skillPriorities={skillPriorities} attitudePriorities={attitudePriorities} quarterLabel="quý này" />
 
-      {/* G — kết luận chỉ Trưởng phòng trực tiếp được sửa; PGĐ chỉ duyệt/trả lại */}
+      {/* G — khối GỘP (07/2026): trạng thái + nhận xét mẫu cũ (chỉ đọc) + nút duyệt/trả.
+          "Nhóm hiện tại" chọn tay và 2 ô nhận xét text đã bỏ — phân nhóm đi qua luồng
+          đề xuất→duyệt bên dưới (tự đồng bộ về admin_evaluations.classification). */}
       <EvalSectionG
-        classification={classification}
         remark={remark}
         managerConclusion={managerConclusion}
         formStatus={formStatus}
         evaluatorLevel={isManagerMode ? reviewerLevel : null}
-        isManager={canEditManagerAssessment}
         isAdmin={isAdmin}
         canConfirmReview={canConfirmReview}
         actionLoading={actionLoading}
         hideManagerActions
         soleApprover={isSoleApprover}
-
-        onClassificationChange={setClassification}
-        onRemarkChange={setRemark}
-        onConclusionChange={setManagerConclusion}
         onStatusChange={setFormStatus}
         onConfirmReview={handleConfirmReview}
         onReturnToEmployee={handleReturnToEmployee}
@@ -1350,22 +1348,7 @@ export default function StaffEvaluation() {
         onApproveDirect={handleReviewAndApprove}
       />
 
-      {/* H — Đánh giá tổng thể của lãnh đạo (chỉ hiện khi actor là cấp trên của target).
-          Nội dung được tự lưu cùng phiếu (autosave + Lưu nháp) — đã bỏ nút lưu riêng dễ quên. */}
-      {reviewerLevel && reviewField && formId && (
-        <div className="space-y-1">
-          <OverallReviewBlock
-            title={`Đánh giá tổng thể (${reviewerLevel === 'manager' ? 'Trưởng phòng' : reviewerLevel === 'pgd' ? 'Phó giám đốc' : 'Giám đốc'})`}
-            value={overallReview}
-            onChange={setOverallReview}
-          />
-          <p className="text-[11px] text-muted-foreground px-1">
-            Nội dung mục này được tự lưu cùng phiếu — không cần nút lưu riêng.
-          </p>
-        </div>
-      )}
-
-      {/* I — Phân nhóm sao */}
+      {/* Phân nhóm sao — nơi DUY NHẤT chọn nhóm (TP đề xuất → PGĐ duyệt → GĐ điều chỉnh) */}
       {reviewerLevel && cycleId && profileId && (
         <StarClassificationBlock
           cycleId={cycleId}
@@ -1377,6 +1360,22 @@ export default function StaffEvaluation() {
           canEvaluate={reviewerLevel === 'manager' || isSoleApprover}
           canApprove={reviewerLevel === 'pgd' || isSoleApprover}
         />
+      )}
+
+      {/* Định hướng phát triển — 1 ô duy nhất, ghi vào key next_focus của *_overall_review
+          (giữ nguyên cột jsonb → BM01 và hồ sơ cá nhân không đổi; các key cũ hiện read-only).
+          Nội dung được tự lưu cùng phiếu (autosave + Lưu nháp) — đã bỏ nút lưu riêng dễ quên. */}
+      {reviewerLevel && reviewField && formId && (
+        <div className="space-y-1">
+          <OverallReviewBlock
+            title={`Kết luận & định hướng phát triển (${reviewerLevel === 'manager' ? 'Trưởng phòng' : reviewerLevel === 'pgd' ? 'Phó giám đốc' : 'Giám đốc'})`}
+            value={overallReview}
+            onChange={setOverallReview}
+          />
+          <p className="text-[11px] text-muted-foreground px-1">
+            Nội dung mục này được tự lưu cùng phiếu — không cần nút lưu riêng.
+          </p>
+        </div>
       )}
 
       {/* Tóm tắt duyệt-theo-ngoại-lệ cho TP trước khi xác nhận */}

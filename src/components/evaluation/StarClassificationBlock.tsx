@@ -32,8 +32,6 @@ export function StarClassificationBlock(props: Props) {
   const [saving, setSaving] = useState(false);
   const [record, setRecord] = useState<any>(null);
   const [starGroup, setStarGroup] = useState<string>('');
-  const [reason, setReason] = useState('');
-  const [direction, setDirection] = useState('');
   const [visible, setVisible] = useState(false);
   const [overrideMode, setOverrideMode] = useState(false);
   const [overrideReason, setOverrideReason] = useState('');
@@ -53,8 +51,6 @@ export function StarClassificationBlock(props: Props) {
       if (cancelled) return;
       setRecord(data);
       setStarGroup(data?.star_group || '');
-      setReason(data?.reason_text || '');
-      setDirection(data?.direction_text || '');
       setVisible(!!data?.visible_to_employee);
       setOverrideReason('');
       setOverrideMode(false);
@@ -71,7 +67,28 @@ export function StarClassificationBlock(props: Props) {
   const rejected = status === 'rejected';
   const pending = status === 'pending';
 
+  // Đồng bộ "Nhóm hiện tại" (admin_evaluations.classification) khi nhóm sao được
+  // chốt — các báo cáo/danh sách (StaffList, TeamOverview, Reports...) đọc cột này;
+  // ô chọn tay trong mục G đã bỏ (07/2026) nên đây là nguồn duy nhất. Best-effort.
+  const syncClassification = async (group: string) => {
+    try {
+      const { data: existing } = await supabase
+        .from('admin_evaluations')
+        .select('id')
+        .eq('employee_id', employeeId)
+        .eq('cycle_id', cycleId)
+        .limit(1);
+      if (existing?.[0]) {
+        await supabase.from('admin_evaluations').update({ classification: group as any }).eq('id', existing[0].id);
+      } else {
+        await supabase.from('admin_evaluations').insert({ employee_id: employeeId, cycle_id: cycleId, classification: group as any });
+      }
+    } catch { /* đồng bộ là phụ trợ — không chặn luồng duyệt */ }
+  };
+
   // --- Save proposal (manager) or update content before approval (pgd) ---
+  // reason_text/direction_text: ô nhập đã bỏ (07/2026) — giữ nguyên giá trị cũ trong DB,
+  // payload không đụng tới 2 cột này.
   const handleSaveProposal = async () => {
     if (!canEvaluate && !canApprove) return;
     if (!starGroup) return;
@@ -81,8 +98,6 @@ export function StarClassificationBlock(props: Props) {
       employee_id: employeeId,
       form_id: formId || null,
       star_group: starGroup,
-      reason_text: reason || null,
-      direction_text: direction || null,
     };
     if (!record) {
       // first insert (manager proposing)
@@ -120,6 +135,7 @@ export function StarClassificationBlock(props: Props) {
     setSaving(false);
     if (error) { toast({ title: 'Lỗi duyệt', description: error.message, variant: 'destructive' }); return; }
     setRecord(data);
+    if (data?.star_group) await syncClassification(data.star_group);
     toast({ title: 'Đã phê duyệt phân nhóm sao' });
   };
 
@@ -160,6 +176,7 @@ export function StarClassificationBlock(props: Props) {
     setRecord(data);
     setOverrideMode(false);
     setOverrideReason('');
+    await syncClassification(starGroup);
     toast({ title: 'Đã điều chỉnh nhóm sao' });
   };
 
@@ -254,14 +271,18 @@ export function StarClassificationBlock(props: Props) {
           </div>
         )}
 
+        {/* Nội dung 2 ô nhận xét CŨ (đã bỏ ô nhập 07/2026) — chỉ đọc, mọi trạng thái */}
+        {(canEvaluate || canApprove) && record && (record.reason_text || record.direction_text) && (
+          <div className="text-xs text-muted-foreground border-l-2 border-emerald-500 pl-2 space-y-1">
+            {record.reason_text && <div><span className="font-medium">Lý do (mẫu cũ):</span> {record.reason_text}</div>}
+            {record.direction_text && <div><span className="font-medium">Định hướng (mẫu cũ):</span> {record.direction_text}</div>}
+          </div>
+        )}
+
         {/* Manager — propose / re-propose */}
         {managerCanEdit && (
           <>
-            <FormFields
-              starGroup={starGroup} setStarGroup={setStarGroup}
-              reason={reason} setReason={setReason}
-              direction={direction} setDirection={setDirection}
-            />
+            <FormFields starGroup={starGroup} setStarGroup={setStarGroup} />
             <Button onClick={handleSaveProposal} disabled={saving || !starGroup} size="sm">
               {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
               {rejected ? 'Đề xuất lại' : 'Lưu đề xuất'}
@@ -269,22 +290,10 @@ export function StarClassificationBlock(props: Props) {
           </>
         )}
 
-        {/* Manager — approved (read-only) */}
-        {canEvaluate && approved && record && (
-          <div className="text-xs text-muted-foreground border-l-2 border-emerald-500 pl-2 space-y-1">
-            {record.reason_text && <div><span className="font-medium">Lý do:</span> {record.reason_text}</div>}
-            {record.direction_text && <div><span className="font-medium">Định hướng:</span> {record.direction_text}</div>}
-          </div>
-        )}
-
         {/* PGĐ — review/edit content + approve/reject */}
         {pgdCanEditContent && (
           <>
-            <FormFields
-              starGroup={starGroup} setStarGroup={setStarGroup}
-              reason={reason} setReason={setReason}
-              direction={direction} setDirection={setDirection}
-            />
+            <FormFields starGroup={starGroup} setStarGroup={setStarGroup} />
             <div className="flex flex-wrap gap-2">
               <Button onClick={handleSaveProposal} disabled={saving || !starGroup} size="sm" variant="outline">
                 {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
@@ -300,14 +309,6 @@ export function StarClassificationBlock(props: Props) {
               )}
             </div>
           </>
-        )}
-
-        {/* PGĐ — already approved (read-only summary) */}
-        {canApprove && approved && record && (
-          <div className="text-xs text-muted-foreground border-l-2 border-emerald-500 pl-2 space-y-1">
-            {record.reason_text && <div><span className="font-medium">Lý do:</span> {record.reason_text}</div>}
-            {record.direction_text && <div><span className="font-medium">Định hướng:</span> {record.direction_text}</div>}
-          </div>
         )}
 
         {/* Director overseer */}
@@ -356,32 +357,22 @@ export function StarClassificationBlock(props: Props) {
   );
 }
 
-function FormFields({ starGroup, setStarGroup, reason, setReason, direction, setDirection }: {
+// Chỉ còn chọn nhóm — 2 ô "Lý do phân nhóm"/"Định hướng quản trị" đã bỏ (07/2026);
+// nội dung định hướng nhập ở khối "Định hướng phát triển kỳ tới" dùng chung của phiếu.
+function FormFields({ starGroup, setStarGroup }: {
   starGroup: string; setStarGroup: (v: string) => void;
-  reason: string; setReason: (v: string) => void;
-  direction: string; setDirection: (v: string) => void;
 }) {
   return (
-    <>
-      <div className="space-y-1">
-        <Label className="text-xs">Nhóm sao</Label>
-        <Select value={starGroup} onValueChange={setStarGroup}>
-          <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Chọn nhóm sao…" /></SelectTrigger>
-          <SelectContent>
-            {Object.entries(STAR_LABELS).map(([k, v]) => (
-              <SelectItem key={k} value={k}>{v}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-1">
-        <Label className="text-xs">Lý do phân nhóm</Label>
-        <Textarea value={reason} onChange={e => setReason(e.target.value)} rows={2} className="text-sm" placeholder="Lý do chấm nhóm sao này…" />
-      </div>
-      <div className="space-y-1">
-        <Label className="text-xs">Định hướng quản trị / phát triển</Label>
-        <Textarea value={direction} onChange={e => setDirection(e.target.value)} rows={2} className="text-sm" placeholder="Định hướng phát triển tiếp theo…" />
-      </div>
-    </>
+    <div className="space-y-1">
+      <Label className="text-xs">Nhóm sao</Label>
+      <Select value={starGroup} onValueChange={setStarGroup}>
+        <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Chọn nhóm sao…" /></SelectTrigger>
+        <SelectContent>
+          {Object.entries(STAR_LABELS).map(([k, v]) => (
+            <SelectItem key={k} value={k}>{v}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
   );
 }
