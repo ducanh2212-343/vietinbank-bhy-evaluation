@@ -98,6 +98,10 @@ export default function StaffEvaluation() {
   const [remark, setRemark] = useState('');
   const [managerConclusion, setManagerConclusion] = useState('');
   const [overallReview, setOverallReview] = useState<OverallReviewValue>({});
+  // Đánh giá của các cấp DƯỚI người xem (TP khi PGĐ/GĐ mở phiếu, thêm PGĐ khi GĐ mở)
+  // — chỉ đọc. Thiếu phần này, GĐ mở phiếu chỉ thấy khối của chính mình (trống) dù TP
+  // đã nhập đầy đủ (phản hồi 24/07).
+  const [peerOverallReviews, setPeerOverallReviews] = useState<{ label: string; value: OverallReviewValue }[]>([]);
   const [actionLoading, setActionLoading] = useState(false);
   const [returnEmpOpen, setReturnEmpOpen] = useState(false);
   const [confirmReviewOpen, setConfirmReviewOpen] = useState(false);
@@ -338,6 +342,7 @@ export default function StaffEvaluation() {
     setOneOnOneEnabled(false);
     setOneOnOneAnswers({});
     setFormMeta({});
+    setPeerOverallReviews([]);
 
     let resolvedCoreAssessments = initialCoreAssessments;
     let resolvedSuppAssessments: CoreSkillAssessment[] = [];
@@ -388,6 +393,21 @@ export default function StaffEvaluation() {
         const orField = localLevel ? getOverallReviewField(localLevel) : null;
         const existingOr = orField ? (form as any)[orField] : null;
         setOverallReview(existingOr && typeof existingOr === 'object' ? existingOr : {});
+
+        // Đánh giá của các cấp thấp hơn người xem — hiện chỉ đọc trong cụm G.
+        const hasReviewContent = (r: any) =>
+          !!r && typeof r === 'object' && Object.values(r).some((v) => typeof v === 'string' && v.trim() !== '');
+        const peers: { label: string; value: OverallReviewValue }[] = [];
+        if (localLevel !== 'manager' && hasReviewContent(f.manager_overall_review)) {
+          peers.push({ label: 'Trưởng phòng', value: f.manager_overall_review });
+        }
+        if ((localLevel === 'director' || !localLevel) && hasReviewContent(f.pgd_overall_review)) {
+          peers.push({ label: 'Phó giám đốc', value: f.pgd_overall_review });
+        }
+        if (!localLevel && hasReviewContent(f.director_overall_review)) {
+          peers.push({ label: 'Giám đốc', value: f.director_overall_review });
+        }
+        setPeerOverallReviews(peers);
 
         const [saRes, spRes, sActRes, apRes, aActRes, aiRes] = await Promise.all([
           supabase.from('skill_assessments').select('*').eq('form_id', fId),
@@ -1347,6 +1367,18 @@ export default function StaffEvaluation() {
         onReturnToManager={handleReturnToManager}
         onApproveDirect={handleReviewAndApprove}
       />
+
+      {/* Đánh giá của các cấp dưới người xem (chỉ đọc) — PGĐ/GĐ đọc được nội dung TP
+          đã nhập ngay tại trang này thay vì phải mở hồ sơ đã duyệt */}
+      {formId && peerOverallReviews.map((p) => (
+        <OverallReviewBlock
+          key={p.label}
+          title={`Kết luận & định hướng của ${p.label} (chỉ đọc)`}
+          value={p.value}
+          onChange={() => { /* chỉ đọc */ }}
+          disabled
+        />
+      ))}
 
       {/* Phân nhóm sao — nơi DUY NHẤT chọn nhóm (TP đề xuất → PGĐ duyệt → GĐ điều chỉnh) */}
       {reviewerLevel && cycleId && profileId && (

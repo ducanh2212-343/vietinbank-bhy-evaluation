@@ -10,6 +10,7 @@ import { Loader2, Plus, Save, Trash2, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { useEvaluationAutosave } from '@/hooks/useEvaluationAutosave';
 import { AutosaveStatusBar } from '@/components/evaluation/AutosaveStatusBar';
+import { BARE_AGREEMENT_HINT, isBareAgreement } from '@/lib/reviewTextQuality';
 
 type SourceType = 'skill' | 'attitude' | 'ai';
 
@@ -441,9 +442,12 @@ export function PreviousActionsReview({ formId, previousFormId, previousCycleNam
                     onChange={e => update(idx, { manager_note: e.target.value })}
                     rows={2}
                     disabled={!isManager}
-                    placeholder={isManager ? 'Nhận xét của CBQL cho hành động này…' : '(CBQL nhập)'}
+                    placeholder={isManager ? 'Nhận xét kết quả thực tế và việc cần làm tiếp — hạn chế ghi "đồng ý" đơn thuần…' : '(CBQL nhập)'}
                     className={isManager ? 'border-amber-300 focus-visible:ring-amber-500' : ''}
                   />
+                  {isBareAgreement(r.manager_note) && (
+                    <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-400">{BARE_AGREEMENT_HINT}</p>
+                  )}
                 </div>
               </div>
             </div>

@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { MessagesSquare, Sparkles } from 'lucide-react';
 import { DEFAULT_ONE_ON_ONE_QUESTIONS, type OneOnOneQuestion } from '@/lib/oneOnOneDefaults';
+import { BARE_AGREEMENT_HINT, isBareAgreement } from '@/lib/reviewTextQuality';
 
 export interface OneOnOneAnswer { employee: string; manager: string; }
 export type OneOnOneAnswers = Record<string, OneOnOneAnswer>;
@@ -120,11 +121,14 @@ export function EvalSection1on1({ enabled, onEnabledChange, answers, onAnswersCh
                     <Textarea
                       value={a.manager}
                       onChange={(e) => update(q.key, 'manager', e.target.value)}
-                      placeholder="CBQL nhập tại đây..."
+                      placeholder='Nêu nhận định, căn cứ và định hướng — hạn chế ghi "đồng ý" đơn thuần…'
                       rows={3}
                       disabled={!isManager}
-                      className="text-sm"
+                      className={`text-sm ${isBareAgreement(a.manager) ? 'border-amber-400 focus-visible:ring-amber-400' : ''}`}
                     />
+                    {isBareAgreement(a.manager) && (
+                      <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-400">{BARE_AGREEMENT_HINT}</p>
+                    )}
                   </div>
                 </div>
               </div>
