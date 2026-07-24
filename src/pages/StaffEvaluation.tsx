@@ -151,8 +151,16 @@ export default function StaffEvaluation() {
   const isPgdReviewer = reviewerLevel === 'pgd';
   const isDirectorViewer = reviewerLevel === 'director';
   const isAssignedReviewer = !!profileId && formMeta.reviewer_id === profileId;
+  // "Không có TP trung gian" gồm cả trường hợp hồ sơ đặt Quản lý trực tiếp = chính
+  // PGĐ/GĐ phụ trách (cùng một người): khi đó vai 'pgd' thắng vai 'manager' trong
+  // getReviewerLevel nên không ai chuyển được submitted→reviewed → phiếu kẹt
+  // (sự cố Lý Văn Tám 24/07). Người đó phải được chấm + phê duyệt gộp một bước.
+  const managerIsSameSupervisor =
+    !!profile?.manager_id &&
+    (profile.manager_id === profile?.pgd_id || profile.manager_id === profile?.director_id);
   const isSoleApprover =
-    isAssignedReviewer && (isPgdReviewer || isDirectorViewer) && !profile?.manager_id && !isSelfEval;
+    isAssignedReviewer && (isPgdReviewer || isDirectorViewer) &&
+    (!profile?.manager_id || managerIsSameSupervisor) && !isSelfEval;
   const canEditManagerAssessment =
     (isDirectManagerReviewer &&
       (formStatus === 'submitted' ||
