@@ -19,6 +19,7 @@ import { useSkillCriteria } from '@/hooks/useSkillCriteria';
 import { LevelCheckWizard, type WizardApplyPayload } from '@/components/evaluation/LevelCheckWizard';
 import { saveCriteriaResponses } from '@/lib/skillCriteria';
 import { LevelQuickPick } from '@/components/evaluation/LevelQuickPick';
+import { BARE_AGREEMENT_HINT, isBareAgreement } from '@/lib/reviewTextQuality';
 
 export interface CoreSkillAssessment {
   skill_id: string;
@@ -715,6 +716,8 @@ export function EvalSectionB({
                 rawMgr != null &&
                 rawSelf !== rawMgr &&
                 !(a.manager_note || '').trim();
+              // "Đồng ý" suông: khuyến nghị mềm (không chặn lưu); nhường chỗ khi đã có cảnh báo chấm lệch.
+              const bareAgreement = !mismatchNeedsNote && isBareAgreement(a.manager_note);
               return (
                 <div>
                   <label className="text-xs text-muted-foreground">
@@ -726,7 +729,7 @@ export function EvalSectionB({
                   <Textarea
                     value={a.manager_note}
                     onChange={(e) => updateRow(kind, idx, 'manager_note', e.target.value)}
-                    className={`min-h-[36px] text-xs ${mismatchNeedsNote ? 'border-amber-400 focus-visible:ring-amber-400' : ''}`}
+                    className={`min-h-[36px] text-xs ${mismatchNeedsNote || bareAgreement ? 'border-amber-400 focus-visible:ring-amber-400' : ''}`}
                     placeholder={
                       showAgreeControls && isManager
                         ? 'Vì sao bạn chấm mức này? Cán bộ cần làm gì để lên mức tiếp theo? (căn cứ trao đổi 1-1)'
@@ -739,6 +742,9 @@ export function EvalSectionB({
                       Bạn chấm L{rawMgr} trong khi cán bộ tự chấm L{rawSelf} — ghi rõ lý do và định hướng upskill
                       để cán bộ hiểu (phiếu sẽ không xác nhận rà soát được nếu bỏ trống).
                     </p>
+                  )}
+                  {bareAgreement && (
+                    <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-400">{BARE_AGREEMENT_HINT}</p>
                   )}
                 </div>
               );
