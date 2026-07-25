@@ -12,7 +12,7 @@ import { CompleteRequestDialog } from './CompleteRequestDialog';
 import { CardDetailDialog } from './CardDetailDialog';
 import {
   fetchMyCards, fetchSkillMetaForCards, fetchActivityFlagsForCards, fetchWeeklyUpdateMap,
-  rpcMove, sortCards, computeBadges,
+  rpcMove, sortCards, computeBadges, isWeeklyTracked,
   type KanbanCard, type KanbanStatus, type SkillMetaMap, type ActivityFlagsMap, type WeeklyUpdateMap,
 } from '@/lib/kanban';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -68,11 +68,14 @@ export function PersonalKanbanMini({ profileId, limit = 5 }: Props) {
   };
 
   const doingCount = byStatus.doing.length;
-  const notUpdatedCount = byStatus.doing.filter(c => weeklyMap[c.id] !== true).length;
+  // Nhịp tuần áp dụng cho MỌI thẻ chưa xong của kế hoạch quý (kể cả 'Phải làm')
+  const notUpdated = cards.filter(c => isWeeklyTracked(c) && weeklyMap[c.id] === false);
+  const notUpdatedCount = notUpdated.length;
   const overdueCount = cards.filter(c => computeBadges(c).overdue).length;
 
-  const focusDoing = () => {
-    if (isMobile) setMobileTab('doing');
+  const focusRed = () => {
+    const target: KanbanStatus = notUpdated.some(c => c.kanban_status === 'doing') ? 'doing' : 'todo';
+    if (isMobile) setMobileTab(target);
     else doingColRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
@@ -141,9 +144,9 @@ export function PersonalKanbanMini({ profileId, limit = 5 }: Props) {
               <div className="flex items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4" />
-                  <span>Bạn có <b>{notUpdatedCount}</b> hành động đang làm chưa cập nhật trong tuần này.</span>
+                  <span>Bạn có <b>{notUpdatedCount}</b> hành động chưa cập nhật trong tuần này.</span>
                 </div>
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={focusDoing}>Cập nhật ngay</Button>
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={focusRed}>Cập nhật ngay</Button>
               </div>
             )}
           </>
