@@ -1,0 +1,40 @@
+-- THÔNG BÁO TUẦN KANBAN — lịch chạy edge function weekly-kanban-digest (đã bật 25/07/2026).
+--
+-- Nhịp chuẩn toàn chi nhánh (chốt cùng GĐ 26/07 — họp phòng LINH HOẠT):
+--   * Tuần Kanban: thứ Hai 00:00 → hết Chủ nhật (giờ VN) — trùng getVietnamWeekStart.
+--   * Trong tuần mỗi hành động cập nhật ít nhất 1 lần; thời điểm do phòng tự chọn
+--     (ví dụ chốt tại họp phòng). Hết tuần không cập nhật → báo đỏ.
+--   * THỨ HAI 06:30 VN: email + push cho GĐ/PGĐ/TP tổng kết tuần vừa kết thúc
+--     (ai cập nhật nội dung gì, ai chưa cập nhật thẻ nào).
+--   * THỨ SÁU 15:00 VN: web push nhắc TỪNG cán bộ tuần này chưa cập nhật
+--     (còn T6–CN để kịp hạn chót Chủ nhật).
+--   * Kèm push TỨC THÌ 2 cấp trên mỗi lần cập nhật — xem
+--     20260728092000_notify_kanban_update_push.sql.
+--
+-- Cron đã đăng ký TRỰC TIẾP trên production (không chạy lại khi apply file này —
+-- giữ dạng ghi chú giống 20260705140000_send_reminders_cron_enable_notes.sql):
+--
+--   select cron.schedule('weekly-kanban-digest-monday', '30 23 * * 0', $$
+--     select net.http_post(
+--       url := 'https://whlysprzsguehxmrjwha.supabase.co/functions/v1/weekly-kanban-digest',
+--       headers := jsonb_build_object(
+--         'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets
+--                                        where name = 'email_queue_service_role_key'),
+--         'Content-Type', 'application/json'),
+--       body := '{"dry_run": false, "mode": "leader_digest"}'::jsonb);
+--   $$);
+--   select cron.schedule('kanban-staff-nudge-friday', '0 8 * * 5', $$
+--     select net.http_post(
+--       url := 'https://whlysprzsguehxmrjwha.supabase.co/functions/v1/weekly-kanban-digest',
+--       headers := jsonb_build_object(
+--         'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets
+--                                        where name = 'email_queue_service_role_key'),
+--         'Content-Type', 'application/json'),
+--       body := '{"dry_run": false, "mode": "staff_nudge"}'::jsonb);
+--   $$);
+--
+-- Kiểm tra nhanh:  select jobname, schedule, active from cron.job;
+-- Tắt khẩn cấp:    select cron.unschedule('weekly-kanban-digest-monday');
+--                  select cron.unschedule('kanban-staff-nudge-friday');
+-- Chạy thử an toàn (không gửi): gọi function với body {"dry_run": true}.
+SELECT 1;

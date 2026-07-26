@@ -71,9 +71,9 @@ export default function PersonalKanbanPage() {
 
   const filtered = cards.filter(c => {
     if (source !== 'all' && c.source_type !== source) return false;
-    const b = computeBadges(c);
+    const b = computeBadges(c, new Date(), weeklyMap[c.id]);
     if (filter === 'overdue' && !b.overdue) return false;
-    if (filter === 'needs_update' && !b.needsUpdate) return false;
+    if (filter === 'needs_update' && !b.notUpdatedThisWeek) return false;
     if (filter === 'waiting' && !b.waitingConfirm) return false;
     return true;
   });
@@ -141,7 +141,7 @@ export default function PersonalKanbanPage() {
             <SelectContent>
               <SelectItem value="all">Tất cả trạng thái</SelectItem>
               <SelectItem value="overdue">Quá hạn</SelectItem>
-              <SelectItem value="needs_update">Cần cập nhật</SelectItem>
+              <SelectItem value="needs_update">Chưa cập nhật tuần này</SelectItem>
               <SelectItem value="waiting">Chờ xác nhận</SelectItem>
             </SelectContent>
           </Select>

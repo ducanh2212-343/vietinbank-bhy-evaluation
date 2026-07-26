@@ -6,7 +6,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { CardDetailDialog } from './CardDetailDialog';
-import { computeBadges, dedupeCards, getSourceLabel, type KanbanCard } from '@/lib/kanban';
+import {
+  computeBadges, dedupeCards, getSourceLabel, fetchWeeklyUpdateMap, isWeeklyTracked,
+  type KanbanCard, type WeeklyUpdateMap,
+} from '@/lib/kanban';
 import { toast } from 'sonner';
 import { Clock, AlertTriangle, Inbox } from 'lucide-react';
 
@@ -30,6 +33,7 @@ export function TeamReviewPanel() {
   const [profiles, setProfiles] = useState<TeamProfile[]>([]);
   const [deptMap, setDeptMap] = useState<Record<string, string>>({});
   const [cards, setCards] = useState<KanbanCard[]>([]);
+  const [weeklyMap, setWeeklyMap] = useState<WeeklyUpdateMap>({});
   const [loading, setLoading] = useState(true);
   const [detailCard, setDetailCard] = useState<KanbanCard | null>(null);
 
@@ -76,6 +80,7 @@ export function TeamReviewPanel() {
         all.push(...((cData as KanbanCard[]) || []));
       }
       setCards(all);
+      setWeeklyMap(await fetchWeeklyUpdateMap(all));
     } finally {
       setLoading(false);
     }
@@ -109,7 +114,7 @@ export function TeamReviewPanel() {
   const overview = useMemo(() => {
     const rows = profiles.map(p => {
       const list = cardsByProfile[p.id] || [];
-      let todo = 0, doing = 0, done = 0, overdue = 0, waitingCnt = 0;
+      let todo = 0, doing = 0, done = 0, overdue = 0, waitingCnt = 0, notWeekly = 0;
       for (const c of list) {
         if (c.kanban_status === 'todo') todo++;
         else if (c.kanban_status === 'doing') doing++;
@@ -117,16 +122,18 @@ export function TeamReviewPanel() {
         const b = computeBadges(c);
         if (b.overdue) overdue++;
         if (b.waitingConfirm) waitingCnt++;
+        if (isWeeklyTracked(c) && weeklyMap[c.id] === false) notWeekly++;
       }
-      return { profile: p, list, todo, doing, done, overdue, waitingCnt, total: list.length };
+      return { profile: p, list, todo, doing, done, overdue, waitingCnt, notWeekly, total: list.length };
     });
     rows.sort((a, b) =>
       (b.waitingCnt - a.waitingCnt) ||
       (b.overdue - a.overdue) ||
+      (b.notWeekly - a.notWeekly) ||
       a.profile.full_name.localeCompare(b.profile.full_name, 'vi'),
     );
     return rows;
-  }, [profiles, cardsByProfile]);
+  }, [profiles, cardsByProfile, weeklyMap]);
 
   const detailOwnerName = detailCard ? profiles.find(p => p.id === detailCard.profile_id)?.full_name : undefined;
 
@@ -183,6 +190,7 @@ export function TeamReviewPanel() {
                     <div className="ml-auto flex flex-wrap items-center gap-1">
                       {row.waitingCnt > 0 && <Badge className="text-[10px] py-0 bg-blue-500 hover:bg-blue-500">Chờ duyệt {row.waitingCnt}</Badge>}
                       {row.overdue > 0 && <Badge variant="destructive" className="text-[10px] py-0">Quá hạn {row.overdue}</Badge>}
+                      {row.notWeekly > 0 && <Badge className="text-[10px] py-0 bg-amber-500 hover:bg-amber-500">Chưa cập nhật tuần {row.notWeekly}</Badge>}
                       <Badge variant="outline" className="text-[10px] py-0">Phải làm {row.todo}</Badge>
                       <Badge variant="outline" className="text-[10px] py-0">Đang làm {row.doing}</Badge>
                       <Badge variant="outline" className="text-[10px] py-0">Hoàn thành {row.done}</Badge>
@@ -195,7 +203,7 @@ export function TeamReviewPanel() {
                   ) : (
                     <div className="space-y-2">
                       {row.list.map(c => {
-                        const b = computeBadges(c);
+                        const b = computeBadges(c, new Date(), weeklyMap[c.id]);
                         return (
                           <div key={c.id} className="flex flex-col gap-2 rounded-lg border bg-card/95 p-3 sm:flex-row sm:items-center sm:justify-between">
                             <div className="min-w-0 space-y-1">
@@ -205,6 +213,7 @@ export function TeamReviewPanel() {
                                 <Badge variant="outline" className="text-[10px] py-0">{STATUS_LABEL[c.kanban_status]}</Badge>
                                 <Badge variant="outline" className="text-[10px] py-0">{c.progress_percent}%</Badge>
                                 {b.overdue && <Badge variant="destructive" className="text-[10px] py-0 flex items-center gap-1"><AlertTriangle className="w-3 h-3" />Quá hạn</Badge>}
+                                {b.notUpdatedThisWeek && <Badge className="text-[10px] py-0 bg-amber-500 hover:bg-amber-500">Chưa cập nhật tuần này</Badge>}
                                 {b.waitingConfirm && <Badge className="text-[10px] py-0 bg-blue-500 hover:bg-blue-500">Chờ QL xác nhận</Badge>}
                                 {b.confirmed && <Badge className="text-[10px] py-0 bg-emerald-600 hover:bg-emerald-600">Đã xác nhận</Badge>}
                                 {b.returned && <Badge variant="destructive" className="text-[10px] py-0">Cần làm tiếp</Badge>}

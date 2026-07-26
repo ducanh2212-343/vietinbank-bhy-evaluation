@@ -68,6 +68,7 @@ const EvaluatorAssignmentPage = lazyWithRetry(() => import("./pages/EvaluatorAss
 const SubmissionTimeReportPage = lazyWithRetry(() => import("./pages/SubmissionTimeReportPage"));
 const VtbCoursesAdminPage = lazyWithRetry(() => import("./pages/VtbCoursesAdminPage"));
 const PersonalKanbanPage = lazyWithRetry(() => import("./pages/PersonalKanbanPage"));
+const KanbanAdminPage = lazyWithRetry(() => import("./pages/KanbanAdminPage"));
 const LeadershipMarksPage = lazyWithRetry(() => import("./pages/LeadershipMarksPage"));
 const TrainingNeedsPage = lazyWithRetry(() => import("./pages/TrainingNeedsPage"));
 const SkillRiskHeatmapPage = lazyWithRetry(() => import("./pages/SkillRiskHeatmapPage"));
@@ -150,6 +151,7 @@ const App = () => (
               <Route path="/ung-dung-ai" element={<AIApplicationPage />} />
               <Route path="/thai-do-tu-duy" element={<AttitudeMindset />} />
               <Route path="/hanh-dong-phat-trien" element={<PersonalKanbanPage />} />
+              <Route path="/quan-ly-hanh-dong" element={<KanbanAdminPage />} />
               <Route path="/dau-an" element={<LeadershipMarksPage />} />
               <Route path="/chien-dich-hoc-tap" element={<LearningCampaignsPage />} />
               <Route path="/meo-hay" element={<FeatureTipsPage />} />
