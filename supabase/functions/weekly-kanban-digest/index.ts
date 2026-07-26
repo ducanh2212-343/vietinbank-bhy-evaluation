@@ -1,14 +1,15 @@
 // weekly-kanban-digest — Thông báo tuần về kỷ luật cập nhật Kanban kế hoạch hành động.
 //
 // 2 chế độ (body.mode):
-//   'leader_digest' (mặc định) — chạy SÁNG THỨ HAI trước giao ban: gửi GĐ/PGĐ/TP
-//     email + push tổng kết TUẦN VỪA KẾT THÚC (T2→CN): ai đã cập nhật nội dung gì,
-//     ai chưa cập nhật thẻ nào — để nêu ngay tại cuộc họp phòng đầu tuần.
+//   'leader_digest' (mặc định) — chạy SÁNG THỨ HAI: gửi GĐ/PGĐ/TP email + push tổng
+//     kết TUẦN VỪA KẾT THÚC (T2→CN): ai đã cập nhật nội dung gì, ai chưa cập nhật thẻ
+//     nào. Nhịp do phòng LINH HOẠT — quy ước duy nhất là trong tuần phải có cập nhật,
+//     hết tuần chưa cập nhật thì báo đỏ (chốt với GĐ 26/07).
 //     Phạm vi: TP = cán bộ mình quản lý trực tiếp (manager_id); PGĐ = khối phụ trách
 //     (pgd_id); BGĐ/TCTH admin = toàn chi nhánh. Mỗi người 1 email theo phạm vi rộng nhất.
 //   'staff_nudge' — chạy CHIỀU THỨ SÁU: web push cho TỪNG cán bộ tuần này chưa cập nhật
-//     (còn T6–CN để cập nhật, tránh sáng thứ Hai bị nêu tên tại giao ban). Không email
-//     (giữ Resend trong ngưỡng miễn phí — nhất quán với send-reminders).
+//     (còn T6–CN để kịp trước hạn chót Chủ nhật). Không email (giữ Resend trong ngưỡng
+//     miễn phí — nhất quán với send-reminders).
 //
 // Quy tắc "đã cập nhật tuần" ĐỒNG BỘ với frontend (src/lib/kanban.ts):
 //   - Thẻ theo dõi: is_active, chưa 'done', tiêu đề không phải placeholder.
@@ -237,7 +238,7 @@ Deno.serve(async (req) => {
       for (const m of misses) {
         pushSent += await sendPush(admin, subsByProfile, vapidPrivateKey, m.staffId, {
           title: '⏰ Tuần này bạn chưa cập nhật Kanban',
-          body: `Còn ${m.cards} hành động chưa cập nhật tuần này. Cập nhật trước Chủ nhật để không bị nêu tên tại giao ban thứ Hai.`,
+          body: `Còn ${m.cards} hành động chưa cập nhật tuần này. Hạn chót: hết Chủ nhật — quá tuần sẽ báo đỏ tới lãnh đạo.`,
           url: '/hanh-dong-phat-trien',
           tag: 'kanban-tuan',
         });
@@ -336,7 +337,7 @@ ${missHtml}
 <h3 style="margin:14px 0 6px;font-size:15px">✅ Nội dung đã cập nhật (${myUpdates.length})</h3>
 ${updHtml}
 <p style="margin-top:14px"><a href="${APP_URL}/hanh-dong-phat-trien?view=team" style="display:inline-block;background:#0b3d91;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">Mở màn hình Đội ngũ</a></p>
-<p style="color:#6b7280;font-size:12px">Nhịp chuẩn toàn chi nhánh: cán bộ cập nhật Kanban ngay tại họp giao ban phòng sáng thứ Hai; hạn chót là hết Chủ nhật hằng tuần. Email tổng hợp tự động sáng thứ Hai — vui lòng không trả lời.</p>
+<p style="color:#6b7280;font-size:12px">Quy ước toàn chi nhánh: mỗi tuần (thứ Hai → hết Chủ nhật) mỗi hành động cập nhật ít nhất 1 lần trên Kanban; thời điểm do phòng linh hoạt (ví dụ chốt tại họp phòng). Hết tuần không cập nhật sẽ báo đỏ. Email tổng hợp tự động sáng thứ Hai — vui lòng không trả lời.</p>
 </body></html>`;
       const text = `Kính gửi ${r.profile.full_name},\nKanban tuần ${weekLabel} (${SCOPE_LABEL[r.scope]}):\n` +
         `- Chưa cập nhật: ${myMisses.length} cán bộ (${missCards} thẻ): ${myMisses.slice(0, 15).map((m) => `${m.staffName} (${m.cards})`).join(', ')}\n` +
@@ -359,7 +360,7 @@ ${updHtml}
       if (!error) enqueued++;
       pushSent += await sendPush(admin, subsByProfile, vapidPrivateKey, r.profile.id, {
         title: `📋 Kanban tuần ${weekLabel}`,
-        body: `${myMisses.length} cán bộ chưa cập nhật (${missCards} thẻ) · ${myUpdates.length} cập nhật nội dung. Bấm để mở màn Đội ngũ trước giao ban.`,
+        body: `${myMisses.length} cán bộ chưa cập nhật (${missCards} thẻ) · ${myUpdates.length} cập nhật nội dung. Bấm để mở màn Đội ngũ.`,
         url: '/hanh-dong-phat-trien?view=team',
         tag: 'kanban-tuan-digest',
       });

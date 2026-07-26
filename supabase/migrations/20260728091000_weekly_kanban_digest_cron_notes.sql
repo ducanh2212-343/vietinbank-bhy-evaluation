@@ -1,13 +1,15 @@
 -- THÔNG BÁO TUẦN KANBAN — lịch chạy edge function weekly-kanban-digest (đã bật 25/07/2026).
 --
--- Nhịp chuẩn toàn chi nhánh (chốt cùng GĐ):
+-- Nhịp chuẩn toàn chi nhánh (chốt cùng GĐ 26/07 — họp phòng LINH HOẠT):
 --   * Tuần Kanban: thứ Hai 00:00 → hết Chủ nhật (giờ VN) — trùng getVietnamWeekStart.
---   * Cán bộ cập nhật Kanban ngay tại họp giao ban phòng SÁNG THỨ HAI (2–3 phút/người);
---     hạn chót là hết Chủ nhật hằng tuần.
+--   * Trong tuần mỗi hành động cập nhật ít nhất 1 lần; thời điểm do phòng tự chọn
+--     (ví dụ chốt tại họp phòng). Hết tuần không cập nhật → báo đỏ.
 --   * THỨ HAI 06:30 VN: email + push cho GĐ/PGĐ/TP tổng kết tuần vừa kết thúc
---     (ai cập nhật nội dung gì, ai chưa cập nhật thẻ nào) — dùng ngay tại giao ban.
+--     (ai cập nhật nội dung gì, ai chưa cập nhật thẻ nào).
 --   * THỨ SÁU 15:00 VN: web push nhắc TỪNG cán bộ tuần này chưa cập nhật
---     (còn T6–CN để cập nhật, tránh sáng thứ Hai bị nêu tên).
+--     (còn T6–CN để kịp hạn chót Chủ nhật).
+--   * Kèm push TỨC THÌ 2 cấp trên mỗi lần cập nhật — xem
+--     20260728092000_notify_kanban_update_push.sql.
 --
 -- Cron đã đăng ký TRỰC TIẾP trên production (không chạy lại khi apply file này —
 -- giữ dạng ghi chú giống 20260705140000_send_reminders_cron_enable_notes.sql):
