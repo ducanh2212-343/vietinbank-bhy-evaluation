@@ -83,6 +83,8 @@ export default function EvaluationTrackingPage() {
   // Xuất gộp PDF hồ sơ toàn bộ phiếu đã phê duyệt của kỳ đang chọn
   const [bulkExporting, setBulkExporting] = useState(false);
   const [bulkProgress, setBulkProgress] = useState('');
+  // Đang tải biểu mẫu Word của riêng một cán bộ (giữ submissionId để quay spinner đúng dòng)
+  const [rowExporting, setRowExporting] = useState<string | null>(null);
   // Ref giữ intent focus=pending qua suốt vòng load() async (URL param có thể đã bị xoá)
   const focusPendingRef = useRef<boolean>(searchParams.get('focus') === 'pending');
 
@@ -323,6 +325,34 @@ export default function EvaluationTrackingPage() {
     }
   };
 
+  // Tải biểu mẫu Word của RIÊNG một cán bộ (Trưởng phòng / TCTH / BGĐ dùng chung;
+  // phạm vi nhìn thấy đã do RLS + bộ lọc trang quyết định). Phiếu chưa duyệt vẫn
+  // tải được nhưng bản in tự mang watermark trạng thái.
+  const exportRowForm = async (r: Row) => {
+    if (!r.submissionId) {
+      toast.info(`${r.fullName} chưa có phiếu trong kỳ này.`);
+      return;
+    }
+    setRowExporting(r.submissionId);
+    try {
+      const [{ loadFormForExport }, { exportBM01ToWord }] = await Promise.all([
+        import('@/lib/exportBM01Bulk'),
+        import('@/lib/exportBM01'),
+      ]);
+      const item = await loadFormForExport(r.submissionId);
+      if (!item) {
+        toast.error('Không tải được dữ liệu phiếu (có thể bạn không có quyền xem phiếu này).');
+        return;
+      }
+      await exportBM01ToWord(item);
+      toast.success(`Đã tải biểu mẫu của ${r.fullName}.`);
+    } catch (e) {
+      toast.error('Lỗi xuất biểu mẫu: ' + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setRowExporting(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div>
@@ -452,9 +482,24 @@ export default function EvaluationTrackingPage() {
                             {r.endDate ? new Date(r.endDate).toLocaleDateString('vi-VN') : '—'}
                           </td>
                           <td className="py-2.5 px-3">
-                            <Button variant="ghost" size="sm" onClick={() => navigate(`/danh-gia/${r.profileId}`)}>
-                              <Eye className="w-4 h-4 mr-1" /> Mở
-                            </Button>
+                            <div className="flex items-center gap-1 justify-end">
+                              <Button variant="ghost" size="sm" onClick={() => navigate(`/danh-gia/${r.profileId}`)}>
+                                <Eye className="w-4 h-4 mr-1" /> Mở
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => exportRowForm(r)}
+                                disabled={!r.submissionId || rowExporting !== null}
+                                title={r.submissionId
+                                  ? `Tải biểu mẫu Word của ${r.fullName} (phiếu chưa duyệt sẽ có dấu chìm trạng thái)`
+                                  : 'Cán bộ chưa có phiếu trong kỳ này'}
+                              >
+                                {rowExporting === r.submissionId
+                                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                                  : <FileDown className="w-4 h-4" />}
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -477,9 +522,23 @@ export default function EvaluationTrackingPage() {
                     </div>
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-muted-foreground">Cần xử lý: <span className="font-medium text-foreground">{ACTOR_LABEL[r.actor]}</span></span>
-                      <Button variant="ghost" size="sm" onClick={() => navigate(`/danh-gia/${r.profileId}`)} className="h-7">
-                        Mở <ArrowRight className="w-3 h-3 ml-1" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => exportRowForm(r)}
+                          disabled={!r.submissionId || rowExporting !== null}
+                          className="h-7"
+                          title={r.submissionId ? `Tải biểu mẫu Word của ${r.fullName}` : 'Chưa có phiếu trong kỳ này'}
+                        >
+                          {rowExporting === r.submissionId
+                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            : <FileDown className="w-3.5 h-3.5" />}
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => navigate(`/danh-gia/${r.profileId}`)} className="h-7">
+                          Mở <ArrowRight className="w-3 h-3 ml-1" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
