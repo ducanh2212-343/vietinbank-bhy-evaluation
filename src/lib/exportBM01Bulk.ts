@@ -34,6 +34,8 @@ export interface BulkExportResult {
   items: BM01ExportData[];
 }
 
+type FormRow = { id: string; employee_id: string; status: string };
+
 /**
  * Nạp dữ liệu in của toàn bộ phiếu đã phê duyệt trong một kỳ.
  * onProgress báo tiến độ (đã nạp / tổng) để hiển thị trên nút.
@@ -42,19 +44,45 @@ export async function loadApprovedFormsForCycle(
   cycleId: string,
   onProgress?: (done: number, total: number) => void,
 ): Promise<BulkExportResult> {
-  const [cycleRes, formsRes, skillsRes] = await Promise.all([
+  const [cycleRes, formsRes] = await Promise.all([
     supabase.from('evaluation_cycles').select('name').eq('id', cycleId).maybeSingle(),
     supabase
       .from('form_submissions')
       .select('id, employee_id, status')
       .eq('cycle_id', cycleId)
       .in('status', APPROVED_STATUSES),
-    supabase.from('skill_catalog').select('*').eq('is_active', true).order('sort_order'),
   ]);
   const cycleName = cycleRes.data?.name || 'Kỳ đánh giá';
-  const forms = formsRes.data || [];
-  const skillCatalog = skillsRes.data || [];
-  if (!forms.length) return { cycleName, items: [] };
+  const items = await assembleExportItems(formsRes.data || [], cycleName, onProgress);
+  return { cycleName, items };
+}
+
+/**
+ * Nạp dữ liệu in của MỘT phiếu theo formId (mọi trạng thái — phiếu chưa duyệt
+ * sẽ tự mang watermark khi in). Dùng cho nút tải biểu mẫu từng cán bộ của
+ * Trưởng phòng / TCTH / Ban Giám đốc; RLS giới hạn đúng phạm vi người xem.
+ */
+export async function loadFormForExport(formId: string): Promise<BM01ExportData | null> {
+  const { data: form } = await supabase
+    .from('form_submissions')
+    .select('id, employee_id, status, evaluation_cycles(name)')
+    .eq('id', formId)
+    .maybeSingle();
+  if (!form) return null;
+  const cycleName = (form as { evaluation_cycles?: { name?: string } }).evaluation_cycles?.name || 'Kỳ đánh giá';
+  const items = await assembleExportItems([{ id: form.id, employee_id: form.employee_id, status: form.status }], cycleName);
+  return items[0] || null;
+}
+
+/** Dựng BM01ExportData cho danh sách phiếu cùng kỳ (truy vấn gom theo lô) */
+async function assembleExportItems(
+  forms: FormRow[],
+  cycleName: string,
+  onProgress?: (done: number, total: number) => void,
+): Promise<BM01ExportData[]> {
+  if (!forms.length) return [];
+  const { data: skillsData } = await supabase.from('skill_catalog').select('*').eq('is_active', true).order('sort_order');
+  const skillCatalog = skillsData || [];
 
   const formIds = forms.map((f) => f.id);
   const employeeIds = [...new Set(forms.map((f) => f.employee_id))];
@@ -215,5 +243,5 @@ export async function loadApprovedFormsForCycle(
     onProgress?.(i + 1, sorted.length);
   }
 
-  return { cycleName, items };
+  return items;
 }
