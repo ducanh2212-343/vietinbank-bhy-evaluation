@@ -71,6 +71,9 @@ Tài liệu thiết kế gamification mục skill: `docs/nghien-cuu-gamification
 Quy trình vận hành Kanban "Hành động phát triển" & kế hoạch hành động quý:
 `docs/nghien-cuu-quy-trinh-van-hanh-kanban-2026-07.md`.
 
+Phân tích dữ liệu BM02 Quý II/2026, khung "tiến bộ so với chính mình" và chuẩn viết
+hành động đo lường được: `docs/nghien-cuu-su-dung-du-lieu-bm02-quy-ii-2026.md`.
+
 ## Kỳ Quý II/2026 — BM02 đánh giá lại từ đầu (07/2026)
 
 - Quý I/2026 thực hiện BM01 trên **bản Word/PDF** (không nhập app). Các kế hoạch
