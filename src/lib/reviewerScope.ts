@@ -29,9 +29,12 @@ export function getReviewerLevel(
   if (!target || !actor.profileId) return null;
   if (target.id === actor.profileId) return null; // never self
   if (actor.isAdmin) {
-    // admins can act on the highest pending level
-    if (target.director_id === actor.profileId) return 'director';
+    // Kiêm nhiệm: khi một người vừa là PGĐ phụ trách vừa là Giám đốc của cán bộ này
+    // (VD Giám đốc trực tiếp phụ trách Phòng TCTH), vai THỰC THI 'pgd' — cấp duy nhất
+    // có nút Phê duyệt — phải thắng vai giám sát 'director'. Xét ngược lại thì phiếu
+    // kẹt vĩnh viễn ở 'reviewed' vì không còn ai khác đứng vai PGĐ (sự cố 27/07).
     if (target.pgd_id === actor.profileId) return 'pgd';
+    if (target.director_id === actor.profileId) return 'director';
     if (target.manager_id === actor.profileId) return 'manager';
     // generic admin acts as director by default
     return 'director';
