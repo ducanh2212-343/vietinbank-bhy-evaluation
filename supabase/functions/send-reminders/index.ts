@@ -314,7 +314,7 @@ Deno.serve(async (req) => {
 
     // ---- Người nhận digest toàn cảnh: BGĐ + TCTH admin ----
     const { data: leaderRoles } = await admin
-      .from('user_roles').select('user_id').in('role', ['bgd', 'tcth_admin']);
+      .from('user_roles').select('user_id').in('role', ['bgd', 'tcth_admin', 'system_admin']);
     const leaderUserIds = new Set(((leaderRoles || []) as any[]).map((r) => r.user_id));
     const leaders = profiles.filter((p) => p.user_id && leaderUserIds.has(p.user_id) && p.email);
     const kanbanWaitingTotal = (kanRes.data || []).length;
