@@ -15,7 +15,16 @@ export interface SkillAssessmentRow {
   manager_l0: boolean;
 }
 
-/** Mức hiệu lực: ưu tiên đánh giá của lãnh đạo, sau đó tự đánh giá; cờ l0 = mức 0 (cùng quy tắc với ReportsPage). */
+/**
+ * Mức hiệu lực (mức CHỐT): ưu tiên đánh giá của lãnh đạo, sau đó tự đánh giá;
+ * cờ l0 = mức 0 (cùng quy tắc với ReportsPage).
+ *
+ * RÀNG BUỘC: hàm SQL `public.effective_skill_level` phải khớp từng nhánh với hàm này —
+ * trigger chốt level/thu hồi huy hiệu dùng bản SQL. Trước 08/2026 trigger dùng
+ * COALESCE(manager, self) nên hiểu L0 (lưu bằng cờ, cột số NULL) thành "chưa chấm"
+ * và rơi về mức tự đánh giá — cấp trên chấm L0 mà cán bộ vẫn nhận huy hiệu L1.
+ * Sửa một bên thì phải sửa bên kia.
+ */
 export const effectiveLevel = (r: Pick<SkillAssessmentRow,
   'self_assessed_level' | 'manager_assessed_level' | 'self_l0' | 'manager_l0'>): number | null => {
   if (r.manager_l0) return 0;
