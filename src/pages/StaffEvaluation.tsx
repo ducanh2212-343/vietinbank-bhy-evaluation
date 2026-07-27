@@ -1051,7 +1051,17 @@ export default function StaffEvaluation() {
   // rà soát (reviewed) và phê duyệt (approved) để giữ nguyên các mốc thời gian.
   const handleReviewAndApprove = async () => {
     if (!formId) return;
-    await handleSave(false);
+    // Cùng nguyên tắc với handleConfirmReview: chỉ phê duyệt khi nội dung đã lưu
+    // THÀNH CÔNG — tránh chốt level trên dữ liệu chưa kịp ghi.
+    const saved = await handleSave(false);
+    if (!saved) {
+      toast({
+        title: 'Chưa thể phê duyệt',
+        description: 'Lưu nội dung đánh giá thất bại. Vui lòng kiểm tra kết nối và thử lại.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setActionLoading(true);
     const now = new Date().toISOString();
     try {
@@ -1377,7 +1387,19 @@ export default function StaffEvaluation() {
         actionLoading={actionLoading}
         hideManagerActions
         soleApprover={isSoleApprover}
-        onStatusChange={setFormStatus}
+        onStatusChange={(v) => {
+          // Dropdown admin ép trạng thái đi TẮT quy trình: không ghi mốc rà soát/duyệt,
+          // và trigger chốt level sẽ lấy mức TỰ đánh giá cho các skill cấp trên chưa chấm
+          // (sự cố phiếu PGĐ Thùy Linh 27/07). Cảnh báo rõ, không chặn quyền admin.
+          if (v === 'approved' && formStatus !== 'approved' && reviewMissing.length > 0) {
+            toast({
+              title: 'Ép duyệt khi chưa đánh giá đủ?',
+              description: `Phiếu chưa đạt điều kiện duyệt: ${reviewMissing.join(' · ')}. Nếu vẫn lưu, level sẽ chốt theo mức TỰ đánh giá ở các skill chưa được cấp trên chấm. Nên dùng nút "Đánh giá & phê duyệt" sau khi chấm đủ.`,
+              variant: 'destructive',
+            });
+          }
+          setFormStatus(v);
+        }}
         onConfirmReview={handleConfirmReview}
         onReturnToEmployee={handleReturnToEmployee}
         onApprove={handleApprove}
