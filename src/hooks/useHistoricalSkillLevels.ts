@@ -7,10 +7,13 @@ export interface AssessedLevelEntry {
 }
 
 /**
- * Level gần nhất của từng skill mà cán bộ đã được đánh giá qua các phiếu trước
- * (ưu tiên mức tự đánh giá, thiếu thì lấy mức trưởng phòng chấm).
- * Dùng làm nguồn tự điền "Level hiện tại" ở mục D cho các skill không nằm
- * trong mục B của phiếu đang mở — tránh cán bộ phải tự nhập lại, dễ sai.
+ * Level gần nhất của từng skill mà cán bộ đã được đánh giá qua các phiếu trước.
+ * LEVEL CHỐT = mức cấp trên chấm, thiếu mới lấy mức tự đánh giá — cùng quy tắc với
+ * effectiveLevel (skillInsights), trigger skill_level_achievements và BM01. Trước đây
+ * hook này ưu tiên ngược (self trước) nên khi cấp trên chấm THẤP hơn tự đánh giá,
+ * mục D kỳ sau vẫn tự điền mức tự chấm cao — sai căn cứ (phát hiện 27/07 khi GĐ
+ * đánh giá PGĐ). Dùng làm nguồn tự điền "Level hiện tại" ở mục D cho các skill
+ * không nằm trong mục B của phiếu đang mở — tránh cán bộ phải tự nhập lại, dễ sai.
  */
 export function useHistoricalSkillLevels(employeeId: string | null | undefined) {
   const { data } = useQuery({
@@ -38,7 +41,7 @@ export function useHistoricalSkillLevels(employeeId: string | null | undefined) 
       const rank = new Map(formIds.map((id, i) => [id, i]));
       const best = new Map<string, { level: number; rank: number }>();
       for (const r of rows ?? []) {
-        const level = r.self_assessed_level ?? r.manager_assessed_level;
+        const level = r.manager_assessed_level ?? r.self_assessed_level;
         if (level == null || !r.skill_id) continue;
         const rk = rank.get(r.form_id) ?? Number.MAX_SAFE_INTEGER;
         const cur = best.get(r.skill_id);

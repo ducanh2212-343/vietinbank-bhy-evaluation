@@ -1051,7 +1051,17 @@ export default function StaffEvaluation() {
   // rà soát (reviewed) và phê duyệt (approved) để giữ nguyên các mốc thời gian.
   const handleReviewAndApprove = async () => {
     if (!formId) return;
-    await handleSave(false);
+    // Cùng nguyên tắc với handleConfirmReview: chỉ phê duyệt khi nội dung đã lưu
+    // THÀNH CÔNG — tránh chốt level trên dữ liệu chưa kịp ghi.
+    const saved = await handleSave(false);
+    if (!saved) {
+      toast({
+        title: 'Chưa thể phê duyệt',
+        description: 'Lưu nội dung đánh giá thất bại. Vui lòng kiểm tra kết nối và thử lại.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setActionLoading(true);
     const now = new Date().toISOString();
     try {
@@ -1364,27 +1374,6 @@ export default function StaffEvaluation() {
       {/* F */}
       <AIActionsBlock aiActions={aiActions} onChange={setAiActions} skillPriorities={skillPriorities} attitudePriorities={attitudePriorities} quarterLabel="quý này" />
 
-      {/* G — khối GỘP (07/2026): trạng thái + nhận xét mẫu cũ (chỉ đọc) + nút duyệt/trả.
-          "Nhóm hiện tại" chọn tay và 2 ô nhận xét text đã bỏ — phân nhóm đi qua luồng
-          đề xuất→duyệt bên dưới (tự đồng bộ về admin_evaluations.classification). */}
-      <EvalSectionG
-        remark={remark}
-        managerConclusion={managerConclusion}
-        formStatus={formStatus}
-        evaluatorLevel={isManagerMode ? reviewerLevel : null}
-        isAdmin={isAdmin}
-        canConfirmReview={canConfirmReview}
-        actionLoading={actionLoading}
-        hideManagerActions
-        soleApprover={isSoleApprover}
-        onStatusChange={setFormStatus}
-        onConfirmReview={handleConfirmReview}
-        onReturnToEmployee={handleReturnToEmployee}
-        onApprove={handleApprove}
-        onReturnToManager={handleReturnToManager}
-        onApproveDirect={handleReviewAndApprove}
-      />
-
       {/* Đánh giá của các cấp dưới người xem (chỉ đọc) — PGĐ/GĐ đọc được nội dung TP
           đã nhập ngay tại trang này thay vì phải mở hồ sơ đã duyệt */}
       {formId && peerOverallReviews.map((p) => (
@@ -1408,6 +1397,7 @@ export default function StaffEvaluation() {
           approverDefaultId={profile?.pgd_id ?? null}
           canEvaluate={reviewerLevel === 'manager' || isSoleApprover}
           canApprove={reviewerLevel === 'pgd' || isSoleApprover}
+          soleApprover={isSoleApprover}
         />
       )}
 
@@ -1417,7 +1407,12 @@ export default function StaffEvaluation() {
       {reviewerLevel && reviewField && formId && (
         <div className="space-y-1">
           <OverallReviewBlock
-            title={`Kết luận & định hướng phát triển (${reviewerLevel === 'manager' ? 'Trưởng phòng' : reviewerLevel === 'pgd' ? 'Phó giám đốc' : 'Giám đốc'})`}
+            title={`Kết luận & định hướng phát triển (${
+              reviewerLevel === 'manager' ? 'Trưởng phòng'
+              // Kiêm nhiệm PGĐ + GĐ (vai thực thi 'pgd' thắng): nhãn "Phó giám đốc" làm GĐ
+              // tưởng nhầm ô của người khác — sự cố phiếu PGĐ Thùy Linh 27/07
+              : reviewerLevel === 'pgd' ? (profile?.director_id && profile?.director_id === profile?.pgd_id ? 'Ban Giám đốc' : 'Phó giám đốc')
+              : 'Giám đốc'})`}
             value={overallReview}
             onChange={setOverallReview}
           />
@@ -1437,6 +1432,39 @@ export default function StaffEvaluation() {
           onJumpToSkill={navigateToSkillB}
         />
       )}
+
+      {/* G — trạng thái + nút duyệt/trả, đặt CUỐI trang (07/2026): trước đây nằm trên
+          khối phân nhóm sao và ô kết luận nên người duyệt gặp nút "Phê duyệt" trước khi
+          điền các phần điều kiện của nó — rối và dễ ép trạng thái (phiếu PGĐ Thùy Linh). */}
+      <EvalSectionG
+        remark={remark}
+        managerConclusion={managerConclusion}
+        formStatus={formStatus}
+        evaluatorLevel={isManagerMode ? reviewerLevel : null}
+        isAdmin={isAdmin}
+        canConfirmReview={canConfirmReview}
+        actionLoading={actionLoading}
+        hideManagerActions
+        soleApprover={isSoleApprover}
+        onStatusChange={(v) => {
+          // Dropdown admin ép trạng thái đi TẮT quy trình: không ghi mốc rà soát/duyệt,
+          // và trigger chốt level sẽ lấy mức TỰ đánh giá cho các skill cấp trên chưa chấm
+          // (sự cố phiếu PGĐ Thùy Linh 27/07). Cảnh báo rõ, không chặn quyền admin.
+          if (v === 'approved' && formStatus !== 'approved' && reviewMissing.length > 0) {
+            toast({
+              title: 'Ép duyệt khi chưa đánh giá đủ?',
+              description: `Phiếu chưa đạt điều kiện duyệt: ${reviewMissing.join(' · ')}. Nếu vẫn lưu, level sẽ chốt theo mức TỰ đánh giá ở các skill chưa được cấp trên chấm. Nên dùng nút "Đánh giá & phê duyệt" sau khi chấm đủ.`,
+              variant: 'destructive',
+            });
+          }
+          setFormStatus(v);
+        }}
+        onConfirmReview={handleConfirmReview}
+        onReturnToEmployee={handleReturnToEmployee}
+        onApprove={handleApprove}
+        onReturnToManager={handleReturnToManager}
+        onApproveDirect={handleReviewAndApprove}
+      />
 
       {/* Sticky bottom bar */}
       {(() => {

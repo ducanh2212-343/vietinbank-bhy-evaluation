@@ -251,7 +251,7 @@ Deno.serve(async (req) => {
     // ================= CHẾ ĐỘ 1: digest lãnh đạo sáng thứ Hai =================
     // Người nhận + phạm vi (rộng nhất thắng): BGĐ/TCTH → toàn CN; PGĐ → khối; TP → đội trực tiếp
     const { data: leaderRoles } = await admin
-      .from('user_roles').select('user_id').in('role', ['bgd', 'tcth_admin']);
+      .from('user_roles').select('user_id').in('role', ['bgd', 'tcth_admin', 'system_admin']);
     const leaderUserIds = new Set(((leaderRoles || []) as any[]).map((r) => r.user_id));
     const isBranchLeader = (p: any) => p.user_id && leaderUserIds.has(p.user_id);
     const tpIds = new Set(profiles.map((p) => p.manager_id).filter(Boolean));

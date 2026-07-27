@@ -168,7 +168,10 @@ export default function SelfAssessmentPage() {
       opts.push({ id: p.director_id, name: p.director_name || 'Giám đốc phụ trách', role_label: 'Giám đốc phụ trách' });
       seen.add(p.director_id);
     }
-    const { data: bgdRoles } = await supabase.from('user_roles').select('user_id').eq('role', 'bgd');
+    // Ban Giám đốc: gồm cả tài khoản Giám đốc mang quyền quản trị hệ thống (mỗi user chỉ
+    // một quyền, nên Giám đốc kiêm quản trị sẽ có role 'system_admin' thay vì 'bgd').
+    const { data: bgdRoles } = await supabase
+      .from('user_roles').select('user_id').in('role', ['bgd', 'system_admin']);
     const bgdUserIds = (bgdRoles || []).map((r: any) => r.user_id);
     if (bgdUserIds.length) {
       const { data: bgdProfiles } = await supabase
