@@ -74,7 +74,7 @@ export default function CycleManagementPage() {
     penalty: '1',
   });
 
-  // Cán bộ chưa gán người đánh giá nào (trừ Giám đốc — không có cấp trên). Còn người
+  // Cán bộ chưa gán người đánh giá nào (trừ hồ sơ đánh dấu phiếu tự soi). Còn người
   // trong danh sách này thì KHÔNG được mở kỳ: họ nộp phiếu xong sẽ không ai duyệt
   // (sự cố Dương Thị Thanh Thúy 25/07). DB cũng chặn bằng trigger cùng luật.
   const [missingLine, setMissingLine] = useState<{ id: string; full_name: string }[]>([]);
@@ -82,19 +82,18 @@ export default function CycleManagementPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    // Miễn trừ theo CỜ self_review_only (phiếu tự soi), không so khớp chuỗi chức danh —
+    // cùng một luật với trigger guard_open_cycle_requires_reporting_line phía DB.
     const { data: unassigned } = await supabase
       .from('profiles')
-      .select('id, full_name, position')
+      .select('id, full_name')
       .eq('status', 'active')
       .is('manager_id', null)
       .is('pgd_id', null)
       .is('director_id', null)
+      .eq('self_review_only', false)
       .order('full_name');
-    setMissingLine(
-      ((unassigned || []) as any[])
-        .filter((p) => !['giám đốc', 'giám đốc chi nhánh'].includes((p.position || '').trim().toLowerCase()))
-        .map((p) => ({ id: p.id, full_name: p.full_name })),
-    );
+    setMissingLine(((unassigned || []) as any[]).map((p) => ({ id: p.id, full_name: p.full_name })));
     const { data, error } = await supabase
       .from('evaluation_cycles')
       .select('id, name, description, start_date, end_date, cycle_type, status, submission_deadline, late_penalty_points')

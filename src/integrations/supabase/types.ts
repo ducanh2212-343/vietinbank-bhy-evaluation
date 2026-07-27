@@ -2235,6 +2235,7 @@ export type Database = {
           phone: string | null
           position: string | null
           position_id: string | null
+          self_review_only: boolean
           status: string
           updated_at: string
           user_id: string
@@ -2258,6 +2259,7 @@ export type Database = {
           phone?: string | null
           position?: string | null
           position_id?: string | null
+          self_review_only?: boolean
           status?: string
           updated_at?: string
           user_id: string
@@ -2281,6 +2283,7 @@ export type Database = {
           phone?: string | null
           position?: string | null
           position_id?: string | null
+          self_review_only?: boolean
           status?: string
           updated_at?: string
           user_id?: string
