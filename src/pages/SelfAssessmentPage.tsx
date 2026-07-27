@@ -38,6 +38,7 @@ import {
   saveEvaluationChildren,
 } from '@/lib/evaluationPersistence';
 import { validateSubmissionDetailed } from '@/lib/evaluationValidation';
+import { isSelfReviewProfile } from '@/lib/reviewerScope';
 import { useCycleOneOnOneQuestions } from '@/hooks/useCycleOneOnOneQuestions';
 import { SubmissionChecklist } from '@/components/evaluation/SubmissionChecklist';
 import { useHistoricalSkillLevels, mergeAssessedLevels } from '@/hooks/useHistoricalSkillLevels';
@@ -144,15 +145,13 @@ export default function SelfAssessmentPage() {
     const seen = new Set<string>();
     const p: any = prof;
 
-    // Điều kiện "tự đánh giá – tự phê duyệt": chức danh Giám đốc (không phải Phó GĐ)
-    // và không có bất kỳ cấp trên nào trong hồ sơ; hoặc chức danh Giám đốc chi nhánh.
-    const posName = (p?.pos_name || '').toLowerCase();
-    const isDirectorTitle = posName.includes('giám đốc') && !posName.includes('phó');
-    const hasNoSuperior = !p?.manager_id && !p?.pgd_id && !p?.director_id;
-    const canSelfApprove = posName.includes('giám đốc chi nhánh') || (isDirectorTitle && hasNoSuperior);
+    // Phiếu TỰ SOI — nguồn sự thật là cờ profiles.self_review_only (xem isSelfReviewProfile).
+    // Trước đây suy ra từ chuỗi chức danh, lệch với luật phía DB và cho tự phê duyệt
+    // kể cả khi có cấp trên.
+    const canSelfApprove = isSelfReviewProfile(p);
     setIsGdcnSelf(canSelfApprove);
     if (canSelfApprove && profileId) {
-      opts.push({ id: profileId, name: p?.full_name || 'Tôi', role_label: 'Giám đốc — tự đánh giá, tự phê duyệt' });
+      opts.push({ id: profileId, name: p?.full_name || 'Tôi', role_label: 'Tự soi — tự đánh giá là mức chốt' });
       seen.add(profileId);
     }
 

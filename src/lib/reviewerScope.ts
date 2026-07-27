@@ -10,6 +10,27 @@ export interface ProfileLike {
   manager_id?: string | null;
   pgd_id?: string | null;
   director_id?: string | null;
+  /** Cờ phiếu TỰ SOI — xem isSelfReviewProfile */
+  self_review_only?: boolean | null;
+}
+
+/**
+ * Phiếu TỰ SOI: người không có cấp trên nào trong tuyến báo cáo (Giám đốc chi nhánh).
+ * Nguyên tắc Giám đốc chốt 27/07: KHÔNG cần người chấm — TỰ ĐÁNH GIÁ CHÍNH LÀ MỨC CHỐT;
+ * phiếu tự nộp, tự phê duyệt; hồ sơ được miễn trừ khỏi luật "phải gán người đánh giá
+ * trước khi mở kỳ".
+ *
+ * Nguồn sự thật DUY NHẤT là cột profiles.self_review_only (đặt bởi TCTH/quản trị).
+ * Trước 08/2026 nguyên tắc nằm rải ở 3 nơi, mỗi nơi so khớp CHUỖI chức danh theo một
+ * danh sách khác nhau — đổi tên chức danh là ba nơi hiểu khác nhau, và nhánh
+ * "chứa 'giám đốc chi nhánh'" còn cho tự phê duyệt KỂ CẢ khi người đó có cấp trên.
+ *
+ * Vẫn kiểm tra lại "không có cấp trên" ở đây cho chắc: DB đã có ràng buộc
+ * chk_self_review_no_supervisor, hai lớp phải cùng nói một điều.
+ */
+export function isSelfReviewProfile(profile: ProfileLike | null | undefined): boolean {
+  if (!profile?.self_review_only) return false;
+  return !profile.manager_id && !profile.pgd_id && !profile.director_id;
 }
 
 export interface ActorRoles {

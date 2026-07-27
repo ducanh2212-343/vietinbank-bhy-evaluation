@@ -1,12 +1,41 @@
 import { describe, it, expect } from 'vitest';
 import {
   getReviewerLevel, getOverallReviewField, canApproveStarFor, resolveDefaultReviewerId,
+  isSelfReviewProfile,
 } from './reviewerScope';
 
 const GD = 'gd-1';
 const PGD = 'pgd-1';
 const TP = 'tp-1';
 const admin = { profileId: GD, isManager: false, isPgd: false, isAdmin: true };
+
+describe('isSelfReviewProfile — phiếu tự soi', () => {
+  it('Giám đốc chi nhánh: có cờ và không cấp trên nào → tự soi', () => {
+    expect(isSelfReviewProfile({
+      id: GD, manager_id: null, pgd_id: null, director_id: null, self_review_only: true,
+    })).toBe(true);
+  });
+
+  it('không có cấp trên nhưng CHƯA đánh dấu cờ → không phải tự soi (vẫn phải gán người đánh giá)', () => {
+    expect(isSelfReviewProfile({ id: 'nv-x', manager_id: null, pgd_id: null, director_id: null })).toBe(false);
+  });
+
+  it('có cờ nhưng vẫn còn cấp trên → KHÔNG cho tự soi (chặn tự duyệt phiếu của mình)', () => {
+    // Luật cũ suy từ chuỗi chức danh: ai mang tên "Giám đốc chi nhánh" là tự phê duyệt
+    // kể cả khi có cấp trên. DB có chk_self_review_no_supervisor, đây là lớp thứ hai.
+    expect(isSelfReviewProfile({
+      id: 'nv-y', manager_id: TP, pgd_id: null, director_id: null, self_review_only: true,
+    })).toBe(false);
+    expect(isSelfReviewProfile({
+      id: 'nv-z', manager_id: null, pgd_id: PGD, director_id: null, self_review_only: true,
+    })).toBe(false);
+  });
+
+  it('hồ sơ rỗng/không xác định → không phải tự soi', () => {
+    expect(isSelfReviewProfile(null)).toBe(false);
+    expect(isSelfReviewProfile(undefined)).toBe(false);
+  });
+});
 
 describe('getReviewerLevel', () => {
   it('kiêm nhiệm PGĐ + Giám đốc của cùng cán bộ → vai PGĐ (cấp có nút phê duyệt)', () => {
