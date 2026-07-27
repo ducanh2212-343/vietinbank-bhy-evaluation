@@ -96,6 +96,14 @@ export default function EvaluatorAssignmentPage() {
 
   const nameById = (id: string | null) => (id ? staff.find((s) => s.id === id)?.full_name || '—' : '—');
 
+  // Cán bộ KHÔNG có bất kỳ cấp trên nào → phiếu nộp xong sẽ không có người rà soát/phê
+  // duyệt (sự cố Dương Thị Thanh Thúy 25/07). Ban Giám đốc không tính: GĐ không có cấp
+  // trên, PGĐ được Giám đốc duyệt qua cột "Giám đốc phụ trách".
+  const missingLine = useMemo(
+    () => staff.filter((r) => !r.manager_id && !r.pgd_id && !r.director_id && !isBgd(asProfileLite(r))),
+    [staff, posNameMap],
+  );
+
   const isDirty = (r: StaffRow) => {
     const e = edits[r.id];
     return e && (e.manager_id !== r.manager_id || e.pgd_id !== r.pgd_id || e.director_id !== r.director_id);
@@ -170,6 +178,27 @@ export default function EvaluatorAssignmentPage() {
           </Button>
         </div>
       </div>
+
+      {!loading && missingLine.length > 0 && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm">
+          <p className="font-medium text-destructive flex items-center gap-1.5">
+            <AlertTriangle className="w-4 h-4" />
+            {missingLine.length} cán bộ chưa có cấp trên nào — phiếu nộp sẽ không ai duyệt được
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Cần gán ít nhất một trong ba cấp (Quản lý trực tiếp / PGĐ phụ trách / Giám đốc phụ trách)
+            trước khi cán bộ nộp phiếu:
+          </p>
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {missingLine.map((r) => (
+              <Badge key={r.id} variant="outline" className="text-[11px] border-destructive/40">
+                {r.full_name}
+                {r.department_id ? ` · ${deptMap.get(r.department_id) || '—'}` : ''}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative">

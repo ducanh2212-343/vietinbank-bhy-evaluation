@@ -44,6 +44,17 @@ export function getReviewerLevel(
   return null;
 }
 
+/**
+ * Người đánh giá mặc định của một cán bộ theo tuyến báo cáo:
+ * Quản lý trực tiếp → PGĐ phụ trách → Giám đốc.
+ * Dùng khi nộp phiếu mà chưa chọn người đánh giá — không có giá trị này thì phiếu
+ * "vô chủ": không ai đứng vai nào để rà soát/phê duyệt (sự cố Dương Thị Thanh Thúy 25/07).
+ */
+export function resolveDefaultReviewerId(target: ProfileLike | null): string | null {
+  if (!target) return null;
+  return target.manager_id || target.pgd_id || target.director_id || null;
+}
+
 export function getOverallReviewField(
   level: ReviewerLevel,
 ): 'manager_overall_review' | 'pgd_overall_review' | 'director_overall_review' {
