@@ -42,7 +42,7 @@ import {
 import { OverallReviewBlock, type OverallReviewValue } from '@/components/evaluation/OverallReviewBlock';
 import { validateManagerReview } from '@/lib/evaluationValidation';
 import { StarClassificationBlock } from '@/components/evaluation/StarClassificationBlock';
-import { getReviewerLevel, getOverallReviewField } from '@/lib/reviewerScope';
+import { getReviewerLevel, getOverallReviewField, resolveDefaultReviewerId } from '@/lib/reviewerScope';
 import { useCycleOneOnOneQuestions } from '@/hooks/useCycleOneOnOneQuestions';
 import { useEvaluationAutosave } from '@/hooks/useEvaluationAutosave';
 import { AutosaveStatusBar } from '@/components/evaluation/AutosaveStatusBar';
@@ -899,6 +899,15 @@ export default function StaffEvaluation() {
       // Chỉ ghi submitted_at khi thực sự nộp — lưu nháp không được xóa mốc thời gian nộp
       if (submit && nextStatus === 'submitted') {
         formPayload.submitted_at = new Date().toISOString();
+        // Phiếu nộp qua màn này trước đây KHÔNG gán người đánh giá → treo vô chủ, không
+        // ai đứng vai để rà soát/phê duyệt (sự cố Dương Thị Thanh Thúy 25/07). Gán mặc
+        // định theo tuyến báo cáo; DB còn một lớp chặn nữa (trigger form_reviewer_fallback).
+        if (!formMeta.reviewer_id) {
+          const fallbackReviewer = resolveDefaultReviewerId(
+            profile ? { id: profile.id, manager_id: profile.manager_id, pgd_id: profile.pgd_id, director_id: profile.director_id } : null,
+          );
+          if (fallbackReviewer) formPayload.reviewer_id = fallbackReviewer;
+        }
       }
       if (isManagerMode) {
         if (oneOnOneEnabled || hasEmployeeAnswers) {

@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { getReviewerLevel, getOverallReviewField, canApproveStarFor } from './reviewerScope';
+import {
+  getReviewerLevel, getOverallReviewField, canApproveStarFor, resolveDefaultReviewerId,
+} from './reviewerScope';
 
 const GD = 'gd-1';
 const PGD = 'pgd-1';
@@ -37,6 +39,22 @@ describe('getReviewerLevel', () => {
     const pgdActor = { profileId: PGD, isManager: false, isPgd: true, isAdmin: false };
     expect(getReviewerLevel(pgdActor, { id: 'nv-5', manager_id: TP, pgd_id: PGD, director_id: GD })).toBe('pgd');
     expect(getReviewerLevel(pgdActor, { id: 'nv-6', manager_id: TP, pgd_id: 'pgd-khac', director_id: GD })).toBeNull();
+  });
+});
+
+describe('resolveDefaultReviewerId — phiếu nộp không bao giờ được vô chủ', () => {
+  it('đủ tuyến → quản lý trực tiếp', () => {
+    expect(resolveDefaultReviewerId({ id: 'nv', manager_id: TP, pgd_id: PGD, director_id: GD })).toBe(TP);
+  });
+  it('thiếu quản lý trực tiếp (TP phòng) → PGĐ phụ trách', () => {
+    expect(resolveDefaultReviewerId({ id: 'tp', manager_id: null, pgd_id: PGD, director_id: GD })).toBe(PGD);
+  });
+  it('thiếu cả quản lý và PGĐ (PGĐ/BGĐ) → Giám đốc', () => {
+    expect(resolveDefaultReviewerId({ id: 'pgd', manager_id: null, pgd_id: null, director_id: GD })).toBe(GD);
+  });
+  it('trống hoàn toàn → null (TCTH phải gán tuyến)', () => {
+    expect(resolveDefaultReviewerId({ id: 'x', manager_id: null, pgd_id: null, director_id: null })).toBeNull();
+    expect(resolveDefaultReviewerId(null)).toBeNull();
   });
 });
 
