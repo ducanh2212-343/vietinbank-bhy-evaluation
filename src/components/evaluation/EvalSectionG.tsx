@@ -66,22 +66,35 @@ export function EvalSectionG({
       <CardContent className="space-y-4">
         <div>
           <label className="text-xs text-muted-foreground">Trạng thái biểu mẫu</label>
-          {isAdmin ? (
-            <Select value={formStatus} onValueChange={onStatusChange}>
-              <SelectTrigger className="h-9 sm:max-w-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="draft">Bản nháp</SelectItem>
-                <SelectItem value="submitted">Đã nộp</SelectItem>
-                <SelectItem value="reviewed">Đã rà soát</SelectItem>
-                <SelectItem value="approved">Phê duyệt</SelectItem>
-                <SelectItem value="returned">Trả lại</SelectItem>
-                <SelectItem value="closed">Đóng</SelectItem>
-              </SelectContent>
-            </Select>
-          ) : (
-            <div className="h-9 flex items-center">
-              <Badge variant="outline" className={statusBadge.cls}>{statusBadge.text}</Badge>
-            </div>
+          <div className="h-9 flex items-center">
+            <Badge variant="outline" className={statusBadge.cls}>{statusBadge.text}</Badge>
+          </div>
+          {/* Ép trạng thái thủ công từng gây 2 sự cố (27/07: ép duyệt chốt level sai;
+              ép "Trả lại" không lý do/đích trả) — thu gọn lại, chỉ dành xử lý sự cố dữ liệu. */}
+          {isAdmin && (
+            <details className="mt-1 rounded-md border border-dashed px-3 py-2">
+              <summary className="cursor-pointer text-xs text-muted-foreground">
+                Công cụ admin: ép trạng thái thủ công (không khuyến nghị)
+              </summary>
+              <div className="mt-2 space-y-2">
+                <p className="text-xs text-destructive">
+                  Ép trạng thái đi tắt quy trình: không ghi mốc rà soát/phê duyệt, không có lý do
+                  trả lại cho cán bộ, và level có thể bị chốt theo mức tự đánh giá. Hãy dùng các
+                  nút duyệt/trả phía dưới — chỉ ép khi xử lý sự cố dữ liệu.
+                </p>
+                <Select value={formStatus} onValueChange={onStatusChange}>
+                  <SelectTrigger className="h-9 sm:max-w-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="draft">Bản nháp</SelectItem>
+                    <SelectItem value="submitted">Đã nộp</SelectItem>
+                    <SelectItem value="reviewed">Đã rà soát</SelectItem>
+                    <SelectItem value="approved">Phê duyệt</SelectItem>
+                    <SelectItem value="returned">Trả lại</SelectItem>
+                    <SelectItem value="closed">Đóng</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </details>
           )}
         </div>
 
@@ -154,6 +167,12 @@ export function EvalSectionG({
               <Info className="w-3.5 h-3.5" />
               Bạn là cấp trên trực tiếp duy nhất — phiếu được rà soát và phê duyệt hoàn tất trong một bước.
             </p>
+            {formStatus === 'returned' && (
+              <p className="w-full text-xs text-amber-700 flex items-center gap-1">
+                <Info className="w-3.5 h-3.5" />
+                Phiếu đã trả lại cán bộ — hai nút tạm khoá cho tới khi cán bộ chỉnh sửa và nộp lại.
+              </p>
+            )}
           </div>
         )}
 

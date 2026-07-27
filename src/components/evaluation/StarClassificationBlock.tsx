@@ -23,10 +23,13 @@ interface Props {
   canEvaluate: boolean;
   /** true → can approve/reject (pgd only) */
   canApprove: boolean;
+  /** Người đánh giá duy nhất (PGĐ/GĐ không có TP ở giữa): đề xuất + phê duyệt gộp 1 nút —
+   *  tự đề xuất rồi tự duyệt đề xuất của chính mình qua 2 bước là vô nghĩa và gây rối. */
+  soleApprover?: boolean;
 }
 
 export function StarClassificationBlock(props: Props) {
-  const { cycleId, employeeId, formId, myProfileId, evaluatorLevel, approverDefaultId, canEvaluate, canApprove } = props;
+  const { cycleId, employeeId, formId, myProfileId, evaluatorLevel, approverDefaultId, canEvaluate, canApprove, soleApprover } = props;
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -123,6 +126,34 @@ export function StarClassificationBlock(props: Props) {
     toast({ title: canEvaluate ? 'Đã lưu đề xuất' : 'Đã cập nhật nội dung' });
   };
 
+  // Người duyệt duy nhất: lưu + phê duyệt trong MỘT bước (không đi qua trạng thái pending)
+  const handleFinalizeDirect = async () => {
+    if (!soleApprover || !starGroup) return;
+    setSaving(true);
+    const payload: any = {
+      cycle_id: cycleId,
+      employee_id: employeeId,
+      form_id: formId || null,
+      star_group: starGroup,
+      evaluator_id: myProfileId,
+      evaluator_level: evaluatorLevel,
+      approver_id: myProfileId,
+      approval_status: 'approved',
+      approved_at: new Date().toISOString(),
+    };
+    const { data, error } = record
+      ? await supabase.from('staff_star_classifications').update(payload).eq('id', record.id).select('*').maybeSingle()
+      : await supabase.from('staff_star_classifications').insert(payload).select('*').maybeSingle();
+    setSaving(false);
+    if (error) {
+      toast({ title: 'Lỗi chốt phân nhóm sao', description: error.message, variant: 'destructive' });
+      return;
+    }
+    setRecord(data);
+    await syncClassification(starGroup);
+    toast({ title: 'Đã chốt phân nhóm sao' });
+  };
+
   const handleApprove = async () => {
     if (!canApprove || !record || !record.star_group) return;
     setSaving(true);
@@ -214,10 +245,10 @@ export function StarClassificationBlock(props: Props) {
   const renderTimeline = () => {
     const items: { icon: any; text: string; tone?: string }[] = [];
     if (!record) {
-      items.push({ icon: Clock, text: 'Chưa đề xuất', tone: 'text-muted-foreground' });
+      items.push({ icon: Clock, text: soleApprover ? 'Chưa chốt phân nhóm' : 'Chưa đề xuất', tone: 'text-muted-foreground' });
     } else {
-      items.push({ icon: CheckCircle2, text: 'TP đã đề xuất', tone: 'text-foreground' });
-      if (pending) items.push({ icon: Clock, text: 'Chờ cấp trên phê duyệt', tone: 'text-amber-600' });
+      items.push({ icon: CheckCircle2, text: soleApprover ? 'Đã chọn nhóm' : 'TP đã đề xuất', tone: 'text-foreground' });
+      if (pending) items.push({ icon: Clock, text: soleApprover ? 'Chưa chốt — bấm "Chốt phân nhóm" bên dưới' : 'Chờ cấp trên phê duyệt', tone: 'text-amber-600' });
       if (rejected) items.push({ icon: XCircle, text: 'Bị trả lại · TP cần đề xuất lại', tone: 'text-destructive' });
       if (approved) {
         const dt = record.approved_at ? new Date(record.approved_at).toLocaleDateString('vi-VN') : '';
@@ -252,8 +283,10 @@ export function StarClassificationBlock(props: Props) {
   const currentStarLabel = record?.star_group ? STAR_LABELS[record.star_group] : null;
 
   // --- Manager view ---
-  const managerCanEdit = canEvaluate && (!record || rejected);
-  const pgdCanEditContent = canApprove && record && (pending || rejected);
+  const managerCanEdit = !soleApprover && canEvaluate && (!record || rejected);
+  const pgdCanEditContent = !soleApprover && canApprove && record && (pending || rejected);
+  // Người duyệt duy nhất: một khối, một nút — chốt thẳng, và được chốt lại nếu đổi ý
+  const soleCanFinalize = !!soleApprover;
 
   return (
     <Card>
@@ -277,6 +310,20 @@ export function StarClassificationBlock(props: Props) {
             {record.reason_text && <div><span className="font-medium">Lý do (mẫu cũ):</span> {record.reason_text}</div>}
             {record.direction_text && <div><span className="font-medium">Định hướng (mẫu cũ):</span> {record.direction_text}</div>}
           </div>
+        )}
+
+        {/* Người duyệt duy nhất — chọn nhóm và chốt trong một bước */}
+        {soleCanFinalize && (
+          <>
+            <FormFields starGroup={starGroup} setStarGroup={setStarGroup} />
+            <Button onClick={handleFinalizeDirect} disabled={saving || !starGroup} size="sm">
+              {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-1" />}
+              {approved ? 'Chốt lại phân nhóm' : 'Chốt phân nhóm'}
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Bạn là người đánh giá duy nhất — chọn nhóm và chốt luôn, không cần bước đề xuất/duyệt riêng.
+            </p>
+          </>
         )}
 
         {/* Manager — propose / re-propose */}
@@ -311,14 +358,14 @@ export function StarClassificationBlock(props: Props) {
           </>
         )}
 
-        {/* Director overseer */}
-        {isDirectorOverseer && record && approved && !overrideMode && (
+        {/* Director overseer — ẩn khi là người duyệt duy nhất (đã có nút "Chốt lại phân nhóm") */}
+        {!soleApprover && isDirectorOverseer && record && approved && !overrideMode && (
           <Button variant="outline" size="sm" onClick={() => { setOverrideMode(true); setStarGroup(record.star_group || ''); }}>
             <Pencil className="w-4 h-4 mr-1" /> Điều chỉnh nhóm sao
           </Button>
         )}
 
-        {isDirectorOverseer && record && approved && overrideMode && (
+        {!soleApprover && isDirectorOverseer && record && approved && overrideMode && (
           <div className="space-y-3 border-l-2 border-amber-500 pl-3">
             <div className="space-y-1">
               <Label className="text-xs">Nhóm sao mới</Label>

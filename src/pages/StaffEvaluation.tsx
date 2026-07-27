@@ -1374,9 +1374,68 @@ export default function StaffEvaluation() {
       {/* F */}
       <AIActionsBlock aiActions={aiActions} onChange={setAiActions} skillPriorities={skillPriorities} attitudePriorities={attitudePriorities} quarterLabel="quý này" />
 
-      {/* G — khối GỘP (07/2026): trạng thái + nhận xét mẫu cũ (chỉ đọc) + nút duyệt/trả.
-          "Nhóm hiện tại" chọn tay và 2 ô nhận xét text đã bỏ — phân nhóm đi qua luồng
-          đề xuất→duyệt bên dưới (tự đồng bộ về admin_evaluations.classification). */}
+      {/* Đánh giá của các cấp dưới người xem (chỉ đọc) — PGĐ/GĐ đọc được nội dung TP
+          đã nhập ngay tại trang này thay vì phải mở hồ sơ đã duyệt */}
+      {formId && peerOverallReviews.map((p) => (
+        <OverallReviewBlock
+          key={p.label}
+          title={`Kết luận & định hướng của ${p.label} (chỉ đọc)`}
+          value={p.value}
+          onChange={() => { /* chỉ đọc */ }}
+          disabled
+        />
+      ))}
+
+      {/* Phân nhóm sao — nơi DUY NHẤT chọn nhóm (TP đề xuất → PGĐ duyệt → GĐ điều chỉnh) */}
+      {reviewerLevel && cycleId && profileId && (
+        <StarClassificationBlock
+          cycleId={cycleId}
+          employeeId={id!}
+          formId={formId}
+          myProfileId={profileId}
+          evaluatorLevel={reviewerLevel}
+          approverDefaultId={profile?.pgd_id ?? null}
+          canEvaluate={reviewerLevel === 'manager' || isSoleApprover}
+          canApprove={reviewerLevel === 'pgd' || isSoleApprover}
+          soleApprover={isSoleApprover}
+        />
+      )}
+
+      {/* Định hướng phát triển — 1 ô duy nhất, ghi vào key next_focus của *_overall_review
+          (giữ nguyên cột jsonb → BM01 và hồ sơ cá nhân không đổi; các key cũ hiện read-only).
+          Nội dung được tự lưu cùng phiếu (autosave + Lưu nháp) — đã bỏ nút lưu riêng dễ quên. */}
+      {reviewerLevel && reviewField && formId && (
+        <div className="space-y-1">
+          <OverallReviewBlock
+            title={`Kết luận & định hướng phát triển (${
+              reviewerLevel === 'manager' ? 'Trưởng phòng'
+              // Kiêm nhiệm PGĐ + GĐ (vai thực thi 'pgd' thắng): nhãn "Phó giám đốc" làm GĐ
+              // tưởng nhầm ô của người khác — sự cố phiếu PGĐ Thùy Linh 27/07
+              : reviewerLevel === 'pgd' ? (profile?.director_id && profile?.director_id === profile?.pgd_id ? 'Ban Giám đốc' : 'Phó giám đốc')
+              : 'Giám đốc'})`}
+            value={overallReview}
+            onChange={setOverallReview}
+          />
+          <p className="text-[11px] text-muted-foreground px-1">
+            Nội dung mục này được tự lưu cùng phiếu — không cần nút lưu riêng.
+          </p>
+        </div>
+      )}
+
+      {/* Tóm tắt duyệt-theo-ngoại-lệ cho TP trước khi xác nhận */}
+      {canEditManagerAssessment && (
+        <ReviewDiffSummary
+          agreedSkillCount={reviewDiff.agreedSkillCount}
+          mismatchSkills={reviewDiff.mismatchSkills}
+          unratedSelfCount={reviewDiff.unratedSelfCount}
+          mismatchAttitudes={reviewDiff.mismatchAttitudes}
+          onJumpToSkill={navigateToSkillB}
+        />
+      )}
+
+      {/* G — trạng thái + nút duyệt/trả, đặt CUỐI trang (07/2026): trước đây nằm trên
+          khối phân nhóm sao và ô kết luận nên người duyệt gặp nút "Phê duyệt" trước khi
+          điền các phần điều kiện của nó — rối và dễ ép trạng thái (phiếu PGĐ Thùy Linh). */}
       <EvalSectionG
         remark={remark}
         managerConclusion={managerConclusion}
@@ -1406,59 +1465,6 @@ export default function StaffEvaluation() {
         onReturnToManager={handleReturnToManager}
         onApproveDirect={handleReviewAndApprove}
       />
-
-      {/* Đánh giá của các cấp dưới người xem (chỉ đọc) — PGĐ/GĐ đọc được nội dung TP
-          đã nhập ngay tại trang này thay vì phải mở hồ sơ đã duyệt */}
-      {formId && peerOverallReviews.map((p) => (
-        <OverallReviewBlock
-          key={p.label}
-          title={`Kết luận & định hướng của ${p.label} (chỉ đọc)`}
-          value={p.value}
-          onChange={() => { /* chỉ đọc */ }}
-          disabled
-        />
-      ))}
-
-      {/* Phân nhóm sao — nơi DUY NHẤT chọn nhóm (TP đề xuất → PGĐ duyệt → GĐ điều chỉnh) */}
-      {reviewerLevel && cycleId && profileId && (
-        <StarClassificationBlock
-          cycleId={cycleId}
-          employeeId={id!}
-          formId={formId}
-          myProfileId={profileId}
-          evaluatorLevel={reviewerLevel}
-          approverDefaultId={profile?.pgd_id ?? null}
-          canEvaluate={reviewerLevel === 'manager' || isSoleApprover}
-          canApprove={reviewerLevel === 'pgd' || isSoleApprover}
-        />
-      )}
-
-      {/* Định hướng phát triển — 1 ô duy nhất, ghi vào key next_focus của *_overall_review
-          (giữ nguyên cột jsonb → BM01 và hồ sơ cá nhân không đổi; các key cũ hiện read-only).
-          Nội dung được tự lưu cùng phiếu (autosave + Lưu nháp) — đã bỏ nút lưu riêng dễ quên. */}
-      {reviewerLevel && reviewField && formId && (
-        <div className="space-y-1">
-          <OverallReviewBlock
-            title={`Kết luận & định hướng phát triển (${reviewerLevel === 'manager' ? 'Trưởng phòng' : reviewerLevel === 'pgd' ? 'Phó giám đốc' : 'Giám đốc'})`}
-            value={overallReview}
-            onChange={setOverallReview}
-          />
-          <p className="text-[11px] text-muted-foreground px-1">
-            Nội dung mục này được tự lưu cùng phiếu — không cần nút lưu riêng.
-          </p>
-        </div>
-      )}
-
-      {/* Tóm tắt duyệt-theo-ngoại-lệ cho TP trước khi xác nhận */}
-      {canEditManagerAssessment && (
-        <ReviewDiffSummary
-          agreedSkillCount={reviewDiff.agreedSkillCount}
-          mismatchSkills={reviewDiff.mismatchSkills}
-          unratedSelfCount={reviewDiff.unratedSelfCount}
-          mismatchAttitudes={reviewDiff.mismatchAttitudes}
-          onJumpToSkill={navigateToSkillB}
-        />
-      )}
 
       {/* Sticky bottom bar */}
       {(() => {
