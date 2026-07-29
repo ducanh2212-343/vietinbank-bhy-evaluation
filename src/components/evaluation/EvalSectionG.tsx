@@ -35,6 +35,8 @@ interface Props {
   onApprove?: () => void;
   onReturnToManager?: (reason: string) => void;
   onApproveDirect?: () => void;
+  /** BGĐ/TCTH chuyển trả phiếu ĐÃ PHÊ DUYỆT về Trưởng phòng (bổ sung Sao / sửa nội dung) */
+  onReturnApproved?: (reason: string) => void;
 }
 
 export function EvalSectionG({
@@ -43,10 +45,12 @@ export function EvalSectionG({
   hideManagerActions, soleApprover,
   onStatusChange,
   onConfirmReview, onReturnToEmployee, onApprove, onReturnToManager, onApproveDirect,
+  onReturnApproved,
 }: Props) {
 
   const [returnEmpOpen, setReturnEmpOpen] = useState(false);
   const [returnMgrOpen, setReturnMgrOpen] = useState(false);
+  const [returnApprovedOpen, setReturnApprovedOpen] = useState(false);
   const statusBadge = STATUS_LABEL[formStatus] || STATUS_LABEL.draft;
 
   // Nội dung nhập theo mẫu cũ — chỉ hiển thị để tham chiếu, không cho sửa
@@ -80,7 +84,9 @@ export function EvalSectionG({
                 <p className="text-xs text-destructive">
                   Ép trạng thái đi tắt quy trình: không ghi mốc rà soát/phê duyệt, không có lý do
                   trả lại cho cán bộ, và level có thể bị chốt theo mức tự đánh giá. Hãy dùng các
-                  nút duyệt/trả phía dưới — chỉ ép khi xử lý sự cố dữ liệu.
+                  nút duyệt/trả phía dưới — chỉ ép khi xử lý sự cố dữ liệu. Cần chuyển trả phiếu
+                  đã duyệt cho TP: dùng nút "Chuyển trả Trưởng phòng bổ sung" phía dưới, KHÔNG ép
+                  trạng thái tại đây.
                 </p>
                 <Select value={formStatus} onValueChange={onStatusChange}>
                   <SelectTrigger className="h-9 sm:max-w-xs"><SelectValue /></SelectTrigger>
@@ -204,6 +210,25 @@ export function EvalSectionG({
             Bạn là Giám đốc giám sát — phần duyệt phiếu do PGĐ/TP phụ trách. Bạn vẫn có thể điều chỉnh nhóm sao bên dưới.
           </div>
         )}
+
+        {/* BGĐ/TCTH chuyển trả phiếu ĐÃ PHÊ DUYỆT về TP — đường quay lại đúng quy trình,
+            thay cho ép trạng thái thủ công (từng gây sự cố phải sửa dữ liệu bằng migration). */}
+        {isAdmin && evaluatorLevel !== null && formStatus === 'approved' && onReturnApproved && (
+          <div className="flex flex-wrap gap-2 pt-2 border-t">
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => setReturnApprovedOpen(true)}
+              disabled={actionLoading}
+            >
+              <XCircle className="w-4 h-4 mr-1" /> Chuyển trả Trưởng phòng bổ sung
+            </Button>
+            <p className="w-full text-xs text-muted-foreground flex items-center gap-1">
+              <Info className="w-3.5 h-3.5" />
+              Phiếu quay về Trưởng phòng để bổ sung phân nhóm Sao / sửa nội dung, sau đó PGĐ phê duyệt lại.
+            </p>
+          </div>
+        )}
       </CardContent>
 
       <ReturnDialog
@@ -221,6 +246,14 @@ export function EvalSectionG({
         title="Trả lại trưởng phòng"
         description="Phiếu sẽ quay lại trưởng phòng để rà soát lại."
         onConfirm={(r) => { setReturnMgrOpen(false); onReturnToManager?.(r); }}
+      />
+      <ReturnDialog
+        open={returnApprovedOpen}
+        onOpenChange={setReturnApprovedOpen}
+        loading={actionLoading}
+        title="Chuyển trả phiếu đã phê duyệt cho Trưởng phòng"
+        description="Phiếu quay lại Trưởng phòng để bổ sung phân nhóm Sao cho cán bộ và chỉnh sửa nội dung. Phân nhóm sao đã duyệt (nếu có) sẽ được mở khóa để đề xuất lại; phiếu phải được PGĐ phê duyệt lại sau khi Trưởng phòng cập nhật."
+        onConfirm={(r) => { setReturnApprovedOpen(false); onReturnApproved?.(r); }}
       />
     </Card>
   );

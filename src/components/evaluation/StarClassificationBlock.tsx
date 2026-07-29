@@ -26,10 +26,12 @@ interface Props {
   /** Người đánh giá duy nhất (PGĐ/GĐ không có TP ở giữa): đề xuất + phê duyệt gộp 1 nút —
    *  tự đề xuất rồi tự duyệt đề xuất của chính mình qua 2 bước là vô nghĩa và gây rối. */
   soleApprover?: boolean;
+  /** Đổi giá trị → tải lại bản ghi sao (vd. sau khi BGĐ chuyển trả phiếu làm sao bị reset) */
+  reloadKey?: string | number;
 }
 
 export function StarClassificationBlock(props: Props) {
-  const { cycleId, employeeId, formId, myProfileId, evaluatorLevel, approverDefaultId, canEvaluate, canApprove, soleApprover } = props;
+  const { cycleId, employeeId, formId, myProfileId, evaluatorLevel, approverDefaultId, canEvaluate, canApprove, soleApprover, reloadKey } = props;
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -61,7 +63,7 @@ export function StarClassificationBlock(props: Props) {
     };
     load();
     return () => { cancelled = true; };
-  }, [cycleId, employeeId]);
+  }, [cycleId, employeeId, reloadKey]);
 
   if (employeeId === myProfileId) return null;
 
