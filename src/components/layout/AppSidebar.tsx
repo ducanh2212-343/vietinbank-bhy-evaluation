@@ -174,6 +174,7 @@ const navGroups: NavGroup[] = [
           { label: 'Phòng ban & Chức danh', icon: Building2, path: '/quan-ly-phong-ban', minRole: 'admin' },
           { label: 'Upload danh sách CB', icon: Upload, path: '/upload-danh-sach-cb', minRole: 'admin' },
           { label: 'Duyệt yêu cầu user', icon: UserCheck, path: '/duyet-yeu-cau-user', minRole: 'admin' },
+          { label: 'Tài khoản khách', icon: UserCheck, path: '/quan-tri-khach', minRole: 'admin' },
           { label: 'Quản trị AI & Prompt', icon: Sparkles, path: '/quan-tri-ai', minRole: 'admin' },
           { label: 'Quản trị Email', icon: Mail, path: '/quan-tri-email', minRole: 'admin' },
           { label: 'Cài đặt', icon: SettingsIcon, path: '/cai-dat', minRole: 'admin' },
@@ -201,7 +202,9 @@ interface Props {
 export function AppSidebar({ onNavigate }: Props) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut, isAdmin, isManager, isPgd, roles } = useAuth();
+  const { signOut, isAdmin, isManager, isPgd, isGuest, roles } = useAuth();
+  // Khách đối tác chỉ thấy nhóm cổng BHY one (kèm nút Đăng xuất ở cuối sidebar)
+  const visibleGroups = isGuest ? navGroups.filter((g) => g.label === 'BHY one') : navGroups;
   const reportAccess = useSubmissionReportAccess();
   const strategicAccess = useStrategicHrAccess();
   const councilAccess = useCouncilAccess();
@@ -321,7 +324,7 @@ export function AppSidebar({ onNavigate }: Props) {
       </div>
 
       <nav className="flex-1 min-h-0 px-2 py-3 space-y-0.5 overflow-y-auto overscroll-contain [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-sidebar-border [&::-webkit-scrollbar-thumb]:rounded-full">
-        {navGroups.map((group) => {
+        {visibleGroups.map((group) => {
           // Lọc quyền: thư mục chỉ hiện khi có ≥1 mục con được phép; nhóm chỉ hiện khi có ≥1 entry
           const visibleEntries = group.items
             .map((e): NavEntry | null => {

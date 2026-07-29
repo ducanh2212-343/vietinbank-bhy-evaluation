@@ -55,6 +55,8 @@ export interface UploadedItem {
   tags: string[];
   likes: number;
   isFeatured?: boolean;
+  /** Đã chia sẻ cho khách đối tác (guest) xem */
+  isShared?: boolean;
 }
 
 export interface IdeaItem {

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Filter, Search, Upload, ThumbsUp, Calendar, User, Building, Tag, Sparkles, FolderOpen, ArrowUpRight, Check, Eye, Trash2, FileDown } from 'lucide-react';
+import { Filter, Search, Upload, ThumbsUp, Calendar, User, Building, Tag, Sparkles, FolderOpen, ArrowUpRight, Check, Eye, Trash2, FileDown, Share2 } from 'lucide-react';
 import { UploadedItem, ProgramCategory, CATEGORY_NAMES, Department, DEPARTMENTS } from '@/data/one/types';
 import confetti from 'canvas-confetti';
 import { useAdminEditable } from './AdminEditableContext';
@@ -13,6 +13,8 @@ interface DataRepositoryProps {
   setSearchQuery: (q: string) => void;
   /* Nút xuất báo cáo PDF (bản gốc nằm ở Navbar đã bỏ) */
   onOpenReport?: () => void;
+  /* Admin: bật/tắt chia sẻ tư liệu cho khách đối tác */
+  onToggleShare?: (id: string, nextShared: boolean) => void;
 }
 
 export const DataRepository: React.FC<DataRepositoryProps> = ({
@@ -22,7 +24,8 @@ export const DataRepository: React.FC<DataRepositoryProps> = ({
   onDeleteItem,
   searchQuery,
   setSearchQuery,
-  onOpenReport
+  onOpenReport,
+  onToggleShare
 }) => {
   // Quyền admin lấy từ context dùng chung thay vì prop
   const { isAdmin } = useAdminEditable();
@@ -310,6 +313,20 @@ export const DataRepository: React.FC<DataRepositoryProps> = ({
 
                       {isAdmin && (
                         <div className="flex items-center gap-1.5">
+                          {onToggleShare && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleShare(item.id, !item.isShared);
+                              }}
+                              className={`p-1 rounded transition-all cursor-pointer hover:scale-110 ${
+                                item.isShared ? 'text-emerald-600' : 'text-slate-400 hover:text-emerald-600'
+                              }`}
+                              title={item.isShared ? 'Đang chia sẻ cho khách đối tác — bấm để ngừng' : 'Chia sẻ cho khách đối tác'}
+                            >
+                              <Share2 className="w-4 h-4" />
+                            </button>
+                          )}
                           {confirmDeleteId === item.id ? (
                             <div className="flex items-center gap-1 bg-red-50 px-2 py-1 rounded border border-red-200 animate-pulse">
                               <span className="text-[10px] font-black text-red-600">Xóa?</span>

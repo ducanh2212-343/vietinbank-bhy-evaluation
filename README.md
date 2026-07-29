@@ -91,8 +91,19 @@ gộp vào app này thành cổng thông tin thương hiệu sau đăng nhập:
   `whlysprzsguehxmrjwha` (29/07/2026), kèm seed 21 key nội dung + import 10 tư liệu
   thật từ Firebase (xem `scripts/import-bhy-one/README.md`; còn bước
   `upload-images.mjs` bổ sung 8 ảnh base64 cần service role key).
-- Kế hoạch Đợt 3: vai trò **guest có thời hạn** cho đối tác (chỉ xem `/one` +
-  tư liệu `is_shared_with_guests`) — chưa triển khai.
+- **Khách đối tác (guest, 07/2026):** role `guest` + bảng `guest_access`
+  (hạn theo ngày). Guest đăng nhập rơi vào `/one`, chỉ thấy nhóm sidebar BHY one,
+  ngoài allowlist `/one`, `/one/*`, `/doi-mat-khau` bị `GuestGate` đưa về `/one`
+  (`src/components/AdminRoute.tsx`). **RLS là hàng rào thật**: helper
+  `is_guest()`/`guest_active()`/`is_staff()`; toàn bộ policy `USING (true)`
+  cũ (28 bảng danh mục) đã siết về `is_staff()` — guest query PostgREST trả 0
+  dòng (đã kiểm chứng bằng mô phỏng JWT); guest chỉ đọc `site_content`,
+  `portal_images`, và `portal_uploads` có `is_shared_with_guests` (ảnh path
+  `shared/…`). Admin: trang `/quan-tri-khach` (tạo/gia hạn/thu hồi — edge
+  function `create-guest-user` **đã deploy**), nút "Chia sẻ đối tác" trên từng
+  bài Kho Dữ Liệu (tự sao chép ảnh sang `shared/…`). Migrations
+  `20260803100000` + `20260803110000` **đã áp** (29/07/2026). Hết hạn: client
+  đăng xuất + RLS chặn (không cần cron).
 
 ## Kỳ Quý II/2026 — BM02 đánh giá lại từ đầu (07/2026)
 

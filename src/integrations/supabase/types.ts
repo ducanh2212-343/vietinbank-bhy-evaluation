@@ -1680,6 +1680,42 @@ export type Database = {
           },
         ]
       }
+      guest_access: {
+        Row: {
+          created_at: string
+          created_by: string
+          display_name: string
+          email: string | null
+          expires_at: string
+          note: string | null
+          organization: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          display_name: string
+          email?: string | null
+          expires_at: string
+          note?: string | null
+          organization?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          display_name?: string
+          email?: string | null
+          expires_at?: string
+          note?: string | null
+          organization?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       kanban_card_logs: {
         Row: {
           blocker_note: string | null
@@ -4332,6 +4368,7 @@ export type Database = {
         | "tcth_admin"
         | "system_admin"
         | "bgd"
+        | "guest"
       evaluation_status:
         | "draft"
         | "in_progress"
@@ -4479,6 +4516,7 @@ export const Constants = {
         "tcth_admin",
         "system_admin",
         "bgd",
+        "guest",
       ],
       evaluation_status: [
         "draft",

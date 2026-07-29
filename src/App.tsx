@@ -8,7 +8,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { IdleLogoutGuard } from "@/components/IdleLogoutGuard";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { AdminRoute, ManagerOrAboveRoute } from "@/components/AdminRoute";
+import { AdminRoute, ManagerOrAboveRoute, GuestGate } from "@/components/AdminRoute";
 
 import Login from "./pages/Login";
 import Unsubscribe from "./pages/Unsubscribe";
@@ -98,6 +98,7 @@ const OneProgramsPage = lazyWithRetry(() => import("./pages/one/OneProgramsPage"
 const OneMovesPage = lazyWithRetry(() => import("./pages/one/OneMovesPage"));
 const OneAvatarPage = lazyWithRetry(() => import("./pages/one/OneAvatarPage"));
 const OneRepositoryPage = lazyWithRetry(() => import("./pages/one/OneRepositoryPage"));
+const GuestAccessAdminPage = lazyWithRetry(() => import("./pages/GuestAccessAdminPage"));
 const ChangePassword = lazyWithRetry(() => import("./pages/ChangePassword"));
 const ForgotPassword = lazyWithRetry(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
@@ -119,10 +120,16 @@ function ProtectedRoutes() {
 }
 
 function LoginRoute() {
-  const { user, loading } = useAuth();
+  const { user, loading, isGuest } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Đang tải...</div>;
-  if (user) return <Navigate to="/tong-quan" replace />;
+  // Guest đối tác rơi thẳng vào cổng BHY one; cán bộ về Tổng quan
+  if (user) return <Navigate to={isGuest ? "/one" : "/tong-quan"} replace />;
   return <Login />;
+}
+
+function HomeRedirect() {
+  const { isGuest } = useAuth();
+  return <Navigate to={isGuest ? "/one" : "/tong-quan"} replace />;
 }
 
 const App = () => (
@@ -141,7 +148,8 @@ const App = () => (
             <Route path="/dat-lai-mat-khau" element={<Suspense fallback={null}><ResetPassword /></Suspense>} />
             <Route path="/unsubscribe" element={<Unsubscribe />} />
             <Route element={<ProtectedRoutes />}>
-              <Route path="/" element={<Navigate to="/tong-quan" replace />} />
+              <Route element={<GuestGate />}>
+              <Route path="/" element={<HomeRedirect />} />
 
               {/* Group 1: Cá nhân / Năng lực */}
               <Route path="/tong-quan" element={<Overview />} />
@@ -230,8 +238,10 @@ const App = () => (
                 <Route path="/phan-tich-dau-moi" element={<CouncilAnalyticsPage />} />
                 <Route path="/ban-tin-quy" element={<QuarterlyNewsletterPage />} />
                 <Route path="/quan-ly-meo-tinh-nang" element={<FeatureTipsAdminPage />} />
+                <Route path="/quan-tri-khach" element={<GuestAccessAdminPage />} />
               </Route>
 
+              </Route>
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

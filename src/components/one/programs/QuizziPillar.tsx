@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, HelpCircle, Sparkles, Trophy } from 'lucide-react';
 import { EditableText } from '@/components/one/AdminEditableContext';
 import { PillarAdminUploader } from './PillarGallery';
+import { useAuth } from '@/hooks/useAuth';
 
 interface QuizziPillarProps {
   images: string[];
@@ -12,6 +13,8 @@ interface QuizziPillarProps {
 // BHY Quizzi: phần thi thử mô phỏng ở bản nguồn đã được thay bằng thẻ dẫn link
 // tới tính năng Quizzi thật của hệ thống tại route /quizzi.
 export const QuizziPillar: React.FC<QuizziPillarProps> = ({ images, onImageUpload }) => {
+  // Guest đối tác không vào được /quizzi — ẩn CTA
+  const { isGuest } = useAuth();
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-fade-in">
       <div className="lg:col-span-6 space-y-6">
@@ -101,13 +104,15 @@ export const QuizziPillar: React.FC<QuizziPillarProps> = ({ images, onImageUploa
               </div>
             </div>
 
-            <Link
-              to="/quizzi"
-              className="mt-2 w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white text-brand-red hover:bg-amber-50 font-black text-sm uppercase tracking-wide shadow-lg transition-all hover:scale-[1.02]"
-            >
-              <span>Vào thi Quizzi thật</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
+            {!isGuest && (
+              <Link
+                to="/quizzi"
+                className="mt-2 w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white text-brand-red hover:bg-amber-50 font-black text-sm uppercase tracking-wide shadow-lg transition-all hover:scale-[1.02]"
+              >
+                <span>Vào thi Quizzi thật</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            )}
           </div>
         </div>
       </div>

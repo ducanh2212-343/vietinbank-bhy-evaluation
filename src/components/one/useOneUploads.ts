@@ -24,7 +24,7 @@ export function useOneUploads() {
       const [{ data: rows, error }, { data: likeRows, error: likeErr }] = await Promise.all([
         supabase
           .from('portal_uploads')
-          .select('id, title, category, summary, content, image_path, image_paths, tags, department_name, author_name, is_featured, seed_likes, created_at')
+          .select('id, title, category, summary, content, image_path, image_paths, tags, department_name, author_name, is_featured, is_shared_with_guests, seed_likes, created_at')
           .order('created_at', { ascending: false }),
         supabase.from('portal_upload_likes').select('upload_id'),
       ]);
@@ -52,6 +52,7 @@ export function useOneUploads() {
         tags: r.tags ?? [],
         likes: (r.seed_likes ?? 0) + (likeCount.get(r.id) ?? 0),
         isFeatured: r.is_featured,
+        isShared: r.is_shared_with_guests,
       }));
     },
     staleTime: 60 * 1000,
@@ -98,6 +99,44 @@ export function useOneUploads() {
     refresh();
   }, [user, refresh]);
 
+  // Chia sẻ/ngừng chia sẻ cho khách đối tác. Khi bật chia sẻ, ảnh đang ở path
+  // staff/… được sao chép sang shared/… (guest chỉ đọc được shared/ theo RLS storage).
+  const toggleShare = useCallback(async (itemId: string, nextShared: boolean) => {
+    try {
+      const { data: row, error: rowErr } = await supabase
+        .from('portal_uploads')
+        .select('image_path, image_paths')
+        .eq('id', itemId)
+        .single();
+      if (rowErr) throw new Error(rowErr.message);
+
+      const moveToShared = async (path: string): Promise<string> => {
+        if (!nextShared || !path.startsWith('staff/')) return path;
+        const { data: blob, error: dlErr } = await supabase.storage.from('bhy-one').download(path);
+        if (dlErr || !blob) throw new Error(dlErr?.message ?? 'download failed');
+        const newPath = 'shared/' + path.split('/').pop();
+        const { error: upErr } = await supabase.storage.from('bhy-one')
+          .upload(newPath, blob, { contentType: blob.type, upsert: true });
+        if (upErr) throw new Error(upErr.message);
+        return newPath;
+      };
+
+      const newMain = row.image_path ? await moveToShared(row.image_path) : null;
+      const newExtra: string[] = [];
+      for (const p of row.image_paths ?? []) newExtra.push(await moveToShared(p));
+
+      const { error } = await supabase
+        .from('portal_uploads')
+        .update({ is_shared_with_guests: nextShared, image_path: newMain, image_paths: newExtra })
+        .eq('id', itemId);
+      if (error) throw new Error(error.message);
+      toast.success(nextShared ? 'Đã chia sẻ cho khách đối tác' : 'Đã ngừng chia sẻ');
+      refresh();
+    } catch (e) {
+      toast.error(`Không đổi được trạng thái chia sẻ: ${e instanceof Error ? e.message : e}`);
+    }
+  }, [refresh]);
+
   const deleteItem = useCallback(async (itemId: string) => {
     const { error } = await supabase.from('portal_uploads').delete().eq('id', itemId);
     if (error) {
@@ -108,5 +147,5 @@ export function useOneUploads() {
     refresh();
   }, [refresh]);
 
-  return { items, addItem, likeItem, deleteItem };
+  return { items, addItem, likeItem, deleteItem, toggleShare };
 }

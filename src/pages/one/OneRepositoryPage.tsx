@@ -6,7 +6,7 @@ import { PdfReportModal } from '@/components/one/PdfReportModal';
 import { useOneUploads } from '@/components/one/useOneUploads';
 
 export default function OneRepositoryPage() {
-  const { items, addItem, likeItem, deleteItem } = useOneUploads();
+  const { items, addItem, likeItem, deleteItem, toggleShare } = useOneUploads();
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [uploadCategory, setUploadCategory] = useState('sharing');
   const [isReportOpen, setIsReportOpen] = useState(false);
@@ -27,6 +27,7 @@ export default function OneRepositoryPage() {
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         onOpenReport={() => setIsReportOpen(true)}
+        onToggleShare={toggleShare}
       />
       <UploadModal
         isOpen={isUploadOpen}

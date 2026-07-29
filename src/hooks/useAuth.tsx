@@ -11,7 +11,7 @@ class InactiveAccountError extends Error {
   }
 }
 
-type AppRole = 'employee' | 'manager' | 'pgd' | 'tcth_admin' | 'system_admin' | 'bgd';
+type AppRole = 'employee' | 'manager' | 'pgd' | 'tcth_admin' | 'system_admin' | 'bgd' | 'guest';
 
 export type AuthScope = 'self' | 'department' | 'block' | 'all';
 
@@ -26,6 +26,10 @@ interface AuthState {
   isAdmin: boolean;
   isManager: boolean;
   isPgd: boolean;
+  /** Khách đối tác (role guest) — chỉ được xem cổng BHY one */
+  isGuest: boolean;
+  /** Hạn truy cập của guest (ISO), null với cán bộ */
+  guestExpiresAt: string | null;
   scope: AuthScope;
   /** dept ids the current user is allowed to see (empty array => no scope filter applied for admin; check `scope === 'all'` first) */
   visibleDeptIds: string[];
@@ -44,6 +48,8 @@ const AuthContext = createContext<AuthState>({
   isAdmin: false,
   isManager: false,
   isPgd: false,
+  isGuest: false,
+  guestExpiresAt: null,
   scope: 'self',
   visibleDeptIds: [],
   canManageProfile: () => false,
@@ -56,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profileId, setProfileId] = useState<string | null>(null);
   const [departmentId, setDepartmentId] = useState<string | null>(null);
   const [visibleDeptIds, setVisibleDeptIds] = useState<string[]>([]);
+  const [guestExpiresAt, setGuestExpiresAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchRolesAndProfile = async (userId: string) => {
@@ -66,6 +73,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (rolesRes.error) throw rolesRes.error;
     if (profileRes.error) throw profileRes.error;
+
+    // Khách đối tác: kiểm hạn truy cập trước (RLS là hàng rào thật, đây là lớp UX)
+    const isGuestRole = (rolesRes.data ?? []).some((r) => r.role === 'guest');
+    if (isGuestRole) {
+      const { data: ga } = await supabase
+        .from('guest_access')
+        .select('expires_at')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (!ga || new Date(ga.expires_at) <= new Date()) {
+        toast.error('Tài khoản khách đã hết hạn truy cập. Vui lòng liên hệ Chi nhánh để được gia hạn.');
+        await supabase.auth.signOut();
+        throw new InactiveAccountError();
+      }
+      setGuestExpiresAt(ga.expires_at);
+    } else {
+      setGuestExpiresAt(null);
+    }
 
     // Chặn truy cập của cán bộ đã bị chuyển "Nghỉ việc"/vô hiệu hóa (thu hồi quyền khi chấm dứt lao động).
     const status = (profileRes.data as { status?: string } | null)?.status;
@@ -197,6 +222,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAdmin = roles.some((r) => ['bgd', 'tcth_admin', 'system_admin'].includes(r));
   const isPgd = roles.includes('pgd');
   const isManager = roles.includes('manager');
+  const isGuest = roles.includes('guest');
 
   // Cờ được gắn khi admin cấp tài khoản/mật khẩu tạm; xóa sau khi đổi mật khẩu thành công.
   const mcp = user?.user_metadata?.must_change_password;
@@ -224,12 +250,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfileId(null);
     setDepartmentId(null);
     setVisibleDeptIds([]);
+    setGuestExpiresAt(null);
   };
 
   return (
     <AuthContext.Provider value={{
       user, roles, profileId, departmentId, loading, mustChangePassword,
-      isAdmin, isManager, isPgd, scope, visibleDeptIds,
+      isAdmin, isManager, isPgd, isGuest, guestExpiresAt, scope, visibleDeptIds,
       canManageProfile, signOut,
     }}>
       {children}
