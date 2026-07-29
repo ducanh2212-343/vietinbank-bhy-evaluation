@@ -88,9 +88,9 @@ gộp vào app này thành cổng thông tin thương hiệu sau đăng nhập:
   (render qua signed URL — helper `src/lib/oneStorage.ts`). Gallery trụ cột/chiêu
   thức: bảng `portal_images` (slot `pillar.*`/`move.*`), admin đổi ảnh tại chỗ.
 - Migration `20260803090000_bhy_one_content_and_uploads.sql` **đã áp** vào project
-  `whlysprzsguehxmrjwha` (29/07/2026), kèm seed 21 key nội dung + import 10 tư liệu
-  thật từ Firebase (xem `scripts/import-bhy-one/README.md`; còn bước
-  `upload-images.mjs` bổ sung 8 ảnh base64 cần service role key).
+  `whlysprzsguehxmrjwha` (29/07/2026). **Dữ liệu BHY one cũ đã chuyển xong toàn bộ**:
+  21 mục nội dung, 10 bài tư liệu, 13 ảnh trong bucket (xem
+  `scripts/import-bhy-one/README.md`).
 - **Khách đối tác (guest, 07/2026):** role `guest` + bảng `guest_access`
   (hạn theo ngày). Guest đăng nhập rơi vào `/one`, chỉ thấy nhóm sidebar BHY one,
   ngoài allowlist `/one`, `/one/*`, `/doi-mat-khau` bị `GuestGate` đưa về `/one`
