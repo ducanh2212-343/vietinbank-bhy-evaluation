@@ -140,7 +140,7 @@ export function PlanAmendmentBlock({ formId, mode, buildPayload, canDecide, onAp
             )}
             {req.status === 'rejected' && (
               <div className="text-destructive flex items-center gap-1">
-                <XCircle className="w-3.5 h-3.5" /> Bị từ chối bởi {req.decider?.full_name}{req.decision_note ? ` — ${req.decision_note}` : ''}
+                <XCircle className="w-3.5 h-3.5" /> Bị từ chối bởi {req.decider?.full_name || 'hệ thống'}{req.decision_note ? ` — ${req.decision_note}` : ''}
               </div>
             )}
           </div>

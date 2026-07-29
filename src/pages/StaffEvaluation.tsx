@@ -41,7 +41,7 @@ import {
 } from '@/lib/evaluationPersistence';
 import { OverallReviewBlock, type OverallReviewValue } from '@/components/evaluation/OverallReviewBlock';
 import { validateManagerReview } from '@/lib/evaluationValidation';
-import { mergeTransferItems, describeMergeResult } from '@/lib/planTransfer';
+import { mergeTransferItems, describeMergeResult, PLAN_LIMITS } from '@/lib/planTransfer';
 import { PlanAmendmentBlock } from '@/components/evaluation/PlanAmendmentBlock';
 import { StarClassificationBlock } from '@/components/evaluation/StarClassificationBlock';
 import { getReviewerLevel, getOverallReviewField, resolveDefaultReviewerId } from '@/lib/reviewerScope';
@@ -186,13 +186,25 @@ export default function StaffEvaluation() {
       Object.values(overallReview || {}).some(v => typeof v === 'string' && v.trim().length > 0) ||
       (remark || '').trim().length > 0 ||
       (managerConclusion || '').trim().length > 0;
-    return validateManagerReview({
+    const missing = validateManagerReview({
       coreAssessments,
       supplementaryAssessments: suppAssessments,
       attitudeAssessments,
       overallFilled,
     });
-  }, [coreAssessments, suppAssessments, attitudeAssessments, overallReview, remark, managerConclusion]);
+    // Giới hạn kế hoạch (27/07) phải gác cả ĐƯỜNG CẤP TRÊN: phiếu đã duyệt bị BGĐ
+    // chuyển trả TP bổ sung (PR #81) đi qua "Xác nhận rà soát" chứ không qua
+    // validation nộp phiếu của cán bộ — thiếu gate này là tuồn kế hoạch vượt 3/3.
+    const nSkillActs = skillActions.filter((a) => (a.action_text || '').trim()).length;
+    if (nSkillActs > PLAN_LIMITS.SKILL_ACTIONS) {
+      missing.push(`Mục D có ${nSkillActs} hành động upskill — tối đa ${PLAN_LIMITS.SKILL_ACTIONS}, hãy chọn lọc trước khi chuyển duyệt`);
+    }
+    const nAiActs = aiActions.filter((a) => (a.ai_action_text || '').trim()).length;
+    if (nAiActs > PLAN_LIMITS.AI_ACTIONS) {
+      missing.push(`Mục F có ${nAiActs} hành động AI — tối đa ${PLAN_LIMITS.AI_ACTIONS}, hãy chọn lọc trước khi chuyển duyệt`);
+    }
+    return missing;
+  }, [coreAssessments, suppAssessments, attitudeAssessments, overallReview, remark, managerConclusion, skillActions, aiActions]);
   const canConfirmReview = reviewMissing.length === 0;
 
   // Duyệt theo ngoại lệ: đối chiếu tự đánh giá vs đánh giá quản lý trên toàn bộ skill + thái độ
