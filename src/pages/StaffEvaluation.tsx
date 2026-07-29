@@ -616,7 +616,10 @@ export default function StaffEvaluation() {
     if (!formId || saving || actionLoading) return 'ok';
     if (!cycleOpen) return 'ok'; // kỳ đóng: chỉ xem — cùng luật với canSaveForm
     const canChildren = canEditManagerAssessment || canEmployeeEditSelf;
-    const canParentOverall = isManagerMode && !!reviewField;
+    // "Kết luận & định hướng" là BẢN SAU CÙNG khi phê duyệt (nguyên tắc 29/07) — sau
+    // approved/closed không autosave nữa, tránh sửa im lặng nội dung đã duyệt. Muốn
+    // sửa: BGĐ "Chuyển trả Trưởng phòng bổ sung" để phiếu quay lại luồng rồi duyệt lại.
+    const canParentOverall = isManagerMode && !!reviewField && !['approved', 'closed'].includes(formStatus);
     if (!canChildren && !canParentOverall) return 'ok';
 
     // Khóa lạc quan (select nhẹ): phiếu bị tab/người khác sửa → dừng autosave, không ghi đè
@@ -656,7 +659,8 @@ export default function StaffEvaluation() {
 
   const autosaveEnabled =
     !loading && !!formId && cycleOpen &&
-    (canEditManagerAssessment || canEmployeeEditSelf || (isManagerMode && !!reviewField));
+    (canEditManagerAssessment || canEmployeeEditSelf ||
+      (isManagerMode && !!reviewField && !['approved', 'closed'].includes(formStatus)));
   const autosave = useEvaluationAutosave({ enabled: autosaveEnabled, save: autosaveNow });
 
   // Theo dõi thay đổi form → đánh dấu dirty (bỏ qua lượt hydrate ngay sau loadData)
@@ -1472,9 +1476,12 @@ export default function StaffEvaluation() {
               : 'Giám đốc'})`}
             value={overallReview}
             onChange={setOverallReview}
+            disabled={['approved', 'closed'].includes(formStatus)}
           />
           <p className="text-[11px] text-muted-foreground px-1">
-            Nội dung mục này được tự lưu cùng phiếu — không cần nút lưu riêng.
+            {['approved', 'closed'].includes(formStatus)
+              ? 'Phiếu đã phê duyệt — kết luận là bản sau cùng, chỉ sửa được khi phiếu quay lại luồng (Chuyển trả Trưởng phòng bổ sung).'
+              : 'Nội dung mục này được tự lưu cùng phiếu — không cần nút lưu riêng.'}
           </p>
         </div>
       )}
