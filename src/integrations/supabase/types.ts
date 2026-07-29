@@ -379,6 +379,9 @@ export type Database = {
           confirmed_at: string | null
           created_at: string
           employee_id: string
+          feedback_at: string | null
+          feedback_note: string | null
+          feedback_status: string
           id: string
           impact: string | null
           impact_level: string | null
@@ -401,6 +404,9 @@ export type Database = {
           confirmed_at?: string | null
           created_at?: string
           employee_id: string
+          feedback_at?: string | null
+          feedback_note?: string | null
+          feedback_status?: string
           id?: string
           impact?: string | null
           impact_level?: string | null
@@ -423,6 +429,9 @@ export type Database = {
           confirmed_at?: string | null
           created_at?: string
           employee_id?: string
+          feedback_at?: string | null
+          feedback_note?: string | null
+          feedback_status?: string
           id?: string
           impact?: string | null
           impact_level?: string | null

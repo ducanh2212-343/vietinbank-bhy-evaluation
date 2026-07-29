@@ -155,7 +155,7 @@ export function QuickNoteFab() {
     <>
       <button
         onClick={() => setOpen(true)}
-        aria-label="Ghi nhanh hành vi (Nếp Tốt)"
+        aria-label="Ghi nhanh hành động (Nếp Tốt)"
         className="fixed z-40 bottom-5 right-4 sm:bottom-6 sm:right-6 h-[52px] w-[52px] sm:h-14 sm:w-14 rounded-full bg-primary text-primary-foreground shadow-lift flex items-center justify-center active:scale-95 transition-transform print:hidden"
       >
         <Plus className="w-6 h-6" />
@@ -164,7 +164,7 @@ export function QuickNoteFab() {
       <Drawer open={open} onOpenChange={setOpen}>
         <DrawerContent className="max-h-[92vh]">
           <DrawerHeader className="pb-2 text-left">
-            <DrawerTitle>+ Ghi nhanh hành vi</DrawerTitle>
+            <DrawerTitle>+ Ghi nhanh hành động</DrawerTitle>
             <DrawerDescription>
               Ghi lại việc vừa nhớ ra — chi tiết hoàn thiện sau trong Nhật ký. Mẩu nhớ chỉ mình bạn thấy.
             </DrawerDescription>

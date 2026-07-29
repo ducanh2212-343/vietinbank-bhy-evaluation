@@ -118,7 +118,7 @@ const navGroups: NavGroup[] = [
     accent: '#34D399',
     items: [
       // Lãnh đạo có phạm vi ghi nhận (TP/PP/PGĐ/GĐ) — RLS vẫn là lớp chặn chính
-      { label: 'Nhật ký hành vi', icon: NotebookPen, path: '/nep-tot/nhat-ky', special: 'nep-tot-journal' },
+      { label: 'Nhật ký Nếp Tốt', icon: NotebookPen, path: '/nep-tot/nhat-ky', special: 'nep-tot-journal' },
       // Cán bộ: bản ghi được chia sẻ + (Bước 3) bản phân tích đã công bố
       { label: 'Nếp Tốt của tôi', icon: Sprout, path: '/nep-tot/cua-toi' },
     ],

@@ -8,10 +8,15 @@ export type ImpactLevel = 'thap' | 'vua' | 'cao';
  *  rieng_tu: chỉ người ghi thấy — dùng khi chưa muốn cấp trên nắm. */
 export type NoteVisibility = 'quan_ly' | 'rieng_tu';
 
+// Chuẩn ngôn từ HR: mỗi bản ghi là một "HÀNH ĐỘNG" (một lần quan sát);
+// "HÀNH VI" là mẫu lặp lại — chỉ dùng làm nhãn khi hành động tái diễn
+// (is_repeated). Giá trị DB giữ nguyên 'tich_cuc'/'can_cai_thien'.
 export const BEHAVIOR_TYPE_LABELS: Record<BehaviorType, string> = {
-  tich_cuc: 'Hành vi tích cực',
-  can_cai_thien: 'Hành vi cần cải thiện',
+  tich_cuc: 'Hành động tích cực',
+  can_cai_thien: 'Hành động cần cải thiện',
 };
+
+export const REPEATED_BEHAVIOR_LABEL = 'Hành vi lặp lại';
 
 export const NOTE_STATUS_LABELS: Record<BehaviorNoteStatus, string> = {
   nhap: 'Mẩu nhớ nháp',
@@ -24,6 +29,21 @@ export const IMPACT_LEVEL_LABELS: Record<ImpactLevel, string> = {
   vua: 'Tác động vừa',
   cao: 'Tác động cao',
 };
+
+/** Phản hồi của lãnh đạo NGOÀI ĐỜI (khen trực tiếp / trao đổi góp ý) —
+ *  tách biệt với cờ chia sẻ (cho cán bộ xem bản ghi trong app). */
+export type FeedbackStatus = 'chua_phan_hoi' | 'da_khen_ngoi' | 'da_trao_doi';
+
+export const FEEDBACK_STATUS_LABELS: Record<FeedbackStatus, string> = {
+  chua_phan_hoi: 'Chưa phản hồi',
+  da_khen_ngoi: 'Đã khen ngợi',
+  da_trao_doi: 'Đã trao đổi góp ý',
+};
+
+/** Trạng thái "đã phản hồi" tương ứng với loại hành động */
+export function feedbackDoneStatusFor(type: BehaviorType): FeedbackStatus {
+  return type === 'tich_cuc' ? 'da_khen_ngoi' : 'da_trao_doi';
+}
 
 export const VISIBILITY_LABELS: Record<NoteVisibility, string> = {
   quan_ly: 'Quản lý của cán bộ xem được',

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Sprout, ThumbsUp, Wrench } from 'lucide-react';
+import { Award, Sprout, ThumbsUp, Wrench } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
 import { useAuth } from '@/hooks/useAuth';
@@ -62,6 +62,11 @@ export default function MyNepTotPage() {
             {BEHAVIOR_TYPE_LABELS[n.behavior_type as BehaviorType]}
           </Badge>
           <span className="text-xs text-muted-foreground">{fmtDate(n.occurred_at)}</span>
+          {n.feedback_status === 'da_khen_ngoi' && (
+            <Badge variant="secondary" className="text-[10px] text-emerald-700 dark:text-emerald-300">
+              <Award className="w-3 h-3 mr-0.5" />Lãnh đạo đã khen ngợi
+            </Badge>
+          )}
         </div>
         {n.situation && <p className="text-xs text-muted-foreground mb-1">Tình huống: {n.situation}</p>}
         <p className="text-sm whitespace-pre-wrap">{n.behavior || n.raw_text}</p>
@@ -105,7 +110,7 @@ export default function MyNepTotPage() {
           {positive.length > 0 && (
             <div className="space-y-2">
               <h2 className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
-                Hành vi tích cực — nên duy trì, phát huy ({positive.length})
+                Hành động tích cực — nên duy trì, phát huy ({positive.length})
               </h2>
               {positive.map(renderNote)}
             </div>
@@ -113,7 +118,7 @@ export default function MyNepTotPage() {
           {improve.length > 0 && (
             <div className="space-y-2">
               <h2 className="text-sm font-semibold text-amber-700 dark:text-amber-300">
-                Hành vi cần cải thiện — cùng trao đổi, điều chỉnh ({improve.length})
+                Hành động cần cải thiện — cùng trao đổi, điều chỉnh ({improve.length})
               </h2>
               {improve.map(renderNote)}
             </div>

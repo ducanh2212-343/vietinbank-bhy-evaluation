@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { NotebookPen, Sparkles, ThumbsUp, Wrench, RotateCcw, Archive, Share2, CheckCircle2, Lock, LockOpen } from 'lucide-react';
+import { NotebookPen, Sparkles, ThumbsUp, Wrench, RotateCcw, Archive, Share2, CheckCircle2, Lock, LockOpen, Award, MessageCircle, Repeat } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
 import { useNepTotAccess } from '@/hooks/useNepTotAccess';
@@ -8,6 +8,7 @@ import { ATTITUDE_DIMENSIONS } from '@/components/bm/AttitudeConstants';
 import {
   type BehaviorNoteStatus, type BehaviorType, type ImpactLevel,
   BEHAVIOR_TYPE_LABELS, NOTE_STATUS_LABELS, IMPACT_LEVEL_LABELS,
+  FEEDBACK_STATUS_LABELS, REPEATED_BEHAVIOR_LABEL, feedbackDoneStatusFor,
   MAX_SKILLS_PER_NOTE, MAX_ATTITUDES_PER_NOTE, parseStructuringResponse,
 } from '@/lib/nepTot';
 import { Card, CardContent } from '@/components/ui/card';
@@ -53,6 +54,7 @@ export default function BehaviorJournalPage() {
   const [attitudeFilter, setAttitudeFilter] = useState(ALL);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [feedbackFilter, setFeedbackFilter] = useState(ALL);
 
   // Dialog hoàn thiện
   const [editing, setEditing] = useState<BehaviorNote | null>(null);
@@ -98,16 +100,37 @@ export default function BehaviorJournalPage() {
 
   const draftCount = useMemo(() => notes.filter((n) => n.status === 'nhap' && n.observer_id === profileId).length, [notes, profileId]);
 
+  // Nhắc phản hồi ngay: chỉ tính bản ghi CỦA MÌNH chưa lưu trữ
+  const myActive = useMemo(
+    () => notes.filter((n) => n.observer_id === profileId && n.status !== 'luu_tru'),
+    [notes, profileId],
+  );
+  const pendingPraise = useMemo(
+    () => myActive.filter((n) => n.behavior_type === 'tich_cuc' && n.feedback_status === 'chua_phan_hoi').length,
+    [myActive],
+  );
+  const pendingDiscuss = useMemo(
+    () => myActive.filter((n) => n.behavior_type === 'can_cai_thien' && n.feedback_status === 'chua_phan_hoi').length,
+    [myActive],
+  );
+  // Bản đã xác nhận nhưng để riêng tư — nhắc cân nhắc mở cho quản lý trước kỳ đánh giá
+  const privateConfirmed = useMemo(
+    () => myActive.filter((n) => n.status === 'da_xac_nhan' && n.visibility === 'rieng_tu').length,
+    [myActive],
+  );
+
   const filtered = useMemo(() => notes.filter((n) => {
     if (n.status !== statusFilter) return false;
     if (employeeFilter !== ALL && n.employee_id !== employeeFilter) return false;
     if (typeFilter !== ALL && n.behavior_type !== typeFilter) return false;
     if (skillFilter !== ALL && !n.skill_ids.includes(skillFilter)) return false;
     if (attitudeFilter !== ALL && !n.attitude_dimension_ids.includes(Number(attitudeFilter))) return false;
+    if (feedbackFilter === 'chua_phan_hoi' && n.feedback_status !== 'chua_phan_hoi') return false;
+    if (feedbackFilter === 'da_phan_hoi' && n.feedback_status === 'chua_phan_hoi') return false;
     if (fromDate && n.occurred_at < new Date(fromDate).toISOString()) return false;
     if (toDate && n.occurred_at > new Date(`${toDate}T23:59:59`).toISOString()) return false;
     return true;
-  }), [notes, statusFilter, employeeFilter, typeFilter, skillFilter, attitudeFilter, fromDate, toDate]);
+  }), [notes, statusFilter, employeeFilter, typeFilter, skillFilter, attitudeFilter, feedbackFilter, fromDate, toDate]);
 
   const openEdit = (n: BehaviorNote) => {
     setEditing(n);
@@ -208,6 +231,26 @@ export default function BehaviorJournalPage() {
     else void load();
   };
 
+  // Một chạm: đánh dấu đã khen ngợi (tích cực) / đã trao đổi góp ý (cần cải
+  // thiện) — phản hồi ngoài đời, để lãnh đạo tác động ngay không chờ cuối kỳ
+  const toggleFeedback = async (n: BehaviorNote) => {
+    const done = feedbackDoneStatusFor(n.behavior_type as BehaviorType);
+    const next = n.feedback_status === 'chua_phan_hoi' ? done : 'chua_phan_hoi';
+    const { error } = await supabase.from('behavior_notes').update({ feedback_status: next }).eq('id', n.id);
+    if (error) {
+      toast.error(`Lỗi: ${error.message}`);
+      return;
+    }
+    if (next !== 'chua_phan_hoi') {
+      toast.success(`Đã đánh dấu "${FEEDBACK_STATUS_LABELS[done]}".`, {
+        description: n.status === 'da_xac_nhan' && !n.shared_with_employee
+          ? 'Nếu đã trao đổi trực tiếp, bạn có thể chia sẻ bản ghi cho cán bộ xem lại.'
+          : undefined,
+      });
+    }
+    void load();
+  };
+
   const toggleVisibility = async (n: BehaviorNote) => {
     const next = n.visibility === 'rieng_tu' ? 'quan_ly' : 'rieng_tu';
     const { error } = await supabase.from('behavior_notes').update({ visibility: next }).eq('id', n.id);
@@ -246,10 +289,10 @@ export default function BehaviorJournalPage() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-xl font-bold flex items-center gap-2">
-            <NotebookPen className="w-5 h-5 text-primary" /> Nhật ký hành vi
+            <NotebookPen className="w-5 h-5 text-primary" /> Nhật ký Nếp Tốt
           </h1>
           <p className="text-sm text-muted-foreground">
-            Nếp Tốt — Sổ tay hành vi BHY. Dữ liệu chỉ hỗ trợ tư vấn/coaching, không tự thay đổi điểm đánh giá.
+            Nếp Tốt — Sổ tay hành vi BHY. Ghi nhận hành động, phản hồi ngay; dữ liệu chỉ hỗ trợ tư vấn/coaching, không tự thay đổi điểm đánh giá.
           </p>
         </div>
         {draftCount > 0 && (
@@ -258,6 +301,32 @@ export default function BehaviorJournalPage() {
           </Badge>
         )}
       </div>
+
+      {/* Nhắc phản hồi ngay — tác động trong tuần, không chờ cuối kỳ */}
+      {(pendingPraise > 0 || pendingDiscuss > 0 || privateConfirmed > 0) && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="p-3 text-sm space-y-1">
+            {pendingPraise > 0 && (
+              <p className="flex items-center gap-1.5">
+                <Award className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                <span><b>{pendingPraise}</b> hành động tích cực chưa được khen ngợi — một lời khen kịp thời giá trị hơn nhiều lời khen cuối kỳ.</span>
+              </p>
+            )}
+            {pendingDiscuss > 0 && (
+              <p className="flex items-center gap-1.5">
+                <MessageCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                <span><b>{pendingDiscuss}</b> hành động cần cải thiện chưa được trao đổi góp ý với cán bộ.</span>
+              </p>
+            )}
+            {privateConfirmed > 0 && (
+              <p className="flex items-center gap-1.5 text-muted-foreground">
+                <Lock className="w-4 h-4 flex-shrink-0" />
+                <span>{privateConfirmed} bản ghi đã xác nhận đang ở chế độ riêng tư — chỉ mình bạn thấy khi vào kỳ đánh giá; cân nhắc mở cho quản lý nếu cần dùng chung.</span>
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tab trạng thái */}
       <div className="flex gap-1.5">
@@ -312,6 +381,14 @@ export default function BehaviorJournalPage() {
               {ATTITUDE_DIMENSIONS.map((a) => <SelectItem key={a.id} value={String(a.id)}>{a.id}. {a.name}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Select value={feedbackFilter} onValueChange={setFeedbackFilter}>
+            <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Phản hồi" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>Phản hồi: tất cả</SelectItem>
+              <SelectItem value="chua_phan_hoi">Chưa phản hồi</SelectItem>
+              <SelectItem value="da_phan_hoi">Đã khen ngợi / đã trao đổi</SelectItem>
+            </SelectContent>
+          </Select>
           <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="h-9 text-sm" aria-label="Từ ngày" />
           <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="h-9 text-sm" aria-label="Đến ngày" />
         </CardContent>
@@ -346,11 +423,22 @@ export default function BehaviorJournalPage() {
                       </Badge>
                       <span className="text-xs text-muted-foreground">{fmtDateTime(n.occurred_at)}</span>
                       {n.observer_id !== profileId && <Badge variant="secondary" className="text-[10px]">Người khác ghi</Badge>}
+                      {n.is_repeated && (
+                        <Badge variant="outline" className="text-[10px] border-violet-400 text-violet-700 dark:text-violet-300">
+                          <Repeat className="w-3 h-3 mr-0.5" />{REPEATED_BEHAVIOR_LABEL}
+                        </Badge>
+                      )}
                       {n.visibility === 'rieng_tu' && (
                         <Badge variant="secondary" className="text-[10px]"><Lock className="w-3 h-3 mr-0.5" />Riêng tư</Badge>
                       )}
                       {n.shared_with_employee && (
                         <Badge variant="secondary" className="text-[10px]"><Share2 className="w-3 h-3 mr-0.5" />Đã chia sẻ</Badge>
+                      )}
+                      {n.feedback_status !== 'chua_phan_hoi' && (
+                        <Badge variant="secondary" className="text-[10px] text-emerald-700 dark:text-emerald-300">
+                          {n.feedback_status === 'da_khen_ngoi' ? <Award className="w-3 h-3 mr-0.5" /> : <MessageCircle className="w-3 h-3 mr-0.5" />}
+                          {FEEDBACK_STATUS_LABELS[n.feedback_status as 'da_khen_ngoi' | 'da_trao_doi']}
+                        </Badge>
                       )}
                     </div>
                     <p className="text-sm text-foreground/90 whitespace-pre-wrap">{n.behavior || n.raw_text}</p>
@@ -370,6 +458,23 @@ export default function BehaviorJournalPage() {
 
                   {n.observer_id === profileId && (
                     <div className="flex flex-wrap gap-1.5 flex-shrink-0">
+                      {/* Phản hồi 1 chạm: khen ngợi / trao đổi góp ý — bấm lại để bỏ đánh dấu */}
+                      <Button
+                        size="sm"
+                        variant={n.feedback_status === 'chua_phan_hoi' ? 'outline' : 'secondary'}
+                        className="h-8"
+                        title={n.feedback_status === 'chua_phan_hoi'
+                          ? (n.behavior_type === 'tich_cuc' ? 'Đánh dấu đã khen ngợi cán bộ' : 'Đánh dấu đã trao đổi góp ý với cán bộ')
+                          : 'Bấm để bỏ đánh dấu phản hồi'}
+                        onClick={() => toggleFeedback(n)}
+                      >
+                        {n.behavior_type === 'tich_cuc' ? <Award className="w-3.5 h-3.5" /> : <MessageCircle className="w-3.5 h-3.5" />}
+                        <span className="ml-1 hidden sm:inline">
+                          {n.feedback_status === 'chua_phan_hoi'
+                            ? (n.behavior_type === 'tich_cuc' ? 'Đã khen?' : 'Đã trao đổi?')
+                            : FEEDBACK_STATUS_LABELS[n.feedback_status as 'da_khen_ngoi' | 'da_trao_doi']}
+                        </span>
+                      </Button>
                       <Button
                         size="sm" variant="ghost" className="h-8"
                         title={n.visibility === 'rieng_tu'
@@ -417,7 +522,7 @@ export default function BehaviorJournalPage() {
       <Dialog open={!!editing} onOpenChange={(o) => { if (!o) setEditing(null); }}>
         <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Hoàn thiện bản ghi hành vi</DialogTitle>
+            <DialogTitle>Hoàn thiện bản ghi hành động</DialogTitle>
             <DialogDescription>
               {editing ? `${nameMap[editing.employee_id] || 'Cán bộ'} · ${fmtDateTime(editing.occurred_at)}` : ''}
               {' — '}AI chỉ gợi ý; bạn kiểm tra và xác nhận trước khi bản ghi được dùng.
@@ -532,7 +637,7 @@ export default function BehaviorJournalPage() {
                   checked={edit.isRepeated === true}
                   onCheckedChange={(v) => setEdit((p) => ({ ...p, isRepeated: v }))}
                 />
-                <Label htmlFor="nt-repeated" className="text-xs">Hành vi đã lặp lại</Label>
+                <Label htmlFor="nt-repeated" className="text-xs">{REPEATED_BEHAVIOR_LABEL} (đã tái diễn)</Label>
               </div>
             </div>
 
