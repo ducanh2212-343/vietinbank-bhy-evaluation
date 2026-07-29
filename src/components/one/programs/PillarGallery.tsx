@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Upload } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useAdminEditable } from '@/components/one/AdminEditableContext';
+import { usePortalSlotImages } from '@/components/one/usePortalSlotImages';
 
 // Bộ ảnh minh họa mặc định cho từng trụ cột (giữ nguyên từ nguồn).
 const DEFAULT_PILLAR_IMAGES: Record<string, string[]> = {
@@ -19,36 +20,10 @@ const DEFAULT_PILLAR_IMAGES: Record<string, string[]> = {
   credit360: ['https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=800&q=80']
 };
 
-// Đợt 1: gallery ảnh trụ cột vẫn lưu localStorage (khóa 'bhy_pillar_images') như bản nguồn;
-// giai đoạn sau mới chuyển sang Supabase.
+// Gallery ảnh trụ cột lưu ở bảng portal_images (slot 'pillar.<id>'), admin sửa cho mọi người cùng thấy.
 export const usePillarImages = () => {
-  const [pillarImages, setPillarImages] = useState<Record<string, string[]>>(() => {
-    const saved = localStorage.getItem('bhy_pillar_images');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error('Error loading pillar images from localStorage', e);
-      }
-    }
-    return DEFAULT_PILLAR_IMAGES;
-  });
-
-  useEffect(() => {
-    localStorage.setItem('bhy_pillar_images', JSON.stringify(pillarImages));
-  }, [pillarImages]);
-
-  const handlePillarImageUpload = (pillarId: string, index: number, fileOrUrl: string) => {
-    setPillarImages(prev => {
-      const updated = { ...prev };
-      const imgs = [...(updated[pillarId] || [])];
-      imgs[index] = fileOrUrl;
-      updated[pillarId] = imgs;
-      return updated;
-    });
-  };
-
-  return { pillarImages, handlePillarImageUpload };
+  const { images: pillarImages, handleImageUpload } = usePortalSlotImages('pillar', DEFAULT_PILLAR_IMAGES);
+  return { pillarImages, handlePillarImageUpload: handleImageUpload };
 };
 
 interface PillarAdminUploaderProps {

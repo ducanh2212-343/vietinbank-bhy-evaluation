@@ -2215,6 +2215,142 @@ export type Database = {
           },
         ]
       }
+      portal_images: {
+        Row: {
+          caption: string | null
+          created_at: string
+          created_by: string
+          id: string
+          image_path: string
+          is_active: boolean
+          slot_key: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          image_path: string
+          is_active?: boolean
+          slot_key: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          image_path?: string
+          is_active?: boolean
+          slot_key?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      portal_upload_likes: {
+        Row: {
+          created_at: string
+          upload_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          upload_id: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          upload_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_upload_likes_upload_id_fkey"
+            columns: ["upload_id"]
+            isOneToOne: false
+            referencedRelation: "portal_uploads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_uploads: {
+        Row: {
+          author_name: string
+          author_profile_id: string | null
+          category: string
+          content: string | null
+          created_at: string
+          created_by: string
+          custom_values: Json | null
+          department_name: string | null
+          id: string
+          image_path: string | null
+          image_paths: string[]
+          is_featured: boolean
+          is_shared_with_guests: boolean
+          legacy_id: string | null
+          seed_likes: number
+          summary: string | null
+          tags: string[]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author_name: string
+          author_profile_id?: string | null
+          category: string
+          content?: string | null
+          created_at?: string
+          created_by?: string
+          custom_values?: Json | null
+          department_name?: string | null
+          id?: string
+          image_path?: string | null
+          image_paths?: string[]
+          is_featured?: boolean
+          is_shared_with_guests?: boolean
+          legacy_id?: string | null
+          seed_likes?: number
+          summary?: string | null
+          tags?: string[]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author_name?: string
+          author_profile_id?: string | null
+          category?: string
+          content?: string | null
+          created_at?: string
+          created_by?: string
+          custom_values?: Json | null
+          department_name?: string | null
+          id?: string
+          image_path?: string | null
+          image_paths?: string[]
+          is_featured?: boolean
+          is_shared_with_guests?: boolean
+          legacy_id?: string | null
+          seed_likes?: number
+          summary?: string | null
+          tags?: string[]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_uploads_author_profile_id_fkey"
+            columns: ["author_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -3246,6 +3382,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      site_content: {
+        Row: {
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: string
+        }
+        Relationships: []
       }
       skill_assessments: {
         Row: {

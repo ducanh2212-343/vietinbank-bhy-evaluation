@@ -1,11 +1,14 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { Pencil, Check, X } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 import { SITE_CONTENT_SEED } from '@/data/one/siteContent';
 
-// Cổng BHY one — nội dung chữ hiển thị qua EditableText.
-// Đợt 1: đọc từ SITE_CONTENT_SEED (dữ liệu thật export từ Firebase), chưa cho sửa (isAdmin luôn false).
-// Đợt 2: siteContent chuyển sang bảng site_content (Supabase), isAdmin lấy từ roles thật
-// (tcth_admin/system_admin) — giữ nguyên API của provider này để chỉ phải thay ruột.
+// Cổng BHY one — nội dung chữ hiển thị qua EditableText, lưu ở bảng site_content.
+// SITE_CONTENT_SEED (export Firebase) là fallback khi bảng chưa có key/chưa tải xong.
+// Quyền sửa: CHỈ tcth_admin/system_admin (không dùng isAdmin chung vì gồm cả bgd).
 
 interface AdminEditableContextType {
   isAdmin: boolean;
@@ -16,13 +19,35 @@ interface AdminEditableContextType {
 const AdminEditableContext = createContext<AdminEditableContextType | undefined>(undefined);
 
 export const AdminEditableProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [siteContent, setSiteContent] = useState<Record<string, string>>(SITE_CONTENT_SEED);
+  const { user, roles } = useAuth();
+  const queryClient = useQueryClient();
+  const isAdmin = roles.includes('tcth_admin') || roles.includes('system_admin');
 
-  // Đợt 1: chỉnh sửa tắt hoàn toàn; updateContent chỉ đổi state phiên (không persist).
-  const isAdmin = false;
+  const { data: dbContent } = useQuery({
+    queryKey: ['one-site-content'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('site_content').select('key, value');
+      if (error) throw error;
+      return Object.fromEntries((data ?? []).map(r => [r.key, r.value])) as Record<string, string>;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const updateContent = (key: string, value: string) => {
-    setSiteContent(prev => ({ ...prev, [key]: value }));
+  const siteContent = useMemo(
+    () => ({ ...SITE_CONTENT_SEED, ...(dbContent ?? {}) }),
+    [dbContent],
+  );
+
+  const updateContent = async (key: string, value: string) => {
+    // Optimistic: cập nhật cache ngay, rollback bằng invalidate nếu lỗi
+    queryClient.setQueryData<Record<string, string>>(['one-site-content'], prev => ({ ...(prev ?? {}), [key]: value }));
+    const { error } = await supabase
+      .from('site_content')
+      .upsert({ key, value, updated_by: user?.id ?? null, updated_at: new Date().toISOString() });
+    if (error) {
+      toast.error(`Không lưu được nội dung: ${error.message}`);
+      queryClient.invalidateQueries({ queryKey: ['one-site-content'] });
+    }
   };
 
   return (

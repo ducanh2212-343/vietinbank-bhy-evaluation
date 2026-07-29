@@ -71,6 +71,29 @@ Tài liệu thiết kế gamification mục skill: `docs/nghien-cuu-gamification
 Quy trình vận hành Kanban "Hành động phát triển" & kế hoạch hành động quý:
 `docs/nghien-cuu-quy-trinh-van-hanh-kanban-2026-07.md`.
 
+## Cổng BHY one (07/2026)
+
+Website "BHY one" (bachungyen20, trước chạy Google AI Studio + Firebase) đã được
+gộp vào app này thành cổng thông tin thương hiệu sau đăng nhập:
+
+- **Trang:** `/one` (trang chủ + cây văn hóa 20 năm), `/one/dac-trung` (6 đặc trưng
+  riêng có — Quizzi là card dẫn sang `/quizzi` thật), `/one/chieu-thuc` (Bộ 3 chiêu
+  thức + 38 skill + Sao Xứng Đáng 2026), `/one/khung-hinh`, `/one/kho-du-lieu`.
+  Nhóm sidebar "BHY one"; dải `OneStripCard` trên Tổng quan. Code: `src/pages/one/`,
+  `src/components/one/`, `src/data/one/`.
+- **Nội dung sửa inline:** bảng `site_content` — chỉ `tcth_admin`/`system_admin`
+  thấy nút sửa (EditableText), fallback `src/data/one/siteContent.ts`.
+- **Kho Dữ Liệu:** bảng `portal_uploads` + `portal_upload_likes` (mỗi người 1 like,
+  cộng dồn `seed_likes` mang từ Firebase), ảnh trong bucket **private** `bhy-one`
+  (render qua signed URL — helper `src/lib/oneStorage.ts`). Gallery trụ cột/chiêu
+  thức: bảng `portal_images` (slot `pillar.*`/`move.*`), admin đổi ảnh tại chỗ.
+- Migration `20260803090000_bhy_one_content_and_uploads.sql` **đã áp** vào project
+  `whlysprzsguehxmrjwha` (29/07/2026), kèm seed 21 key nội dung + import 10 tư liệu
+  thật từ Firebase (xem `scripts/import-bhy-one/README.md`; còn bước
+  `upload-images.mjs` bổ sung 8 ảnh base64 cần service role key).
+- Kế hoạch Đợt 3: vai trò **guest có thời hạn** cho đối tác (chỉ xem `/one` +
+  tư liệu `is_shared_with_guests`) — chưa triển khai.
+
 ## Kỳ Quý II/2026 — BM02 đánh giá lại từ đầu (07/2026)
 
 - Quý I/2026 thực hiện BM01 trên **bản Word/PDF** (không nhập app). Các kế hoạch

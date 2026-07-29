@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { usePortalSlotImages } from './usePortalSlotImages';
 import { Link } from 'react-router-dom';
 import { Target, Users, Flame, ArrowRight, Sparkles, Upload, Star } from 'lucide-react';
 import { EditableText, useAdminEditable } from './AdminEditableContext';
@@ -12,41 +13,22 @@ interface MasterMovesProps {
   onOpenUpload: (cat: string) => void;
 }
 
+// Ảnh minh họa mặc định cho từng chiêu thức (giữ nguyên từ nguồn)
+const DEFAULT_MOVE_IMAGES: Record<string, string[]> = {
+  move1: ['https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80'],
+  move2: ['https://i.ibb.co/CsStV1xg/image-11.png'],
+  move3: ['https://i.ibb.co/CsStV1xg/image-11.png'],
+  sao2026: ['https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=800&q=80']
+};
+
 export const MasterMoves: React.FC<MasterMovesProps> = ({ onOpenUpload }) => {
-  // isAdmin lấy từ context chung thay vì prop (Đợt 1: luôn false)
+  // Quyền sửa lấy từ context chung (tcth_admin/system_admin)
   const { isAdmin } = useAdminEditable();
   const [activeMove, setActiveMove] = useState<'move1' | 'move2' | 'move3' | 'sao2026'>('move1');
 
-  const [moveImages, setMoveImages] = useState<Record<string, string[]>>(() => {
-    const saved = localStorage.getItem('bhy_move_images');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error('Error loading move images from localStorage', e);
-      }
-    }
-    return {
-      move1: ['https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80'],
-      move2: ['https://i.ibb.co/CsStV1xg/image-11.png'],
-      move3: ['https://i.ibb.co/CsStV1xg/image-11.png'],
-      sao2026: ['https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=800&q=80']
-    };
-  });
-
-  useEffect(() => {
-    localStorage.setItem('bhy_move_images', JSON.stringify(moveImages));
-  }, [moveImages]);
-
-  const handleMoveImageUpload = (moveId: string, index: number, fileOrUrl: string) => {
-    setMoveImages(prev => {
-      const updated = { ...prev };
-      const imgs = [...(updated[moveId] || [])];
-      imgs[index] = fileOrUrl;
-      updated[moveId] = imgs;
-      return updated;
-    });
-  };
+  // Gallery ảnh chiêu thức lưu ở bảng portal_images (slot 'move.<id>')
+  const { images: moveImages, handleImageUpload: handleMoveImageUpload } =
+    usePortalSlotImages('move', DEFAULT_MOVE_IMAGES);
 
   const renderAdminMoveUploader = (moveId: string, index: number) => {
     if (!isAdmin) return null;
