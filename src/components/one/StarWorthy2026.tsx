@@ -1,0 +1,324 @@
+import React, { useState } from 'react';
+import { Star, QrCode, Gift, Award, Send, CheckCircle2, Sparkles, Coffee, ShoppingBag, Headphones, Briefcase, Watch, Plane, Smartphone, ChevronRight, AlertCircle } from 'lucide-react';
+import { EditableText } from './AdminEditableContext';
+import confetti from 'canvas-confetti';
+
+interface RewardTier {
+  stars: number;
+  name: string;
+  maxVal: string;
+  icon: React.ReactNode;
+  color: string;
+  isHighTier?: boolean;
+}
+
+const REWARDS_2026: RewardTier[] = [
+  { stars: 1, name: 'Voucher Cafe / Ăn uống / Tiền mặt', maxVal: '100,000 đ', icon: <Coffee className="w-5 h-5 text-amber-600" />, color: 'bg-amber-50 border-amber-200 text-amber-900' },
+  { stars: 3, name: 'Giftset VietinBank (Logo Chi nhánh)', maxVal: '300,000 đ', icon: <Gift className="w-5 h-5 text-blue-600" />, color: 'bg-blue-50 border-blue-200 text-blue-900' },
+  { stars: 6, name: 'Voucher Siêu thị / Quà tặng tiện ích', maxVal: '500,000 đ', icon: <ShoppingBag className="w-5 h-5 text-emerald-600" />, color: 'bg-emerald-50 border-emerald-200 text-emerald-900' },
+  { stars: 8, name: 'Loa / Tai nghe Bluetooth chính hãng', maxVal: '1,500,000 đ', icon: <Headphones className="w-5 h-5 text-purple-600" />, color: 'bg-purple-50 border-purple-200 text-purple-900', isHighTier: true },
+  { stars: 12, name: 'Túi xách / Giày công sở cao cấp', maxVal: '2,500,000 đ', icon: <Briefcase className="w-5 h-5 text-indigo-600" />, color: 'bg-indigo-50 border-indigo-200 text-indigo-900', isHighTier: true },
+  { stars: 15, name: 'Apple Watch Series đời mới nhất', maxVal: '12,000,000 đ', icon: <Watch className="w-5 h-5 text-rose-600" />, color: 'bg-rose-50 border-rose-200 text-rose-900', isHighTier: true },
+  { stars: 18, name: 'Voucher Du lịch (Vé máy bay + Khách sạn)', maxVal: '15,000,000 đ', icon: <Plane className="w-5 h-5 text-cyan-600" />, color: 'bg-cyan-50 border-cyan-200 text-cyan-900', isHighTier: true },
+  { stars: 20, name: 'iPhone 18 Pro Max mới nhất', maxVal: '45,000,000 đ', icon: <Smartphone className="w-5 h-5 text-amber-500" />, color: 'bg-gradient-to-br from-amber-500 via-amber-600 to-yellow-700 text-white shadow-lg border-amber-400', isHighTier: true },
+];
+
+export const StarWorthy2026: React.FC = () => {
+  const [recipient, setRecipient] = useState('Đ/c Nguyễn Văn A - Phòng KHDN');
+  const [action, setAction] = useState('Hỗ trợ thẩm định gấp tờ trình dự án ngoài giờ');
+  const [result, setResult] = useState('Kịp phê duyệt giải ngân hạn mức 15 tỷ đồng cho khách hàng');
+  const [givenStars, setGivenStars] = useState(1);
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  const handleGiveStar = (e: React.FormEvent) => {
+    e.preventDefault();
+    confetti({
+      particleCount: 80,
+      spread: 70,
+      origin: { y: 0.6 }
+    });
+    setShowSuccess(true);
+    setTimeout(() => setShowSuccess(false), 4000);
+  };
+
+  return (
+    <div className="mt-12 bg-gradient-to-b from-amber-50/50 via-white to-amber-50/30 rounded-3xl p-6 sm:p-8 border-2 border-amber-300 shadow-xl text-left animate-fade-in">
+
+      {/* Header Banner */}
+      <div className="bg-gradient-to-r from-brand-navy via-[#003870] to-slate-900 p-6 sm:p-8 rounded-3xl text-white shadow-lg relative overflow-hidden mb-8">
+        <div className="absolute -right-10 -bottom-10 opacity-10 pointer-events-none">
+          <Star className="w-64 h-64 fill-amber-400 text-amber-300" />
+        </div>
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider mb-3 shadow">
+              <Sparkles className="w-4 h-4 text-red-600" />
+              <EditableText id="sao2026.subject" defaultVal="Cải tiến VHDN Năm 2026" className="font-black text-xs uppercase" />
+            </div>
+            <h3 className="text-2xl sm:text-4xl font-black text-amber-300 uppercase tracking-tight">
+              <EditableText id="sao2026.title" defaultVal="CHƯƠNG TRÌNH: SAO XỨNG ĐÁNG 2026" className="font-black text-2xl sm:text-4xl uppercase" />
+            </h3>
+            <p className="text-xs sm:text-sm text-blue-100 mt-2 max-w-2xl leading-relaxed">
+              <EditableText
+                id="sao2026.desc"
+                defaultVal="Thi đua lập thành tích chào mừng kỷ niệm 20 năm thành lập Chi nhánh VietinBank Bắc Hưng Yên. Mỗi ngôi sao trao đi là một lời tri ân sâu sắc, tích lũy điểm KPI và quy đổi tủ quà tặng lên tới 500 triệu đồng."
+                multiline={true}
+                as="span"
+              />
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 shrink-0 text-center">
+            <div className="bg-white/10 p-3.5 rounded-2xl backdrop-blur-md border border-white/20">
+              <span className="text-2xl sm:text-3xl font-black text-amber-300 block">
+                <EditableText id="sao2026.stars_count" defaultVal="412" className="font-black text-2xl sm:text-3xl text-amber-300" />
+              </span>
+              <span className="text-[10px] text-blue-200 font-bold block mt-0.5">
+                <EditableText id="sao2026.stars_label" defaultVal="Ngôi Sao Phân Bổ" className="text-[10px] font-bold text-blue-200" />
+              </span>
+            </div>
+            <div className="bg-white/10 p-3.5 rounded-2xl backdrop-blur-md border border-white/20">
+              <span className="text-2xl sm:text-3xl font-black text-emerald-400 block">
+                <EditableText id="sao2026.kpi_points" defaultVal="+0.5" className="font-black text-2xl sm:text-3xl text-emerald-400" />
+              </span>
+              <span className="text-[10px] text-blue-200 font-bold block mt-0.5">
+                <EditableText id="sao2026.kpi_label" defaultVal="Điểm KPI / 1 Sao" className="text-[10px] font-bold text-blue-200" />
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+        {/* LEFT COLUMN: QR GHI NHẬN SIMULATOR */}
+        <div className="lg:col-span-6 space-y-6">
+          <div className="bg-white p-6 sm:p-7 rounded-3xl border border-amber-200 shadow-md relative">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-5">
+              <div className="flex items-center gap-2 text-slate-800 font-black text-sm uppercase tracking-wide">
+                <QrCode className="w-5 h-5 text-brand-navy" />
+                <span>Mô Phỏng Ghi Nhận QR (Google Form)</span>
+              </div>
+              <span className="text-[10px] font-mono font-black px-2 py-0.5 rounded bg-blue-100 text-brand-navy">
+                Mã Mã hóa QR Quy chuẩn
+              </span>
+            </div>
+
+            <form onSubmit={handleGiveStar} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Cảm ơn (Cá nhân / Tập thể):</label>
+                <input
+                  type="text"
+                  value={recipient}
+                  onChange={e => setRecipient(e.target.value)}
+                  placeholder="Họ tên cán bộ hoặc Tập thể phòng..."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-brand-navy outline-none font-semibold text-slate-800"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Vì đã (Hành vi / Hành động cụ thể):</label>
+                <input
+                  type="text"
+                  value={action}
+                  onChange={e => setAction(e.target.value)}
+                  placeholder="Hành động xuất sắc cụ thể..."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-brand-navy outline-none font-semibold text-slate-800"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Đem lại (Kết quả / Thành tích định lượng):</label>
+                <input
+                  type="text"
+                  value={result}
+                  onChange={e => setResult(e.target.value)}
+                  placeholder="Kết quả kinh doanh hoặc vận hành..."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-brand-navy outline-none font-semibold text-slate-800"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Số lượng Sao ghi nhận:</label>
+                <div className="flex gap-2">
+                  {[1, 2, 3].map((num) => (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => setGivenStars(num)}
+                      className={`flex-1 py-2 rounded-xl border font-black transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                        givenStars === num ? 'bg-amber-500 text-white border-amber-600 shadow' : 'bg-slate-50 text-slate-600 border-slate-200'
+                      }`}
+                    >
+                      <Star className={`w-3.5 h-3.5 ${givenStars === num ? 'fill-white' : 'fill-slate-400'}`} />
+                      <span>{num} Sao</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* LIVE GOLD TICKET PREVIEW */}
+              <div className="mt-6 pt-4 border-t border-dashed border-amber-300">
+                <span className="text-[10px] font-extrabold uppercase text-amber-700 block mb-2">🎫 Bản xem trước Phiếu Ghi Nhận Tay:</span>
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-50 via-yellow-50 to-amber-100 border-2 border-amber-300 text-slate-800 shadow-inner relative overflow-hidden">
+                  <div className="absolute top-2 right-2 flex">
+                    {Array.from({ length: givenStars }).map((_, i) => (
+                      <Star key={i} className="w-4 h-4 fill-amber-500 text-amber-600" />
+                    ))}
+                  </div>
+                  <p className="text-xs leading-relaxed font-serif">
+                    “<strong className="text-brand-navy font-sans font-black">CẢM ƠN </strong> <span className="font-bold underline decoration-amber-500">{recipient || '...'}</span> <br />
+                    <strong className="text-slate-900 font-sans font-bold">vì đã: </strong> <span>{action || '...'}</span> <br />
+                    <strong className="text-emerald-800 font-sans font-bold">đem lại: </strong> <span className="font-bold text-red-600">{result || '...'}</span>”
+                  </p>
+                  <div className="mt-3 flex items-center justify-between text-[10px] font-mono text-slate-500 border-t border-amber-200/80 pt-2">
+                    <span>Quyển ghi nhận Phòng TCTH</span>
+                    <span className="text-emerald-700 font-bold">+ {givenStars * 0.5} Điểm KPI</span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-brand-navy via-blue-700 to-brand-royal text-white font-black text-xs sm:text-sm shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Send className="w-4 h-4 text-amber-300" />
+                <span>Xác Nhận & Gửi Form QR Mã Hóa</span>
+              </button>
+
+              {showSuccess && (
+                <div className="p-3 rounded-xl bg-emerald-100 text-emerald-900 border border-emerald-300 flex items-center gap-2 text-xs font-bold animate-bounce">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+                  <span>Đã ghi nhận thành công! Phiếu đã lưu vào hệ thống đối soát quý.</span>
+                </div>
+              )}
+            </form>
+          </div>
+
+          {/* QUOTA BREAKDOWN TABLE (PAGE 3 PDF) */}
+          <div className="bg-white p-6 sm:p-7 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b">
+              <span className="font-black text-xs uppercase text-brand-navy">📦 Phân Bổ 412 Sao Năm 2026 Theo Đơn Vị</span>
+              <span className="text-[10px] font-mono text-slate-500">Họp quý giao trước mồng 5</span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-100 text-slate-700 font-bold border-b">
+                    <th className="p-2.5 rounded-l-xl">Quy mô nhân sự</th>
+                    <th className="p-2.5">Nhóm Phòng / Lãnh đạo</th>
+                    <th className="p-2.5 text-right rounded-r-xl">Cả năm</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium text-slate-600">
+                  <tr>
+                    <td className="p-2.5 font-bold text-slate-800">&gt;= 14 người (8 Sao/quý)</td>
+                    <td className="p-2.5">Phòng TCTH (16), Phòng KHDN (14)</td>
+                    <td className="p-2.5 text-right font-black text-brand-navy">32 Sao / phòng</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2.5 font-bold text-slate-800">10 - 13 người (6 Sao/quý)</td>
+                    <td className="p-2.5">Phòng DVKH, P. Khoái Châu, Văn Giang, Văn Lâm, Yên Mỹ</td>
+                    <td className="p-2.5 text-right font-black text-brand-navy">24 Sao / phòng</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2.5 font-bold text-slate-800">7 - 9 người (5 Sao/quý)</td>
+                    <td className="p-2.5">Phòng Bán lẻ, P. Ân Thi, P. HTTD</td>
+                    <td className="p-2.5 text-right font-black text-brand-navy">20 Sao / phòng</td>
+                  </tr>
+                  <tr className="bg-amber-50/60">
+                    <td className="p-2.5 font-black text-amber-900">Giám đốc (12 Sao/quý)</td>
+                    <td className="p-2.5 font-bold text-slate-800">Giám đốc Chi nhánh</td>
+                    <td className="p-2.5 text-right font-black text-red-600 text-sm">48 Sao</td>
+                  </tr>
+                  <tr className="bg-blue-50/50">
+                    <td className="p-2.5 font-black text-blue-900">Phó GĐ (10 Sao/quý)</td>
+                    <td className="p-2.5 font-bold text-slate-800">PGĐ N.Đ.Thái Hoàng, N.T.Thùy Linh, P. Minh Hải</td>
+                    <td className="p-2.5 text-right font-black text-brand-navy text-sm">40 Sao / PGĐ</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="text-[11px] text-slate-500 italic">
+              *Tập thể được nhận Sao có thể phân bổ lại cho các cá nhân trong phòng tham gia trực tiếp thương vụ.
+            </p>
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN: TỦ QUÀ TẶNG 500 TRIỆU SHOWCASE */}
+        <div className="lg:col-span-6 space-y-6">
+          <div className="bg-white p-6 sm:p-7 rounded-3xl border border-slate-200 shadow-md space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b">
+              <div>
+                <span className="text-xs font-black uppercase text-red-600 block">
+                  <EditableText id="sao2026.reward_tag" defaultVal="🎁 Danh Mục Thưởng Quy Định" className="text-xs font-black uppercase text-red-600 block" />
+                </span>
+                <h4 className="text-xl font-black text-brand-navy">
+                  <EditableText id="sao2026.reward_title" defaultVal="TỦ QUÀ TẶNG 500 TRIỆU ĐỒNG" className="text-xl font-black text-brand-navy" />
+                </h4>
+              </div>
+              <div className="bg-rose-100 text-rose-900 px-3 py-1 rounded-full text-[10px] font-extrabold flex items-center gap-1 self-start sm:self-auto">
+                <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+                <EditableText id="sao2026.reward_badge" defaultVal=">=8 Sao: Đóng dấu 'ĐÃ ĐỔI QUÀ'" className="text-[10px] font-extrabold text-rose-900" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {REWARDS_2026.map((rw, i) => (
+                <div
+                  key={i}
+                  className={`p-4 rounded-2xl border transition-all flex flex-col justify-between relative overflow-hidden group hover:scale-[1.02] ${rw.color}`}
+                >
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="p-2 rounded-xl bg-white/80 shadow-sm shrink-0">
+                      {rw.icon}
+                    </div>
+                    <span className="px-2.5 py-1 rounded-lg bg-black/10 font-mono font-black text-xs shrink-0 flex items-center gap-1">
+                      <Star className="w-3.5 h-3.5 fill-current" />
+                      <span>{rw.stars < 10 ? `0${rw.stars}` : rw.stars} SAO</span>
+                    </span>
+                  </div>
+
+                  <div>
+                    <h5 className="font-extrabold text-xs sm:text-sm leading-snug mb-1">{rw.name}</h5>
+                    <div className="text-[11px] opacity-80 font-semibold">Giá trị tối đa:</div>
+                    <div className="text-sm sm:text-base font-black tracking-tight">{rw.maxVal}</div>
+                  </div>
+
+                  {rw.isHighTier && (
+                    <div className="mt-3 pt-2 border-t border-black/10 text-[10px] font-bold flex items-center justify-between">
+                      <span>Mốc quy đổi cao cấp</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-gradient-to-r from-slate-900 to-brand-navy p-5 rounded-2xl text-white text-xs space-y-2">
+              <div className="flex items-center gap-2 text-amber-300 font-black uppercase">
+                <Award className="w-4 h-4" />
+                <EditableText id="sao2026.rules_title" defaultVal="Nguyên Tắc Tích Lũy & Quy Đổi" className="font-black uppercase text-amber-300" />
+              </div>
+              <div className="space-y-1.5 text-slate-200 text-[11px] leading-relaxed">
+                <EditableText
+                  id="sao2026.rules_content"
+                  defaultVal="• Với các mốc từ 1 đến 6 Sao: Cán bộ được đổi thưởng và vẫn được tích lũy giá trị Sao để lên các mốc cao hơn.&#10;• Với mốc từ 08 Sao trở lên: Khi đổi quà sẽ đóng dấu “ĐÃ ĐỔI QUÀ” và dừng tích lũy tiếp lên mốc cao.&#10;• Phòng TCTH là đầu mối mua sắm quà tặng, không cố định loại quà, linh hoạt theo sở thích cán bộ trong ngưỡng ước tính."
+                  multiline={true}
+                  as="div"
+                  className="whitespace-pre-line text-[11px] text-slate-200 leading-relaxed"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  );
+};

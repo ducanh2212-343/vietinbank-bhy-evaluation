@@ -5,7 +5,8 @@ import {
   Upload, Settings as SettingsIcon, BarChart3, Image, FileText,
   ChevronRight, UserCheck, Sparkles, GraduationCap, ClipboardList, KeyRound, ListPlus,
   CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag, GitBranch,
-  ListChecks, Building2, Gavel, TrendingUp, Zap, MonitorPlay, Lightbulb
+  ListChecks, Building2, Gavel, TrendingUp, Zap, MonitorPlay, Lightbulb,
+  Home, Camera, FolderOpen
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubmissionReportAccess } from '@/hooks/useSubmissionReportAccess';
@@ -68,6 +69,19 @@ const navGroups: NavGroup[] = [
       { label: 'Skill lõi theo vị trí', icon: Target, path: '/skill-loi-theo-vi-tri' },
       { label: 'Hồ sơ cá nhân', icon: User, path: '/ho-so-ca-nhan' },
       { label: 'Đổi mật khẩu', icon: KeyRound, path: '/doi-mat-khau' },
+    ],
+  },
+  {
+    // Cổng thông tin thương hiệu BHY one — mọi cán bộ đều xem được
+    label: 'BHY one',
+    icon: Sparkles,
+    accent: '#F87171',
+    items: [
+      { label: 'Trang chủ BHY one', icon: Home, path: '/one' },
+      { label: 'Đặc trưng Riêng có', icon: Sparkles, path: '/one/dac-trung' },
+      { label: 'Bộ 3 Chiêu thức', icon: Zap, path: '/one/chieu-thuc' },
+      { label: 'Tạo Ảnh 20 Năm', icon: Camera, path: '/one/khung-hinh' },
+      { label: 'Kho Dữ Liệu', icon: FolderOpen, path: '/one/kho-du-lieu' },
     ],
   },
   {

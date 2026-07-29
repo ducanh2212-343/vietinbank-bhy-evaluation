@@ -93,6 +93,11 @@ const CouncilEvaluationPage = lazyWithRetry(() => import("./pages/CouncilEvaluat
 const CouncilReportPage = lazyWithRetry(() => import("./pages/CouncilReportPage"));
 const CouncilAdminPage = lazyWithRetry(() => import("./pages/CouncilAdminPage"));
 const CouncilAnalyticsPage = lazyWithRetry(() => import("./pages/CouncilAnalyticsPage"));
+const OneOverviewPage = lazyWithRetry(() => import("./pages/one/OneOverviewPage"));
+const OneProgramsPage = lazyWithRetry(() => import("./pages/one/OneProgramsPage"));
+const OneMovesPage = lazyWithRetry(() => import("./pages/one/OneMovesPage"));
+const OneAvatarPage = lazyWithRetry(() => import("./pages/one/OneAvatarPage"));
+const OneRepositoryPage = lazyWithRetry(() => import("./pages/one/OneRepositoryPage"));
 const ChangePassword = lazyWithRetry(() => import("./pages/ChangePassword"));
 const ForgotPassword = lazyWithRetry(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
@@ -168,6 +173,13 @@ const App = () => (
               <Route path="/quizzi/:id/sua" element={<QuizComposerPage />} />
               <Route path="/quizzi/:id/ket-qua" element={<QuizResultsPage />} />
               <Route path="/quizzi/:id" element={<QuizPlayPage />} />
+
+              {/* Cổng BHY one — cổng thông tin thương hiệu Chi nhánh (port từ website bachungyen20) */}
+              <Route path="/one" element={<OneOverviewPage />} />
+              <Route path="/one/dac-trung" element={<OneProgramsPage />} />
+              <Route path="/one/chieu-thuc" element={<OneMovesPage />} />
+              <Route path="/one/khung-hinh" element={<OneAvatarPage />} />
+              <Route path="/one/kho-du-lieu" element={<OneRepositoryPage />} />
 
               {/* Hội đồng đánh giá đầu mối — trang tự gác quyền: thành viên HĐ chấm điểm, đầu mối/admin xem báo cáo */}
               <Route path="/danh-gia-dau-moi" element={<CouncilEvaluationPage />} />

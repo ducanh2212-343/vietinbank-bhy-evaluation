@@ -14,6 +14,7 @@ import { EvaluationPipelineCard } from '@/components/evaluation-tracking/Evaluat
 import { EnablePushBanner } from '@/components/EnablePushBanner';
 import { fetchDefaultCycle, fetchStarByEmployee } from '@/lib/starClassification';
 import { AnniversaryBanner } from '@/components/branding/AnniversaryBanner';
+import { OneStripCard } from '@/components/one/OneStripCard';
 import { SkillCollectionStrip } from '@/components/profile/SkillCollectionStrip';
 import { LevelUpReveal } from '@/components/profile/LevelUpReveal';
 import { FeatureTipSpot } from '@/components/tips/FeatureTipSpot';
@@ -73,6 +74,8 @@ function OverviewSelf({ profileId }: { profileId: string }) {
       </div>
 
       <AnniversaryBanner />
+
+      <OneStripCard />
 
       {/* Bật thông báo đẩy trên thiết bị (ẩn khi đã bật) */}
       <EnablePushBanner profileId={profileId} />
@@ -234,6 +237,8 @@ export default function Overview() {
       </div>
 
       <AnniversaryBanner />
+
+      <OneStripCard />
 
       {/* Bật thông báo đẩy trên thiết bị (ẩn khi đã bật) */}
       {profileId && <EnablePushBanner profileId={profileId} />}
