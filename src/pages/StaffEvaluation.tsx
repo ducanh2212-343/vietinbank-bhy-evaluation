@@ -121,6 +121,7 @@ export default function StaffEvaluation() {
     pgd_review_status?: string | null;
     pgd_reviewed_at?: string | null;
     returned_by?: string | null;
+    returned_by_name?: string | null;
     returned_at?: string | null;
     return_reason?: string | null;
     return_target?: string | null;
@@ -380,6 +381,11 @@ export default function StaffEvaluation() {
           const { data: rev } = await supabase.from('profiles').select('full_name').eq('id', f.reviewer_id).maybeSingle();
           reviewerName = rev?.full_name || null;
         }
+        let returnedByName: string | null = null;
+        if (f.returned_by) {
+          const { data: ret } = await supabase.from('profiles').select('full_name').eq('id', f.returned_by).maybeSingle();
+          returnedByName = ret?.full_name || null;
+        }
         setFormMeta({
           reviewer_id: f.reviewer_id ?? null,
           reviewer_name: reviewerName,
@@ -388,6 +394,7 @@ export default function StaffEvaluation() {
           pgd_review_status: f.pgd_review_status ?? null,
           pgd_reviewed_at: f.pgd_reviewed_at ?? null,
           returned_by: f.returned_by ?? null,
+          returned_by_name: returnedByName,
           returned_at: f.returned_at ?? null,
           return_reason: f.return_reason ?? null,
           return_target: f.return_target ?? null,
@@ -1104,6 +1111,57 @@ export default function StaffEvaluation() {
       return_target: 'manager',
     }, 'Đã trả lại trưởng phòng');
 
+  // BGĐ/TCTH chuyển trả phiếu ĐÃ PHÊ DUYỆT về Trưởng phòng (bổ sung Sao / sửa nội dung).
+  // Phiếu quay về 'submitted' + return_target='manager' — đúng shape PGĐ trả TP để tái dùng
+  // toàn bộ gate hiện có; pgd_review_status về 'pending' vì người trả là BGĐ (không phải PGĐ)
+  // và PGĐ phải phê duyệt LẠI. Đồng thời mở khóa bản ghi nhóm sao để TP đề xuất lại.
+  const handleReturnApprovedToManager = async (reason: string) => {
+    if (!formId || !isAdmin || formStatus !== 'approved') return; // 'closed' bị loại — kỳ đã khoá
+    if (!cycleOpen) {
+      toast({
+        title: 'Kỳ đánh giá chưa mở hoặc đã đóng',
+        description: 'Không thể chuyển trả phiếu của kỳ không mở. Mở lại kỳ trong Quản lý kỳ đánh giá nếu cần.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setActionLoading(true);
+    try {
+      const { error } = await supabase.from('form_submissions').update({
+        status: 'submitted' as any,
+        pgd_review_status: 'pending',
+        pgd_reviewed_at: null,
+        returned_by: profileId,
+        returned_at: new Date().toISOString(),
+        return_reason: reason || null,
+        return_target: 'manager',
+      }).eq('id', formId);
+      if (error) throw error;
+
+      // Nhóm sao đã duyệt khóa TP lại (StarClassificationBlock chỉ cho sửa khi
+      // !record hoặc rejected) → reset về 'rejected' như luồng PGĐ từ chối để TP đề xuất lại.
+      const { data: star } = await supabase
+        .from('staff_star_classifications')
+        .select('id, approval_status')
+        .eq('cycle_id', cycleId)
+        .eq('employee_id', id!)
+        .maybeSingle();
+      if (star && star.approval_status !== 'rejected') {
+        const { error: sErr } = await supabase
+          .from('staff_star_classifications')
+          .update({ approval_status: 'rejected', approved_at: null })
+          .eq('id', star.id);
+        if (sErr) throw sErr;
+      }
+      toast({ title: 'Đã chuyển trả phiếu cho Trưởng phòng' });
+      await loadData();
+    } catch (e: any) {
+      toast({ title: 'Lỗi chuyển trả phiếu', description: e?.message ?? String(e), variant: 'destructive' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   if (loading) return <div className="p-6 text-muted-foreground">Đang tải biểu mẫu đánh giá...</div>;
 
   return (
@@ -1129,7 +1187,13 @@ export default function StaffEvaluation() {
         <p className="page-subtitle">{profile?.full_name}</p>
         {(() => {
           if (formMeta.return_target === 'manager') {
-            return <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30">PGĐ trả lại · Trưởng phòng cần cập nhật</Badge>;
+            return (
+              <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30">
+                {formMeta.pgd_review_status === 'returned'
+                  ? 'PGĐ trả lại · Trưởng phòng cần cập nhật'
+                  : 'Trả lại · Trưởng phòng cần cập nhật'}
+              </Badge>
+            );
           }
           if (formStatus === 'returned' && formMeta.return_target === 'employee') {
             return <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30">Trả lại cán bộ chỉnh sửa</Badge>;
@@ -1195,12 +1259,19 @@ export default function StaffEvaluation() {
       {formMeta.return_target === 'manager' && isManagerMode && reviewerLevel === 'manager' && (
         <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
           <div className="font-medium text-destructive flex items-center gap-1">
-            <AlertTriangle className="w-4 h-4" /> PGĐ đã trả lại phiếu cho trưởng phòng
+            <AlertTriangle className="w-4 h-4" />
+            {formMeta.pgd_review_status === 'returned'
+              ? 'PGĐ đã trả lại phiếu cho trưởng phòng'
+              : `Ban Giám đốc/TCTH đã chuyển trả phiếu đã phê duyệt${formMeta.returned_by_name ? ` (${formMeta.returned_by_name})` : ''}`}
           </div>
           {formMeta.return_reason && (
             <div className="mt-1 text-foreground/80"><span className="text-muted-foreground">Lý do:</span> {formMeta.return_reason}</div>
           )}
-          <div className="mt-1 text-xs text-muted-foreground">Vui lòng rà soát lại và bấm "Xác nhận rà soát" để chuyển PGĐ.</div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            {formMeta.pgd_review_status === 'returned'
+              ? 'Vui lòng rà soát lại và bấm "Xác nhận rà soát" để chuyển PGĐ.'
+              : 'Vui lòng bổ sung phân nhóm Sao, cập nhật nội dung, rồi bấm "Xác nhận rà soát" để chuyển PGĐ duyệt lại.'}
+          </div>
         </div>
       )}
 
@@ -1398,6 +1469,7 @@ export default function StaffEvaluation() {
           canEvaluate={reviewerLevel === 'manager' || isSoleApprover}
           canApprove={reviewerLevel === 'pgd' || isSoleApprover}
           soleApprover={isSoleApprover}
+          reloadKey={formStatus}
         />
       )}
 
@@ -1464,6 +1536,7 @@ export default function StaffEvaluation() {
         onApprove={handleApprove}
         onReturnToManager={handleReturnToManager}
         onApproveDirect={handleReviewAndApprove}
+        onReturnApproved={handleReturnApprovedToManager}
       />
 
       {/* Sticky bottom bar */}

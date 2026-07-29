@@ -28,7 +28,7 @@ export const STATUS_LABEL: Record<DisplayStatus, string> = {
   submitted: 'Đã gửi cấp trên',
   resubmitted: 'Cán bộ đã gửi lại',
   returned_employee: 'Trả lại cán bộ chỉnh sửa',
-  returned_manager: 'PGĐ trả lại Trưởng phòng',
+  returned_manager: 'Trả lại Trưởng phòng',
   reviewed: 'Chờ PGĐ duyệt',
   approved: 'Đã duyệt',
   closed: 'Đã khoá kỳ',
@@ -56,6 +56,9 @@ export function toDisplayStatus(row: SubmissionRow | null | undefined): DisplayS
     return row.return_target === 'manager' ? 'returned_manager' : 'returned_employee';
   }
   if (s === 'submitted') {
+    // Trả về TP giữ status='submitted' + return_target='manager' (PGĐ trả TP,
+    // hoặc BGĐ/TCTH chuyển trả phiếu đã duyệt) — mọi đường thoát đều clear return_target.
+    if (row.return_target === 'manager') return 'returned_manager';
     return row.needs_manager_review_update ? 'resubmitted' : 'submitted';
   }
   // draft
