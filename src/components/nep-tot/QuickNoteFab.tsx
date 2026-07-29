@@ -33,8 +33,9 @@ export function QuickNoteFab() {
   const [staffQuery, setStaffQuery] = useState('');
   // Picker 2 bước: chọn Phòng mình quản lý → chọn cán bộ (bỏ qua nếu chỉ 1 phòng)
   const [deptFilter, setDeptFilter] = useState<string | null>(null);
-  // true = 'rieng_tu': cấp trên không xem được bản ghi này (mặc định cấp trên xem được)
-  const [isPrivate, setIsPrivate] = useState(false);
+  // Giai đoạn đầu triển khai: MẶC ĐỊNH riêng tư (chỉ người ghi thấy).
+  // Muốn các quản lý khác của cán bộ xem thì chủ động tắt riêng tư.
+  const [isPrivate, setIsPrivate] = useState(true);
   const restoredRef = useRef(false);
 
   // Khôi phục nháp khi mở sheet lần đầu
@@ -46,7 +47,7 @@ export function QuickNoteFab() {
       setEmployeeId(draft.employeeId);
       setRawText(draft.rawText);
       setBehaviorType(draft.behaviorType);
-      setIsPrivate(draft.isPrivate === true);
+      setIsPrivate(draft.isPrivate !== false); // nháp cũ thiếu trường → coi là riêng tư (mặc định mới)
       if (draft.occurredAt) setOccurredLocal(toDatetimeLocalValue(new Date(draft.occurredAt)));
       if (draft.rawText.trim()) toast.info('Đã khôi phục mẩu nhớ đang viết dở.');
     } else {
@@ -108,7 +109,7 @@ export function QuickNoteFab() {
     setOccurredLocal(toDatetimeLocalValue(new Date()));
     setStaffQuery('');
     setDeptFilter(null);
-    setIsPrivate(false);
+    setIsPrivate(true);
     clearQuickNoteDraft();
   };
 
@@ -304,20 +305,21 @@ export function QuickNoteFab() {
               />
             </div>
 
-            {/* Riêng tư: cấp trên của cán bộ không xem được bản ghi này */}
+            {/* Mặc định giai đoạn đầu: riêng tư. Mở cho quản lý xem là lựa chọn chủ động.
+                Cán bộ được ghi nhận KHÔNG thuộc nhóm xem này — chỉ thấy khi được chia sẻ đích danh. */}
             <button
               onClick={() => setIsPrivate((v) => !v)}
               className={`w-full flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-xs transition-colors ${
-                isPrivate
-                  ? 'border-slate-500 bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300'
+                !isPrivate
+                  ? 'border-sky-500 bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300'
                   : 'text-muted-foreground hover:bg-muted'
               }`}
             >
               <Lock className="w-3.5 h-3.5 flex-shrink-0" />
               <span className="flex-1">
                 {isPrivate
-                  ? 'Riêng tư — chỉ mình tôi xem; các quản lý khác của cán bộ không thấy'
-                  : 'Mặc định: các cấp quản lý của cán bộ (TP, PGĐ phụ trách, GĐ) xem được sau khi xác nhận. Bấm để chuyển riêng tư.'}
+                  ? 'Riêng tư (mặc định) — chỉ mình tôi xem. Bấm nếu muốn các quản lý của cán bộ cùng xem.'
+                  : 'Các quản lý của cán bộ (TP, PGĐ phụ trách, GĐ) sẽ xem được sau khi xác nhận. Bấm để về riêng tư.'}
               </span>
             </button>
 

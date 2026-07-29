@@ -4,6 +4,9 @@
 --   20260727090000_nep_tot_step1_behavior_notes.sql
 --   20260727091000_harden_audit_logs_insert.sql
 --
+-- LƯU Ý (sau 20260727094000): visibility mặc định là 'rieng_tu' — bản ghi mới
+-- chỉ người tạo thấy; kỳ vọng của các khối xem-theo-scope chỉ áp dụng với bản
+-- được người ghi chủ động chuyển 'quan_ly'.
 -- Cách dùng: thay các UUID mẫu bên dưới bằng user_id (auth.users.id) thật của
 -- từng vai rồi chạy TỪNG KHỐI. Mỗi khối giả lập JWT của một user bằng
 -- request.jwt.claims (cơ chế Supabase RLS dùng auth.uid()).

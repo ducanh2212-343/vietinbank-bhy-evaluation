@@ -264,6 +264,14 @@ export default function BehaviorJournalPage() {
   };
 
   const toggleShare = async (n: BehaviorNote, share: boolean) => {
+    // Chống cảm giác "bị soi": chia sẻ cho cán bộ nên chọn lọc, thiên về khen;
+    // bản "cần cải thiện" phải trao đổi trực tiếp trước, xác nhận lại khi chia sẻ
+    if (share && n.behavior_type === 'can_cai_thien') {
+      const ok = window.confirm(
+        'Bản ghi "cần cải thiện" nên được trao đổi trực tiếp trước khi chia sẻ trong hệ thống.\nBạn đã trao đổi với cán bộ và muốn chia sẻ bản ghi này?',
+      );
+      if (!ok) return;
+    }
     const { error } = await supabase.from('behavior_notes').update({ shared_with_employee: share }).eq('id', n.id);
     if (error) toast.error(`Lỗi: ${error.message}`);
     else {
@@ -321,7 +329,7 @@ export default function BehaviorJournalPage() {
             {privateConfirmed > 0 && (
               <p className="flex items-center gap-1.5 text-muted-foreground">
                 <Lock className="w-4 h-4 flex-shrink-0" />
-                <span>{privateConfirmed} bản ghi đã xác nhận đang ở chế độ riêng tư — chỉ mình bạn thấy khi vào kỳ đánh giá; cân nhắc mở cho quản lý nếu cần dùng chung.</span>
+                <span>{privateConfirmed} bản đã xác nhận đang riêng tư (mặc định) — chỉ mình bạn thấy; mở cho quản lý bằng nút khóa khi thấy cần.</span>
               </p>
             )}
           </CardContent>
