@@ -42,6 +42,10 @@ export function ReturnDialog({ open, onOpenChange, title, description, loading, 
           <p className={`text-xs ${tooShort ? 'text-destructive' : 'text-muted-foreground'}`}>
             Nêu rõ cán bộ cần chỉnh sửa/bổ sung nội dung nào. Tối thiểu {MIN_REASON_LEN} ký tự ({trimmed.length}/{MIN_REASON_LEN}).
           </p>
+          <p className="text-[11px] text-muted-foreground">
+            Ý kiến này hiển thị cho cả cán bộ và lãnh đạo phòng trên phiếu. Phần "Kết luận &amp; định hướng
+            phát triển" là bản đánh giá sau cùng khi phê duyệt — không viết yêu cầu chỉnh sửa vào đó.
+          </p>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={loading}>Huỷ</Button>
