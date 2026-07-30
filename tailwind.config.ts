@@ -71,6 +71,13 @@ export default {
           4: "hsl(var(--level-4))",
           "4-bg": "hsl(var(--level-4-bg))",
         },
+        brand: {
+          navy: "hsl(var(--brand-navy))",
+          royal: "hsl(var(--brand-royal))",
+          sky: "hsl(var(--brand-sky))",
+          red: "hsl(var(--brand-red))",
+          gold: "hsl(var(--brand-gold))",
+        },
         star: {
           mai: "hsl(var(--star-mai))",
           "mai-bg": "hsl(var(--star-mai-bg))",

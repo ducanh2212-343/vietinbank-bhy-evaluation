@@ -5,7 +5,8 @@ import {
   Upload, Settings as SettingsIcon, BarChart3, Image, FileText,
   ChevronRight, UserCheck, Sparkles, GraduationCap, ClipboardList, KeyRound, ListPlus,
   CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag, GitBranch,
-  ListChecks, Building2, Gavel, TrendingUp, Zap, MonitorPlay, Lightbulb
+  ListChecks, Building2, Gavel, TrendingUp, Zap, MonitorPlay, Lightbulb,
+  Home, FolderOpen
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubmissionReportAccess } from '@/hooks/useSubmissionReportAccess';
@@ -68,6 +69,18 @@ const navGroups: NavGroup[] = [
       { label: 'Skill lõi theo vị trí', icon: Target, path: '/skill-loi-theo-vi-tri' },
       { label: 'Hồ sơ cá nhân', icon: User, path: '/ho-so-ca-nhan' },
       { label: 'Đổi mật khẩu', icon: KeyRound, path: '/doi-mat-khau' },
+    ],
+  },
+  {
+    // Cổng thông tin thương hiệu BHY one — mọi cán bộ đều xem được
+    label: 'BHY one',
+    icon: Sparkles,
+    accent: '#F87171',
+    items: [
+      { label: 'Trang chủ BHY one', icon: Home, path: '/one' },
+      { label: 'Đặc trưng Riêng có', icon: Sparkles, path: '/one/dac-trung' },
+      { label: 'Bộ 3 Chiêu thức', icon: Zap, path: '/one/chieu-thuc' },
+      { label: 'Kho Dữ Liệu', icon: FolderOpen, path: '/one/kho-du-lieu' },
     ],
   },
   {
@@ -160,6 +173,7 @@ const navGroups: NavGroup[] = [
           { label: 'Phòng ban & Chức danh', icon: Building2, path: '/quan-ly-phong-ban', minRole: 'admin' },
           { label: 'Upload danh sách CB', icon: Upload, path: '/upload-danh-sach-cb', minRole: 'admin' },
           { label: 'Duyệt yêu cầu user', icon: UserCheck, path: '/duyet-yeu-cau-user', minRole: 'admin' },
+          { label: 'Tài khoản khách', icon: UserCheck, path: '/quan-tri-khach', minRole: 'admin' },
           { label: 'Quản trị AI & Prompt', icon: Sparkles, path: '/quan-tri-ai', minRole: 'admin' },
           { label: 'Quản trị Email', icon: Mail, path: '/quan-tri-email', minRole: 'admin' },
           { label: 'Cài đặt', icon: SettingsIcon, path: '/cai-dat', minRole: 'admin' },
@@ -187,7 +201,9 @@ interface Props {
 export function AppSidebar({ onNavigate }: Props) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut, isAdmin, isManager, isPgd, roles } = useAuth();
+  const { signOut, isAdmin, isManager, isPgd, isGuest, roles } = useAuth();
+  // Khách đối tác chỉ thấy nhóm cổng BHY one (kèm nút Đăng xuất ở cuối sidebar)
+  const visibleGroups = isGuest ? navGroups.filter((g) => g.label === 'BHY one') : navGroups;
   const reportAccess = useSubmissionReportAccess();
   const strategicAccess = useStrategicHrAccess();
   const councilAccess = useCouncilAccess();
@@ -307,7 +323,7 @@ export function AppSidebar({ onNavigate }: Props) {
       </div>
 
       <nav className="flex-1 min-h-0 px-2 py-3 space-y-0.5 overflow-y-auto overscroll-contain [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-sidebar-border [&::-webkit-scrollbar-thumb]:rounded-full">
-        {navGroups.map((group) => {
+        {visibleGroups.map((group) => {
           // Lọc quyền: thư mục chỉ hiện khi có ≥1 mục con được phép; nhóm chỉ hiện khi có ≥1 entry
           const visibleEntries = group.items
             .map((e): NavEntry | null => {

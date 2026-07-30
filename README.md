@@ -71,6 +71,40 @@ Tài liệu thiết kế gamification mục skill: `docs/nghien-cuu-gamification
 Quy trình vận hành Kanban "Hành động phát triển" & kế hoạch hành động quý:
 `docs/nghien-cuu-quy-trinh-van-hanh-kanban-2026-07.md`.
 
+## Cổng BHY one (07/2026)
+
+Website "BHY one" (bachungyen20, trước chạy Google AI Studio + Firebase) đã được
+gộp vào app này thành cổng thông tin thương hiệu sau đăng nhập:
+
+- **Trang:** `/one` (trang chủ + cây văn hóa 20 năm), `/one/dac-trung` (6 đặc trưng
+  riêng có — Quizzi là card dẫn sang `/quizzi` thật), `/one/chieu-thuc` (Bộ 3 chiêu
+  thức + 38 skill + Sao Xứng Đáng 2026), `/one/khung-hinh`, `/one/kho-du-lieu`.
+  Nhóm sidebar "BHY one"; dải `OneStripCard` trên Tổng quan. Code: `src/pages/one/`,
+  `src/components/one/`, `src/data/one/`.
+- **Nội dung sửa inline:** bảng `site_content` — chỉ `tcth_admin`/`system_admin`
+  thấy nút sửa (EditableText), fallback `src/data/one/siteContent.ts`.
+- **Kho Dữ Liệu:** bảng `portal_uploads` + `portal_upload_likes` (mỗi người 1 like,
+  cộng dồn `seed_likes` mang từ Firebase), ảnh trong bucket **private** `bhy-one`
+  (render qua signed URL — helper `src/lib/oneStorage.ts`). Gallery trụ cột/chiêu
+  thức: bảng `portal_images` (slot `pillar.*`/`move.*`), admin đổi ảnh tại chỗ.
+- Migration `20260803090000_bhy_one_content_and_uploads.sql` **đã áp** vào project
+  `whlysprzsguehxmrjwha` (29/07/2026). **Dữ liệu BHY one cũ đã chuyển xong toàn bộ**:
+  21 mục nội dung, 10 bài tư liệu, 13 ảnh trong bucket (xem
+  `scripts/import-bhy-one/README.md`).
+- **Khách đối tác (guest, 07/2026):** role `guest` + bảng `guest_access`
+  (hạn theo ngày). Guest đăng nhập rơi vào `/one`, chỉ thấy nhóm sidebar BHY one,
+  ngoài allowlist `/one`, `/one/*`, `/doi-mat-khau` bị `GuestGate` đưa về `/one`
+  (`src/components/AdminRoute.tsx`). **RLS là hàng rào thật**: helper
+  `is_guest()`/`guest_active()`/`is_staff()`; toàn bộ policy `USING (true)`
+  cũ (28 bảng danh mục) đã siết về `is_staff()` — guest query PostgREST trả 0
+  dòng (đã kiểm chứng bằng mô phỏng JWT); guest chỉ đọc `site_content`,
+  `portal_images`, và `portal_uploads` có `is_shared_with_guests` (ảnh path
+  `shared/…`). Admin: trang `/quan-tri-khach` (tạo/gia hạn/thu hồi — edge
+  function `create-guest-user` **đã deploy**), nút "Chia sẻ đối tác" trên từng
+  bài Kho Dữ Liệu (tự sao chép ảnh sang `shared/…`). Migrations
+  `20260803100000` + `20260803110000` **đã áp** (29/07/2026). Hết hạn: client
+  đăng xuất + RLS chặn (không cần cron).
+
 ## Kỳ Quý II/2026 — BM02 đánh giá lại từ đầu (07/2026)
 
 - Quý I/2026 thực hiện BM01 trên **bản Word/PDF** (không nhập app). Các kế hoạch
