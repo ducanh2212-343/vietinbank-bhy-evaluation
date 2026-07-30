@@ -65,6 +65,17 @@ function daysLeft(deadline: string): number {
 }
 
 export default function OneHomePage() {
+  // Vỏ cổng phải bọc ngoài: AdminEditableProvider nằm trong OnePageShell,
+  // nên phần thân dùng useAdminEditable buộc phải là component con.
+  return (
+    <OnePageShell>
+      <HomeContent />
+      <ContactSection />
+    </OnePageShell>
+  );
+}
+
+function HomeContent() {
   const { profileId, isGuest } = useAuth();
   const myName = useMyFullName();
   const { hash } = useLocation();
@@ -110,8 +121,7 @@ export default function OneHomePage() {
   const treeImage = siteContent['culture.tree_image']?.trim() || 'https://i.ibb.co/kV5cgsbp/c-y-k-c.jpg';
 
   return (
-    <OnePageShell>
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full space-y-10">
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full space-y-10">
 
         {/* Chào mừng */}
         <div className="text-center">
@@ -280,9 +290,6 @@ export default function OneHomePage() {
             </Link>
           ))}
         </div>
-      </section>
-
-      <ContactSection />
-    </OnePageShell>
+    </section>
   );
 }

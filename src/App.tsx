@@ -122,16 +122,16 @@ function ProtectedRoutes() {
 }
 
 function LoginRoute() {
-  const { user, loading, isGuest } = useAuth();
+  const { user, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Đang tải...</div>;
-  // Guest đối tác rơi thẳng vào cổng BHY one; cán bộ về Tổng quan
-  if (user) return <Navigate to={isGuest ? "/one" : "/tong-quan"} replace />;
+  // Cổng BHY ONE là cửa vào chung của mọi vai trò (sơ đồ site đã duyệt);
+  // phân hệ nhân sự 343 vào từ menu "Nhân sự 343" của cổng.
+  if (user) return <Navigate to="/one" replace />;
   return <Login />;
 }
 
 function HomeRedirect() {
-  const { isGuest } = useAuth();
-  return <Navigate to={isGuest ? "/one" : "/tong-quan"} replace />;
+  return <Navigate to="/one" replace />;
 }
 
 const App = () => (
