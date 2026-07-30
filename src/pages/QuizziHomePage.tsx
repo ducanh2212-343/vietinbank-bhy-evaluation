@@ -52,7 +52,8 @@ interface BranchDept {
 }
 
 export default function QuizziHomePage() {
-  const { profileId, departmentId } = useAuth();
+  const { profileId, departmentId, isManager, isPgd, isAdmin } = useAuth();
+  const isTeamManager = isManager || isPgd || isAdmin;
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [quizzes, setQuizzes] = useState<QuizRow[]>([]);
@@ -214,9 +215,18 @@ export default function QuizziHomePage() {
             Mỗi tuần một quiz cùng phòng — học từ công văn, chủ điểm và skill. {formatWeekLabel(thisWeek)}.
           </p>
         </div>
-        <Button onClick={() => navigate('/quizzi/tao-moi')}>
-          <Plus className="w-4 h-4 mr-1" /> Tạo quiz cho phòng
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Quản trị Quizzi nằm trong không gian Quizzi (một chức năng một cửa);
+              thẩm quyền vào giữ nguyên: quản lý trở lên */}
+          {isTeamManager && (
+            <Button variant="outline" onClick={() => navigate('/quan-tri-quizzi')}>
+              <MonitorPlay className="w-4 h-4 mr-1" /> Quản trị Quizzi
+            </Button>
+          )}
+          <Button onClick={() => navigate('/quizzi/tao-moi')}>
+            <Plus className="w-4 h-4 mr-1" /> Tạo quiz cho phòng
+          </Button>
+        </div>
       </div>
 
       {liveSessions

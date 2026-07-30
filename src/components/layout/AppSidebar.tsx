@@ -5,8 +5,8 @@ import {
   Upload, Settings as SettingsIcon, BarChart3, Image, FileText,
   ChevronRight, UserCheck, Sparkles, GraduationCap, ClipboardList, KeyRound, ListPlus,
   CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag, GitBranch,
-  ListChecks, Building2, Gavel, TrendingUp, Zap, MonitorPlay, Lightbulb,
-  Home, FolderOpen
+  ListChecks, Building2, Gavel, TrendingUp, Zap, Lightbulb,
+  Home, BookOpen
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubmissionReportAccess } from '@/hooks/useSubmissionReportAccess';
@@ -72,15 +72,24 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
-    // Cổng thông tin thương hiệu BHY one — mọi cán bộ đều xem được
-    label: 'BHY one',
+    // Cổng BHY ONE — 6 menu theo cấu trúc đã duyệt (docs/so-do-site-bhy-one.md)
+    label: 'BHY ONE',
     icon: Sparkles,
     accent: '#F87171',
     items: [
-      { label: 'Trang chủ BHY one', icon: Home, path: '/one' },
-      { label: 'Đặc trưng Riêng có', icon: Sparkles, path: '/one/dac-trung' },
-      { label: 'Bộ 3 Chiêu thức', icon: Zap, path: '/one/chieu-thuc' },
-      { label: 'Kho Dữ Liệu', icon: FolderOpen, path: '/one/kho-du-lieu' },
+      { label: 'Trang chủ ONE', icon: Home, path: '/one' },
+      { label: 'Nguồn cội & Bản sắc', icon: Sparkles, path: '/one/nguon-coi' },
+      { label: 'Học hỏi & Chia sẻ', icon: BookOpen, path: '/one/hoc-hoi' },
+      {
+        id: 'sang-kien-nghiep-vu',
+        folder: 'Sáng kiến & Nghiệp vụ',
+        icon: Lightbulb,
+        items: [
+          { label: 'BHY Ideas', icon: Lightbulb, path: '/one/y-tuong' },
+          { label: 'BHY Credit 360', icon: ShieldAlert, path: '/one/credit-360' },
+        ],
+      },
+      { label: 'Ghi nhận & Lan tỏa', icon: Star, path: '/one/ghi-nhan' },
     ],
   },
   {
@@ -95,8 +104,7 @@ const navGroups: NavGroup[] = [
       { label: 'Phân nhóm cán bộ', icon: Star, path: '/phan-nhom-can-bo', minRole: 'manager' },
       { label: 'Danh sách cán bộ', icon: Users, path: '/danh-sach-can-bo', minRole: 'manager' },
       { label: 'Báo cáo', icon: BarChart3, path: '/bao-cao', minRole: 'manager' },
-      // Mở/điều hành phiên Quizzi live tại cuộc họp phòng hoặc giao ban chi nhánh
-      { label: 'Quản trị Quizzi', icon: MonitorPlay, path: '/quan-tri-quizzi', minRole: 'manager' },
+      // Quản trị Quizzi đã chuyển vào không gian Quizzi (/quizzi) — một chức năng một cửa
       // Hiển thị theo phạm vi: GĐ/PGĐ (phòng phụ trách), lãnh đạo Phòng TCTH + admin (full chi nhánh)
       { label: 'Báo cáo nộp biểu mẫu', icon: Timer, path: '/bao-cao-nop-bieu-mau', special: 'submission-report' },
       // Khung dấu ấn BGĐ giao PGĐ — chỉ GĐ/PGĐ/TCTH admin thấy menu (RLS vẫn là lớp chặn chính)
@@ -110,17 +118,6 @@ const navGroups: NavGroup[] = [
           { label: 'Đánh giá đầu mối', icon: Gavel, path: '/danh-gia-dau-moi', special: 'council-member' },
           { label: 'Báo cáo đầu mối', icon: BarChart3, path: '/bao-cao-dau-moi', special: 'council-report' },
           { label: 'Phân tích đầu mối', icon: TrendingUp, path: '/phan-tich-dau-moi', minRole: 'admin', special: 'council-analytics' },
-        ],
-      },
-      {
-        id: 'quan-tri-can-bo',
-        folder: 'Quản trị cán bộ',
-        icon: Shield,
-        items: [
-          { label: 'Phân công người đánh giá', icon: GitBranch, path: '/phan-cong-danh-gia', minRole: 'admin' },
-          { label: 'Thêm cán bộ', icon: UserPlus, path: '/them-can-bo', minRole: 'admin' },
-          { label: 'Nhập nhanh theo phòng', icon: ListPlus, path: '/nhap-nhanh-can-bo', minRole: 'admin' },
-          { label: 'Phân quyền', icon: Shield, path: '/phan-quyen', minRole: 'admin' },
         ],
       },
     ],
@@ -147,6 +144,7 @@ const navGroups: NavGroup[] = [
         icon: CalendarClock,
         items: [
           { label: 'Quản lý kỳ đánh giá', icon: CalendarClock, path: '/quan-ly-ky-danh-gia', minRole: 'admin' },
+          { label: 'Phân công người đánh giá', icon: GitBranch, path: '/phan-cong-danh-gia', minRole: 'admin' },
           { label: 'Câu hỏi 1-1 theo kỳ', icon: MessagesSquare, path: '/quan-tri-cau-hoi-1-1', minRole: 'admin' },
           { label: 'Cấu hình skill lõi', icon: Target, path: '/cau-hinh-skill-loi', minRole: 'admin' },
           { label: 'Tiêu chí level skill', icon: ListChecks, path: '/quan-tri-tieu-chi-level', minRole: 'admin' },
@@ -170,15 +168,27 @@ const navGroups: NavGroup[] = [
         folder: 'Hệ thống lõi',
         icon: Building2,
         items: [
-          { label: 'Phòng ban & Chức danh', icon: Building2, path: '/quan-ly-phong-ban', minRole: 'admin' },
-          { label: 'Upload danh sách CB', icon: Upload, path: '/upload-danh-sach-cb', minRole: 'admin' },
-          { label: 'Duyệt yêu cầu user', icon: UserCheck, path: '/duyet-yeu-cau-user', minRole: 'admin' },
-          { label: 'Tài khoản khách', icon: UserCheck, path: '/quan-tri-khach', minRole: 'admin' },
           { label: 'Quản trị AI & Prompt', icon: Sparkles, path: '/quan-tri-ai', minRole: 'admin' },
           { label: 'Quản trị Email', icon: Mail, path: '/quan-tri-email', minRole: 'admin' },
           { label: 'Cài đặt', icon: SettingsIcon, path: '/cai-dat', minRole: 'admin' },
         ],
       },
+    ],
+  },
+  {
+    // Khu quản trị người dùng CHUNG cho toàn cổng (nguyên lý chieuthuc3.com:
+    // một danh sách cán bộ + một hệ phân quyền, mọi phân hệ dùng chung)
+    label: 'Quản trị người dùng',
+    icon: Shield,
+    accent: '#FB7185',
+    items: [
+      { label: 'Thêm cán bộ', icon: UserPlus, path: '/them-can-bo', minRole: 'admin' },
+      { label: 'Nhập nhanh theo phòng', icon: ListPlus, path: '/nhap-nhanh-can-bo', minRole: 'admin' },
+      { label: 'Upload danh sách CB', icon: Upload, path: '/upload-danh-sach-cb', minRole: 'admin' },
+      { label: 'Phòng ban & Chức danh', icon: Building2, path: '/quan-ly-phong-ban', minRole: 'admin' },
+      { label: 'Phân quyền', icon: Shield, path: '/phan-quyen', minRole: 'admin' },
+      { label: 'Duyệt yêu cầu user', icon: UserCheck, path: '/duyet-yeu-cau-user', minRole: 'admin' },
+      { label: 'Tài khoản khách đối tác', icon: UserCheck, path: '/quan-tri-khach', minRole: 'admin' },
     ],
   },
 ];
