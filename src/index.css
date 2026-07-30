@@ -314,6 +314,13 @@
     color: hsl(var(--sidebar-muted));
   }
   .nav-group.open > .nav-group-head .nav-group-chev { transform: rotate(90deg); color: var(--gc); }
+  /* Mục cấp 1 dẫn thẳng tới một trang, khi đang ở trang đó */
+  .nav-group.nav-link-active > .nav-group-head {
+    background: color-mix(in srgb, var(--gc) 20%, transparent);
+    color: #fff;
+    box-shadow: inset 3px 0 0 0 hsl(var(--brand-gold));
+  }
+  .nav-group.nav-link-active > .nav-group-head .nav-group-label { color: #fff; }
 
   /* Khối con của nhóm — vạch màu nhận diện bên trái */
   .nav-group-body {

@@ -6,7 +6,7 @@ import {
   ChevronRight, UserCheck, Sparkles, GraduationCap, ClipboardList, KeyRound, ListPlus,
   CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag, GitBranch,
   ListChecks, Building2, Gavel, TrendingUp, Zap, Lightbulb,
-  Home, BookOpen
+  Home, BookOpen, TreeDeciduous
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubmissionReportAccess } from '@/hooks/useSubmissionReportAccess';
@@ -25,6 +25,8 @@ interface NavLeaf {
   path: string;
   minRole?: MinRole;
   special?: Special;
+  /** Khách đối tác không thấy mục này (mặc định: không thấy) */
+  guestVisible?: boolean;
 }
 
 // Thư mục con — gom các trang cùng chủ đề trong một nhóm lớn, thu gọn được độc lập
@@ -41,7 +43,11 @@ interface NavGroup {
   label: string;
   icon: any;
   accent: string; // màu nhận diện nhóm (hợp trên nền navy, cả sáng/tối)
-  items: NavEntry[];
+  /** Mục cấp 1 dẫn thẳng tới một trang (không bung nhóm con) */
+  path?: string;
+  items?: NavEntry[];
+  /** Khách đối tác được thấy mục cấp 1 này */
+  guestVisible?: boolean;
 }
 
 function isFolder(e: NavEntry): e is NavFolder {
@@ -55,89 +61,110 @@ function isFolder(e: NavEntry): e is NavFolder {
 // - /ung-dung-ai: dữ liệu demo hard-code
 // - /bieu-mau-01|02|03: kênh nhập trùng với Tự đánh giá, dễ phá trạng thái phiếu duyệt
 const navGroups: NavGroup[] = [
+  // ---- Cấp 1: 5 khu của cổng BHY ONE (docs/so-do-site-bhy-one.md) ----
   {
-    label: 'Cá nhân / Năng lực',
-    icon: User,
-    accent: '#4AA3F0',
-    items: [
-      { label: 'Tổng quan', icon: LayoutDashboard, path: '/tong-quan' },
-      { label: 'Tự đánh giá', icon: FileText, path: '/tu-danh-gia' },
-      { label: 'Hành động phát triển', icon: ClipboardList, path: '/hanh-dong-phat-trien' },
-      { label: 'Chiến dịch học tập', icon: Flag, path: '/chien-dich-hoc-tap' },
-      { label: 'BHY Quizzi', icon: Zap, path: '/quizzi' },
-      { label: 'Mẹo hay', icon: Lightbulb, path: '/meo-hay' },
-      { label: 'Skill lõi theo vị trí', icon: Target, path: '/skill-loi-theo-vi-tri' },
-      { label: 'Hồ sơ cá nhân', icon: User, path: '/ho-so-ca-nhan' },
-      { label: 'Đổi mật khẩu', icon: KeyRound, path: '/doi-mat-khau' },
-    ],
-  },
-  {
-    // Cổng BHY ONE — 6 menu theo cấu trúc đã duyệt (docs/so-do-site-bhy-one.md)
-    label: 'BHY ONE',
-    icon: Sparkles,
+    label: 'Trang chủ ONE',
+    icon: Home,
     accent: '#F87171',
+    path: '/one',
+    guestVisible: true,
+  },
+  {
+    label: 'Nguồn cội & Bản sắc',
+    icon: TreeDeciduous,
+    accent: '#34D399',
+    path: '/one/nguon-coi',
+    guestVisible: true,
+  },
+  {
+    label: 'Học hỏi & Chia sẻ',
+    icon: BookOpen,
+    accent: '#4AA3F0',
+    guestVisible: true,
     items: [
-      { label: 'Trang chủ ONE', icon: Home, path: '/one' },
-      { label: 'Nguồn cội & Bản sắc', icon: Sparkles, path: '/one/nguon-coi' },
-      { label: 'Học hỏi & Chia sẻ', icon: BookOpen, path: '/one/hoc-hoi' },
-      {
-        id: 'sang-kien-nghiep-vu',
-        folder: 'Sáng kiến & Nghiệp vụ',
-        icon: Lightbulb,
-        items: [
-          { label: 'BHY Ideas', icon: Lightbulb, path: '/one/y-tuong' },
-          { label: 'BHY Credit 360', icon: ShieldAlert, path: '/one/credit-360' },
-        ],
-      },
-      { label: 'Ghi nhận & Lan tỏa', icon: Star, path: '/one/ghi-nhan' },
+      // Sharing + Kho tri thức là MỘT không gian 2 tab (chung một kho dữ liệu)
+      { label: 'Sharing & Kho tri thức', icon: BookOpen, path: '/one/hoc-hoi', guestVisible: true },
+      // Quizzi có nhà duy nhất tại /quizzi (kể cả khu quản trị bên trong)
+      { label: 'BHY Quizzi', icon: Zap, path: '/quizzi' },
     ],
   },
   {
-    label: 'Quản trị đội ngũ',
+    label: 'Sáng kiến & Nghiệp vụ',
+    icon: Lightbulb,
+    accent: '#FB923C',
+    items: [
+      { label: 'BHY Ideas', icon: Lightbulb, path: '/one/y-tuong' },
+      { label: 'BHY Credit 360', icon: ShieldAlert, path: '/one/credit-360' },
+    ],
+  },
+  {
+    label: 'Ghi nhận & Lan tỏa',
+    icon: Star,
+    accent: '#FBBF24',
+    path: '/one/ghi-nhan',
+  },
+
+  // ---- Cấp 1: phân hệ chuyên sâu 343, menu nhiều tầng và phân quyền riêng ----
+  {
+    label: 'Phát triển nhân sự 343',
     icon: UsersRound,
     accent: '#2DD4BF',
     items: [
-      { label: 'Đội ngũ phòng ban', icon: UsersRound, path: '/doi-ngu-phong-ban', minRole: 'manager' },
-      { label: 'Đánh giá cán bộ', icon: ClipboardList, path: '/danh-gia-can-bo', minRole: 'manager' },
-      // Màn điều hành Kanban kế hoạch hành động quý: TP (phòng), PGĐ (khối), TCTH/BGĐ (toàn CN)
-      { label: 'Quản lý hành động Kanban', icon: ListChecks, path: '/quan-ly-hanh-dong', minRole: 'manager' },
-      { label: 'Phân nhóm cán bộ', icon: Star, path: '/phan-nhom-can-bo', minRole: 'manager' },
-      { label: 'Danh sách cán bộ', icon: Users, path: '/danh-sach-can-bo', minRole: 'manager' },
-      { label: 'Báo cáo', icon: BarChart3, path: '/bao-cao', minRole: 'manager' },
-      // Quản trị Quizzi đã chuyển vào không gian Quizzi (/quizzi) — một chức năng một cửa
-      // Hiển thị theo phạm vi: GĐ/PGĐ (phòng phụ trách), lãnh đạo Phòng TCTH + admin (full chi nhánh)
-      { label: 'Báo cáo nộp biểu mẫu', icon: Timer, path: '/bao-cao-nop-bieu-mau', special: 'submission-report' },
-      // Khung dấu ấn BGĐ giao PGĐ — chỉ GĐ/PGĐ/TCTH admin thấy menu (RLS vẫn là lớp chặn chính)
-      { label: 'Dấu ấn BHY Mark', icon: Star, path: '/dau-an', special: 'leadership-marks' },
       {
-        id: 'hoi-dong-dau-moi',
-        folder: 'Hội đồng đầu mối',
-        icon: Gavel,
+        id: 'ca-nhan-343',
+        folder: 'Cá nhân',
+        icon: User,
         items: [
+          { label: 'Tổng quan', icon: LayoutDashboard, path: '/tong-quan' },
+          { label: 'Tự đánh giá', icon: FileText, path: '/tu-danh-gia' },
+          { label: 'Hành động phát triển', icon: ClipboardList, path: '/hanh-dong-phat-trien' },
+          { label: 'Hồ sơ cá nhân', icon: User, path: '/ho-so-ca-nhan' },
+          { label: 'Đổi mật khẩu', icon: KeyRound, path: '/doi-mat-khau' },
+        ],
+      },
+      {
+        id: 'hoc-tap-343',
+        folder: 'Học tập',
+        icon: GraduationCap,
+        items: [
+          { label: 'Chiến dịch học tập', icon: Flag, path: '/chien-dich-hoc-tap' },
+          { label: 'Mẹo hay', icon: Lightbulb, path: '/meo-hay' },
+          { label: 'Skill lõi theo vị trí', icon: Target, path: '/skill-loi-theo-vi-tri' },
+        ],
+      },
+      {
+        id: 'quan-tri-doi-ngu',
+        folder: 'Quản trị đội ngũ',
+        icon: UsersRound,
+        items: [
+          { label: 'Đội ngũ phòng ban', icon: UsersRound, path: '/doi-ngu-phong-ban', minRole: 'manager' },
+          { label: 'Đánh giá cán bộ', icon: ClipboardList, path: '/danh-gia-can-bo', minRole: 'manager' },
+          // Màn điều hành Kanban kế hoạch hành động quý: TP (phòng), PGĐ (khối), TCTH/BGĐ (toàn CN)
+          { label: 'Quản lý hành động Kanban', icon: ListChecks, path: '/quan-ly-hanh-dong', minRole: 'manager' },
+          { label: 'Phân nhóm cán bộ', icon: Star, path: '/phan-nhom-can-bo', minRole: 'manager' },
+          { label: 'Danh sách cán bộ', icon: Users, path: '/danh-sach-can-bo', minRole: 'manager' },
+          { label: 'Báo cáo', icon: BarChart3, path: '/bao-cao', minRole: 'manager' },
+          // Hiển thị theo phạm vi: GĐ/PGĐ (phòng phụ trách), lãnh đạo Phòng TCTH + admin (full chi nhánh)
+          { label: 'Báo cáo nộp biểu mẫu', icon: Timer, path: '/bao-cao-nop-bieu-mau', special: 'submission-report' },
+          // Khung dấu ấn BGĐ giao PGĐ — công cụ của Ban Giám đốc, khác Sao Xứng Đáng (khen thưởng chung)
+          { label: 'Dấu ấn BHY Mark', icon: Star, path: '/dau-an', special: 'leadership-marks' },
           // Hội đồng đánh giá đầu mối: thành viên HĐ chấm điểm; đầu mối + admin xem báo cáo
           { label: 'Đánh giá đầu mối', icon: Gavel, path: '/danh-gia-dau-moi', special: 'council-member' },
           { label: 'Báo cáo đầu mối', icon: BarChart3, path: '/bao-cao-dau-moi', special: 'council-report' },
           { label: 'Phân tích đầu mối', icon: TrendingUp, path: '/phan-tich-dau-moi', minRole: 'admin', special: 'council-analytics' },
         ],
       },
-    ],
-  },
-  {
-    // Nhóm dành cho Phòng Tổ chức Tổng hợp + Ban Giám đốc (dữ liệu toàn chi nhánh)
-    label: 'Chiến lược nhân sự',
-    icon: Route,
-    accent: '#A78BFA',
-    items: [
-      { label: 'Bản đồ rủi ro năng lực', icon: ShieldAlert, path: '/ban-do-rui-ro-nang-luc', special: 'strategic-hr' },
-      { label: 'Con đường sự nghiệp', icon: Route, path: '/con-duong-su-nghiep', special: 'strategic-hr' },
-      { label: 'Mô phỏng điều chuyển', icon: ArrowLeftRight, path: '/mo-phong-dieu-chuyen', special: 'strategic-hr' },
-    ],
-  },
-  {
-    label: 'Cấu hình / Hệ thống',
-    icon: SettingsIcon,
-    accent: '#FBBF24',
-    items: [
+      {
+        // Dành cho Phòng Tổ chức Tổng hợp + Ban Giám đốc (dữ liệu toàn chi nhánh)
+        id: 'chien-luoc-nhan-su',
+        folder: 'Chiến lược nhân sự',
+        icon: Route,
+        items: [
+          { label: 'Bản đồ rủi ro năng lực', icon: ShieldAlert, path: '/ban-do-rui-ro-nang-luc', special: 'strategic-hr' },
+          { label: 'Con đường sự nghiệp', icon: Route, path: '/con-duong-su-nghiep', special: 'strategic-hr' },
+          { label: 'Mô phỏng điều chuyển', icon: ArrowLeftRight, path: '/mo-phong-dieu-chuyen', special: 'strategic-hr' },
+        ],
+      },
       {
         id: 'cau-hinh-danh-gia',
         folder: 'Cấu hình đánh giá',
@@ -154,20 +181,13 @@ const navGroups: NavGroup[] = [
         ],
       },
       {
-        id: 'hoi-dong-noi-dung',
-        folder: 'Hội đồng & Nội dung',
-        icon: Gavel,
+        id: 'noi-dung-he-thong',
+        folder: 'Nội dung & Hệ thống',
+        icon: Building2,
         items: [
           { label: 'Quản trị Hội đồng đầu mối', icon: Gavel, path: '/quan-tri-hoi-dong-dau-moi', minRole: 'admin' },
           { label: 'Bản tin quý', icon: Newspaper, path: '/ban-tin-quy', minRole: 'admin' },
           { label: 'Mẹo tính năng', icon: Lightbulb, path: '/quan-ly-meo-tinh-nang', minRole: 'admin' },
-        ],
-      },
-      {
-        id: 'he-thong-loi',
-        folder: 'Hệ thống lõi',
-        icon: Building2,
-        items: [
           { label: 'Quản trị AI & Prompt', icon: Sparkles, path: '/quan-tri-ai', minRole: 'admin' },
           { label: 'Quản trị Email', icon: Mail, path: '/quan-tri-email', minRole: 'admin' },
           { label: 'Cài đặt', icon: SettingsIcon, path: '/cai-dat', minRole: 'admin' },
@@ -175,9 +195,10 @@ const navGroups: NavGroup[] = [
       },
     ],
   },
+
+  // ---- Cấp 1: quản trị người dùng CHUNG toàn cổng (nguyên lý chieuthuc3.com:
+  // một danh sách cán bộ + một hệ phân quyền, mọi phân hệ dùng chung) ----
   {
-    // Khu quản trị người dùng CHUNG cho toàn cổng (nguyên lý chieuthuc3.com:
-    // một danh sách cán bộ + một hệ phân quyền, mọi phân hệ dùng chung)
     label: 'Quản trị người dùng',
     icon: Shield,
     accent: '#FB7185',
@@ -212,8 +233,8 @@ export function AppSidebar({ onNavigate }: Props) {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, isAdmin, isManager, isPgd, isGuest, roles } = useAuth();
-  // Khách đối tác chỉ thấy nhóm cổng BHY one (kèm nút Đăng xuất ở cuối sidebar)
-  const visibleGroups = isGuest ? navGroups.filter((g) => g.label === 'BHY one') : navGroups;
+  // Khách đối tác chỉ thấy các khu được mở của cổng (kèm nút Đăng xuất ở cuối sidebar)
+  const visibleGroups = isGuest ? navGroups.filter((g) => g.guestVisible) : navGroups;
   const reportAccess = useSubmissionReportAccess();
   const strategicAccess = useStrategicHrAccess();
   const councilAccess = useCouncilAccess();
@@ -228,6 +249,8 @@ export function AppSidebar({ onNavigate }: Props) {
     location.pathname === path || location.pathname.startsWith(path + '/');
 
   const canSeeLeaf = (item: NavLeaf) => {
+    // Khách đối tác chỉ thấy mục được mở tường minh (fail-closed)
+    if (isGuest) return !!item.guestVisible;
     // Special (theo phạm vi/hội đồng) được ưu tiên xét trước minRole
     if (item.special === 'submission-report') return reportAccess.allowed;
     if (item.special === 'strategic-hr') return strategicAccess.allowed;
@@ -243,7 +266,7 @@ export function AppSidebar({ onNavigate }: Props) {
   // Nhóm nào chứa trang đang xem (tìm cả trong thư mục con)
   const groupOfPath = (): string | null => {
     for (const g of navGroups) {
-      for (const e of g.items) {
+      for (const e of g.items ?? []) {
         const leaves = isFolder(e) ? e.items : [e];
         if (leaves.some((l) => isActive(l.path))) return g.label;
       }
@@ -252,19 +275,19 @@ export function AppSidebar({ onNavigate }: Props) {
   };
   const folderOfPath = (): string | null => {
     for (const g of navGroups) {
-      for (const e of g.items) {
+      for (const e of g.items ?? []) {
         if (isFolder(e) && e.items.some((l) => isActive(l.path))) return e.id;
       }
     }
     return null;
   };
 
-  // Accordion cấp nhóm: mở đúng một nhóm (ưu tiên nhóm chứa trang hiện tại)
+  // Accordion cấp nhóm: mở đúng một nhóm (ưu tiên nhóm chứa trang hiện tại).
+  // Mặc định không bung nhóm nào để 5 khu của cổng ONE hiện ngay trong tầm mắt.
   const [openGroup, setOpenGroup] = useState<string>(() => {
     const active = groupOfPath();
     if (active) return active;
-    const saved = localStorage.getItem(GROUP_KEY);
-    return saved || navGroups[0].label;
+    return localStorage.getItem(GROUP_KEY) || '';
   });
   const [openFolders, setOpenFolders] = useState<Record<string, boolean>>(loadFolders);
 
@@ -318,7 +341,7 @@ export function AppSidebar({ onNavigate }: Props) {
           <img src={vtbLogo} alt="VietinBank Bắc Hưng Yên" className="w-full h-full object-contain" />
         </div>
         <div className="overflow-hidden min-w-0">
-          <div className="text-sm font-bold text-sidebar-primary tracking-wide truncate">343 Phát triển nhân sự</div>
+          <div className="text-sm font-bold text-sidebar-primary tracking-wide truncate">BHY ONE</div>
           <div className="text-[10px] text-sidebar-muted truncate">VietinBank Bắc Hưng Yên</div>
         </div>
       </div>
@@ -334,8 +357,29 @@ export function AppSidebar({ onNavigate }: Props) {
 
       <nav className="flex-1 min-h-0 px-2 py-3 space-y-0.5 overflow-y-auto overscroll-contain [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-sidebar-border [&::-webkit-scrollbar-thumb]:rounded-full">
         {visibleGroups.map((group) => {
+          const style = { ['--gc' as any]: group.accent } as React.CSSProperties;
+
+          // Mục cấp 1 dẫn thẳng tới một trang (Trang chủ ONE, Nguồn cội, Ghi nhận…)
+          if (group.path) {
+            const active = isActive(group.path);
+            return (
+              <div key={group.label} className={`nav-group ${active ? 'nav-link-active' : ''}`} style={style}>
+                <button
+                  onClick={() => handleNav(group.path!)}
+                  aria-current={active ? 'page' : undefined}
+                  className="nav-group-head w-full"
+                >
+                  <span className="nav-group-icon">
+                    <group.icon className="w-4 h-4" />
+                  </span>
+                  <span className="nav-group-label flex-1 text-left truncate">{group.label}</span>
+                </button>
+              </div>
+            );
+          }
+
           // Lọc quyền: thư mục chỉ hiện khi có ≥1 mục con được phép; nhóm chỉ hiện khi có ≥1 entry
-          const visibleEntries = group.items
+          const visibleEntries = (group.items ?? [])
             .map((e): NavEntry | null => {
               if (isFolder(e)) {
                 const items = e.items.filter(canSeeLeaf);
@@ -347,7 +391,6 @@ export function AppSidebar({ onNavigate }: Props) {
           if (visibleEntries.length === 0) return null;
 
           const open = openGroup === group.label;
-          const style = { ['--gc' as any]: group.accent } as React.CSSProperties;
 
           return (
             <div key={group.label} className={`nav-group ${open ? 'open' : ''}`} style={style}>
