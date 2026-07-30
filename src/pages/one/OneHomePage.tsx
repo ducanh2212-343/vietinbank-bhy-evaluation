@@ -1,28 +1,21 @@
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import {
-  Sparkles, Zap, Star, ArrowRight, ClipboardList, Loader2,
-  AlertTriangle, Upload, Lightbulb, ShieldAlert, TreeDeciduous, BookOpen,
+  Sparkles, Zap, Star, ArrowRight,
+  Upload, Lightbulb, ShieldAlert, TreeDeciduous, BookOpen,
 } from 'lucide-react';
 import { OnePageShell } from '@/components/one/OnePageShell';
+import { PersonalKanbanMini } from '@/components/kanban/PersonalKanbanMini';
 import { useAuth } from '@/hooks/useAuth';
 import { useMyFullName } from '@/components/one/useMyFullName';
 import { useStarRecords } from '@/components/one/star/useStarRecords';
 import { useAdminEditable } from '@/components/one/AdminEditableContext';
-import { supabase } from '@/integrations/supabase/client';
 
 // Trang chủ BHY ONE — «ONE của tôi» (việc của tôi trước, thương hiệu sau):
-// 3 khối giai đoạn 1 (Tôi cần làm / Tôi đang làm / Tôi được ghi nhận),
-// 5 thao tác nhanh, teaser bản sắc dẫn sang Nguồn cội, và mục Liên hệ.
+// Kanban cá nhân dùng CHUNG thành phần với trang Tổng quan của phân hệ 343
+// (PersonalKanbanMini) để giao diện và quy tắc cảnh báo — quá hạn, chưa cập
+// nhật trong tuần — hoàn toàn thống nhất; kèm khối «Tôi được ghi nhận»,
+// 5 thao tác nhanh và teaser bản sắc.
 // Khối «Tôi cần biết» thuộc giai đoạn 2 (chờ hệ thông báo).
-
-interface HomeKanbanCard {
-  id: string;
-  title: string;
-  deadline: string | null;
-  kanban_status: 'todo' | 'doing' | 'done';
-  progress_percent: number;
-}
 
 const QUICK_ACTIONS = [
   { to: '/one/hoc-hoi?action=chia-se', icon: Upload, label: 'Chia sẻ kinh nghiệm', color: 'from-blue-500 to-brand-royal' },
@@ -56,12 +49,6 @@ const TEASER_CARDS = [
   },
 ];
 
-/** Hạn còn lại tính theo ngày (âm = quá hạn) */
-function daysLeft(deadline: string): number {
-  const d = new Date(deadline + (deadline.length === 10 ? 'T23:59:59' : ''));
-  return Math.ceil((d.getTime() - Date.now()) / 86_400_000);
-}
-
 export default function OneHomePage() {
   // Vỏ cổng phải bọc ngoài: AdminEditableProvider nằm trong OnePageShell,
   // nên phần thân dùng useAdminEditable buộc phải là component con.
@@ -76,30 +63,6 @@ function HomeContent() {
   const { profileId, isGuest } = useAuth();
   const myName = useMyFullName();
   const { siteContent } = useAdminEditable();
-
-  // Kanban cá nhân (hệ 343) — bản rút gọn cho khối Cần làm / Đang làm
-  const { data: cards = [], isLoading: kanbanLoading } = useQuery({
-    queryKey: ['one-home-kanban', profileId],
-    enabled: !!profileId && !isGuest,
-    staleTime: 60 * 1000,
-    queryFn: async (): Promise<HomeKanbanCard[]> => {
-      const { data, error } = await supabase
-        .from('kanban_cards')
-        .select('id, title, deadline, kanban_status, progress_percent')
-        .eq('profile_id', profileId!)
-        .eq('is_active', true)
-        .neq('kanban_status', 'done');
-      if (error) throw error;
-      return (data ?? []) as HomeKanbanCard[];
-    },
-  });
-
-  // Cần làm: có hạn và (quá hạn hoặc còn <= 7 ngày), gấp nhất lên đầu
-  const needAction = cards
-    .filter(c => c.deadline && daysLeft(c.deadline) <= 7)
-    .sort((a, b) => daysLeft(a.deadline!) - daysLeft(b.deadline!))
-    .slice(0, 5);
-  const doing = cards.filter(c => c.kanban_status === 'doing').slice(0, 5);
 
   // Sao của tôi: phiếu ghi đúng họ tên (chương trình ghi nhận theo tên cán bộ)
   const { records } = useStarRecords();
@@ -129,68 +92,12 @@ function HomeContent() {
           </p>
         </div>
 
-        {/* ONE CỦA TÔI — chỉ cán bộ */}
-        {!isGuest && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {/* Tôi cần làm */}
-            <div className="bg-white rounded-2xl border border-red-200 shadow-sm p-5 flex flex-col">
-              <div className="flex items-center gap-2 font-black text-sm text-red-700 uppercase pb-3 border-b border-slate-100">
-                <AlertTriangle className="w-4 h-4" />
-                Tôi cần làm
-                {needAction.length > 0 && (
-                  <span className="ml-auto w-6 h-6 rounded-full bg-red-600 text-white text-xs flex items-center justify-center">
-                    {needAction.length}
-                  </span>
-                )}
-              </div>
-              <div className="flex-1 py-3 space-y-2.5 text-xs">
-                {kanbanLoading && <Loader2 className="w-4 h-4 animate-spin text-slate-400 mx-auto mt-4" />}
-                {!kanbanLoading && needAction.length === 0 && (
-                  <p className="text-slate-400 text-center pt-4">Không có việc đến hạn trong 7 ngày tới 🎉</p>
-                )}
-                {needAction.map(c => {
-                  const dl = daysLeft(c.deadline!);
-                  return (
-                    <div key={c.id} className="flex items-start gap-2">
-                      <span className={`mt-0.5 shrink-0 px-1.5 py-0.5 rounded font-black text-[10px] ${dl < 0 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
-                        {dl < 0 ? `Quá hạn ${-dl} ngày` : dl === 0 ? 'Hôm nay' : `Còn ${dl} ngày`}
-                      </span>
-                      <span className="text-slate-700 font-semibold leading-snug line-clamp-2">{c.title || '(chưa đặt tên)'}</span>
-                    </div>
-                  );
-                })}
-              </div>
-              <Link to="/hanh-dong-phat-trien" className="text-xs font-black text-brand-navy hover:underline inline-flex items-center gap-1">
-                Mở Kanban của tôi <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-
-            {/* Tôi đang làm */}
-            <div className="bg-white rounded-2xl border border-blue-200 shadow-sm p-5 flex flex-col">
-              <div className="flex items-center gap-2 font-black text-sm text-brand-navy uppercase pb-3 border-b border-slate-100">
-                <ClipboardList className="w-4 h-4" />
-                Tôi đang làm
-              </div>
-              <div className="flex-1 py-3 space-y-3 text-xs">
-                {kanbanLoading && <Loader2 className="w-4 h-4 animate-spin text-slate-400 mx-auto mt-4" />}
-                {!kanbanLoading && doing.length === 0 && (
-                  <p className="text-slate-400 text-center pt-4">Chưa có thẻ nào ở cột Đang làm.</p>
-                )}
-                {doing.map(c => (
-                  <div key={c.id}>
-                    <div className="text-slate-700 font-semibold leading-snug line-clamp-1">{c.title || '(chưa đặt tên)'}</div>
-                    <div className="mt-1 flex items-center gap-2">
-                      <div className="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                        <div className="h-full bg-gradient-to-r from-brand-royal to-brand-sky" style={{ width: `${c.progress_percent}%` }} />
-                      </div>
-                      <span className="text-[10px] font-black text-slate-500">{c.progress_percent}%</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <Link to="/hanh-dong-phat-trien" className="text-xs font-black text-brand-navy hover:underline inline-flex items-center gap-1">
-                Cập nhật tiến độ <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+        {/* ONE CỦA TÔI — Kanban dùng chung thành phần với trang Tổng quan 343
+            (giao diện, kéo thả, cảnh báo quá hạn / chưa cập nhật tuần này) */}
+        {!isGuest && profileId && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+            <div className="lg:col-span-2">
+              <PersonalKanbanMini profileId={profileId} />
             </div>
 
             {/* Tôi được ghi nhận */}

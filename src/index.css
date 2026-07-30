@@ -314,6 +314,31 @@
     color: hsl(var(--sidebar-muted));
   }
   .nav-group.open > .nav-group-head .nav-group-chev { transform: rotate(90deg); color: var(--gc); }
+
+  /* Cổng BHY ONE luôn là "đảo sáng": ép bộ token về hệ sáng để các thành phần
+     dùng chung (Card, Button, Dialog, Tabs…) hiển thị đúng ngay cả khi ứng dụng
+     đang ở chế độ tối. Giá trị đồng bộ với :root. */
+  .one-light {
+    --background: 217 100% 97%;
+    --foreground: 215 59% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 59% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 59% 15%;
+    --primary: 212 100% 36%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 214 60% 94%;
+    --secondary-foreground: 215 100% 27%;
+    --muted: 216 48% 95%;
+    --muted-foreground: 215 22% 42%;
+    --accent: 207 79% 93%;
+    --accent-foreground: 212 100% 30%;
+    --destructive: 355 100% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 45% 88%;
+    --input: 214 45% 86%;
+    --ring: 212 100% 36%;
+  }
   /* Mục cấp 1 dẫn thẳng tới một trang, khi đang ở trang đó */
   .nav-group.nav-link-active > .nav-group-head {
     background: color-mix(in srgb, var(--gc) 20%, transparent);

@@ -23,7 +23,9 @@ export const OnePageShell: React.FC<{ children: React.ReactNode }> = ({ children
   return (
     <AdminEditableProvider>
       {/* Bù đúng padding p-3 sm:p-6 của AppLayout để cổng chiếm trọn khung nhìn */}
-      <div className="relative min-h-full -m-3 sm:-m-6 flex flex-col bg-[#F4F7FA] font-sans text-slate-800 selection:bg-brand-royal selection:text-white">
+      {/* one-light: ép token về hệ sáng để thành phần dùng chung (Card, Dialog…)
+          hiển thị đúng khi ứng dụng đang ở chế độ tối */}
+      <div className="one-light relative min-h-full -m-3 sm:-m-6 flex flex-col bg-[#F4F7FA] font-sans text-slate-800 selection:bg-brand-royal selection:text-white">
         <BackgroundDecor />
         <GuestBanner />
         <OneSectionNav />

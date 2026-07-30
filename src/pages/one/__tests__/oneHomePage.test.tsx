@@ -57,10 +57,10 @@ describe('Trang chủ BHY ONE', () => {
     mockAuth.isGuest = false;
   });
 
-  it('dựng được không lỗi và hiện 3 khối "ONE của tôi"', () => {
+  it('dựng được không lỗi và hiện khối "ONE của tôi"', () => {
     renderHome();
-    expect(screen.getByText('Tôi cần làm')).toBeInTheDocument();
-    expect(screen.getByText('Tôi đang làm')).toBeInTheDocument();
+    // Kanban dùng CHUNG thành phần với trang Tổng quan của phân hệ 343
+    expect(screen.getByText('Kanban phát triển cá nhân')).toBeInTheDocument();
     expect(screen.getByText('Tôi được ghi nhận')).toBeInTheDocument();
   });
 
@@ -80,7 +80,8 @@ describe('Trang chủ BHY ONE', () => {
   it('khách đối tác KHÔNG thấy khối việc cá nhân và thao tác nhanh', () => {
     mockAuth.isGuest = true;
     renderHome();
-    expect(screen.queryByText('Tôi cần làm')).not.toBeInTheDocument();
+    expect(screen.queryByText('Kanban phát triển cá nhân')).not.toBeInTheDocument();
+    expect(screen.queryByText('Tôi được ghi nhận')).not.toBeInTheDocument();
     expect(screen.queryByText('Gửi BHY Ideas')).not.toBeInTheDocument();
     // vẫn thấy phần bản sắc (xuất hiện ở cả thanh điều hướng và thẻ teaser)
     expect(screen.getAllByText('Nguồn cội & Bản sắc').length).toBeGreaterThan(0);
