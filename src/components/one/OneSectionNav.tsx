@@ -1,13 +1,12 @@
 import React from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { Home, Sparkles, Zap, Camera, FolderOpen, Phone } from 'lucide-react';
+import { Home, Sparkles, Zap, FolderOpen, Phone } from 'lucide-react';
 
 // Thanh điều hướng nội bộ của cổng BHY one — thay cho Navbar cuộn trang của bản gốc.
 const SECTIONS = [
   { to: '/one', label: 'Trang chủ', icon: Home, end: true },
   { to: '/one/dac-trung', label: 'Đặc trưng Riêng có', icon: Sparkles },
   { to: '/one/chieu-thuc', label: 'Bộ 3 Chiêu thức', icon: Zap },
-  { to: '/one/khung-hinh', label: 'Tạo Ảnh 20 Năm', icon: Camera },
   { to: '/one/kho-du-lieu', label: 'Kho Dữ Liệu', icon: FolderOpen },
 ];
 

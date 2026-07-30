@@ -5,13 +5,11 @@ import { EditableText } from './AdminEditableContext';
 interface HeroProps {
   onExplorePrograms: () => void;
   onExploreMoves: () => void;
-  onOpenAvatar: () => void;
 }
 
 export const Hero: React.FC<HeroProps> = ({
   onExplorePrograms,
-  onExploreMoves,
-  onOpenAvatar
+  onExploreMoves
 }) => {
   return (
     <div className="relative overflow-hidden bg-gradient-to-b from-blue-50 via-white to-slate-50 pt-12 pb-16 lg:pt-20 lg:pb-24 border-b border-slate-200">
@@ -67,13 +65,6 @@ export const Hero: React.FC<HeroProps> = ({
               <EditableText id="hero.cta2" defaultVal="Bộ 3 Chiêu Thức 2026" className="font-bold" />
             </button>
 
-            <button
-              onClick={onOpenAvatar}
-              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-red-600 hover:from-amber-600 hover:to-red-700 text-white font-bold text-sm sm:text-base shadow-md hover:-translate-y-0.5 transition-all"
-            >
-              <Award className="w-5 h-5" />
-              <EditableText id="hero.cta3" defaultVal="Tạo Avatar 20 Năm" className="font-bold" />
-            </button>
           </div>
 
           {/* Vòng lặp PDCA */}

@@ -36,7 +36,7 @@ flowchart TD
     TQ --- A["KHU A — Phát triển nhân sự 343<br/>5 nhóm menu, ~75 trang"]
     TQ -.->|"thẻ dẫn hướng<br/>OneStripCard"| ONE
 
-    ONE --- B["KHU B — Cổng thương hiệu BHY one<br/>5 trang"]
+    ONE --- B["KHU B — Cổng thương hiệu BHY one<br/>4 trang"]
 
     A --> A1["Cá nhân / Năng lực"]
     A --> A2["Quản trị đội ngũ"]
@@ -47,8 +47,7 @@ flowchart TD
     B --> B1["Trang chủ: Hero + Cây văn hóa + Liên hệ"]
     B --> B2["Đặc trưng Riêng có: 6 trụ cột"]
     B --> B3["Bộ 3 Chiêu thức + Sao Xứng Đáng"]
-    B --> B4["Tạo Ảnh 20 Năm"]
-    B --> B5["Kho Dữ Liệu"]
+    B --> B4["Kho Dữ Liệu"]
 ```
 
 ---
@@ -108,7 +107,7 @@ Tổng **80 route**, 75 trang, chạy tải chậm (lazy) theo từng trang.
 ## 5. KHU B — Cổng thương hiệu BHY one
 
 Địa chỉ gốc `/one`. Có thanh điều hướng riêng (Trang chủ · Đặc trưng Riêng có ·
-Bộ 3 Chiêu thức · Tạo Ảnh 20 Năm · Kho Dữ Liệu · **Liên hệ**) và giao diện
+Bộ 3 Chiêu thức · Kho Dữ Liệu · **Liên hệ**) và giao diện
 "đảo sáng" tách khỏi tông màu của ứng dụng nhân sự.
 
 ### 5.1 `/one` — Trang chủ cổng
@@ -116,7 +115,7 @@ Bộ 3 Chiêu thức · Tạo Ảnh 20 Năm · Kho Dữ Liệu · **Liên hệ**
 - **Hero** — thông điệp 20 năm thành lập chi nhánh.
 - **Cây văn hóa** — 5 trụ cột (gốc, thân, cành, lá, quả) bấm xem chi tiết; ảnh
   cây đổi được qua khóa nội dung `culture.tree_image`.
-- **Thẻ dẫn hướng** sang 4 khu còn lại.
+- **Thẻ dẫn hướng** sang 3 khu còn lại.
 - **Liên hệ & đăng ký hợp tác** — biểu mẫu liên hệ (mục tiêu cuộn của nav).
 
 ### 5.2 `/one/dac-trung` — 6 đặc trưng riêng có
@@ -154,11 +153,7 @@ kiếm/lọc phòng; cán bộ sửa phiên của mình, admin xóa và xuất C
   - Admin nhập Excel/CSV có **màn xem trước kèm cảnh báo từng dòng** trước khi
     ghi, tải file mẫu, xuất Excel 3 sheet.
 
-### 5.4 `/one/khung-hinh` — Tạo Ảnh 20 Năm
-
-Công cụ ghép khung ảnh đại diện kỷ niệm 20 năm, tải ảnh lên và xuất về máy.
-
-### 5.5 `/one/kho-du-lieu` — Kho Dữ Liệu
+### 5.4 `/one/kho-du-lieu` — Kho Dữ Liệu
 
 Thư viện tư liệu nội bộ: lọc theo chuyên mục/phòng/thẻ, tìm kiếm, thích, xem
 chi tiết. Đăng bài **nhiều ảnh** (tự nén 800px), 3 trường bổ sung (chi tiết áp

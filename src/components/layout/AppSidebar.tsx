@@ -6,7 +6,7 @@ import {
   ChevronRight, UserCheck, Sparkles, GraduationCap, ClipboardList, KeyRound, ListPlus,
   CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag, GitBranch,
   ListChecks, Building2, Gavel, TrendingUp, Zap, MonitorPlay, Lightbulb,
-  Home, Camera, FolderOpen
+  Home, FolderOpen
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubmissionReportAccess } from '@/hooks/useSubmissionReportAccess';
@@ -80,7 +80,6 @@ const navGroups: NavGroup[] = [
       { label: 'Trang chủ BHY one', icon: Home, path: '/one' },
       { label: 'Đặc trưng Riêng có', icon: Sparkles, path: '/one/dac-trung' },
       { label: 'Bộ 3 Chiêu thức', icon: Zap, path: '/one/chieu-thuc' },
-      { label: 'Tạo Ảnh 20 Năm', icon: Camera, path: '/one/khung-hinh' },
       { label: 'Kho Dữ Liệu', icon: FolderOpen, path: '/one/kho-du-lieu' },
     ],
   },

@@ -1,12 +1,11 @@
 import { Link } from 'react-router-dom';
-import { Sparkles, Zap, Camera, FolderOpen, ArrowRight, TreeDeciduous } from 'lucide-react';
+import { Sparkles, Zap, FolderOpen, ArrowRight, TreeDeciduous } from 'lucide-react';
 
 // Dải thương hiệu BHY one trên trang Tổng quan — phần "hòa" cổng thông tin vào dashboard.
 const CHIPS = [
   { to: '/one', icon: TreeDeciduous, label: 'Cây văn hóa' },
   { to: '/one/dac-trung', icon: Sparkles, label: '6 Đặc trưng' },
   { to: '/one/chieu-thuc', icon: Zap, label: 'Bộ 3 Chiêu thức' },
-  { to: '/one/khung-hinh', icon: Camera, label: 'Ảnh 20 Năm' },
   { to: '/one/kho-du-lieu', icon: FolderOpen, label: 'Kho Dữ Liệu' },
 ];
 

@@ -1,13 +1,8 @@
 import React, { useState } from 'react';
-import { Sprout, TreeDeciduous, Leaf, Users, Sparkles, Share2, ArrowRight, Heart, Award, Shield } from 'lucide-react';
+import { Sprout, TreeDeciduous, Leaf, Users, Sparkles, Share2, Heart, Award, Shield } from 'lucide-react';
 import { EditableText, useAdminEditable } from '@/components/one/AdminEditableContext';
 
-interface CultureTreeProps {
-  // Điều hướng tới khu vực thay ảnh đại diện (do trang cha quyết định cách mở)
-  onOpenAvatar: () => void;
-}
-
-export const CultureTree: React.FC<CultureTreeProps> = ({ onOpenAvatar }) => {
+export const CultureTree: React.FC = () => {
   const [activePillar, setActivePillar] = useState<string>('roots');
   // Ảnh cây văn hóa lấy từ key nội dung `culture.tree_image` (admin đổi được), fallback ảnh gốc
   const { siteContent } = useAdminEditable();
@@ -280,15 +275,6 @@ export const CultureTree: React.FC<CultureTreeProps> = ({ onOpenAvatar }) => {
                 </div>
               </div>
 
-              {/* Nút CTA: điều hướng tới khu vực thay ảnh đại diện (thay cho liên kết #avatar) */}
-              <button
-                type="button"
-                onClick={onOpenAvatar}
-                className="mt-4 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-brand-red hover:bg-red-700 text-white font-black text-xs uppercase tracking-wider shadow-lg transition-all hover:scale-[1.02]"
-              >
-                <span>Thay ảnh đại diện ngay</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
             </div>
 
           </div>

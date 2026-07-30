@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { Sparkles, Zap, Camera, FolderOpen, ArrowRight } from 'lucide-react';
+import { Sparkles, Zap, FolderOpen, ArrowRight } from 'lucide-react';
 import { OnePageShell } from '@/components/one/OnePageShell';
 import { Hero } from '@/components/one/Hero';
 import { CultureTree } from '@/components/one/CultureTree';
@@ -21,13 +21,6 @@ const SECTION_CARDS = [
     title: 'Bộ 3 Chiêu thức & Sao Xứng Đáng',
     desc: 'Năng lượng ngày mới, KHHĐ 5W2H, Phát triển nhân sự 38 Skill & 4 Sao.',
     color: 'from-amber-50 to-white border-amber-200 text-amber-700',
-  },
-  {
-    to: '/one/khung-hinh',
-    icon: Camera,
-    title: 'Tạo Ảnh 20 Năm',
-    desc: 'Khung ảnh đại diện & thiệp chúc mừng kỷ niệm 20 năm thành lập.',
-    color: 'from-red-50 to-white border-red-200 text-brand-red',
   },
   {
     to: '/one/kho-du-lieu',
@@ -54,10 +47,9 @@ export default function OneOverviewPage() {
       <Hero
         onExplorePrograms={() => navigate('/one/dac-trung')}
         onExploreMoves={() => navigate('/one/chieu-thuc')}
-        onOpenAvatar={() => navigate('/one/khung-hinh')}
       />
 
-      <CultureTree onOpenAvatar={() => navigate('/one/khung-hinh')} />
+      <CultureTree />
 
       {/* Điều hướng nhanh tới các khu vực */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">

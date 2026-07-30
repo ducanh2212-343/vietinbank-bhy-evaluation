@@ -96,7 +96,6 @@ const CouncilAnalyticsPage = lazyWithRetry(() => import("./pages/CouncilAnalytic
 const OneOverviewPage = lazyWithRetry(() => import("./pages/one/OneOverviewPage"));
 const OneProgramsPage = lazyWithRetry(() => import("./pages/one/OneProgramsPage"));
 const OneMovesPage = lazyWithRetry(() => import("./pages/one/OneMovesPage"));
-const OneAvatarPage = lazyWithRetry(() => import("./pages/one/OneAvatarPage"));
 const OneRepositoryPage = lazyWithRetry(() => import("./pages/one/OneRepositoryPage"));
 const GuestAccessAdminPage = lazyWithRetry(() => import("./pages/GuestAccessAdminPage"));
 const ChangePassword = lazyWithRetry(() => import("./pages/ChangePassword"));
@@ -186,7 +185,6 @@ const App = () => (
               <Route path="/one" element={<OneOverviewPage />} />
               <Route path="/one/dac-trung" element={<OneProgramsPage />} />
               <Route path="/one/chieu-thuc" element={<OneMovesPage />} />
-              <Route path="/one/khung-hinh" element={<OneAvatarPage />} />
               <Route path="/one/kho-du-lieu" element={<OneRepositoryPage />} />
 
               {/* Hội đồng đánh giá đầu mối — trang tự gác quyền: thành viên HĐ chấm điểm, đầu mối/admin xem báo cáo */}

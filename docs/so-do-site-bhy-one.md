@@ -41,7 +41,6 @@ flowchart TD
     M2 --> M2D["6 đặc trưng riêng có<br/>(chỉ giới thiệu + liên kết)"]
     M2 --> M2E["Bộ 3 Chiêu thức"]
     M2 --> M2F["Câu chuyện văn hóa"]
-    M2 --> M2G["Tạo Ảnh 20 Năm"]
 
     M3 --> M3A["BHY Sharing + Kho tri thức 🔀<br/>(1 không gian, 2 tab)"]
     M3 --> M3B["BHY Quizzi<br/>(kèm khu quản trị 🔀<br/>chỉ hiện với người có thẩm quyền)"]
@@ -147,7 +146,8 @@ Ký hiệu: ✅ đã có (di chuyển chỗ) · 🔀 tách/gộp từ chỗ hi�
   6. BHY Credit 360 — giới thiệu + liên kết
 - Bộ 3 Chiêu thức ✅ (Năng Lượng Ngày Mới · Lập Kế Hoạch 5W2H · Phát Triển Nhân Sự)
 - Câu chuyện văn hóa ✅
-- Tạo Ảnh 20 Năm ✅ (công cụ khung hình — thuộc bản sắc kỷ niệm 20 năm)
+
+*(Tạo Ảnh 20 Năm: đã quyết định BỎ khỏi cấu trúc — gỡ khỏi ứng dụng 30/07/2026)*
 
 ### 📚 Học hỏi & Chia sẻ
 
