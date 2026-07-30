@@ -36,6 +36,29 @@ Script idempotent (upsert theo path storage, update theo `legacy_id`), dùng
 `@supabase/supabase-js` sẵn có trong `node_modules`. Lấy service role key ở
 Supabase Dashboard → Project Settings → API keys. **Không commit key vào repo.**
 
+## Đợt 4–6: import Ideas / Sao / Credit 360 (chờ dữ liệu)
+
+Ba script đọc `firestore-export.json` (định dạng của script `export-firestore.mjs`
+đã hướng dẫn: `{ collections: { bhy_ideas: [{id, data, sub?}], siteSettings: [...], ... } }`).
+Đặt file export vào thư mục này (KHÔNG commit) rồi chạy:
+
+```sh
+SUPABASE_SERVICE_ROLE_KEY=<key> node scripts/import-bhy-one/import-ideas.mjs
+SUPABASE_SERVICE_ROLE_KEY=<key> node scripts/import-bhy-one/import-star-records.mjs
+SUPABASE_SERVICE_ROLE_KEY=<key> node scripts/import-bhy-one/import-credit-sessions.mjs
+```
+
+- **import-ideas.mjs** → `portal_ideas` (upsert theo `legacy_id`) + `portal_idea_comments`
+  (bình luận import có `user_id = null`, giữ tên người viết). `likes[]/unlikes[]` Firebase
+  không map được danh tính → chuyển thành `seed_likes/seed_unlikes`; field lạ vào
+  `custom_values`; chuẩn hóa tên phòng (`Ban giám đốc→Ban Giám Đốc`, `Phòng bán lẻ→Phòng KHBL`).
+- **import-star-records.mjs** → `star_records` từ `siteSettings/starRecords.records[]`.
+  Thay thế toàn bộ dòng `source='import'` (phiếu gửi từ form giữ nguyên); tính lại
+  `is_collective` theo quy tắc đã sửa (chỉ match `tập thể|ban giám đốc|bgđ|chi nhánh|tổ fdi`).
+- **import-credit-sessions.mjs** → `portal_credit_sessions` (upsert theo `legacy_id`).
+
+Cả ba idempotent — chạy lại không tạo trùng. Cảnh báo (ngày/sao/phòng lạ) in ra cuối script.
+
 ## Lưu ý
 
 - `userId`/`likedBy` của Firebase không map được sang tài khoản Supabase — bỏ;

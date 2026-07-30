@@ -2251,6 +2251,196 @@ export type Database = {
           },
         ]
       }
+      portal_credit_sessions: {
+        Row: {
+          actual_revenue: string | null
+          business_field: string | null
+          created_at: string
+          created_by: string
+          creator_name: string | null
+          credit_limit: number | null
+          custom_values: Json | null
+          customer_name: string | null
+          department_name: string | null
+          dept_leader: string | null
+          id: string
+          legacy_id: string | null
+          session_date: string | null
+          underwriter: string | null
+          updated_at: string
+        }
+        Insert: {
+          actual_revenue?: string | null
+          business_field?: string | null
+          created_at?: string
+          created_by?: string
+          creator_name?: string | null
+          credit_limit?: number | null
+          custom_values?: Json | null
+          customer_name?: string | null
+          department_name?: string | null
+          dept_leader?: string | null
+          id?: string
+          legacy_id?: string | null
+          session_date?: string | null
+          underwriter?: string | null
+          updated_at?: string
+        }
+        Update: {
+          actual_revenue?: string | null
+          business_field?: string | null
+          created_at?: string
+          created_by?: string
+          creator_name?: string | null
+          credit_limit?: number | null
+          custom_values?: Json | null
+          customer_name?: string | null
+          department_name?: string | null
+          dept_leader?: string | null
+          id?: string
+          legacy_id?: string | null
+          session_date?: string | null
+          underwriter?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      portal_idea_comments: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          idea_id: string
+          legacy_id: string | null
+          user_id: string | null
+          user_name: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          idea_id: string
+          legacy_id?: string | null
+          user_id?: string | null
+          user_name: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          idea_id?: string
+          legacy_id?: string | null
+          user_id?: string | null
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_idea_comments_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "portal_ideas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_idea_votes: {
+        Row: {
+          created_at: string
+          idea_id: string
+          user_id: string
+          vote: number
+        }
+        Insert: {
+          created_at?: string
+          idea_id: string
+          user_id?: string
+          vote: number
+        }
+        Update: {
+          created_at?: string
+          idea_id?: string
+          user_id?: string
+          vote?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_idea_votes_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "portal_ideas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_ideas: {
+        Row: {
+          applicability: string
+          council_proposal: boolean
+          created_at: string
+          created_by: string
+          creator_email: string | null
+          current_status: string | null
+          custom_values: Json | null
+          department_name: string
+          development_level: string
+          expected_benefits: string | null
+          has_demo: boolean
+          id: string
+          legacy_id: string | null
+          level: string
+          proposed_solution: string | null
+          proposer: string
+          seed_likes: number
+          seed_unlikes: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          applicability: string
+          council_proposal?: boolean
+          created_at?: string
+          created_by?: string
+          creator_email?: string | null
+          current_status?: string | null
+          custom_values?: Json | null
+          department_name: string
+          development_level?: string
+          expected_benefits?: string | null
+          has_demo?: boolean
+          id?: string
+          legacy_id?: string | null
+          level: string
+          proposed_solution?: string | null
+          proposer: string
+          seed_likes?: number
+          seed_unlikes?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          applicability?: string
+          council_proposal?: boolean
+          created_at?: string
+          created_by?: string
+          creator_email?: string | null
+          current_status?: string | null
+          custom_values?: Json | null
+          department_name?: string
+          development_level?: string
+          expected_benefits?: string | null
+          has_demo?: boolean
+          id?: string
+          legacy_id?: string | null
+          level?: string
+          proposed_solution?: string | null
+          proposer?: string
+          seed_likes?: number
+          seed_unlikes?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       portal_images: {
         Row: {
           caption: string | null
@@ -3845,6 +4035,54 @@ export type Database = {
         }
         Relationships: []
       }
+      star_records: {
+        Row: {
+          awarded_on: string
+          created_at: string
+          created_by: string | null
+          department: string
+          id: string
+          is_collective: boolean
+          name: string
+          reason: string | null
+          result: string | null
+          sender: string | null
+          serial: string | null
+          source: string
+          stars: number
+        }
+        Insert: {
+          awarded_on: string
+          created_at?: string
+          created_by?: string | null
+          department: string
+          id?: string
+          is_collective?: boolean
+          name: string
+          reason?: string | null
+          result?: string | null
+          sender?: string | null
+          serial?: string | null
+          source?: string
+          stars: number
+        }
+        Update: {
+          awarded_on?: string
+          created_at?: string
+          created_by?: string | null
+          department?: string
+          id?: string
+          is_collective?: boolean
+          name?: string
+          reason?: string | null
+          result?: string | null
+          sender?: string | null
+          serial?: string | null
+          source?: string
+          stars?: number
+        }
+        Relationships: []
+      }
       staff_star_classifications: {
         Row: {
           approval_status: Database["public"]["Enums"]["star_approval_status"]
@@ -4184,6 +4422,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_update_idea_status: {
+        Args: {
+          _council_proposal?: boolean
+          _department_name?: string
+          _development_level?: string
+          _idea_id: string
+        }
+        Returns: undefined
+      }
       admin_email_overview: { Args: never; Returns: Json }
       can_view_profile: {
         Args: { _target_profile_id: string }
