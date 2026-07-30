@@ -1,6 +1,6 @@
 import React from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
-import { Home, TreeDeciduous, BookOpen, Lightbulb, Star, Users, Phone } from 'lucide-react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { Home, TreeDeciduous, BookOpen, Lightbulb, Star, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 // Thanh điều hướng cổng BHY ONE — 6 menu theo cấu trúc đã duyệt
@@ -47,14 +47,6 @@ export const OneSectionNav: React.FC = () => {
               {label}
             </NavLink>
           ))}
-          {/* Liên hệ: cuộn tới ContactSection trên trang chủ cổng (không có trạng thái active) */}
-          <Link
-            to={{ pathname: '/one', hash: '#contact' }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition-colors text-slate-600 hover:text-brand-navy hover:bg-blue-50"
-          >
-            <Phone className="w-4 h-4" />
-            Liên hệ
-          </Link>
         </div>
       </div>
     </nav>

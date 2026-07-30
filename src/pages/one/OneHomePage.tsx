@@ -1,12 +1,10 @@
-import { useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   Sparkles, Zap, Star, ArrowRight, ClipboardList, Loader2,
   AlertTriangle, Upload, Lightbulb, ShieldAlert, TreeDeciduous, BookOpen,
 } from 'lucide-react';
 import { OnePageShell } from '@/components/one/OnePageShell';
-import { ContactSection } from '@/components/one/ContactSection';
 import { useAuth } from '@/hooks/useAuth';
 import { useMyFullName } from '@/components/one/useMyFullName';
 import { useStarRecords } from '@/components/one/star/useStarRecords';
@@ -70,7 +68,6 @@ export default function OneHomePage() {
   return (
     <OnePageShell>
       <HomeContent />
-      <ContactSection />
     </OnePageShell>
   );
 }
@@ -78,14 +75,7 @@ export default function OneHomePage() {
 function HomeContent() {
   const { profileId, isGuest } = useAuth();
   const myName = useMyFullName();
-  const { hash } = useLocation();
   const { siteContent } = useAdminEditable();
-
-  useEffect(() => {
-    if (!hash) return;
-    const el = document.getElementById(hash.slice(1));
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
-  }, [hash]);
 
   // Kanban cá nhân (hệ 343) — bản rút gọn cho khối Cần làm / Đang làm
   const { data: cards = [], isLoading: kanbanLoading } = useQuery({
