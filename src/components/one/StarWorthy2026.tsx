@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { Star, QrCode, Gift, Award, Send, CheckCircle2, Sparkles, Coffee, ShoppingBag, Headphones, Briefcase, Watch, Plane, Smartphone, ChevronRight, AlertCircle } from 'lucide-react';
+import React from 'react';
+import { Star, Gift, Award, Sparkles, Coffee, ShoppingBag, Headphones, Briefcase, Watch, Plane, Smartphone, ChevronRight, AlertCircle } from 'lucide-react';
 import { EditableText } from './AdminEditableContext';
-import confetti from 'canvas-confetti';
+import { useAuth } from '@/hooks/useAuth';
+import { StarRecognitionForm } from './star/StarRecognitionForm';
+import { StarAnalytics } from './star/StarAnalytics';
 
 interface RewardTier {
   stars: number;
@@ -24,22 +26,7 @@ const REWARDS_2026: RewardTier[] = [
 ];
 
 export const StarWorthy2026: React.FC = () => {
-  const [recipient, setRecipient] = useState('Đ/c Nguyễn Văn A - Phòng KHDN');
-  const [action, setAction] = useState('Hỗ trợ thẩm định gấp tờ trình dự án ngoài giờ');
-  const [result, setResult] = useState('Kịp phê duyệt giải ngân hạn mức 15 tỷ đồng cho khách hàng');
-  const [givenStars, setGivenStars] = useState(1);
-  const [showSuccess, setShowSuccess] = useState(false);
-
-  const handleGiveStar = (e: React.FormEvent) => {
-    e.preventDefault();
-    confetti({
-      particleCount: 80,
-      spread: 70,
-      origin: { y: 0.6 }
-    });
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 4000);
-  };
+  const { isGuest } = useAuth();
 
   return (
     <div className="mt-12 bg-gradient-to-b from-amber-50/50 via-white to-amber-50/30 rounded-3xl p-6 sm:p-8 border-2 border-amber-300 shadow-xl text-left animate-fade-in">
@@ -93,110 +80,7 @@ export const StarWorthy2026: React.FC = () => {
 
         {/* LEFT COLUMN: QR GHI NHẬN SIMULATOR */}
         <div className="lg:col-span-6 space-y-6">
-          <div className="bg-white p-6 sm:p-7 rounded-3xl border border-amber-200 shadow-md relative">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-5">
-              <div className="flex items-center gap-2 text-slate-800 font-black text-sm uppercase tracking-wide">
-                <QrCode className="w-5 h-5 text-brand-navy" />
-                <span>Mô Phỏng Ghi Nhận QR (Google Form)</span>
-              </div>
-              <span className="text-[10px] font-mono font-black px-2 py-0.5 rounded bg-blue-100 text-brand-navy">
-                Mã Mã hóa QR Quy chuẩn
-              </span>
-            </div>
-
-            <form onSubmit={handleGiveStar} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Cảm ơn (Cá nhân / Tập thể):</label>
-                <input
-                  type="text"
-                  value={recipient}
-                  onChange={e => setRecipient(e.target.value)}
-                  placeholder="Họ tên cán bộ hoặc Tập thể phòng..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-brand-navy outline-none font-semibold text-slate-800"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Vì đã (Hành vi / Hành động cụ thể):</label>
-                <input
-                  type="text"
-                  value={action}
-                  onChange={e => setAction(e.target.value)}
-                  placeholder="Hành động xuất sắc cụ thể..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-brand-navy outline-none font-semibold text-slate-800"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Đem lại (Kết quả / Thành tích định lượng):</label>
-                <input
-                  type="text"
-                  value={result}
-                  onChange={e => setResult(e.target.value)}
-                  placeholder="Kết quả kinh doanh hoặc vận hành..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-brand-navy outline-none font-semibold text-slate-800"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Số lượng Sao ghi nhận:</label>
-                <div className="flex gap-2">
-                  {[1, 2, 3].map((num) => (
-                    <button
-                      key={num}
-                      type="button"
-                      onClick={() => setGivenStars(num)}
-                      className={`flex-1 py-2 rounded-xl border font-black transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                        givenStars === num ? 'bg-amber-500 text-white border-amber-600 shadow' : 'bg-slate-50 text-slate-600 border-slate-200'
-                      }`}
-                    >
-                      <Star className={`w-3.5 h-3.5 ${givenStars === num ? 'fill-white' : 'fill-slate-400'}`} />
-                      <span>{num} Sao</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* LIVE GOLD TICKET PREVIEW */}
-              <div className="mt-6 pt-4 border-t border-dashed border-amber-300">
-                <span className="text-[10px] font-extrabold uppercase text-amber-700 block mb-2">🎫 Bản xem trước Phiếu Ghi Nhận Tay:</span>
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-50 via-yellow-50 to-amber-100 border-2 border-amber-300 text-slate-800 shadow-inner relative overflow-hidden">
-                  <div className="absolute top-2 right-2 flex">
-                    {Array.from({ length: givenStars }).map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-amber-500 text-amber-600" />
-                    ))}
-                  </div>
-                  <p className="text-xs leading-relaxed font-serif">
-                    “<strong className="text-brand-navy font-sans font-black">CẢM ƠN </strong> <span className="font-bold underline decoration-amber-500">{recipient || '...'}</span> <br />
-                    <strong className="text-slate-900 font-sans font-bold">vì đã: </strong> <span>{action || '...'}</span> <br />
-                    <strong className="text-emerald-800 font-sans font-bold">đem lại: </strong> <span className="font-bold text-red-600">{result || '...'}</span>”
-                  </p>
-                  <div className="mt-3 flex items-center justify-between text-[10px] font-mono text-slate-500 border-t border-amber-200/80 pt-2">
-                    <span>Quyển ghi nhận Phòng TCTH</span>
-                    <span className="text-emerald-700 font-bold">+ {givenStars * 0.5} Điểm KPI</span>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-brand-navy via-blue-700 to-brand-royal text-white font-black text-xs sm:text-sm shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Send className="w-4 h-4 text-amber-300" />
-                <span>Xác Nhận & Gửi Form QR Mã Hóa</span>
-              </button>
-
-              {showSuccess && (
-                <div className="p-3 rounded-xl bg-emerald-100 text-emerald-900 border border-emerald-300 flex items-center gap-2 text-xs font-bold animate-bounce">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
-                  <span>Đã ghi nhận thành công! Phiếu đã lưu vào hệ thống đối soát quý.</span>
-                </div>
-              )}
-            </form>
-          </div>
+          {!isGuest && <StarRecognitionForm />}
 
           {/* QUOTA BREAKDOWN TABLE (PAGE 3 PDF) */}
           <div className="bg-white p-6 sm:p-7 rounded-3xl border border-slate-200 shadow-sm space-y-4">
@@ -318,6 +202,9 @@ export const StarWorthy2026: React.FC = () => {
         </div>
 
       </div>
+
+      {/* Khối phân tích Sao (dữ liệu nội bộ — ẩn với khách đối tác) */}
+      {!isGuest && <StarAnalytics />}
 
     </div>
   );
