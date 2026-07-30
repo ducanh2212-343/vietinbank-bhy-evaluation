@@ -24,7 +24,7 @@ export function useOneUploads() {
       const [{ data: rows, error }, { data: likeRows, error: likeErr }] = await Promise.all([
         supabase
           .from('portal_uploads')
-          .select('id, title, category, summary, content, image_path, image_paths, tags, department_name, author_name, is_featured, is_shared_with_guests, seed_likes, created_at')
+          .select('id, title, category, summary, content, image_path, image_paths, custom_values, tags, department_name, author_name, is_featured, is_shared_with_guests, seed_likes, created_at')
           .order('created_at', { ascending: false }),
         supabase.from('portal_upload_likes').select('upload_id'),
       ]);
@@ -39,21 +39,31 @@ export function useOneUploads() {
       const paths = (rows ?? []).flatMap(r => [r.image_path, ...(r.image_paths ?? [])]).filter(Boolean) as string[];
       const signed = await signOnePaths(paths);
 
-      return (rows ?? []).map(r => ({
-        id: r.id,
-        title: r.title,
-        category: r.category as ProgramCategory,
-        author: r.author_name,
-        department: (r.department_name ?? 'Phòng TCTH') as UploadedItem['department'],
-        date: formatDate(r.created_at),
-        imageUrl: r.image_path ? signed[r.image_path] : undefined,
-        summary: r.summary ?? '',
-        content: r.content ?? undefined,
-        tags: r.tags ?? [],
-        likes: (r.seed_likes ?? 0) + (likeCount.get(r.id) ?? 0),
-        isFeatured: r.is_featured,
-        isShared: r.is_shared_with_guests,
-      }));
+      return (rows ?? []).map(r => {
+        // Gộp image_path (ảnh bìa) + image_paths rồi khử trùng lặp: bản ghi import cũ lưu
+        // image_paths = các ảnh CÒN LẠI sau ảnh bìa, bản ghi mới lưu đủ toàn bộ ảnh
+        const allPaths = [r.image_path, ...(r.image_paths ?? [])]
+          .filter((p): p is string => !!p)
+          .filter((p, i, a) => a.indexOf(p) === i);
+        const imageUrls = allPaths.map(p => signed[p]).filter(Boolean) as string[];
+        return {
+          id: r.id,
+          title: r.title,
+          category: r.category as ProgramCategory,
+          author: r.author_name,
+          department: (r.department_name ?? 'Phòng TCTH') as UploadedItem['department'],
+          date: formatDate(r.created_at),
+          imageUrl: imageUrls[0] ?? (r.image_path ? signed[r.image_path] : undefined),
+          imageUrls,
+          customValues: (r.custom_values ?? null) as Record<string, string> | null,
+          summary: r.summary ?? '',
+          content: r.content ?? undefined,
+          tags: r.tags ?? [],
+          likes: (r.seed_likes ?? 0) + (likeCount.get(r.id) ?? 0),
+          isFeatured: r.is_featured,
+          isShared: r.is_shared_with_guests,
+        };
+      });
     },
     staleTime: 60 * 1000,
   });
@@ -63,19 +73,27 @@ export function useOneUploads() {
     [queryClient],
   );
 
-  // newItem đến từ UploadModal: imageUrl là dataURL base64 (nếu có ảnh)
+  // newItem đến từ UploadModal: imageUrls là các dataURL base64 (ảnh không phải
+  // dataURL — ví dụ ảnh minh họa mặc định — bị bỏ qua, không upload).
   const addItem = useCallback(async (newItem: UploadedItem) => {
     try {
-      let imagePath: string | null = null;
-      if (newItem.imageUrl?.startsWith('data:')) {
-        imagePath = await uploadOneImage(newItem.imageUrl, 'staff');
+      const dataUrls = (newItem.imageUrls ?? (newItem.imageUrl ? [newItem.imageUrl] : []))
+        .filter(u => u.startsWith('data:'));
+      const imagePaths: string[] = [];
+      for (const u of dataUrls) {
+        imagePaths.push(await uploadOneImage(u, 'staff'));
       }
+      // Chỉ giữ giá trị trường bổ sung có nội dung thực
+      const customEntries = Object.entries(newItem.customValues ?? {}).filter(([, v]) => v?.trim());
       const { error } = await supabase.from('portal_uploads').insert({
         title: newItem.title,
         category: newItem.category,
         summary: newItem.summary || null,
         content: newItem.content || null,
-        image_path: imagePath,
+        // Ảnh đầu tiên vẫn ghi vào image_path để tương thích dữ liệu/luồng cũ
+        image_path: imagePaths[0] ?? null,
+        image_paths: imagePaths,
+        custom_values: customEntries.length ? Object.fromEntries(customEntries) : null,
         tags: newItem.tags ?? [],
         department_name: newItem.department,
         author_name: newItem.author,

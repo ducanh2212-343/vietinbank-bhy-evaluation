@@ -25,7 +25,8 @@ export const CATEGORY_NAMES: Record<ProgramCategory, string> = {
   cs: 'Chuyển Đổi số',
 };
 
-export type Department = 
+export type Department =
+  | 'Ban Giám Đốc'
   | 'Phòng TCTH'
   | 'Phòng KHDN'
   | 'Phòng KHBL'
@@ -37,9 +38,26 @@ export type Department =
   | 'PGD Ân Thi'
   | 'PGD Khoái Châu';
 
+// 11 đơn vị — 'Ban Giám Đốc' đứng đầu để khớp thứ tự IDEA_DEPARTMENTS
 export const DEPARTMENTS: Department[] = [
+  'Ban Giám Đốc',
   'Phòng TCTH', 'Phòng KHDN', 'Phòng KHBL', 'Phòng HTTD', 'Phòng DVKH',
   'PGD Văn Giang', 'PGD Văn Lâm', 'PGD Yên Mỹ', 'PGD Ân Thi', 'PGD Khoái Châu'
+];
+
+// 3 trường thông tin bổ sung của tư liệu Kho Dữ Liệu (lưu vào custom_values jsonb)
+export interface UploadCustomField {
+  id: string;
+  label: string;
+  type: 'textarea' | 'select';
+  placeholder?: string;
+  options?: string[];
+}
+
+export const UPLOAD_CUSTOM_FIELDS: UploadCustomField[] = [
+  { id: 'details', label: 'Chi tiết tài liệu / Hướng dẫn áp dụng', type: 'textarea', placeholder: 'Nhập nội dung chi tiết hoặc hướng dẫn sử dụng tài liệu...' },
+  { id: 'benefits', label: 'Giá trị / Hiệu quả mang lại', type: 'textarea', placeholder: 'Nêu lợi ích hoặc kết quả khi áp dụng tài liệu này...' },
+  { id: 'scope', label: 'Phạm vi áp dụng', type: 'select', options: ['Toàn chi nhánh', 'Phòng ban chuyên môn', 'Phòng giao dịch'] },
 ];
 
 export interface UploadedItem {
@@ -50,6 +68,10 @@ export interface UploadedItem {
   department: Department;
   date: string;
   imageUrl?: string;
+  /** Toàn bộ ảnh của tư liệu (signed URL khi đọc, dataURL khi đăng mới) */
+  imageUrls?: string[];
+  /** Giá trị 3 trường bổ sung (details/benefits/scope) */
+  customValues?: Record<string, string> | null;
   summary: string;
   content?: string;
   tags: string[];

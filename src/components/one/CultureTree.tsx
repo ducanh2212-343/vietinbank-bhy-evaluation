@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Sprout, TreeDeciduous, Leaf, Users, Sparkles, Share2, ArrowRight, Heart, Award, Shield } from 'lucide-react';
-import { EditableText } from '@/components/one/AdminEditableContext';
+import { EditableText, useAdminEditable } from '@/components/one/AdminEditableContext';
 
 interface CultureTreeProps {
   // Điều hướng tới khu vực thay ảnh đại diện (do trang cha quyết định cách mở)
@@ -9,6 +9,9 @@ interface CultureTreeProps {
 
 export const CultureTree: React.FC<CultureTreeProps> = ({ onOpenAvatar }) => {
   const [activePillar, setActivePillar] = useState<string>('roots');
+  // Ảnh cây văn hóa lấy từ key nội dung `culture.tree_image` (admin đổi được), fallback ảnh gốc
+  const { siteContent } = useAdminEditable();
+  const treeImage = siteContent['culture.tree_image']?.trim() || 'https://i.ibb.co/kV5cgsbp/c-y-k-c.jpg';
 
   const pillars = [
     {
@@ -194,7 +197,7 @@ export const CultureTree: React.FC<CultureTreeProps> = ({ onOpenAvatar }) => {
                   </defs>
                 </svg>
                 <img
-                  src="https://i.ibb.co/kV5cgsbp/c-y-k-c.jpg"
+                  src={treeImage}
                   alt="Cây ký ức VietinBank Bắc Hưng Yên"
                   className="w-full h-full object-contain hover:scale-105 transition-transform duration-500"
                   style={{ filter: 'url(#remove-white)' }}

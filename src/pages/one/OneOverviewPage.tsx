@@ -1,4 +1,5 @@
-import { useNavigate, Link } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Sparkles, Zap, Camera, FolderOpen, ArrowRight } from 'lucide-react';
 import { OnePageShell } from '@/components/one/OnePageShell';
 import { Hero } from '@/components/one/Hero';
@@ -39,6 +40,14 @@ const SECTION_CARDS = [
 
 export default function OneOverviewPage() {
   const navigate = useNavigate();
+  const { hash } = useLocation();
+
+  // Cuộn tới khu vực theo hash (nav "Liên hệ" → /one#contact)
+  useEffect(() => {
+    if (!hash) return;
+    const el = document.getElementById(hash.slice(1));
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  }, [hash]);
 
   return (
     <OnePageShell>

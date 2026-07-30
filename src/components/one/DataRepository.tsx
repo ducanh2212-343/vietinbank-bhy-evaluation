@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Filter, Search, Upload, ThumbsUp, Calendar, User, Building, Tag, Sparkles, FolderOpen, ArrowUpRight, Check, Eye, Trash2, FileDown, Share2 } from 'lucide-react';
-import { UploadedItem, ProgramCategory, CATEGORY_NAMES, Department, DEPARTMENTS } from '@/data/one/types';
+import { Filter, Search, Upload, ThumbsUp, Calendar, User, Building, Tag, Sparkles, FolderOpen, ArrowUpRight, Check, Eye, Trash2, FileDown, Share2, Image as ImageIcon } from 'lucide-react';
+import { UploadedItem, ProgramCategory, CATEGORY_NAMES, Department, DEPARTMENTS, UPLOAD_CUSTOM_FIELDS } from '@/data/one/types';
 import confetti from 'canvas-confetti';
 import { useAdminEditable } from './AdminEditableContext';
 
@@ -33,7 +33,14 @@ export const DataRepository: React.FC<DataRepositoryProps> = ({
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
   const [selectedTag, setSelectedTag] = useState<string>('all');
   const [activeModalItem, setActiveModalItem] = useState<UploadedItem | null>(null);
+  const [activeImageIdx, setActiveImageIdx] = useState(0);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  // Mở modal chi tiết luôn bắt đầu từ ảnh đầu tiên
+  const openDetailModal = (item: UploadedItem) => {
+    setActiveImageIdx(0);
+    setActiveModalItem(item);
+  };
 
   // Extract all unique tags
   const allTags = useMemo(() => {
@@ -230,7 +237,7 @@ export const DataRepository: React.FC<DataRepositoryProps> = ({
                   <div>
                     {/* Image Header */}
                     {item.imageUrl ? (
-                      <div className="relative h-48 w-full bg-slate-100 overflow-hidden group cursor-pointer" onClick={() => setActiveModalItem(item)}>
+                      <div className="relative h-48 w-full bg-slate-100 overflow-hidden group cursor-pointer" onClick={() => openDetailModal(item)}>
                         <img
                           src={item.imageUrl}
                           alt={item.title}
@@ -244,6 +251,12 @@ export const DataRepository: React.FC<DataRepositoryProps> = ({
                             ⭐ Nổi bật
                           </div>
                         )}
+                        {item.imageUrls && item.imageUrls.length > 1 && (
+                          <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur text-white px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1">
+                            <ImageIcon className="w-3.5 h-3.5" />
+                            <span>{item.imageUrls.length} ảnh</span>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="h-28 w-full bg-gradient-to-r from-brand-royal to-brand-sky p-4 flex flex-col justify-end text-white relative">
@@ -254,7 +267,7 @@ export const DataRepository: React.FC<DataRepositoryProps> = ({
                     {/* Content Body */}
                     <div className="p-5 space-y-3">
                       <h3
-                        onClick={() => setActiveModalItem(item)}
+                        onClick={() => openDetailModal(item)}
                         className="text-sm sm:text-base font-black text-slate-800 hover:text-brand-royal transition-colors leading-snug line-clamp-2 cursor-pointer"
                       >
                         {item.title}
@@ -293,7 +306,7 @@ export const DataRepository: React.FC<DataRepositoryProps> = ({
 
                     <div className="flex items-center gap-3 shrink-0 pl-2">
                       <button
-                        onClick={() => setActiveModalItem(item)}
+                        onClick={() => openDetailModal(item)}
                         className="p-1 hover:text-brand-royal transition-colors"
                         title="Xem chi tiết"
                       >
@@ -376,7 +389,41 @@ export const DataRepository: React.FC<DataRepositoryProps> = ({
         {activeModalItem && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
             <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
-              {activeModalItem.imageUrl && (
+              {activeModalItem.imageUrls && activeModalItem.imageUrls.length > 0 ? (
+                <div className="relative bg-slate-900 flex flex-col">
+                  {/* Ảnh chính: nền tối, object-contain để xem trọn khung */}
+                  <div className="relative h-64 sm:h-96 w-full overflow-hidden flex items-center justify-center">
+                    <img
+                      src={activeModalItem.imageUrls[activeImageIdx] ?? activeModalItem.imageUrls[0]}
+                      alt={activeModalItem.title}
+                      className="w-full h-full object-contain"
+                    />
+                    <button
+                      onClick={() => setActiveModalItem(null)}
+                      className="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/50 text-white flex items-center justify-center font-bold text-sm hover:bg-black/80 cursor-pointer z-10"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {/* Dải ảnh nhỏ — chỉ hiện khi có nhiều hơn 1 ảnh */}
+                  {activeModalItem.imageUrls.length > 1 && (
+                    <div className="p-3 bg-slate-950 flex gap-2 overflow-x-auto justify-center border-t border-slate-800">
+                      {activeModalItem.imageUrls.map((imgUrl, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setActiveImageIdx(i)}
+                          className={`w-14 h-14 rounded-lg overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${
+                            activeImageIdx === i ? 'border-brand-royal scale-105' : 'border-transparent opacity-60 hover:opacity-100'
+                          }`}
+                        >
+                          <img src={imgUrl} alt={`Ảnh ${i + 1}`} className="w-full h-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : activeModalItem.imageUrl ? (
                 <div className="relative h-64 sm:h-80 w-full bg-slate-900">
                   <img src={activeModalItem.imageUrl} alt={activeModalItem.title} className="w-full h-full object-cover" />
                   <button
@@ -386,14 +433,14 @@ export const DataRepository: React.FC<DataRepositoryProps> = ({
                     ✕
                   </button>
                 </div>
-              )}
+              ) : null}
 
               <div className="p-6 sm:p-8 space-y-5">
                 <div className="flex items-center justify-between">
                   <span className="px-3 py-1 rounded bg-blue-50 text-brand-royal font-extrabold text-xs uppercase">
                     {CATEGORY_NAMES[activeModalItem.category] || activeModalItem.category}
                   </span>
-                  {!activeModalItem.imageUrl && (
+                  {!activeModalItem.imageUrl && !activeModalItem.imageUrls?.length && (
                     <button onClick={() => setActiveModalItem(null)} className="text-slate-400 hover:text-slate-800 font-bold">✕ Đóng</button>
                   )}
                 </div>
@@ -414,6 +461,26 @@ export const DataRepository: React.FC<DataRepositoryProps> = ({
                   {activeModalItem.summary}
                   {activeModalItem.content && `\n\n${activeModalItem.content}`}
                 </div>
+
+                {/* 3 trường thông tin bổ sung — chỉ hiện khối có nội dung */}
+                {activeModalItem.customValues && UPLOAD_CUSTOM_FIELDS.some(f => activeModalItem.customValues?.[f.id]?.trim()) && (
+                  <div className="space-y-4 pt-2">
+                    {UPLOAD_CUSTOM_FIELDS.map(field => {
+                      const val = activeModalItem.customValues?.[field.id];
+                      if (!val || !String(val).trim()) return null;
+                      return (
+                        <div key={field.id} className="border-t pt-3">
+                          <h4 className="font-extrabold text-brand-royal text-xs uppercase tracking-wider mb-1">
+                            {field.label}:
+                          </h4>
+                          <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-line bg-slate-50/50 p-3 rounded-lg border border-dashed border-slate-200">
+                            {val}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between pt-4 border-t">
                   <div className="flex gap-1.5">

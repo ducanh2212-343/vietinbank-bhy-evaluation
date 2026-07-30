@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { SITE_CONTENT_SEED } from '@/data/one/siteContent';
+import { DEPARTMENTS, CATEGORY_NAMES } from '@/data/one/types';
 
 // Cổng BHY one — nội dung chữ hiển thị qua EditableText, lưu ở bảng site_content.
 // SITE_CONTENT_SEED (export Firebase) là fallback khi bảng chưa có key/chưa tải xong.
@@ -14,6 +15,18 @@ interface AdminEditableContextType {
   isAdmin: boolean;
   siteContent: Record<string, string>;
   updateContent: (key: string, value: string) => void;
+  /** Danh sách đơn vị cho các ô chọn — đọc từ key `departments_config` nếu có, fallback hằng số */
+  departments: string[];
+  /** Danh sách tên chuyên mục — đọc từ key `categories_config` nếu có, fallback CATEGORY_NAMES */
+  categories: string[];
+}
+
+// Tách chuỗi cấu hình (phân cách bằng dấu phẩy hoặc xuống dòng) thành danh sách;
+// trả null khi key rỗng/thiếu để dùng fallback.
+function parseConfigList(raw: string | undefined): string[] | null {
+  if (!raw?.trim()) return null;
+  const list = raw.split(/[\n,]/).map(s => s.trim()).filter(Boolean);
+  return list.length > 0 ? list : null;
 }
 
 const AdminEditableContext = createContext<AdminEditableContextType | undefined>(undefined);
@@ -38,6 +51,15 @@ export const AdminEditableProvider: React.FC<{ children: React.ReactNode }> = ({
     [dbContent],
   );
 
+  const departments = useMemo(
+    () => parseConfigList(siteContent['departments_config']) ?? [...DEPARTMENTS],
+    [siteContent],
+  );
+  const categories = useMemo(
+    () => parseConfigList(siteContent['categories_config']) ?? Object.values(CATEGORY_NAMES),
+    [siteContent],
+  );
+
   const updateContent = async (key: string, value: string) => {
     // Optimistic: cập nhật cache ngay, rollback bằng invalidate nếu lỗi
     queryClient.setQueryData<Record<string, string>>(['one-site-content'], prev => ({ ...(prev ?? {}), [key]: value }));
@@ -51,7 +73,7 @@ export const AdminEditableProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   return (
-    <AdminEditableContext.Provider value={{ isAdmin, siteContent, updateContent }}>
+    <AdminEditableContext.Provider value={{ isAdmin, siteContent, updateContent, departments, categories }}>
       {children}
     </AdminEditableContext.Provider>
   );
