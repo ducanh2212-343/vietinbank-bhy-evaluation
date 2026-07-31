@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
-import { ClipboardList, FileText } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ClipboardList, FileText, ArrowRight } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { EditableText } from '@/components/one/AdminEditableContext';
@@ -21,6 +22,8 @@ interface IdeasPillarProps {
   images: string[];
   onImageUpload: (index: number, fileOrUrl: string) => void;
   onOpenUploadModal: (defaultCategory: string) => void;
+  /** Trang đặc trưng chỉ giới thiệu — nơi làm việc thật là /one/y-tuong (một chức năng một cửa) */
+  introOnly?: boolean;
 }
 
 /** Tên hiển thị của người đang đăng nhập (profiles.full_name) — dùng đổ sẵn form & bình luận */
@@ -93,7 +96,7 @@ const IdeasIntro: React.FC = () => (
   </div>
 );
 
-export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload }) => {
+export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload, introOnly }) => {
   const { isGuest } = useAuth();
   const { ideas, isLoading, isContentAdmin, createIdea, updateIdea, deleteIdea, setVote, adminUpdateStatus } = usePortalIdeas();
   const myName = useMyFullName();
@@ -104,12 +107,22 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload 
   const [exportEndDate, setExportEndDate] = useState('');
   const formRef = useRef<HTMLDivElement | null>(null);
 
-  // Khách đối tác: chỉ xem giới thiệu tĩnh (RLS chặn dữ liệu — tránh render trạng thái lỗi)
-  if (isGuest) {
+  // Trang đặc trưng (introOnly) và khách đối tác: chỉ xem giới thiệu tĩnh.
+  // Cán bộ ở chế độ giới thiệu có nút dẫn sang nơi làm việc thật /one/y-tuong.
+  if (isGuest || introOnly) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-fade-in">
-        <div className="lg:col-span-6">
+        <div className="lg:col-span-6 space-y-5">
           <IdeasIntro />
+          {introOnly && !isGuest && (
+            <Link
+              to="/one/y-tuong"
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-sm shadow-md transition-all hover:-translate-y-0.5"
+            >
+              Vào hệ thống BHY Ideas
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          )}
         </div>
         <div className="lg:col-span-6 bg-white p-6 rounded-2xl border border-amber-300 shadow-md">
           <div className="relative h-56 rounded-xl overflow-hidden shadow-sm border border-slate-200">

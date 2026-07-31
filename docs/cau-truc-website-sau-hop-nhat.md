@@ -44,7 +44,7 @@ flowchart TD
     A --> A4["Cấu hình / Hệ thống"]
     A --> A5["Hội đồng đầu mối"]
 
-    B --> B1["Trang chủ: Hero + Cây văn hóa + Liên hệ"]
+    B --> B1["Trang chủ: Hero + Cây văn hóa"]
     B --> B2["Đặc trưng Riêng có: 6 trụ cột"]
     B --> B3["Bộ 3 Chiêu thức + Sao Xứng Đáng"]
     B --> B4["Kho Dữ Liệu"]
@@ -107,7 +107,7 @@ Tổng **80 route**, 75 trang, chạy tải chậm (lazy) theo từng trang.
 ## 5. KHU B — Cổng thương hiệu BHY one
 
 Địa chỉ gốc `/one`. Có thanh điều hướng riêng (Trang chủ · Đặc trưng Riêng có ·
-Bộ 3 Chiêu thức · Kho Dữ Liệu · **Liên hệ**) và giao diện
+Bộ 3 Chiêu thức · Kho Dữ Liệu) và giao diện
 "đảo sáng" tách khỏi tông màu của ứng dụng nhân sự.
 
 ### 5.1 `/one` — Trang chủ cổng
@@ -116,7 +116,6 @@ Bộ 3 Chiêu thức · Kho Dữ Liệu · **Liên hệ**) và giao diện
 - **Cây văn hóa** — 5 trụ cột (gốc, thân, cành, lá, quả) bấm xem chi tiết; ảnh
   cây đổi được qua khóa nội dung `culture.tree_image`.
 - **Thẻ dẫn hướng** sang 3 khu còn lại.
-- **Liên hệ & đăng ký hợp tác** — biểu mẫu liên hệ (mục tiêu cuộn của nav).
 
 ### 5.2 `/one/dac-trung` — 6 đặc trưng riêng có
 

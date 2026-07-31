@@ -86,8 +86,9 @@ export const PillarTabs: React.FC<PillarTabsProps> = ({ onOpenUploadModal }) => 
           {activePillar === 'connect' && <ConnectPillar {...galleryProps('connect')} />}
           {activePillar === 'sharing' && <SharingPillar {...galleryProps('sharing')} onOpenUploadModal={onOpenUploadModal} />}
           {activePillar === 'quizzi' && <QuizziPillar {...galleryProps('quizzi')} />}
-          {activePillar === 'ideas' && <IdeasPillar {...galleryProps('ideas')} onOpenUploadModal={onOpenUploadModal} />}
-          {activePillar === 'credit360' && <Credit360Pillar {...galleryProps('credit360')} />}
+          {/* Một chức năng một cửa: trang đặc trưng chỉ giới thiệu, nơi làm việc thật ở trang riêng */}
+          {activePillar === 'ideas' && <IdeasPillar {...galleryProps('ideas')} onOpenUploadModal={onOpenUploadModal} introOnly />}
+          {activePillar === 'credit360' && <Credit360Pillar {...galleryProps('credit360')} introOnly />}
         </div>
       </div>
     </section>

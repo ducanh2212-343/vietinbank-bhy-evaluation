@@ -9,7 +9,10 @@ import { signOnePaths, uploadOneImage } from '@/lib/oneStorage';
 // image_path là path trong bucket bhy-one hoặc URL http(s) trực tiếp.
 // Trả về Record<id, string[]> cùng hình dạng với bản localStorage cũ.
 
-export function usePortalSlotImages(prefix: 'pillar' | 'move', defaults: Record<string, string[]>) {
+export function usePortalSlotImages(
+  prefix: 'pillar' | 'move' | 'culture',
+  defaults: Record<string, string[]>,
+) {
   const queryClient = useQueryClient();
   const queryKey = ['one-portal-images', prefix];
 

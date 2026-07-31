@@ -7,7 +7,6 @@ import confetti from 'canvas-confetti';
 import { STAR_PROFILES } from '@/data/one/mockData';
 import { StarType } from '@/data/one/types';
 import { Move3FrameworkViewer } from './Move3FrameworkViewer';
-import { StarWorthy2026 } from './StarWorthy2026';
 
 interface MasterMovesProps {
   onOpenUpload: (cat: string) => void;
@@ -554,9 +553,27 @@ export const MasterMoves: React.FC<MasterMovesProps> = ({ onOpenUpload }) => {
             </div>
           )}
 
-          {/* SAO 2026: STAR WORTHY PROGRAM TAB */}
+          {/* SAO 2026: một chức năng một cửa — chương trình Sao Xứng Đáng
+              nằm ở khu Ghi nhận & Lan tỏa, tab này chỉ là thẻ dẫn hướng */}
           {activeMove === 'sao2026' && (
-            <StarWorthy2026 />
+            <div className="mt-12 bg-gradient-to-b from-amber-50/60 via-white to-amber-50/40 rounded-3xl p-8 sm:p-12 border-2 border-amber-300 shadow-xl text-center animate-fade-in">
+              <Star className="w-14 h-14 mx-auto fill-amber-400 text-amber-500 mb-4" />
+              <h3 className="text-2xl sm:text-3xl font-black text-brand-navy uppercase mb-3">
+                Sao Xứng Đáng 2026
+              </h3>
+              <p className="text-sm text-slate-600 max-w-2xl mx-auto leading-relaxed mb-6">
+                Chương trình ghi nhận «mọi cán bộ ghi nhận lẫn nhau»: gửi phiếu sao,
+                bảng phân tích cá nhân/phòng ban và tủ quà tặng 500 triệu đồng — tất cả
+                nằm ở khu Ghi nhận &amp; Lan tỏa của cổng BHY ONE.
+              </p>
+              <Link
+                to="/one/ghi-nhan"
+                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-red-600 hover:from-amber-600 hover:to-red-700 text-white font-black text-sm shadow-lg transition-all hover:-translate-y-0.5"
+              >
+                Vào khu Ghi nhận &amp; Lan tỏa
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
           )}
 
         </div>

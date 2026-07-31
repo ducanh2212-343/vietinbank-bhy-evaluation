@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { ShieldAlert, Layers, FileText, Edit, Trash2, X, Search } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ShieldAlert, Layers, FileText, Edit, Trash2, X, Search, ArrowRight } from 'lucide-react';
 import { EditableText } from '@/components/one/AdminEditableContext';
 import { PillarAdminUploader } from './PillarGallery';
 import { useCreditSessions, CreditSession, CreditSessionInput } from '@/components/one/credit/useCreditSessions';
@@ -10,6 +11,8 @@ import { IDEA_DEPARTMENTS } from '@/data/one/ideasConfig';
 interface Credit360PillarProps {
   images: string[];
   onImageUpload: (index: number, fileOrUrl: string) => void;
+  /** Trang đặc trưng chỉ giới thiệu — nơi làm việc thật là /one/credit-360 (một chức năng một cửa) */
+  introOnly?: boolean;
 }
 
 const EMPTY_FORM: CreditSessionInput = {
@@ -415,7 +418,7 @@ const CreditSessionLogger: React.FC = () => {
   );
 };
 
-export const Credit360Pillar: React.FC<Credit360PillarProps> = ({ images, onImageUpload }) => {
+export const Credit360Pillar: React.FC<Credit360PillarProps> = ({ images, onImageUpload, introOnly }) => {
   const { isGuest } = useAuth();
 
   // --- Credit 360 Simulator State ---
@@ -532,8 +535,20 @@ export const Credit360Pillar: React.FC<Credit360PillarProps> = ({ images, onImag
         </div>
       </div>
 
-      {/* Nhật ký phiên họp — chỉ dành cho cán bộ, khách đối tác chỉ xem phần giới thiệu */}
-      {!isGuest && <CreditSessionLogger />}
+      {/* Nhật ký phiên họp — nơi làm việc thật. Trang giới thiệu chỉ đặt nút dẫn sang;
+          khách đối tác không thấy cả hai (RLS chặn dữ liệu). */}
+      {introOnly && !isGuest && (
+        <div className="text-center">
+          <Link
+            to="/one/credit-360"
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm shadow-md transition-all hover:-translate-y-0.5"
+          >
+            Vào sổ đăng ký Credit 360
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+      )}
+      {!introOnly && !isGuest && <CreditSessionLogger />}
     </div>
   );
 };

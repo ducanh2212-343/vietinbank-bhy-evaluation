@@ -1,16 +1,23 @@
 import React from 'react';
-import { Link, NavLink } from 'react-router-dom';
-import { Home, Sparkles, Zap, FolderOpen, Phone } from 'lucide-react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { Home, TreeDeciduous, BookOpen, Lightbulb, Star, Users } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
-// Thanh điều hướng nội bộ của cổng BHY one — thay cho Navbar cuộn trang của bản gốc.
+// Thanh điều hướng cổng BHY ONE — 6 menu theo cấu trúc đã duyệt
+// (docs/so-do-site-bhy-one.md). Khách đối tác chỉ thấy các mục được mở.
 const SECTIONS = [
   { to: '/one', label: 'Trang chủ', icon: Home, end: true },
-  { to: '/one/dac-trung', label: 'Đặc trưng Riêng có', icon: Sparkles },
-  { to: '/one/chieu-thuc', label: 'Bộ 3 Chiêu thức', icon: Zap },
-  { to: '/one/kho-du-lieu', label: 'Kho Dữ Liệu', icon: FolderOpen },
+  { to: '/one/nguon-coi', label: 'Nguồn cội & Bản sắc', icon: TreeDeciduous },
+  { to: '/one/hoc-hoi', label: 'Học hỏi & Chia sẻ', icon: BookOpen },
+  { to: '/one/sang-kien', label: 'Sáng kiến & Nghiệp vụ', icon: Lightbulb, staffOnly: true, alsoActive: ['/one/y-tuong', '/one/credit-360'] },
+  { to: '/one/ghi-nhan', label: 'Ghi nhận & Lan tỏa', icon: Star, staffOnly: true },
+  { to: '/tong-quan', label: 'Nhân sự 343', icon: Users, staffOnly: true },
 ];
 
 export const OneSectionNav: React.FC = () => {
+  const { isGuest } = useAuth();
+  const { pathname } = useLocation();
+
   return (
     <nav className="sticky top-0 z-40 bg-white/85 backdrop-blur border-b border-slate-200 shadow-sm">
       <div className="max-w-7xl mx-auto px-3 sm:px-6">
@@ -20,17 +27,17 @@ export const OneSectionNav: React.FC = () => {
               VietinBank
             </span>
             <span className="text-xs font-extrabold uppercase tracking-wide text-brand-navy whitespace-nowrap">
-              BHY one
+              BHY ONE
             </span>
           </div>
-          {SECTIONS.map(({ to, label, icon: Icon, end }) => (
+          {SECTIONS.filter(s => !isGuest || !s.staffOnly).map(({ to, label, icon: Icon, end, alsoActive }) => (
             <NavLink
               key={to}
               to={to}
               end={end}
               className={({ isActive }) =>
                 `inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition-colors ${
-                  isActive
+                  isActive || alsoActive?.includes(pathname)
                     ? 'bg-brand-navy text-white shadow-sm'
                     : 'text-slate-600 hover:text-brand-navy hover:bg-blue-50'
                 }`
@@ -40,14 +47,6 @@ export const OneSectionNav: React.FC = () => {
               {label}
             </NavLink>
           ))}
-          {/* Liên hệ: cuộn tới ContactSection trên trang chủ cổng (không có trạng thái active) */}
-          <Link
-            to={{ pathname: '/one', hash: '#contact' }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition-colors text-slate-600 hover:text-brand-navy hover:bg-blue-50"
-          >
-            <Phone className="w-4 h-4" />
-            Liên hệ
-          </Link>
         </div>
       </div>
     </nav>

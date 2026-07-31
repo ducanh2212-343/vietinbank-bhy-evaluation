@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom';
-import { Sparkles, Zap, FolderOpen, ArrowRight, TreeDeciduous } from 'lucide-react';
+import { ArrowRight, TreeDeciduous, BookOpen, Lightbulb, Star } from 'lucide-react';
 
-// Dải thương hiệu BHY one trên trang Tổng quan — phần "hòa" cổng thông tin vào dashboard.
+// Dải thương hiệu BHY ONE trên trang Tổng quan — theo 6 menu của cấu trúc đã duyệt.
 const CHIPS = [
-  { to: '/one', icon: TreeDeciduous, label: 'Cây văn hóa' },
-  { to: '/one/dac-trung', icon: Sparkles, label: '6 Đặc trưng' },
-  { to: '/one/chieu-thuc', icon: Zap, label: 'Bộ 3 Chiêu thức' },
-  { to: '/one/kho-du-lieu', icon: FolderOpen, label: 'Kho Dữ Liệu' },
+  { to: '/one/nguon-coi', icon: TreeDeciduous, label: 'Nguồn cội & Bản sắc' },
+  { to: '/one/hoc-hoi', icon: BookOpen, label: 'Học hỏi & Chia sẻ' },
+  { to: '/one/sang-kien', icon: Lightbulb, label: 'Sáng kiến & Nghiệp vụ' },
+  { to: '/one/ghi-nhan', icon: Star, label: 'Ghi nhận & Lan tỏa' },
 ];
 
 export function OneStripCard() {

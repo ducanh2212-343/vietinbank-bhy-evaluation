@@ -233,10 +233,16 @@ database (RLS) và kho tệp (vùng shared/).
 
 ## 5. Lộ trình
 
-**Giai đoạn 1 — sắp lại điều hướng** (nội dung đã có, chủ yếu di chuyển):
-menu 6 mục · tách Ideas + Credit 360 ra trang riêng · gộp Sharing + Kho ·
-chuyển quản trị Quizzi vào không gian Quizzi · gom Quản trị người dùng về một
-khu chung · Trang chủ với 3 khối "ONE của tôi" + 5 thao tác nhanh.
+**Giai đoạn 1 — sắp lại điều hướng: ✅ ĐÃ TRIỂN KHAI (30/07/2026).**
+Menu 6 mục (`/one` · `/one/nguon-coi` · `/one/hoc-hoi` · `/one/sang-kien` ·
+`/one/ghi-nhan` · Nhân sự 343) · Ideas tách ra `/one/y-tuong`, Credit 360 ra
+`/one/credit-360` (trang đặc trưng chỉ còn giới thiệu + nút liên kết) ·
+Sharing + Kho gộp tại `/one/hoc-hoi` (2 tab) · Sao Xứng Đáng về `/one/ghi-nhan` ·
+quản trị Quizzi chuyển vào không gian Quizzi (thẩm quyền giữ nguyên) ·
+nhóm sidebar "Quản trị người dùng" chung toàn cổng · Trang chủ mới với 3 khối
+"ONE của tôi" (Cần làm / Đang làm / Được ghi nhận) + 5 thao tác nhanh + teaser
+bản sắc · link cũ (`/one/dac-trung`, `/one/chieu-thuc`, `/one/kho-du-lieu`)
+chuyển hướng tự động.
 
 **Giai đoạn 2 — xây phần chưa có nền:** hệ thông báo cho "Tôi cần biết" ·
 4 mục vinh danh mới · Hành trình 20 năm · Những con người BHY.
