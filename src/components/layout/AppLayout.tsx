@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useNavigationType } from 'react-router-dom';
 import { NavTreeProvider, useNavTree } from '@/hooks/useNavTree';
 import { TopNav } from './TopNav';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 function KhungUngDung() {
   const { location: viTri } = useNavTree();
   const { pathname } = useLocation();
+  const kieuDieuHuong = useNavigationType();
   const [moBangLenh, setMoBangLenh] = useState(false);
   const noiDungRef = useRef<HTMLElement>(null);
   const lanDau = useRef(true);
@@ -32,15 +33,25 @@ function KhungUngDung() {
   // Chỉ ghi nhớ trang có mặt trên cây điều hướng
   useGhiNhoTrangGanDay(viTri.leaf?.path);
 
-  // Đổi trang: đưa tiêu điểm về vùng nội dung để người dùng bàn phím và trình
-  // đọc màn hình không phải tab lại từ đầu thanh điều hướng.
+  // Đổi trang: cuộn về đầu và đưa tiêu điểm về vùng nội dung.
+  //
+  // Cuộn: mở trang mới phải bắt đầu từ đầu trang. Riêng thao tác lùi/tiến trên
+  // trình duyệt (POP) thì để nguyên — trình duyệt tự khôi phục đúng chỗ người
+  // dùng đang đọc, ép về đầu sẽ làm mất vị trí đó.
+  //
+  // Tiêu điểm: đặt vào vùng nội dung để người dùng bàn phím và trình đọc màn hình
+  // không phải tab lại từ đầu thanh điều hướng. preventScroll để bước này không
+  // kéo màn hình đi đâu khác.
   useEffect(() => {
     if (lanDau.current) {
       lanDau.current = false;
       return;
     }
+    if (kieuDieuHuong !== 'POP') {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+    }
     noiDungRef.current?.focus({ preventScroll: true });
-  }, [pathname]);
+  }, [pathname, kieuDieuHuong]);
 
   const laKhuLamViec = viTri.zone === 'workspace';
   // Trang tràn viền (bọc trong OnePageShell) tự lo khoảng đệm và nền riêng.
