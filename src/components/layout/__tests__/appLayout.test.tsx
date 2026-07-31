@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ThemeProvider } from '@/hooks/useTheme';
 import { AppLayout } from '../AppLayout';
@@ -75,7 +75,8 @@ describe('Khung ứng dụng', () => {
 
   it('CÓ menu dọc khi vào phân hệ chuyên sâu', () => {
     dungKhung('/tu-danh-gia');
-    expect(screen.getAllByLabelText('Điều hướng phân hệ').length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Điều hướng phân hệ')).toBeInTheDocument();
+    expect(screen.getByLabelText('Điều hướng phân hệ (thu gọn)')).toBeInTheDocument();
   });
 
   it('có lối tắt bỏ qua điều hướng và vùng nội dung chính nhận được tiêu điểm', () => {
@@ -103,21 +104,38 @@ describe('Khung ứng dụng', () => {
     dungKhung('/one');
     expect(screen.queryByLabelText('Điều hướng phân hệ')).not.toBeInTheDocument();
     const thanhNav = screen.getByLabelText('Điều hướng chính cổng BHY ONE');
-    expect(within(thanhNav).queryByText('Phát triển nhân sự 343')).not.toBeInTheDocument();
-    expect(within(thanhNav).queryByText('Quản trị người dùng')).not.toBeInTheDocument();
+    expect(within(thanhNav).queryByRole('button', { name: 'Phát triển nhân sự 343' })).not.toBeInTheDocument();
+    expect(within(thanhNav).queryByRole('button', { name: 'Quản trị người dùng' })).not.toBeInTheDocument();
   });
 
   it('quản trị viên thấy khu Quản trị người dùng trên thanh chính', () => {
     mockAuth.isAdmin = true;
     dungKhung('/tong-quan');
     const thanhNav = screen.getByLabelText('Điều hướng chính cổng BHY ONE');
-    expect(within(thanhNav).getByText('Quản trị người dùng')).toBeInTheDocument();
+    expect(within(thanhNav).getByRole('button', { name: 'Quản trị người dùng' })).toBeInTheDocument();
   });
 
   it('cán bộ thường KHÔNG thấy khu Quản trị người dùng', () => {
     dungKhung('/tong-quan');
     const thanhNav = screen.getByLabelText('Điều hướng chính cổng BHY ONE');
-    expect(within(thanhNav).queryByText('Quản trị người dùng')).not.toBeInTheDocument();
+    expect(within(thanhNav).queryByRole('button', { name: 'Quản trị người dùng' })).not.toBeInTheDocument();
+  });
+
+  it('mở nhiều thư mục trong menu dọc: trạng thái không ghi đè lẫn nhau', () => {
+    // Trước khi gom về một kho chung, mỗi thư mục giữ bản state riêng rồi cùng ghi
+    // đè một khoá localStorage — mở "Học tập" sau "Cá nhân" là xoá mất "Cá nhân".
+    mockAuth.isAdmin = true;
+    dungKhung('/tong-quan');
+    const menuDoc = screen.getByLabelText('Điều hướng phân hệ');
+
+    fireEvent.click(within(menuDoc).getByRole('button', { name: /Học tập/ }));
+    fireEvent.click(within(menuDoc).getByRole('button', { name: /Cấu hình đánh giá/ }));
+
+    const luu = JSON.parse(localStorage.getItem('bhy-nav-folders') ?? '{}');
+    expect(luu['hoc-tap-343']).toBe(true);
+    expect(luu['cau-hinh-danh-gia']).toBe(true);
+    // Thư mục chứa trang đang xem vẫn giữ trạng thái tự mở
+    expect(luu['ca-nhan-343']).toBe(true);
   });
 
   it('mega-menu không nằm sẵn trong DOM khi chưa mở', () => {

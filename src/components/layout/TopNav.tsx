@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import * as NavMenu from '@radix-ui/react-navigation-menu';
 import { ChevronDown, Search, LogOut, User, KeyRound } from 'lucide-react';
@@ -161,6 +161,9 @@ export function TopNav({ onMoBangLenh }: Props) {
         {/* Nhận diện — về trang chủ cổng */}
         <Link
           to="/one"
+          // Nhãn chữ bị ẩn dưới 1024px nên phải khai tên truy cập ở đây, nếu không
+          // trình đọc màn hình chỉ đọc được "liên kết" trống
+          aria-label="BHY ONE — về trang chủ cổng"
           className="flex shrink-0 items-center gap-2.5 rounded-xl py-1 pr-2 transition-opacity duration-fast hover:opacity-80"
         >
           <img
@@ -170,7 +173,9 @@ export function TopNav({ onMoBangLenh }: Props) {
             height={28}
             className="h-7 w-7 shrink-0 rounded-lg bg-white object-contain p-0.5 shadow-soft"
           />
-          <span className="hidden text-sm font-semibold tracking-tight text-foreground sm:block">
+          {/* Nhãn chữ nhường chỗ cho menu ở dải máy tính bảng; biểu tượng vẫn còn nên
+              vẫn nhận ra thương hiệu và vẫn bấm về được trang chủ */}
+          <span className="hidden text-sm font-semibold tracking-tight text-foreground lg:block">
             BHY <span className="text-primary">ONE</span>
           </span>
         </Link>
@@ -185,12 +190,23 @@ export function TopNav({ onMoBangLenh }: Props) {
           delayDuration={80}
           skipDelayDuration={300}
         >
-          <NavMenu.List className="flex list-none items-center gap-0.5">
+          <NavMenu.List className="flex list-none items-center gap-0.5 overflow-x-auto scrollbar-none">
             {sections.map((section) => {
               const dangXem = leavesOf(section).some((l) => matchesLeaf(pathname, l));
+              /*
+                Máy tính bảng dùng nhãn ngắn, máy tính dùng nhãn đầy đủ: 7 nhãn đầy
+                đủ không vừa bề ngang 768px. Cả hai span đều aria-hidden và tên
+                truy cập đặt ở aria-label của nút, nên trình đọc màn hình luôn
+                nghe đúng tên khu dù khổ màn hình nào.
+              */
               const nhan = (
                 <>
-                  <span className="truncate">{section.label}</span>
+                  <span aria-hidden className="truncate lg:hidden">
+                    {section.shortLabel ?? section.label}
+                  </span>
+                  <span aria-hidden className="hidden truncate lg:inline">
+                    {section.label}
+                  </span>
                 </>
               );
 
@@ -201,8 +217,9 @@ export function TopNav({ onMoBangLenh }: Props) {
                       <NavLink
                         to={section.path!}
                         end={section.end}
+                        aria-label={section.label}
                         className={cn(
-                          'relative flex h-9 items-center rounded-full px-3 text-sm font-medium transition-colors duration-fast lg:px-3.5',
+                          'relative flex h-9 shrink-0 items-center rounded-full px-3 text-sm font-medium transition-colors duration-fast lg:px-3.5',
                           dangXem
                             ? 'bg-primary/10 text-primary'
                             : 'text-foreground/75 hover:bg-muted hover:text-foreground',
@@ -218,8 +235,9 @@ export function TopNav({ onMoBangLenh }: Props) {
               return (
                 <NavMenu.Item key={section.id} value={section.id}>
                   <NavMenu.Trigger
+                    aria-label={section.label}
                     className={cn(
-                      'group flex h-9 items-center gap-1 rounded-full px-3 text-sm font-medium outline-none transition-colors duration-fast lg:px-3.5',
+                      'group flex h-9 shrink-0 items-center gap-1 rounded-full px-3 text-sm font-medium outline-none transition-colors duration-fast lg:px-3.5',
                       dangXem
                         ? 'bg-primary/10 text-primary'
                         : 'text-foreground/75 hover:bg-muted hover:text-foreground',

@@ -1,22 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useNavTree } from '@/hooks/useNavTree';
+import { useMoThuMuc } from '@/hooks/useMoThuMuc';
 import { isFolder, matchesLeaf, type NavFolder, type NavLeaf, type NavSection } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
-
-const KHOA_THU_MUC = 'bhy-nav-folders';
-
-function napThuMuc(): Record<string, boolean> {
-  try {
-    const raw = localStorage.getItem(KHOA_THU_MUC);
-    if (raw) return JSON.parse(raw);
-  } catch {
-    /* dữ liệu hỏng — dùng mặc định */
-  }
-  return {};
-}
 
 function MucLa({ leaf, onDieuHuong }: { leaf: NavLeaf; onDieuHuong?: () => void }) {
   const { pathname } = useLocation();
@@ -49,30 +38,20 @@ function ThuMuc({
 }) {
   const { pathname } = useLocation();
   const chuaTrangHienTai = folder.items.some((l) => matchesLeaf(pathname, l));
-  const [moThuMuc, setMoThuMuc] = useState<Record<string, boolean>>(napThuMuc);
+  const { banDo, dao, mo: moThuMuc } = useMoThuMuc();
 
   // Vào bằng liên kết trực tiếp thì tự mở đúng thư mục chứa trang đó
   useEffect(() => {
-    if (chuaTrangHienTai) {
-      setMoThuMuc((p) => (p[folder.id] ? p : { ...p, [folder.id]: true }));
-    }
-  }, [chuaTrangHienTai, folder.id]);
+    if (chuaTrangHienTai) moThuMuc(folder.id);
+  }, [chuaTrangHienTai, folder.id, moThuMuc]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(KHOA_THU_MUC, JSON.stringify(moThuMuc));
-    } catch {
-      /* bỏ qua: chế độ riêng tư chặn ghi */
-    }
-  }, [moThuMuc]);
-
-  const mo = !!moThuMuc[folder.id];
+  const mo = !!banDo[folder.id];
 
   return (
     <li>
       <button
         type="button"
-        onClick={() => setMoThuMuc((p) => ({ ...p, [folder.id]: !p[folder.id] }))}
+        onClick={() => dao(folder.id)}
         aria-expanded={mo}
         aria-controls={`thu-muc-${folder.id}`}
         className={cn(
@@ -130,7 +109,7 @@ function ThanhBieuTuong({ sections }: { sections: NavSection[] }) {
   const { pathname } = useLocation();
   return (
     <nav
-      aria-label="Điều hướng phân hệ"
+      aria-label="Điều hướng phân hệ (thu gọn)"
       className="flex h-full w-[68px] flex-col gap-1 overflow-y-auto bg-sidebar px-2 py-3"
     >
       {sections.flatMap((section) =>

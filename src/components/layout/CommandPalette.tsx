@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Command as CommandPrimitive } from 'cmdk';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Clock, CornerDownLeft, LogOut, Moon, Search, Sun, User } from 'lucide-react';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import {
   CommandEmpty,
   CommandGroup,
@@ -95,12 +96,37 @@ export function CommandPalette({ open, onOpenChange }: Props) {
     .filter((x): x is NonNullable<typeof x> => !!x);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="max-w-[min(94vw,40rem)] gap-0 overflow-hidden p-0 shadow-menu sm:max-w-[36rem]"
-        // Ô nhập đã tự nhận tiêu điểm, không cần Radix ép lần nữa
-      >
-        <DialogTitle className="sr-only">Tìm kiếm và đi nhanh tới trang</DialogTitle>
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay
+          className={cn(
+            'fixed inset-0 z-overlay bg-foreground/25 backdrop-blur-sm',
+            'data-[state=open]:animate-in data-[state=open]:fade-in-0',
+            'data-[state=closed]:animate-out data-[state=closed]:fade-out-0',
+          )}
+        />
+        {/*
+          Dựng trên primitive Radix thay vì bọc DialogContent của shadcn: bản bọc
+          luôn chèn một nút đóng ở góc phải-trên, đúng chỗ ô tìm kiếm, và ép sẵn
+          padding + nền kính không hợp với bảng lệnh.
+          Neo lệch lên trên (top-[12vh]) theo lối bảng lệnh quen thuộc — mắt và
+          con trỏ đều đã ở nửa trên màn hình.
+        */}
+        <DialogPrimitive.Content
+          className={cn(
+            'fixed left-1/2 top-[12vh] z-overlay w-[calc(100%-1.5rem)] max-w-[36rem] -translate-x-1/2',
+            'overflow-hidden rounded-2xl border border-border/70 bg-popover shadow-menu',
+            'data-[state=open]:animate-menu-in data-[state=closed]:animate-menu-out',
+          )}
+        >
+          <VisuallyHidden asChild>
+            <DialogPrimitive.Title>Tìm kiếm và đi nhanh tới trang</DialogPrimitive.Title>
+          </VisuallyHidden>
+          <VisuallyHidden asChild>
+            <DialogPrimitive.Description>
+              Gõ tên trang để đi tới. Dùng phím mũi tên để chọn, Enter để mở, Esc để đóng.
+            </DialogPrimitive.Description>
+          </VisuallyHidden>
         <CommandPrimitive
           filter={locBoDau}
           loop
@@ -221,8 +247,9 @@ export function CommandPalette({ open, onOpenChange }: Props) {
             </span>
           </div>
         </CommandPrimitive>
-      </DialogContent>
-    </Dialog>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }
 
