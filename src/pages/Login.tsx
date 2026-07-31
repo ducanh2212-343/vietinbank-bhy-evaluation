@@ -78,15 +78,14 @@ export default function Login() {
           <div className="rounded-xl border bg-card shadow-lift p-6 sm:p-8">
             <div className="text-center space-y-3">
               <div className="flex justify-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-soft">
-                  <span className="text-xl font-bold">343</span>
-                </div>
+                <BrandBadge className="h-16 w-16 rounded-xl bg-white p-1 object-contain shadow-soft ring-1 ring-border" />
               </div>
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-                343 Phát triển nhân sự
+                Bắc Hưng Yên ONE
               </h1>
               <p className="text-sm text-muted-foreground">
-                Hệ thống nội bộ quản trị năng lực nhân sự
+                Cổng nội bộ VietinBank Bắc Hưng Yên — bản sắc, học hỏi, sáng kiến
+                và phát triển con người
               </p>
             </div>
 

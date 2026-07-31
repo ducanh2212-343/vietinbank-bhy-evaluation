@@ -1,12 +1,23 @@
 import React, { useState } from 'react';
 import { Sprout, TreeDeciduous, Leaf, Users, Sparkles, Share2, Heart, Award, Shield } from 'lucide-react';
 import { EditableText, useAdminEditable } from '@/components/one/AdminEditableContext';
+import { usePortalSlotImages } from '@/components/one/usePortalSlotImages';
+import { PillarAdminUploader } from '@/components/one/programs/PillarGallery';
+import { BRAND_ASSETS } from '@/components/branding/BrandAssets';
+
+/** Ảnh Cây ký ức đóng gói sẵn trong repo (dùng chung với màn đăng nhập) */
+const DEFAULT_TREE_IMAGE = BRAND_ASSETS.tree;
 
 export const CultureTree: React.FC = () => {
   const [activePillar, setActivePillar] = useState<string>('roots');
-  // Ảnh cây văn hóa lấy từ key nội dung `culture.tree_image` (admin đổi được), fallback ảnh gốc
+  // Ảnh Cây ký ức, theo thứ tự ưu tiên:
+  //   1. ảnh quản trị tải lên (bảng portal_images, slot 'culture.tree')
+  //   2. key nội dung cũ `culture.tree_image` (mang từ bản Firebase)
+  //   3. ảnh đóng gói trong repo — luôn có, không phụ thuộc liên kết ngoài
   const { siteContent } = useAdminEditable();
-  const treeImage = siteContent['culture.tree_image']?.trim() || 'https://i.ibb.co/kV5cgsbp/c-y-k-c.jpg';
+  const fallbackTree = siteContent['culture.tree_image']?.trim() || DEFAULT_TREE_IMAGE;
+  const { images, handleImageUpload } = usePortalSlotImages('culture', { tree: [fallbackTree] });
+  const treeImage = images.tree?.[0] || fallbackTree;
 
   const pillars = [
     {
@@ -176,28 +187,15 @@ export const CultureTree: React.FC = () => {
               {/* Glowing Background Glow */}
               <div className="absolute inset-0 bg-gradient-to-tr from-brand-royal/20 via-brand-sky/10 to-brand-red/10 rounded-full blur-2xl" />
 
-              {/* Tree Structure Representation */}
-              <div className="relative z-10 w-80 h-80 sm:w-96 sm:h-96 flex items-center justify-center">
-                <svg width="0" height="0" className="absolute pointer-events-none">
-                  <defs>
-                    <filter id="remove-white" colorInterpolationFilters="sRGB">
-                      <feColorMatrix
-                        type="matrix"
-                        values="1 0 0 0 0
-                                0 1 0 0 0
-                                0 0 1 0 0
-                                -3 -3 -3 8.5 -0.1"
-                      />
-                    </filter>
-                  </defs>
-                </svg>
+              {/* Ảnh Cây ký ức — quản trị đổi được ngay tại chỗ (nút góc dưới phải) */}
+              <div className="relative z-10 w-80 h-80 sm:w-96 sm:h-96 rounded-3xl bg-white/95 ring-1 ring-slate-200 shadow-lift overflow-hidden flex items-center justify-center">
                 <img
                   src={treeImage}
                   alt="Cây ký ức VietinBank Bắc Hưng Yên"
                   className="w-full h-full object-contain hover:scale-105 transition-transform duration-500"
-                  style={{ filter: 'url(#remove-white)' }}
-                  referrerPolicy="no-referrer"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).src = DEFAULT_TREE_IMAGE; }}
                 />
+                <PillarAdminUploader onUpload={(fileOrUrl) => handleImageUpload('tree', 0, fileOrUrl)} />
               </div>
 
               {/* Floating Badge */}

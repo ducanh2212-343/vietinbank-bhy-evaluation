@@ -11,7 +11,6 @@ export const SITE_CONTENT_SEED: Record<string, string> = {
   "culture.nucleus_dept": "PP.Tổng Hợp",
   "culture.nucleus_name": "NGUYỄN THỊ PHƯỢNG",
   "culture.quote": "“Văn hóa đơn giản là: ở đây ai cũng vậy, Tin như vậy, Nghĩ như vậy và Làm như vậy”",
-  "culture.tree_image": "https://ibb.co/HfnV033J",
   "departments_config": "[\"Phòng TCTH\",\"Phòng KHDN\",\"Phòng KHBL\",\"Phòng HTTD\",\"Phòng DVKH\",\"PGD Văn Giang\",\"PGD Văn Lâm\",\"PGD Yên Mỹ\",\"PGD Ân Thi\",\"PGD Khoái Châu\",\"Ban Giám Đốc\"]",
   "hero.cta1": "Khám Phá Đặc Trưng",
   "hero.slogan": "Vun Gốc Bền Rễ - Vươn Tầm Tương Lai",
