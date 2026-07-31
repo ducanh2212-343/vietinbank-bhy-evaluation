@@ -142,7 +142,8 @@ const navGroups: NavGroup[] = [
           // Màn điều hành Kanban kế hoạch hành động quý: TP (phòng), PGĐ (khối), TCTH/BGĐ (toàn CN)
           { label: 'Quản lý hành động Kanban', icon: ListChecks, path: '/quan-ly-hanh-dong', minRole: 'manager' },
           { label: 'Phân nhóm cán bộ', icon: Star, path: '/phan-nhom-can-bo', minRole: 'manager' },
-          { label: 'Danh sách cán bộ', icon: Users, path: '/danh-sach-can-bo', minRole: 'manager' },
+          // Danh sách cán bộ chuyển sang nhóm "Quản trị người dùng" — một danh mục
+          // người dùng duy nhất dùng chung cho toàn cổng
           { label: 'Báo cáo', icon: BarChart3, path: '/bao-cao', minRole: 'manager' },
           // Hiển thị theo phạm vi: GĐ/PGĐ (phòng phụ trách), lãnh đạo Phòng TCTH + admin (full chi nhánh)
           { label: 'Báo cáo nộp biểu mẫu', icon: Timer, path: '/bao-cao-nop-bieu-mau', special: 'submission-report' },
@@ -203,6 +204,9 @@ const navGroups: NavGroup[] = [
     icon: Shield,
     accent: '#FB7185',
     items: [
+      // Danh mục người dùng — cửa vào chính của nhóm: xem toàn bộ cán bộ (quản lý
+      // chỉ thấy phạm vi của mình theo RLS), từ đây mở hồ sơ từng người
+      { label: 'Danh sách cán bộ', icon: Users, path: '/danh-sach-can-bo', minRole: 'manager' },
       { label: 'Thêm cán bộ', icon: UserPlus, path: '/them-can-bo', minRole: 'admin' },
       { label: 'Nhập nhanh theo phòng', icon: ListPlus, path: '/nhap-nhanh-can-bo', minRole: 'admin' },
       { label: 'Upload danh sách CB', icon: Upload, path: '/upload-danh-sach-cb', minRole: 'admin' },

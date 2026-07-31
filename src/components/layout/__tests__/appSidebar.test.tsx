@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AppSidebar } from '../AppSidebar';
 
@@ -38,6 +38,7 @@ describe('Menu chính (AppSidebar)', () => {
   beforeEach(() => {
     mockAuth.isGuest = false;
     mockAuth.isAdmin = false;
+    mockAuth.isManager = false;
     localStorage.clear();
   });
 
@@ -70,12 +71,32 @@ describe('Menu chính (AppSidebar)', () => {
     }
   });
 
-  it('Quản trị người dùng chỉ hiện với quản trị viên', () => {
-    renderSidebar();
+  it('Quản trị người dùng: ẩn với cán bộ thường, hiện với quản lý và quản trị viên', () => {
+    // Mỗi lần dựng phải gỡ trước khi dựng lại, nếu không DOM còn bản cũ
+    const a = renderSidebar();
     expect(screen.queryByText('Quản trị người dùng')).not.toBeInTheDocument();
+    a.unmount();
+
+    mockAuth.isManager = true;
+    const b = renderSidebar();
+    expect(screen.getByText('Quản trị người dùng')).toBeInTheDocument();
+    b.unmount();
+    mockAuth.isManager = false;
+
     mockAuth.isAdmin = true;
     renderSidebar();
     expect(screen.getByText('Quản trị người dùng')).toBeInTheDocument();
+  });
+
+  it('Quản trị người dùng có danh mục người dùng (Danh sách cán bộ), và chỉ ở đó', () => {
+    mockAuth.isAdmin = true;
+    const { container } = renderSidebar();
+    // Mở nhóm để thấy mục con
+    const groupHead = screen.getByText('Quản trị người dùng');
+    fireEvent.click(groupHead);
+    const items = screen.getAllByText('Danh sách cán bộ');
+    expect(items).toHaveLength(1); // không trùng lặp ở nhóm khác
+    expect(container.textContent).toContain('Phân quyền');
   });
 
   it('khách đối tác chỉ thấy 3 khu được mở, không thấy phân hệ 343', () => {

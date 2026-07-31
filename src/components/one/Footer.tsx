@@ -1,11 +1,11 @@
 import React from 'react';
-import { Shield, Phone, Sparkles, Award } from 'lucide-react';
+import { Shield, Award } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   return (
     <footer className="bg-brand-royal text-white border-t-2 border-brand-red">
       <div className="max-w-7xl mx-auto px-6 py-8 sm:py-10">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8 text-xs">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8 text-xs">
           
           {/* Col 1 */}
           <div className="space-y-3 md:col-span-2">
@@ -40,18 +40,8 @@ export const Footer: React.FC = () => {
             </ul>
           </div>
 
-          {/* Col 3 */}
-          <div className="space-y-2">
-            <h4 className="font-bold uppercase tracking-wider text-amber-300 text-xs border-b border-blue-400/30 pb-1.5">
-              Đầu Mối Liên Hệ & Hỗ Trợ
-            </h4>
-            <div className="space-y-1 text-blue-100/90 text-[11px]">
-              <p>📍 Trụ sở: Phố Nối, Thị xã Mỹ Hào, Hưng Yên</p>
-              <p>📞 Điện thoại: 0221 3943 888</p>
-              <p>📧 Email: bhy@vietinbank.vn</p>
-              <p className="text-amber-200 font-semibold pt-1">Hỗ trợ kỹ thuật: 1900 558 868</p>
-            </div>
-          </div>
+          {/* Khối "Đầu mối liên hệ & hỗ trợ" đã bỏ theo yêu cầu: đây là công cụ
+              nội bộ, không cần địa chỉ/điện thoại/tổng đài khách hàng ở chân trang. */}
 
         </div>
 
