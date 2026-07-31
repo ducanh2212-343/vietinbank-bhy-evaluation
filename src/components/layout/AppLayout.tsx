@@ -1,124 +1,101 @@
-import { Outlet, useNavigate } from 'react-router-dom';
-import { AppSidebar } from './AppSidebar';
-import { useAuth } from '@/hooks/useAuth';
-import { Input } from '@/components/ui/input';
-import { Search, Menu, X, LogOut, User, ChevronDown, KeyRound } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
+import { NavTreeProvider, useNavTree } from '@/hooks/useNavTree';
+import { TopNav } from './TopNav';
+import { WorkspaceSidebar } from './WorkspaceSidebar';
+import { MobileNav } from './MobileNav';
+import { Breadcrumbs } from './Breadcrumbs';
+import { CommandPalette, usePhimTatBangLenh, useGhiNhoTrangGanDay } from './CommandPalette';
+import { cn } from '@/lib/utils';
 
-export function AppLayout() {
-  const { user, roles, signOut } = useAuth();
-  const navigate = useNavigate();
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+/**
+ * Khung ứng dụng sau đăng nhập.
+ *
+ * Điều hướng hai tầng theo sơ đồ site đã duyệt:
+ *  - Tầng 1: thanh ngang BHY ONE, hiện ở MỌI trang.
+ *  - Tầng 2: menu dọc, CHỈ hiện khi đang trong phân hệ chuyên sâu ('workspace').
+ * Nhờ vậy cổng ONE không còn cảnh hai hệ menu liệt kê cùng một nội dung.
+ *
+ * Cuộn ở cấp tài liệu (không phải khung con overflow-y-auto như bản cũ) để thanh
+ * địa chỉ trên trình duyệt di động tự thu lại và trình duyệt khôi phục đúng vị
+ * trí cuộn khi bấm nút quay lui.
+ */
+function KhungUngDung() {
+  const { location: viTri } = useNavTree();
+  const { pathname } = useLocation();
+  const [moBangLenh, setMoBangLenh] = useState(false);
+  const noiDungRef = useRef<HTMLElement>(null);
+  const lanDau = useRef(true);
 
-  const roleLabel: Record<string, string> = {
-    bgd: 'Ban Giám đốc', tcth_admin: 'TCTH Admin', system_admin: 'System Admin',
-    manager: 'Trưởng phòng', pgd: 'Phó Giám đốc', employee: 'Nhân viên',
-  };
+  usePhimTatBangLenh(setMoBangLenh);
 
-  const displayRole = roles.length > 0 ? roleLabel[roles[0]] || roles[0] : '';
+  // Chỉ ghi nhớ trang có mặt trên cây điều hướng
+  const duongDanHopLe = useCallback(() => !!viTri.leaf, [viTri.leaf]);
+  useGhiNhoTrangGanDay(duongDanHopLe);
 
-  // Close menu on outside click
+  // Đổi trang: đưa tiêu điểm về vùng nội dung để người dùng bàn phím và trình
+  // đọc màn hình không phải tab lại từ đầu thanh điều hướng.
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setUserMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
+    if (lanDau.current) {
+      lanDau.current = false;
+      return;
+    }
+    noiDungRef.current?.focus({ preventScroll: true });
+  }, [pathname]);
+
+  const laKhuLamViec = viTri.zone === 'workspace';
+  // Trang tràn viền (bọc trong OnePageShell) tự lo khoảng đệm và nền riêng.
+  // Mặc định là KHÔNG tràn viền, nên route lạ hay trang mới quên khai báo vẫn
+  // nhận khoảng đệm chuẩn thay vì dính sát mép màn hình.
+  const traVien = !!viTri.leaf?.bleed;
 
   return (
-    <div className="flex h-screen w-full overflow-hidden">
-      {/* Desktop sidebar */}
-      <div className="hidden lg:block h-screen sticky top-0">
-        <AppSidebar />
-      </div>
+    <div className="flex min-h-[100dvh] flex-col bg-background">
+      {/* Lối tắt bỏ qua điều hướng — chỉ hiện khi được tab tới */}
+      <a
+        href="#noi-dung-chinh"
+        className={cn(
+          'sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-overlay',
+          'focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium',
+          'focus:text-primary-foreground focus:shadow-menu focus:outline-none',
+        )}
+      >
+        Bỏ qua tới nội dung chính
+      </a>
 
-      {/* Mobile drawer overlay */}
-      {mobileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
-          <div className="relative w-[85vw] max-w-xs h-full animate-in slide-in-from-left duration-200">
-            <button
-              onClick={() => setMobileOpen(false)}
-              aria-label="Đóng menu"
-              className="absolute top-3 right-3 z-10 p-2 rounded-xl bg-sidebar-accent text-sidebar-primary"
-            >
-              <X className="w-4 h-4" />
-            </button>
-            <AppSidebar onNavigate={() => setMobileOpen(false)} />
-          </div>
-        </div>
-      )}
+      <TopNav onMoBangLenh={() => setMoBangLenh(true)} />
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="sticky top-0 z-30 h-14 glass-strong flex items-center justify-between px-3 sm:px-6 flex-shrink-0 border-x-0 border-t-0 rounded-none">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setMobileOpen(true)}
-              aria-label="Mở menu"
-              className="lg:hidden p-2.5 -ml-1 rounded-xl hover:bg-muted active:bg-muted"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-            <div className="relative w-40 sm:w-72 hidden sm:block">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Tìm kiếm..." aria-label="Tìm kiếm" className="pl-9 h-9 text-sm rounded-full bg-white/60 border-white/70 dark:bg-white/10 dark:border-white/15" />
-            </div>
-          </div>
+      <div className="flex min-w-0 flex-1">
+        {laKhuLamViec && <WorkspaceSidebar />}
 
-          <div className="flex items-center gap-1 sm:gap-2 min-w-0">
-          {/* Chuyển giao diện sáng / tối */}
-          <ThemeToggle />
-
-          {/* User menu */}
-          <div className="relative min-w-0" ref={menuRef}>
-            <button
-              onClick={() => setUserMenuOpen(!userMenuOpen)}
-              className="flex items-center gap-2 sm:gap-3 text-sm hover:bg-white/60 dark:hover:bg-white/10 rounded-full px-2 py-1.5 transition-colors min-w-0"
-            >
-              <span className="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] sm:text-xs font-medium whitespace-nowrap">{displayRole}</span>
-              <span className="font-medium text-xs sm:text-sm truncate max-w-[110px] sm:max-w-[200px]">{user?.email}</span>
-              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-            </button>
-
-            {userMenuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-48 glass-strong rounded-2xl shadow-lift z-50 py-1.5">
-                <button
-                  onClick={() => { navigate('/ho-so-ca-nhan'); setUserMenuOpen(false); }}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-muted transition-colors"
-                >
-                  <User className="w-4 h-4" />
-                  Hồ sơ cá nhân
-                </button>
-                <button
-                  onClick={() => { navigate('/doi-mat-khau'); setUserMenuOpen(false); }}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-muted transition-colors"
-                >
-                  <KeyRound className="w-4 h-4" />
-                  Đổi mật khẩu
-                </button>
-                <div className="border-t my-1" />
-                <button
-                  onClick={() => { signOut(); setUserMenuOpen(false); }}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Đăng xuất
-                </button>
-              </div>
-            )}
-          </div>
-          </div>
-        </header>
-        <main className="flex-1 p-3 sm:p-6 overflow-y-auto safe-bottom">
+        <main
+          id="noi-dung-chinh"
+          ref={noiDungRef}
+          tabIndex={-1}
+          className={cn(
+            'min-w-0 flex-1 outline-none',
+            // Chừa chỗ cho thanh tab dưới đáy trên điện thoại
+            'pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0',
+            // Mọi trang đều nhận khoảng đệm chung, TRỪ trang tự dựng bố cục
+            // tràn viền (các trang bọc trong OnePageShell có dải hero + nền riêng).
+            !traVien && 'px-3 pt-4 sm:px-6 sm:pt-5',
+          )}
+        >
+          {laKhuLamViec && <Breadcrumbs />}
           <Outlet />
         </main>
       </div>
+
+      <MobileNav />
+      <CommandPalette open={moBangLenh} onOpenChange={setMoBangLenh} />
     </div>
+  );
+}
+
+export function AppLayout() {
+  return (
+    <NavTreeProvider>
+      <KhungUngDung />
+    </NavTreeProvider>
   );
 }

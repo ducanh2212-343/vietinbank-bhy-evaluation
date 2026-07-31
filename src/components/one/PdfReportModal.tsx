@@ -1,7 +1,5 @@
 import React, { useRef, useState } from 'react';
 import { Download, X, Printer, FileText, CheckCircle, Award, Calendar, Building, Sparkles } from 'lucide-react';
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
 import confetti from 'canvas-confetti';
 import { UploadedItem } from '@/data/one/types';
 import { useAdminEditable } from './AdminEditableContext';
@@ -30,6 +28,12 @@ export const PdfReportModal: React.FC<PdfReportModalProps> = ({
     setDownloading(true);
 
     try {
+      // html2canvas (48 kB gzip) + jspdf (129 kB gzip) chỉ cần khi người dùng bấm
+      // xuất PDF — nạp tại chỗ để trang Học hỏi & Chia sẻ không gánh 177 kB thừa.
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ]);
       const canvas = await html2canvas(reportRef.current, {
         scale: 2,
         useCORS: true,

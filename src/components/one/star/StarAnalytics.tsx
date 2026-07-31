@@ -4,7 +4,6 @@ import {
   Gift, Loader2, Search, Sparkles, Star, Trash2, TrendingUp, Upload, Users, X,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import * as XLSX from 'xlsx';
 import { useStarRecords, type StarRecord } from './useStarRecords';
 import {
   calculateRewardValue, formatVnd, getMilestoneInfo, getRewardBreakdown,
@@ -122,7 +121,7 @@ export const StarAnalytics: React.FC = () => {
 
     try {
       const buffer = await file.arrayBuffer();
-      const result = parseStarWorkbook(buffer);
+      const result = await parseStarWorkbook(buffer);
       if (result.records.length === 0) {
         setUploadError('Không tìm thấy dữ liệu hợp lệ trong file. Vui lòng kiểm tra lại cấu trúc cột (tải file mẫu để đối chiếu).');
         return;
@@ -144,8 +143,8 @@ export const StarAnalytics: React.FC = () => {
     }
   };
 
-  const downloadTemplate = () => {
-    const buf = buildTemplateWorkbook();
+  const downloadTemplate = async () => {
+    const buf = await buildTemplateWorkbook();
     const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -156,8 +155,10 @@ export const StarAnalytics: React.FC = () => {
   };
 
   // ---- Xuất Excel 3 sheet (cấu trúc như exportToExcel bản gốc, số liệu live) ----
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     try {
+      // Cùng lý do như starParser: chỉ kéo xlsx về khi người dùng bấm xuất báo cáo
+      const XLSX = await import('xlsx');
       const wb = XLSX.utils.book_new();
 
       const individualData = individualStats.map((st, idx) => {

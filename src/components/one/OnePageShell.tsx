@@ -1,7 +1,6 @@
 import React from 'react';
 import { AdminEditableProvider } from './AdminEditableContext';
 import { BackgroundDecor } from './BackgroundDecor';
-import { OneSectionNav } from './OneSectionNav';
 import { Footer } from './Footer';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -11,25 +10,33 @@ function GuestBanner() {
   if (!isGuest || !guestExpiresAt) return null;
   const d = new Date(guestExpiresAt);
   return (
-    <div className="bg-amber-100 border-b border-amber-300 text-amber-900 text-xs font-semibold text-center py-1.5 px-4">
+    <div className="border-b border-amber-300 bg-amber-100 px-4 py-1.5 text-center text-xs font-semibold text-amber-900">
       Tài khoản khách — được chia sẻ nội dung đến hết ngày {d.getDate()}/{d.getMonth() + 1}/{d.getFullYear()}
     </div>
   );
 }
 
-// Vỏ chung của cổng BHY one: "đảo sáng" cố định nền sáng (thiết kế gốc là trang sáng),
-// nền trang + decor + nav mục + footer. Mọi trang /one bọc trong shell này.
+/**
+ * Vỏ chung của cổng BHY ONE.
+ *
+ * Điều hướng KHÔNG còn ở đây: thanh ngang BHY ONE đã lên khung ứng dụng
+ * (AppLayout) nên nó hiện ở mọi trang, đúng nguyên tắc "một cổng, không phải hai
+ * website". Trước đây shell tự dựng <OneSectionNav/> bên trong <main> của khung,
+ * sinh ra hai hệ menu chồng nhau và hai landmark <main> lồng nhau.
+ *
+ * `one-light` giữ cổng ở hệ màu sáng — đây là chủ ý thiết kế gốc ("đảo sáng"):
+ * các trang cổng dùng bảng màu sáng cố định, nên ép token về hệ sáng để thành
+ * phần dùng chung (Card, Dialog, Tabs…) không vỡ khi ứng dụng đang ở chế độ tối.
+ */
 export const OnePageShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <AdminEditableProvider>
-      {/* Bù đúng padding p-3 sm:p-6 của AppLayout để cổng chiếm trọn khung nhìn */}
-      {/* one-light: ép token về hệ sáng để thành phần dùng chung (Card, Dialog…)
-          hiển thị đúng khi ứng dụng đang ở chế độ tối */}
-      <div className="one-light relative min-h-full -m-3 sm:-m-6 flex flex-col bg-[#F4F7FA] font-sans text-slate-800 selection:bg-brand-royal selection:text-white">
+      {/* Cao tối thiểu = khung nhìn trừ thanh điều hướng 56px, để chân trang
+          luôn nằm dưới đáy màn hình kể cả trang ít nội dung */}
+      <div className="one-light relative flex min-h-[calc(100dvh-3.5rem)] flex-col bg-[#F4F7FA] font-sans text-slate-800 selection:bg-brand-royal selection:text-white">
         <BackgroundDecor />
         <GuestBanner />
-        <OneSectionNav />
-        <main className="flex-1 flex flex-col relative z-10">{children}</main>
+        <div className="relative z-10 flex flex-1 flex-col">{children}</div>
         <Footer />
       </div>
     </AdminEditableProvider>

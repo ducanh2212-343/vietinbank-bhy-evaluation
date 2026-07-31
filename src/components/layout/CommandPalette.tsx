@@ -1,0 +1,241 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Command as CommandPrimitive } from 'cmdk';
+import { Clock, CornerDownLeft, LogOut, Moon, Search, Sun, User } from 'lucide-react';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import {
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from '@/components/ui/command';
+import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/hooks/useTheme';
+import { useNavTree } from '@/hooks/useNavTree';
+import { diemKhop } from '@/lib/vietnamese';
+import { cn } from '@/lib/utils';
+
+const KHOA_GAN_DAY = 'bhy-trang-gan-day';
+const SO_TRANG_GAN_DAY = 5;
+
+function napGanDay(): string[] {
+  try {
+    const raw = localStorage.getItem(KHOA_GAN_DAY);
+    if (raw) return JSON.parse(raw);
+  } catch {
+    /* dữ liệu hỏng — bỏ qua */
+  }
+  return [];
+}
+
+/** Ghi nhớ trang vừa xem để bảng lệnh gợi ý lần sau. */
+export function useGhiNhoTrangGanDay(duongDanHopLe: (p: string) => boolean) {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    if (!duongDanHopLe(pathname)) return;
+    try {
+      const ds = napGanDay().filter((p) => p !== pathname);
+      ds.unshift(pathname);
+      localStorage.setItem(KHOA_GAN_DAY, JSON.stringify(ds.slice(0, SO_TRANG_GAN_DAY)));
+    } catch {
+      /* bỏ qua */
+    }
+  }, [pathname, duongDanHopLe]);
+}
+
+interface Props {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+/**
+ * Bảng lệnh ⌘K — lối tắt đưa cả 70 trang về "một chạm + gõ".
+ *
+ * Thay cho ô tìm kiếm ở bản cũ vốn không có value/onChange/onSubmit nào, tức là
+ * gõ vào rồi bấm Enter thì không xảy ra gì.
+ *
+ * So khớp bỏ dấu hai phía: cán bộ gõ "tu danh gia" vẫn ra "Tự đánh giá" — bắt
+ * buộc với nhãn tiếng Việt, vì gõ đủ dấu trong ô tìm nhanh là điều không ai làm.
+ */
+export function CommandPalette({ open, onOpenChange }: Props) {
+  const { leaves } = useNavTree();
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const [ganDay, setGanDay] = useState<string[]>([]);
+
+  // Chỉ đọc localStorage khi mở — tránh chạm đĩa ở mỗi lần dựng lại
+  useEffect(() => {
+    if (open) setGanDay(napGanDay());
+  }, [open]);
+
+  const theoDuongDan = useMemo(
+    () => new Map(leaves.map((l) => [l.leaf.path, l])),
+    [leaves],
+  );
+
+  const di = useCallback(
+    (path: string) => {
+      onOpenChange(false);
+      navigate(path);
+    },
+    [navigate, onOpenChange],
+  );
+
+  // cmdk lọc bằng hàm này: điểm 0 nghĩa là ẩn mục. Ghép nhãn + khu + từ khóa để
+  // gõ "hoi dong" cũng ra "Đánh giá đầu mối".
+  const locBoDau = useCallback((value: string, search: string, keywords?: string[]) => {
+    const vanBan = [value, ...(keywords ?? [])].join(' ');
+    return diemKhop(vanBan, search);
+  }, []);
+
+  const trangGanDay = ganDay
+    .map((p) => theoDuongDan.get(p))
+    .filter((x): x is NonNullable<typeof x> => !!x);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="max-w-[min(94vw,40rem)] gap-0 overflow-hidden p-0 shadow-menu sm:max-w-[36rem]"
+        // Ô nhập đã tự nhận tiêu điểm, không cần Radix ép lần nữa
+      >
+        <DialogTitle className="sr-only">Tìm kiếm và đi nhanh tới trang</DialogTitle>
+        <CommandPrimitive
+          filter={locBoDau}
+          loop
+          className="flex h-full w-full flex-col overflow-hidden rounded-lg bg-popover text-popover-foreground"
+        >
+          <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
+            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" aria-hidden />
+            <CommandPrimitive.Input
+              autoFocus
+              placeholder="Tìm trang, chức năng… (gõ không dấu cũng được)"
+              className={cn(
+                'flex h-12 w-full rounded-md bg-transparent py-3 text-sm outline-none',
+                'placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50',
+              )}
+            />
+          </div>
+
+          <CommandList className="max-h-[min(60vh,24rem)]">
+            <CommandEmpty>
+              <span className="text-sm text-muted-foreground">Không tìm thấy trang nào phù hợp.</span>
+            </CommandEmpty>
+
+            {trangGanDay.length > 0 && (
+              <>
+                <CommandGroup heading="Gần đây">
+                  {trangGanDay.map(({ leaf, section }) => (
+                    <CommandItem
+                      key={`gan-day-${leaf.path}`}
+                      value={`gan-day ${leaf.label} ${section.label}`}
+                      keywords={[leaf.label, section.label, ...(leaf.keywords ?? [])]}
+                      onSelect={() => di(leaf.path)}
+                    >
+                      <Clock className="mr-2 h-4 w-4 shrink-0 opacity-60" aria-hidden />
+                      <span className="truncate">{leaf.label}</span>
+                      <span className="ml-auto shrink-0 pl-3 text-xs text-muted-foreground">
+                        {section.shortLabel ?? section.label}
+                      </span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+                <CommandSeparator />
+              </>
+            )}
+
+            <CommandGroup heading="Đi tới trang">
+              {leaves.map(({ leaf, section, folder }) => (
+                <CommandItem
+                  key={leaf.path}
+                  value={`${leaf.label} ${section.label} ${folder?.folder ?? ''}`}
+                  keywords={[leaf.label, section.label, folder?.folder ?? '', ...(leaf.keywords ?? [])]}
+                  onSelect={() => di(leaf.path)}
+                >
+                  <leaf.icon className="mr-2 h-4 w-4 shrink-0 opacity-60" aria-hidden />
+                  <span className="truncate">{leaf.label}</span>
+                  <span className="ml-auto shrink-0 pl-3 text-xs text-muted-foreground">
+                    {folder ? `${section.shortLabel ?? section.label} › ${folder.folder}` : (section.shortLabel ?? section.label)}
+                  </span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+
+            <CommandSeparator />
+
+            <CommandGroup heading="Thao tác">
+              <CommandItem
+                value="ho so ca nhan tai khoan profile"
+                keywords={['hồ sơ cá nhân', 'tài khoản']}
+                onSelect={() => di('/ho-so-ca-nhan')}
+              >
+                <User className="mr-2 h-4 w-4 shrink-0 opacity-60" aria-hidden />
+                Hồ sơ cá nhân
+              </CommandItem>
+              <CommandItem
+                value="doi giao dien sang toi dark mode"
+                keywords={['giao diện tối', 'giao diện sáng', 'dark mode']}
+                onSelect={() => {
+                  toggleTheme();
+                  onOpenChange(false);
+                }}
+              >
+                {theme === 'dark' ? (
+                  <Sun className="mr-2 h-4 w-4 shrink-0 opacity-60" aria-hidden />
+                ) : (
+                  <Moon className="mr-2 h-4 w-4 shrink-0 opacity-60" aria-hidden />
+                )}
+                {theme === 'dark' ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}
+              </CommandItem>
+              <CommandItem
+                value="dang xuat thoat logout"
+                keywords={['đăng xuất', 'thoát']}
+                onSelect={() => {
+                  onOpenChange(false);
+                  signOut();
+                }}
+                className="text-destructive data-[selected=true]:bg-destructive/10 data-[selected=true]:text-destructive"
+              >
+                <LogOut className="mr-2 h-4 w-4 shrink-0" aria-hidden />
+                Đăng xuất
+              </CommandItem>
+            </CommandGroup>
+          </CommandList>
+
+          <div className="hidden items-center gap-3 border-t px-3 py-2 text-2xs text-muted-foreground sm:flex">
+            <span className="inline-flex items-center gap-1">
+              <kbd className="rounded border bg-muted px-1 py-0.5 font-sans">↑</kbd>
+              <kbd className="rounded border bg-muted px-1 py-0.5 font-sans">↓</kbd>
+              di chuyển
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <kbd className="rounded border bg-muted px-1 py-0.5 font-sans">
+                <CornerDownLeft className="h-3 w-3" aria-hidden />
+              </kbd>
+              mở
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <kbd className="rounded border bg-muted px-1 py-0.5 font-sans">Esc</kbd>
+              đóng
+            </span>
+          </div>
+        </CommandPrimitive>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Bắt phím tắt mở bảng lệnh: Ctrl/⌘ + K. */
+export function usePhimTatBangLenh(setOpen: (fn: (v: boolean) => boolean) => void) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setOpen((v) => !v);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [setOpen]);
+}

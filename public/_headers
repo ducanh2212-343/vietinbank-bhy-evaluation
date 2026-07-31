@@ -1,0 +1,22 @@
+# Header cho Cloudflare Workers static assets (production chạy Worker `343-noi-bo`).
+# Vite chép nguyên tệp này từ public/ sang dist/ khi build.
+# Vercel KHÔNG đọc tệp này — cấu hình tương ứng nằm ở vercel.json.
+
+# Tài sản build mang hash nội dung trong tên tệp: đổi nội dung là đổi tên tệp,
+# nên cache vĩnh viễn được an toàn. Đây là phần giúp lần vào thứ hai của mỗi cán
+# bộ gần như không tốn băng thông.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Vỏ HTML phải luôn tươi, nếu không cán bộ kẹt ở bản build cũ sau khi phát hành.
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/
+  Cache-Control: public, max-age=0, must-revalidate
+
+/sw.js
+  Cache-Control: public, max-age=0, must-revalidate
+
+/*
+  X-Robots-Tag: noindex, nofollow

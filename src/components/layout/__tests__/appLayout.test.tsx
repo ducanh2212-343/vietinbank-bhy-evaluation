@@ -1,0 +1,131 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, within } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { ThemeProvider } from '@/hooks/useTheme';
+import { AppLayout } from '../AppLayout';
+
+/**
+ * Khung ứng dụng dựng 4 bề mặt điều hướng cùng lúc (thanh ngang, menu dọc,
+ * thanh tab điện thoại, bảng lệnh) từ một Context. Test này dựng thật cả khung
+ * để chặn lớp lỗi "hook ngoài provider" và khóa quy tắc: menu dọc CHỈ xuất hiện
+ * trong phân hệ chuyên sâu, không xuất hiện ở cổng ONE.
+ */
+
+const mockAuth = {
+  user: { id: 'u1', email: 'canbo@vietinbank.vn' },
+  profileId: 'p1',
+  roles: ['employee'] as string[],
+  isGuest: false,
+  guestExpiresAt: null,
+  isAdmin: false,
+  isManager: false,
+  isPgd: false,
+  signOut: vi.fn(),
+};
+
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => mockAuth }));
+vi.mock('@/hooks/useSubmissionReportAccess', () => ({
+  useSubmissionReportAccess: () => ({ loading: false, allowed: false, fullBranch: false, scopeDeptIds: [] }),
+}));
+vi.mock('@/hooks/useStrategicHrAccess', () => ({
+  useStrategicHrAccess: () => ({ loading: false, allowed: false }),
+}));
+vi.mock('@/hooks/useCouncilAccess', () => ({
+  useCouncilAccess: () => ({ loading: false, isMember: false, isSubject: false, isSupervisor: false, memberGroup: null }),
+}));
+
+function dungKhung(path: string) {
+  return render(
+    <ThemeProvider>
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route element={<AppLayout />}>
+            <Route path="*" element={<div data-testid="noi-dung-trang">nội dung</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    </ThemeProvider>,
+  );
+}
+
+describe('Khung ứng dụng', () => {
+  beforeEach(() => {
+    mockAuth.isGuest = false;
+    mockAuth.isAdmin = false;
+    mockAuth.isManager = false;
+    localStorage.clear();
+  });
+
+  it('dựng được và luôn hiện thanh điều hướng chính ở cổng ONE', () => {
+    dungKhung('/one');
+    expect(screen.getByLabelText('Điều hướng chính cổng BHY ONE')).toBeInTheDocument();
+    expect(screen.getByTestId('noi-dung-trang')).toBeInTheDocument();
+  });
+
+  it('thanh điều hướng chính vẫn hiện khi đã vào sâu trong phân hệ 343', () => {
+    // Nguyên tắc "ở đâu cũng thấy thanh ONE": bản cũ mất hẳn thanh này ngoài /one
+    dungKhung('/tu-danh-gia');
+    expect(screen.getByLabelText('Điều hướng chính cổng BHY ONE')).toBeInTheDocument();
+  });
+
+  it('KHÔNG có menu dọc ở cổng ONE — hết cảnh hai hệ menu chồng nhau', () => {
+    dungKhung('/one');
+    expect(screen.queryByLabelText('Điều hướng phân hệ')).not.toBeInTheDocument();
+  });
+
+  it('CÓ menu dọc khi vào phân hệ chuyên sâu', () => {
+    dungKhung('/tu-danh-gia');
+    expect(screen.getAllByLabelText('Điều hướng phân hệ').length).toBeGreaterThan(0);
+  });
+
+  it('có lối tắt bỏ qua điều hướng và vùng nội dung chính nhận được tiêu điểm', () => {
+    const { container } = dungKhung('/one');
+    expect(screen.getByText('Bỏ qua tới nội dung chính')).toBeInTheDocument();
+    const main = container.querySelector('main#noi-dung-chinh');
+    expect(main).toBeTruthy();
+    expect(main).toHaveAttribute('tabindex', '-1');
+  });
+
+  it('thanh tab điện thoại giới hạn 5 mục theo chuẩn điều hướng dưới đáy', () => {
+    dungKhung('/one');
+    const thanhTab = screen.getByLabelText('Điều hướng nhanh');
+    expect(within(thanhTab).getAllByRole('listitem').length).toBeLessThanOrEqual(5);
+  });
+
+  it('ô tìm kiếm là nút mở bảng lệnh, không còn là ô nhập trang trí', () => {
+    dungKhung('/one');
+    const nut = screen.getByLabelText('Tìm kiếm và đi nhanh tới trang');
+    expect(nut.tagName).toBe('BUTTON');
+  });
+
+  it('khách đối tác: không có menu dọc và không thấy phân hệ 343', () => {
+    mockAuth.isGuest = true;
+    dungKhung('/one');
+    expect(screen.queryByLabelText('Điều hướng phân hệ')).not.toBeInTheDocument();
+    const thanhNav = screen.getByLabelText('Điều hướng chính cổng BHY ONE');
+    expect(within(thanhNav).queryByText('Phát triển nhân sự 343')).not.toBeInTheDocument();
+    expect(within(thanhNav).queryByText('Quản trị người dùng')).not.toBeInTheDocument();
+  });
+
+  it('quản trị viên thấy khu Quản trị người dùng trên thanh chính', () => {
+    mockAuth.isAdmin = true;
+    dungKhung('/tong-quan');
+    const thanhNav = screen.getByLabelText('Điều hướng chính cổng BHY ONE');
+    expect(within(thanhNav).getByText('Quản trị người dùng')).toBeInTheDocument();
+  });
+
+  it('cán bộ thường KHÔNG thấy khu Quản trị người dùng', () => {
+    dungKhung('/tong-quan');
+    const thanhNav = screen.getByLabelText('Điều hướng chính cổng BHY ONE');
+    expect(within(thanhNav).queryByText('Quản trị người dùng')).not.toBeInTheDocument();
+  });
+
+  it('mega-menu không nằm sẵn trong DOM khi chưa mở', () => {
+    // ~60 mục của phân hệ 343 chỉ được gắn vào DOM lúc bung bảng menu; nếu
+    // render sẵn ở mọi trang thì mỗi lần đổi route đều phải dựng thừa hàng trăm nút.
+    dungKhung('/one');
+    const thanhNav = screen.getByLabelText('Điều hướng chính cổng BHY ONE');
+    expect(within(thanhNav).queryByText('Tiêu chí level skill')).not.toBeInTheDocument();
+    expect(within(thanhNav).queryByText('Quản trị Email')).not.toBeInTheDocument();
+  });
+});

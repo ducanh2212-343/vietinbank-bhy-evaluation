@@ -52,6 +52,8 @@
     --shadow-soft: 0 1px 2px 0 hsl(215 59% 15% / 0.05), 0 4px 14px -6px hsl(215 59% 15% / 0.08);
     --shadow-glass: 0 1px 0 0 hsl(0 0% 100% / 0.6) inset, 0 8px 26px -12px hsl(215 59% 15% / 0.14);
     --shadow-lift: 0 12px 34px -14px hsl(215 100% 27% / 0.22);
+    /* Bảng menu bung xuống — viền sáng mảnh + bóng sâu, ám navy cùng tông nền */
+    --shadow-menu: 0 0 0 1px hsl(215 40% 60% / 0.10), 0 10px 15px -6px hsl(215 59% 15% / 0.10), 0 24px 48px -16px hsl(215 59% 15% / 0.18);
 
     /* Bề mặt panel */
     --glass-bg: 0 0% 100% / 0.78;
@@ -70,11 +72,12 @@
     --level-4-bg: 270 55% 95%;
 
     /* Star groups */
-    --star-mai: 45 90% 50%;
+    /* Độ sáng đã hạ để đạt ≥4.5:1 trên nền huy hiệu tương ứng (WCAG AA) */
+    --star-mai: 45 90% 29%;
     --star-mai-bg: 45 90% 94%;
-    --star-khue: 145 55% 42%;
+    --star-khue: 145 55% 32%;
     --star-khue-bg: 145 55% 94%;
-    --star-bang: 25 85% 55%;
+    --star-bang: 25 85% 37%;
     --star-bang-bg: 25 85% 94%;
     --star-hom: 0 55% 48%;
     --star-hom-bg: 0 55% 94%;
@@ -135,6 +138,7 @@
     --shadow-soft: 0 1px 2px 0 hsl(216 60% 2% / 0.4), 0 4px 14px -6px hsl(216 60% 2% / 0.5);
     --shadow-glass: 0 1px 0 0 hsl(0 0% 100% / 0.05) inset, 0 8px 26px -12px hsl(216 60% 2% / 0.7);
     --shadow-lift: 0 12px 34px -14px hsl(216 60% 2% / 0.7);
+    --shadow-menu: 0 0 0 1px hsl(0 0% 100% / 0.07), 0 10px 15px -6px hsl(216 60% 2% / 0.5), 0 24px 48px -16px hsl(216 60% 2% / 0.75);
 
     /* Bề mặt panel kính trên nền tối */
     --glass-bg: 216 34% 14% / 0.7;
@@ -193,15 +197,26 @@
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     background-color: hsl(var(--background));
+  }
+  /*
+   * Quầng sáng nền nằm ở lớp giả cố định thay vì đặt thẳng lên body.
+   * Trước đây body dùng `background-attachment: fixed` với hai radial-gradient:
+   * mỗi khung hình cuộn trên di động, trình duyệt phải vẽ lại toàn bộ nền —
+   * nguyên nhân chính gây giật khi cuộn trên máy tầm trung. Lớp giả cố định
+   * (position: fixed) được nâng lên lớp hợp thành riêng nên cuộn không vẽ lại.
+   */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
     background-image:
       radial-gradient(1100px 560px at 0% -10%, hsl(207 79% 90% / 0.6), transparent 60%),
       radial-gradient(820px 460px at 100% 0%, hsl(212 100% 92% / 0.55), transparent 55%);
-    background-attachment: fixed;
-    /* Chuyển màu mượt khi đổi sáng/tối */
-    transition: background-color 0.3s ease, color 0.3s ease;
   }
   /* Nền tối: quầng sáng navy sâu thay cho gradient xanh nhạt */
-  .dark body {
+  .dark body::before {
     background-image:
       radial-gradient(1100px 560px at 0% -10%, hsl(212 80% 22% / 0.5), transparent 60%),
       radial-gradient(820px 460px at 100% 0%, hsl(215 70% 24% / 0.45), transparent 55%);
@@ -209,6 +224,16 @@
   /* Giảm delay 300ms khi chạm trên mobile */
   button, a, [role="button"] {
     touch-action: manipulation;
+  }
+  /*
+   * Vòng tiêu điểm chung cho thao tác bàn phím. Menu cũ không có một quy tắc
+   * :focus-visible nào, nên người dùng bàn phím không thấy mình đang ở đâu.
+   * Chỉ hiện khi trình duyệt xác định là điều hướng bàn phím, không hiện khi bấm chuột.
+   */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: calc(var(--radius) - 6px);
   }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
@@ -223,6 +248,16 @@
 @layer utilities {
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
+  }
+  /* Ẩn thanh cuộn nhưng vẫn cuộn được — dùng cho dải mục trượt ngang.
+     Bản cũ có nơi dùng class này nhưng chưa bao giờ khai báo, nên Windows/Linux
+     vẫn hiện thanh cuộn ngang thật. */
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
   }
   .table-bleed {
     @apply -mx-4 sm:mx-0;
@@ -247,14 +282,6 @@
     -webkit-backdrop-filter: saturate(160%) blur(16px);
     box-shadow: var(--shadow-glass);
   }
-  .glass-subtle {
-    background-color: hsl(0 0% 100% / 0.7);
-    border: 1px solid hsl(214 45% 90% / 0.8);
-  }
-  .dark .glass-subtle {
-    background-color: hsl(216 34% 16% / 0.7);
-    border: 1px solid hsl(214 26% 30% / 0.7);
-  }
   .shadow-soft { box-shadow: var(--shadow-soft); }
   .shadow-lift { box-shadow: var(--shadow-lift); }
 
@@ -277,43 +304,6 @@
 }
 
 @layer components {
-  .nav-item {
-    @apply flex items-center gap-3 px-3 py-2.5 min-h-[44px] rounded-lg text-[13px] font-medium transition-colors duration-200 cursor-pointer;
-    color: hsl(var(--sidebar-foreground));
-  }
-  .nav-item:hover {
-    background: hsl(0 0% 100% / 0.08);
-    color: hsl(var(--sidebar-primary));
-  }
-  .nav-item.active {
-    background: hsl(0 0% 100% / 0.13);
-    color: hsl(var(--sidebar-primary));
-    font-weight: 600;
-    /* Vạch gold bên trái — dấu vị trí hiện tại */
-    box-shadow: inset 3px 0 0 0 hsl(var(--brand-gold));
-  }
-
-  /* === Menu dạng cây: nhóm (accordion) + thư mục con + mục lá ===
-     Mỗi nhóm mang biến --gc (màu nhận diện) đặt inline. Các nền nhấn dùng
-     color-mix để tự dịu trên nền navy; nếu trình duyệt không hỗ trợ, phần
-     nền bị bỏ qua nhưng chữ + vạch gold vẫn đọc rõ (thoái hoá an toàn). */
-  .nav-group-head {
-    @apply flex items-center gap-2 px-2 py-2.5 min-h-[46px] rounded-xl text-[13px] font-semibold transition-colors duration-200 cursor-pointer;
-    color: hsl(var(--sidebar-foreground));
-  }
-  .nav-group-head:hover { background: hsl(0 0% 100% / 0.06); }
-  .nav-group.open > .nav-group-head { background: color-mix(in srgb, var(--gc) 14%, transparent); }
-  .nav-group.open > .nav-group-head .nav-group-label { color: #fff; }
-  .nav-group-icon {
-    @apply flex items-center justify-center w-7 h-7 rounded-lg flex-shrink-0;
-    background: color-mix(in srgb, var(--gc) 22%, transparent);
-    color: var(--gc);
-  }
-  .nav-group-chev {
-    @apply w-4 h-4 flex-shrink-0 transition-transform duration-200;
-    color: hsl(var(--sidebar-muted));
-  }
-  .nav-group.open > .nav-group-head .nav-group-chev { transform: rotate(90deg); color: var(--gc); }
 
   /* Cổng BHY ONE luôn là "đảo sáng": ép bộ token về hệ sáng để các thành phần
      dùng chung (Card, Button, Dialog, Tabs…) hiển thị đúng ngay cả khi ứng dụng
@@ -338,48 +328,6 @@
     --border: 214 45% 88%;
     --input: 214 45% 86%;
     --ring: 212 100% 36%;
-  }
-  /* Mục cấp 1 dẫn thẳng tới một trang, khi đang ở trang đó */
-  .nav-group.nav-link-active > .nav-group-head {
-    background: color-mix(in srgb, var(--gc) 20%, transparent);
-    color: #fff;
-    box-shadow: inset 3px 0 0 0 hsl(var(--brand-gold));
-  }
-  .nav-group.nav-link-active > .nav-group-head .nav-group-label { color: #fff; }
-
-  /* Khối con của nhóm — vạch màu nhận diện bên trái */
-  .nav-group-body {
-    @apply mt-0.5 mb-1 ml-3.5 pl-2.5 space-y-0.5;
-    border-left: 2px solid color-mix(in srgb, var(--gc) 40%, transparent);
-  }
-
-  .nav-leaf {
-    @apply flex items-center gap-2.5 px-2.5 py-2 min-h-[36px] rounded-lg text-[12.5px] font-medium transition-colors duration-200 cursor-pointer text-left;
-    color: hsl(var(--sidebar-foreground) / 0.85);
-  }
-  .nav-leaf-ico { color: var(--gc); opacity: 0.9; }
-  .nav-leaf:hover { background: hsl(0 0% 100% / 0.08); color: #fff; }
-  .nav-leaf.active {
-    background: color-mix(in srgb, var(--gc) 20%, transparent);
-    color: #fff;
-    font-weight: 600;
-    box-shadow: inset 3px 0 0 0 hsl(var(--brand-gold));
-  }
-
-  /* Thư mục con (cấp 2) */
-  .nav-folder-head {
-    @apply flex items-center gap-2.5 px-2.5 py-2 min-h-[36px] rounded-lg text-[12.5px] font-semibold transition-colors duration-200 cursor-pointer;
-    color: hsl(var(--sidebar-foreground));
-  }
-  .nav-folder-head:hover { background: hsl(0 0% 100% / 0.06); }
-  .nav-folder-chev {
-    @apply w-3.5 h-3.5 transition-transform duration-200;
-    color: hsl(var(--sidebar-muted));
-  }
-  .nav-folder.open > .nav-folder-head .nav-folder-chev { transform: rotate(90deg); }
-  .nav-folder-body {
-    @apply ml-3 pl-2 space-y-0.5;
-    border-left: 1px dashed color-mix(in srgb, var(--gc) 32%, transparent);
   }
   .level-badge {
     @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold;
