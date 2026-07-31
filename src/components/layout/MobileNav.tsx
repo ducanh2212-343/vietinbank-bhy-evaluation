@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
  */
 export function MobileNav() {
   const { sections } = useNavTree();
-  const { user, roles, signOut } = useAuth();
+  const { user, roles, isGuest, signOut } = useAuth();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [moMenu, setMoMenu] = useState(false);
@@ -138,14 +138,17 @@ export function MobileNav() {
 
                   {/* Tài khoản — tách khỏi điều hướng, đăng xuất để riêng dưới cùng */}
                   <div className="mt-3 space-y-0.5 border-t border-border pt-3">
-                    <button
-                      type="button"
-                      onClick={() => { setMoMenu(false); navigate('/ho-so-ca-nhan'); }}
-                      className="flex min-h-[44px] w-full items-center gap-3 rounded-xl px-2.5 py-2 text-sm active:bg-muted"
-                    >
-                      <User className="h-[18px] w-[18px] shrink-0" />
-                      Hồ sơ cá nhân
-                    </button>
+                    {/* Khách đối tác bị GuestGate chặn trang này — không mời vào ngõ cụt */}
+                    {!isGuest && (
+                      <button
+                        type="button"
+                        onClick={() => { setMoMenu(false); navigate('/ho-so-ca-nhan'); }}
+                        className="flex min-h-[44px] w-full items-center gap-3 rounded-xl px-2.5 py-2 text-sm active:bg-muted"
+                      >
+                        <User className="h-[18px] w-[18px] shrink-0" />
+                        Hồ sơ cá nhân
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => { setMoMenu(false); navigate('/doi-mat-khau'); }}

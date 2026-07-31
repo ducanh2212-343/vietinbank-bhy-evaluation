@@ -268,10 +268,13 @@ export const NAV_SECTIONS: NavSection[] = [
             extraPaths: ['/ho-so-ca-nhan/'],
           },
           {
+            // KHÔNG đặt guestVisible: khu 'Phát triển nhân sự 343' vốn đã đóng với
+            // khách đối tác nên cờ ở đây không bao giờ có hiệu lực — để lại chỉ gây
+            // hiểu nhầm là khách thấy được mục này. Khách đổi mật khẩu bằng nút
+            // riêng trong menu tài khoản (GuestGate cho phép /doi-mat-khau).
             label: 'Đổi mật khẩu',
             icon: KeyRound,
             path: '/doi-mat-khau',
-            guestVisible: true,
             keywords: ['mat khau', 'password', 'bao mat'],
           },
         ],
@@ -460,7 +463,14 @@ export function filterSections(sections: NavSection[], p: NavPermissions): NavSe
 
       // Khu dẫn thẳng tới một trang thì không cần mục con
       if (!s.items?.length) return s.path ? s : null;
-      if (!entries.length) return s.path ? { ...s, items: [] } : null;
+      // Khu có mục con nhưng bị lọc sạch: CHỈ giữ lại nếu chính đường dẫn cấp khu
+      // cũng nằm trong danh sách mục con — nghĩa là nó đã qua được vòng xét quyền.
+      // Giữ vô điều kiện sẽ là bẫy lộ khu cho vai trò không đủ quyền khi sau này
+      // có ai thêm mục con cần quyền vào một khu vốn có path.
+      if (!entries.length) {
+        const laTrangCongKhai = s.path && s.items.some((e) => !isFolder(e) && e.path === s.path && canSeeLeaf(e, p));
+        return laTrangCongKhai ? { ...s, items: [] } : null;
+      }
       return { ...s, items: entries };
     })
     .filter((s): s is NavSection => s !== null);

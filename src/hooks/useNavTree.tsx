@@ -71,16 +71,21 @@ export function NavTreeProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  const value = useMemo<NavTree>(() => {
-    const sections = filterSections(NAV_SECTIONS, permissions);
-    return {
+  // Lọc cây và trải phẳng CHỈ phụ thuộc quyền, không phụ thuộc trang đang xem —
+  // tách riêng để mỗi lần đổi trang không phải duyệt lại cả 60 mục.
+  const sections = useMemo(() => filterSections(NAV_SECTIONS, permissions), [permissions]);
+  const leaves = useMemo(() => flattenLeaves(sections), [sections]);
+
+  const value = useMemo<NavTree>(
+    () => ({
       sections,
-      leaves: flattenLeaves(sections),
+      leaves,
       // Tra vị trí trên cây ĐÃ LỌC: trang ngoài quyền sẽ không dựng breadcrumb sai
       location: resolveLocation(pathname, sections),
       loading: reportAccess.loading || strategicAccess.loading || councilAccess.loading,
-    };
-  }, [permissions, pathname, reportAccess.loading, strategicAccess.loading, councilAccess.loading]);
+    }),
+    [sections, leaves, pathname, reportAccess.loading, strategicAccess.loading, councilAccess.loading],
+  );
 
   return <NavTreeContext.Provider value={value}>{children}</NavTreeContext.Provider>;
 }

@@ -64,7 +64,7 @@ interface Props {
  * buộc với nhãn tiếng Việt, vì gõ đủ dấu trong ô tìm nhanh là điều không ai làm.
  */
 export function CommandPalette({ open, onOpenChange }: Props) {
-  const { leaves } = useNavTree();
+  const { leaves, loading: dangTraQuyen } = useNavTree();
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -150,7 +150,13 @@ export function CommandPalette({ open, onOpenChange }: Props) {
 
           <CommandList className="max-h-[min(60vh,24rem)]">
             <CommandEmpty>
-              <span className="text-sm text-muted-foreground">Không tìm thấy trang nào phù hợp.</span>
+              {/* Ba hook phân quyền chạy bất đồng bộ; trong lúc chờ, các mục theo
+                  phạm vi (hội đồng, chiến lược nhân sự…) chưa có mặt trên cây.
+                  Nói rõ đang tra quyền thay vì khẳng định "không tìm thấy" —
+                  khẳng định sai khiến cán bộ tưởng mình vừa bị mất quyền. */}
+              <span className="text-sm text-muted-foreground">
+                {dangTraQuyen ? 'Đang tra quyền truy cập…' : 'Không tìm thấy trang nào phù hợp.'}
+              </span>
             </CommandEmpty>
 
             {trangGanDay.length > 0 && (

@@ -136,7 +136,7 @@ interface Props {
  * nên ~60 mục của phân hệ 343 không nằm sẵn trong cây DOM của mọi trang.
  */
 export function TopNav({ onMoBangLenh }: Props) {
-  const { user, roles, signOut } = useAuth();
+  const { user, roles, isGuest, signOut } = useAuth();
   const { sections } = useNavTree();
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -324,10 +324,14 @@ export function TopNav({ onMoBangLenh }: Props) {
               {vaiTro && <span className="mt-0.5 block text-xs text-muted-foreground">{vaiTro}</span>}
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => navigate('/ho-so-ca-nhan')}>
-              <User className="mr-2 h-4 w-4" />
-              Hồ sơ cá nhân
-            </DropdownMenuItem>
+            {/* Khách đối tác không có hồ sơ cán bộ: GuestGate chặn /ho-so-ca-nhan
+                và đá về /one, nên mời họ bấm vào là dẫn vào ngõ cụt */}
+            {!isGuest && (
+              <DropdownMenuItem onSelect={() => navigate('/ho-so-ca-nhan')}>
+                <User className="mr-2 h-4 w-4" />
+                Hồ sơ cá nhân
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onSelect={() => navigate('/doi-mat-khau')}>
               <KeyRound className="mr-2 h-4 w-4" />
               Đổi mật khẩu
