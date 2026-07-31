@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavTree } from '@/hooks/useNavTree';
 import { cn } from '@/lib/utils';
@@ -18,8 +18,6 @@ export function Breadcrumbs() {
   const { section, folder, leaf, zone } = location;
 
   if (zone !== 'workspace' || !section || !leaf) return null;
-
-  const capTren = folder?.items.find((l) => l.path !== leaf.path)?.path;
 
   return (
     <nav aria-label="Đường dẫn trang" className="mb-3 min-w-0">
@@ -47,13 +45,10 @@ export function Breadcrumbs() {
               <ChevronRight className="h-3.5 w-3.5 opacity-50" />
             </li>
             <li className="min-w-0">
-              {capTren ? (
-                <Link to={capTren} className="truncate transition-colors duration-fast hover:text-foreground">
-                  {folder.folder}
-                </Link>
-              ) : (
-                <span className="truncate">{folder.folder}</span>
-              )}
+              {/* Thư mục là nhóm trong menu, KHÔNG phải một trang — nên đây là chữ
+                  thuần. Cho bấm được sẽ phải chọn bừa một trang anh em làm đích,
+                  khiến cùng một nhãn dẫn tới hai nơi khác nhau tùy trang đang xem. */}
+              <span className="truncate">{folder.folder}</span>
             </li>
           </>
         )}

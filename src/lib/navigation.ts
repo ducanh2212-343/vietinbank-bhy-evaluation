@@ -179,13 +179,21 @@ export const NAV_SECTIONS: NavSection[] = [
     zone: 'portal',
     desc: 'Gửi ý tưởng cải tiến và đăng ký thẩm định tín dụng 360°',
     items: [
+      // Trang giới thiệu chung của khu — bản cũ có link này trên thanh ngang,
+      // giữ lại để /one/sang-kien không thành trang mồ côi.
+      {
+        label: 'Giới thiệu Sáng kiến & Nghiệp vụ',
+        icon: Lightbulb,
+        path: '/one/sang-kien',
+        bleed: true,
+        keywords: ['gioi thieu', 'tong quan sang kien'],
+      },
       {
         label: 'BHY Ideas',
         icon: Lightbulb,
         path: '/one/y-tuong',
         bleed: true,
         keywords: ['y tuong', 'sang kien', 'cai tien', 'de xuat'],
-        extraPaths: ['/one/sang-kien'],
       },
       {
         label: 'BHY Credit 360',

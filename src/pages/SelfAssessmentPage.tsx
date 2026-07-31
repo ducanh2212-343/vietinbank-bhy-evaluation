@@ -1120,7 +1120,7 @@ export default function SelfAssessmentPage() {
 
       {/* Sticky bottom action bar */}
       <div
-        className="fixed bottom-0 left-0 right-0 lg:left-60 bg-background border-t p-3 flex flex-wrap gap-2 z-50 max-w-4xl mx-auto"
+        className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:bottom-0 left-0 right-0 lg:left-60 bg-background border-t p-3 flex flex-wrap gap-2 z-50 max-w-4xl mx-auto"
         style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
       >
         <div className="w-full empty:hidden">

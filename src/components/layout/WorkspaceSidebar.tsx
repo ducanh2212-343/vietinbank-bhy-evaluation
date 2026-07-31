@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -107,6 +107,11 @@ function NoiDungKhu({ section, onDieuHuong }: { section: NavSection; onDieuHuong
 /** Thanh biểu tượng 68px cho máy tính bảng — chạm vào mở cột mục con nổi. */
 function ThanhBieuTuong({ sections }: { sections: NavSection[] }) {
   const { pathname } = useLocation();
+  // Cột nổi phải tự đóng sau khi chọn trang. Không đóng thì trên máy tính bảng
+  // cảm ứng nó nằm đè lên nội dung trang vừa mở, phải chạm ra ngoài mới thoát.
+  const [dangMo, setDangMo] = useState<string | null>(null);
+  useEffect(() => setDangMo(null), [pathname]);
+
   return (
     <nav
       aria-label="Điều hướng phân hệ (thu gọn)"
@@ -116,7 +121,11 @@ function ThanhBieuTuong({ sections }: { sections: NavSection[] }) {
         (section.items ?? []).filter(isFolder).map((folder) => {
           const dangXem = folder.items.some((l) => matchesLeaf(pathname, l));
           return (
-            <Popover key={folder.id}>
+            <Popover
+              key={folder.id}
+              open={dangMo === folder.id}
+              onOpenChange={(o) => setDangMo(o ? folder.id : null)}
+            >
               <PopoverTrigger
                 aria-label={folder.folder}
                 className={cn(
@@ -139,7 +148,7 @@ function ThanhBieuTuong({ sections }: { sections: NavSection[] }) {
                 <ul className="space-y-0.5">
                   {folder.items.map((leaf) => (
                     <li key={leaf.path}>
-                      <MucLa leaf={leaf} />
+                      <MucLa leaf={leaf} onDieuHuong={() => setDangMo(null)} />
                     </li>
                   ))}
                 </ul>
@@ -178,7 +187,7 @@ export function WorkspaceSidebar() {
       <nav
         aria-label="Điều hướng phân hệ"
         className={cn(
-          'sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-64 shrink-0 overflow-y-auto overscroll-contain',
+          'sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-60 shrink-0 overflow-y-auto overscroll-contain',
           'border-r border-sidebar-border bg-sidebar px-2 pb-6 lg:block',
           '[&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/20',
         )}

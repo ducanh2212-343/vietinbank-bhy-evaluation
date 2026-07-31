@@ -221,6 +221,33 @@ describe('So khớp tiếng Việt cho bảng lệnh', () => {
   });
 });
 
+describe('Không trang nào thành mồ côi', () => {
+  it('/one/sang-kien có mục menu riêng, không bị nuốt vào BHY Ideas', () => {
+    // Bản cũ có link này trên thanh ngang. Nếu chỉ khai qua extraPaths thì trang
+    // vẫn chạy nhưng không còn lối vào nào từ menu, và bị tô sáng nhầm sang Ideas.
+    const viTri = resolveLocation('/one/sang-kien');
+    expect(viTri.leaf?.path).toBe('/one/sang-kien');
+    const duongDan = moiDuongDan(canBoThuong);
+    expect(duongDan).toContain('/one/sang-kien');
+    expect(duongDan).toContain('/one/y-tuong');
+  });
+
+  it('mỗi mục lá hiện trong menu đều tự tra ngược về chính nó', () => {
+    // Bắt lỗi mục bị mục khác "giành" mất do trùng tiền tố đường dẫn
+    for (const { leaf } of flattenLeaves(NAV_SECTIONS)) {
+      expect(resolveLocation(leaf.path).leaf?.path, `mục ${leaf.label} bị tra nhầm`).toBe(leaf.path);
+    }
+  });
+
+  it('đường dẫn trùng tiền tố không khớp nhầm nhau', () => {
+    // '/bao-cao' không được nuốt '/bao-cao-dau-moi' hay '/bao-cao-nop-bieu-mau'
+    expect(resolveLocation('/bao-cao-dau-moi').leaf?.path).toBe('/bao-cao-dau-moi');
+    expect(resolveLocation('/bao-cao-nop-bieu-mau').leaf?.path).toBe('/bao-cao-nop-bieu-mau');
+    expect(resolveLocation('/bao-cao').leaf?.path).toBe('/bao-cao');
+    expect(resolveLocation('/quan-tri-quizzi').leaf?.path).toBe('/quizzi');
+  });
+});
+
 describe('Cờ tràn viền quyết định khoảng đệm của khung', () => {
   // Trang bọc trong OnePageShell tự dựng nền + dải hero nên khung không thêm
   // khoảng đệm; MỌI trang còn lại phải nhận khoảng đệm, kể cả route lạ.

@@ -49,7 +49,7 @@ function BangMenu({ section, onDieuHuong }: { section: NavSection; onDieuHuong: 
     <div
       className={cn(
         'p-4 sm:p-5',
-        laMega ? 'w-[min(92vw,64rem)]' : 'w-[min(92vw,20rem)]',
+        laMega ? 'w-[min(calc(100vw-6rem),64rem)]' : 'w-[min(calc(100vw-6rem),20rem)]',
       )}
     >
       {laMega && section.desc && (
@@ -155,8 +155,10 @@ export function TopNav({ onMoBangLenh }: Props) {
 
   const vaiTro = roles.length > 0 ? ROLE_LABEL[roles[0]] || roles[0] : '';
 
+  // Viền dưới vẽ bằng bóng thay vì border-b: border cộng thêm 1px vào chiều cao,
+  // làm lệch mọi chỗ neo theo top-14 / calc(100dvh-3.5rem) của menu dọc và vỏ cổng.
   return (
-    <header className="sticky top-0 z-header border-b border-border/70 bg-background/80 backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:bg-background/65">
+    <header className="sticky top-0 z-header bg-background/80 shadow-[0_1px_0_0_hsl(var(--border)/0.7)] backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:bg-background/65">
       <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-1 px-3 sm:px-4 lg:px-6">
         {/* Nhận diện — về trang chủ cổng */}
         <Link

@@ -9,8 +9,6 @@ import { ThemeProvider } from "@/hooks/useTheme";
 import { IdleLogoutGuard } from "@/components/IdleLogoutGuard";
 import { AdminRoute, ManagerOrAboveRoute, GuestGate } from "@/components/AdminRoute";
 
-import Login from "./pages/Login";
-import Unsubscribe from "./pages/Unsubscribe";
 
 // Retry dynamic import once on failure (handles stale chunk hashes after redeploys).
 function lazyWithRetry<T extends ComponentType<any>>(factory: () => Promise<{ default: T }>) {
@@ -35,6 +33,13 @@ function lazyWithRetry<T extends ComponentType<any>>(factory: () => Promise<{ de
 const AppLayout = lazyWithRetry(() =>
   import("@/components/layout/AppLayout").then((m) => ({ default: m.AppLayout })),
 );
+
+// Đăng nhập và Hủy đăng ký cũng nạp lười. Nạp tĩnh khiến gói entry kéo theo bộ
+// biểu tượng dùng chung (~12 kB gzip) vào lần tải đầu của MỌI người, kể cả người
+// đã đăng nhập. Vì màn đăng nhập luôn phải chờ lượt kiểm phiên bất đồng bộ, gói
+// này tải song song với lượt kiểm đó nên không thêm độ trễ thực tế.
+const Login = lazyWithRetry(() => import("./pages/Login"));
+const Unsubscribe = lazyWithRetry(() => import("./pages/Unsubscribe"));
 
 const Overview = lazyWithRetry(() => import("./pages/Overview"));
 const PersonalProfile = lazyWithRetry(() => import("./pages/PersonalProfile"));
@@ -133,7 +138,11 @@ function LoginRoute() {
   // Cổng BHY ONE là cửa vào chung của mọi vai trò (sơ đồ site đã duyệt);
   // phân hệ nhân sự 343 vào từ menu "Nhân sự 343" của cổng.
   if (user) return <Navigate to="/one" replace />;
-  return <Login />;
+  return (
+    <Suspense fallback={<div className="flex min-h-[100dvh] items-center justify-center text-muted-foreground">Đang tải...</div>}>
+      <Login />
+    </Suspense>
+  );
 }
 
 function HomeRedirect() {
@@ -154,7 +163,7 @@ const App = () => (
             <Route path="/dang-ky-tai-khoan" element={<Navigate to="/dang-nhap" replace />} />
             <Route path="/quen-mat-khau" element={<Suspense fallback={null}><ForgotPassword /></Suspense>} />
             <Route path="/dat-lai-mat-khau" element={<Suspense fallback={null}><ResetPassword /></Suspense>} />
-            <Route path="/unsubscribe" element={<Unsubscribe />} />
+            <Route path="/unsubscribe" element={<Suspense fallback={null}><Unsubscribe /></Suspense>} />
             <Route element={<ProtectedRoutes />}>
               <Route element={<GuestGate />}>
               <Route path="/" element={<HomeRedirect />} />

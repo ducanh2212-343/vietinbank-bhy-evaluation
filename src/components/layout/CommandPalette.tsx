@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Command as CommandPrimitive } from 'cmdk';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Clock, CornerDownLeft, LogOut, Moon, Search, Sun, User } from 'lucide-react';
-import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import {
   CommandEmpty,
   CommandGroup,
@@ -30,19 +29,24 @@ function napGanDay(): string[] {
   return [];
 }
 
-/** Ghi nhớ trang vừa xem để bảng lệnh gợi ý lần sau. */
-export function useGhiNhoTrangGanDay(duongDanHopLe: (p: string) => boolean) {
-  const { pathname } = useLocation();
+/**
+ * Ghi nhớ trang vừa xem để bảng lệnh gợi ý lần sau.
+ *
+ * Nhận đường dẫn của MỤC trên cây điều hướng, không phải pathname thật: xem hồ sơ
+ * cán bộ ở /chi-tiet-can-bo/abc-123 phải được ghi là '/danh-gia-can-bo'. Nếu ghi
+ * pathname thô, danh sách "Gần đây" sẽ toàn khoá không tra ngược được và tự rỗng dần.
+ */
+export function useGhiNhoTrangGanDay(duongDanMuc: string | undefined) {
   useEffect(() => {
-    if (!duongDanHopLe(pathname)) return;
+    if (!duongDanMuc) return;
     try {
-      const ds = napGanDay().filter((p) => p !== pathname);
-      ds.unshift(pathname);
+      const ds = napGanDay().filter((p) => p !== duongDanMuc);
+      ds.unshift(duongDanMuc);
       localStorage.setItem(KHOA_GAN_DAY, JSON.stringify(ds.slice(0, SO_TRANG_GAN_DAY)));
     } catch {
       /* bỏ qua */
     }
-  }, [pathname, duongDanHopLe]);
+  }, [duongDanMuc]);
 }
 
 interface Props {
@@ -119,14 +123,14 @@ export function CommandPalette({ open, onOpenChange }: Props) {
             'data-[state=open]:animate-menu-in data-[state=closed]:animate-menu-out',
           )}
         >
-          <VisuallyHidden asChild>
-            <DialogPrimitive.Title>Tìm kiếm và đi nhanh tới trang</DialogPrimitive.Title>
-          </VisuallyHidden>
-          <VisuallyHidden asChild>
-            <DialogPrimitive.Description>
-              Gõ tên trang để đi tới. Dùng phím mũi tên để chọn, Enter để mở, Esc để đóng.
-            </DialogPrimitive.Description>
-          </VisuallyHidden>
+          {/* Radix yêu cầu Title + Description để hộp thoại có tên và mô tả cho
+              trình đọc màn hình. Dùng .sr-only của Tailwind thay vì gói
+              @radix-ui/react-visually-hidden — gói đó chỉ là phụ thuộc gián tiếp,
+              khai báo thẳng sẽ khiến `npm ci` trên bản checkout sạch bị gãy. */}
+          <DialogPrimitive.Title className="sr-only">Tìm kiếm và đi nhanh tới trang</DialogPrimitive.Title>
+          <DialogPrimitive.Description className="sr-only">
+            Gõ tên trang để đi tới. Dùng phím mũi tên để chọn, Enter để mở, Esc để đóng.
+          </DialogPrimitive.Description>
         <CommandPrimitive
           filter={locBoDau}
           loop

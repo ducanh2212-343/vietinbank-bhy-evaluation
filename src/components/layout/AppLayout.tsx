@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { NavTreeProvider, useNavTree } from '@/hooks/useNavTree';
 import { TopNav } from './TopNav';
@@ -30,8 +30,7 @@ function KhungUngDung() {
   usePhimTatBangLenh(setMoBangLenh);
 
   // Chỉ ghi nhớ trang có mặt trên cây điều hướng
-  const duongDanHopLe = useCallback(() => !!viTri.leaf, [viTri.leaf]);
-  useGhiNhoTrangGanDay(duongDanHopLe);
+  useGhiNhoTrangGanDay(viTri.leaf?.path);
 
   // Đổi trang: đưa tiêu điểm về vùng nội dung để người dùng bàn phím và trình
   // đọc màn hình không phải tab lại từ đầu thanh điều hướng.
@@ -78,7 +77,8 @@ function KhungUngDung() {
             'pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0',
             // Mọi trang đều nhận khoảng đệm chung, TRỪ trang tự dựng bố cục
             // tràn viền (các trang bọc trong OnePageShell có dải hero + nền riêng).
-            !traVien && 'px-3 pt-4 sm:px-6 sm:pt-5',
+            // Khoảng đệm dưới ở md trở lên: dưới md đã có sẵn phần chừa cho thanh tab.
+            !traVien && 'px-3 pt-4 sm:px-6 sm:pt-5 md:pb-8',
           )}
         >
           {laKhuLamViec && <Breadcrumbs />}
