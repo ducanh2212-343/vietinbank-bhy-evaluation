@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { BrandTree, BrandBadge } from '@/components/branding/BrandAssets';
 import { CORE_VALUES as VALUES } from '@/lib/coreValues';
 import { markActivity } from '@/lib/idleSession';
 
@@ -31,19 +30,23 @@ export default function Login() {
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-background" style={{ minHeight: '100dvh' }}>
-      {/* Panel thương hiệu Cây ký ức — laptop / iPad ngang */}
+      {/* Panel giới thiệu — CHỦ Ý thuần chữ, không dùng logo/ảnh nhận diện của
+          tổ chức nào. Trang đăng nhập là trang duy nhất máy quét của nền tảng
+          triển khai nhìn thấy khi chưa đăng nhập; để logo và tên ngân hàng ở đây
+          dễ bị hiểu nhầm là trang giả mạo. Phần nhận diện đầy đủ nằm sau đăng nhập. */}
       <div className="relative hidden lg:flex flex-col items-center justify-center overflow-hidden brand-navy-surface p-10 text-white">
-        <div className="relative z-10 max-w-md text-center space-y-5">
-          <BrandBadge className="mx-auto h-16 w-16 rounded-full bg-white/95 p-1 object-contain" />
+        <div className="relative z-10 max-w-md text-center space-y-6">
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/20">
+            <span className="text-2xl font-black tracking-tight">ONE</span>
+          </div>
           <h2 className="text-3xl xl:text-4xl font-bold leading-tight">
             20 năm <span className="text-red-400">vun gốc bền rễ</span>
             <br />vươn tầm tương lai
           </h2>
-          <BrandTree framed className="mx-auto w-72 xl:w-80" />
           <p className="text-sm text-blue-100/90 leading-relaxed">
             Gốc rễ là nền móng của các thế hệ đi trước, thân cây là bản lĩnh được tôi luyện,
             cành lá là khát vọng vươn cao — và mỗi cán bộ là một "quả ngọt" trên cây ký ức
-            VietinBank Bắc Hưng Yên.
+            của Chi nhánh.
           </p>
           <div className="flex flex-wrap justify-center gap-1.5">
             {VALUES.map((v) => (
@@ -64,7 +67,9 @@ export default function Login() {
           {/* Banner gọn cho phone / iPad dọc */}
           <div className="lg:hidden mb-5 overflow-hidden rounded-xl brand-navy-surface text-white">
             <div className="flex items-center gap-3 px-4 py-3">
-              <BrandTree framed className="w-16 shrink-0" />
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/20">
+                <span className="text-sm font-black tracking-tight">ONE</span>
+              </div>
               <div className="min-w-0">
                 <p className="text-[10px] font-semibold tracking-[0.18em] text-blue-200">2006 — 2026 · 20 NĂM</p>
                 <p className="text-sm font-bold leading-snug">
@@ -78,19 +83,21 @@ export default function Login() {
           <div className="rounded-xl border bg-card shadow-lift p-6 sm:p-8">
             <div className="text-center space-y-3">
               <div className="flex justify-center">
-                <BrandBadge className="h-16 w-16 rounded-xl bg-white p-1 object-contain shadow-soft ring-1 ring-border" />
+                <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-soft">
+                  <span className="text-lg font-black tracking-tight">ONE</span>
+                </div>
               </div>
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
                 Bắc Hưng Yên ONE
               </h1>
               <p className="text-sm text-muted-foreground">
-                Cổng nội bộ VietinBank Bắc Hưng Yên — bản sắc, học hỏi, sáng kiến
+                Cổng nội bộ của Chi nhánh — bản sắc, học hỏi, sáng kiến
                 và phát triển con người
               </p>
             </div>
 
             <div className="mt-5 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
-              <strong>Hệ thống nội bộ — KHÔNG phải cổng giao dịch/khách hàng của ngân hàng.</strong> Tài khoản do quản trị viên cấp, chỉ dành cho cán bộ được phân quyền. Hệ thống không yêu cầu và không thu thập thông tin thẻ, số tài khoản, mã OTP hay thông tin thanh toán.
+              <strong>Công cụ quản trị nội bộ của một đơn vị — KHÔNG phải website ngân hàng, KHÔNG phải cổng giao dịch hay dịch vụ khách hàng.</strong> Tài khoản do quản trị viên cấp, chỉ dành cho cán bộ được phân quyền. Hệ thống không yêu cầu và không thu thập thông tin thẻ, số tài khoản, mã OTP hay bất kỳ thông tin thanh toán nào.
             </div>
 
             <form onSubmit={handleLogin} className="mt-5 space-y-4">

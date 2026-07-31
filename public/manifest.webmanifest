@@ -1,7 +1,7 @@
 {
-  "name": "343 — Hệ thống quản trị năng lực nội bộ",
-  "short_name": "343 Nội bộ",
-  "description": "Hệ thống nội bộ quản trị năng lực nhân sự — chỉ dành cho cán bộ được phân quyền.",
+  "name": "Bắc Hưng Yên ONE — Cổng quản trị nội bộ",
+  "short_name": "BHY ONE",
+  "description": "Công cụ quản trị nội bộ, chỉ dành cho cán bộ được phân quyền. Không phải website ngân hàng.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

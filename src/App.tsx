@@ -7,7 +7,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { IdleLogoutGuard } from "@/components/IdleLogoutGuard";
-import { AppLayout } from "@/components/layout/AppLayout";
 import { AdminRoute, ManagerOrAboveRoute, GuestGate } from "@/components/AdminRoute";
 
 import Login from "./pages/Login";
@@ -29,6 +28,13 @@ function lazyWithRetry<T extends ComponentType<any>>(factory: () => Promise<{ de
     }
   });
 }
+
+// Khung ứng dụng (thanh menu, nhận diện Chi nhánh) chỉ nạp SAU đăng nhập —
+// giữ gói tải trước đăng nhập sạch mọi dấu hiệu thương hiệu, tránh bị nền tảng
+// triển khai chấm nhầm là trang giả mạo ngân hàng.
+const AppLayout = lazyWithRetry(() =>
+  import("@/components/layout/AppLayout").then((m) => ({ default: m.AppLayout })),
+);
 
 const Overview = lazyWithRetry(() => import("./pages/Overview"));
 const PersonalProfile = lazyWithRetry(() => import("./pages/PersonalProfile"));
