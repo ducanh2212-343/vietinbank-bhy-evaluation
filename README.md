@@ -105,6 +105,54 @@ gộp vào app này thành cổng thông tin thương hiệu sau đăng nhập:
   `20260803100000` + `20260803110000` **đã áp** (29/07/2026). Hết hạn: client
   đăng xuất + RLS chặn (không cần cron).
 
+## Chiêu thức 2 — Kanban 5W2H + PDCA (08/2026)
+
+Trang `/one/chieu-thuc-2` được dựng lại theo đặc tả đầy đủ
+(`docs/dac-ta-chieu-thuc-2-kanban-5w2h-pdca.md`): đầu việc 5W2H có duy nhất
+01 người chịu trách nhiệm, Kanban 7 cột với cổng chặn PDCA (P trước Đang làm,
+C + 100% trước Hoàn thành, A trước Đã đóng), nhật ký nhịp append-only, chấm
+giờ nhịp sáng 8h00/8h30 tại database, M1 «Việc của tôi» + Ghi nhịp nhanh,
+M2 «Bảng của Phòng» + bảng nhịp theo người.
+**Nhập theo hai cổng** (08/2026): ghi việc chỉ 3 trường (việc gì · ai làm · xong
+khi nào), 5W2H hỏi ở Cổng 2 lúc bấm «Bắt đầu làm» — nghiên cứu người dùng và
+căn cứ thiết kế: `docs/nghien-cuu-cach-nhap-kanban-cho-can-bo-2026-08.md`. Bản
+`action_plans` tối giản cũ ngừng dùng trên UI. Migration
+`20260806090000_ct2_kanban_5w2h_pdca.sql` **đã áp** vào project
+`whlysprzsguehxmrjwha` (01/08/2026) — kèm migration bổ trợ
+`ct2_prerequisite_helpers` (3 hàm `is_dept_manager`,
+`can_view_all_action_plans`, `is_my_scope_department`) vì các migration
+quizzi/action_plans trong repo **chưa từng được áp** vào database này.
+Chi tiết triển khai + thiết kế chịu tải 150 người dùng khung 7h50–8h30:
+`docs/trien-khai-chieu-thuc-2-kanban-2026-08.md`.
+
+**Hiển thị (08/2026):** khối «Nhịp sáng nay» của Chiêu thức 2 nằm ngay đầu
+trang chủ ONE (`Ct2HomeStrip`) kèm dải ảnh đại diện cả phòng — vòng xanh/vàng/
+xám cho biết ai đã ghi nhịp, thay cho «thấy đồng nghiệp online» của Miro. Bảng
+của Phòng có chế độ **«Toàn cảnh»** (mặc định trên điện thoại): mỗi thẻ là một ô
+màu, cả bảng lọt một màn hình 5 inch. Tự làm tươi 30s/lần chỉ trong khung
+6h45–8h45 ngày làm việc (`trongKhungNhip`), ngoài khung tắt hẳn.
+
+**Điều hành của Ban Giám đốc (08/2026):** khối `Ct2DieuHanhBgd` trên trang chủ
+gộp ba tầng cho BGĐ/PGĐ — (1) việc đang chờ chính mình kèm tuổi chờ, gộp cả đầu
+việc Chiêu thức 2 lẫn hồ sơ tín dụng đang trình (phần đặc tả §7.4 yêu cầu mà
+trước đây thiếu hoàn toàn); (2) nhịp hôm nay của các phòng phụ trách; (3) dấu ấn
+Bắc Hưng Yên Mark tuần này. **Không thêm nhịp mới** — dấu ấn vốn đã dùng chung
+nhịp tuần Kanban; chỉ đổi câu hỏi tuần thành «tuần này có thêm bằng chứng gì?»,
+mỗi tuần bồi một mẩu vào STAR (bảng `ct2_bang_chung_dau_an`, append-only) để
+cuối kỳ STAR tự đầy. Tư vấn + thiết kế:
+`docs/nhip-dieu-hanh-ban-giam-doc-2026-08.md`. Migration
+`20260810090000_ct2_dieu_hanh_bgd.sql` **đã áp**.
+
+**Kanban Phê duyệt tín dụng (PDTD)** — bàn thứ hai, tab riêng chỉ hiện với phòng
+có trong `ct2_phong_pdtd` (đã bật: KHDN, Bán lẻ, HTTD). Đơn vị theo dõi là hồ sơ
+tín dụng của một khách hàng: 7 cột theo quy trình phê duyệt, số tiền là numeric
+nên cộng được tổng dư nợ đang trình, «đến hạn GHTD» là trường ngày (không phải
+cột trạng thái) nên cảnh báo được khách sắp hết hạn mức mà chưa mở hồ sơ tái
+cấp, ngưỡng chờ riêng cho từng cấp trình (LĐP 2 ngày · LĐCN 3 · TSC 5).
+Thiết kế rút từ board Miro thật của Phòng KHDN (47 hồ sơ) — phân tích 6 lỗi dữ
+liệu và cách khắc phục: `docs/kanban-phe-duyet-tin-dung-2026-08.md`. Migration
+`20260808090000_ct2_kanban_phe_duyet_tin_dung.sql` **đã áp**.
+
 ## Kỳ Quý II/2026 — BM02 đánh giá lại từ đầu (07/2026)
 
 - Quý I/2026 thực hiện BM01 trên **bản Word/PDF** (không nhập app). Các kế hoạch
