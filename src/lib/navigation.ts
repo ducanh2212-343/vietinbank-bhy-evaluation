@@ -137,6 +137,16 @@ export const NAV_SECTIONS: NavSection[] = [
         // Nguồn cội & Bản sắc đã gộp vào trang chủ — giữ link cũ khỏi gãy
         extraPaths: ['/one/nguon-coi', '/one/dac-trung', '/one/chieu-thuc'],
       },
+      {
+        // Dải tin trượt ngang nằm trên Trang chủ; đây là nơi đọc hết dòng tin.
+        // Khách đối tác vào được nhưng RLS chỉ trả tin đã mở cho khách.
+        label: 'Tin tức nội bộ',
+        icon: Newspaper,
+        path: '/one/tin-tuc',
+        guestVisible: true,
+        bleed: true,
+        keywords: ['tin tuc', 'ban tin', 'dong chia se', 'thong bao', 'news'],
+      },
     ],
   },
   {
@@ -368,6 +378,13 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: Building2,
         items: [
           { label: 'Quản trị Hội đồng đầu mối', icon: Gavel, path: '/quan-tri-hoi-dong-dau-moi', minRole: 'admin' },
+          {
+            label: 'Quản trị tin tức nội bộ',
+            icon: Newspaper,
+            path: '/quan-tri-tin-tuc',
+            minRole: 'admin',
+            keywords: ['tin tuc', 'ghim tin', 'bien tap', 'dong chia se'],
+          },
           { label: 'Bản tin quý', icon: Newspaper, path: '/ban-tin-quy', minRole: 'admin' },
           { label: 'Mẹo tính năng', icon: Lightbulb, path: '/quan-ly-meo-tinh-nang', minRole: 'admin' },
           { label: 'Quản trị AI & Prompt', icon: Sparkles, path: '/quan-tri-ai', minRole: 'admin' },

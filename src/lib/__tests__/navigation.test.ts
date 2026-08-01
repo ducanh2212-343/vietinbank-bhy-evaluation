@@ -318,8 +318,18 @@ describe('Cờ tràn viền quyết định khoảng đệm của khung', () => 
 
 describe('Trợ giúp dựng giao diện', () => {
   it('leavesOf trả về chính mục đó với khu dẫn thẳng tới một trang', () => {
+    const chieuThuc2 = NAV_SECTIONS.find((s) => s.id === 'chieu-thuc-2')!;
+    expect(leavesOf(chieuThuc2).map((l) => l.path)).toEqual(['/one/chieu-thuc-2']);
+  });
+
+  it('khu Trang chủ có thêm mục Tin tức nội bộ và khách đối tác vào được', () => {
+    // Dòng tin tách khỏi trang Học hỏi thành Tin tức nội bộ: dải trượt ngang ở
+    // Trang chủ, danh sách đầy đủ ở /one/tin-tuc. Khách chỉ đọc được tin đã mở —
+    // việc lọc là của RLS, không phải của menu.
     const trangChu = NAV_SECTIONS.find((s) => s.id === 'one-home')!;
-    expect(leavesOf(trangChu).map((l) => l.path)).toEqual(['/one']);
+    const tinTuc = leavesOf(trangChu).find((l) => l.path === '/one/tin-tuc');
+    expect(tinTuc).toBeDefined();
+    expect(tinTuc!.guestVisible).toBe(true);
   });
 
   it('mỗi khu cổng đều có nhãn ngắn đủ gọn cho thanh tab điện thoại', () => {

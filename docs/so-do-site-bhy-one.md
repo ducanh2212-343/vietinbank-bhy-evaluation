@@ -339,6 +339,38 @@ chỉnh lại như sau (đã triển khai):
 - Link cũ đều chuyển hướng, không gãy bookmark: `/one/nguon-coi`, `/one/dac-trung`,
   `/one/chieu-thuc` → `/one`; `/one/sang-kien` và `/one/bhy-ways` → `/one/y-tuong`.
 
+### Tin tức nội bộ — dòng chia sẻ chuyển về Trang chủ
+
+Tab «Dòng chia sẻ» của trang Học hỏi đã **tách khỏi trang đó** và trở thành
+**Tin tức nội bộ**. Ba nơi, một kho dữ liệu:
+
+| Nơi | Đường dẫn | Nội dung |
+|---|---|---|
+| Dải trượt ngang | `/one` | 12 tin mới nhất, tin ghim đứng đầu |
+| Danh sách đầy đủ | `/one/tin-tuc` | Toàn bộ dòng tin, mở sẵn tin được chọn qua `?tin=<id>` |
+| Màn hình quản trị | `/quan-tri-tin-tuc` | Ghim, sửa, mở cho khách, gỡ tin |
+
+- **Thẻ dựng đứng, dải trượt ngang.** Dòng tin là phần dài nhất của cổng; xếp
+  lưới dọc thì 12 tin đẩy toàn bộ bản sắc và hệ sinh thái xuống dưới hai màn hình
+  cuộn. Dải trượt ngang giữ tin trong đúng một tầm mắt (cao 326px), điện thoại
+  vuốt ngang, máy tính có thêm hai nút mũi tên — nút chỉ hiện khi còn chỗ trượt.
+  Thẻ cuối dải là lối sang danh sách đầy đủ.
+- **Dùng chung kho `portal_uploads` với Kho tri thức, KHÔNG dựng bảng riêng.**
+  Cán bộ đăng một lần, bài vừa lên dòng tin vừa nằm trong kho tra cứu. Bảng riêng
+  đồng nghĩa với đăng hai lần cho cùng một nội dung.
+- **Cột `is_featured` có sẵn chính là cờ GHIM** — không cần migration nào cho
+  tính năng này.
+- **Quyền biên tập là ràng buộc ở tầng cơ sở dữ liệu, không phải ẩn nút.** Policy
+  «Content admins can manage portal uploads» chỉ mở cho `system_admin` và
+  `tcth_admin`. Menu dùng mốc `minRole: 'admin'` — mốc này gồm cả Ban Giám đốc,
+  nên màn hình quản trị tự nhận biết và chuyển sang **chỉ xem** cho vai trò không
+  ghi được, thay vì để người dùng bấm rồi nhận lỗi máy chủ khó hiểu.
+- **Khách đối tác chỉ thấy tin `is_shared_with_guests`** — RLS lọc, giao diện
+  không lọc lại lần nữa.
+- Trang Học hỏi (`/one/hoc-hoi`) từ đây chỉ còn một việc: **tra cứu kho tri thức**.
+  Liên kết cũ `/one/hoc-hoi?action=chia-se` vẫn mở được hộp đăng bài vì đường dẫn
+  này đã phát tán trong bookmark và tin nhắn nội bộ.
+
 ### Kanban kế hoạch hành động Chi nhánh (Chiêu thức 2)
 
 Khác hẳn Kanban hiện có: `kanban_cards` là hành động phát triển **năng lực của

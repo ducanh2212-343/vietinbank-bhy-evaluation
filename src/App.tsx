@@ -89,6 +89,7 @@ const QuarterlyNewsletterPage = lazyWithRetry(() => import("./pages/QuarterlyNew
 const LearningCampaignsPage = lazyWithRetry(() => import("./pages/LearningCampaignsPage"));
 const FeatureTipsPage = lazyWithRetry(() => import("./pages/FeatureTipsPage"));
 const FeatureTipsAdminPage = lazyWithRetry(() => import("./pages/FeatureTipsAdminPage"));
+const NewsAdminPage = lazyWithRetry(() => import("./pages/NewsAdminPage"));
 const QuizziHomePage = lazyWithRetry(() => import("./pages/QuizziHomePage"));
 const QuizComposerPage = lazyWithRetry(() => import("./pages/QuizComposerPage"));
 const QuizPlayPage = lazyWithRetry(() => import("./pages/QuizPlayPage"));
@@ -109,6 +110,7 @@ const OneConnectPage = lazyWithRetry(() => import("./pages/one/OneConnectPage"))
 const One3806Page = lazyWithRetry(() => import("./pages/one/One3806Page"));
 const OneMove2Page = lazyWithRetry(() => import("./pages/one/OneMove2Page"));
 const OneLearnPage = lazyWithRetry(() => import("./pages/one/OneLearnPage"));
+const OneNewsPage = lazyWithRetry(() => import("./pages/one/OneNewsPage"));
 const OneIdeasPage = lazyWithRetry(() => import("./pages/one/OneIdeasPage"));
 const OneCreditPage = lazyWithRetry(() => import("./pages/one/OneCreditPage"));
 const OneRecognitionPage = lazyWithRetry(() => import("./pages/one/OneRecognitionPage"));
@@ -207,6 +209,7 @@ const App = () => (
               <Route path="/one/bhy-3806" element={<One3806Page />} />
               <Route path="/one/chieu-thuc-2" element={<OneMove2Page />} />
               <Route path="/one/hoc-hoi" element={<OneLearnPage />} />
+              <Route path="/one/tin-tuc" element={<OneNewsPage />} />
               <Route path="/one/y-tuong" element={<OneIdeasPage />} />
               <Route path="/one/credit-360" element={<OneCreditPage />} />
               <Route path="/one/ghi-nhan" element={<OneRecognitionPage />} />
@@ -269,6 +272,7 @@ const App = () => (
                 <Route path="/phan-tich-dau-moi" element={<CouncilAnalyticsPage />} />
                 <Route path="/ban-tin-quy" element={<QuarterlyNewsletterPage />} />
                 <Route path="/quan-ly-meo-tinh-nang" element={<FeatureTipsAdminPage />} />
+                <Route path="/quan-tri-tin-tuc" element={<NewsAdminPage />} />
                 <Route path="/quan-tri-khach" element={<GuestAccessAdminPage />} />
               </Route>
 

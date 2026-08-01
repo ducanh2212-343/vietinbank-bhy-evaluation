@@ -155,6 +155,39 @@ export function useOneUploads() {
     }
   }, [refresh]);
 
+  /**
+   * Ghim / bỏ ghim tin lên đầu dải Tin tức nội bộ ở Trang chủ.
+   * RLS chỉ cho system_admin và tcth_admin ghi — cán bộ thường gọi sẽ bị chặn ở
+   * máy chủ chứ không phải chỉ ẩn nút ở giao diện.
+   */
+  const toggleFeatured = useCallback(async (itemId: string, nextFeatured: boolean) => {
+    const { error } = await supabase
+      .from('portal_uploads')
+      .update({ is_featured: nextFeatured })
+      .eq('id', itemId);
+    if (error) {
+      toast.error(`Không đổi được trạng thái ghim: ${error.message}`);
+      return;
+    }
+    toast.success(nextFeatured ? 'Đã ghim tin lên đầu Trang chủ' : 'Đã bỏ ghim tin');
+    refresh();
+  }, [refresh]);
+
+  /** Sửa phần chữ của tin (tiêu đề, tóm tắt, nội dung, chuyên mục). */
+  const updateItem = useCallback(async (
+    itemId: string,
+    patch: { title?: string; summary?: string | null; content?: string | null; category?: string },
+  ) => {
+    const { error } = await supabase.from('portal_uploads').update(patch).eq('id', itemId);
+    if (error) {
+      toast.error(`Không lưu được: ${error.message}`);
+      return false;
+    }
+    toast.success('Đã lưu tin');
+    refresh();
+    return true;
+  }, [refresh]);
+
   const deleteItem = useCallback(async (itemId: string) => {
     const { error } = await supabase.from('portal_uploads').delete().eq('id', itemId);
     if (error) {
@@ -165,5 +198,5 @@ export function useOneUploads() {
     refresh();
   }, [refresh]);
 
-  return { items, addItem, likeItem, deleteItem, toggleShare };
+  return { items, addItem, likeItem, deleteItem, toggleShare, toggleFeatured, updateItem };
 }

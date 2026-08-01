@@ -5,6 +5,8 @@ import {
 import { OnePageShell } from '@/components/one/OnePageShell';
 import { CultureTree } from '@/components/one/CultureTree';
 import { PersonalKanbanMini } from '@/components/kanban/PersonalKanbanMini';
+import { NewsRail } from '@/components/one/news/NewsRail';
+import { useOneUploads } from '@/components/one/useOneUploads';
 import { useAuth } from '@/hooks/useAuth';
 import { useMyFullName } from '@/components/one/useMyFullName';
 import { useStarRecords } from '@/components/one/star/useStarRecords';
@@ -21,7 +23,7 @@ import { MOVE3_ATTITUDES, MOVE3_SKILL_GROUPS } from '@/data/one/move3Data';
 // một cửa», docs/so-do-site-bhy-one.md).
 
 const THAO_TAC_NHANH = [
-  { to: '/one/hoc-hoi?action=chia-se', icon: Upload, label: 'Chia sẻ kinh nghiệm', color: 'from-blue-500 to-brand-royal' },
+  { to: '/one/tin-tuc?action=chia-se', icon: Upload, label: 'Chia sẻ kinh nghiệm', color: 'from-blue-500 to-brand-royal' },
   { to: '/quizzi', icon: Zap, label: 'Làm BHY Quizzi', color: 'from-red-500 to-amber-500' },
   { to: '/one/y-tuong', icon: Lightbulb, label: 'Gửi BHY Ideas', color: 'from-amber-500 to-orange-500' },
   { to: '/one/credit-360', icon: ShieldAlert, label: 'Đăng ký Credit 360', color: 'from-emerald-500 to-teal-600' },
@@ -42,6 +44,9 @@ function HomeContent() {
   const { profileId, isGuest } = useAuth();
   const myName = useMyFullName();
   const { siteContent } = useAdminEditable();
+  // Tin nội bộ dùng chung kho tư liệu; RLS lo phần khách đối tác chỉ thấy tin
+  // đã mở, nên ở đây không cần lọc lại theo vai trò
+  const { items } = useOneUploads();
 
   // Sao của tôi: phiếu ghi đúng họ tên (chương trình ghi nhận theo tên cán bộ)
   const { records } = useStarRecords();
@@ -135,7 +140,15 @@ function HomeContent() {
       </section>
 
       {/* ------------------------------------------------------------------ */}
-      {/* 2. BẢN SẮC — 20 năm & Cây ký ức                                     */}
+      {/* 2. TIN TỨC NỘI BỘ — dải trượt ngang                                 */}
+      {/* ------------------------------------------------------------------ */}
+      {/* Đứng ngay sau việc của tôi vì đây là phần đổi mới hằng ngày; bản sắc
+          và hệ sinh thái bên dưới thì gần như không đổi. Dùng dải trượt ngang
+          thay vì lưới dọc để 12 tin chỉ chiếm chiều cao của một thẻ. */}
+      <NewsRail items={items} />
+
+      {/* ------------------------------------------------------------------ */}
+      {/* 3. BẢN SẮC — 20 năm & Cây ký ức                                     */}
       {/* ------------------------------------------------------------------ */}
       <section className="border-y border-slate-200 bg-gradient-to-r from-[#F0F6FA] via-white to-[#FFF8E7]">
         <div className="mx-auto flex max-w-7xl flex-col items-center gap-6 px-4 py-10 sm:px-6 lg:flex-row lg:px-8">
@@ -169,7 +182,7 @@ function HomeContent() {
       <CultureTree />
 
       {/* ------------------------------------------------------------------ */}
-      {/* 3. BẮC HƯNG YÊN WAYS — chỉ giới thiệu, dẫn sang trang riêng          */}
+      {/* 4. BẮC HƯNG YÊN WAYS — chỉ giới thiệu, dẫn sang trang riêng          */}
       {/* ------------------------------------------------------------------ */}
       <section className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         {/* Đây là nơi DUY NHẤT giới thiệu hệ sinh thái. Không dựng thêm trang
@@ -240,7 +253,7 @@ function HomeContent() {
       </section>
 
       {/* ------------------------------------------------------------------ */}
-      {/* 4. BỘ 3 CHIÊU THỨC                                                   */}
+      {/* 5. BỘ 3 CHIÊU THỨC                                                   */}
       {/* ------------------------------------------------------------------ */}
       {!isGuest && (
         <section className="border-t border-slate-200 bg-slate-50/70">
