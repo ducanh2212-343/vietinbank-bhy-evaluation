@@ -125,6 +125,13 @@ quizzi/action_plans trong repo **chưa từng được áp** vào database này.
 Chi tiết triển khai + thiết kế chịu tải 150 người dùng khung 7h50–8h30:
 `docs/trien-khai-chieu-thuc-2-kanban-2026-08.md`.
 
+**Hiển thị (08/2026):** khối «Nhịp sáng nay» của Chiêu thức 2 nằm ngay đầu
+trang chủ ONE (`Ct2HomeStrip`) kèm dải ảnh đại diện cả phòng — vòng xanh/vàng/
+xám cho biết ai đã ghi nhịp, thay cho «thấy đồng nghiệp online» của Miro. Bảng
+của Phòng có chế độ **«Toàn cảnh»** (mặc định trên điện thoại): mỗi thẻ là một ô
+màu, cả bảng lọt một màn hình 5 inch. Tự làm tươi 30s/lần chỉ trong khung
+6h45–8h45 ngày làm việc (`trongKhungNhip`), ngoài khung tắt hẳn.
+
 **Kanban Phê duyệt tín dụng (PDTD)** — bàn thứ hai, tab riêng chỉ hiện với phòng
 có trong `ct2_phong_pdtd` (đã bật: KHDN, Bán lẻ, HTTD). Đơn vị theo dõi là hồ sơ
 tín dụng của một khách hàng: 7 cột theo quy trình phê duyệt, số tiền là numeric

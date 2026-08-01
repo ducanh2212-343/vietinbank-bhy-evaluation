@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import type { Ct2BinhLuan, Ct2DauViec, Ct2Nhip } from '@/lib/ct2';
+import { trongKhungNhip, type Ct2BinhLuan, type Ct2DauViec, type Ct2Nhip } from '@/lib/ct2';
 
 /**
  * Lớp dữ liệu Chiêu thức 2.
@@ -46,8 +46,14 @@ export interface Ct2ViecCuaToi {
 }
 
 export interface Ct2NhipNguoi {
-  profile_id: string; full_name: string; so_viec_dang_chay: number;
-  so_viec_da_ghi: number; ket_qua: 'DUNG_GIO' | 'MUON' | 'CHUA_DU' | 'KHONG_CO_VIEC';
+  profile_id: string;
+  full_name: string;
+  avatar_url: string | null;
+  so_viec_dang_chay: number;
+  so_viec_da_ghi: number;
+  so_the_do: number;
+  so_qua_han: number;
+  ket_qua: 'DUNG_GIO' | 'MUON' | 'CHUA_DU' | 'CHUA_GHI' | 'KHONG_CO_VIEC';
 }
 
 export interface Ct2DeXuat {
@@ -100,6 +106,9 @@ export function useCt2Board(phongId: string | null) {
     queryKey: ['ct2', 'board', phongId],
     enabled: !!phongId,
     staleTime: NUA_PHUT,
+    // Trong khung nhịp sáng bảng đổi liên tục → tự làm mới cho có cảm giác
+    // «bảng sống»; ngoài khung thì tắt hẳn, không tốn query vô ích.
+    refetchInterval: () => (trongKhungNhip() ? NUA_PHUT : false),
     queryFn: async () => {
       const { data, error } = await db
         .from('ct2_dau_viec')
@@ -133,6 +142,7 @@ export function useCt2NhipPhong(phongId: string | null) {
     queryKey: ['ct2', 'nhip-phong', phongId],
     enabled: !!phongId,
     staleTime: NUA_PHUT,
+    refetchInterval: () => (trongKhungNhip() ? NUA_PHUT : false),
     queryFn: async () => {
       const { data, error } = await db.rpc('ct2_nhip_phong_hom_nay', { _phong: phongId });
       if (error) throw error;

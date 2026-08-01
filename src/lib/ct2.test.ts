@@ -13,6 +13,8 @@ import {
   kiemTraKeHoach,
   locEmojiTieuDe,
   lyDoChanChuyen,
+  mucChuY,
+  trongKhungNhip,
   sapXepThe,
   soNgayImLang,
   soNgayQuaHan,
@@ -212,6 +214,61 @@ describe('Cảnh báo ngoại lệ', () => {
     const ds = [goc, { ...goc, id: 'y', co_tinh_trang: 'DO' as const }, { ...goc, id: 'z', trang_thai: 'CHUAN_BI' as const }];
     expect(demWip(ds).get('p1')).toBe(2);
     expect(sapXepThe(ds, moc)[0].id).toBe('y');
+  });
+});
+
+describe('Chế độ Toàn cảnh — gộp mọi tín hiệu xấu về một thang màu', () => {
+  const nen = {
+    trang_thai: 'DANG_LAM' as const, co_tinh_trang: 'XANH' as const,
+    han_hoan_thanh: '2026-08-20', giu_tu: null, nhip_gan_nhat: '2026-08-12T00:30:00Z',
+    ngay_bat_dau: '2026-08-01', ket_qua_dau_ra: 'Bộ hồ sơ đã xong',
+    muc_tieu_lien_ket: 'Tăng trưởng tín dụng',
+    cach_lam: 'B1. Rà hồ sơ\nB2. Trình ký duyệt lần cuối',
+  };
+  const moc = new Date('2026-08-12T02:00:00Z');
+
+  it('việc đang chạy bình thường là xanh', () => {
+    expect(mucChuY(nen, moc)).toBe('XANH');
+  });
+
+  it('quá hạn, cờ đỏ hay nghẽn cột chờ đều thành đỏ', () => {
+    expect(mucChuY({ ...nen, han_hoan_thanh: '2026-08-05' }, moc)).toBe('DO');
+    expect(mucChuY({ ...nen, co_tinh_trang: 'DO' }, moc)).toBe('DO');
+    expect(mucChuY({
+      ...nen, trang_thai: 'CHO_DUYET', giu_tu: '2026-08-05T02:00:00Z',
+    }, moc)).toBe('DO');
+  });
+
+  it('cờ vàng, im lặng 3 ngày, hay chuẩn bị mà chưa lập kế hoạch đều thành vàng', () => {
+    expect(mucChuY({ ...nen, co_tinh_trang: 'VANG' }, moc)).toBe('VANG');
+    expect(mucChuY({ ...nen, nhip_gan_nhat: '2026-08-08T00:30:00Z' }, moc)).toBe('VANG');
+    expect(mucChuY({
+      ...nen, trang_thai: 'CHUAN_BI', ket_qua_dau_ra: null, cach_lam: null,
+    }, moc)).toBe('VANG');
+  });
+
+  it('thẻ đã đóng hoặc hủy không còn đòi chú ý', () => {
+    expect(mucChuY({ ...nen, trang_thai: 'DA_DONG', han_hoan_thanh: '2026-08-01' }, moc)).toBe('XONG');
+    expect(mucChuY({ ...nen, trang_thai: 'DUNG_HUY' }, moc)).toBe('XONG');
+  });
+});
+
+describe('Khung giờ nhịp sáng — quyết định có tự làm tươi bảng hay không', () => {
+  it('trong giờ nhịp ngày làm việc thì bật', () => {
+    // Thứ 4 12/08/2026, 07:30 giờ VN
+    expect(trongKhungNhip(new Date('2026-08-12T00:30:00Z'))).toBe(true);
+    // 08:30 vẫn còn trong khung lãnh đạo
+    expect(trongKhungNhip(new Date('2026-08-12T01:30:00Z'))).toBe(true);
+  });
+
+  it('ngoài khung giờ thì tắt — không tốn query khi chẳng có gì đổi', () => {
+    expect(trongKhungNhip(new Date('2026-08-12T03:00:00Z'))).toBe(false);  // 10:00
+    expect(trongKhungNhip(new Date('2026-08-11T23:00:00Z'))).toBe(false);  // 06:00
+  });
+
+  it('cuối tuần không đòi nhịp nên cũng không làm tươi', () => {
+    // Thứ 7 15/08/2026, 07:30 giờ VN
+    expect(trongKhungNhip(new Date('2026-08-15T00:30:00Z'))).toBe(false);
   });
 });
 

@@ -457,6 +457,31 @@ export function sapXepThe(ds: Ct2DauViec[], moc: Date = new Date()): Ct2DauViec[
   });
 }
 
+/**
+ * Mức chú ý của một thẻ — dùng cho chế độ «Toàn cảnh» (mỗi thẻ một ô màu).
+ *
+ * Gộp mọi tín hiệu xấu về một thang bốn bậc để mắt chỉ phải đọc MÀU chứ không
+ * phải đọc chữ: quá hạn · cờ đỏ · nghẽn cột chờ đều thành đỏ; cờ vàng · im
+ * lặng 3 ngày · chuẩn bị mà chưa lập kế hoạch thành vàng.
+ */
+export type Ct2MucChuY = 'DO' | 'VANG' | 'XANH' | 'XONG';
+
+export function mucChuY(
+  t: Pick<Ct2DauViec, 'trang_thai' | 'co_tinh_trang' | 'han_hoan_thanh' | 'giu_tu'
+    | 'nhip_gan_nhat' | 'ngay_bat_dau' | 'ket_qua_dau_ra' | 'muc_tieu_lien_ket' | 'cach_lam'>,
+  moc: Date = new Date(),
+): Ct2MucChuY {
+  if (t.trang_thai === 'DA_DONG' || t.trang_thai === 'DUNG_HUY') return 'XONG';
+  if (soNgayQuaHan(t, moc) > 0 || t.co_tinh_trang === 'DO' || tuoiCho(t, moc) > CT2_NGUONG_TUOI_CHO) {
+    return 'DO';
+  }
+  if (t.co_tinh_trang === 'VANG' || soNgayImLang(t, moc) >= 3
+      || (t.trang_thai === 'CHUAN_BI' && !daDuKeHoach(t))) {
+    return 'VANG';
+  }
+  return 'XANH';
+}
+
 /** Nhãn PDCA gợi ý theo ngữ cảnh thẻ (cán bộ vẫn xác nhận được nhãn khác) */
 export function goiYNhan(trangThai: Ct2TrangThai, phanTram: number): Ct2NhanPdca {
   if (trangThai === 'CHUAN_BI') return 'P';
@@ -468,6 +493,22 @@ export function goiYNhan(trangThai: Ct2TrangThai, phanTram: number): Ct2NhanPdca
 /** Lọc bỏ emoji khỏi tên đầu việc khi lưu (đặc tả §8.3) */
 export function locEmojiTieuDe(s: string): string {
   return s.replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, '').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Đang trong khung giờ nhịp sáng (thứ 2–6, 6h45–8h45 giờ VN)?
+ *
+ * Dùng để bật làm tươi tự động: trong 2 tiếng này bảng phòng đổi liên tục nên
+ * đáng tự cập nhật; ngoài khung thì thôi, không có gì để xem mà vẫn tốn query.
+ * Đây là cách rẻ để có cảm giác «bảng sống» như Miro mà không cần 150 kết nối
+ * websocket mở suốt ngày.
+ */
+export function trongKhungNhip(moc: Date = new Date()): boolean {
+  const vn = new Date(moc.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
+  const thu = vn.getDay();
+  if (thu === 0 || thu === 6) return false;
+  const phut = vn.getHours() * 60 + vn.getMinutes();
+  return phut >= 6 * 60 + 45 && phut <= 8 * 60 + 45;
 }
 
 /** Bảng này chưa có trong database — migration chưa được áp vào project. */

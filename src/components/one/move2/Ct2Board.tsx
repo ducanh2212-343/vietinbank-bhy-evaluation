@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { DndContext, DragEndEvent, PointerSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core';
-import { AlertTriangle, Clock3, Handshake, Star, User2 } from 'lucide-react';
+import { AlertTriangle, Clock3, Columns3, Grid2x2, Handshake, Star, User2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,9 @@ import {
   sapXepThe, soNgayImLang, soNgayQuaHan, tuoiCho,
   type Ct2Co, type Ct2DauViec, type Ct2TrangThai,
 } from '@/lib/ct2';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Ct2NhipPhongStrip } from './Ct2NhipPhongStrip';
+import { Ct2OverviewGrid } from './Ct2OverviewGrid';
 import type { Ct2NhanSu, Ct2NhipNguoi } from './useCt2Data';
 
 /**
@@ -38,6 +41,11 @@ const VIEN_CO: Record<Ct2Co, string> = {
 
 export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoThe }: Props) {
   const { profileId } = useAuth();
+  const dienThoai = useIsMobile();
+  // Trên điện thoại mặc định mở «Toàn cảnh»: cả bảng lọt một màn hình, không
+  // phải cuộn ngang qua 7 cột mới biết phòng đang thế nào.
+  const [cheDo, setCheDo] = useState<'cot' | 'toan-canh' | null>(null);
+  const dangXem = cheDo ?? (dienThoai ? 'toan-canh' : 'cot');
   const [locNguoi, setLocNguoi] = useState<string | null>(null);
   const [locCo, setLocCo] = useState<Ct2Co | null>(null);
   const [chiQuaHan, setChiQuaHan] = useState(false);
@@ -101,6 +109,14 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoTh
 
   return (
     <div>
+      {/* Dải ảnh đại diện cả phòng — thay cho «thấy đồng nghiệp online» của Miro */}
+      <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-3">
+        <Ct2NhipPhongStrip
+          ds={nhipNguoi}
+          onChonNguoi={(id) => setLocNguoi(locNguoi === id ? null : id)}
+        />
+      </div>
+
       {/* Dải chỉ số đầu trang */}
       <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <OSo nhan="Nhịp hôm nay" giaTri={`${tongNhip.tiLe}%`} tot={tongNhip.tiLe >= 80} />
@@ -137,6 +153,26 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoTh
         >
           Quá hạn
         </Button>
+        <span className="ml-auto inline-flex overflow-hidden rounded-lg border border-slate-200">
+          <button
+            type="button"
+            onClick={() => setCheDo('toan-canh')}
+            className={`inline-flex h-8 items-center gap-1 px-2 text-xs ${
+              dangXem === 'toan-canh' ? 'bg-brand-navy text-white' : 'bg-white text-slate-600'
+            }`}
+          >
+            <Grid2x2 className="h-3.5 w-3.5" /> Toàn cảnh
+          </button>
+          <button
+            type="button"
+            onClick={() => setCheDo('cot')}
+            className={`inline-flex h-8 items-center gap-1 px-2 text-xs ${
+              dangXem === 'cot' ? 'bg-brand-navy text-white' : 'bg-white text-slate-600'
+            }`}
+          >
+            <Columns3 className="h-3.5 w-3.5" /> Cột
+          </button>
+        </span>
         {locNguoi && (wip.get(locNguoi) ?? 0) >= CT2_NGUONG_WIP && (
           <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">
             <AlertTriangle className="h-3.5 w-3.5" />
@@ -145,7 +181,12 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoTh
         )}
       </div>
 
+      {dangXem === 'toan-canh' && (
+        <Ct2OverviewGrid dsThe={daLoc} nhanSu={nhanSu} onMoThe={onMoThe} />
+      )}
+
       {/* 7 cột Kanban — cuộn ngang trong khung riêng, trang không vỡ */}
+      {dangXem === 'cot' && (
       <DndContext sensors={sensors} onDragEnd={handleDrag}>
         <div className="overflow-x-auto pb-2">
           <div className="flex min-w-max gap-3">
@@ -162,6 +203,7 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoTh
           </div>
         </div>
       </DndContext>
+      )}
 
       {/* Việc THƯỜNG TRỰC: bảng chỉ số riêng, không đòi nhịp hằng ngày */}
       {thuongTruc.length > 0 && (
@@ -207,7 +249,8 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoTh
                   <td className="px-3 py-2">
                     {n.ket_qua === 'DUNG_GIO' && <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">✅ Đúng nhịp</Badge>}
                     {n.ket_qua === 'MUON' && <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">🟡 Nhịp muộn</Badge>}
-                    {n.ket_qua === 'CHUA_DU' && <Badge className="bg-red-100 text-red-800 hover:bg-red-100">🔴 Chưa đủ nhịp</Badge>}
+                    {n.ket_qua === 'CHUA_DU' && <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">🟠 Mới ghi một phần</Badge>}
+                    {n.ket_qua === 'CHUA_GHI' && <Badge className="bg-red-100 text-red-800 hover:bg-red-100">🔴 Chưa ghi nhịp</Badge>}
                     {n.ket_qua === 'KHONG_CO_VIEC' && <span className="text-xs text-slate-400">Không có việc cần ghi</span>}
                   </td>
                 </tr>

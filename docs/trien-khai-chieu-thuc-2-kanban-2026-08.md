@@ -74,6 +74,45 @@ Khe hẹp có chủ đích: tự nhận việc, trong phòng mình, không liên
 phong mức ưu tiên (chặn ở cả RLS lẫn trigger). Giao việc cho người khác vẫn phải
 là lãnh đạo — chọn người khác ở ô «Ai làm» thì hệ thống tự chuyển thành đề xuất.
 
+## Hiển thị: trang chủ, cả phòng, và bản trực quan cho điện thoại (08/2026)
+
+Rà soát phát hiện ba lỗ hổng hiển thị, đã vá:
+
+**1. Chiêu thức 2 không hề xuất hiện ở trang chủ ONE.** Trang chủ chỉ có
+`PersonalKanbanMini` — đó là Kanban CŨ của 38 skill (`kanban_cards`), không
+liên quan. Nhịp sáng có khung giờ cố định 7h00–8h00 mà bắt cán bộ nhớ đường vào
+trang riêng thì nhịp sẽ hỏng.
+→ Thêm khối `Ct2HomeStrip` ngay đầu trang chủ: «Còn n việc chờ ghi nhịp» + nút
+Ghi nhịp + dải cả phòng. Thêm lối vào «Bảng việc & ghi nhịp» trong dải thao
+tác nhanh. Khối tự ẩn khi cán bộ không có việc nào — không bày ô rỗng.
+
+**2. «Thấy đồng nghiệp online» của Miro.** Với ngân hàng, thứ đáng thấy không
+phải ai đang mở ứng dụng mà là **ai đã ghi nhịp sáng nay**.
+→ Dải `Ct2NhipPhongStrip`: hàng ảnh đại diện cả phòng cuộn ngang, vòng xanh =
+ghi đúng giờ · vàng = muộn · xám mờ = chưa ghi · chấm đỏ = có việc đang vướng;
+số ở góc là số việc còn thiếu. Người **chưa ghi đứng trước** — đó mới là phần
+cần nhìn. Chạm một người là lọc bảng theo người đó. Dùng chung ở trang chủ và
+tab Bảng của Phòng. RPC `ct2_nhip_phong_hom_nay` bổ sung `avatar_url`,
+`so_the_do`, `so_qua_han` để một dải tự kể được câu chuyện, không thêm query.
+
+**3. Bảng 7 cột phải cuộn ngang trên điện thoại** — mỗi lúc chỉ thấy một cột
+rưỡi, mất hẳn cái hay nhất của Miro là liếc một cái thấy cả bảng. Chép y canvas
+Miro sang điện thoại còn tệ hơn (chính Miro trên điện thoại cũng phải zoom/pan).
+→ Chế độ **«Toàn cảnh»** (`Ct2OverviewGrid`), **mặc định trên điện thoại**: mỗi
+thẻ rút thành ô vuông 36px tô màu theo mức chú ý, chữ trong ô là người phụ
+trách, xếp theo cột. ~40 thẻ lọt một màn hình 5 inch; đầu bảng có dòng «n cần
+xử lý ngay · n cần để mắt · n đang ổn». Chạm ô là mở thẻ. Nút chuyển
+Toàn cảnh ⇄ Cột luôn có; máy tính vẫn mặc định chế độ Cột.
+
+Hàm thuần `mucChuY()` gộp mọi tín hiệu xấu về một thang 4 bậc (quá hạn · cờ đỏ
+· nghẽn cột chờ → đỏ; cờ vàng · im lặng 3 ngày · chuẩn bị chưa lập kế hoạch →
+vàng) để mắt chỉ phải đọc màu.
+
+**Cảm giác «bảng sống» mà không cần 150 websocket:** `trongKhungNhip()` bật tự
+làm tươi 30 giây/lần **chỉ trong 6h45–8h45 các ngày làm việc**, ngoài khung tắt
+hẳn. Trong 2 tiếng nóng nhất bảng tự cập nhật như Miro; 22 tiếng còn lại không
+tốn một query nào.
+
 ## Các cổng nghiệp vụ cài ở TẦNG DATABASE (không chỉ giao diện)
 
 - **Cổng 1 (ghi việc):** cán bộ chỉ INSERT được thẻ tự nhận việc, trong phòng
