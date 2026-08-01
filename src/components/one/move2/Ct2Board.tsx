@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  CT2_COT, CT2_NGUONG_TUOI_CHO, CT2_NGUONG_WIP, chuanBiQuaLau, demWip,
+  CT2_COT, CT2_NGUONG_TUOI_CHO, CT2_NGUONG_WIP, chuanBiQuaLau, daDuKeHoach, demWip,
   sapXepThe, soNgayImLang, soNgayQuaHan, tuoiCho,
   type Ct2Co, type Ct2DauViec, type Ct2TrangThai,
 } from '@/lib/ct2';
@@ -302,8 +302,12 @@ function TheKanban({ the, tenNguoi, wip, onMo }: {
         </span>
         <span className="tabular-nums">{the.phan_tram}%</span>
       </p>
-      {(quaHan > 0 || imLang >= 3 || cho > CT2_NGUONG_TUOI_CHO || chuanBiQuaLau(the)) && (
+      {(quaHan > 0 || imLang >= 3 || cho > CT2_NGUONG_TUOI_CHO || chuanBiQuaLau(the)
+        || (the.trang_thai === 'CHUAN_BI' && !daDuKeHoach(the))) && (
         <p className="mt-1.5 flex flex-wrap gap-1">
+          {the.trang_thai === 'CHUAN_BI' && !daDuKeHoach(the) && (
+            <Nhan mau="amber">Chờ lập kế hoạch làm</Nhan>
+          )}
           {quaHan > 0 && <Nhan mau="red">Quá hạn {quaHan} ngày</Nhan>}
           {imLang >= 3 && <Nhan mau="amber">Im lặng {imLang} ngày</Nhan>}
           {cho > CT2_NGUONG_TUOI_CHO && (

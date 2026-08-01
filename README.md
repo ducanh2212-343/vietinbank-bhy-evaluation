@@ -111,8 +111,11 @@ Trang `/one/chieu-thuc-2` được dựng lại theo đặc tả đầy đủ
 (`docs/dac-ta-chieu-thuc-2-kanban-5w2h-pdca.md`): đầu việc 5W2H có duy nhất
 01 người chịu trách nhiệm, Kanban 7 cột với cổng chặn PDCA (P trước Đang làm,
 C + 100% trước Hoàn thành, A trước Đã đóng), nhật ký nhịp append-only, chấm
-giờ nhịp sáng 8h00/8h30 tại database, «Đề xuất việc» cho cán bộ, M1 «Việc của
-tôi» + Ghi nhịp nhanh, M2 «Bảng của Phòng» + bảng nhịp theo người. Bản
+giờ nhịp sáng 8h00/8h30 tại database, M1 «Việc của tôi» + Ghi nhịp nhanh,
+M2 «Bảng của Phòng» + bảng nhịp theo người.
+**Nhập theo hai cổng** (08/2026): ghi việc chỉ 3 trường (việc gì · ai làm · xong
+khi nào), 5W2H hỏi ở Cổng 2 lúc bấm «Bắt đầu làm» — nghiên cứu người dùng và
+căn cứ thiết kế: `docs/nghien-cuu-cach-nhap-kanban-cho-can-bo-2026-08.md`. Bản
 `action_plans` tối giản cũ ngừng dùng trên UI. Migration
 `20260806090000_ct2_kanban_5w2h_pdca.sql` **đã áp** vào project
 `whlysprzsguehxmrjwha` (01/08/2026) — kèm migration bổ trợ

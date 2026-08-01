@@ -14,6 +14,7 @@ import { laLoiThieuBangCt2, type Ct2DauViec, type Ct2TrangThai } from '@/lib/ct2
 import { Ct2Board } from '@/components/one/move2/Ct2Board';
 import { Ct2CardDialog } from '@/components/one/move2/Ct2CardDialog';
 import { Ct2CreateDialog } from '@/components/one/move2/Ct2CreateDialog';
+import { Ct2PlanDialog } from '@/components/one/move2/Ct2PlanDialog';
 import { Ct2MyWork } from '@/components/one/move2/Ct2MyWork';
 import {
   ct2XuLyDeXuat, useCt2Board, useCt2DeXuat, useCt2LamTuoi, useCt2NhanSu,
@@ -88,6 +89,9 @@ function NoiDung() {
   const [deXuatDangDuyet, setDeXuatDangDuyet] = useState<Ct2DeXuat | null>(null);
   const [theMo, setTheMo] = useState<Ct2DauViec | null>(null);
   const [chuyenDen, setChuyenDen] = useState<Ct2TrangThai | null>(null);
+  // Cổng 2 «Bắt đầu làm» — hỏi nốt 5W2H đúng lúc khởi động việc
+  const [theLapKeHoach, setTheLapKeHoach] = useState<Ct2DauViec | null>(null);
+  const [khoiDongLuon, setKhoiDongLuon] = useState(true);
 
   // Thẻ đang mở luôn lấy bản mới nhất từ cache board (sau khi ghi nhịp/chuyển cột)
   const theDangMo = useMemo(
@@ -175,7 +179,7 @@ function NoiDung() {
                   </Select>
                 )}
                 <Button onClick={() => { setDeXuatDangDuyet(null); setDangTao(true); }}>
-                  {laLanhDao ? '+ Tạo đầu việc' : '+ Đề xuất việc'}
+                  + Ghi việc
                 </Button>
               </div>
             </div>
@@ -232,7 +236,15 @@ function NoiDung() {
                   nhipNguoi={nhipNguoi}
                   laLanhDao={laLanhDao}
                   onMoThe={(t) => { setChuyenDen(null); setTheMo(t); }}
-                  onKeoThe={(t, den) => { setChuyenDen(den); setTheMo(t); }}
+                  onKeoThe={(t, den) => {
+                    if (den === 'DANG_LAM' && t.trang_thai === 'CHUAN_BI' && t.loai_dau_viec === 'TIEN_TRINH') {
+                      setKhoiDongLuon(true);
+                      setTheLapKeHoach(t);
+                      return;
+                    }
+                    setChuyenDen(den);
+                    setTheMo(t);
+                  }}
                 />
               )}
             </TabsContent>
@@ -241,12 +253,23 @@ function NoiDung() {
       </section>
 
       <Ct2CardDialog
-        the={theDangMo}
+        the={theLapKeHoach ? null : theDangMo}
         nhanSu={nhanSu}
         laLanhDao={laLanhDao}
         chuyenDen={chuyenDen}
+        onLapKeHoach={(deKhoiDong) => {
+          setKhoiDongLuon(deKhoiDong);
+          setTheLapKeHoach(theDangMo);
+        }}
         onClose={() => { setTheMo(null); setChuyenDen(null); }}
         onXong={() => lamTuoi()}
+      />
+
+      <Ct2PlanDialog
+        the={theLapKeHoach}
+        deKhoiDong={khoiDongLuon}
+        onClose={() => setTheLapKeHoach(null)}
+        onXong={() => { setTheLapKeHoach(null); setTheMo(null); setChuyenDen(null); lamTuoi(); }}
       />
 
       <Ct2CreateDialog

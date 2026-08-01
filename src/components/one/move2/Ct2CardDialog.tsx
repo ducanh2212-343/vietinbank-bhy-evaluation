@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { CalendarClock, MessageSquare, Send, Star, Undo2 } from 'lucide-react';
+import { CalendarClock, MessageSquare, Rocket, Send, Star, Undo2 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -15,7 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import {
   CT2_CAM_XUC, CT2_COT, CT2_MAU_CAU, CT2_TEN_CO, CT2_TEN_NHAN, CT2_TEN_UU_TIEN,
-  goiYNhan, kiemTraCauNhip, lyDoChanChuyen, soNgayQuaHan,
+  daDuKeHoach, goiYNhan, kiemTraCauNhip, lyDoChanChuyen, soNgayQuaHan,
   type Ct2Co, type Ct2DauViec, type Ct2NhanPdca, type Ct2TrangThai,
 } from '@/lib/ct2';
 import {
@@ -34,13 +34,15 @@ interface Props {
   laLanhDao: boolean;
   /** Trạng thái đích khi người dùng vừa kéo thẻ (mở dialog để bổ sung thông tin) */
   chuyenDen: Ct2TrangThai | null;
+  /** Mở Cổng 2 «Bắt đầu làm» — nơi hỏi nốt 5W2H */
+  onLapKeHoach: (deKhoiDong: boolean) => void;
   onClose: () => void;
   onXong: () => void;
 }
 
 const NAC_PHAN_TRAM = [0, 25, 50, 75, 100];
 
-export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onClose, onXong }: Props) {
+export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach, onClose, onXong }: Props) {
   const { profileId } = useAuth();
   const lamTuoi = useCt2LamTuoi();
   const { data: nhatKy = [] } = useCt2NhatKy(the?.id ?? null);
@@ -81,24 +83,47 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onClose, onXo
           </DialogDescription>
         </DialogHeader>
 
+        {/* Chưa lập kế hoạch → mời bắt đầu, không bày ra một loạt ô trống */}
+        {!daDuKeHoach(the) && the.trang_thai === 'CHUAN_BI' && (laChuThe || laLanhDao) && (
+          <div className="rounded-xl border-2 border-brand-navy/20 bg-blue-50/50 p-3">
+            <p className="text-sm font-semibold text-brand-navy">Sẵn sàng bắt tay vào việc này chưa?</p>
+            <p className="mt-1 text-sm text-slate-600">
+              Còn ba câu ngắn: xong thì có gì · phục vụ mục tiêu nào · làm theo mấy bước.
+              Trả lời xong là việc chạy.
+            </p>
+            <Button className="mt-2" onClick={() => onLapKeHoach(true)}>
+              <Rocket className="mr-1 h-4 w-4" /> Bắt đầu làm
+            </Button>
+          </div>
+        )}
+
         {/* 5W2H tóm tắt */}
         <div className="grid gap-2 rounded-xl bg-slate-50 p-3 text-sm sm:grid-cols-2">
-          <O ten="Kết quả đầu ra" gia={the.ket_qua_dau_ra} />
-          <O ten="Gắn mục tiêu" gia={the.muc_tieu_lien_ket} />
+          <O ten="Kết quả đầu ra" gia={the.ket_qua_dau_ra || '— chưa ghi'} />
+          <O ten="Gắn mục tiêu" gia={the.muc_tieu_lien_ket || '— chưa ghi'} />
           <O ten="Người chịu trách nhiệm" gia={tenNguoi.get(the.nguoi_chiu_trach_nhiem) ?? '—'} />
           <O ten="Lãnh đạo theo dõi" gia={tenNguoi.get(the.lanh_dao_theo_doi) ?? '—'} />
-          <div className="sm:col-span-2"><O ten="Cách làm" gia={the.cach_lam} /></div>
+          <div className="sm:col-span-2"><O ten="Cách làm" gia={the.cach_lam || '— chưa ghi'} /></div>
           {the.chi_tieu_dinh_luong !== null && (
             <O ten="Chỉ tiêu" gia={`${the.chi_tieu_dinh_luong} ${the.don_vi ?? ''}`} />
           )}
           {(the.trang_thai === 'CHO_DUYET' || the.trang_thai === 'CHO_PHOI_HOP') && the.nguoi_dang_giu && (
             <O ten="Đang giữ việc" gia={`${tenNguoi.get(the.nguoi_dang_giu) ?? '—'} (đồng hồ trách nhiệm đã đổi chủ)`} />
           )}
+          {daDuKeHoach(the) && (laChuThe || laLanhDao) && (
+            <button
+              className="text-left text-xs font-medium text-brand-navy underline underline-offset-2 sm:col-span-2"
+              onClick={() => onLapKeHoach(false)}
+            >
+              Sửa kế hoạch làm
+            </button>
+          )}
         </div>
 
         <ChuyenTrangThai
           the={the} laLanhDao={laLanhDao} laChuThe={laChuThe} vong={vong}
           nhanSu={nhanSu} chuyenDen={chuyenDen}
+          onKhoiDong={() => onLapKeHoach(true)}
           onXong={() => { lamTuoi('board'); onXong(); }}
         />
 
@@ -163,13 +188,14 @@ function O({ ten, gia }: { ten: string; gia: string }) {
 // Chuyển trạng thái — cổng chặn PDCA + thông tin bắt buộc theo cột đích
 // ---------------------------------------------------------------------------
 
-function ChuyenTrangThai({ the, laLanhDao, laChuThe, vong, nhanSu, chuyenDen, onXong }: {
+function ChuyenTrangThai({ the, laLanhDao, laChuThe, vong, nhanSu, chuyenDen, onKhoiDong, onXong }: {
   the: Ct2DauViec;
   laLanhDao: boolean;
   laChuThe: boolean;
   vong: { coDongP: boolean; coDongC: boolean; coDongA: boolean };
   nhanSu: Ct2NhanSu[];
   chuyenDen: Ct2TrangThai | null;
+  onKhoiDong: () => void;
   onXong: () => void;
 }) {
   const [den, setDen] = useState<Ct2TrangThai>(the.trang_thai);
@@ -192,6 +218,11 @@ function ChuyenTrangThai({ the, laLanhDao, laChuThe, vong, nhanSu, chuyenDen, on
 
   const chuyen = async () => {
     if (den === the.trang_thai) return;
+    // Khởi động việc đi qua Cổng 2 — hỏi nốt 5W2H rồi tự chuyển cột
+    if (den === 'DANG_LAM' && the.trang_thai === 'CHUAN_BI' && the.loai_dau_viec === 'TIEN_TRINH') {
+      onKhoiDong();
+      return;
+    }
     if (lyDoChan) { toast.error(lyDoChan); return; }
     if (canNguoiGiu && !nguoiGiu) {
       toast.error('Vào cột chờ phải chọn người đang giữ việc — đồng hồ trách nhiệm chuyển sang họ.');

@@ -11,9 +11,9 @@ database, hàng đợi thông báo + hàm chốt sổ (chưa nối cron/push —
 | Lớp | Nội dung | File |
 |---|---|---|
 | Database | 9 bảng `ct2_*`, trigger cổng nghiệp vụ, RLS, index, 3 RPC | `supabase/migrations/20260806090000_ct2_kanban_5w2h_pdca.sql` |
-| Logic thuần | Cổng A/B, luật chuyển trạng thái, WIP, điểm rủi ro, chấm cảnh báo | `src/lib/ct2.ts` (+ 22 test `ct2.test.ts`) |
+| Logic thuần | Cổng 1/2 + Cổng B, luật chuyển trạng thái, WIP, điểm rủi ro, chấm cảnh báo | `src/lib/ct2.ts` (+ 25 test `ct2.test.ts`) |
 | Dữ liệu UI | react-query hooks + hàm ghi | `src/components/one/move2/useCt2Data.ts` |
-| UI | Kanban 7 cột (kéo-thả), Cổng A, chi tiết thẻ + Cổng B + bình luận, M1 + Ghi nhịp nhanh | `Ct2Board.tsx`, `Ct2CreateDialog.tsx`, `Ct2CardDialog.tsx`, `Ct2MyWork.tsx` |
+| UI | Kanban 7 cột (kéo-thả), Cổng 1 ghi việc, Cổng 2 lập kế hoạch, chi tiết thẻ + Cổng B + bình luận, M1 + Ghi nhịp nhanh | `Ct2Board.tsx`, `Ct2CreateDialog.tsx`, `Ct2PlanDialog.tsx`, `Ct2CardDialog.tsx`, `Ct2MyWork.tsx` |
 | Trang | `/one/chieu-thuc-2` — 2 tab M1/M2, hộp duyệt đề xuất | `src/pages/one/OneMove2Page.tsx` |
 
 Bản Kanban KHHĐ tối giản cũ (bảng `action_plans`, 3 cột todo/doing/done) được
@@ -23,7 +23,7 @@ Bản Kanban KHHĐ tối giản cũ (bảng `action_plans`, 3 cột todo/doing/d
 
 | Đặc tả | Hệ thống |
 |---|---|
-| `CAN_BO` | role `employee` — chỉ «Đề xuất việc» (2 trường), ghi nhịp thẻ mình phụ trách |
+| `CAN_BO` | role `employee` — tự ghi được việc chủ động của chính mình; giao việc cho người khác thì thành «Đề xuất»; ghi nhịp thẻ mình phụ trách |
 | `PHO_PHONG` / `TRUONG_PHONG` | role `manager` (Trưởng phòng chính danh = `departments.manager_id`) |
 | `BAN_GIAM_DOC` | role `bgd` (toàn CN) + `pgd` (phòng phụ trách qua `get_my_pgd_scope_dept_ids`) |
 | `TCTH_QUANTRI` | `tcth_admin` / `system_admin` / `is_tcth_leader()` |
@@ -31,48 +31,56 @@ Bản Kanban KHHĐ tối giản cũ (bảng `action_plans`, 3 cột todo/doing/d
 Tầng «Kế hoạch hành động (phòng × kỳ)» = cặp (`phong`, `cycle_id`) trên đầu
 việc — kỳ dùng chung `evaluation_cycles`, không tạo bảng riêng.
 
-## Cổng A gộp ô nhập (điều chỉnh sau lần chạy thử đầu trên điện thoại)
+## Cách nhập: hai cổng thay vì một (điều chỉnh 08/2026)
 
-Bản đầu dựng đúng 11 ô rời theo đặc tả. Chạy thử thực tế cho thấy lãnh đạo
-Phòng nhập trên điện thoại phải cuộn qua 5 khối chữ liên tiếp (tên việc, kết
-quả, mục tiêu, cách làm, chỉ tiêu) — quá dài, dễ bỏ dở giữa chừng.
+Bản đầu dựng 11 ô rời theo đặc tả §3.1; bản thứ hai gộp 5 ô chữ vào một ô nhiều
+dòng. Cả hai đều chưa ổn trên điện thoại. Nghiên cứu đầy đủ về người dùng, về
+Miro và về mâu thuẫn giữa hai văn bản nội bộ:
+`docs/nghien-cuu-cach-nhap-kanban-cho-can-bo-2026-08.md`.
 
-Điều chỉnh: **năm nội dung chữ gộp vào MỘT ô** có khung mẫu điền sẵn, mỗi ý
-một dòng có nhãn dẫn:
+Chốt lại: **giữ chặn cứng, đặt đúng cửa.**
 
-```
-Việc cần làm: …
-Xong thì có: …
-Để phục vụ: …
-Cách làm: …
-Chỉ tiêu: …            ← bỏ trống nếu việc không có số
-```
+| | Cổng 1 — Ghi việc | Cổng 2 — Bắt đầu làm |
+|---|---|---|
+| Khi nào | Lúc nghĩ ra / nghe chỉ đạo | Khi chuẩn bị bắt tay làm |
+| Hỏi gì | Việc gì · Ai làm · Xong khi nào | Xong thì có gì · Phục vụ mục tiêu nào · Làm mấy bước |
+| Kết quả | Thẻ vào cột «Chuẩn bị» | Thẻ sang «Đang làm» + sinh dòng Plan (P) |
+| Mất bao lâu | < 30 giây | ~60 giây |
 
-- Hàm `tachMoTaGop()` tách về đúng cột `tieu_de`, `ket_qua_dau_ra`,
-  `muc_tieu_lien_ket`, `cach_lam`, `chi_tieu_dinh_luong` + `don_vi` khi lưu —
-  **dữ liệu vẫn có cấu trúc**, lọc/xuất báo cáo và các CHECK trong database
-  không đổi một dòng nào.
-- Nhãn khớp linh hoạt: không phân biệt hoa/thường, gõ thiếu dấu vẫn nhận
-  (`viec can lam:` = `Việc cần làm:`). «Cách làm» viết nhiều dòng B1/B2/B3 vẫn
-  gom về một trường.
-- Dự phòng khi cán bộ xóa hết nhãn gõ tự do: dòng đầu thành tên việc, phần còn
-  lại thành cách làm — không để người dùng kẹt cứng.
-- Dòng «Để phục vụ» có **hàng chip chọn nhanh** bên dưới (chiến dịch đang chạy
-  + 6 nhóm chỉ tiêu): một chạm thay cho gõ tay, và nếu khớp tên chiến dịch thì
-  tự gắn `chien_dich_id`.
-- Bỏ ô «Chỉ tiêu định lượng»/«Đơn vị» rời và checkbox bật/tắt chỉ tiêu — giờ là
-  một dòng tùy chọn, hệ thống tự đọc số và đơn vị (`3 hồ sơ` → 3 + `hồ sơ`).
+Cổng 2 chính là bước P của PDCA nên không phát sinh thủ tục mới. Không thẻ nào
+đang chạy mà thiếu 5W2H, nhưng không ai bị chặn ở giây thứ 20.
 
-Chặn cứng giữ nguyên: nút Tạo vẫn mờ tới khi đủ mục, thanh «x/11 mục — còn
-thiếu: …» chỉ đúng tên từng dòng còn trống, bấm vào là cuộn tới ô.
+Điểm chính trong giao diện:
+- Bỏ hẳn thuật ngữ 5W2H/agile khỏi màn nhập; chữ «đã đủ 5W2H» chỉ hiện ở màn
+  cuối Cổng 2 như một lời khen.
+- Cổng 2 mỗi màn hình một câu hỏi, có chấm tiến độ 4 bước.
+- Ba ô ngắn B1/B2/B3 thay ô «cách làm ≥ 30 ký tự»; hệ thống đếm **số bước**,
+  không hiện ràng buộc ký tự cho người dùng.
+- Hạn chọn bằng chip đời thường (Cuối tuần này · Trong 2 tuần · Cuối tháng).
+- Mặc định đúng để bỏ 4 trường khỏi màn hình: người làm = chính mình, lãnh đạo
+  theo dõi = Trưởng phòng, ngày bắt đầu = hôm nay, phạm vi suy từ liên phòng.
+- Bỏ ô «Loại đầu việc»: Kanban này chỉ dùng cho việc có điểm kết thúc.
+- Câu Plan (P) hệ thống viết sẵn từ kế hoạch vừa nhập — không gõ lại lần hai.
 
-Form rút từ 11 ô xuống **1 ô chữ + 7 ô chọn nhanh** (2 người, 2 ngày, phòng,
-phạm vi, loại) — thao tác gõ dồn vào một vùng liền mạch.
+### Ba nguồn việc (cột `nguon_viec`)
+
+📋 Kế hoạch hành động · 🗣️ Chỉ đạo giao ban tuần/tháng · 💡 Phòng/cán bộ chủ động.
+Việc lặp hằng ngày **không** vào bảng này. Nguồn «giao ban» có ô ghi tên cuộc họp
+và ô chọn «ghi tiếp chỉ đạo khác của cùng cuộc họp» để nhập liền mạch nhiều việc.
+
+### Cán bộ tự ghi được việc chủ động của mình
+
+Khe hẹp có chủ đích: tự nhận việc, trong phòng mình, không liên phòng, không tự
+phong mức ưu tiên (chặn ở cả RLS lẫn trigger). Giao việc cho người khác vẫn phải
+là lãnh đạo — chọn người khác ở ô «Ai làm» thì hệ thống tự chuyển thành đề xuất.
 
 ## Các cổng nghiệp vụ cài ở TẦNG DATABASE (không chỉ giao diện)
 
-- **Cổng A:** cán bộ thường không INSERT được `ct2_dau_viec` (trigger + RLS);
+- **Cổng 1 (ghi việc):** cán bộ chỉ INSERT được thẻ tự nhận việc, trong phòng
+  mình, không liên phòng, không tự phong ưu tiên (trigger + RLS);
   liên phòng chỉ Phó phòng trở lên; «Trọng điểm BGĐ» chỉ BGĐ đặt.
+- **Cổng 2 (khởi động):** `CHUAN_BI → DANG_LAM` bắt buộc đủ kết quả đầu ra,
+  mục tiêu, các bước và dòng Plan (P) — kiểm ở trigger, không chỉ ở giao diện.
 - **PDCA khép vòng ở cấp thẻ:** P trước «Đang làm» · C + 100% trước «Hoàn
   thành» · A trước «Đã đóng» · Dừng/Hủy cần lý do ≥ 30 ký tự và quyền lãnh đạo.
 - **Nhật ký nhịp append-only:** không có policy UPDATE/DELETE cho mọi vai trò.
@@ -122,6 +130,8 @@ Kịch bản nóng nhất: ~150 cán bộ mở M1 và ghi nhịp trong ~40 phút
      `is_staff()` → `is_staff(auth.uid())` cho khớp chữ ký hàm thật trên DB).
    - `ct2_harden_trigger_functions` — thu hồi EXECUTE trên các hàm trigger
      `f_ct2_*` theo khuyến nghị security advisor.
+   - `ct2_cong_nhap_hai_buoc` — cột `nguon_viec`/`cuoc_hop`, nới NOT NULL ba
+     trường 5W2H, Cổng 2 ở trigger, khe hẹp cho cán bộ tự ghi việc chủ động.
    Đã kiểm chứng sau khi áp: 9 bảng `ct2_*` đều bật RLS, 21 policy, 12 hàm;
    security advisor không còn cảnh báo nào cho nhóm `ct2_*`.
 2. (Khuyến nghị) regenerate `src/integrations/supabase/types.ts` — code hiện

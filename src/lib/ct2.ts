@@ -20,9 +20,10 @@ export interface Ct2DauViec {
   chien_dich_id: string | null;
   ma_hien_thi: string | null;
   tieu_de: string;
-  ket_qua_dau_ra: string;
-  muc_tieu_lien_ket: string;
-  cach_lam: string;
+  /** Ba trường dưới để trống được lúc ghi việc, bắt buộc ở Cổng 2 (khởi động) */
+  ket_qua_dau_ra: string | null;
+  muc_tieu_lien_ket: string | null;
+  cach_lam: string | null;
   chi_tieu_dinh_luong: number | null;
   don_vi: string | null;
   nguon_luc_du_kien: string | null;
@@ -45,6 +46,8 @@ export interface Ct2DauViec {
   nguoi_dang_giu: string | null;
   giu_tu: string | null;
   nhip_gan_nhat: string | null;
+  nguon_viec: Ct2NguonViec;
+  cuoc_hop: string | null;
   nguoi_tao: string;
   created_at: string;
   updated_at: string;
@@ -122,131 +125,42 @@ export const CT2_NGUONG_TUOI_CHO = 3;
 export const CT2_CAM_XUC = ['👍', '✅', '👀', '🎯', '🙏', '❤️', '🔥'] as const;
 
 // ---------------------------------------------------------------------------
-// Cổng A — kiểm tra 5W2H lúc TẠO (chặn cứng, đặc tả §3.1)
+// HAI CỔNG NHẬP — đặt chặn cứng đúng cửa, thay vì dồn hết vào lúc tạo
+//
+// Căn cứ: quy chế Miro đang chạy của Chi nhánh (PhanTichKanBan §A1) đã kết
+// luận từ thực tế "yêu cầu điền quá nhiều trường trên màn hình điện thoại là
+// nguyên nhân chính khiến card bị bỏ trống hoàn toàn" → chỉ 3 trường bắt buộc.
+// Đặc tả v1.0 §3.1 lại chặn đủ 11 trường ngay lúc tạo. Hai văn bản cùng chống
+// một lỗi ("card vô chủ") bằng hai thuốc ngược nhau.
+//
+// Hòa giải: chúng nói về hai thời điểm tâm lý khác nhau.
+//   · Lúc GHI VIỆC (đang họp giao ban, cầm điện thoại): chỉ biết việc gì, ai
+//     làm, bao giờ xong → Cổng 1 hỏi đúng 3 điều đó.
+//   · Lúc BẮT TAY LÀM: mới đủ bình tĩnh nghĩ kết quả, mục tiêu, các bước →
+//     Cổng 2 đòi đủ 5W2H, chính là bước P (Plan) của PDCA.
+// Không thẻ nào CHẠY mà thiếu 5W2H (giữ đúng mục tiêu đặc tả), nhưng không ai
+// bị chặn ở giây thứ 20 khi mới chỉ muốn ghi lại một chỉ đạo.
 // ---------------------------------------------------------------------------
 
-/**
- * Ô nhập GỘP: What (tên việc) · What (kết quả) · Why (phục vụ mục tiêu nào) ·
- * How (cách làm) · How much (chỉ tiêu) nằm chung MỘT ô, mỗi phần một dòng có
- * nhãn dẫn sẵn.
- *
- * Vì sao gộp: bản đầu có 11 ô rời, lãnh đạo Phòng nhập trên điện thoại phải
- * cuộn qua 5 khối chữ — tỷ lệ bỏ dở cao. Gộp lại chỉ còn 1 vùng gõ liền mạch,
- * nhưng hệ thống VẪN tách về đúng cột dữ liệu khi lưu, nên lọc/xuất báo cáo
- * và các cổng chặn 5W2H không mất gì.
- */
-export const CT2_NHAN_MO_TA = [
-  { khoa: 'tieu_de', nhan: 'Việc cần làm', goi_y: 'VD: Hoàn thiện hồ sơ TSBĐ khách hàng Minh Long trước 20/08' },
-  { khoa: 'ket_qua_dau_ra', nhan: 'Xong thì có', goi_y: 'VD: Bộ hồ sơ đã đăng ký GDBĐ, đủ điều kiện giải ngân' },
-  { khoa: 'muc_tieu_lien_ket', nhan: 'Để phục vụ', goi_y: 'Bấm chọn nhanh ở dưới, hoặc gõ tên chiến dịch/chỉ tiêu' },
-  { khoa: 'cach_lam', nhan: 'Cách làm', goi_y: 'VD: B1 rà danh mục giấy tờ; B2 hẹn khách bổ sung; B3 trình ký' },
-  { khoa: 'chi_tieu', nhan: 'Chỉ tiêu', goi_y: 'VD: 3 hồ sơ — bỏ trống nếu việc không có số' },
-] as const;
+/** Ba nguồn việc vào Kanban. Việc lặp hằng ngày KHÔNG thuộc nhóm nào — không vào bảng. */
+export type Ct2NguonViec = 'KE_HOACH' | 'GIAO_BAN' | 'CHU_DONG';
 
-export type Ct2KhoaMoTa = (typeof CT2_NHAN_MO_TA)[number]['khoa'];
+export const CT2_NGUON_VIEC: Array<{ ma: Ct2NguonViec; ten: string; icon: string; mo: string }> = [
+  { ma: 'KE_HOACH', ten: 'Kế hoạch hành động', icon: '📋', mo: 'Việc đã có trong KHHĐ của Phòng kỳ này' },
+  { ma: 'GIAO_BAN', ten: 'Chỉ đạo giao ban', icon: '🗣️', mo: 'Việc phát sinh từ giao ban tuần/tháng' },
+  { ma: 'CHU_DONG', ten: 'Phòng/cá nhân chủ động', icon: '💡', mo: 'Việc tự thấy cần làm, không ai giao' },
+];
 
-/** Khung mẫu điền sẵn trong ô gộp — cán bộ chỉ gõ tiếp sau dấu hai chấm */
-export const CT2_MAU_MO_TA = CT2_NHAN_MO_TA.map((n) => `${n.nhan}: `).join('\n');
+// ---------------------------------------------------------------------------
+// CỔNG 1 — Ghi việc (3 trường, dưới 30 giây, làm được trong lúc họp)
+// ---------------------------------------------------------------------------
 
-export interface Ct2PhanMoTa {
+export interface Ct2FormGhiViec {
+  nguon_viec: Ct2NguonViec;
+  cuoc_hop: string;               // chỉ dùng khi nguồn = GIAO_BAN
   tieu_de: string;
-  ket_qua_dau_ra: string;
-  muc_tieu_lien_ket: string;
-  cach_lam: string;
-  /** Con số đọc được từ dòng «Chỉ tiêu» — null khi việc không có số */
-  chi_tieu_so: number | null;
-  don_vi: string;
-}
-
-/** Chuẩn hóa nhãn để so khớp: bỏ dấu, đ→d, thường hóa. Dùng escape Unicode
- *  thay vì ký tự tổ hợp thô để trình soạn thảo không làm hỏng biểu thức. */
-function boDau(s: string): string {
-  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase().trim();
-}
-
-/**
- * Tách ô gộp về từng phần 5W2H.
- *
- * Dòng bắt đầu bằng một nhãn + dấu hai chấm mở một phần mới; các dòng sau nối
- * tiếp vào phần đó (để «Cách làm» viết được nhiều dòng B1/B2/B3).
- *
- * Dự phòng khi cán bộ xóa hết nhãn và gõ tự do: dòng đầu làm tên việc, phần
- * còn lại làm cách làm — không để người dùng kẹt cứng, phần thiếu vẫn hiện
- * trong danh sách «còn thiếu».
- */
-export function tachMoTaGop(moTa: string): Ct2PhanMoTa {
-  const phan: Record<string, string[]> = {};
-  const nhanTheoKhoa = new Map(CT2_NHAN_MO_TA.map((n) => [boDau(n.nhan), n.khoa as string]));
-  let dangO: string | null = null;
-  let coNhan = false;
-
-  for (const dong of moTa.split('\n')) {
-    const dauHai = dong.indexOf(':');
-    const khoa = dauHai > 0 ? nhanTheoKhoa.get(boDau(dong.slice(0, dauHai))) : undefined;
-    if (khoa) {
-      coNhan = true;
-      dangO = khoa;
-      (phan[khoa] ??= []).push(dong.slice(dauHai + 1).trim());
-    } else if (dangO) {
-      (phan[dangO] ??= []).push(dong.trim());
-    } else if (dong.trim()) {
-      (phan.__tudo ??= []).push(dong.trim());
-    }
-  }
-
-  const lay = (k: string) => (phan[k] ?? []).join('\n').trim();
-
-  if (!coNhan) {
-    const dong = (phan.__tudo ?? []).filter(Boolean);
-    return {
-      tieu_de: dong[0] ?? '',
-      ket_qua_dau_ra: '',
-      muc_tieu_lien_ket: '',
-      cach_lam: dong.slice(1).join('\n').trim(),
-      chi_tieu_so: null,
-      don_vi: '',
-    };
-  }
-
-  // «12 hồ sơ» → 12 + «hồ sơ»; «50 tỷ đồng» → 50 + «tỷ đồng»
-  const chiTieu = lay('chi_tieu');
-  const khop = chiTieu.match(/^([\d]+(?:[.,]\d+)?)\s*(.*)$/);
-
-  return {
-    tieu_de: lay('tieu_de'),
-    ket_qua_dau_ra: lay('ket_qua_dau_ra'),
-    muc_tieu_lien_ket: lay('muc_tieu_lien_ket'),
-    cach_lam: lay('cach_lam'),
-    chi_tieu_so: khop ? Number(khop[1].replace(',', '.')) : null,
-    don_vi: khop ? khop[2].trim() : '',
-  };
-}
-
-/** Ghi giá trị vào đúng dòng của ô gộp — dùng cho chip chọn nhanh mục tiêu */
-export function datPhanMoTa(moTa: string, khoa: Ct2KhoaMoTa, giaTri: string): string {
-  const nhan = CT2_NHAN_MO_TA.find((n) => n.khoa === khoa)?.nhan ?? '';
-  const dsDong = moTa.split('\n');
-  const viTri = dsDong.findIndex((d) => {
-    const i = d.indexOf(':');
-    return i > 0 && boDau(d.slice(0, i)) === boDau(nhan);
-  });
-  if (viTri === -1) return `${moTa}\n${nhan}: ${giaTri}`.trim();
-  dsDong[viTri] = `${nhan}: ${giaTri}`;
-  return dsDong.join('\n');
-}
-
-export interface Ct2FormTao {
-  /** Ô gộp What + What + Why + How + How much */
-  mo_ta: string;
   nguoi_chiu_trach_nhiem: string;
-  lanh_dao_theo_doi: string;
-  phong: string;
-  pham_vi: string;
-  loai_dau_viec: string;
-  ngay_bat_dau: string;
   han_hoan_thanh: string;
-  lien_phong: boolean;
-  cac_phong_tham_gia: string[];
 }
 
 /** Các chuỗi tiêu đề rỗng nghĩa bị chặn (đặc tả 2.3 — "theo dõi", "làm việc") */
@@ -254,54 +168,131 @@ const TIEU_DE_RONG_NGHIA = ['theo dõi', 'theo doi', 'làm việc', 'lam viec', 
 
 export interface Ct2ThieuTruong { truong: string; ten: string; ly_do?: string }
 
-/**
- * Trả về danh sách phần còn thiếu/không hợp lệ. Rỗng = đủ điều kiện tạo.
- * Nút "Tạo đầu việc" disabled chừng nào danh sách này chưa rỗng.
- */
-export function kiemTraCongA(f: Ct2FormTao): Ct2ThieuTruong[] {
+export function kiemTraGhiViec(f: Ct2FormGhiViec): Ct2ThieuTruong[] {
   const thieu: Ct2ThieuTruong[] = [];
-  const p = tachMoTaGop(f.mo_ta);
-
-  const tieuDe = p.tieu_de.trim();
+  const tieuDe = f.tieu_de.trim();
   if (tieuDe.length < 10) {
-    thieu.push({ truong: 'mo_ta', ten: 'Việc cần làm', ly_do: 'tối thiểu 10 ký tự' });
+    thieu.push({ truong: 'tieu_de', ten: 'Việc cần làm', ly_do: 'ghi rõ hơn một chút' });
   } else if (TIEU_DE_RONG_NGHIA.includes(tieuDe.toLowerCase())) {
-    thieu.push({ truong: 'mo_ta', ten: 'Việc cần làm', ly_do: 'tên quá chung chung — ghi rõ làm gì, cho ai' });
-  }
-  if (p.ket_qua_dau_ra.trim().length < 5) {
-    thieu.push({ truong: 'mo_ta', ten: 'Xong thì có', ly_do: 'làm xong thì có cái gì?' });
-  }
-  if (!p.muc_tieu_lien_ket.trim()) {
-    thieu.push({ truong: 'mo_ta', ten: 'Để phục vụ', ly_do: 'gắn với chiến dịch / nhóm chỉ tiêu nào' });
-  }
-  if (p.cach_lam.trim().length < 30) {
-    thieu.push({ truong: 'mo_ta', ten: 'Cách làm', ly_do: 'tối thiểu 30 ký tự — các bước triển khai' });
+    thieu.push({ truong: 'tieu_de', ten: 'Việc cần làm', ly_do: 'chung chung quá — làm gì, cho ai?' });
   }
   if (!f.nguoi_chiu_trach_nhiem) {
-    thieu.push({ truong: 'nguoi_chiu_trach_nhiem', ten: 'Người chịu trách nhiệm', ly_do: 'duy nhất 01 người, không để «gán sau»' });
+    thieu.push({ truong: 'nguoi_chiu_trach_nhiem', ten: 'Ai làm', ly_do: 'đúng 01 người, không để «gán sau»' });
   }
-  if (!f.lanh_dao_theo_doi) thieu.push({ truong: 'lanh_dao_theo_doi', ten: 'Lãnh đạo theo dõi' });
-  if (!f.phong) thieu.push({ truong: 'phong', ten: 'Phòng chủ trì' });
-  if (!f.pham_vi) thieu.push({ truong: 'pham_vi', ten: 'Phạm vi' });
-  if (!f.loai_dau_viec) thieu.push({ truong: 'loai_dau_viec', ten: 'Loại đầu việc' });
-  if (!f.ngay_bat_dau) thieu.push({ truong: 'ngay_bat_dau', ten: 'Ngày bắt đầu' });
-  if (!f.han_hoan_thanh) {
-    thieu.push({ truong: 'han_hoan_thanh', ten: 'Hạn hoàn thành' });
-  } else if (f.ngay_bat_dau && f.han_hoan_thanh < f.ngay_bat_dau) {
-    thieu.push({ truong: 'han_hoan_thanh', ten: 'Hạn hoàn thành', ly_do: 'phải sau ngày bắt đầu' });
+  if (!f.han_hoan_thanh) thieu.push({ truong: 'han_hoan_thanh', ten: 'Xong khi nào' });
+  return thieu;
+}
+
+// ---------------------------------------------------------------------------
+// Chọn hạn bằng cụm từ đời thường — bấm 1 lần thay cho mở lịch chọn ngày
+// ---------------------------------------------------------------------------
+
+const NGAY_MS = 86_400_000;
+
+function ngayVnHomNay(moc: Date): Date {
+  const vn = new Date(moc.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
+  return new Date(vn.getFullYear(), vn.getMonth(), vn.getDate());
+}
+
+const dinhDang = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/** Hạn gợi ý: cuối tuần này (thứ 6) · cuối tháng · 2 tuần nữa */
+export function hanGoiY(moc: Date = new Date()): Array<{ nhan: string; ngay: string }> {
+  const homNay = ngayVnHomNay(moc);
+  const thu = homNay.getDay(); // 0 = CN
+  const toiThu6 = (5 - thu + 7) % 7;
+  const thu6 = new Date(homNay.getTime() + (toiThu6 === 0 ? 0 : toiThu6) * NGAY_MS);
+  const cuoiThang = new Date(homNay.getFullYear(), homNay.getMonth() + 1, 0);
+  const haiTuan = new Date(homNay.getTime() + 14 * NGAY_MS);
+  const ds = [
+    { nhan: 'Cuối tuần này', ngay: dinhDang(thu6) },
+    { nhan: 'Trong 2 tuần', ngay: dinhDang(haiTuan) },
+    { nhan: 'Cuối tháng', ngay: dinhDang(cuoiThang) },
+  ];
+  // Bỏ mốc đã qua hoặc trùng nhau — không đưa lựa chọn vô nghĩa lên màn hình
+  const daCo = new Set<string>();
+  return ds.filter((x) => {
+    if (x.ngay < dinhDang(homNay) || daCo.has(x.ngay)) return false;
+    daCo.add(x.ngay);
+    return true;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// CỔNG 2 — Lập kế hoạch làm (3 câu hỏi, mở khi khởi động việc)
+// ---------------------------------------------------------------------------
+
+export interface Ct2FormKeHoach {
+  ket_qua_dau_ra: string;
+  muc_tieu_lien_ket: string;
+  /** Các bước rời — liệt kê dễ hơn viết một đoạn văn dài */
+  cac_buoc: string[];
+  chi_tieu_so: string;
+  don_vi: string;
+}
+
+/** Gợi ý kết quả đầu ra — bấm chọn dễ hơn tự nghĩ ra (recognition > recall) */
+export const CT2_GOI_Y_KET_QUA = [
+  'Bộ hồ sơ hoàn chỉnh, đủ điều kiện giải ngân',
+  'Danh sách khách hàng đã rà soát',
+  'Văn bản/quy chế được ban hành',
+  'Số liệu đạt mức chỉ tiêu giao',
+  'Biên bản làm việc có kết luận',
+  'Báo cáo trình lãnh đạo',
+];
+
+/** Danh mục mục tiêu cố định — chọn, không nhập tay (đặc tả 2.3) */
+export const CT2_DANH_MUC_MUC_TIEU = [
+  'Tăng trưởng CASA', 'Tăng trưởng tín dụng', 'Thu hồi & kiểm soát nợ',
+  'Thu dịch vụ - bảo hiểm', 'Chất lượng vận hành nội bộ', 'Phát triển nhân sự - đào tạo',
+];
+
+export function kiemTraKeHoach(f: Ct2FormKeHoach): Ct2ThieuTruong[] {
+  const thieu: Ct2ThieuTruong[] = [];
+  if (f.ket_qua_dau_ra.trim().length < 5) {
+    thieu.push({ truong: 'ket_qua_dau_ra', ten: 'Xong thì có gì' });
   }
-  if (f.lien_phong && f.cac_phong_tham_gia.length === 0) {
-    thieu.push({ truong: 'cac_phong_tham_gia', ten: 'Các phòng tham gia', ly_do: 'việc liên phòng cần chọn phòng phối hợp' });
+  if (!f.muc_tieu_lien_ket.trim()) {
+    thieu.push({ truong: 'muc_tieu_lien_ket', ten: 'Phục vụ mục tiêu nào' });
+  }
+  // Đo bằng SỐ BƯỚC, không đếm ký tự cho người dùng thấy: bắt đếm ký tự làm
+  // người ta gõ cho đủ dài thay vì nghĩ cho đủ ý.
+  const buoc = f.cac_buoc.map((b) => b.trim()).filter(Boolean);
+  if (buoc.length < 2) {
+    thieu.push({ truong: 'cac_buoc', ten: 'Các bước sẽ làm', ly_do: 'ít nhất 2 bước' });
   }
   return thieu;
 }
 
-/** Tổng số mục bắt buộc của Cổng A — dùng cho thanh "8/11 mục" */
-export function demTruongCongA(f: Ct2FormTao): { du: number; tong: number } {
-  // 4 mục trong ô gộp + 7 mục chọn nhanh + 1 khi liên phòng
-  const tong = 11 + (f.lien_phong ? 1 : 0);
-  const thieu = kiemTraCongA(f).length;
-  return { du: Math.max(0, tong - thieu), tong };
+/** Nối các bước rời thành một chuỗi cho cột cach_lam (database vẫn 1 trường) */
+export function gopCacBuoc(cacBuoc: string[]): string {
+  return cacBuoc
+    .map((b) => b.trim())
+    .filter(Boolean)
+    .map((b, i) => `B${i + 1}. ${b}`)
+    .join('\n');
+}
+
+/** Tách ngược chuỗi cach_lam về từng bước để sửa lại */
+export function tachCacBuoc(cachLam: string | null): string[] {
+  if (!cachLam?.trim()) return ['', '', ''];
+  const ds = cachLam.split('\n').map((d) => d.replace(/^B\d+[.)]?\s*/, '').trim()).filter(Boolean);
+  return ds.length >= 3 ? ds : [...ds, '', '', ''].slice(0, 3);
+}
+
+/** Câu Plan (P) sinh tự động từ kế hoạch — cán bộ không phải gõ lại lần nữa */
+export function cauPlanTuKeHoach(f: Ct2FormKeHoach): string {
+  const buoc = f.cac_buoc.map((b) => b.trim()).filter(Boolean);
+  const chiTieu = f.chi_tieu_so.trim() ? ` Chỉ tiêu: ${f.chi_tieu_so.trim()} ${f.don_vi.trim()}.` : '';
+  return `Kế hoạch làm: ${buoc.length} bước — ${buoc.join('; ')}. Xong thì có: ${f.ket_qua_dau_ra.trim()}.${chiTieu}`;
+}
+
+/** Thẻ đã đủ 5W2H để khởi động chưa (dùng cho nhãn nhắc trên bàn Kanban) */
+export function daDuKeHoach(dv: Pick<Ct2DauViec, 'ket_qua_dau_ra' | 'muc_tieu_lien_ket' | 'cach_lam'>): boolean {
+  return (dv.ket_qua_dau_ra ?? '').trim().length >= 5
+    && (dv.muc_tieu_lien_ket ?? '').trim().length > 0
+    && (dv.cach_lam ?? '').trim().length >= 20;
 }
 
 // ---------------------------------------------------------------------------
@@ -391,8 +382,6 @@ export function lyDoChanChuyen(tu: Ct2TrangThai, den: Ct2TrangThai, bc: BoiCanhC
 // ---------------------------------------------------------------------------
 // Cảnh báo ngoại lệ trên bàn Kanban
 // ---------------------------------------------------------------------------
-
-const NGAY_MS = 86_400_000;
 
 function ngayVn(iso: string | Date): number {
   const d = typeof iso === 'string' ? new Date(iso) : iso;

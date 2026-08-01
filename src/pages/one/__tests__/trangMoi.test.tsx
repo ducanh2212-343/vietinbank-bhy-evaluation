@@ -100,17 +100,15 @@ describe('Trang Chiêu thức 2', () => {
     }
   });
 
-  it('cán bộ thường chỉ thấy «Đề xuất việc» — không tự tạo được đầu việc', async () => {
+  it('mọi vai trò đều ghi được việc — cùng một cửa vào, Cổng 1 chỉ hỏi 3 điều', async () => {
     dung(<OneMove2Page />, '/one/chieu-thuc-2');
-    expect(await screen.findByText('+ Đề xuất việc')).toBeInTheDocument();
-    expect(screen.queryByText('+ Tạo đầu việc')).not.toBeInTheDocument();
+    expect(await screen.findByText('+ Ghi việc')).toBeInTheDocument();
   });
 
-  it('lãnh đạo Phòng (đang xem phòng mình) thấy nút tạo đầu việc — Cổng A', async () => {
+  it('lãnh đạo Phòng cũng vào bằng đúng cửa đó', async () => {
     mockAuth.isManager = true;
     dung(<OneMove2Page />, '/one/chieu-thuc-2');
-    expect(await screen.findByText('+ Tạo đầu việc')).toBeInTheDocument();
-    expect(screen.queryByText('+ Đề xuất việc')).not.toBeInTheDocument();
+    expect(await screen.findByText('+ Ghi việc')).toBeInTheDocument();
   });
 
   it('mặc định vào «Việc của tôi» — nơi ghi nhịp sáng', async () => {

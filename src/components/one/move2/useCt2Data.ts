@@ -230,6 +230,7 @@ function thongDiep(error: { message?: string } | null): string | null {
   return error.message ?? 'Có lỗi không xác định.';
 }
 
+/** Cổng 1 — ghi việc: chỉ 3 trường bắt buộc, phần 5W2H còn lại do Cổng 2 điền */
 export async function ct2TaoDauViec(v: Record<string, unknown>): Promise<{ error: string | null; id: string | null }> {
   const { data, error } = await db.from('ct2_dau_viec').insert(v).select('id').single();
   return { error: thongDiep(error), id: (data as { id: string } | null)?.id ?? null };
