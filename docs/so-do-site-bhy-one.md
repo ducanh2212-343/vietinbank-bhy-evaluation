@@ -249,3 +249,72 @@ chuyển hướng tự động.
 
 **Ngoài phạm vi đợt này:** đề án "Bắc Hưng Yên Kanban" thay Miro (nghiên cứu
 riêng) — Kanban cá nhân trên Trang chủ hiện chỉ là bản tổng quan từ hệ 343.
+
+---
+
+## 6. Cập nhật 08/2026 — gộp Trang chủ, tách tab theo Chiêu thức
+
+Cấu trúc ở các mục trên là bản chốt tháng 7/2026. Tháng 8/2026 Chi nhánh điều
+chỉnh lại như sau (đã triển khai):
+
+### Thanh menu chính còn 5 tab
+
+| # | Tab | Đường dẫn | Vai trò |
+|---|---|---|---|
+| 1 | **Trang chủ** | `/one` | Việc của tôi + giới thiệu bản sắc và hệ sinh thái |
+| 2 | **Bắc Hưng Yên Ways** | `/one/bhy-ways` | Hệ sinh thái 6 thương hiệu có tính năng |
+| 3 | **Chiêu thức 2** | `/one/chieu-thuc-2` | Kế hoạch hành động Chi nhánh (5W2H + PDCA) |
+| 4 | **Phát triển nhân sự 343** | phân hệ | Chiêu thức 3 — giữ nguyên như cũ |
+| 5 | **Quản trị người dùng** | phân hệ | Admin, giữ nguyên |
+
+### Những thay đổi cụ thể
+
+- **Trang «Nguồn cội & Bản sắc» đã GỘP vào Trang chủ.** Cổng chỉ còn một cửa vào;
+  phần bản sắc (20 năm, Cây ký ức) nằm ngay dưới khối việc của tôi. Trang chủ từ
+  đây chỉ *giới thiệu* rồi dẫn sang trang riêng — không nhúng form hay dữ liệu.
+- **«Bắc Hưng Yên Ways»** là tên chính thức của hệ sinh thái. Câu định vị:
+  > Bắc Hưng Yên Ways là hệ sinh thái các phương thức, công cụ và cơ chế quản trị
+  > được VietinBank Bắc Hưng Yên xây dựng, áp dụng và liên tục cải tiến nhằm phát
+  > triển tri thức, thúc đẩy sáng kiến, tăng cường kết nối, kiểm soát rủi ro và
+  > ghi nhận những đóng góp xứng đáng.
+
+  Sáu thương hiệu bên dưới: Sharing · Quizzi · Ideas · Connect · Sao Xứng Đáng ·
+  Credit 360. Riêng **Connect** chưa có công cụ trực tuyến — trang nói thẳng điều
+  đó thay vì dựng nút dẫn tới trang trống.
+- **«Bắc Hưng Yên 3806»** là tên bộ khung năng lực: **38** kỹ năng lõi + **06**
+  nhóm thái độ. Đây là trang *chỉ giới thiệu* (`/one/bhy-3806`), nằm trong phân hệ
+  Phát triển nhân sự. Nơi làm việc thật (tự chấm, duyệt phiếu, IDP) vẫn ở phân hệ
+  343 như cũ.
+- **Chiêu thức 2 có tab riêng** kèm một tính năng mới: bảng Kanban kế hoạch hành
+  động của cả Chi nhánh (xem mục dưới).
+- **Chiêu thức 1** (Năng lượng ngày mới) là nếp sinh hoạt hằng ngày, không có màn
+  hình riêng — chỉ giới thiệu trên Trang chủ.
+- Link cũ đều chuyển hướng, không gãy bookmark: `/one/nguon-coi`, `/one/dac-trung`,
+  `/one/chieu-thuc` → `/one`; `/one/sang-kien` → `/one/bhy-ways`.
+
+### Kanban kế hoạch hành động Chi nhánh (Chiêu thức 2)
+
+Khác hẳn Kanban hiện có: `kanban_cards` là hành động phát triển **năng lực của
+từng cán bộ**, sinh từ phiếu tự đánh giá. Bảng mới `action_plans` là kế hoạch hành
+động **của cả Phòng** theo 5W2H.
+
+| Vai trò | Xem được |
+|---|---|
+| Cán bộ / lãnh đạo Phòng | Kế hoạch của phòng mình |
+| Phó Giám đốc | Các phòng mình phụ trách |
+| Giám đốc · BGĐ · TCTH | Toàn Chi nhánh |
+| Mọi phòng trong chiến dịch chung | Kế hoạch của chiến dịch đó |
+
+- **Chiến dịch chung liên phòng**: lãnh đạo Phòng trở lên khởi tạo rồi thêm các
+  phòng khác vào; mọi phòng tham gia đều xem và cùng báo nhịp.
+- **Nhật ký PDCA không sửa, không xóa** — là bằng chứng trung thực. Mọi cán bộ
+  trong phạm vi đều ghi được, không phải đặc quyền của lãnh đạo.
+- **Bảng thi đua xếp theo nhịp báo cáo tuần TRƯỚC khối lượng.** Phòng ít việc mà
+  tuần nào cũng báo đứng trên phòng nhiều việc bỏ bẵng — đây chính là hành vi cần
+  tạo động lực, không phải chạy theo số lượng đầu việc.
+- RLS là hàng rào thật, dùng lại bộ helper sẵn có (`is_dept_manager`,
+  `get_my_pgd_scope_dept_ids`, `is_tcth_leader`). Khách đối tác bị chặn hoàn toàn.
+
+**Khi triển khai:** phải áp migration
+`20260805090000_chieu_thuc_2_ke_hoach_hanh_dong_phong.sql` vào project Supabase.
+Chưa áp thì trang Chiêu thức 2 hiện lời nhắc rõ ràng thay vì màn lỗi trắng.
