@@ -25,6 +25,7 @@ import {
   type Ct2FormGhiViec,
   type Ct2FormKeHoach,
 } from './ct2';
+import { dauTuanVn } from '@/components/one/move2/useCt2Bgd';
 
 // ---------------------------------------------------------------------------
 // CỔNG 1 — ghi việc: đúng 3 điều, làm được ngay trong cuộc họp giao ban
@@ -282,5 +283,23 @@ describe('Tiện ích', () => {
 
   it('lọc emoji khỏi tên đầu việc', () => {
     expect(locEmojiTieuDe('Tăng CASA 🔥🔥 quý IV')).toBe('Tăng CASA quý IV');
+  });
+});
+
+describe('Mốc tuần của dấu ấn — phải trùng mốc tuần Kanban (T2 00:00 giờ VN)', () => {
+  it('mọi ngày trong tuần đều quy về đúng thứ Hai của tuần đó', () => {
+    // Thứ 4 12/08/2026 → thứ 2 là 10/08
+    expect(dauTuanVn(new Date('2026-08-12T02:00:00Z'))).toBe('2026-08-10');
+    // Chính thứ 2 10/08 → giữ nguyên
+    expect(dauTuanVn(new Date('2026-08-10T02:00:00Z'))).toBe('2026-08-10');
+    // Chủ nhật 16/08 vẫn thuộc tuần bắt đầu 10/08 (không nhảy sang tuần sau)
+    expect(dauTuanVn(new Date('2026-08-16T02:00:00Z'))).toBe('2026-08-10');
+    // Thứ 2 17/08 sang tuần mới
+    expect(dauTuanVn(new Date('2026-08-17T02:00:00Z'))).toBe('2026-08-17');
+  });
+
+  it('tính theo giờ Việt Nam, không theo giờ máy chủ', () => {
+    // 23:30 UTC Chủ nhật 16/08 = 06:30 thứ 2 17/08 giờ VN → tuần mới
+    expect(dauTuanVn(new Date('2026-08-16T23:30:00Z'))).toBe('2026-08-17');
   });
 });

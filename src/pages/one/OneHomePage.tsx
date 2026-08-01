@@ -6,6 +6,7 @@ import { OnePageShell } from '@/components/one/OnePageShell';
 import { CultureTree } from '@/components/one/CultureTree';
 import { PersonalKanbanMini } from '@/components/kanban/PersonalKanbanMini';
 import { Ct2HomeStrip } from '@/components/one/move2/Ct2HomeStrip';
+import { Ct2DieuHanhBgd } from '@/components/one/move2/Ct2DieuHanhBgd';
 import { NewsRail } from '@/components/one/news/NewsRail';
 import { useOneUploads } from '@/components/one/useOneUploads';
 import { useAuth } from '@/hooks/useAuth';
@@ -89,6 +90,10 @@ function HomeContent() {
             và có khung giờ cố định, nên phải thấy ngay khi mở cổng, không bắt
             cán bộ nhớ đường vào trang riêng. */}
         {!isGuest && profileId && <Ct2HomeStrip />}
+
+        {/* BGĐ: gộp ba tầng điều hành về một chỗ thay vì bắt đi qua bốn nơi —
+            việc đang chờ chính mình · nhịp các phòng phụ trách · dấu ấn tuần này. */}
+        {!isGuest && profileId && <Ct2DieuHanhBgd />}
 
         {!isGuest && profileId && (
           <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-3">

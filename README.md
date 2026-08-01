@@ -132,6 +132,17 @@ của Phòng có chế độ **«Toàn cảnh»** (mặc định trên điện t
 màu, cả bảng lọt một màn hình 5 inch. Tự làm tươi 30s/lần chỉ trong khung
 6h45–8h45 ngày làm việc (`trongKhungNhip`), ngoài khung tắt hẳn.
 
+**Điều hành của Ban Giám đốc (08/2026):** khối `Ct2DieuHanhBgd` trên trang chủ
+gộp ba tầng cho BGĐ/PGĐ — (1) việc đang chờ chính mình kèm tuổi chờ, gộp cả đầu
+việc Chiêu thức 2 lẫn hồ sơ tín dụng đang trình (phần đặc tả §7.4 yêu cầu mà
+trước đây thiếu hoàn toàn); (2) nhịp hôm nay của các phòng phụ trách; (3) dấu ấn
+Bắc Hưng Yên Mark tuần này. **Không thêm nhịp mới** — dấu ấn vốn đã dùng chung
+nhịp tuần Kanban; chỉ đổi câu hỏi tuần thành «tuần này có thêm bằng chứng gì?»,
+mỗi tuần bồi một mẩu vào STAR (bảng `ct2_bang_chung_dau_an`, append-only) để
+cuối kỳ STAR tự đầy. Tư vấn + thiết kế:
+`docs/nhip-dieu-hanh-ban-giam-doc-2026-08.md`. Migration
+`20260810090000_ct2_dieu_hanh_bgd.sql` **đã áp**.
+
 **Kanban Phê duyệt tín dụng (PDTD)** — bàn thứ hai, tab riêng chỉ hiện với phòng
 có trong `ct2_phong_pdtd` (đã bật: KHDN, Bán lẻ, HTTD). Đơn vị theo dõi là hồ sơ
 tín dụng của một khách hàng: 7 cột theo quy trình phê duyệt, số tiền là numeric
