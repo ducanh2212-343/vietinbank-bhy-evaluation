@@ -249,3 +249,151 @@ chuyển hướng tự động.
 
 **Ngoài phạm vi đợt này:** đề án "Bắc Hưng Yên Kanban" thay Miro (nghiên cứu
 riêng) — Kanban cá nhân trên Trang chủ hiện chỉ là bản tổng quan từ hệ 343.
+
+---
+
+## 6. Cập nhật 08/2026 — gộp Trang chủ, tách tab theo Chiêu thức
+
+Cấu trúc ở các mục trên là bản chốt tháng 7/2026. Tháng 8/2026 Chi nhánh điều
+chỉnh lại như sau (đã triển khai):
+
+### Thanh menu chính còn 5 tab
+
+| # | Tab | Đường dẫn | Vai trò |
+|---|---|---|---|
+| 1 | **Trang chủ** | `/one` | Việc của tôi + giới thiệu bản sắc và hệ sinh thái |
+| 2 | **Bắc Hưng Yên Ways** | *(nhóm menu)* | Bấm là bung thẳng 6 thương hiệu |
+| 3 | **Chiêu thức 2** | `/one/chieu-thuc-2` | Kế hoạch hành động Chi nhánh (5W2H + PDCA) |
+| 4 | **Chiêu thức 3 - Phát triển nhân sự** | phân hệ | Nội dung nghiệp vụ giữ nguyên như cũ |
+| 5 | **Quản trị người dùng** | phân hệ | Admin, giữ nguyên |
+
+### Những thay đổi cụ thể
+
+- **Trang «Nguồn cội & Bản sắc» đã GỘP vào Trang chủ.** Cổng chỉ còn một cửa vào;
+  phần bản sắc (20 năm, Cây ký ức) nằm ngay dưới khối việc của tôi. Trang chủ từ
+  đây chỉ *giới thiệu* rồi dẫn sang trang riêng — không nhúng form hay dữ liệu.
+- **«Bắc Hưng Yên Ways» là một NHÓM MENU, không phải một trang.** Bấm vào tên nhóm
+  trên thanh điều hướng là bung ngay 6 thương hiệu; mỗi mục dẫn thẳng tới nơi làm
+  việc thật. KHÔNG dựng trang giới thiệu riêng vì Trang chủ đã giới thiệu đủ —
+  thêm một trang nữa chỉ là lặp lại chính nó. Câu định vị (đặt trên Trang chủ):
+  > Bắc Hưng Yên Ways là hệ sinh thái các phương thức, công cụ và cơ chế quản trị
+  > được VietinBank Bắc Hưng Yên xây dựng, áp dụng và liên tục cải tiến nhằm phát
+  > triển tri thức, thúc đẩy sáng kiến, tăng cường kết nối, kiểm soát rủi ro và
+  > ghi nhận những đóng góp xứng đáng.
+
+  Sáu mục con và đích đến:
+
+  | Mục con | Dẫn tới |
+  |---|---|
+  | Bắc Hưng Yên Sharing | `/one/hoc-hoi` — kho tri thức |
+  | Bắc Hưng Yên Quizzi | `/quizzi` |
+  | Bắc Hưng Yên Ideas | `/one/y-tuong` |
+  | Bắc Hưng Yên Connect | `/one/bhy-connect` — trang nội dung riêng |
+  | Sao Xứng Đáng | `/one/ghi-nhan` |
+  | Bắc Hưng Yên Credit 360 | `/one/credit-360` |
+
+  Năm mục đầu và cuối dẫn thẳng tới công cụ thật. Riêng **Connect** là chuỗi hội
+  nghị, không có màn hình nghiệp vụ, nên có trang nội dung của riêng nó.
+- **«Bắc Hưng Yên 3806»** là tên bộ khung năng lực: **38** kỹ năng lõi + **06**
+  nhóm thái độ. Đây là trang *chỉ giới thiệu* (`/one/bhy-3806`), nằm trong phân hệ
+  Phát triển nhân sự. Nơi làm việc thật (tự chấm, duyệt phiếu, IDP) vẫn ở phân hệ
+  343 như cũ.
+- **Chiêu thức 2 có tab riêng** kèm một tính năng mới: bảng Kanban kế hoạch hành
+  động của cả Chi nhánh (xem mục dưới).
+- **Chiêu thức 1** (Năng lượng ngày mới) là nếp sinh hoạt hằng ngày, không có màn
+  hình riêng — chỉ giới thiệu trên Trang chủ.
+- **Thứ tự tab trên điện thoại** (khai bằng `mobileOrder`, không suy ra từ khu bố
+  cục vì Chiêu thức 3 là phân hệ chuyên sâu): Trang chủ → Bắc Hưng Yên Ways →
+  Chiêu thức 3 → Chiêu thức 2 → Thêm. Chạm vào «Bắc Hưng Yên Ways» thì bung danh
+  sách 6 mục con ngay tại chỗ, không rời trang.
+- **Chạm một tab khu trên điện thoại thì bung TẤM giống hệt «Thêm», không phải đổ
+  danh sách phẳng.** Khu nào có thư mục con thì tấm đó dựng cây thu gọn (giống menu
+  dọc trên máy tính) chứ không liệt kê hết: Chiêu thức 3 có gần 50 mục trong 6 thư
+  mục, đổ phẳng ra là không ai đọc nổi trên màn hình điện thoại. Khu không có thư
+  mục (Bắc Hưng Yên Ways, 6 mục) vẫn liệt kê thẳng vì đã đủ ngắn. Ba bề mặt —
+  menu dọc máy tính, tấm «Thêm», tấm bung theo tab — dùng chung một component
+  `NoiDungKhu` nên cách bung mục con giống hệt nhau ở mọi nơi.
+- **Tấm «Thêm» chỉ chứa khu CHƯA có tab riêng.** Trước đây nó liệt kê lại cả những
+  khu đã nằm sẵn trên thanh tab, thành ra cùng một mục tới được bằng hai đường —
+  người dùng phải đoán xem hai lối đó có khác nhau không.
+- **Thanh menu phải sống được ở dải 768–2560px, kể cả khi điện thoại bật «giao
+  diện máy tính»** (Chrome đặt khung nhìn 980px). Bốn ràng buộc đã đo bằng trình
+  duyệt thật ở 10 khổ màn hình:
+
+  | Ràng buộc | Vì sao |
+  |---|---|
+  | Bề ngang bảng menu đặt trên chính `NavMenu.Content` | Radix đo phần tử Content để gán `--radix-navigation-menu-viewport-width`. Đặt ở thẻ con thì đo ra 500–740px trong khi nội dung rộng 790–1024px → cắt cụt 146–331px, nhãn đứt giữa chữ |
+  | Khung chứa bảng KHÔNG dùng `flex` | Là flex-item thì bảng bị co xuống bằng khung chứa rồi `overflow-hidden` cắt phần thừa |
+  | Bảng có `max-h-[calc(100dvh-4.5rem)]` + cuộn dọc | Bảng phân hệ 343 cao 950–1362px; màn hình 740–800px thiếu chỗ, không có thì mục cuối vĩnh viễn không bấm được |
+  | Bề ngang bảng trừ 12rem, không phải 6rem | Bảng neo theo mép trái thanh menu, mà mép này lùi vào 60–146px vì logo; trừ ít quá thì ở dải 1024–1100px bảng thò ra ngoài màn hình, sinh cuộn ngang cho cả trang |
+
+  Nhãn tab đầy đủ chỉ bật từ 1536px: bộ nhãn đầy đủ cần 921px trong khi chỗ trống
+  chỉ có 522px ở 1024px. Dưới mốc đó dùng `shortLabel`; tên đầy đủ vẫn có ở
+  `aria-label` và ở đầu bảng bung xuống. Số tab đổi theo quyền (khách 2, quản trị
+  viên 5) nên không mốc cố định nào bảo đảm luôn vừa — thanh tự đo, tràn thì làm
+  mờ mép phải để lộ ra là còn cuộn được.
+- **Ba tầng menu có ba ngôn ngữ thị giác khác nhau**: tab mẹ là chữ đậm có gạch
+  chân trượt; mục con trong bảng bung xuống nhạt hơn và có tiêu đề nêu rõ thuộc
+  khu nào; trong tấm menu điện thoại, khu là dòng đậm còn mục con thụt vào sau một
+  vạch dọc.
+- Link cũ đều chuyển hướng, không gãy bookmark: `/one/nguon-coi`, `/one/dac-trung`,
+  `/one/chieu-thuc` → `/one`; `/one/sang-kien` và `/one/bhy-ways` → `/one/y-tuong`.
+
+### Tin tức nội bộ — dòng chia sẻ chuyển về Trang chủ
+
+Tab «Dòng chia sẻ» của trang Học hỏi đã **tách khỏi trang đó** và trở thành
+**Tin tức nội bộ**. Ba nơi, một kho dữ liệu:
+
+| Nơi | Đường dẫn | Nội dung |
+|---|---|---|
+| Dải trượt ngang | `/one` | 12 tin mới nhất, tin ghim đứng đầu |
+| Danh sách đầy đủ | `/one/tin-tuc` | Toàn bộ dòng tin, mở sẵn tin được chọn qua `?tin=<id>` |
+| Màn hình quản trị | `/quan-tri-tin-tuc` | Ghim, sửa, mở cho khách, gỡ tin |
+
+- **Thẻ dựng đứng, dải trượt ngang.** Dòng tin là phần dài nhất của cổng; xếp
+  lưới dọc thì 12 tin đẩy toàn bộ bản sắc và hệ sinh thái xuống dưới hai màn hình
+  cuộn. Dải trượt ngang giữ tin trong đúng một tầm mắt (cao 326px), điện thoại
+  vuốt ngang, máy tính có thêm hai nút mũi tên — nút chỉ hiện khi còn chỗ trượt.
+  Thẻ cuối dải là lối sang danh sách đầy đủ.
+- **Dùng chung kho `portal_uploads` với Kho tri thức, KHÔNG dựng bảng riêng.**
+  Cán bộ đăng một lần, bài vừa lên dòng tin vừa nằm trong kho tra cứu. Bảng riêng
+  đồng nghĩa với đăng hai lần cho cùng một nội dung.
+- **Cột `is_featured` có sẵn chính là cờ GHIM** — không cần migration nào cho
+  tính năng này.
+- **Quyền biên tập là ràng buộc ở tầng cơ sở dữ liệu, không phải ẩn nút.** Policy
+  «Content admins can manage portal uploads» chỉ mở cho `system_admin` và
+  `tcth_admin`. Menu dùng mốc `minRole: 'admin'` — mốc này gồm cả Ban Giám đốc,
+  nên màn hình quản trị tự nhận biết và chuyển sang **chỉ xem** cho vai trò không
+  ghi được, thay vì để người dùng bấm rồi nhận lỗi máy chủ khó hiểu.
+- **Khách đối tác chỉ thấy tin `is_shared_with_guests`** — RLS lọc, giao diện
+  không lọc lại lần nữa.
+- Trang Học hỏi (`/one/hoc-hoi`) từ đây chỉ còn một việc: **tra cứu kho tri thức**.
+  Liên kết cũ `/one/hoc-hoi?action=chia-se` vẫn mở được hộp đăng bài vì đường dẫn
+  này đã phát tán trong bookmark và tin nhắn nội bộ.
+
+### Kanban kế hoạch hành động Chi nhánh (Chiêu thức 2)
+
+Khác hẳn Kanban hiện có: `kanban_cards` là hành động phát triển **năng lực của
+từng cán bộ**, sinh từ phiếu tự đánh giá. Bảng mới `action_plans` là kế hoạch hành
+động **của cả Phòng** theo 5W2H.
+
+| Vai trò | Xem được |
+|---|---|
+| Cán bộ / lãnh đạo Phòng | Kế hoạch của phòng mình |
+| Phó Giám đốc | Các phòng mình phụ trách |
+| Giám đốc · BGĐ · TCTH | Toàn Chi nhánh |
+| Mọi phòng trong chiến dịch chung | Kế hoạch của chiến dịch đó |
+
+- **Chiến dịch chung liên phòng**: lãnh đạo Phòng trở lên khởi tạo rồi thêm các
+  phòng khác vào; mọi phòng tham gia đều xem và cùng báo nhịp.
+- **Nhật ký PDCA không sửa, không xóa** — là bằng chứng trung thực. Mọi cán bộ
+  trong phạm vi đều ghi được, không phải đặc quyền của lãnh đạo.
+- **Bảng thi đua xếp theo nhịp báo cáo tuần TRƯỚC khối lượng.** Phòng ít việc mà
+  tuần nào cũng báo đứng trên phòng nhiều việc bỏ bẵng — đây chính là hành vi cần
+  tạo động lực, không phải chạy theo số lượng đầu việc.
+- RLS là hàng rào thật, dùng lại bộ helper sẵn có (`is_dept_manager`,
+  `get_my_pgd_scope_dept_ids`, `is_tcth_leader`). Khách đối tác bị chặn hoàn toàn.
+
+**Khi triển khai:** phải áp migration
+`20260805090000_chieu_thuc_2_ke_hoach_hanh_dong_phong.sql` vào project Supabase.
+Chưa áp thì trang Chiêu thức 2 hiện lời nhắc rõ ràng thay vì màn lỗi trắng.

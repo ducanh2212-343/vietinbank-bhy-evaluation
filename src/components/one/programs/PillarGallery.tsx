@@ -17,7 +17,8 @@ const DEFAULT_PILLAR_IMAGES: Record<string, string[]> = {
   sharing: ['https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80'],
   quizzi: ['https://images.unsplash.com/photo-1518133680790-398573042988?auto=format&fit=crop&w=800&q=80'],
   ideas: ['https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=800&q=80'],
-  credit360: ['https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=800&q=80']
+  credit360: ['https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=800&q=80'],
+  sao: ['https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=800&q=80']
 };
 
 // Gallery ảnh trụ cột lưu ở bảng portal_images (slot 'pillar.<id>'), admin sửa cho mọi người cùng thấy.

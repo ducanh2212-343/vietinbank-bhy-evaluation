@@ -6,7 +6,6 @@
 // Mọi lần dùng giá trị fallback đều phát ra một cảnh báo (warnings) để admin soát lại
 // trước khi xác nhận nhập — bản gốc nhập thẳng không có bước xem trước.
 
-import * as XLSX from 'xlsx';
 import type { StarRecordInput } from './useStarRecords';
 
 export interface ParseWarning {
@@ -484,7 +483,10 @@ const parseRows2D = (rows2D: Cell[][]): ParseResult => {
  * Đọc file Excel (.xlsx/.xls) hoặc CSV từ ArrayBuffer và trả về danh sách phiếu sao
  * cùng cảnh báo cho từng dòng phải dùng giá trị fallback.
  */
-export const parseStarWorkbook = (data: ArrayBuffer): ParseResult => {
+export const parseStarWorkbook = async (data: ArrayBuffer): Promise<ParseResult> => {
+  // Nạp xlsx ngay lúc dùng: thư viện nặng 163 kB gzip, mà trang Ghi nhận & Lan
+  // tỏa chỉ cần tới nó khi người dùng thực sự bấm nhập/xuất file.
+  const XLSX = await import('xlsx');
   const workbook = XLSX.read(data, { type: 'array' });
   const sheetName = workbook.SheetNames[0];
   const worksheet = workbook.Sheets[sheetName];
@@ -505,7 +507,7 @@ export const TEMPLATE_HEADERS = [
 ] as const;
 
 /** Sinh file .xlsx mẫu với dòng header chuẩn ở cột C→J cho nút "Tải file mẫu" */
-export const buildTemplateWorkbook = (): ArrayBuffer => {
+export const buildTemplateWorkbook = async (): Promise<ArrayBuffer> => {
   const headerRow: Cell[] = ['', '', ...TEMPLATE_HEADERS];
   const exampleRow: Cell[] = [
     '',
@@ -519,6 +521,7 @@ export const buildTemplateWorkbook = (): ArrayBuffer => {
     2,
     'SXD-0001',
   ];
+  const XLSX = await import('xlsx');
   const ws = XLSX.utils.aoa_to_sheet([headerRow, exampleRow]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Sao Xứng Đáng');

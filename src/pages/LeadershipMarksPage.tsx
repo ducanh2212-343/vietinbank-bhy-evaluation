@@ -22,7 +22,8 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Award, Download, Pencil, Plus, Sparkles, Archive, CalendarCheck, AlertTriangle, History } from 'lucide-react';
-import { exportLeadershipJourney } from '@/lib/exportLeadershipJourney';
+// exportLeadershipJourney nạp lúc bấm nút — nó kéo theo docx + file-saver
+// (~106 kB gzip), không đáng tải chỉ để mở trang xem danh sách dấu ấn.
 import { fetchWeeklyUpdateMap, isWeeklyTracked, type KanbanCard, type WeeklyUpdateMap } from '@/lib/kanban';
 import { UpdateProgressDialog } from '@/components/kanban/UpdateProgressDialog';
 
@@ -347,6 +348,7 @@ export default function LeadershipMarksPage() {
   const doExport = async (pid: string, name: string) => {
     setExporting(pid);
     try {
+      const { exportLeadershipJourney } = await import('@/lib/exportLeadershipJourney');
       await exportLeadershipJourney(pid, name);
       toast.success('Đã xuất hành trình dấu ấn');
     } catch (e: any) {
