@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import OneHomePage from '../OneHomePage';
@@ -66,6 +66,9 @@ describe('Trang chủ BHY ONE', () => {
 
   it('hiện đủ 5 thao tác nhanh cho cán bộ', () => {
     renderHome();
+    // Bám vào đúng dải thao tác nhanh: từ khi trang chủ gộp thêm phần giới thiệu
+    // BHY Ways, vài nhãn (VD "Gửi Sao Xứng Đáng") xuất hiện ở nhiều chỗ.
+    const dai = screen.getByLabelText('Thao tác nhanh');
     for (const label of [
       'Chia sẻ kinh nghiệm',
       'Làm BHY Quizzi',
@@ -73,8 +76,18 @@ describe('Trang chủ BHY ONE', () => {
       'Đăng ký Credit 360',
       'Gửi Sao Xứng Đáng',
     ]) {
-      expect(screen.getByText(label)).toBeInTheDocument();
+      expect(within(dai).getByText(label)).toBeInTheDocument();
     }
+  });
+
+  it('gộp phần bản sắc và giới thiệu Bắc Hưng Yên Ways vào trang chủ', () => {
+    // Trang "Nguồn cội & Bản sắc" cũ đã gộp vào đây (chốt 08/2026)
+    renderHome();
+    expect(screen.getAllByText(/Vun Gốc Bền Rễ/).length).toBeGreaterThan(0);
+    expect(screen.getByText('Bắc Hưng Yên Ways')).toBeInTheDocument();
+    expect(screen.getByText('Bộ 3 Chiêu thức')).toBeInTheDocument();
+    // Chỉ giới thiệu rồi dẫn đi, không nhúng công cụ vào trang chủ
+    expect(screen.getByText('Xem toàn bộ hệ sinh thái')).toBeInTheDocument();
   });
 
   it('khách đối tác KHÔNG thấy khối việc cá nhân và thao tác nhanh', () => {
@@ -82,9 +95,10 @@ describe('Trang chủ BHY ONE', () => {
     renderHome();
     expect(screen.queryByText('Kanban phát triển cá nhân')).not.toBeInTheDocument();
     expect(screen.queryByText('Tôi được ghi nhận')).not.toBeInTheDocument();
-    expect(screen.queryByText('Gửi BHY Ideas')).not.toBeInTheDocument();
-    // vẫn thấy phần bản sắc (xuất hiện ở cả thanh điều hướng và thẻ teaser)
-    expect(screen.getAllByText('Nguồn cội & Bản sắc').length).toBeGreaterThan(0);
-    expect(screen.getByText('Về Nguồn cội')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Thao tác nhanh')).not.toBeInTheDocument();
+    // Vẫn thấy phần bản sắc, nhưng KHÔNG thấy khung năng lực nội bộ
+    expect(screen.getAllByText(/Vun Gốc Bền Rễ/).length).toBeGreaterThan(0);
+    expect(screen.queryByText('Bắc Hưng Yên 3806')).not.toBeInTheDocument();
+    expect(screen.queryByText('Bộ 3 Chiêu thức')).not.toBeInTheDocument();
   });
 });

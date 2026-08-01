@@ -5,7 +5,7 @@ import {
   UserCheck, Sparkles, GraduationCap, ClipboardList, KeyRound, ListPlus,
   CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag, GitBranch,
   ListChecks, Building2, Gavel, TrendingUp, Zap, Lightbulb,
-  Home, BookOpen, TreeDeciduous,
+  Home, BookOpen, Compass, Layers,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -103,7 +103,9 @@ export function isFolder(e: NavEntry): e is NavFolder {
  * /bieu-mau-01|02|03 — nội dung thật nằm trong Tự đánh giá.
  */
 export const NAV_SECTIONS: NavSection[] = [
-  // ---- Khu cổng ONE: 5 mục, thanh ngang là tầng 1 ----
+  // ---- Khu cổng ONE: thanh ngang là tầng 1 ----
+  // Trang chủ đã GỘP phần "Nguồn cội & Bản sắc" vào (chốt 08/2026): cổng chỉ còn
+  // một cửa vào duy nhất, phần bản sắc nằm ngay dưới khối việc của tôi.
   {
     id: 'one-home',
     label: 'Trang chủ',
@@ -115,112 +117,100 @@ export const NAV_SECTIONS: NavSection[] = [
     end: true,
     guestVisible: true,
     bleed: true,
-    desc: 'Việc của tôi, thao tác nhanh và bản sắc Chi nhánh',
-  },
-  {
-    id: 'one-roots',
-    label: 'Nguồn cội & Bản sắc',
-    shortLabel: 'Nguồn cội',
-    icon: TreeDeciduous,
-    accent: '#34D399',
-    zone: 'portal',
-    path: '/one/nguon-coi',
-    guestVisible: true,
-    bleed: true,
-    desc: 'Cây ký ức, 6 đặc trưng riêng có, Bộ 3 Chiêu thức',
+    desc: 'Việc của tôi, bản sắc 20 năm và giới thiệu hệ sinh thái Bắc Hưng Yên Ways',
     items: [
       {
-        label: 'Nguồn cội & Bản sắc',
-        icon: TreeDeciduous,
-        path: '/one/nguon-coi',
+        label: 'Trang chủ ONE',
+        icon: Home,
+        path: '/one',
+        end: true,
         guestVisible: true,
         bleed: true,
-        keywords: ['cay ky uc', 'dac trung', 'chieu thuc', 'van hoa', '20 nam'],
-        extraPaths: ['/one/dac-trung', '/one/chieu-thuc'],
+        keywords: ['trang chu', 'cay ky uc', 'nguon coi', 'ban sac', 'van hoa', '20 nam', 'viec cua toi'],
+        // Nguồn cội & Bản sắc đã gộp vào trang chủ — giữ link cũ khỏi gãy
+        extraPaths: ['/one/nguon-coi', '/one/dac-trung', '/one/chieu-thuc'],
       },
     ],
   },
   {
-    id: 'one-learn',
-    label: 'Học hỏi & Chia sẻ',
-    shortLabel: 'Học hỏi',
-    icon: BookOpen,
-    accent: '#4AA3F0',
+    id: 'bhy-ways',
+    label: 'Bắc Hưng Yên Ways',
+    shortLabel: 'BHY Ways',
+    icon: Compass,
+    accent: '#0057B8',
     zone: 'portal',
+    path: '/one/bhy-ways',
     guestVisible: true,
-    desc: 'Kho tri thức chung và luyện nghiệp vụ bằng Quizzi',
+    desc: 'Hệ sinh thái các phương thức, công cụ và cơ chế quản trị của Chi nhánh',
     items: [
+      {
+        label: 'Giới thiệu hệ sinh thái',
+        icon: Compass,
+        path: '/one/bhy-ways',
+        guestVisible: true,
+        bleed: true,
+        keywords: ['bhy ways', 'he sinh thai', 'phuong thuc quan tri', 'gioi thieu'],
+        // Trang "Sáng kiến & Nghiệp vụ" cũ nay nằm trong hệ sinh thái này
+        extraPaths: ['/one/sang-kien'],
+      },
       // Sharing + Kho tri thức là MỘT không gian 2 tab (chung một kho dữ liệu)
       {
-        label: 'Sharing & Kho tri thức',
+        label: 'Bắc Hưng Yên Sharing',
         icon: BookOpen,
         path: '/one/hoc-hoi',
         guestVisible: true,
         bleed: true,
-        keywords: ['chia se', 'kho tri thuc', 'tu lieu', 'thu vien', 'sharing'],
+        keywords: ['chia se', 'kho tri thuc', 'tu lieu', 'thu vien', 'sharing', 'hoc hoi'],
         extraPaths: ['/one/kho-du-lieu'],
       },
       // Quizzi có nhà duy nhất tại /quizzi (kể cả khu quản trị bên trong)
       {
-        label: 'BHY Quizzi',
+        label: 'Bắc Hưng Yên Quizzi',
         icon: Zap,
         path: '/quizzi',
-        keywords: ['trac nghiem', 'thi', 'cau hoi', 'chien dich quiz'],
+        keywords: ['trac nghiem', 'thi', 'cau hoi', 'chien dich quiz', 'quizzi'],
         extraPaths: ['/quizzi/', '/quan-tri-quizzi'],
       },
-    ],
-  },
-  {
-    id: 'one-initiatives',
-    label: 'Sáng kiến & Nghiệp vụ',
-    shortLabel: 'Sáng kiến',
-    icon: Lightbulb,
-    accent: '#FB923C',
-    zone: 'portal',
-    desc: 'Gửi ý tưởng cải tiến và đăng ký thẩm định tín dụng 360°',
-    items: [
-      // Trang giới thiệu chung của khu — bản cũ có link này trên thanh ngang,
-      // giữ lại để /one/sang-kien không thành trang mồ côi.
       {
-        label: 'Giới thiệu Sáng kiến & Nghiệp vụ',
-        icon: Lightbulb,
-        path: '/one/sang-kien',
-        bleed: true,
-        keywords: ['gioi thieu', 'tong quan sang kien'],
-      },
-      {
-        label: 'BHY Ideas',
+        label: 'Bắc Hưng Yên Ideas',
         icon: Lightbulb,
         path: '/one/y-tuong',
         bleed: true,
-        keywords: ['y tuong', 'sang kien', 'cai tien', 'de xuat'],
+        keywords: ['y tuong', 'sang kien', 'cai tien', 'de xuat', 'ideas'],
       },
-      {
-        label: 'BHY Credit 360',
-        icon: ShieldAlert,
-        path: '/one/credit-360',
-        bleed: true,
-        keywords: ['tin dung', 'tham dinh', 'phien hop', 'credit'],
-      },
-    ],
-  },
-  {
-    id: 'one-recognition',
-    label: 'Ghi nhận & Lan tỏa',
-    shortLabel: 'Ghi nhận',
-    icon: Star,
-    accent: '#FBBF24',
-    zone: 'portal',
-    path: '/one/ghi-nhan',
-    bleed: true,
-    desc: 'Sao Xứng Đáng — mọi cán bộ ghi nhận lẫn nhau',
-    items: [
       {
         label: 'Sao Xứng Đáng',
         icon: Star,
         path: '/one/ghi-nhan',
         bleed: true,
-        keywords: ['sao xung dang', 'khen thuong', 'vinh danh', 'tu qua'],
+        keywords: ['sao xung dang', 'khen thuong', 'vinh danh', 'tu qua', 'ghi nhan'],
+      },
+      {
+        label: 'Bắc Hưng Yên Credit 360',
+        icon: ShieldAlert,
+        path: '/one/credit-360',
+        bleed: true,
+        keywords: ['tin dung', 'tham dinh', 'phien hop', 'credit 360'],
+      },
+    ],
+  },
+  {
+    id: 'chieu-thuc-2',
+    label: 'Chiêu thức 2',
+    shortLabel: 'Chiêu thức 2',
+    icon: Target,
+    accent: '#2563EB',
+    zone: 'portal',
+    path: '/one/chieu-thuc-2',
+    bleed: true,
+    desc: 'Lập kế hoạch hành động SWOT → TOWS → 5W2H và theo nhịp PDCA toàn Chi nhánh',
+    items: [
+      {
+        label: 'Kế hoạch hành động Chi nhánh',
+        icon: Target,
+        path: '/one/chieu-thuc-2',
+        bleed: true,
+        keywords: ['chieu thuc 2', 'ke hoach hanh dong', '5w2h', 'swot', 'tows', 'pdca', 'kanban phong'],
       },
     ],
   },
@@ -233,8 +223,24 @@ export const NAV_SECTIONS: NavSection[] = [
     icon: UsersRound,
     accent: '#2DD4BF',
     zone: 'workspace',
-    desc: 'Tự đánh giá năng lực, kế hoạch hành động và quản trị đội ngũ',
+    desc: 'Chiêu thức số 3 — tự đánh giá năng lực, kế hoạch hành động và quản trị đội ngũ',
     items: [
+      {
+        // Khung năng lực là nội dung GIỚI THIỆU của Chiêu thức 3, tách khỏi các
+        // màn hình làm việc để cán bộ tra cứu được mà không phải mở phiếu.
+        id: 'khung-nang-luc',
+        folder: 'Khung năng lực',
+        icon: Layers,
+        items: [
+          {
+            label: 'Bắc Hưng Yên 3806',
+            icon: Layers,
+            path: '/one/bhy-3806',
+            bleed: true,
+            keywords: ['3806', '38 skill', '06 thai do', 'khung nang luc', 'chieu thuc 3', 'level'],
+          },
+        ],
+      },
       {
         id: 'ca-nhan-343',
         folder: 'Cá nhân',

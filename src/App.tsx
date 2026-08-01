@@ -105,9 +105,10 @@ const CouncilReportPage = lazyWithRetry(() => import("./pages/CouncilReportPage"
 const CouncilAdminPage = lazyWithRetry(() => import("./pages/CouncilAdminPage"));
 const CouncilAnalyticsPage = lazyWithRetry(() => import("./pages/CouncilAnalyticsPage"));
 const OneHomePage = lazyWithRetry(() => import("./pages/one/OneHomePage"));
-const OneRootsPage = lazyWithRetry(() => import("./pages/one/OneRootsPage"));
+const OneWaysPage = lazyWithRetry(() => import("./pages/one/OneWaysPage"));
+const One3806Page = lazyWithRetry(() => import("./pages/one/One3806Page"));
+const OneMove2Page = lazyWithRetry(() => import("./pages/one/OneMove2Page"));
 const OneLearnPage = lazyWithRetry(() => import("./pages/one/OneLearnPage"));
-const OneInitiativesPage = lazyWithRetry(() => import("./pages/one/OneInitiativesPage"));
 const OneIdeasPage = lazyWithRetry(() => import("./pages/one/OneIdeasPage"));
 const OneCreditPage = lazyWithRetry(() => import("./pages/one/OneCreditPage"));
 const OneRecognitionPage = lazyWithRetry(() => import("./pages/one/OneRecognitionPage"));
@@ -202,15 +203,20 @@ const App = () => (
               {/* Cổng BHY one — cổng thông tin thương hiệu Chi nhánh (port từ website bachungyen20) */}
               {/* Cổng BHY ONE — cấu trúc 6 menu đã duyệt (docs/so-do-site-bhy-one.md) */}
               <Route path="/one" element={<OneHomePage />} />
-              <Route path="/one/nguon-coi" element={<OneRootsPage />} />
+              <Route path="/one/bhy-ways" element={<OneWaysPage />} />
+              <Route path="/one/bhy-3806" element={<One3806Page />} />
+              <Route path="/one/chieu-thuc-2" element={<OneMove2Page />} />
               <Route path="/one/hoc-hoi" element={<OneLearnPage />} />
-              <Route path="/one/sang-kien" element={<OneInitiativesPage />} />
               <Route path="/one/y-tuong" element={<OneIdeasPage />} />
               <Route path="/one/credit-360" element={<OneCreditPage />} />
               <Route path="/one/ghi-nhan" element={<OneRecognitionPage />} />
-              {/* Link cũ trước tái cấu trúc — chuyển hướng để không gãy bookmark */}
-              <Route path="/one/dac-trung" element={<Navigate to="/one/nguon-coi" replace />} />
-              <Route path="/one/chieu-thuc" element={<Navigate to="/one/nguon-coi" replace />} />
+              {/* Link cũ trước tái cấu trúc — chuyển hướng để không gãy bookmark.
+                  "Nguồn cội & Bản sắc" đã gộp vào trang chủ; "Sáng kiến & Nghiệp vụ"
+                  nay là một phần của hệ sinh thái Bắc Hưng Yên Ways. */}
+              <Route path="/one/nguon-coi" element={<Navigate to="/one" replace />} />
+              <Route path="/one/dac-trung" element={<Navigate to="/one" replace />} />
+              <Route path="/one/chieu-thuc" element={<Navigate to="/one" replace />} />
+              <Route path="/one/sang-kien" element={<Navigate to="/one/bhy-ways" replace />} />
               <Route path="/one/kho-du-lieu" element={<Navigate to="/one/hoc-hoi" replace />} />
 
               {/* Hội đồng đánh giá đầu mối — trang tự gác quyền: thành viên HĐ chấm điểm, đầu mối/admin xem báo cáo */}
