@@ -105,6 +105,19 @@ gộp vào app này thành cổng thông tin thương hiệu sau đăng nhập:
   `20260803100000` + `20260803110000` **đã áp** (29/07/2026). Hết hạn: client
   đăng xuất + RLS chặn (không cần cron).
 
+## Chiêu thức 2 — Kanban 5W2H + PDCA (08/2026)
+
+Trang `/one/chieu-thuc-2` được dựng lại theo đặc tả đầy đủ
+(`docs/dac-ta-chieu-thuc-2-kanban-5w2h-pdca.md`): đầu việc 5W2H có duy nhất
+01 người chịu trách nhiệm, Kanban 7 cột với cổng chặn PDCA (P trước Đang làm,
+C + 100% trước Hoàn thành, A trước Đã đóng), nhật ký nhịp append-only, chấm
+giờ nhịp sáng 8h00/8h30 tại database, «Đề xuất việc» cho cán bộ, M1 «Việc của
+tôi» + Ghi nhịp nhanh, M2 «Bảng của Phòng» + bảng nhịp theo người. Bản
+`action_plans` tối giản cũ ngừng dùng trên UI (dữ liệu giữ nguyên). Cần áp
+migration `20260806090000_ct2_kanban_5w2h_pdca.sql`. Chi tiết triển khai +
+thiết kế chịu tải 150 người dùng khung 7h50–8h30:
+`docs/trien-khai-chieu-thuc-2-kanban-2026-08.md`.
+
 ## Kỳ Quý II/2026 — BM02 đánh giá lại từ đầu (07/2026)
 
 - Quý I/2026 thực hiện BM01 trên **bản Word/PDF** (không nhập app). Các kế hoạch
