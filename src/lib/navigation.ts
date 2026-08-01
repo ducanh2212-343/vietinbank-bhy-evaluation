@@ -90,6 +90,12 @@ export interface NavSection {
   desc?: string;
   /** Trang tự lo bố cục tràn viền — xem NavLeaf.bleed */
   bleed?: boolean;
+  /**
+   * Thứ tự ưu tiên trên thanh tab dưới đáy điện thoại (nhỏ hơn = đứng trước).
+   * Thanh chỉ đủ chỗ cho 4 mục, phần còn lại nằm trong nút «Thêm», nên thứ tự
+   * này quyết định khu nào được một chạm. Không đặt thì khu luôn nằm trong «Thêm».
+   */
+  mobileOrder?: number;
 }
 
 export function isFolder(e: NavEntry): e is NavFolder {
@@ -108,6 +114,7 @@ export const NAV_SECTIONS: NavSection[] = [
   // một cửa vào duy nhất, phần bản sắc nằm ngay dưới khối việc của tôi.
   {
     id: 'one-home',
+    mobileOrder: 1,
     label: 'Trang chủ',
     shortLabel: 'Trang chủ',
     icon: Home,
@@ -134,6 +141,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     id: 'bhy-ways',
+    mobileOrder: 2,
     label: 'Bắc Hưng Yên Ways',
     shortLabel: 'BHY Ways',
     icon: Compass,
@@ -196,6 +204,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     id: 'chieu-thuc-2',
+    mobileOrder: 4,
     label: 'Chiêu thức 2',
     shortLabel: 'Chiêu thức 2',
     icon: Target,
@@ -218,8 +227,11 @@ export const NAV_SECTIONS: NavSection[] = [
   // ---- Khu phân hệ 343: menu dọc nhiều tầng, phân quyền riêng ----
   {
     id: 'hr-343',
+    mobileOrder: 3,
     label: 'Phát triển nhân sự 343',
-    shortLabel: 'Nhân sự',
+    // Chi nhánh gọi phân hệ này là "Chiêu thức 3" — dùng đúng ngôn ngữ đó ở chỗ
+    // chật (thanh tab điện thoại, bảng lệnh), giữ tên đầy đủ ở thanh ngang.
+    shortLabel: 'Chiêu thức 3',
     icon: UsersRound,
     accent: '#2DD4BF',
     zone: 'workspace',
@@ -369,6 +381,7 @@ export const NAV_SECTIONS: NavSection[] = [
   // một danh sách cán bộ + một hệ phân quyền, mọi phân hệ dùng chung) ----
   {
     id: 'user-admin',
+    mobileOrder: 5,
     label: 'Quản trị người dùng',
     shortLabel: 'Người dùng',
     icon: Shield,

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import OneWaysPage from '../OneWaysPage';
@@ -64,23 +64,33 @@ describe('Trang Bắc Hưng Yên Ways', () => {
     expect(screen.getByText(/hệ sinh thái các phương thức, công cụ và cơ chế quản trị/i)).toBeInTheDocument();
   });
 
-  it('liệt kê đủ 6 thương hiệu của hệ sinh thái', () => {
+  it('có đúng 6 tab con, đúng thứ tự Chi nhánh chốt', () => {
     dung(<OneWaysPage />, '/one/bhy-ways');
-    for (const ten of [
+    const khay = screen.getByRole('tablist', { name: /Các thương hiệu trong Bắc Hưng Yên Ways/ });
+    expect(within(khay).getAllByRole('tab').map((t) => t.textContent?.trim())).toEqual([
       'Bắc Hưng Yên Sharing',
       'Bắc Hưng Yên Quizzi',
       'Bắc Hưng Yên Ideas',
       'Bắc Hưng Yên Connect',
       'Sao Xứng Đáng',
       'Bắc Hưng Yên Credit 360',
-    ]) {
-      expect(screen.getAllByText(ten).length).toBeGreaterThan(0);
-    }
+    ]);
   });
 
-  it('Bắc Hưng Yên Connect không dựng nút dẫn đi đâu cả — chưa có công cụ riêng', () => {
+  it('KHÔNG lặp lại phần giới thiệu ngắn đã có ở Trang chủ', () => {
+    // Trang chủ đã có dải 6 thẻ tóm tắt; vào đây là để xem chi tiết từng phương
+    // thức, không phải đọc lại cùng một đoạn mô tả.
     dung(<OneWaysPage />, '/one/bhy-ways');
-    expect(screen.getAllByText(/chưa có công cụ trực tuyến riêng/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText('Xem toàn bộ hệ sinh thái')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Sinh hoạt chia sẻ kinh nghiệm nghiệp vụ định kỳ/)).not.toBeInTheDocument();
+  });
+
+  it('đổi tab con thì ghi vào địa chỉ để gửi link cho nhau mở đúng chỗ', async () => {
+    dung(<OneWaysPage />, '/one/bhy-ways');
+    const khay = screen.getByRole('tablist', { name: /Các thương hiệu trong Bắc Hưng Yên Ways/ });
+    const tabSao = within(khay).getByRole('tab', { name: /Sao Xứng Đáng/ });
+    fireEvent.click(tabSao);
+    expect(tabSao).toHaveAttribute('aria-selected', 'true');
   });
 });
 

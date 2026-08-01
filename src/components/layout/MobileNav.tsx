@@ -28,9 +28,14 @@ export function MobileNav() {
   // Đổi trang thì đóng tấm menu
   useEffect(() => setMoMenu(false), [pathname]);
 
-  // 4 khu cổng đầu tiên lên thanh tab; phần còn lại nằm trong "Thêm".
-  // Khách đối tác chỉ có 2–3 khu nên thanh tự co lại.
-  const tabs = sections.filter((s) => s.zone === 'portal').slice(0, 4);
+  // Thứ tự trên thanh tab do `mobileOrder` quyết định, KHÔNG theo khu bố cục:
+  // Chi nhánh muốn Trang chủ → Bắc Hưng Yên Ways → Chiêu thức 3 → Chiêu thức 2,
+  // mà Chiêu thức 3 lại là phân hệ chuyên sâu. Khu không đặt mobileOrder thì luôn
+  // nằm trong nút «Thêm». Lấy 4 mục đầu; khách đối tác chỉ còn 2 nên thanh tự co.
+  const tabs = sections
+    .filter((s) => s.mobileOrder !== undefined)
+    .sort((a, b) => (a.mobileOrder ?? 99) - (b.mobileOrder ?? 99))
+    .slice(0, 4);
   const coKhuLamViec = sections.some((s) => s.zone === 'workspace');
 
   return (
@@ -100,34 +105,67 @@ export function MobileNav() {
                     </div>
                   </div>
 
-                  {/* Mọi khu của cổng */}
-                  <div className="space-y-0.5">
-                    <div className="px-2.5 pb-1 pt-1 text-2xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Cổng BHY ONE
-                    </div>
-                    {sections
-                      .filter((s) => s.zone === 'portal')
-                      .flatMap((section) =>
-                        leavesOf(section).map((leaf) => {
-                          const dangXem = matchesLeaf(pathname, leaf);
-                          return (
-                            <NavLink
-                              key={`${section.id}-${leaf.path}`}
-                              to={leaf.path}
-                              end={leaf.end}
-                              aria-current={dangXem ? 'page' : undefined}
+                  {/* Khu cổng — mỗi khu là một TAB MẸ in đậm, mục con thụt vào
+                      và nhạt hơn để hai tầng không lẫn vào nhau. */}
+                  {sections
+                    .filter((s) => s.zone === 'portal')
+                    .map((section) => {
+                      const la = leavesOf(section);
+                      const khuDangXem = la.some((l) => matchesLeaf(pathname, l));
+                      // Khu chỉ có đúng một trang thì chính nó là mục — không dựng thêm tầng con
+                      const motTrang = la.length <= 1;
+                      return (
+                        <div key={section.id} className="mb-1.5">
+                          <NavLink
+                            to={section.path ?? la[0]?.path ?? '/one'}
+                            end={section.end}
+                            className={cn(
+                              'flex min-h-[48px] items-center gap-3 rounded-xl px-2.5 py-2 transition-colors duration-fast',
+                              khuDangXem
+                                ? 'bg-primary/10 text-primary'
+                                : 'text-foreground active:bg-muted',
+                            )}
+                          >
+                            <span
+                              aria-hidden
                               className={cn(
-                                'flex min-h-[44px] items-center gap-3 rounded-xl px-2.5 py-2 text-sm transition-colors duration-fast',
-                                dangXem ? 'bg-accent font-semibold text-accent-foreground' : 'active:bg-muted',
+                                'grid h-8 w-8 shrink-0 place-items-center rounded-lg',
+                                khuDangXem ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground',
                               )}
                             >
-                              <leaf.icon className="h-[18px] w-[18px] shrink-0 text-primary" />
-                              <span className="truncate">{leaf.label}</span>
-                            </NavLink>
-                          );
-                        }),
-                      )}
-                  </div>
+                              <section.icon className="h-[18px] w-[18px]" />
+                            </span>
+                            <span className="truncate text-[15px] font-semibold">{section.label}</span>
+                          </NavLink>
+
+                          {!motTrang && (
+                            <ul className="ml-6 mt-0.5 space-y-0.5 border-l border-border pl-2.5">
+                              {la.map((leaf) => {
+                                const dangXem = matchesLeaf(pathname, leaf);
+                                return (
+                                  <li key={leaf.path}>
+                                    <NavLink
+                                      to={leaf.path}
+                                      end={leaf.end}
+                                      aria-current={dangXem ? 'page' : undefined}
+                                      className={cn(
+                                        'flex min-h-[40px] items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors duration-fast',
+                                        dangXem
+                                          ? 'bg-accent font-semibold text-accent-foreground'
+                                          : 'text-muted-foreground active:bg-muted',
+                                      )}
+                                    >
+                                      <leaf.icon className="h-4 w-4 shrink-0 opacity-70" />
+                                      <span className="truncate">{leaf.label}</span>
+                                    </NavLink>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          )}
+                        </div>
+                      );
+                    })}
 
                   {/* Phân hệ chuyên sâu — dùng lại đúng cây của menu dọc */}
                   {coKhuLamViec && (

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import * as NavMenu from '@radix-ui/react-navigation-menu';
 import { ChevronDown, Search, LogOut, User, KeyRound } from 'lucide-react';
@@ -52,9 +52,13 @@ function BangMenu({ section, onDieuHuong }: { section: NavSection; onDieuHuong: 
         laMega ? 'w-[min(calc(100vw-6rem),64rem)]' : 'w-[min(calc(100vw-6rem),20rem)]',
       )}
     >
-      {laMega && section.desc && (
-        <p className="mb-4 max-w-2xl text-sm text-muted-foreground">{section.desc}</p>
-      )}
+      {/* Tiêu đề tầng: nói rõ đây là các mục CON của khu nào — hai tầng không lẫn */}
+      <div className="mb-4 border-b pb-3">
+        <p className="text-2xs font-semibold uppercase tracking-widest text-primary">{section.label}</p>
+        {section.desc && (
+          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">{section.desc}</p>
+        )}
+      </div>
 
       <div
         className={cn(
@@ -74,7 +78,7 @@ function BangMenu({ section, onDieuHuong }: { section: NavSection; onDieuHuong: 
                 aria-current={dangXem ? 'page' : undefined}
                 className={cn(
                   'group flex min-h-[44px] items-start gap-3 rounded-xl px-3 py-2.5 transition-colors duration-fast',
-                  dangXem ? 'bg-accent text-accent-foreground' : 'hover:bg-muted',
+                  dangXem ? 'bg-accent text-accent-foreground' : 'text-foreground/85 hover:bg-muted hover:text-foreground',
                 )}
               >
                 <leaf.icon className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
@@ -88,7 +92,8 @@ function BangMenu({ section, onDieuHuong }: { section: NavSection; onDieuHuong: 
 
         {folders.map((folder) => (
           <div key={folder.id} className="min-w-0">
-            <div className="mb-1.5 flex items-center gap-2 px-3 text-2xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="mb-2 flex items-center gap-2 px-3 text-2xs font-semibold uppercase tracking-wider text-foreground/60">
+              <span aria-hidden className="h-3.5 w-0.5 rounded-full bg-primary/40" />
               <folder.icon className="h-3.5 w-3.5" />
               {folder.folder}
             </div>
@@ -143,6 +148,11 @@ export function TopNav({ onMoBangLenh }: Props) {
   const [value, setValue] = useState('');
   // Trên máy Apple hiện ⌘K, còn lại hiện Ctrl K
   const [phimTat, setPhimTat] = useState('Ctrl K');
+  // Dải gạch chân trượt dưới khu đang xem — dấu hiệu của TẦNG MẸ.
+  // Tầng con trong bảng menu dùng ngôn ngữ khác hẳn (nền đặc, chữ nhỏ hơn) nên
+  // nhìn một cái là biết mình đang ở tầng nào.
+  const danhSachRef = useRef<HTMLUListElement>(null);
+  const [chiBao, setChiBao] = useState<{ left: number; width: number } | null>(null);
 
   useEffect(() => {
     if (typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform)) {
@@ -152,6 +162,23 @@ export function TopNav({ onMoBangLenh }: Props) {
 
   // Đổi trang thì đóng bảng menu đang mở
   useEffect(() => setValue(''), [pathname]);
+
+  // Đo lại dải chỉ báo khi đổi trang hoặc khi thanh đổi bề ngang
+  useEffect(() => {
+    const ds = danhSachRef.current;
+    if (!ds) return;
+    const doVi = () => {
+      const nut = ds.querySelector<HTMLElement>('[data-khu-dang-xem="true"]');
+      setChiBao(nut ? { left: nut.offsetLeft, width: nut.offsetWidth } : null);
+    };
+    doVi();
+    // Trình duyệt quá cũ không có ResizeObserver: dải chỉ báo vẫn đặt đúng chỗ
+    // lần đầu, chỉ không tự đo lại khi đổi bề ngang — chấp nhận được.
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(doVi);
+    ro.observe(ds);
+    return () => ro.disconnect();
+  }, [pathname, sections]);
 
   const vaiTro = roles.length > 0 ? ROLE_LABEL[roles[0]] || roles[0] : '';
 
@@ -192,7 +219,18 @@ export function TopNav({ onMoBangLenh }: Props) {
           delayDuration={80}
           skipDelayDuration={300}
         >
-          <NavMenu.List className="flex list-none items-center gap-0.5 overflow-x-auto scrollbar-none">
+          <NavMenu.List
+            ref={danhSachRef}
+            className="relative flex list-none items-center gap-0.5 overflow-x-auto scrollbar-none"
+          >
+            {/* Gạch chân trượt — chỉ dấu của tầng mẹ */}
+            {chiBao && (
+              <span
+                aria-hidden
+                className="pointer-events-none absolute bottom-0 h-[2.5px] rounded-full bg-primary transition-[transform,width] duration-normal ease-smooth"
+                style={{ transform: `translateX(${chiBao.left}px)`, width: chiBao.width }}
+              />
+            )}
             {sections.map((section) => {
               const dangXem = leavesOf(section).some((l) => matchesLeaf(pathname, l));
               /*
@@ -220,11 +258,10 @@ export function TopNav({ onMoBangLenh }: Props) {
                         to={section.path!}
                         end={section.end}
                         aria-label={section.label}
+                        data-khu-dang-xem={dangXem || undefined}
                         className={cn(
-                          'relative flex h-9 shrink-0 items-center rounded-full px-3 text-sm font-medium transition-colors duration-fast lg:px-3.5',
-                          dangXem
-                            ? 'bg-primary/10 text-primary'
-                            : 'text-foreground/75 hover:bg-muted hover:text-foreground',
+                          'relative flex h-10 shrink-0 items-center rounded-lg px-3 text-sm font-semibold tracking-tight transition-colors duration-fast lg:px-3.5',
+                          dangXem ? 'text-primary' : 'text-foreground/70 hover:bg-muted hover:text-foreground',
                         )}
                       >
                         {nhan}
@@ -238,11 +275,10 @@ export function TopNav({ onMoBangLenh }: Props) {
                 <NavMenu.Item key={section.id} value={section.id}>
                   <NavMenu.Trigger
                     aria-label={section.label}
+                    data-khu-dang-xem={dangXem || undefined}
                     className={cn(
-                      'group flex h-9 shrink-0 items-center gap-1 rounded-full px-3 text-sm font-medium outline-none transition-colors duration-fast lg:px-3.5',
-                      dangXem
-                        ? 'bg-primary/10 text-primary'
-                        : 'text-foreground/75 hover:bg-muted hover:text-foreground',
+                      'group flex h-10 shrink-0 items-center gap-1 rounded-lg px-3 text-sm font-semibold tracking-tight outline-none transition-colors duration-fast lg:px-3.5',
+                      dangXem ? 'text-primary' : 'text-foreground/70 hover:bg-muted hover:text-foreground',
                       'data-[state=open]:bg-muted data-[state=open]:text-foreground',
                     )}
                   >

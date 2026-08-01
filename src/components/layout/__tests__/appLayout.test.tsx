@@ -93,6 +93,27 @@ describe('Khung ứng dụng', () => {
     expect(within(thanhTab).getAllByRole('listitem').length).toBeLessThanOrEqual(5);
   });
 
+  it('thanh tab điện thoại xếp đúng thứ tự Chi nhánh chốt', () => {
+    // Trang chủ → Bắc Hưng Yên Ways → Chiêu thức 3 → Chiêu thức 2 → Thêm.
+    // Chiêu thức 3 là phân hệ chuyên sâu chứ không phải khu cổng, nên thứ tự này
+    // KHÔNG suy ra được từ khu bố cục — phải đọc từ mobileOrder.
+    mockAuth.isManager = true;
+    dungKhung('/one');
+    const thanhTab = screen.getByLabelText('Điều hướng nhanh');
+    const nhan = within(thanhTab)
+      .getAllByRole('listitem')
+      .map((li) => li.textContent?.trim());
+    expect(nhan).toEqual(['Trang chủ', 'BHY Ways', 'Chiêu thức 3', 'Chiêu thức 2', 'Thêm']);
+  });
+
+  it('khách đối tác: thanh tab tự co lại, không lộ khu ngoài quyền', () => {
+    mockAuth.isGuest = true;
+    dungKhung('/one');
+    const thanhTab = screen.getByLabelText('Điều hướng nhanh');
+    const nhan = within(thanhTab).getAllByRole('listitem').map((li) => li.textContent?.trim());
+    expect(nhan).toEqual(['Trang chủ', 'BHY Ways', 'Thêm']);
+  });
+
   it('ô tìm kiếm là nút mở bảng lệnh, không còn là ô nhập trang trí', () => {
     dungKhung('/one');
     const nut = screen.getByLabelText('Tìm kiếm và đi nhanh tới trang');

@@ -1,10 +1,9 @@
-import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Sparkles } from 'lucide-react';
 import { OnePageShell } from '@/components/one/OnePageShell';
 import { EditableText } from '@/components/one/AdminEditableContext';
-import { PillarTabs } from '@/components/one/programs/PillarTabs';
-import { useOneUploads } from '@/components/one/useOneUploads';
-import { BHY_WAYS, BHY_WAYS_DINH_NGHIA } from '@/data/one/bhyWays';
+import { WaysTabs } from '@/components/one/programs/WaysTabs';
+import { BHY_WAYS_DINH_NGHIA } from '@/data/one/bhyWays';
 
 // BẮC HƯNG YÊN WAYS — hệ sinh thái các phương thức quản trị và phát triển Chi nhánh.
 // Trang này CHỈ giới thiệu; mỗi thương hiệu có công cụ đều dẫn sang nơi làm việc thật
@@ -19,7 +18,6 @@ export default function OneWaysPage() {
 
 function NoiDung() {
   const navigate = useNavigate();
-  const { items } = useOneUploads();
 
   return (
     <>
@@ -60,65 +58,11 @@ function NoiDung() {
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {BHY_WAYS.map((w) => (
-            <article
-              key={w.id}
-              className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow duration-normal hover:shadow-lg"
-              style={{ ['--way' as string]: w.accent }}
-            >
-              <div className="mb-3 flex items-center gap-3">
-                <span
-                  className="grid h-11 w-11 shrink-0 place-items-center rounded-xl"
-                  style={{ backgroundColor: `${w.accent}1A`, color: w.accent }}
-                >
-                  <w.icon className="h-5 w-5" />
-                </span>
-                <div className="min-w-0">
-                  <h2 className="truncate text-base font-bold text-brand-navy">{w.ten}</h2>
-                  <p className="truncate text-2xs font-semibold uppercase tracking-wider" style={{ color: w.accent }}>
-                    {w.dinhVi}
-                  </p>
-                </div>
-              </div>
-
-              <p className="flex-1 text-sm leading-relaxed text-slate-600">{w.moTa}</p>
-
-              {w.duongDan ? (
-                <Link
-                  to={w.duongDan}
-                  className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-navy transition-colors hover:text-brand-royal"
-                >
-                  {w.nhanNut ?? 'Vào hệ thống'}
-                  <ArrowRight className="h-4 w-4 transition-transform duration-fast group-hover:translate-x-0.5" />
-                </Link>
-              ) : (
-                // Thương hiệu chưa có công cụ riêng — nói thẳng thay vì dựng nút dẫn đi đâu cả
-                <p className="mt-4 text-2xs font-medium uppercase tracking-wider text-slate-400">
-                  Hoạt động thường niên · chưa có công cụ trực tuyến riêng
-                </p>
-              )}
-            </article>
-          ))}
-        </div>
-      </section>
-
-      {/* Tìm hiểu sâu từng đặc trưng — giữ nguyên nội dung và thư viện ảnh do
-          quản trị viên sửa tại chỗ (bảng portal_images, slot 'pillar.*'). */}
-      <section className="border-t border-slate-200 bg-slate-50/60">
-        <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-          <h2 className="text-2xl font-bold uppercase tracking-tight text-brand-navy">
-            Tìm hiểu sâu từng đặc trưng
-          </h2>
-          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-600">
-            Cách làm, hình ảnh hoạt động thực tế và kết quả của từng phương thức tại Chi nhánh.
-          </p>
-        </div>
-        <PillarTabs
-          onOpenUploadModal={() => navigate('/one/hoc-hoi?action=chia-se')}
-          uploadedItems={items}
-        />
+      {/* Sáu thương hiệu — mỗi thương hiệu là một tab con.
+          CỐ Ý không lặp lại các thẻ giới thiệu ngắn đã có ở Trang chủ; vào đây là
+          để xem chi tiết từng phương thức, không phải đọc lại phần tóm tắt. */}
+      <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <WaysTabs onOpenUploadModal={() => navigate('/one/hoc-hoi?action=chia-se')} />
       </section>
     </>
   );
