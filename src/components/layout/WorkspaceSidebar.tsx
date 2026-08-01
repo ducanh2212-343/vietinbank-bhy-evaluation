@@ -154,8 +154,11 @@ function ThanhBieuTuong({ sections }: { sections: NavSection[] }) {
                 )}
               >
                 <folder.icon className="h-[18px] w-[18px] shrink-0" />
-                <span className="w-full truncate text-center text-[10px] font-medium leading-tight">
-                  {folder.folder.split(' ')[0]}
+                {/* Lấy nguyên tên rồi cắt xuống dòng, KHÔNG lấy từ đầu tiên: cắt
+                    theo dấu cách biến "Cá nhân" thành "Cá", "Quản trị đội ngũ"
+                    thành "Quản", "Tổ chức" thành "Tổ" — đọc không ra nghĩa gì. */}
+                <span className="line-clamp-2 w-full break-words text-center text-[10px] font-medium leading-[1.15]">
+                  {folder.folder}
                 </span>
               </PopoverTrigger>
               <PopoverContent side="right" align="start" className="w-64 border-sidebar-border bg-sidebar p-2">

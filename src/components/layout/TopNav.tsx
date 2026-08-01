@@ -36,22 +36,39 @@ function coBangMenu(section: NavSection): boolean {
   return true;
 }
 
+/** Phân hệ nhiều thư mục → mega-menu chia cột; khu nhỏ → một cột gọn. */
+function laMegaMenu(section: NavSection): boolean {
+  return (section.items ?? []).filter(isFolder).length > 1;
+}
+
+/**
+ * Bề ngang bảng menu — PHẢI đặt trên chính `NavMenu.Content`.
+ *
+ * Radix đo bề ngang của phần tử Content rồi gán vào biến
+ * `--radix-navigation-menu-viewport-width`. Đặt bề ngang ở một thẻ con bên trong
+ * thì Content vẫn là khối tự giãn theo cha, Radix đo ra đúng bề ngang khung chứa
+ * (~500–740px) trong khi nội dung thật rộng 790–1024px — thừa ra bị
+ * `overflow-hidden` cắt cụt, nhãn mục đứt giữa chữ.
+ *
+ * Trừ 12rem chứ không phải 6rem vì bảng neo theo mép trái thanh điều hướng, mà
+ * mép này đã lùi vào 60–146px vì logo. Trừ ít quá thì ở dải 1024–1100px bảng thò
+ * ra khỏi màn hình, sinh thanh cuộn ngang cho cả trang.
+ */
+function beNgangBang(section: NavSection): string {
+  return laMegaMenu(section)
+    ? 'w-[min(64rem,calc(100vw-12rem))]'
+    : 'w-[min(20rem,calc(100vw-12rem))]';
+}
+
 /** Bảng menu bung xuống: một cột cho khu ít mục, nhiều cột cho phân hệ lớn. */
 function BangMenu({ section, onDieuHuong }: { section: NavSection; onDieuHuong: () => void }) {
   const { pathname } = useLocation();
   const folders = (section.items ?? []).filter(isFolder);
   const leavesTrucTiep = (section.items ?? []).filter((e) => !isFolder(e));
-
-  // Phân hệ nhiều thư mục → mega-menu chia cột; khu nhỏ → một cột gọn
-  const laMega = folders.length > 1;
+  const laMega = laMegaMenu(section);
 
   return (
-    <div
-      className={cn(
-        'p-4 sm:p-5',
-        laMega ? 'w-[min(calc(100vw-6rem),64rem)]' : 'w-[min(calc(100vw-6rem),20rem)]',
-      )}
-    >
+    <div className="p-4 sm:p-5">
       {/* Tiêu đề tầng: nói rõ đây là các mục CON của khu nào — hai tầng không lẫn */}
       <div className="mb-4 border-b pb-3">
         <p className="text-2xs font-semibold uppercase tracking-widest text-primary">{section.label}</p>
@@ -62,8 +79,14 @@ function BangMenu({ section, onDieuHuong }: { section: NavSection; onDieuHuong: 
 
       <div
         className={cn(
+          // Mốc đứt gãy tính theo BỀ NGANG MÀN HÌNH chứ không phải bề ngang bảng.
+          // Mốc 900px là mốc riêng chứ không mượn lg/md có sẵn: ở 980px (điện
+          // thoại bật "giao diện máy tính") bảng rộng ~790px, thừa sức xếp 3 cột
+          // — để 3 cột ở mốc lg thì dải này chỉ được 2 cột và bảng cao hơn
+          // 1300px. Ngược lại ở 768px bảng chỉ rộng 576px, chia 3 cột thì cột
+          // còn 176px, nhãn nào cũng cụt.
           laMega
-            ? 'grid gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3'
+            ? 'grid gap-x-6 gap-y-5 sm:grid-cols-2 min-[900px]:grid-cols-3 xl:grid-cols-4'
             : 'flex flex-col gap-0.5',
         )}
       >
@@ -153,6 +176,10 @@ export function TopNav({ onMoBangLenh }: Props) {
   // nhìn một cái là biết mình đang ở tầng nào.
   const danhSachRef = useRef<HTMLUListElement>(null);
   const [chiBao, setChiBao] = useState<{ left: number; width: number } | null>(null);
+  // Số tab thay đổi theo quyền (khách 2 tab, quản trị viên 5), nên không mốc đứt
+  // gãy cố định nào bảo đảm luôn vừa. Đo thật rồi mới làm mờ mép phải để người
+  // dùng biết còn tab bên phải — thay vì cuộn ngang câm như trước.
+  const [coTran, setCoTran] = useState(false);
 
   useEffect(() => {
     if (typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform)) {
@@ -170,6 +197,7 @@ export function TopNav({ onMoBangLenh }: Props) {
     const doVi = () => {
       const nut = ds.querySelector<HTMLElement>('[data-khu-dang-xem="true"]');
       setChiBao(nut ? { left: nut.offsetLeft, width: nut.offsetWidth } : null);
+      setCoTran(ds.scrollWidth > ds.clientWidth + 1);
     };
     doVi();
     // Trình duyệt quá cũ không có ResizeObserver: dải chỉ báo vẫn đặt đúng chỗ
@@ -202,9 +230,9 @@ export function TopNav({ onMoBangLenh }: Props) {
             height={28}
             className="h-7 w-7 shrink-0 rounded-lg bg-white object-contain p-0.5 shadow-soft"
           />
-          {/* Nhãn chữ nhường chỗ cho menu ở dải máy tính bảng; biểu tượng vẫn còn nên
+          {/* Nhãn chữ nhường chỗ cho menu tới tận 1280px; biểu tượng vẫn còn nên
               vẫn nhận ra thương hiệu và vẫn bấm về được trang chủ */}
-          <span className="hidden text-sm font-semibold tracking-tight text-foreground lg:block">
+          <span className="hidden text-sm font-semibold tracking-tight text-foreground xl:block">
             BHY <span className="text-primary">ONE</span>
           </span>
         </Link>
@@ -221,7 +249,11 @@ export function TopNav({ onMoBangLenh }: Props) {
         >
           <NavMenu.List
             ref={danhSachRef}
-            className="relative flex list-none items-center gap-0.5 overflow-x-auto scrollbar-none"
+            className={cn(
+              'relative flex list-none items-center gap-0.5 overflow-x-auto scrollbar-none',
+              coTran &&
+                '[mask-image:linear-gradient(to_right,#000_calc(100%-2.5rem),transparent)]',
+            )}
           >
             {/* Gạch chân trượt — chỉ dấu của tầng mẹ */}
             {chiBao && (
@@ -234,17 +266,21 @@ export function TopNav({ onMoBangLenh }: Props) {
             {sections.map((section) => {
               const dangXem = leavesOf(section).some((l) => matchesLeaf(pathname, l));
               /*
-                Máy tính bảng dùng nhãn ngắn, máy tính dùng nhãn đầy đủ: 7 nhãn đầy
-                đủ không vừa bề ngang 768px. Cả hai span đều aria-hidden và tên
-                truy cập đặt ở aria-label của nút, nên trình đọc màn hình luôn
-                nghe đúng tên khu dù khổ màn hình nào.
+                Nhãn đầy đủ chỉ bật từ 1536px. Đo thật: bộ nhãn đầy đủ cần 921px
+                cho thanh tab, trong khi chỗ trống chỉ có 522px ở 1024px và 778px
+                ở 1280px — để nhãn đầy đủ ở mốc 1024px thì gần nửa số tab bị đẩy
+                ra ngoài và trôi vào thanh cuộn ngang không ai nhìn thấy.
+
+                Cả hai span đều aria-hidden và tên truy cập đặt ở aria-label của
+                nút, nên trình đọc màn hình luôn nghe đúng tên đầy đủ của khu dù
+                khổ màn hình nào. Bảng bung xuống cũng in tên đầy đủ ở đầu bảng.
               */
               const nhan = (
                 <>
-                  <span aria-hidden className="truncate lg:hidden">
+                  <span aria-hidden className="truncate 2xl:hidden">
                     {section.shortLabel ?? section.label}
                   </span>
-                  <span aria-hidden className="hidden truncate lg:inline">
+                  <span aria-hidden className="hidden truncate 2xl:inline">
                     {section.label}
                   </span>
                 </>
@@ -260,7 +296,7 @@ export function TopNav({ onMoBangLenh }: Props) {
                         aria-label={section.label}
                         data-khu-dang-xem={dangXem || undefined}
                         className={cn(
-                          'relative flex h-10 shrink-0 items-center rounded-lg px-3 text-sm font-semibold tracking-tight transition-colors duration-fast lg:px-3.5',
+                          'relative flex h-10 shrink-0 items-center rounded-lg px-2.5 text-sm font-semibold tracking-tight transition-colors duration-fast xl:px-3.5',
                           dangXem ? 'text-primary' : 'text-foreground/70 hover:bg-muted hover:text-foreground',
                         )}
                       >
@@ -277,7 +313,7 @@ export function TopNav({ onMoBangLenh }: Props) {
                     aria-label={section.label}
                     data-khu-dang-xem={dangXem || undefined}
                     className={cn(
-                      'group flex h-10 shrink-0 items-center gap-1 rounded-lg px-3 text-sm font-semibold tracking-tight outline-none transition-colors duration-fast lg:px-3.5',
+                      'group flex h-10 shrink-0 items-center gap-0.5 rounded-lg px-2.5 text-sm font-semibold tracking-tight outline-none transition-colors duration-fast xl:gap-1 xl:px-3.5',
                       dangXem ? 'text-primary' : 'text-foreground/70 hover:bg-muted hover:text-foreground',
                       'data-[state=open]:bg-muted data-[state=open]:text-foreground',
                     )}
@@ -290,6 +326,7 @@ export function TopNav({ onMoBangLenh }: Props) {
                   </NavMenu.Trigger>
                   <NavMenu.Content
                     className={cn(
+                      beNgangBang(section),
                       'data-[motion=from-start]:animate-menu-in data-[motion=from-end]:animate-menu-in',
                       'data-[motion=to-start]:animate-menu-out data-[motion=to-end]:animate-menu-out',
                       'data-[state=open]:animate-menu-in data-[state=closed]:animate-menu-out',
@@ -302,12 +339,26 @@ export function TopNav({ onMoBangLenh }: Props) {
             })}
           </NavMenu.List>
 
-          {/* Khung chứa bảng menu — neo dưới thanh, bo góc mềm như thẻ vật lý */}
-          <div className="absolute left-0 top-full flex w-full justify-start pt-2">
+          {/*
+            Khung chứa bảng menu — neo dưới thanh, bo góc mềm như thẻ vật lý.
+
+            KHÔNG dùng flex ở đây: bảng là con của khung này, mà khung chỉ rộng
+            bằng phần thanh điều hướng (~740px). Là flex-item thì bảng bị co lại
+            đúng 740px trong khi nội dung bên trong rộng 884px, rồi
+            `overflow-hidden` cắt phăng 146px — mọi nhãn mục đứt giữa chữ. Để
+            block thì bảng giữ nguyên bề ngang nội dung, tràn ra ngoài khung một
+            cách có chủ đích.
+          */}
+          <div className="absolute left-0 top-full w-full pt-2">
             <NavMenu.Viewport
               className={cn(
                 'relative h-[var(--radix-navigation-menu-viewport-height)] w-[var(--radix-navigation-menu-viewport-width)]',
-                'origin-top overflow-hidden rounded-2xl border border-border/70 bg-popover text-popover-foreground shadow-menu',
+                'origin-top rounded-2xl border border-border/70 bg-popover text-popover-foreground shadow-menu',
+                // Bảng của phân hệ 343 cao hơn 900px; màn hình ngang (điện thoại
+                // bật giao diện máy tính, laptop 800px) không đủ chỗ, phải cho
+                // cuộn trong bảng chứ không để mục cuối rơi khỏi màn hình.
+                'max-h-[calc(100dvh-4.5rem)] overflow-y-auto overflow-x-hidden overscroll-contain',
+                '[&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-foreground/20',
                 'transition-[width,height] duration-normal ease-smooth',
                 'data-[state=open]:animate-menu-in data-[state=closed]:animate-menu-out',
               )}
@@ -325,12 +376,14 @@ export function TopNav({ onMoBangLenh }: Props) {
           className={cn(
             'group flex h-9 items-center gap-2 rounded-full border border-border/70 bg-muted/40 pl-3 pr-2 text-sm text-muted-foreground',
             'transition-colors duration-fast hover:bg-muted hover:text-foreground',
-            'lg:w-56',
+            // Ô rộng 224px chỉ bung ra khi màn hình đủ chỗ cho nhãn tab đầy đủ;
+            // dưới mốc đó điều hướng được ưu tiên, tìm kiếm co về đúng biểu tượng
+            'shrink-0 2xl:w-56',
           )}
         >
           <Search className="h-4 w-4 shrink-0" />
-          <span className="hidden flex-1 text-left lg:block">Tìm kiếm…</span>
-          <kbd className="ml-auto hidden shrink-0 rounded border border-border bg-background px-1.5 py-0.5 font-sans text-2xs font-medium lg:block">
+          <span className="hidden flex-1 text-left 2xl:block">Tìm kiếm…</span>
+          <kbd className="ml-auto hidden shrink-0 rounded border border-border bg-background px-1.5 py-0.5 font-sans text-2xs font-medium 2xl:block">
             {phimTat}
           </kbd>
         </button>
@@ -352,7 +405,7 @@ export function TopNav({ onMoBangLenh }: Props) {
             >
               {(user?.email ?? '?').slice(0, 2).toUpperCase()}
             </span>
-            <ChevronDown className="hidden h-3.5 w-3.5 shrink-0 text-muted-foreground sm:block" />
+            <ChevronDown className="hidden h-3.5 w-3.5 shrink-0 text-muted-foreground xl:block" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-60">
             <DropdownMenuLabel className="font-normal">

@@ -191,6 +191,40 @@ describe('Khung ứng dụng', () => {
     expect(luu['ca-nhan-343']).toBe(true);
   });
 
+  it('bề ngang bảng menu đặt trên chính Content — không lùi vào thẻ con', async () => {
+    /*
+      Radix đo bề ngang của phần tử Content rồi gán vào biến
+      --radix-navigation-menu-viewport-width. Nếu ai đó dời bề ngang xuống một
+      thẻ con thì Content lại tự giãn theo khung chứa: đo được ~500–740px trong
+      khi nội dung thật rộng 790–1024px, phần thừa bị cắt cụt giữa chữ. jsdom
+      không dựng bố cục nên không đo được pixel — chốt bằng cấu trúc lớp.
+    */
+    mockAuth.isAdmin = true;
+    const { container } = dungKhung('/tong-quan');
+    const thanhNav = screen.getByLabelText('Điều hướng chính cổng BHY ONE');
+    fireEvent.click(within(thanhNav).getByRole('button', { name: 'Chiêu thức 3 - Phát triển nhân sự' }));
+
+    const content = await screen.findByRole('menu').catch(() => null);
+    const bang = content ?? container.querySelector('[id*="-content-hr-343"]');
+    expect(bang).toBeTruthy();
+    expect((bang as HTMLElement).className).toMatch(/w-\[min\(64rem,calc\(100vw-12rem\)\)\]/);
+  });
+
+  it('bảng menu cao quá màn hình thì cuộn trong bảng, không rơi mục ra ngoài', () => {
+    // Bảng phân hệ 343 cao hơn 900px; laptop 800px và điện thoại bật "giao diện
+    // máy tính" (740px) không đủ chỗ. Thiếu max-h là mục cuối vĩnh viễn không bấm được.
+    mockAuth.isAdmin = true;
+    const { container } = dungKhung('/tong-quan');
+    const thanhNav = screen.getByLabelText('Điều hướng chính cổng BHY ONE');
+    // Radix chỉ gắn khung chứa bảng vào DOM khi có bảng đang mở
+    fireEvent.click(within(thanhNav).getByRole('button', { name: 'Chiêu thức 3 - Phát triển nhân sự' }));
+
+    const khung = container.querySelector('[class*="--radix-navigation-menu-viewport-height"]');
+    expect(khung).toBeTruthy();
+    expect(khung!.className).toMatch(/max-h-\[calc\(100dvh-4\.5rem\)\]/);
+    expect(khung!.className).toMatch(/overflow-y-auto/);
+  });
+
   it('mega-menu không nằm sẵn trong DOM khi chưa mở', () => {
     // ~60 mục của phân hệ 343 chỉ được gắn vào DOM lúc bung bảng menu; nếu
     // render sẵn ở mọi trang thì mỗi lần đổi route đều phải dựng thừa hàng trăm nút.

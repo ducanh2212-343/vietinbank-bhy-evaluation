@@ -316,6 +316,22 @@ chỉnh lại như sau (đã triển khai):
 - **Tấm «Thêm» chỉ chứa khu CHƯA có tab riêng.** Trước đây nó liệt kê lại cả những
   khu đã nằm sẵn trên thanh tab, thành ra cùng một mục tới được bằng hai đường —
   người dùng phải đoán xem hai lối đó có khác nhau không.
+- **Thanh menu phải sống được ở dải 768–2560px, kể cả khi điện thoại bật «giao
+  diện máy tính»** (Chrome đặt khung nhìn 980px). Bốn ràng buộc đã đo bằng trình
+  duyệt thật ở 10 khổ màn hình:
+
+  | Ràng buộc | Vì sao |
+  |---|---|
+  | Bề ngang bảng menu đặt trên chính `NavMenu.Content` | Radix đo phần tử Content để gán `--radix-navigation-menu-viewport-width`. Đặt ở thẻ con thì đo ra 500–740px trong khi nội dung rộng 790–1024px → cắt cụt 146–331px, nhãn đứt giữa chữ |
+  | Khung chứa bảng KHÔNG dùng `flex` | Là flex-item thì bảng bị co xuống bằng khung chứa rồi `overflow-hidden` cắt phần thừa |
+  | Bảng có `max-h-[calc(100dvh-4.5rem)]` + cuộn dọc | Bảng phân hệ 343 cao 950–1362px; màn hình 740–800px thiếu chỗ, không có thì mục cuối vĩnh viễn không bấm được |
+  | Bề ngang bảng trừ 12rem, không phải 6rem | Bảng neo theo mép trái thanh menu, mà mép này lùi vào 60–146px vì logo; trừ ít quá thì ở dải 1024–1100px bảng thò ra ngoài màn hình, sinh cuộn ngang cho cả trang |
+
+  Nhãn tab đầy đủ chỉ bật từ 1536px: bộ nhãn đầy đủ cần 921px trong khi chỗ trống
+  chỉ có 522px ở 1024px. Dưới mốc đó dùng `shortLabel`; tên đầy đủ vẫn có ở
+  `aria-label` và ở đầu bảng bung xuống. Số tab đổi theo quyền (khách 2, quản trị
+  viên 5) nên không mốc cố định nào bảo đảm luôn vừa — thanh tự đo, tràn thì làm
+  mờ mép phải để lộ ra là còn cuộn được.
 - **Ba tầng menu có ba ngôn ngữ thị giác khác nhau**: tab mẹ là chữ đậm có gạch
   chân trượt; mục con trong bảng bung xuống nhạt hơn và có tiêu đề nêu rõ thuộc
   khu nào; trong tấm menu điện thoại, khu là dòng đậm còn mục con thụt vào sau một
