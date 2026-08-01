@@ -67,9 +67,16 @@ export interface Ct2Nhip {
   dung_nhip: 'DUNG_GIO' | 'MUON' | 'MAT_NHIP' | 'KHONG_TINH';
 }
 
+/**
+ * Phạm vi của một luồng trao đổi. Cùng một bảng bình luận phục vụ cả ba bàn —
+ * Chiêu thức 2, Phê duyệt tín dụng và Kanban 38 skill/Dấu ấn — để cán bộ chỉ
+ * phải học một cách trao đổi, và để @nhắc tên chỉ phải viết một lần.
+ */
+export type Ct2PhamVi = 'DAU_VIEC' | 'PHONG' | 'CHIEN_DICH' | 'HO_SO_TIN_DUNG' | 'THE_KANBAN';
+
 export interface Ct2BinhLuan {
   id: string;
-  pham_vi: 'DAU_VIEC' | 'PHONG' | 'CHIEN_DICH';
+  pham_vi: Ct2PhamVi;
   doi_tuong_id: string;
   cha_id: string | null;
   nguoi_gui: string;
@@ -516,4 +523,45 @@ export function laLoiThieuBangCt2(error: { code?: string; message?: string } | n
   if (!error) return false;
   return error.code === '42P01' || /relation .* does not exist/i.test(error.message ?? '')
     || /Could not find the (function|table)/i.test(error.message ?? '');
+}
+
+// ---------------------------------------------------------------------------
+// Thông báo
+// ---------------------------------------------------------------------------
+
+/** Một dòng trong hàng đợi ct2_thong_bao (phần giao diện cần đọc) */
+export interface Ct2ThongBao {
+  id: string;
+  ma_su_kien: string;
+  dau_viec_id: string | null;
+  tieu_de: string;
+  noi_dung: string;
+  muc: 'NHE' | 'DO' | 'CHAN' | string;
+  created_at: string;
+  doc_luc: string | null;
+}
+
+export const CT2_DAU_MUC: Record<string, string> = { CHAN: '⛔', DO: '🔴', NHE: '🟡' };
+
+/**
+ * Bấm vào thông báo phải mở đúng thứ nó nói tới.
+ *
+ * Một thông báo dẫn về trang chung là thông báo hỏng: cán bộ vẫn phải tự đi tìm
+ * thẻ giữa bảy cột, và lần sau họ sẽ bỏ qua chuông. Quy tắc này dùng chung với
+ * edge function notify-ct2 để push và chuông trong ứng dụng không lệch nhau.
+ */
+export function duongDanThongBao(tb: Pick<Ct2ThongBao, 'ma_su_kien' | 'dau_viec_id'>): string {
+  if (tb.dau_viec_id) return `/one/chieu-thuc-2?the=${tb.dau_viec_id}`;
+  if (tb.ma_su_kien.startsWith('HS_')) return '/one/chieu-thuc-2?tab=tin-dung';
+  return '/one/chieu-thuc-2';
+}
+
+/** «12 phút trước» dễ đọc hơn dấu thời gian đầy đủ trong danh sách chuông */
+export function khiNaoThongBao(iso: string, moc: Date = new Date()): string {
+  const phut = Math.round((moc.getTime() - new Date(iso).getTime()) / 60000);
+  if (phut < 1) return 'vừa xong';
+  if (phut < 60) return `${phut} phút trước`;
+  const gio = Math.round(phut / 60);
+  if (gio < 24) return `${gio} giờ trước`;
+  return new Date(iso).toLocaleDateString('vi-VN');
 }

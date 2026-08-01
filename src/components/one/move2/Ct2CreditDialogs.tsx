@@ -18,6 +18,7 @@ import {
   type HoSoTinDung, type HsCap, type HsFormTao, type HsLoai, type HsTrangThai,
 } from '@/lib/ct2TinDung';
 import type { Ct2NhanSu } from './useCt2Data';
+import { Ct2TrangTraoDoi, type NguoiTraoDoi } from './Ct2TrangTraoDoi';
 import {
   ct2GhiNhipHoSo, ct2SuaHoSo, ct2TaoHoSo, useCt2LamTuoiHoSo, useCt2NhatKyHoSo,
 } from './useCt2TinDung';
@@ -244,6 +245,18 @@ export function Ct2CreditCardDialog({ hoSo, nhanSu, laLanhDao, chuyenDen, onClos
   const lamTuoi = useCt2LamTuoiHoSo();
   const { data: nhatKy = [] } = useCt2NhatKyHoSo(hoSo?.id ?? null);
   const tenNguoi = useMemo(() => new Map(nhanSu.map((n) => [n.id, n.full_name])), [nhanSu]);
+  // Ba vai gắn với một hồ sơ: cán bộ làm, lãnh đạo theo dõi, người đang cầm hồ sơ
+  const nguoiLienQuan = useMemo<NguoiTraoDoi[]>(() => {
+    if (!hoSo) return [];
+    const ds: NguoiTraoDoi[] = [];
+    const them = (id: string | null | undefined, vaiTro: string) => {
+      if (id && !ds.some((x) => x.id === id)) ds.push({ id, ten: tenNguoi.get(id) ?? 'Đồng nghiệp', vaiTro });
+    };
+    them(hoSo.can_bo, 'cán bộ phụ trách');
+    them(hoSo.lanh_dao_theo_doi, 'lãnh đạo theo dõi');
+    them(hoSo.nguoi_dang_giu, 'đang giữ hồ sơ');
+    return ds;
+  }, [hoSo, tenNguoi]);
 
   const [den, setDen] = useState<HsTrangThai>('THU_THAP');
   const [nguoiGiu, setNguoiGiu] = useState('');
@@ -426,6 +439,16 @@ export function Ct2CreditCardDialog({ hoSo, nhanSu, laLanhDao, chuyenDen, onClos
             ))}
           </div>
         </div>
+
+        <Ct2TrangTraoDoi
+          phamVi="HO_SO_TIN_DUNG"
+          doiTuongId={hoSo.id}
+          nguoiLienQuan={nguoiLienQuan}
+          tenNguoi={tenNguoi}
+          tieuDe="Trao đổi về hồ sơ"
+          goiY="Hỏi thẳng ở đây thay vì gọi điện — VD «Hồ sơ vướng gì ạ?», «Cần bổ sung giấy tờ nào?»."
+          onXong={() => lamTuoi()}
+        />
       </DialogContent>
     </Dialog>
   );

@@ -5,11 +5,13 @@ import {
   daDuKeHoach,
   demWip,
   diemRuiRo,
+  duongDanThongBao,
   goiYNhan,
   gopCacBuoc,
   hanGoiY,
   kiemTraCauNhip,
   kiemTraGhiViec,
+  khiNaoThongBao,
   kiemTraKeHoach,
   locEmojiTieuDe,
   lyDoChanChuyen,
@@ -301,5 +303,37 @@ describe('Mốc tuần của dấu ấn — phải trùng mốc tuần Kanban (T
   it('tính theo giờ Việt Nam, không theo giờ máy chủ', () => {
     // 23:30 UTC Chủ nhật 16/08 = 06:30 thứ 2 17/08 giờ VN → tuần mới
     expect(dauTuanVn(new Date('2026-08-16T23:30:00Z'))).toBe('2026-08-17');
+  });
+});
+
+
+describe('Thông báo — bấm vào phải mở đúng thứ nó nói tới', () => {
+  it('thông báo gắn với một đầu việc thì mở thẳng thẻ đó', () => {
+    expect(duongDanThongBao({ ma_su_kien: 'N13', dau_viec_id: 'abc-123' }))
+      .toBe('/one/chieu-thuc-2?the=abc-123');
+    // Kể cả tin của bàn tín dụng, nếu có đầu việc thì đầu việc thắng
+    expect(duongDanThongBao({ ma_su_kien: 'HS_TRINH', dau_viec_id: 'x1' }))
+      .toBe('/one/chieu-thuc-2?the=x1');
+  });
+
+  it('tin hồ sơ tín dụng mở đúng tab tín dụng, không phải tab mặc định', () => {
+    expect(duongDanThongBao({ ma_su_kien: 'HS_TRINH', dau_viec_id: null }))
+      .toBe('/one/chieu-thuc-2?tab=tin-dung');
+    expect(duongDanThongBao({ ma_su_kien: 'HS_TU_CHOI', dau_viec_id: null }))
+      .toBe('/one/chieu-thuc-2?tab=tin-dung');
+  });
+
+  it('tin không gắn đối tượng nào thì về trang Chiêu thức 2', () => {
+    expect(duongDanThongBao({ ma_su_kien: 'N12', dau_viec_id: null }))
+      .toBe('/one/chieu-thuc-2');
+  });
+
+  it('mốc thời gian đọc được bằng lời, không phải dấu thời gian đầy đủ', () => {
+    const moc = new Date('2026-08-12T08:00:00Z');
+    expect(khiNaoThongBao('2026-08-12T07:59:40Z', moc)).toBe('vừa xong');
+    expect(khiNaoThongBao('2026-08-12T07:45:00Z', moc)).toBe('15 phút trước');
+    expect(khiNaoThongBao('2026-08-12T03:00:00Z', moc)).toBe('5 giờ trước');
+    // Quá một ngày thì quay về ngày tháng — «37 giờ trước» không giúp ai
+    expect(khiNaoThongBao('2026-08-09T08:00:00Z', moc)).toContain('2026');
   });
 });
