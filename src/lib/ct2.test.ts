@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CT2_MAU_MO_TA,
   chuanBiQuaLau,
+  datPhanMoTa,
   demTruongCongA,
   demWip,
   diemRuiRo,
@@ -12,20 +14,23 @@ import {
   sapXepThe,
   soNgayImLang,
   soNgayQuaHan,
+  tachMoTaGop,
   tuoiCho,
   type BoiCanhChuyen,
   type Ct2DauViec,
   type Ct2FormTao,
 } from './ct2';
 
+const MO_TA_DU = [
+  'Việc cần làm: Hoàn thiện hồ sơ TSBĐ khách hàng Minh Long',
+  'Xong thì có: Bộ hồ sơ TSBĐ đã đăng ký GDBĐ',
+  'Để phục vụ: Tăng trưởng tín dụng',
+  'Cách làm: B1 rà danh mục giấy tờ; B2 hẹn khách bổ sung; B3 trình ký và đăng ký GDBĐ.',
+  'Chỉ tiêu: 3 hồ sơ',
+].join('\n');
+
 const formDu: Ct2FormTao = {
-  tieu_de: 'Hoàn thiện hồ sơ TSBĐ khách hàng Minh Long',
-  ket_qua_dau_ra: 'Bộ hồ sơ TSBĐ đầy đủ, đã đăng ký GDBĐ',
-  muc_tieu_lien_ket: 'chien-dich-casa',
-  cach_lam: 'B1 rà danh mục giấy tờ; B2 hẹn khách bổ sung; B3 trình ký và đăng ký GDBĐ.',
-  chi_tieu_dinh_luong: '3',
-  co_chi_tieu_so: true,
-  don_vi: 'hồ sơ',
+  mo_ta: MO_TA_DU,
   nguoi_chiu_trach_nhiem: 'p1',
   lanh_dao_theo_doi: 'p2',
   phong: 'd1',
@@ -37,14 +42,79 @@ const formDu: Ct2FormTao = {
   cac_phong_tham_gia: [],
 };
 
+/** Thay nội dung một dòng của ô gộp để dựng ca kiểm thử */
+const doiDong = (nhan: string, giaTri: string) =>
+  MO_TA_DU.split('\n').map((d) => (d.startsWith(`${nhan}:`) ? `${nhan}: ${giaTri}` : d)).join('\n');
+
+describe('Ô gộp — tách 5W2H về đúng cột dữ liệu', () => {
+  it('tách đủ 5 phần, đọc được con số và đơn vị của chỉ tiêu', () => {
+    const p = tachMoTaGop(MO_TA_DU);
+    expect(p.tieu_de).toBe('Hoàn thiện hồ sơ TSBĐ khách hàng Minh Long');
+    expect(p.ket_qua_dau_ra).toBe('Bộ hồ sơ TSBĐ đã đăng ký GDBĐ');
+    expect(p.muc_tieu_lien_ket).toBe('Tăng trưởng tín dụng');
+    expect(p.cach_lam).toContain('B1 rà danh mục');
+    expect(p.chi_tieu_so).toBe(3);
+    expect(p.don_vi).toBe('hồ sơ');
+  });
+
+  it('cách làm viết nhiều dòng vẫn gom về một trường', () => {
+    const p = tachMoTaGop('Việc cần làm: Xây quy chế\nCách làm: B1 khảo sát\nB2 dự thảo\nB3 lấy ý kiến');
+    expect(p.cach_lam).toBe('B1 khảo sát\nB2 dự thảo\nB3 lấy ý kiến');
+  });
+
+  it('nhãn gõ thiếu dấu / khác hoa thường vẫn nhận đúng', () => {
+    const p = tachMoTaGop('viec can lam: Rà soát nợ quá hạn nhóm 2\nXONG THÌ CÓ: Danh sách 12 khách');
+    expect(p.tieu_de).toBe('Rà soát nợ quá hạn nhóm 2');
+    expect(p.ket_qua_dau_ra).toBe('Danh sách 12 khách');
+  });
+
+  it('gõ tự do không nhãn: dòng đầu là tên việc, phần sau là cách làm', () => {
+    const p = tachMoTaGop('Hoàn thiện hồ sơ Minh Long\nGọi khách\nTrình ký');
+    expect(p.tieu_de).toBe('Hoàn thiện hồ sơ Minh Long');
+    expect(p.cach_lam).toBe('Gọi khách\nTrình ký');
+  });
+
+  it('việc không có số thì chỉ tiêu để trống, không dựng số bừa', () => {
+    const p = tachMoTaGop(doiDong('Chỉ tiêu', ''));
+    expect(p.chi_tieu_so).toBeNull();
+    expect(p.don_vi).toBe('');
+  });
+
+  it('chip chọn nhanh ghi đè đúng dòng «Để phục vụ», không đụng dòng khác', () => {
+    const moi = datPhanMoTa(MO_TA_DU, 'muc_tieu_lien_ket', 'Tăng trưởng CASA');
+    const p = tachMoTaGop(moi);
+    expect(p.muc_tieu_lien_ket).toBe('Tăng trưởng CASA');
+    expect(p.tieu_de).toBe('Hoàn thiện hồ sơ TSBĐ khách hàng Minh Long');
+  });
+
+  it('khung mẫu rỗng thì mọi phần đều trống — nút Tạo vẫn phải mờ', () => {
+    const p = tachMoTaGop(CT2_MAU_MO_TA);
+    expect(p.tieu_de).toBe('');
+    expect(p.cach_lam).toBe('');
+    expect(kiemTraCongA({ ...formDu, mo_ta: CT2_MAU_MO_TA }).length).toBe(4);
+  });
+});
+
 describe('Cổng A — kiểm tra 5W2H lúc tạo', () => {
-  it('form đủ trường thì không còn thiếu gì', () => {
+  it('form đủ mục thì không còn thiếu gì', () => {
     expect(kiemTraCongA(formDu)).toEqual([]);
   });
 
-  it('chặn tiêu đề ngắn và tiêu đề rỗng nghĩa', () => {
-    expect(kiemTraCongA({ ...formDu, tieu_de: 'Theo dõi' }).some((t) => t.truong === 'tieu_de')).toBe(true);
-    expect(kiemTraCongA({ ...formDu, tieu_de: 'theo dõi   ' }).some((t) => t.truong === 'tieu_de')).toBe(true);
+  it('chặn tên việc ngắn và tên rỗng nghĩa', () => {
+    expect(kiemTraCongA({ ...formDu, mo_ta: doiDong('Việc cần làm', 'Theo dõi') })
+      .some((t) => t.ten === 'Việc cần làm')).toBe(true);
+    expect(kiemTraCongA({ ...formDu, mo_ta: doiDong('Việc cần làm', 'theo dõi') })
+      .some((t) => t.ten === 'Việc cần làm')).toBe(true);
+  });
+
+  it('cách làm dưới 30 ký tự bị chặn', () => {
+    expect(kiemTraCongA({ ...formDu, mo_ta: doiDong('Cách làm', 'Gọi khách') })
+      .some((t) => t.ten === 'Cách làm')).toBe(true);
+  });
+
+  it('thiếu «Để phục vụ» là thiếu — việc phải gắn với mục tiêu nào đó', () => {
+    expect(kiemTraCongA({ ...formDu, mo_ta: doiDong('Để phục vụ', '') })
+      .some((t) => t.ten === 'Để phục vụ')).toBe(true);
   });
 
   it('thiếu người chịu trách nhiệm là thiếu — không cho «gán sau»', () => {
@@ -62,16 +132,15 @@ describe('Cổng A — kiểm tra 5W2H lúc tạo', () => {
     expect(thieu.some((t) => t.truong === 'cac_phong_tham_gia')).toBe(true);
   });
 
-  it('việc không có chỉ tiêu số thì không đòi chỉ tiêu định lượng', () => {
-    const thieu = kiemTraCongA({ ...formDu, co_chi_tieu_so: false, chi_tieu_dinh_luong: '', don_vi: '' });
-    expect(thieu).toEqual([]);
+  it('việc không có chỉ tiêu số vẫn tạo được — chỉ tiêu là tùy chọn', () => {
+    expect(kiemTraCongA({ ...formDu, mo_ta: doiDong('Chỉ tiêu', '') })).toEqual([]);
   });
 
-  it('thanh tiến độ đếm đúng số trường', () => {
-    expect(demTruongCongA(formDu)).toEqual({ du: 13, tong: 13 });
-    const { du, tong } = demTruongCongA({ ...formDu, tieu_de: '', cach_lam: '' });
-    expect(tong).toBe(13);
-    expect(du).toBe(11);
+  it('thanh tiến độ đếm đúng số mục', () => {
+    expect(demTruongCongA(formDu)).toEqual({ du: 11, tong: 11 });
+    const { du, tong } = demTruongCongA({ ...formDu, mo_ta: doiDong('Cách làm', '') });
+    expect(tong).toBe(11);
+    expect(du).toBe(10);
   });
 });
 

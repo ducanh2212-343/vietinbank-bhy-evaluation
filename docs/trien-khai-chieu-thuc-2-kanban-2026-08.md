@@ -31,6 +31,44 @@ Bản Kanban KHHĐ tối giản cũ (bảng `action_plans`, 3 cột todo/doing/d
 Tầng «Kế hoạch hành động (phòng × kỳ)» = cặp (`phong`, `cycle_id`) trên đầu
 việc — kỳ dùng chung `evaluation_cycles`, không tạo bảng riêng.
 
+## Cổng A gộp ô nhập (điều chỉnh sau lần chạy thử đầu trên điện thoại)
+
+Bản đầu dựng đúng 11 ô rời theo đặc tả. Chạy thử thực tế cho thấy lãnh đạo
+Phòng nhập trên điện thoại phải cuộn qua 5 khối chữ liên tiếp (tên việc, kết
+quả, mục tiêu, cách làm, chỉ tiêu) — quá dài, dễ bỏ dở giữa chừng.
+
+Điều chỉnh: **năm nội dung chữ gộp vào MỘT ô** có khung mẫu điền sẵn, mỗi ý
+một dòng có nhãn dẫn:
+
+```
+Việc cần làm: …
+Xong thì có: …
+Để phục vụ: …
+Cách làm: …
+Chỉ tiêu: …            ← bỏ trống nếu việc không có số
+```
+
+- Hàm `tachMoTaGop()` tách về đúng cột `tieu_de`, `ket_qua_dau_ra`,
+  `muc_tieu_lien_ket`, `cach_lam`, `chi_tieu_dinh_luong` + `don_vi` khi lưu —
+  **dữ liệu vẫn có cấu trúc**, lọc/xuất báo cáo và các CHECK trong database
+  không đổi một dòng nào.
+- Nhãn khớp linh hoạt: không phân biệt hoa/thường, gõ thiếu dấu vẫn nhận
+  (`viec can lam:` = `Việc cần làm:`). «Cách làm» viết nhiều dòng B1/B2/B3 vẫn
+  gom về một trường.
+- Dự phòng khi cán bộ xóa hết nhãn gõ tự do: dòng đầu thành tên việc, phần còn
+  lại thành cách làm — không để người dùng kẹt cứng.
+- Dòng «Để phục vụ» có **hàng chip chọn nhanh** bên dưới (chiến dịch đang chạy
+  + 6 nhóm chỉ tiêu): một chạm thay cho gõ tay, và nếu khớp tên chiến dịch thì
+  tự gắn `chien_dich_id`.
+- Bỏ ô «Chỉ tiêu định lượng»/«Đơn vị» rời và checkbox bật/tắt chỉ tiêu — giờ là
+  một dòng tùy chọn, hệ thống tự đọc số và đơn vị (`3 hồ sơ` → 3 + `hồ sơ`).
+
+Chặn cứng giữ nguyên: nút Tạo vẫn mờ tới khi đủ mục, thanh «x/11 mục — còn
+thiếu: …» chỉ đúng tên từng dòng còn trống, bấm vào là cuộn tới ô.
+
+Form rút từ 11 ô xuống **1 ô chữ + 7 ô chọn nhanh** (2 người, 2 ngày, phòng,
+phạm vi, loại) — thao tác gõ dồn vào một vùng liền mạch.
+
 ## Các cổng nghiệp vụ cài ở TẦNG DATABASE (không chỉ giao diện)
 
 - **Cổng A:** cán bộ thường không INSERT được `ct2_dau_viec` (trigger + RLS);

@@ -125,14 +125,119 @@ export const CT2_CAM_XUC = ['👍', '✅', '👀', '🎯', '🙏', '❤️', '�
 // Cổng A — kiểm tra 5W2H lúc TẠO (chặn cứng, đặc tả §3.1)
 // ---------------------------------------------------------------------------
 
-export interface Ct2FormTao {
+/**
+ * Ô nhập GỘP: What (tên việc) · What (kết quả) · Why (phục vụ mục tiêu nào) ·
+ * How (cách làm) · How much (chỉ tiêu) nằm chung MỘT ô, mỗi phần một dòng có
+ * nhãn dẫn sẵn.
+ *
+ * Vì sao gộp: bản đầu có 11 ô rời, lãnh đạo Phòng nhập trên điện thoại phải
+ * cuộn qua 5 khối chữ — tỷ lệ bỏ dở cao. Gộp lại chỉ còn 1 vùng gõ liền mạch,
+ * nhưng hệ thống VẪN tách về đúng cột dữ liệu khi lưu, nên lọc/xuất báo cáo
+ * và các cổng chặn 5W2H không mất gì.
+ */
+export const CT2_NHAN_MO_TA = [
+  { khoa: 'tieu_de', nhan: 'Việc cần làm', goi_y: 'VD: Hoàn thiện hồ sơ TSBĐ khách hàng Minh Long trước 20/08' },
+  { khoa: 'ket_qua_dau_ra', nhan: 'Xong thì có', goi_y: 'VD: Bộ hồ sơ đã đăng ký GDBĐ, đủ điều kiện giải ngân' },
+  { khoa: 'muc_tieu_lien_ket', nhan: 'Để phục vụ', goi_y: 'Bấm chọn nhanh ở dưới, hoặc gõ tên chiến dịch/chỉ tiêu' },
+  { khoa: 'cach_lam', nhan: 'Cách làm', goi_y: 'VD: B1 rà danh mục giấy tờ; B2 hẹn khách bổ sung; B3 trình ký' },
+  { khoa: 'chi_tieu', nhan: 'Chỉ tiêu', goi_y: 'VD: 3 hồ sơ — bỏ trống nếu việc không có số' },
+] as const;
+
+export type Ct2KhoaMoTa = (typeof CT2_NHAN_MO_TA)[number]['khoa'];
+
+/** Khung mẫu điền sẵn trong ô gộp — cán bộ chỉ gõ tiếp sau dấu hai chấm */
+export const CT2_MAU_MO_TA = CT2_NHAN_MO_TA.map((n) => `${n.nhan}: `).join('\n');
+
+export interface Ct2PhanMoTa {
   tieu_de: string;
   ket_qua_dau_ra: string;
   muc_tieu_lien_ket: string;
   cach_lam: string;
-  chi_tieu_dinh_luong: string;   // chuỗi nhập tay, có thể rỗng với việc không có số
-  co_chi_tieu_so: boolean;
+  /** Con số đọc được từ dòng «Chỉ tiêu» — null khi việc không có số */
+  chi_tieu_so: number | null;
   don_vi: string;
+}
+
+/** Chuẩn hóa nhãn để so khớp: bỏ dấu, đ→d, thường hóa. Dùng escape Unicode
+ *  thay vì ký tự tổ hợp thô để trình soạn thảo không làm hỏng biểu thức. */
+function boDau(s: string): string {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase().trim();
+}
+
+/**
+ * Tách ô gộp về từng phần 5W2H.
+ *
+ * Dòng bắt đầu bằng một nhãn + dấu hai chấm mở một phần mới; các dòng sau nối
+ * tiếp vào phần đó (để «Cách làm» viết được nhiều dòng B1/B2/B3).
+ *
+ * Dự phòng khi cán bộ xóa hết nhãn và gõ tự do: dòng đầu làm tên việc, phần
+ * còn lại làm cách làm — không để người dùng kẹt cứng, phần thiếu vẫn hiện
+ * trong danh sách «còn thiếu».
+ */
+export function tachMoTaGop(moTa: string): Ct2PhanMoTa {
+  const phan: Record<string, string[]> = {};
+  const nhanTheoKhoa = new Map(CT2_NHAN_MO_TA.map((n) => [boDau(n.nhan), n.khoa as string]));
+  let dangO: string | null = null;
+  let coNhan = false;
+
+  for (const dong of moTa.split('\n')) {
+    const dauHai = dong.indexOf(':');
+    const khoa = dauHai > 0 ? nhanTheoKhoa.get(boDau(dong.slice(0, dauHai))) : undefined;
+    if (khoa) {
+      coNhan = true;
+      dangO = khoa;
+      (phan[khoa] ??= []).push(dong.slice(dauHai + 1).trim());
+    } else if (dangO) {
+      (phan[dangO] ??= []).push(dong.trim());
+    } else if (dong.trim()) {
+      (phan.__tudo ??= []).push(dong.trim());
+    }
+  }
+
+  const lay = (k: string) => (phan[k] ?? []).join('\n').trim();
+
+  if (!coNhan) {
+    const dong = (phan.__tudo ?? []).filter(Boolean);
+    return {
+      tieu_de: dong[0] ?? '',
+      ket_qua_dau_ra: '',
+      muc_tieu_lien_ket: '',
+      cach_lam: dong.slice(1).join('\n').trim(),
+      chi_tieu_so: null,
+      don_vi: '',
+    };
+  }
+
+  // «12 hồ sơ» → 12 + «hồ sơ»; «50 tỷ đồng» → 50 + «tỷ đồng»
+  const chiTieu = lay('chi_tieu');
+  const khop = chiTieu.match(/^([\d]+(?:[.,]\d+)?)\s*(.*)$/);
+
+  return {
+    tieu_de: lay('tieu_de'),
+    ket_qua_dau_ra: lay('ket_qua_dau_ra'),
+    muc_tieu_lien_ket: lay('muc_tieu_lien_ket'),
+    cach_lam: lay('cach_lam'),
+    chi_tieu_so: khop ? Number(khop[1].replace(',', '.')) : null,
+    don_vi: khop ? khop[2].trim() : '',
+  };
+}
+
+/** Ghi giá trị vào đúng dòng của ô gộp — dùng cho chip chọn nhanh mục tiêu */
+export function datPhanMoTa(moTa: string, khoa: Ct2KhoaMoTa, giaTri: string): string {
+  const nhan = CT2_NHAN_MO_TA.find((n) => n.khoa === khoa)?.nhan ?? '';
+  const dsDong = moTa.split('\n');
+  const viTri = dsDong.findIndex((d) => {
+    const i = d.indexOf(':');
+    return i > 0 && boDau(d.slice(0, i)) === boDau(nhan);
+  });
+  if (viTri === -1) return `${moTa}\n${nhan}: ${giaTri}`.trim();
+  dsDong[viTri] = `${nhan}: ${giaTri}`;
+  return dsDong.join('\n');
+}
+
+export interface Ct2FormTao {
+  /** Ô gộp What + What + Why + How + How much */
+  mo_ta: string;
   nguoi_chiu_trach_nhiem: string;
   lanh_dao_theo_doi: string;
   phong: string;
@@ -147,34 +252,30 @@ export interface Ct2FormTao {
 /** Các chuỗi tiêu đề rỗng nghĩa bị chặn (đặc tả 2.3 — "theo dõi", "làm việc") */
 const TIEU_DE_RONG_NGHIA = ['theo dõi', 'theo doi', 'làm việc', 'lam viec', 'xử lý', 'xu ly', 'triển khai', 'trien khai'];
 
-export interface Ct2ThieuTruong { truong: keyof Ct2FormTao; ten: string; ly_do?: string }
+export interface Ct2ThieuTruong { truong: string; ten: string; ly_do?: string }
 
 /**
- * Trả về danh sách trường còn thiếu/không hợp lệ. Rỗng = đủ điều kiện tạo.
+ * Trả về danh sách phần còn thiếu/không hợp lệ. Rỗng = đủ điều kiện tạo.
  * Nút "Tạo đầu việc" disabled chừng nào danh sách này chưa rỗng.
  */
 export function kiemTraCongA(f: Ct2FormTao): Ct2ThieuTruong[] {
   const thieu: Ct2ThieuTruong[] = [];
-  const tieuDe = f.tieu_de.trim();
+  const p = tachMoTaGop(f.mo_ta);
+
+  const tieuDe = p.tieu_de.trim();
   if (tieuDe.length < 10) {
-    thieu.push({ truong: 'tieu_de', ten: 'Tên đầu việc', ly_do: 'tối thiểu 10 ký tự' });
+    thieu.push({ truong: 'mo_ta', ten: 'Việc cần làm', ly_do: 'tối thiểu 10 ký tự' });
   } else if (TIEU_DE_RONG_NGHIA.includes(tieuDe.toLowerCase())) {
-    thieu.push({ truong: 'tieu_de', ten: 'Tên đầu việc', ly_do: 'tên quá chung chung — ghi rõ làm gì, cho ai' });
+    thieu.push({ truong: 'mo_ta', ten: 'Việc cần làm', ly_do: 'tên quá chung chung — ghi rõ làm gì, cho ai' });
   }
-  if (f.ket_qua_dau_ra.trim().length < 5) {
-    thieu.push({ truong: 'ket_qua_dau_ra', ten: 'Kết quả đầu ra', ly_do: 'làm xong thì có cái gì?' });
+  if (p.ket_qua_dau_ra.trim().length < 5) {
+    thieu.push({ truong: 'mo_ta', ten: 'Xong thì có', ly_do: 'làm xong thì có cái gì?' });
   }
-  if (!f.muc_tieu_lien_ket.trim()) {
-    thieu.push({ truong: 'muc_tieu_lien_ket', ten: 'Mục tiêu liên kết' });
+  if (!p.muc_tieu_lien_ket.trim()) {
+    thieu.push({ truong: 'mo_ta', ten: 'Để phục vụ', ly_do: 'gắn với chiến dịch / nhóm chỉ tiêu nào' });
   }
-  if (f.cach_lam.trim().length < 30) {
-    thieu.push({ truong: 'cach_lam', ten: 'Cách làm', ly_do: 'tối thiểu 30 ký tự — các bước triển khai' });
-  }
-  if (f.co_chi_tieu_so) {
-    if (!f.chi_tieu_dinh_luong.trim() || Number.isNaN(Number(f.chi_tieu_dinh_luong))) {
-      thieu.push({ truong: 'chi_tieu_dinh_luong', ten: 'Chỉ tiêu định lượng', ly_do: 'nhập con số' });
-    }
-    if (!f.don_vi.trim()) thieu.push({ truong: 'don_vi', ten: 'Đơn vị chỉ tiêu' });
+  if (p.cach_lam.trim().length < 30) {
+    thieu.push({ truong: 'mo_ta', ten: 'Cách làm', ly_do: 'tối thiểu 30 ký tự — các bước triển khai' });
   }
   if (!f.nguoi_chiu_trach_nhiem) {
     thieu.push({ truong: 'nguoi_chiu_trach_nhiem', ten: 'Người chịu trách nhiệm', ly_do: 'duy nhất 01 người, không để «gán sau»' });
@@ -195,10 +296,10 @@ export function kiemTraCongA(f: Ct2FormTao): Ct2ThieuTruong[] {
   return thieu;
 }
 
-/** Tổng số trường bắt buộc của Cổng A — dùng cho thanh "8/11 trường" */
+/** Tổng số mục bắt buộc của Cổng A — dùng cho thanh "8/11 mục" */
 export function demTruongCongA(f: Ct2FormTao): { du: number; tong: number } {
-  // 11 trường nền + 2 khi có chỉ tiêu số (con số + đơn vị) + 1 khi liên phòng
-  const tong = 11 + (f.co_chi_tieu_so ? 2 : 0) + (f.lien_phong ? 1 : 0);
+  // 4 mục trong ô gộp + 7 mục chọn nhanh + 1 khi liên phòng
+  const tong = 11 + (f.lien_phong ? 1 : 0);
   const thieu = kiemTraCongA(f).length;
   return { du: Math.max(0, tong - thieu), tong };
 }

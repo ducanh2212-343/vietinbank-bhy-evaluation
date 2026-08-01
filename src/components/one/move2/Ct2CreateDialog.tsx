@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { Check } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -13,7 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { demTruongCongA, kiemTraCongA, locEmojiTieuDe, type Ct2FormTao } from '@/lib/ct2';
+import {
+  CT2_MAU_MO_TA, CT2_NHAN_MO_TA, datPhanMoTa, demTruongCongA, kiemTraCongA,
+  locEmojiTieuDe, tachMoTaGop, type Ct2FormTao,
+} from '@/lib/ct2';
 import {
   ct2TaoDauViec, ct2TaoDeXuat, ct2XuLyDeXuat,
   type Ct2DeXuat, type Ct2NhanSu, type Ct2Phong,
@@ -22,9 +26,14 @@ import {
 /**
  * Cổng A — tạo đầu việc 5W2H (đặc tả §3.1).
  *
- * CHẶN CỨNG: nút "Tạo đầu việc" disabled tới khi đủ 100% trường bắt buộc; bên
- * cạnh là thanh "x/y trường — còn thiếu: …". Bấm tên trường thiếu → cuộn tới ô,
- * viền đỏ. Không có lưu nháp thiếu trường (tránh kho card "vô chủ").
+ * MỘT Ô NHẬP cho cả 5 nội dung chữ (tên việc · kết quả · phục vụ mục tiêu nào ·
+ * cách làm · chỉ tiêu), khung mẫu điền sẵn theo dòng. Bản 11 ô rời trước đó
+ * khiến lãnh đạo Phòng phải cuộn qua 5 khối chữ trên điện thoại — gộp lại gõ
+ * một mạch, hệ thống tự tách về đúng cột khi lưu nên không mất khả năng lọc
+ * và xuất báo cáo.
+ *
+ * CHẶN CỨNG giữ nguyên: nút "Tạo đầu việc" mờ tới khi đủ 100% mục bắt buộc,
+ * bên cạnh là thanh "x/y mục — còn thiếu: …", bấm tên mục thiếu thì cuộn tới ô.
  * Cán bộ thường thấy chế độ «Đề xuất việc» 2 trường, gửi lãnh đạo Phòng duyệt.
  */
 
@@ -51,8 +60,7 @@ function useCt2ChienDich() {
 }
 
 const FORM_TRONG: Ct2FormTao = {
-  tieu_de: '', ket_qua_dau_ra: '', muc_tieu_lien_ket: '', cach_lam: '',
-  chi_tieu_dinh_luong: '', co_chi_tieu_so: false, don_vi: '',
+  mo_ta: CT2_MAU_MO_TA,
   nguoi_chiu_trach_nhiem: '', lanh_dao_theo_doi: '', phong: '', pham_vi: 'PHONG',
   loai_dau_viec: 'TIEN_TRINH', ngay_bat_dau: '', han_hoan_thanh: '',
   lien_phong: false, cac_phong_tham_gia: [],
@@ -76,6 +84,7 @@ export function Ct2CreateDialog({ open, phongId, phongs, nhanSu, cycleId, laLanh
   const { profileId } = useAuth();
   const { data: chienDichs = [] } = useCt2ChienDich();
   const [f, setF] = useState<Ct2FormTao>(FORM_TRONG);
+  const [tieuDeDeXuat, setTieuDeDeXuat] = useState('');
   const [lyDoDeXuat, setLyDoDeXuat] = useState('');
   const [dangGui, setDangGui] = useState(false);
   const [truongDo, setTruongDo] = useState<string | null>(null);
@@ -84,21 +93,23 @@ export function Ct2CreateDialog({ open, phongId, phongs, nhanSu, cycleId, laLanh
     if (!open) return;
     const phong = phongId ?? '';
     const truongPhong = phongs.find((p) => p.id === phong)?.manager_id ?? '';
-    const homNay = new Date().toISOString().slice(0, 10);
     setF({
       ...FORM_TRONG,
       phong,
-      tieu_de: deXuat?.tieu_de ?? '',
+      // Đề xuất của cán bộ: điền sẵn tên việc vào đúng dòng đầu của ô gộp
+      mo_ta: deXuat ? datPhanMoTa(CT2_MAU_MO_TA, 'tieu_de', deXuat.tieu_de) : CT2_MAU_MO_TA,
       // Mặc định lãnh đạo theo dõi = Trưởng phòng (đặc tả 2.3)
       lanh_dao_theo_doi: truongPhong,
-      ngay_bat_dau: homNay,
+      ngay_bat_dau: new Date().toISOString().slice(0, 10),
     });
+    setTieuDeDeXuat('');
     setLyDoDeXuat('');
     setTruongDo(null);
   }, [open, phongId, phongs, deXuat]);
 
   const thieu = useMemo(() => kiemTraCongA(f), [f]);
   const { du, tong } = useMemo(() => demTruongCongA(f), [f]);
+  const phan = useMemo(() => tachMoTaGop(f.mo_ta), [f.mo_ta]);
   const nguoiTrongPhong = useMemo(
     () => nhanSu.filter((n) => n.department_id === f.phong || f.cac_phong_tham_gia.includes(n.department_id ?? '')),
     [nhanSu, f.phong, f.cac_phong_tham_gia],
@@ -106,21 +117,21 @@ export function Ct2CreateDialog({ open, phongId, phongs, nhanSu, cycleId, laLanh
 
   const cuonToi = (truong: string) => {
     setTruongDo(truong);
-    document.getElementById(`ct2-f-${truong}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    document.getElementById(`ct2-f-${truong}`)?.focus();
+    const o = document.getElementById(`ct2-f-${truong}`);
+    o?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    o?.focus();
   };
 
   const dat = <K extends keyof Ct2FormTao>(k: K, v: Ct2FormTao[K]) => setF((c) => ({ ...c, [k]: v }));
   const vienDo = (truong: string) =>
     truongDo === truong && thieu.some((t) => t.truong === truong) ? 'border-red-500 ring-1 ring-red-300' : '';
 
-  // Chế độ cán bộ: đề xuất 2 trường
   const guiDeXuat = async () => {
     if (!profileId || !phongId) return;
     setDangGui(true);
     const { error } = await ct2TaoDeXuat({
       phong: phongId,
-      tieu_de: locEmojiTieuDe(f.tieu_de),
+      tieu_de: locEmojiTieuDe(tieuDeDeXuat),
       ly_do: lyDoDeXuat.trim(),
       nguoi_de_xuat: profileId,
     });
@@ -133,15 +144,17 @@ export function Ct2CreateDialog({ open, phongId, phongs, nhanSu, cycleId, laLanh
   const taoDauViec = async () => {
     if (!profileId || thieu.length > 0) return;
     setDangGui(true);
+    // Dòng «Để phục vụ» khớp tên một chiến dịch đang chạy → gắn luôn vào chiến dịch đó
+    const cd = chienDichs.find((c) => c.ten.trim() === phan.muc_tieu_lien_ket.trim());
     const { error, id } = await ct2TaoDauViec({
       cycle_id: cycleId,
-      chien_dich_id: chienDichs.some((c) => c.id === f.muc_tieu_lien_ket) ? f.muc_tieu_lien_ket : null,
-      tieu_de: locEmojiTieuDe(f.tieu_de),
-      ket_qua_dau_ra: f.ket_qua_dau_ra.trim(),
-      muc_tieu_lien_ket: chienDichs.find((c) => c.id === f.muc_tieu_lien_ket)?.ten ?? f.muc_tieu_lien_ket,
-      cach_lam: f.cach_lam.trim(),
-      chi_tieu_dinh_luong: f.co_chi_tieu_so ? Number(f.chi_tieu_dinh_luong) : null,
-      don_vi: f.co_chi_tieu_so ? f.don_vi.trim() : null,
+      chien_dich_id: cd?.id ?? null,
+      tieu_de: locEmojiTieuDe(phan.tieu_de),
+      ket_qua_dau_ra: phan.ket_qua_dau_ra,
+      muc_tieu_lien_ket: phan.muc_tieu_lien_ket,
+      cach_lam: phan.cach_lam,
+      chi_tieu_dinh_luong: phan.chi_tieu_so,
+      don_vi: phan.don_vi || null,
       nguoi_chiu_trach_nhiem: f.nguoi_chiu_trach_nhiem,
       lanh_dao_theo_doi: f.lanh_dao_theo_doi,
       phong: f.phong,
@@ -179,7 +192,7 @@ export function Ct2CreateDialog({ open, phongId, phongs, nhanSu, cycleId, laLanh
           <div className="space-y-3">
             <div>
               <Label htmlFor="ct2-dx-tieude">Tên việc đề xuất (≥ 10 ký tự)</Label>
-              <Input id="ct2-dx-tieude" value={f.tieu_de} onChange={(e) => dat('tieu_de', e.target.value)}
+              <Input id="ct2-dx-tieude" value={tieuDeDeXuat} onChange={(e) => setTieuDeDeXuat(e.target.value)}
                 placeholder="VD: Rà soát lại danh mục khách hàng CASA ngủ đông" />
             </div>
             <div>
@@ -189,7 +202,7 @@ export function Ct2CreateDialog({ open, phongId, phongs, nhanSu, cycleId, laLanh
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={onClose}>Đóng</Button>
-            <Button onClick={guiDeXuat} disabled={dangGui || f.tieu_de.trim().length < 10 || lyDoDeXuat.trim().length < 10}>
+            <Button onClick={guiDeXuat} disabled={dangGui || tieuDeDeXuat.trim().length < 10 || lyDoDeXuat.trim().length < 10}>
               {dangGui ? 'Đang gửi…' : 'Gửi đề xuất'}
             </Button>
           </DialogFooter>
@@ -203,41 +216,58 @@ export function Ct2CreateDialog({ open, phongId, phongs, nhanSu, cycleId, laLanh
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{deXuat ? `Duyệt đề xuất: bổ sung 5W2H` : 'Tạo đầu việc (5W2H)'}</DialogTitle>
+          <DialogTitle>{deXuat ? 'Duyệt đề xuất: bổ sung 5W2H' : 'Tạo đầu việc (5W2H)'}</DialogTitle>
           <DialogDescription>
             {deXuat
-              ? `Đề xuất của cán bộ: «${deXuat.ly_do}». Bổ sung đủ 5W2H rồi tạo — thẻ mới xuất hiện trên Kanban.`
-              : 'Đủ 100% trường bắt buộc thì nút Tạo mới sáng. Việc giao rõ ràng ngay từ đầu đỡ hỏi lại về sau.'}
+              ? `Đề xuất của cán bộ: «${deXuat.ly_do}». Bổ sung nốt các dòng còn trống rồi tạo — thẻ mới xuất hiện trên Kanban.`
+              : 'Gõ liền một mạch trong ô dưới, mỗi dòng một ý. Đủ các dòng bắt buộc thì nút Tạo mới sáng.'}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* What */}
+          {/* Ô GỘP: What · What · Why · How · How much */}
           <div>
-            <Label htmlFor="ct2-f-tieu_de">What — Tên đầu việc (≥ 10 ký tự, không tên chung chung)</Label>
-            <Input id="ct2-f-tieu_de" className={vienDo('tieu_de')} value={f.tieu_de}
-              onChange={(e) => dat('tieu_de', e.target.value)}
-              placeholder="VD: Hoàn thiện hồ sơ TSBĐ khách hàng Minh Long trước 20/08" />
-          </div>
-          <div>
-            <Label htmlFor="ct2-f-ket_qua_dau_ra">What — Kết quả đầu ra («làm xong thì có cái gì?»)</Label>
-            <Input id="ct2-f-ket_qua_dau_ra" className={vienDo('ket_qua_dau_ra')} value={f.ket_qua_dau_ra}
-              onChange={(e) => dat('ket_qua_dau_ra', e.target.value)}
-              placeholder="VD: Bộ hồ sơ TSBĐ đã đăng ký GDBĐ, đủ điều kiện giải ngân" />
+            <Label htmlFor="ct2-f-mo_ta">Nội dung đầu việc — giữ nguyên nhãn đầu dòng, gõ tiếp sau dấu hai chấm</Label>
+            <Textarea
+              id="ct2-f-mo_ta"
+              className={`mt-1 min-h-[190px] font-mono text-sm leading-relaxed ${vienDo('mo_ta')}`}
+              value={f.mo_ta}
+              onChange={(e) => dat('mo_ta', e.target.value)}
+              spellCheck={false}
+            />
+            <div className="mt-1.5 space-y-0.5">
+              {CT2_NHAN_MO_TA.map((n) => (
+                <p key={n.khoa} className="text-2xs leading-snug text-slate-500">
+                  <span className="font-semibold text-slate-600">{n.nhan}:</span> {n.goi_y}
+                </p>
+              ))}
+            </div>
           </div>
 
-          {/* Why */}
+          {/* Chip chọn nhanh cho dòng «Để phục vụ» — 1 chạm thay cho gõ tay */}
           <div>
-            <Label htmlFor="ct2-f-muc_tieu_lien_ket">Why — Gắn với chiến dịch / nhóm chỉ tiêu</Label>
-            <Select value={f.muc_tieu_lien_ket} onValueChange={(v) => dat('muc_tieu_lien_ket', v)}>
-              <SelectTrigger id="ct2-f-muc_tieu_lien_ket" className={vienDo('muc_tieu_lien_ket')}>
-                <SelectValue placeholder="Chọn từ danh mục" />
-              </SelectTrigger>
-              <SelectContent>
-                {chienDichs.map((c) => <SelectItem key={c.id} value={c.id}>🤝 {c.ten}</SelectItem>)}
-                {DANH_MUC_MUC_TIEU.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Label className="text-xs text-slate-600">Chọn nhanh mục tiêu (ghi vào dòng «Để phục vụ»)</Label>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {[...chienDichs.map((c) => ({ ten: `🤝 ${c.ten}`, gia: c.ten })),
+                ...DANH_MUC_MUC_TIEU.map((m) => ({ ten: m, gia: m }))].map((m) => {
+                const dangChon = phan.muc_tieu_lien_ket.trim() === m.gia;
+                return (
+                  <button
+                    key={m.gia}
+                    type="button"
+                    onClick={() => dat('mo_ta', datPhanMoTa(f.mo_ta, 'muc_tieu_lien_ket', m.gia))}
+                    className={`rounded-full border px-2.5 py-1 text-xs transition ${
+                      dangChon
+                        ? 'border-brand-navy bg-brand-navy text-white'
+                        : 'border-slate-200 bg-white text-slate-700 hover:border-brand-navy/40'
+                    }`}
+                  >
+                    {dangChon && <Check className="mr-0.5 inline h-3 w-3" />}
+                    {m.ten}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Who */}
@@ -314,37 +344,6 @@ export function Ct2CreateDialog({ open, phongId, phongs, nhanSu, cycleId, laLanh
             </div>
           </div>
 
-          {/* How */}
-          <div>
-            <Label htmlFor="ct2-f-cach_lam">How — Cách làm, các bước triển khai (≥ 30 ký tự)</Label>
-            <Textarea id="ct2-f-cach_lam" className={vienDo('cach_lam')} rows={3} value={f.cach_lam}
-              onChange={(e) => dat('cach_lam', e.target.value)}
-              placeholder="B1 …; B2 …; B3 …" />
-          </div>
-
-          {/* How much */}
-          <div className="rounded-xl border border-slate-200 p-3">
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox checked={f.co_chi_tieu_so} onCheckedChange={(v) => dat('co_chi_tieu_so', v === true)} />
-              Việc có chỉ tiêu định lượng (How much)
-            </label>
-            {f.co_chi_tieu_so && (
-              <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                <div>
-                  <Label htmlFor="ct2-f-chi_tieu_dinh_luong">Con số</Label>
-                  <Input id="ct2-f-chi_tieu_dinh_luong" type="number" className={vienDo('chi_tieu_dinh_luong')}
-                    value={f.chi_tieu_dinh_luong} onChange={(e) => dat('chi_tieu_dinh_luong', e.target.value)}
-                    placeholder="VD: 12" />
-                </div>
-                <div>
-                  <Label htmlFor="ct2-f-don_vi">Đơn vị</Label>
-                  <Input id="ct2-f-don_vi" className={vienDo('don_vi')} value={f.don_vi}
-                    onChange={(e) => dat('don_vi', e.target.value)} placeholder="KH / tỷ đồng / hồ sơ" />
-                </div>
-              </div>
-            )}
-          </div>
-
           {/* Liên phòng */}
           <div className="rounded-xl border border-slate-200 p-3">
             <label className="flex items-center gap-2 text-sm">
@@ -370,21 +369,26 @@ export function Ct2CreateDialog({ open, phongId, phongs, nhanSu, cycleId, laLanh
           </div>
         </div>
 
-        {/* Thanh tiến độ hoàn thiện + danh sách trường thiếu (bấm để cuộn tới) */}
+        {/* Thanh tiến độ hoàn thiện + danh sách mục thiếu (bấm để cuộn tới ô) */}
         <div className="rounded-xl bg-slate-50 p-3">
           <div className="flex items-center gap-3">
             <Progress value={(du / tong) * 100} className="h-2 flex-1" />
-            <span className="text-xs font-semibold tabular-nums text-slate-600">{du}/{tong} trường</span>
+            <span className="text-xs font-semibold tabular-nums text-slate-600">{du}/{tong} mục</span>
           </div>
           {thieu.length > 0 && (
             <p className="mt-2 flex flex-wrap gap-1.5 text-xs text-slate-600">
               <span>Còn thiếu:</span>
               {thieu.map((t) => (
-                <button key={String(t.truong)} type="button" onClick={() => cuonToi(String(t.truong))}
+                <button key={`${t.truong}-${t.ten}`} type="button" onClick={() => cuonToi(t.truong)}
                   className="rounded-full bg-red-100 px-2 py-0.5 font-medium text-red-700 hover:bg-red-200">
                   {t.ten}{t.ly_do ? ` (${t.ly_do})` : ''}
                 </button>
               ))}
+            </p>
+          )}
+          {thieu.length === 0 && phan.chi_tieu_so !== null && (
+            <p className="mt-2 text-xs text-emerald-700">
+              Chỉ tiêu ghi nhận: <b>{phan.chi_tieu_so} {phan.don_vi}</b>
             </p>
           )}
         </div>
