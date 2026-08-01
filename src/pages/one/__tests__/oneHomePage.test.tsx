@@ -86,8 +86,10 @@ describe('Trang chủ BHY ONE', () => {
     expect(screen.getAllByText(/Vun Gốc Bền Rễ/).length).toBeGreaterThan(0);
     expect(screen.getByText('Bắc Hưng Yên Ways')).toBeInTheDocument();
     expect(screen.getByText('Bộ 3 Chiêu thức')).toBeInTheDocument();
-    // Chỉ giới thiệu rồi dẫn đi, không nhúng công cụ vào trang chủ
-    expect(screen.getByText('Xem toàn bộ hệ sinh thái')).toBeInTheDocument();
+    // Đây là nơi DUY NHẤT giới thiệu hệ sinh thái — nêu nguyên văn câu định vị
+    expect(screen.getByText(/hệ sinh thái các phương thức, công cụ và cơ chế quản trị/i)).toBeInTheDocument();
+    // Không còn trang giới thiệu riêng để dẫn sang
+    expect(screen.queryByText('Xem toàn bộ hệ sinh thái')).not.toBeInTheDocument();
   });
 
   it('khách đối tác KHÔNG thấy khối việc cá nhân và thao tác nhanh', () => {

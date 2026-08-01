@@ -262,9 +262,9 @@ chỉnh lại như sau (đã triển khai):
 | # | Tab | Đường dẫn | Vai trò |
 |---|---|---|---|
 | 1 | **Trang chủ** | `/one` | Việc của tôi + giới thiệu bản sắc và hệ sinh thái |
-| 2 | **Bắc Hưng Yên Ways** | `/one/bhy-ways` | Hệ sinh thái 6 thương hiệu có tính năng |
+| 2 | **Bắc Hưng Yên Ways** | *(nhóm menu)* | Bấm là bung thẳng 6 thương hiệu |
 | 3 | **Chiêu thức 2** | `/one/chieu-thuc-2` | Kế hoạch hành động Chi nhánh (5W2H + PDCA) |
-| 4 | **Phát triển nhân sự 343** | phân hệ | Chiêu thức 3 — giữ nguyên như cũ |
+| 4 | **Chiêu thức 3 - Phát triển nhân sự** | phân hệ | Nội dung nghiệp vụ giữ nguyên như cũ |
 | 5 | **Quản trị người dùng** | phân hệ | Admin, giữ nguyên |
 
 ### Những thay đổi cụ thể
@@ -272,15 +272,28 @@ chỉnh lại như sau (đã triển khai):
 - **Trang «Nguồn cội & Bản sắc» đã GỘP vào Trang chủ.** Cổng chỉ còn một cửa vào;
   phần bản sắc (20 năm, Cây ký ức) nằm ngay dưới khối việc của tôi. Trang chủ từ
   đây chỉ *giới thiệu* rồi dẫn sang trang riêng — không nhúng form hay dữ liệu.
-- **«Bắc Hưng Yên Ways»** là tên chính thức của hệ sinh thái. Câu định vị:
+- **«Bắc Hưng Yên Ways» là một NHÓM MENU, không phải một trang.** Bấm vào tên nhóm
+  trên thanh điều hướng là bung ngay 6 thương hiệu; mỗi mục dẫn thẳng tới nơi làm
+  việc thật. KHÔNG dựng trang giới thiệu riêng vì Trang chủ đã giới thiệu đủ —
+  thêm một trang nữa chỉ là lặp lại chính nó. Câu định vị (đặt trên Trang chủ):
   > Bắc Hưng Yên Ways là hệ sinh thái các phương thức, công cụ và cơ chế quản trị
   > được VietinBank Bắc Hưng Yên xây dựng, áp dụng và liên tục cải tiến nhằm phát
   > triển tri thức, thúc đẩy sáng kiến, tăng cường kết nối, kiểm soát rủi ro và
   > ghi nhận những đóng góp xứng đáng.
 
-  Sáu thương hiệu bên dưới: Sharing · Quizzi · Ideas · Connect · Sao Xứng Đáng ·
-  Credit 360. Riêng **Connect** chưa có công cụ trực tuyến — trang nói thẳng điều
-  đó thay vì dựng nút dẫn tới trang trống.
+  Sáu mục con và đích đến:
+
+  | Mục con | Dẫn tới |
+  |---|---|
+  | Bắc Hưng Yên Sharing | `/one/hoc-hoi` — kho tri thức |
+  | Bắc Hưng Yên Quizzi | `/quizzi` |
+  | Bắc Hưng Yên Ideas | `/one/y-tuong` |
+  | Bắc Hưng Yên Connect | `/one/bhy-connect` — trang nội dung riêng |
+  | Sao Xứng Đáng | `/one/ghi-nhan` |
+  | Bắc Hưng Yên Credit 360 | `/one/credit-360` |
+
+  Năm mục đầu và cuối dẫn thẳng tới công cụ thật. Riêng **Connect** là chuỗi hội
+  nghị, không có màn hình nghiệp vụ, nên có trang nội dung của riêng nó.
 - **«Bắc Hưng Yên 3806»** là tên bộ khung năng lực: **38** kỹ năng lõi + **06**
   nhóm thái độ. Đây là trang *chỉ giới thiệu* (`/one/bhy-3806`), nằm trong phân hệ
   Phát triển nhân sự. Nơi làm việc thật (tự chấm, duyệt phiếu, IDP) vẫn ở phân hệ
@@ -289,8 +302,16 @@ chỉnh lại như sau (đã triển khai):
   động của cả Chi nhánh (xem mục dưới).
 - **Chiêu thức 1** (Năng lượng ngày mới) là nếp sinh hoạt hằng ngày, không có màn
   hình riêng — chỉ giới thiệu trên Trang chủ.
+- **Thứ tự tab trên điện thoại** (khai bằng `mobileOrder`, không suy ra từ khu bố
+  cục vì Chiêu thức 3 là phân hệ chuyên sâu): Trang chủ → Bắc Hưng Yên Ways →
+  Chiêu thức 3 → Chiêu thức 2 → Thêm. Chạm vào «Bắc Hưng Yên Ways» thì bung danh
+  sách 6 mục con ngay tại chỗ, không rời trang.
+- **Ba tầng menu có ba ngôn ngữ thị giác khác nhau**: tab mẹ là chữ đậm có gạch
+  chân trượt; mục con trong bảng bung xuống nhạt hơn và có tiêu đề nêu rõ thuộc
+  khu nào; trong tấm menu điện thoại, khu là dòng đậm còn mục con thụt vào sau một
+  vạch dọc.
 - Link cũ đều chuyển hướng, không gãy bookmark: `/one/nguon-coi`, `/one/dac-trung`,
-  `/one/chieu-thuc` → `/one`; `/one/sang-kien` → `/one/bhy-ways`.
+  `/one/chieu-thuc` → `/one`; `/one/sang-kien` và `/one/bhy-ways` → `/one/y-tuong`.
 
 ### Kanban kế hoạch hành động Chi nhánh (Chiêu thức 2)
 

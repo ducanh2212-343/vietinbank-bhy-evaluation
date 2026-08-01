@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import OneWaysPage from '../OneWaysPage';
+import OneConnectPage from '../OneConnectPage';
 import One3806Page from '../One3806Page';
 import OneMove2Page from '../OneMove2Page';
 
@@ -55,42 +55,14 @@ function dung(ui: React.ReactElement, path = '/one') {
   );
 }
 
-describe('Trang Bắc Hưng Yên Ways', () => {
+describe('Trang Bắc Hưng Yên Connect', () => {
   beforeEach(() => { mockAuth.isGuest = false; mockAuth.isManager = false; });
 
-  it('dựng được và nêu đúng câu định vị chính thức', () => {
-    dung(<OneWaysPage />, '/one/bhy-ways');
-    expect(screen.getAllByText(/Bắc Hưng Yên Ways/).length).toBeGreaterThan(0);
-    expect(screen.getByText(/hệ sinh thái các phương thức, công cụ và cơ chế quản trị/i)).toBeInTheDocument();
-  });
-
-  it('có đúng 6 tab con, đúng thứ tự Chi nhánh chốt', () => {
-    dung(<OneWaysPage />, '/one/bhy-ways');
-    const khay = screen.getByRole('tablist', { name: /Các thương hiệu trong Bắc Hưng Yên Ways/ });
-    expect(within(khay).getAllByRole('tab').map((t) => t.textContent?.trim())).toEqual([
-      'Bắc Hưng Yên Sharing',
-      'Bắc Hưng Yên Quizzi',
-      'Bắc Hưng Yên Ideas',
-      'Bắc Hưng Yên Connect',
-      'Sao Xứng Đáng',
-      'Bắc Hưng Yên Credit 360',
-    ]);
-  });
-
-  it('KHÔNG lặp lại phần giới thiệu ngắn đã có ở Trang chủ', () => {
-    // Trang chủ đã có dải 6 thẻ tóm tắt; vào đây là để xem chi tiết từng phương
-    // thức, không phải đọc lại cùng một đoạn mô tả.
-    dung(<OneWaysPage />, '/one/bhy-ways');
-    expect(screen.queryByText('Xem toàn bộ hệ sinh thái')).not.toBeInTheDocument();
-    expect(screen.queryByText(/Sinh hoạt chia sẻ kinh nghiệm nghiệp vụ định kỳ/)).not.toBeInTheDocument();
-  });
-
-  it('đổi tab con thì ghi vào địa chỉ để gửi link cho nhau mở đúng chỗ', async () => {
-    dung(<OneWaysPage />, '/one/bhy-ways');
-    const khay = screen.getByRole('tablist', { name: /Các thương hiệu trong Bắc Hưng Yên Ways/ });
-    const tabSao = within(khay).getByRole('tab', { name: /Sao Xứng Đáng/ });
-    fireEvent.click(tabSao);
-    expect(tabSao).toHaveAttribute('aria-selected', 'true');
+  it('dựng được — Connect không có màn hình nghiệp vụ nên đây là nhà của nó', () => {
+    // Năm thương hiệu còn lại dẫn thẳng tới công cụ thật; riêng Connect cần trang
+    // này, nếu không mục menu sẽ trỏ vào khoảng không.
+    dung(<OneConnectPage />, '/one/bhy-connect');
+    expect(screen.getAllByText(/Connect/i).length).toBeGreaterThan(0);
   });
 });
 

@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useMyFullName } from '@/components/one/useMyFullName';
 import { useStarRecords } from '@/components/one/star/useStarRecords';
 import { useAdminEditable, EditableText } from '@/components/one/AdminEditableContext';
-import { BHY_WAYS } from '@/data/one/bhyWays';
+import { BHY_WAYS, BHY_WAYS_DINH_NGHIA } from '@/data/one/bhyWays';
 import { BO_3_CHIEU_THUC } from '@/data/one/chieuThuc';
 import { MOVE3_ATTITUDES, MOVE3_SKILL_GROUPS } from '@/data/one/move3Data';
 
@@ -172,20 +172,14 @@ function HomeContent() {
       {/* 3. BẮC HƯNG YÊN WAYS — chỉ giới thiệu, dẫn sang trang riêng          */}
       {/* ------------------------------------------------------------------ */}
       <section className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="text-2xl font-bold uppercase tracking-tight text-brand-navy">Bắc Hưng Yên Ways</h2>
-            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-600">
-              Hệ sinh thái các phương thức, công cụ và cơ chế quản trị của Chi nhánh — phát triển tri
-              thức, thúc đẩy sáng kiến, tăng cường kết nối, kiểm soát rủi ro và ghi nhận xứng đáng.
-            </p>
-          </div>
-          <Link
-            to="/one/bhy-ways"
-            className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-brand-navy hover:text-brand-royal"
-          >
-            Xem toàn bộ hệ sinh thái <ArrowRight className="h-4 w-4" />
-          </Link>
+        {/* Đây là nơi DUY NHẤT giới thiệu hệ sinh thái. Không dựng thêm trang
+            giới thiệu riêng — trên thanh menu, "Bắc Hưng Yên Ways" bấm vào là bung
+            thẳng 6 thương hiệu, mỗi mục dẫn tới nơi làm việc thật. */}
+        <div className="mb-6 max-w-3xl">
+          <h2 className="text-2xl font-bold uppercase tracking-tight text-brand-navy">Bắc Hưng Yên Ways</h2>
+          <p className="mt-2 text-sm leading-relaxed text-slate-600">
+            <EditableText id="ways.dinh_nghia" defaultVal={BHY_WAYS_DINH_NGHIA} multiline as="span" />
+          </p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

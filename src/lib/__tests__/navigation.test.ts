@@ -61,20 +61,36 @@ describe('Cấu trúc cây điều hướng', () => {
       'Trang chủ',
       'Bắc Hưng Yên Ways',
       'Chiêu thức 2',
-      'Phát triển nhân sự 343',
+      'Chiêu thức 3 - Phát triển nhân sự',
       'Quản trị người dùng',
     ]);
   });
 
-  it('Bắc Hưng Yên Ways chứa đúng các thương hiệu có tính năng', () => {
-    const ways = filterSections(NAV_SECTIONS, quanTri).find((s) => s.id === 'bhy-ways')!;
+  it('Bắc Hưng Yên Ways là NHÓM MENU thuần, không phải một trang', () => {
+    // Bấm vào là bung ngay 6 thương hiệu; không có trang giới thiệu riêng vì
+    // Trang chủ đã giới thiệu đủ.
+    const ways = NAV_SECTIONS.find((s) => s.id === 'bhy-ways')!;
+    expect(ways.path).toBeUndefined();
     expect(leavesOf(ways).map((l) => l.label)).toEqual([
-      'Giới thiệu hệ sinh thái',
       'Bắc Hưng Yên Sharing',
       'Bắc Hưng Yên Quizzi',
       'Bắc Hưng Yên Ideas',
+      'Bắc Hưng Yên Connect',
       'Sao Xứng Đáng',
       'Bắc Hưng Yên Credit 360',
+    ]);
+  });
+
+  it('mọi mục con của Ways đều dẫn thẳng tới nơi làm việc thật', () => {
+    const ways = NAV_SECTIONS.find((s) => s.id === 'bhy-ways')!;
+    expect(leavesOf(ways).map((l) => l.path)).toEqual([
+      '/one/hoc-hoi',
+      '/quizzi',
+      '/one/y-tuong',
+      // Connect không có màn hình nghiệp vụ nên có trang riêng của nó
+      '/one/bhy-connect',
+      '/one/ghi-nhan',
+      '/one/credit-360',
     ]);
   });
 
@@ -164,9 +180,9 @@ describe('Phân quyền menu — khóa hành vi của bản cũ', () => {
 });
 
 describe('Tra vị trí trang trên cây', () => {
-  it('chọn mục khớp cụ thể nhất — /one không giành mất /one/bhy-ways', () => {
-    const viTri = resolveLocation('/one/bhy-ways');
-    expect(viTri.leaf?.path).toBe('/one/bhy-ways');
+  it('chọn mục khớp cụ thể nhất — /one không giành mất /one/bhy-connect', () => {
+    const viTri = resolveLocation('/one/bhy-connect');
+    expect(viTri.leaf?.path).toBe('/one/bhy-connect');
     expect(viTri.section?.id).toBe('bhy-ways');
   });
 
@@ -211,7 +227,7 @@ describe('Mọi route khai trong App.tsx đều tra được trên cây', () => 
     // Route chuyển hướng và trang ngoài khung đăng nhập không thuộc cây menu
     .filter((p) => !['/dang-nhap', '/dang-ky-tai-khoan', '/quen-mat-khau', '/dat-lai-mat-khau', '/unsubscribe'].includes(p))
     // Route chỉ để chuyển hướng — không phải mục menu
-    .filter((p) => !['/one/dac-trung', '/one/chieu-thuc', '/one/kho-du-lieu', '/one/nguon-coi', '/one/sang-kien'].includes(p));
+    .filter((p) => !['/one/dac-trung', '/one/chieu-thuc', '/one/kho-du-lieu', '/one/nguon-coi', '/one/sang-kien', '/one/bhy-ways'].includes(p));
 
   it('tìm được ít nhất 60 route để kiểm', () => {
     expect(duongDan.length).toBeGreaterThan(60);
@@ -247,10 +263,11 @@ describe('So khớp tiếng Việt cho bảng lệnh', () => {
 });
 
 describe('Không trang nào thành mồ côi', () => {
-  it('link cũ /one/sang-kien nay thuộc trang giới thiệu Bắc Hưng Yên Ways', () => {
-    // Route thật đã chuyển hướng sang /one/bhy-ways; đây là lớp tra ngược cho
-    // breadcrumb và tô sáng mục, để bookmark cũ không rơi vào khoảng trắng.
-    expect(resolveLocation('/one/sang-kien').leaf?.path).toBe('/one/bhy-ways');
+  it('link cũ /one/sang-kien và /one/bhy-ways nay dẫn về BHY Ideas', () => {
+    // Route thật đã chuyển hướng; đây là lớp tra ngược cho breadcrumb và tô sáng
+    // mục, để bookmark cũ không rơi vào khoảng trắng.
+    expect(resolveLocation('/one/sang-kien').leaf?.path).toBe('/one/y-tuong');
+    expect(resolveLocation('/one/bhy-ways').leaf?.path).toBe('/one/y-tuong');
     expect(moiDuongDan(canBoThuong)).toContain('/one/y-tuong');
   });
 
@@ -273,7 +290,7 @@ describe('Không trang nào thành mồ côi', () => {
 describe('Cờ tràn viền quyết định khoảng đệm của khung', () => {
   // Trang bọc trong OnePageShell tự dựng nền + dải hero nên khung không thêm
   // khoảng đệm; MỌI trang còn lại phải nhận khoảng đệm, kể cả route lạ.
-  const traVien = ['/one', '/one/bhy-ways', '/one/hoc-hoi', '/one/y-tuong', '/one/credit-360', '/one/ghi-nhan', '/one/chieu-thuc-2', '/one/bhy-3806'];
+  const traVien = ['/one', '/one/bhy-connect', '/one/hoc-hoi', '/one/y-tuong', '/one/credit-360', '/one/ghi-nhan', '/one/chieu-thuc-2', '/one/bhy-3806'];
 
   it.each(traVien)('%s là trang tràn viền', (path) => {
     expect(resolveLocation(path).leaf?.bleed).toBe(true);

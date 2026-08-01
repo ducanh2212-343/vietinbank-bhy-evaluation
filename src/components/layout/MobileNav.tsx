@@ -5,7 +5,7 @@ import { Drawer, DrawerContent, DrawerTitle, DrawerTrigger } from '@/components/
 import { useAuth } from '@/hooks/useAuth';
 import { useNavTree } from '@/hooks/useNavTree';
 import { NoiDungMenuPhanHe } from '@/components/layout/WorkspaceSidebar';
-import { isFolder, matchesLeaf, leavesOf } from '@/lib/navigation';
+import { isFolder, matchesLeaf, leavesOf, type NavSection } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
 
 /**
@@ -24,9 +24,14 @@ export function MobileNav() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [moMenu, setMoMenu] = useState(false);
+  // Khu đang bung danh sách con ngay trên thanh tab (khu không dẫn tới trang nào)
+  const [khuMo, setKhuMo] = useState<NavSection | null>(null);
 
-  // Đổi trang thì đóng tấm menu
-  useEffect(() => setMoMenu(false), [pathname]);
+  // Đổi trang thì đóng cả tấm menu lẫn danh sách con
+  useEffect(() => {
+    setMoMenu(false);
+    setKhuMo(null);
+  }, [pathname]);
 
   // Thứ tự trên thanh tab do `mobileOrder` quyết định, KHÔNG theo khu bố cục:
   // Chi nhánh muốn Trang chủ → Bắc Hưng Yên Ways → Chiêu thức 3 → Chiêu thức 2,
@@ -52,22 +57,46 @@ export function MobileNav() {
         <ul className="flex items-stretch">
           {tabs.map((section) => {
             const dangXem = leavesOf(section).some((l) => matchesLeaf(pathname, l));
-            const dich = section.path ?? leavesOf(section)[0]?.path ?? '/one';
+            const noiDung = (
+              <>
+                <section.icon className={cn('h-[22px] w-[22px] shrink-0', dangXem && 'stroke-[2.25]')} />
+                <span className="w-full truncate text-center text-[10px] font-medium leading-tight">
+                  {section.shortLabel ?? section.label}
+                </span>
+              </>
+            );
+            const lop = cn(
+              'flex min-h-[52px] w-full flex-col items-center justify-center gap-0.5 px-1 py-1.5 transition-colors duration-fast',
+              dangXem ? 'text-primary' : 'text-muted-foreground active:bg-muted',
+            );
+
+            // Khu không dẫn tới trang nào (VD Bắc Hưng Yên Ways) thì chạm vào là
+            // bung ngay danh sách con — không đá người dùng sang một trang bất kỳ.
+            if (!section.path) {
+              return (
+                <li key={section.id} className="min-w-0 flex-1">
+                  <button
+                    type="button"
+                    aria-haspopup="dialog"
+                    aria-expanded={khuMo?.id === section.id}
+                    onClick={() => setKhuMo(section)}
+                    className={lop}
+                  >
+                    {noiDung}
+                  </button>
+                </li>
+              );
+            }
+
             return (
               <li key={section.id} className="min-w-0 flex-1">
                 <NavLink
-                  to={dich}
+                  to={section.path}
                   end={section.end}
                   aria-current={dangXem ? 'page' : undefined}
-                  className={cn(
-                    'flex min-h-[52px] flex-col items-center justify-center gap-0.5 px-1 py-1.5 transition-colors duration-fast',
-                    dangXem ? 'text-primary' : 'text-muted-foreground active:bg-muted',
-                  )}
+                  className={lop}
                 >
-                  <section.icon className={cn('h-[22px] w-[22px] shrink-0', dangXem && 'stroke-[2.25]')} />
-                  <span className="w-full truncate text-center text-[10px] font-medium leading-tight">
-                    {section.shortLabel ?? section.label}
-                  </span>
+                  {noiDung}
                 </NavLink>
               </li>
             );
@@ -114,29 +143,35 @@ export function MobileNav() {
                       const khuDangXem = la.some((l) => matchesLeaf(pathname, l));
                       // Khu chỉ có đúng một trang thì chính nó là mục — không dựng thêm tầng con
                       const motTrang = la.length <= 1;
-                      return (
-                        <div key={section.id} className="mb-1.5">
-                          <NavLink
-                            to={section.path ?? la[0]?.path ?? '/one'}
-                            end={section.end}
+                      const tieuDe = (
+                        <>
+                          <span
+                            aria-hidden
                             className={cn(
-                              'flex min-h-[48px] items-center gap-3 rounded-xl px-2.5 py-2 transition-colors duration-fast',
-                              khuDangXem
-                                ? 'bg-primary/10 text-primary'
-                                : 'text-foreground active:bg-muted',
+                              'grid h-8 w-8 shrink-0 place-items-center rounded-lg',
+                              khuDangXem ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground',
                             )}
                           >
-                            <span
-                              aria-hidden
-                              className={cn(
-                                'grid h-8 w-8 shrink-0 place-items-center rounded-lg',
-                                khuDangXem ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground',
-                              )}
-                            >
-                              <section.icon className="h-[18px] w-[18px]" />
-                            </span>
-                            <span className="truncate text-[15px] font-semibold">{section.label}</span>
-                          </NavLink>
+                            <section.icon className="h-[18px] w-[18px]" />
+                          </span>
+                          <span className="truncate text-[15px] font-semibold">{section.label}</span>
+                        </>
+                      );
+                      const lopTieuDe = cn(
+                        'flex min-h-[48px] items-center gap-3 rounded-xl px-2.5 py-2 transition-colors duration-fast',
+                        khuDangXem ? 'bg-primary/10 text-primary' : 'text-foreground',
+                      );
+                      return (
+                        <div key={section.id} className="mb-1.5">
+                          {/* Khu không dẫn tới trang nào thì tiêu đề là chữ thuần —
+                              các mục con đã nằm ngay bên dưới, không cần bấm đi đâu */}
+                          {section.path ? (
+                            <NavLink to={section.path} end={section.end} className={cn(lopTieuDe, 'active:bg-muted')}>
+                              {tieuDe}
+                            </NavLink>
+                          ) : (
+                            <div className={lopTieuDe}>{tieuDe}</div>
+                          )}
 
                           {!motTrang && (
                             <ul className="ml-6 mt-0.5 space-y-0.5 border-l border-border pl-2.5">
@@ -210,6 +245,45 @@ export function MobileNav() {
           </li>
         </ul>
       </nav>
+
+      {/* Danh sách con của khu vừa chạm — bung tại chỗ, không rời trang */}
+      <Drawer open={!!khuMo} onOpenChange={(o) => !o && setKhuMo(null)}>
+        <DrawerContent className="max-h-[80dvh] md:hidden">
+          <DrawerTitle className="px-4 pb-1 pt-1 text-base font-semibold">
+            {khuMo?.label}
+          </DrawerTitle>
+          {khuMo?.desc && (
+            <p className="px-4 pb-2 text-sm leading-relaxed text-muted-foreground">{khuMo.desc}</p>
+          )}
+          <ul className="space-y-0.5 overflow-y-auto overscroll-contain px-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+            {khuMo && leavesOf(khuMo).map((leaf) => {
+              const dangXem = matchesLeaf(pathname, leaf);
+              return (
+                <li key={leaf.path}>
+                  <NavLink
+                    to={leaf.path}
+                    end={leaf.end}
+                    onClick={() => setKhuMo(null)}
+                    aria-current={dangXem ? 'page' : undefined}
+                    className={cn(
+                      'flex min-h-[48px] items-center gap-3 rounded-xl px-2.5 py-2 text-[15px] transition-colors duration-fast',
+                      dangXem ? 'bg-accent font-semibold text-accent-foreground' : 'active:bg-muted',
+                    )}
+                  >
+                    <span
+                      aria-hidden
+                      className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground"
+                    >
+                      <leaf.icon className="h-[18px] w-[18px]" />
+                    </span>
+                    <span className="truncate">{leaf.label}</span>
+                  </NavLink>
+                </li>
+              );
+            })}
+          </ul>
+        </DrawerContent>
+      </Drawer>
     </>
   );
 }

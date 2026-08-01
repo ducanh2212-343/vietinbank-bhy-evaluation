@@ -5,7 +5,7 @@ import {
   UserCheck, Sparkles, GraduationCap, ClipboardList, KeyRound, ListPlus,
   CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag, GitBranch,
   ListChecks, Building2, Gavel, TrendingUp, Zap, Lightbulb,
-  Home, BookOpen, Compass, Layers,
+  Home, BookOpen, Compass, Layers, Share2,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -140,27 +140,19 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    // Bắc Hưng Yên Ways là NHÓM MENU, không phải một trang: bấm vào là bung ngay
+    // 6 thương hiệu. Không dựng trang giới thiệu riêng vì Trang chủ đã giới thiệu
+    // đủ — thêm một trang nữa là lặp lại chính nó.
     id: 'bhy-ways',
-    mobileOrder: 2,
     label: 'Bắc Hưng Yên Ways',
     shortLabel: 'BHY Ways',
     icon: Compass,
     accent: '#0057B8',
     zone: 'portal',
-    path: '/one/bhy-ways',
+    mobileOrder: 2,
     guestVisible: true,
     desc: 'Hệ sinh thái các phương thức, công cụ và cơ chế quản trị của Chi nhánh',
     items: [
-      {
-        label: 'Giới thiệu hệ sinh thái',
-        icon: Compass,
-        path: '/one/bhy-ways',
-        guestVisible: true,
-        bleed: true,
-        keywords: ['bhy ways', 'he sinh thai', 'phuong thuc quan tri', 'gioi thieu'],
-        // Trang "Sáng kiến & Nghiệp vụ" cũ nay nằm trong hệ sinh thái này
-        extraPaths: ['/one/sang-kien'],
-      },
       // Sharing + Kho tri thức là MỘT không gian 2 tab (chung một kho dữ liệu)
       {
         label: 'Bắc Hưng Yên Sharing',
@@ -185,6 +177,17 @@ export const NAV_SECTIONS: NavSection[] = [
         path: '/one/y-tuong',
         bleed: true,
         keywords: ['y tuong', 'sang kien', 'cai tien', 'de xuat', 'ideas'],
+        // Trang "Sáng kiến & Nghiệp vụ" cũ đã gộp về đây
+        extraPaths: ['/one/sang-kien', '/one/bhy-ways'],
+      },
+      // Connect không có màn hình nghiệp vụ nên trang này chính là nhà của nó
+      {
+        label: 'Bắc Hưng Yên Connect',
+        icon: Share2,
+        path: '/one/bhy-connect',
+        guestVisible: true,
+        bleed: true,
+        keywords: ['connect', 'hoi nghi khach hang', 'ket noi', 'he sinh thai doanh nghiep'],
       },
       {
         label: 'Sao Xứng Đáng',
@@ -228,9 +231,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     id: 'hr-343',
     mobileOrder: 3,
-    label: 'Phát triển nhân sự 343',
-    // Chi nhánh gọi phân hệ này là "Chiêu thức 3" — dùng đúng ngôn ngữ đó ở chỗ
-    // chật (thanh tab điện thoại, bảng lệnh), giữ tên đầy đủ ở thanh ngang.
+    label: 'Chiêu thức 3 - Phát triển nhân sự',
     shortLabel: 'Chiêu thức 3',
     icon: UsersRound,
     accent: '#2DD4BF',

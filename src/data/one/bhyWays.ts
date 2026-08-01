@@ -5,12 +5,13 @@ import {
 /**
  * BẮC HƯNG YÊN WAYS — hệ sinh thái các phương thức quản trị của Chi nhánh.
  *
- * Một nguồn dữ liệu duy nhất cho: trang giới thiệu hệ sinh thái (/one/bhy-ways),
- * dải thẻ giới thiệu trên Trang chủ, và bảng lệnh ⌘K. Sửa ở đây là đổi cả ba nơi.
+ * Một nguồn dữ liệu duy nhất cho dải thẻ giới thiệu trên Trang chủ và cho nhóm
+ * menu "Bắc Hưng Yên Ways". KHÔNG có trang giới thiệu riêng: bấm vào tên nhóm
+ * trên thanh menu là bung thẳng 6 thương hiệu, mỗi mục dẫn tới nơi làm việc thật.
+ * Dựng thêm một trang giới thiệu nữa chỉ là lặp lại chính Trang chủ.
  *
- * Nguyên tắc «một chức năng một cửa»: thẻ ở đây CHỈ giới thiệu, `duongDan` trỏ
- * sang nơi làm việc thật. Thương hiệu chưa có công cụ riêng thì để `duongDan`
- * trống — không dựng nút dẫn đi đâu cả.
+ * Nguyên tắc «một chức năng một cửa»: `duongDan` luôn trỏ sang nơi làm việc thật.
+ * Riêng Connect không có màn hình nghiệp vụ nên có trang nội dung của riêng nó.
  */
 
 export interface WayItem {
@@ -78,6 +79,8 @@ export const BHY_WAYS: WayItem[] = [
       'giữa các phòng — nơi quan hệ được xây trước khi giao dịch bắt đầu.',
     icon: Share2,
     accent: '#0057B8',
+    duongDan: '/one/bhy-connect',
+    nhanNut: 'Tìm hiểu Connect',
   },
   {
     id: 'sao-xung-dang',
