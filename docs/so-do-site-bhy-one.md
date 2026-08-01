@@ -306,6 +306,16 @@ chỉnh lại như sau (đã triển khai):
   cục vì Chiêu thức 3 là phân hệ chuyên sâu): Trang chủ → Bắc Hưng Yên Ways →
   Chiêu thức 3 → Chiêu thức 2 → Thêm. Chạm vào «Bắc Hưng Yên Ways» thì bung danh
   sách 6 mục con ngay tại chỗ, không rời trang.
+- **Chạm một tab khu trên điện thoại thì bung TẤM giống hệt «Thêm», không phải đổ
+  danh sách phẳng.** Khu nào có thư mục con thì tấm đó dựng cây thu gọn (giống menu
+  dọc trên máy tính) chứ không liệt kê hết: Chiêu thức 3 có gần 50 mục trong 6 thư
+  mục, đổ phẳng ra là không ai đọc nổi trên màn hình điện thoại. Khu không có thư
+  mục (Bắc Hưng Yên Ways, 6 mục) vẫn liệt kê thẳng vì đã đủ ngắn. Ba bề mặt —
+  menu dọc máy tính, tấm «Thêm», tấm bung theo tab — dùng chung một component
+  `NoiDungKhu` nên cách bung mục con giống hệt nhau ở mọi nơi.
+- **Tấm «Thêm» chỉ chứa khu CHƯA có tab riêng.** Trước đây nó liệt kê lại cả những
+  khu đã nằm sẵn trên thanh tab, thành ra cùng một mục tới được bằng hai đường —
+  người dùng phải đoán xem hai lối đó có khác nhau không.
 - **Ba tầng menu có ba ngôn ngữ thị giác khác nhau**: tab mẹ là chữ đậm có gạch
   chân trượt; mục con trong bảng bung xuống nhạt hơn và có tiêu đề nêu rõ thuộc
   khu nào; trong tấm menu điện thoại, khu là dòng đậm còn mục con thụt vào sau một

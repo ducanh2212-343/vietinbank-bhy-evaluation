@@ -83,12 +83,29 @@ function ThuMuc({
   );
 }
 
-function NoiDungKhu({ section, onDieuHuong }: { section: NavSection; onDieuHuong?: () => void }) {
+/**
+ * Cây mục của MỘT khu, có thư mục thu gọn được.
+ *
+ * Dùng lại ở ba nơi để cách bung mục con giống hệt nhau: menu dọc trên máy tính,
+ * tấm «Thêm» toàn màn hình, và tấm bung ra khi chạm một tab khu trên điện thoại.
+ * `anTieuDe` dùng khi tên khu đã là tiêu đề của tấm bung ra — khỏi lặp hai lần.
+ */
+export function NoiDungKhu({
+  section,
+  onDieuHuong,
+  anTieuDe,
+}: {
+  section: NavSection;
+  onDieuHuong?: () => void;
+  anTieuDe?: boolean;
+}) {
   return (
     <div className="space-y-0.5">
-      <div className="px-2.5 pb-1 pt-3 text-2xs font-semibold uppercase tracking-wider text-sidebar-muted">
-        {section.label}
-      </div>
+      {!anTieuDe && (
+        <div className="px-2.5 pb-1 pt-3 text-2xs font-semibold uppercase tracking-wider text-sidebar-muted">
+          {section.label}
+        </div>
+      )}
       <ul className="space-y-0.5">
         {(section.items ?? []).map((entry) =>
           isFolder(entry) ? (
@@ -196,19 +213,6 @@ export function WorkspaceSidebar() {
           <NoiDungKhu key={section.id} section={section} />
         ))}
       </nav>
-    </>
-  );
-}
-
-/** Cùng nội dung, dùng lại trong tấm menu toàn màn hình của điện thoại. */
-export function NoiDungMenuPhanHe({ onDieuHuong }: { onDieuHuong?: () => void }) {
-  const { sections } = useNavTree();
-  const khuLamViec = sections.filter((s) => s.zone === 'workspace');
-  return (
-    <>
-      {khuLamViec.map((section) => (
-        <NoiDungKhu key={section.id} section={section} onDieuHuong={onDieuHuong} />
-      ))}
     </>
   );
 }

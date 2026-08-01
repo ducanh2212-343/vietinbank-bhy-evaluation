@@ -4,7 +4,7 @@ import { Menu, X, LogOut, User, KeyRound } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavTree } from '@/hooks/useNavTree';
-import { NoiDungMenuPhanHe } from '@/components/layout/WorkspaceSidebar';
+import { NoiDungKhu } from '@/components/layout/WorkspaceSidebar';
 import { isFolder, matchesLeaf, leavesOf, type NavSection } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
 
@@ -18,6 +18,11 @@ import { cn } from '@/lib/utils';
  * Tấm menu dùng vaul (Drawer) nên có sẵn bẫy tiêu điểm, đóng bằng Esc, khoá
  * cuộn nền và cử chỉ vuốt xuống — những thứ ngăn kéo tự chế của bản cũ đều thiếu.
  */
+/** Khu có thư mục con thì phải dựng cây thu gọn, không liệt kê phẳng. */
+function coThuMuc(section: NavSection): boolean {
+  return (section.items ?? []).some(isFolder);
+}
+
 export function MobileNav() {
   const { sections } = useNavTree();
   const { user, roles, isGuest, signOut } = useAuth();
@@ -41,7 +46,10 @@ export function MobileNav() {
     .filter((s) => s.mobileOrder !== undefined)
     .sort((a, b) => (a.mobileOrder ?? 99) - (b.mobileOrder ?? 99))
     .slice(0, 4);
-  const coKhuLamViec = sections.some((s) => s.zone === 'workspace');
+  // «Thêm» chỉ chứa phần CHƯA có trên thanh tab. Trước đây nó lặp lại nguyên cây
+  // Chiêu thức 3 (~49 mục) dù khu này đã có tab riêng — cuộn mãi không hết.
+  const idTrenThanh = new Set(tabs.map((s) => s.id));
+  const khuConLai = sections.filter((s) => !idTrenThanh.has(s.id));
 
   return (
     <>
@@ -134,46 +142,53 @@ export function MobileNav() {
                     </div>
                   </div>
 
-                  {/* Khu cổng — mỗi khu là một TAB MẸ in đậm, mục con thụt vào
-                      và nhạt hơn để hai tầng không lẫn vào nhau. */}
-                  {sections
-                    .filter((s) => s.zone === 'portal')
-                    .map((section) => {
-                      const la = leavesOf(section);
-                      const khuDangXem = la.some((l) => matchesLeaf(pathname, l));
-                      // Khu chỉ có đúng một trang thì chính nó là mục — không dựng thêm tầng con
-                      const motTrang = la.length <= 1;
-                      const tieuDe = (
-                        <>
-                          <span
-                            aria-hidden
-                            className={cn(
-                              'grid h-8 w-8 shrink-0 place-items-center rounded-lg',
-                              khuDangXem ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground',
-                            )}
-                          >
-                            <section.icon className="h-[18px] w-[18px]" />
-                          </span>
-                          <span className="truncate text-[15px] font-semibold">{section.label}</span>
-                        </>
-                      );
-                      const lopTieuDe = cn(
-                        'flex min-h-[48px] items-center gap-3 rounded-xl px-2.5 py-2 transition-colors duration-fast',
-                        khuDangXem ? 'bg-primary/10 text-primary' : 'text-foreground',
-                      );
-                      return (
-                        <div key={section.id} className="mb-1.5">
-                          {/* Khu không dẫn tới trang nào thì tiêu đề là chữ thuần —
-                              các mục con đã nằm ngay bên dưới, không cần bấm đi đâu */}
-                          {section.path ? (
-                            <NavLink to={section.path} end={section.end} className={cn(lopTieuDe, 'active:bg-muted')}>
-                              {tieuDe}
-                            </NavLink>
-                          ) : (
-                            <div className={lopTieuDe}>{tieuDe}</div>
-                          )}
+                  {khuConLai.length === 0 && (
+                    <p className="px-2.5 py-6 text-center text-sm text-muted-foreground">
+                      Mọi khu đều đã có trên thanh dưới đáy.
+                    </p>
+                  )}
 
-                          {!motTrang && (
+                  {khuConLai.map((section) => {
+                    const la = leavesOf(section);
+                    const khuDangXem = la.some((l) => matchesLeaf(pathname, l));
+                    const tieuDe = (
+                      <>
+                        <span
+                          aria-hidden
+                          className={cn(
+                            'grid h-8 w-8 shrink-0 place-items-center rounded-lg',
+                            khuDangXem ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground',
+                          )}
+                        >
+                          <section.icon className="h-[18px] w-[18px]" />
+                        </span>
+                        <span className="truncate text-[15px] font-semibold">{section.label}</span>
+                      </>
+                    );
+                    const lopTieuDe = cn(
+                      'flex min-h-[48px] items-center gap-3 rounded-xl px-2.5 py-2 transition-colors duration-fast',
+                      khuDangXem ? 'bg-primary/10 text-primary' : 'text-foreground',
+                    );
+
+                    return (
+                      <div key={section.id} className="mb-2">
+                        {/* Khu không dẫn tới trang nào thì tiêu đề là chữ thuần —
+                            các mục con đã nằm ngay bên dưới, không cần bấm đi đâu */}
+                        {section.path ? (
+                          <NavLink to={section.path} end={section.end} className={cn(lopTieuDe, 'active:bg-muted')}>
+                            {tieuDe}
+                          </NavLink>
+                        ) : (
+                          <div className={lopTieuDe}>{tieuDe}</div>
+                        )}
+
+                        {/* Khu nhiều tầng dựng cây thu gọn được; khu phẳng liệt kê thẳng */}
+                        {coThuMuc(section) ? (
+                          <div className="mt-1 rounded-2xl bg-sidebar px-2 pb-3 pt-1">
+                            <NoiDungKhu section={section} onDieuHuong={() => setMoMenu(false)} anTieuDe />
+                          </div>
+                        ) : (
+                          la.length > 1 && (
                             <ul className="ml-6 mt-0.5 space-y-0.5 border-l border-border pl-2.5">
                               {la.map((leaf) => {
                                 const dangXem = matchesLeaf(pathname, leaf);
@@ -197,17 +212,11 @@ export function MobileNav() {
                                 );
                               })}
                             </ul>
-                          )}
-                        </div>
-                      );
-                    })}
-
-                  {/* Phân hệ chuyên sâu — dùng lại đúng cây của menu dọc */}
-                  {coKhuLamViec && (
-                    <div className="mt-2 rounded-2xl bg-sidebar px-2 pb-3 pt-1">
-                      <NoiDungMenuPhanHe onDieuHuong={() => setMoMenu(false)} />
-                    </div>
-                  )}
+                          )
+                        )}
+                      </div>
+                    );
+                  })}
 
                   {/* Tài khoản — tách khỏi điều hướng, đăng xuất để riêng dưới cùng */}
                   <div className="mt-3 space-y-0.5 border-t border-border pt-3">
@@ -255,33 +264,44 @@ export function MobileNav() {
           {khuMo?.desc && (
             <p className="px-4 pb-2 text-sm leading-relaxed text-muted-foreground">{khuMo.desc}</p>
           )}
-          <ul className="space-y-0.5 overflow-y-auto overscroll-contain px-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-            {khuMo && leavesOf(khuMo).map((leaf) => {
-              const dangXem = matchesLeaf(pathname, leaf);
-              return (
-                <li key={leaf.path}>
-                  <NavLink
-                    to={leaf.path}
-                    end={leaf.end}
-                    onClick={() => setKhuMo(null)}
-                    aria-current={dangXem ? 'page' : undefined}
-                    className={cn(
-                      'flex min-h-[48px] items-center gap-3 rounded-xl px-2.5 py-2 text-[15px] transition-colors duration-fast',
-                      dangXem ? 'bg-accent font-semibold text-accent-foreground' : 'active:bg-muted',
-                    )}
-                  >
-                    <span
-                      aria-hidden
-                      className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground"
-                    >
-                      <leaf.icon className="h-[18px] w-[18px]" />
-                    </span>
-                    <span className="truncate">{leaf.label}</span>
-                  </NavLink>
-                </li>
-              );
-            })}
-          </ul>
+          <div className="overflow-y-auto overscroll-contain px-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+            {khuMo && coThuMuc(khuMo) ? (
+              /* Khu nhiều tầng (Chiêu thức 3 có tới 6 thư mục, ~49 mục): dựng cây
+                 thu gọn được y như tấm «Thêm», mở sẵn thư mục chứa trang đang xem.
+                 Liệt kê phẳng cả 49 mục ở đây là quá tải, không ai đọc nổi. */
+              <div className="rounded-2xl bg-sidebar px-2 pb-3 pt-1">
+                <NoiDungKhu section={khuMo} onDieuHuong={() => setKhuMo(null)} anTieuDe />
+              </div>
+            ) : (
+              <ul className="space-y-0.5">
+                {khuMo && leavesOf(khuMo).map((leaf) => {
+                  const dangXem = matchesLeaf(pathname, leaf);
+                  return (
+                    <li key={leaf.path}>
+                      <NavLink
+                        to={leaf.path}
+                        end={leaf.end}
+                        onClick={() => setKhuMo(null)}
+                        aria-current={dangXem ? 'page' : undefined}
+                        className={cn(
+                          'flex min-h-[48px] items-center gap-3 rounded-xl px-2.5 py-2 text-[15px] transition-colors duration-fast',
+                          dangXem ? 'bg-accent font-semibold text-accent-foreground' : 'active:bg-muted',
+                        )}
+                      >
+                        <span
+                          aria-hidden
+                          className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground"
+                        >
+                          <leaf.icon className="h-[18px] w-[18px]" />
+                        </span>
+                        <span className="truncate">{leaf.label}</span>
+                      </NavLink>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
         </DrawerContent>
       </Drawer>
     </>

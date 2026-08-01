@@ -114,6 +114,38 @@ describe('Khung ứng dụng', () => {
     expect(nhan).toEqual(['Trang chủ', 'BHY Ways', 'Thêm']);
   });
 
+  it('chạm tab Chiêu thức 3 bung CÂY THU GỌN, không đổ phẳng ~49 mục', async () => {
+    // Khu này có 6 thư mục và gần 50 mục. Liệt kê phẳng hết là quá tải, không ai
+    // đọc nổi trên màn hình điện thoại — phải nhóm theo thư mục thu gọn được.
+    mockAuth.isAdmin = true;
+    dungKhung('/tong-quan');
+    const thanhTab = screen.getByLabelText('Điều hướng nhanh');
+    fireEvent.click(within(thanhTab).getByRole('button', { name: /Chiêu thức 3/ }));
+
+    const tam = await screen.findByRole('dialog');
+    // Thư mục hiện ra dưới dạng nút bung/thu, không phải danh sách phẳng
+    const thuMuc = within(tam).getAllByRole('button', { expanded: false });
+    expect(thuMuc.length).toBeGreaterThanOrEqual(4);
+    // Mục nằm sâu trong thư mục đang đóng thì chưa hiện
+    expect(within(tam).queryByText('Quản trị Email')).not.toBeInTheDocument();
+    // Nhưng bung thư mục ra là thấy
+    fireEvent.click(within(tam).getByRole('button', { name: /Nội dung & Hệ thống/ }));
+    expect(within(tam).getByText('Quản trị Email')).toBeInTheDocument();
+  });
+
+  it('tấm «Thêm» không lặp lại khu đã có trên thanh tab', async () => {
+    mockAuth.isAdmin = true;
+    dungKhung('/tong-quan');
+    const thanhTab = screen.getByLabelText('Điều hướng nhanh');
+    fireEvent.click(within(thanhTab).getByRole('button', { name: 'Mở toàn bộ menu' }));
+
+    const tam = await screen.findByRole('dialog');
+    // Chiêu thức 3 đã có tab riêng nên không xuất hiện lại ở đây
+    expect(within(tam).queryByText('Chiêu thức 3 - Phát triển nhân sự')).not.toBeInTheDocument();
+    // Khu chưa có tab thì vẫn phải tới được
+    expect(within(tam).getByText('Quản trị người dùng')).toBeInTheDocument();
+  });
+
   it('ô tìm kiếm là nút mở bảng lệnh, không còn là ô nhập trang trí', () => {
     dungKhung('/one');
     const nut = screen.getByLabelText('Tìm kiếm và đi nhanh tới trang');
