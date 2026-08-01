@@ -125,6 +125,16 @@ quizzi/action_plans trong repo **chưa từng được áp** vào database này.
 Chi tiết triển khai + thiết kế chịu tải 150 người dùng khung 7h50–8h30:
 `docs/trien-khai-chieu-thuc-2-kanban-2026-08.md`.
 
+**Kanban Phê duyệt tín dụng (PDTD)** — bàn thứ hai, tab riêng chỉ hiện với phòng
+có trong `ct2_phong_pdtd` (đã bật: KHDN, Bán lẻ, HTTD). Đơn vị theo dõi là hồ sơ
+tín dụng của một khách hàng: 7 cột theo quy trình phê duyệt, số tiền là numeric
+nên cộng được tổng dư nợ đang trình, «đến hạn GHTD» là trường ngày (không phải
+cột trạng thái) nên cảnh báo được khách sắp hết hạn mức mà chưa mở hồ sơ tái
+cấp, ngưỡng chờ riêng cho từng cấp trình (LĐP 2 ngày · LĐCN 3 · TSC 5).
+Thiết kế rút từ board Miro thật của Phòng KHDN (47 hồ sơ) — phân tích 6 lỗi dữ
+liệu và cách khắc phục: `docs/kanban-phe-duyet-tin-dung-2026-08.md`. Migration
+`20260808090000_ct2_kanban_phe_duyet_tin_dung.sql` **đã áp**.
+
 ## Kỳ Quý II/2026 — BM02 đánh giá lại từ đầu (07/2026)
 
 - Quý I/2026 thực hiện BM01 trên **bản Word/PDF** (không nhập app). Các kế hoạch

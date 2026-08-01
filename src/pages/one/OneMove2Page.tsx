@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { ClipboardList, Compass, Grid3x3, Info, Inbox, RefreshCw, Target, UserRound } from 'lucide-react';
+import { Banknote, ClipboardList, Compass, Grid3x3, Info, Inbox, RefreshCw, Target, UserRound } from 'lucide-react';
 import { OnePageShell } from '@/components/one/OnePageShell';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,12 @@ import { Ct2Board } from '@/components/one/move2/Ct2Board';
 import { Ct2CardDialog } from '@/components/one/move2/Ct2CardDialog';
 import { Ct2CreateDialog } from '@/components/one/move2/Ct2CreateDialog';
 import { Ct2PlanDialog } from '@/components/one/move2/Ct2PlanDialog';
+import { Ct2CreditBoard } from '@/components/one/move2/Ct2CreditBoard';
+import { Ct2CreditCardDialog, Ct2CreditCreateDialog } from '@/components/one/move2/Ct2CreditDialogs';
+import {
+  useCt2HoSo, useCt2PhongPdtd, useCt2SapDenHan,
+} from '@/components/one/move2/useCt2TinDung';
+import type { HoSoTinDung, HsTrangThai } from '@/lib/ct2TinDung';
 import { Ct2MyWork } from '@/components/one/move2/Ct2MyWork';
 import {
   ct2XuLyDeXuat, useCt2Board, useCt2DeXuat, useCt2LamTuoi, useCt2NhanSu,
@@ -93,6 +99,19 @@ function NoiDung() {
   const [theLapKeHoach, setTheLapKeHoach] = useState<Ct2DauViec | null>(null);
   const [khoiDongLuon, setKhoiDongLuon] = useState(true);
 
+  // Bàn Phê duyệt tín dụng — chỉ phòng có cấp tín dụng mới thấy tab này
+  const { data: phongCoPdtd = [] } = useCt2PhongPdtd();
+  const coPdtd = !!phongId && phongCoPdtd.includes(phongId);
+  const { data: dsHoSo = [], isLoading: dangTaiHoSo } = useCt2HoSo(phongId, coPdtd);
+  const { data: sapDenHan = [] } = useCt2SapDenHan(phongId, coPdtd);
+  const [hoSoMo, setHoSoMo] = useState<HoSoTinDung | null>(null);
+  const [hoSoChuyenDen, setHoSoChuyenDen] = useState<HsTrangThai | null>(null);
+  const [dangMoHoSo, setDangMoHoSo] = useState(false);
+  const hoSoDangMo = useMemo(
+    () => (hoSoMo ? dsHoSo.find((h) => h.id === hoSoMo.id) ?? hoSoMo : null),
+    [hoSoMo, dsHoSo],
+  );
+
   // Thẻ đang mở luôn lấy bản mới nhất từ cache board (sau khi ghi nhịp/chuyển cột)
   const theDangMo = useMemo(
     () => (theMo ? dsThe.find((t) => t.id === theMo.id) ?? theMo : null),
@@ -166,6 +185,11 @@ function NoiDung() {
                 <TabsTrigger value="phong" className="gap-1.5">
                   <ClipboardList className="h-4 w-4" /> Bảng của Phòng
                 </TabsTrigger>
+                {coPdtd && (
+                  <TabsTrigger value="tin-dung" className="gap-1.5">
+                    <Banknote className="h-4 w-4" /> Phê duyệt tín dụng
+                  </TabsTrigger>
+                )}
               </TabsList>
               <div className="flex flex-wrap items-center gap-2">
                 {phongDuocChon.length > 1 && (
@@ -248,6 +272,20 @@ function NoiDung() {
                 />
               )}
             </TabsContent>
+            {coPdtd && (
+              <TabsContent value="tin-dung">
+                <Ct2CreditBoard
+                  dsHoSo={dsHoSo}
+                  sapDenHan={sapDenHan}
+                  nhanSu={nhanSu}
+                  laLanhDao={laLanhDao}
+                  dangTai={dangTaiHoSo}
+                  onMoHoSo={(h) => { setHoSoChuyenDen(null); setHoSoMo(h); }}
+                  onKeoHoSo={(h, den) => { setHoSoChuyenDen(den); setHoSoMo(h); }}
+                  onTaoMoi={() => setDangMoHoSo(true)}
+                />
+              </TabsContent>
+            )}
           </Tabs>
         )}
       </section>
@@ -270,6 +308,23 @@ function NoiDung() {
         deKhoiDong={khoiDongLuon}
         onClose={() => setTheLapKeHoach(null)}
         onXong={() => { setTheLapKeHoach(null); setTheMo(null); setChuyenDen(null); lamTuoi(); }}
+      />
+
+      <Ct2CreditCardDialog
+        hoSo={hoSoDangMo}
+        nhanSu={nhanSu}
+        laLanhDao={laLanhDao}
+        chuyenDen={hoSoChuyenDen}
+        onClose={() => { setHoSoMo(null); setHoSoChuyenDen(null); }}
+        onXong={() => { setHoSoChuyenDen(null); }}
+      />
+
+      <Ct2CreditCreateDialog
+        open={dangMoHoSo}
+        phongId={phongId}
+        nhanSu={nhanSu}
+        onClose={() => setDangMoHoSo(false)}
+        onXong={() => undefined}
       />
 
       <Ct2CreateDialog
