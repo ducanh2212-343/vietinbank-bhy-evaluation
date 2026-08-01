@@ -113,9 +113,13 @@ Trang `/one/chieu-thuc-2` được dựng lại theo đặc tả đầy đủ
 C + 100% trước Hoàn thành, A trước Đã đóng), nhật ký nhịp append-only, chấm
 giờ nhịp sáng 8h00/8h30 tại database, «Đề xuất việc» cho cán bộ, M1 «Việc của
 tôi» + Ghi nhịp nhanh, M2 «Bảng của Phòng» + bảng nhịp theo người. Bản
-`action_plans` tối giản cũ ngừng dùng trên UI (dữ liệu giữ nguyên). Cần áp
-migration `20260806090000_ct2_kanban_5w2h_pdca.sql`. Chi tiết triển khai +
-thiết kế chịu tải 150 người dùng khung 7h50–8h30:
+`action_plans` tối giản cũ ngừng dùng trên UI. Migration
+`20260806090000_ct2_kanban_5w2h_pdca.sql` **đã áp** vào project
+`whlysprzsguehxmrjwha` (01/08/2026) — kèm migration bổ trợ
+`ct2_prerequisite_helpers` (3 hàm `is_dept_manager`,
+`can_view_all_action_plans`, `is_my_scope_department`) vì các migration
+quizzi/action_plans trong repo **chưa từng được áp** vào database này.
+Chi tiết triển khai + thiết kế chịu tải 150 người dùng khung 7h50–8h30:
 `docs/trien-khai-chieu-thuc-2-kanban-2026-08.md`.
 
 ## Kỳ Quý II/2026 — BM02 đánh giá lại từ đầu (07/2026)

@@ -73,9 +73,19 @@ Kịch bản nóng nhất: ~150 cán bộ mở M1 và ghi nhịp trong ~40 phút
 
 ## Việc vận hành cần làm khi triển khai
 
-1. **Áp migration** `20260806090000_ct2_kanban_5w2h_pdca.sql` vào project
-   `whlysprzsguehxmrjwha` (SQL Editor hoặc `supabase db push`). Chưa áp thì
-   trang hiện lời nhắc, không trắng màn.
+1. ~~Áp migration~~ **ĐÃ ÁP (01/08/2026)** vào project `whlysprzsguehxmrjwha`
+   qua MCP `apply_migration`, gồm 3 bản ghi migration trên server:
+   - `ct2_prerequisite_helpers` — 3 hàm nền `is_dept_manager`,
+     `can_view_all_action_plans`, `is_my_scope_department`. Cần bản bổ trợ này
+     vì kiểm tra thực tế cho thấy các migration quizzi (`20260721090000`) và
+     action_plans (`20260805090000`) trong repo **chưa từng được áp** vào
+     database (không có bảng `quiz_*`/`action_plans` nào trên server).
+   - `ct2_kanban_5w2h_pdca` — toàn bộ schema/trigger/RLS/RPC (đã sửa
+     `is_staff()` → `is_staff(auth.uid())` cho khớp chữ ký hàm thật trên DB).
+   - `ct2_harden_trigger_functions` — thu hồi EXECUTE trên các hàm trigger
+     `f_ct2_*` theo khuyến nghị security advisor.
+   Đã kiểm chứng sau khi áp: 9 bảng `ct2_*` đều bật RLS, 21 policy, 12 hàm;
+   security advisor không còn cảnh báo nào cho nhóm `ct2_*`.
 2. (Khuyến nghị) regenerate `src/integrations/supabase/types.ts` — code hiện
    ép kiểu tại ranh giới truy vấn nên không bắt buộc.
 3. **GĐ2 — tác vụ định giờ** (pg_cron hoặc Scheduled Edge Function, giờ UTC):

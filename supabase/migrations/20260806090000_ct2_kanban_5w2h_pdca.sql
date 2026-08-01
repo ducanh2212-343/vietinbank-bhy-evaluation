@@ -49,7 +49,7 @@ RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT public.is_staff()
+  SELECT public.is_staff(auth.uid())
      AND (
        public.can_view_all_action_plans()
        OR public.is_my_scope_department(_phong)
@@ -754,7 +754,7 @@ ALTER TABLE public.ct2_nhat_ky_thay_doi ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "ct2 xem chien dich" ON public.ct2_chien_dich FOR SELECT TO authenticated
   USING (public.ct2_xem_duoc_dau_viec(phong_chu_tri, cac_phong_tham_gia));
 CREATE POLICY "ct2 tao chien dich" ON public.ct2_chien_dich FOR INSERT TO authenticated
-  WITH CHECK (public.is_staff() AND public.ct2_sua_duoc_phong(phong_chu_tri));
+  WITH CHECK (public.is_staff(auth.uid()) AND public.ct2_sua_duoc_phong(phong_chu_tri));
 CREATE POLICY "ct2 sua chien dich" ON public.ct2_chien_dich FOR UPDATE TO authenticated
   USING (public.ct2_sua_duoc_phong(phong_chu_tri))
   WITH CHECK (public.ct2_sua_duoc_phong(phong_chu_tri));
@@ -765,7 +765,7 @@ CREATE POLICY "ct2 sua chien dich" ON public.ct2_chien_dich FOR UPDATE TO authen
 CREATE POLICY "ct2 xem dau viec" ON public.ct2_dau_viec FOR SELECT TO authenticated
   USING (public.ct2_xem_duoc_dau_viec(phong, cac_phong_tham_gia));
 CREATE POLICY "ct2 tao dau viec" ON public.ct2_dau_viec FOR INSERT TO authenticated
-  WITH CHECK (public.is_staff() AND public.ct2_sua_duoc_phong(phong));
+  WITH CHECK (public.is_staff(auth.uid()) AND public.ct2_sua_duoc_phong(phong));
 CREATE POLICY "ct2 sua dau viec" ON public.ct2_dau_viec FOR UPDATE TO authenticated
   USING (
     public.ct2_sua_duoc_phong(phong)
@@ -781,7 +781,7 @@ CREATE POLICY "ct2 xem de xuat" ON public.ct2_de_xuat FOR SELECT TO authenticate
   USING (public.ct2_xem_duoc_dau_viec(phong, '{}'));
 CREATE POLICY "ct2 tao de xuat" ON public.ct2_de_xuat FOR INSERT TO authenticated
   WITH CHECK (
-    public.is_staff()
+    public.is_staff(auth.uid())
     AND nguoi_de_xuat = public.get_my_profile_id()
     AND phong = public.get_my_department_id()
   );
@@ -799,7 +799,7 @@ CREATE POLICY "ct2 xem nhip" ON public.ct2_nhip_pdca FOR SELECT TO authenticated
   ));
 CREATE POLICY "ct2 ghi nhip" ON public.ct2_nhip_pdca FOR INSERT TO authenticated
   WITH CHECK (
-    public.is_staff()
+    public.is_staff(auth.uid())
     AND nguoi_ghi = public.get_my_profile_id()
     AND EXISTS (
       SELECT 1 FROM public.ct2_dau_viec d
@@ -825,7 +825,7 @@ CREATE POLICY "ct2 xem binh luan" ON public.ct2_binh_luan FOR SELECT TO authenti
   );
 CREATE POLICY "ct2 viet binh luan" ON public.ct2_binh_luan FOR INSERT TO authenticated
   WITH CHECK (
-    public.is_staff()
+    public.is_staff(auth.uid())
     AND nguoi_gui = public.get_my_profile_id()
     AND (
       (pham_vi = 'DAU_VIEC' AND EXISTS (
@@ -849,12 +849,12 @@ CREATE POLICY "ct2 sua binh luan" ON public.ct2_binh_luan FOR UPDATE TO authenti
       SELECT 1 FROM public.ct2_chien_dich c WHERE c.id = doi_tuong_id
         AND public.ct2_xem_duoc_dau_viec(c.phong_chu_tri, c.cac_phong_tham_gia)))
   )
-  WITH CHECK (public.is_staff());
+  WITH CHECK (public.is_staff(auth.uid()));
 
 CREATE POLICY "ct2 xem cam xuc" ON public.ct2_cam_xuc FOR SELECT TO authenticated
   USING (EXISTS (SELECT 1 FROM public.ct2_binh_luan b WHERE b.id = binh_luan_id));
 CREATE POLICY "ct2 tha cam xuc" ON public.ct2_cam_xuc FOR INSERT TO authenticated
-  WITH CHECK (public.is_staff() AND nguoi = public.get_my_profile_id());
+  WITH CHECK (public.is_staff(auth.uid()) AND nguoi = public.get_my_profile_id());
 CREATE POLICY "ct2 bo cam xuc" ON public.ct2_cam_xuc FOR DELETE TO authenticated
   USING (nguoi = public.get_my_profile_id());
 
@@ -876,6 +876,15 @@ CREATE POLICY "ct2 danh dau thong bao" ON public.ct2_thong_bao FOR UPDATE TO aut
 -- Vết thay đổi: chỉ quản trị đọc
 CREATE POLICY "ct2 xem vet thay doi" ON public.ct2_nhat_ky_thay_doi FOR SELECT TO authenticated
   USING (public.can_view_all_action_plans());
+
+-- Hàm trigger chỉ chạy qua trigger (với quyền chủ bảng), không ai cần gọi trực
+-- tiếp qua /rest/v1/rpc — thu hồi EXECUTE để tắt cảnh báo security advisor.
+REVOKE ALL ON FUNCTION public.f_ct2_truoc_tao_dau_viec() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.f_ct2_truoc_sua_dau_viec() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.f_ct2_ghi_vet_dau_viec() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.f_ct2_truoc_ghi_nhip() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.f_ct2_sau_ghi_nhip() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.f_ct2_truoc_sua_binh_luan() FROM PUBLIC, anon, authenticated;
 
 COMMENT ON TABLE public.ct2_dau_viec IS
   'Chiêu thức 2 v2 — đầu việc Kanban 5W2H, 7 cột trạng thái, PDCA đến từng thẻ. Thay bản action_plans tối giản.';
