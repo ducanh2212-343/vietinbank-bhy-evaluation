@@ -3,6 +3,7 @@ import { Filter, Search, Upload, ThumbsUp, Calendar, User, Building, Tag, Sparkl
 import { UploadedItem, ProgramCategory, CATEGORY_NAMES, Department, DEPARTMENTS, UPLOAD_CUSTOM_FIELDS } from '@/data/one/types';
 import confetti from 'canvas-confetti';
 import { useAdminEditable } from './AdminEditableContext';
+import { useAuth } from '@/hooks/useAuth';
 
 interface DataRepositoryProps {
   items: UploadedItem[];
@@ -29,6 +30,8 @@ export const DataRepository: React.FC<DataRepositoryProps> = ({
 }) => {
   // Quyền admin lấy từ context dùng chung thay vì prop
   const { isAdmin } = useAdminEditable();
+  // Khách đối tác chỉ tra cứu — không đăng bài (RLS chặn ở server, đây là lớp UI)
+  const { isGuest } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
   const [selectedTag, setSelectedTag] = useState<string>('all');
@@ -90,7 +93,7 @@ export const DataRepository: React.FC<DataRepositoryProps> = ({
             </p>
           </div>
 
-          {/* Trang đã nằm sau đăng nhập — mọi cán bộ đều được đóng góp tư liệu */}
+          {/* Mọi cán bộ đều được đóng góp tư liệu; khách đối tác chỉ xem */}
           <div className="flex flex-wrap gap-2 self-start md:self-auto">
             {onOpenReport && (
               <button
@@ -101,13 +104,15 @@ export const DataRepository: React.FC<DataRepositoryProps> = ({
                 <span>Xuất báo cáo PDF</span>
               </button>
             )}
-            <button
-              onClick={() => onOpenUpload('sharing')}
-              className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-brand-red hover:bg-red-700 text-white font-bold text-xs sm:text-sm shadow-md transition-all cursor-pointer"
-            >
-              <Upload className="w-4 h-4" />
-              <span>+ Đóng góp bài viết / Ảnh minh họa</span>
-            </button>
+            {!isGuest && (
+              <button
+                onClick={() => onOpenUpload('sharing')}
+                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-brand-red hover:bg-red-700 text-white font-bold text-xs sm:text-sm shadow-md transition-all cursor-pointer"
+              >
+                <Upload className="w-4 h-4" />
+                <span>+ Đóng góp bài viết / Ảnh minh họa</span>
+              </button>
+            )}
           </div>
         </div>
 
