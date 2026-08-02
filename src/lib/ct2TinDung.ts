@@ -110,6 +110,15 @@ export const HS_NGUONG_CHO: Record<string, number> = {
 /** Hạn mức sắp đến hạn: cảnh báo trước 60 ngày để kịp mở hồ sơ tái cấp */
 export const HS_NGUONG_DEN_HAN = 60;
 
+/**
+ * Bao nhiêu NGÀY LÀM VIỆC không ai ghi gì thì coi là hồ sơ «chưa cập nhật».
+ *
+ * Ngưỡng 2 chứ không phải 3 như cột chờ: hồ sơ tín dụng có tiền của khách và có
+ * hạn của khách, im lặng hai ngày làm việc đã là dấu hiệu bỏ quên. Cột chờ đo
+ * cấp trên có xử lý không; cái này đo cán bộ có còn bám hồ sơ không.
+ */
+export const HS_NGUONG_IM_LANG = 2;
+
 // ---------------------------------------------------------------------------
 // Cổng nhập — hồ sơ tín dụng cần đúng 6 điều, tất cả đều là dữ liệu có cấu trúc
 // ---------------------------------------------------------------------------
@@ -256,6 +265,44 @@ export function hsConLaiDenHan(h: Pick<HoSoTinDung, 'ngay_den_han_ghtd'>, moc: D
   return ngayVn(`${h.ngay_den_han_ghtd}T00:00:00+07:00`) - ngayVn(moc);
 }
 
+/**
+ * Số NGÀY LÀM VIỆC hồ sơ không có nhịp mới. Chưa từng ghi nhịp thì tính từ ngày
+ * nhận hồ sơ — hồ sơ mở ra rồi bỏ đó là trường hợp cần thấy nhất.
+ */
+export function hsNgayImLang(
+  h: Pick<HoSoTinDung, 'nhip_gan_nhat' | 'ngay_nhan' | 'trang_thai'>,
+  moc: Date = new Date(),
+): number {
+  if (!HS_DANG_CHAY.includes(h.trang_thai)) return 0;
+  const tu = h.nhip_gan_nhat ?? `${h.ngay_nhan}T00:00:00+07:00`;
+  return soNgayLamViec(tu, moc);
+}
+
+/** Mức «chưa cập nhật» để giao diện chọn màu và biểu tượng */
+export type MucImLang = 'MOI' | 'CHAM' | 'BO_QUEN';
+
+/**
+ * Hồ sơ này có bị bỏ quên không.
+ *
+ *  · MOI      — còn trong ngưỡng, không cần báo gì
+ *  · CHAM     — quá ngưỡng, nhắc nhẹ
+ *  · BO_QUEN  — quá gấp đôi ngưỡng, đây là thứ phải xử lý ngay hôm nay
+ */
+export function hsMucImLang(
+  h: Pick<HoSoTinDung, 'nhip_gan_nhat' | 'ngay_nhan' | 'trang_thai'>,
+  moc: Date = new Date(),
+): MucImLang {
+  const n = hsNgayImLang(h, moc);
+  if (n >= HS_NGUONG_IM_LANG * 2) return 'BO_QUEN';
+  if (n >= HS_NGUONG_IM_LANG) return 'CHAM';
+  return 'MOI';
+}
+
+/** Hồ sơ chưa từng được ghi nhịp lần nào — mở ra rồi để đó */
+export function hsChuaGhiLanNao(h: Pick<HoSoTinDung, 'nhip_gan_nhat'>): boolean {
+  return !h.nhip_gan_nhat;
+}
+
 export interface CanhBaoHoSo { muc: 'DO' | 'VANG'; noi_dung: string }
 
 /**
@@ -285,6 +332,20 @@ export function canhBaoHoSo(h: HoSoTinDung, moc: Date = new Date()): CanhBaoHoSo
   if (hsNghenCho(h, moc)) {
     const ten = HS_COT.find((c) => c.ma === h.trang_thai)?.ten ?? h.trang_thai;
     ds.push({ muc: 'DO', noi_dung: `Nằm ở «${ten}» ${hsTuoiCho(h, moc)} ngày — quá ngưỡng ${HS_NGUONG_CHO[h.trang_thai]}` });
+  }
+
+  // Bỏ quên: không ai ghi gì suốt nhiều ngày làm việc. Đứng sau các rủi ro về
+  // tiền và hạn, nhưng trước phần thiếu dữ liệu hành chính — vì hồ sơ im lặng
+  // thường là hồ sơ sắp thành hồ sơ trễ.
+  const imLang = hsMucImLang(h, moc);
+  if (imLang !== 'MOI') {
+    const n = hsNgayImLang(h, moc);
+    ds.push({
+      muc: imLang === 'BO_QUEN' ? 'DO' : 'VANG',
+      noi_dung: hsChuaGhiLanNao(h)
+        ? `Chưa cập nhật lần nào (${n} ngày)`
+        : `Chưa cập nhật ${n} ngày`,
+    });
   }
 
   // Thiếu dữ liệu hành chính, nhẹ nhất nhưng vẫn phải nêu
