@@ -165,11 +165,11 @@ export default function QuizCampaignResultsPage() {
             {results.question_stats.map((q, qi) => {
               const maxCount = Math.max(1, ...q.distribution);
               return (
-                <Card key={q.question_id} className={q.pct_correct < 50 ? 'border-red-300/70' : undefined}>
+                <Card key={q.question_id} className={q.pct_correct < 50 ? 'border-red-300/70 dark:border-red-500/40' : undefined}>
                   <CardContent className="py-4 space-y-3">
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-sm font-semibold">{qi + 1}. {q.statement}</p>
-                      <span className={`shrink-0 text-sm font-bold ${q.pct_correct < 50 ? 'text-red-500' : q.pct_correct < 80 ? 'text-amber-500' : 'text-emerald-600'}`}>
+                      <span className={`shrink-0 text-sm font-bold ${q.pct_correct < 50 ? 'text-red-500' : q.pct_correct < 80 ? 'text-amber-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
                         {q.pct_correct}% đúng
                       </span>
                     </div>
@@ -242,7 +242,7 @@ export default function QuizCampaignResultsPage() {
               Đề của riêng bạn{c.shuffle_options ? ' (thứ tự đáp án hiển thị như lúc bạn làm)' : ''}.
             </p>
             {review.questions.map((q, i) => (
-              <Card key={i} className={q.is_correct ? 'border-emerald-300/60' : 'border-red-300/60'}>
+              <Card key={i} className={q.is_correct ? 'border-emerald-300/60 dark:border-emerald-500/40' : 'border-red-300/60 dark:border-red-500/40'}>
                 <CardContent className="py-4 space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-sm font-semibold">Câu {i + 1}. {q.statement}</p>
@@ -254,7 +254,7 @@ export default function QuizCampaignResultsPage() {
                     {q.options.map((opt, oi) => (
                       <p key={oi} className={`text-sm px-2 py-1 rounded
                         ${oi === q.correct_index ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-medium' : ''}
-                        ${oi === q.selected_index && oi !== q.correct_index ? 'bg-red-50 dark:bg-red-950/40 text-red-600 line-through' : ''}`}>
+                        ${oi === q.selected_index && oi !== q.correct_index ? 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 line-through' : ''}`}>
                         {String.fromCharCode(65 + oi)}. {opt}
                         {oi === q.selected_index && ' ← bạn chọn'}
                       </p>

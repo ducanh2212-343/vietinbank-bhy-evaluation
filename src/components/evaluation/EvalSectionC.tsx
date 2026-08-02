@@ -65,9 +65,9 @@ interface Props {
 
 /* ── 3 mức mới ── */
 const RATING_OPTIONS = [
-  { value: 'noi_bat', label: 'Nổi bật', color: 'bg-emerald-100 text-emerald-700 border-emerald-300', badgeCls: 'bg-emerald-100 text-emerald-700 border-emerald-200', tip: 'Vượt chuẩn, lan toả cho người khác' },
-  { value: 'dat_mong_doi', label: 'Đạt mong đợi', color: 'bg-sky-100 text-sky-700 border-sky-300', badgeCls: 'bg-sky-100 text-sky-700 border-sky-200', tip: 'Thực hiện ổn định theo chuẩn' },
-  { value: 'can_cai_thien', label: 'Cần cải thiện', color: 'bg-amber-100 text-amber-700 border-amber-300', badgeCls: 'bg-amber-100 text-amber-700 border-amber-200', tip: 'Còn khoảng cách so với chuẩn' },
+  { value: 'noi_bat', label: 'Nổi bật', color: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40', badgeCls: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30', tip: 'Vượt chuẩn, lan toả cho người khác' },
+  { value: 'dat_mong_doi', label: 'Đạt mong đợi', color: 'bg-sky-100 dark:bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-300 dark:border-sky-500/40', badgeCls: 'bg-sky-100 dark:bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-500/30', tip: 'Thực hiện ổn định theo chuẩn' },
+  { value: 'can_cai_thien', label: 'Cần cải thiện', color: 'bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-500/40', badgeCls: 'bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30', tip: 'Còn khoảng cách so với chuẩn' },
 ] as const;
 
 function getRatingOption(value: string) {
@@ -179,13 +179,13 @@ export function EvalSectionC({ assessments, onChange, isManager, showAgreeContro
                       <Badge className={cn('text-[10px] border', ratingOpt.badgeCls)}>{ratingOpt.label}</Badge>
                     )}
                     {showPlan && (
-                      <Badge className="text-[10px] border bg-violet-100 text-violet-700 border-violet-200">Có KH cải thiện</Badge>
+                      <Badge className="text-[10px] border bg-violet-100 dark:bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/30">Có KH cải thiện</Badge>
                     )}
                     {a.improvement_status === 'completed' && (
-                      <Badge className="text-[10px] border bg-emerald-100 text-emerald-700 border-emerald-200">Đã hoàn thành</Badge>
+                      <Badge className="text-[10px] border bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30">Đã hoàn thành</Badge>
                     )}
                     {mismatch && (
-                      <Badge className="text-[10px] border bg-orange-100 text-orange-700 border-orange-200" title="Chênh lệch đánh giá cán bộ vs lãnh đạo">Chênh lệch</Badge>
+                      <Badge className="text-[10px] border bg-orange-100 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/30" title="Chênh lệch đánh giá cán bộ vs lãnh đạo">Chênh lệch</Badge>
                     )}
                     {showAgreeControls && isManager && a.self_status && !a.manager_status && (
                       <span
@@ -293,7 +293,7 @@ export function EvalSectionC({ assessments, onChange, isManager, showAgreeContro
                         <p className="text-[10px] text-muted-foreground mt-2 italic">Chưa có đánh giá của lãnh đạo cấp trên</p>
                       )}
                       {mismatch && (
-                        <div className="mt-2 flex items-start gap-1.5 text-[11px] text-orange-700 bg-orange-50 border border-orange-200 rounded p-2">
+                        <div className="mt-2 flex items-start gap-1.5 text-[11px] text-orange-700 dark:text-orange-300 bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/30 rounded p-2">
                           <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
                           <span>Có chênh lệch đánh giá giữa cán bộ ({ratingOpt?.label}) và lãnh đạo ({mgrOpt?.label}). Cần trao đổi để thống nhất nhận diện hành vi và hướng cải thiện.</span>
                         </div>
@@ -322,7 +322,7 @@ export function EvalSectionC({ assessments, onChange, isManager, showAgreeContro
                                   ? 'bg-violet-600 text-white border-violet-600'
                                   : disabled
                                     ? 'bg-muted text-muted-foreground border-border opacity-50 cursor-not-allowed'
-                                    : 'bg-background text-foreground border-border hover:bg-violet-50',
+                                    : 'bg-background text-foreground border-border hover:bg-violet-50 dark:hover:bg-violet-500/15',
                               )}
                             >
                               {opt.label}
@@ -369,8 +369,8 @@ export function EvalSectionC({ assessments, onChange, isManager, showAgreeContro
 
                   {/* ─── C. Kế hoạch cải thiện trong quý ─── */}
                   {showPlan && (
-                    <section className="space-y-3 rounded-lg border-2 border-violet-200 bg-violet-50/40 p-3">
-                      <h4 className="text-[11px] font-semibold uppercase tracking-wide text-violet-700 flex items-center gap-1.5">
+                    <section className="space-y-3 rounded-lg border-2 border-violet-200 dark:border-violet-500/30 bg-violet-50/40 dark:bg-violet-500/10 p-3">
+                      <h4 className="text-[11px] font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300 flex items-center gap-1.5">
                         <ClipboardList className="w-3 h-3" /> C. Kế hoạch cải thiện trong quý
                       </h4>
 
@@ -386,7 +386,7 @@ export function EvalSectionC({ assessments, onChange, isManager, showAgreeContro
                             .join(' • ')}
                         </div>
                       ) : (
-                        <div className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1.5">
+                        <div className="text-[11px] text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-md px-2.5 py-1.5">
                           Chưa chọn "Điểm cần cải thiện chính" ở phần đánh giá phía trên.
                         </div>
                       )}
@@ -497,11 +497,11 @@ function RefRow({ color, title, body, last }: { color: string; title: string; bo
     slate: 'bg-muted/60 text-foreground',
   };
   const titleMap: Record<string, string> = {
-    amber: 'text-amber-700',
-    sky: 'text-sky-700',
-    emerald: 'text-emerald-700',
-    violet: 'text-violet-700',
-    orange: 'text-orange-700',
+    amber: 'text-amber-700 dark:text-amber-300',
+    sky: 'text-sky-700 dark:text-sky-300',
+    emerald: 'text-emerald-700 dark:text-emerald-300',
+    violet: 'text-violet-700 dark:text-violet-300',
+    orange: 'text-orange-700 dark:text-orange-300',
     slate: 'text-muted-foreground',
   };
   return (

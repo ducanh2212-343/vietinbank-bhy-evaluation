@@ -445,8 +445,8 @@ export default function ReportsPage() {
         <>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
             <Tile label="Tổng cán bộ" value={tiles.total} />
-            <Tile label="Hoàn thành đánh giá" value={tiles.done} sub={`${pctDone}% tổng số`} tone="text-emerald-700" />
-            <Tile label="Đang xử lý" value={tiles.inflight} tone="text-sky-700" />
+            <Tile label="Hoàn thành đánh giá" value={tiles.done} sub={`${pctDone}% tổng số`} tone="text-emerald-700 dark:text-emerald-300" />
+            <Tile label="Đang xử lý" value={tiles.inflight} tone="text-sky-700 dark:text-sky-300" />
             <Tile label="Chưa bắt đầu" value={tiles.notstarted} />
             <Tile label="Skill lõi đạt chuẩn" value={`${pctSkill}%`} sub={`${tiles.coreMet}/${tiles.coreTotal} lượt đánh giá`} />
             <Tile label="KH kỳ trước hoàn thành" value={tiles.prevTotal ? `${pctPrev}%` : '—'} sub={tiles.prevTotal ? `${tiles.prevDone}/${tiles.prevTotal} hành động` : 'Chưa có dữ liệu'} />
@@ -564,7 +564,7 @@ export default function ReportsPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {Object.entries(PREV_STATUS_LABEL).map(([key, label]) => (
                     <div key={key} className="rounded-lg border border-border bg-card p-3 text-center">
-                      <div className={`text-xl font-semibold ${key === 'completed' ? 'text-emerald-700' : key === 'in_progress' ? 'text-sky-700' : 'text-muted-foreground'}`}>
+                      <div className={`text-xl font-semibold ${key === 'completed' ? 'text-emerald-700 dark:text-emerald-300' : key === 'in_progress' ? 'text-sky-700 dark:text-sky-300' : 'text-muted-foreground'}`}>
                         {prevPlanCounts[key]}
                       </div>
                       <div className="text-[11px] text-muted-foreground">{label}</div>
@@ -606,8 +606,8 @@ export default function ReportsPage() {
                         <Badge variant="outline" className={`text-[10px] ${STATUS_TONE[r.display]}`}>{STATUS_LABEL[r.display]}</Badge>
                       </td>
                       <td className="py-2.5 pr-3 text-center text-xs">{r.coreTotal ? `${r.coreMet}/${r.coreTotal}` : '—'}</td>
-                      <td className={`py-2.5 pr-3 text-center font-medium ${r.gapCount > 0 ? 'text-orange-700' : 'text-muted-foreground'}`}>{r.coreTotal ? r.gapCount : '—'}</td>
-                      <td className={`py-2.5 pr-3 text-center font-medium ${r.attNeed > 0 ? 'text-orange-700' : 'text-muted-foreground'}`}>{r.sub ? r.attNeed : '—'}</td>
+                      <td className={`py-2.5 pr-3 text-center font-medium ${r.gapCount > 0 ? 'text-orange-700 dark:text-orange-300' : 'text-muted-foreground'}`}>{r.coreTotal ? r.gapCount : '—'}</td>
+                      <td className={`py-2.5 pr-3 text-center font-medium ${r.attNeed > 0 ? 'text-orange-700 dark:text-orange-300' : 'text-muted-foreground'}`}>{r.sub ? r.attNeed : '—'}</td>
                       <td className="py-2.5 pr-3 text-xs">{r.star ? STAR_LABEL[r.star] : '—'}</td>
                       <td className="py-2.5 pr-0 text-right">
                         <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => navigate(`/danh-gia/${r.profile.id}`)}>Mở</Button>

@@ -3,7 +3,28 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
+  /*
+   * Khối token hệ sáng — nguồn duy nhất, ba nơi dùng chung:
+   *
+   *   :root                                 mặc định của toàn ứng dụng;
+   *   .one-light                            "đảo sáng" của cổng BHY ONE
+   *                                         (OnePageShell — chủ ý thiết kế gốc);
+   *   body.one-portal-light > *:not(#root)  lớp nổi của cổng BHY ONE.
+   *
+   * Vế thứ ba vá một lỗi thật ở chế độ tối: Dialog/Select/Popover/Sheet của Radix
+   * render qua portal ra thẳng <body>, tức NẰM NGOÀI thẻ .one-light. Ở chế độ tối
+   * chúng nhận token nền tối, trong khi nội dung bên trong dùng bảng màu sáng cố
+   * định (text-slate-800, bg-white…) — chữ tối trên nền tối, đọc không ra. Khi ở
+   * cổng ONE, OnePageShell gắn cờ `one-portal-light` lên <body> để mọi con trực
+   * tiếp của body ngoài #root (đúng chỗ các portal neo vào) cũng về hệ sáng.
+   *
+   * Dùng chung một danh sách khai báo thay vì chép lại là có chủ ý: bản cũ chép
+   * tay 19 biến vào .one-light và bỏ sót glass/shadow/brand/level/star, nên nền
+   * kính của Dialog vẫn tối kể cả khi đã ở trong đảo sáng.
+   */
+  :root,
+  .one-light,
+  body.one-portal-light > *:not(#root) {
     /*
      * Bộ nhận diện "Cây ký ức" — VietinBank Bắc Hưng Yên 20 năm.
      * Bảng màu chính thức:
@@ -61,9 +82,13 @@
     --glass-border: 214 45% 90% / 0.8;
 
     /* Level colors */
-    --level-1: 200 15% 55%;
-    --level-2: 210 80% 50%;
-    --level-3: 38 90% 50%;
+    /* Độ sáng hạ xuống cho đủ ≥4.5:1 trên nền huy hiệu tương ứng, cùng một mức
+       với nhóm sao bên dưới. Bản cũ để nguyên độ sáng gốc nên L3 chỉ đạt 1.97:1
+       (vàng trên nền vàng nhạt), L1 2.87:1 và L2 3.51:1 — chữ trong huy hiệu mờ
+       hẳn dù đây là nhãn xuất hiện dày đặc nhất trong ứng dụng. */
+    --level-1: 200 18% 36%;
+    --level-2: 210 80% 38%;
+    --level-3: 38 95% 29%;
     --level-4: 270 55% 50%;
 
     --level-1-bg: 200 25% 94%;
@@ -121,8 +146,12 @@
     --accent: 212 40% 22%;
     --accent-foreground: 207 79% 82%;
 
-    --destructive: 355 82% 56%;
-    --destructive-foreground: 0 0% 100%;
+    /* Đỏ cảnh báo đi theo cùng quy ước với --primary ở nền tối: sắc nhấn sáng
+       lên, chữ trên nó tối lại. Bản cũ giữ đỏ 56% + chữ trắng nên `text-destructive`
+       trên thẻ chỉ đạt 4.11:1 và chữ trắng trên nút đỏ 4.13:1 — đều dưới ngưỡng
+       AA, trong khi đây lại là chữ báo lỗi của các ô nhập. */
+    --destructive: 355 88% 66%;
+    --destructive-foreground: 355 60% 10%;
 
     --border: 214 26% 24%;
     --input: 214 26% 26%;
@@ -304,31 +333,6 @@
 }
 
 @layer components {
-
-  /* Cổng BHY ONE luôn là "đảo sáng": ép bộ token về hệ sáng để các thành phần
-     dùng chung (Card, Button, Dialog, Tabs…) hiển thị đúng ngay cả khi ứng dụng
-     đang ở chế độ tối. Giá trị đồng bộ với :root. */
-  .one-light {
-    --background: 217 100% 97%;
-    --foreground: 215 59% 15%;
-    --card: 0 0% 100%;
-    --card-foreground: 215 59% 15%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 215 59% 15%;
-    --primary: 212 100% 36%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 214 60% 94%;
-    --secondary-foreground: 215 100% 27%;
-    --muted: 216 48% 95%;
-    --muted-foreground: 215 22% 42%;
-    --accent: 207 79% 93%;
-    --accent-foreground: 212 100% 30%;
-    --destructive: 355 100% 45%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 214 45% 88%;
-    --input: 214 45% 86%;
-    --ring: 212 100% 36%;
-  }
   .level-badge {
     @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold;
   }

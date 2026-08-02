@@ -452,7 +452,7 @@ export default function LeadershipMarksPage() {
                       <Badge variant="outline">{m.leadership_competencies.name}</Badge>
                     )}
                     {m.core_values?.name && (
-                      <Badge variant="outline" className="border-amber-300 text-amber-700 dark:text-amber-300">
+                      <Badge variant="outline" className="border-amber-300 dark:border-amber-500/40 text-amber-700 dark:text-amber-300">
                         {m.core_values.name}
                       </Badge>
                     )}
@@ -500,7 +500,7 @@ export default function LeadershipMarksPage() {
                           <Pencil className="w-3.5 h-3.5 mr-1" /> Sửa khung
                         </Button>
                         {m.status === 'active' && (
-                          <Button size="sm" variant="outline" className="text-emerald-700"
+                          <Button size="sm" variant="outline" className="text-emerald-700 dark:text-emerald-300"
                                   onClick={() => confirmMark(m)}>
                             Ghi nhận
                           </Button>

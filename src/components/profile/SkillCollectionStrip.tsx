@@ -84,7 +84,7 @@ export function SkillCollectionCard({ item }: { item: CollectionItem }) {
           </div>
         )}
         {item.required > 0 && (
-          <p className={`text-[11px] ${item.metStandard ? 'text-emerald-600' : 'text-orange-500'}`}>
+          <p className={`text-[11px] ${item.metStandard ? 'text-emerald-600 dark:text-emerald-400' : 'text-orange-500'}`}>
             {item.metStandard
               ? `✓ Đã đạt chuẩn vị trí (tối thiểu L${item.required})`
               : `Chuẩn vị trí: tối thiểu L${item.required} — còn thiếu ${item.required - item.level} bậc`}
@@ -141,7 +141,7 @@ export function SkillCollectionStripView({ items, cycleName }: { items: Collecti
             <p className="text-xs text-muted-foreground mt-0.5">{headline}</p>
           </div>
           {withStandard > 0 && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-xs font-medium text-emerald-700">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
               <Trophy className="w-3.5 h-3.5" /> Đạt chuẩn {metStandard}/{withStandard}
             </span>
           )}

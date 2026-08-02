@@ -37,9 +37,9 @@ const TIMING_COLOR: Record<SubmissionTimingStatus, string> = {
 };
 
 const TIMING_BADGE_CLS: Record<SubmissionTimingStatus, string> = {
-  ontime: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-  late: 'bg-orange-100 text-orange-800 border-orange-200',
-  missing_overdue: 'bg-red-100 text-red-800 border-red-200',
+  ontime: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30',
+  late: 'bg-orange-100 dark:bg-orange-500/15 text-orange-800 dark:text-orange-300 border-orange-200 dark:border-orange-500/30',
+  missing_overdue: 'bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-300 border-red-200 dark:border-red-500/30',
   pending: 'bg-muted text-muted-foreground border-border',
 };
 
@@ -470,7 +470,7 @@ export default function SubmissionTimeReportPage() {
               Phạm vi: {access.fullBranch ? 'Toàn chi nhánh' : `Các phòng bạn phụ trách (${visibleDeptEntries.length} phòng)`}
             </Badge>
             {!access.fullBranch && visibleDeptEntries.length === 0 && (
-              <span className="text-amber-600 ml-2">Chưa có phòng/cán bộ nào được gán cho bạn phụ trách (pgd_id / director_id).</span>
+              <span className="text-amber-600 dark:text-amber-400 ml-2">Chưa có phòng/cán bộ nào được gán cho bạn phụ trách (pgd_id / director_id).</span>
             )}
           </p>
         </div>
@@ -525,8 +525,8 @@ export default function SubmissionTimeReportPage() {
         <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">Chưa có kỳ đánh giá nào. Hãy tạo kỳ trong "Quản lý kỳ đánh giá".</CardContent></Card>
       ) : (
         <>
-          <div className={`rounded-lg border p-3 text-sm flex items-center gap-2 flex-wrap ${deadlineSet ? 'bg-primary/5 border-primary/20' : 'bg-amber-50 border-amber-200'}`}>
-            <CalendarClock className={`w-4 h-4 ${deadlineSet ? 'text-primary' : 'text-amber-600'}`} />
+          <div className={`rounded-lg border p-3 text-sm flex items-center gap-2 flex-wrap ${deadlineSet ? 'bg-primary/5 border-primary/20' : 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30'}`}>
+            <CalendarClock className={`w-4 h-4 ${deadlineSet ? 'text-primary' : 'text-amber-600 dark:text-amber-400'}`} />
             <span>
               Mốc nộp biểu mẫu {selectedCycle.name}: <strong>{fmtDateTime(getEffectiveDeadline(selectedCycle).toISOString())}</strong>
               {!deadlineSet && ' (chưa thiết đặt — tạm dùng 23:59 ngày kết thúc kỳ)'}
@@ -546,11 +546,11 @@ export default function SubmissionTimeReportPage() {
             <TabsContent value="cycle" className="space-y-4 mt-4">
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                 <Tile label="Tổng cán bộ" value={counts.total} k="all" />
-                <Tile label={TIMING_LABEL.ontime} value={counts.ontime} k="ontime" tone="text-emerald-700" />
-                <Tile label={TIMING_LABEL.late} value={counts.late} k="late" tone="text-orange-700" />
-                <Tile label={TIMING_LABEL.missing_overdue} value={counts.missing_overdue} k="missing_overdue" tone="text-red-700" />
+                <Tile label={TIMING_LABEL.ontime} value={counts.ontime} k="ontime" tone="text-emerald-700 dark:text-emerald-300" />
+                <Tile label={TIMING_LABEL.late} value={counts.late} k="late" tone="text-orange-700 dark:text-orange-300" />
+                <Tile label={TIMING_LABEL.missing_overdue} value={counts.missing_overdue} k="missing_overdue" tone="text-red-700 dark:text-red-300" />
                 <Tile label={TIMING_LABEL.pending} value={counts.pending} k="pending" />
-                <Tile label="Điểm KPI trừ (toàn CN)" value={counts.penalty} tone="text-red-700" />
+                <Tile label="Điểm KPI trừ (toàn CN)" value={counts.penalty} tone="text-red-700 dark:text-red-300" />
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -652,13 +652,13 @@ export default function SubmissionTimeReportPage() {
                             <td className="py-2.5 pr-3 text-xs">{fmtDateTime(r.submittedAt)}</td>
                             <td className="py-2.5 pr-3 text-xs">{fmtDateTime(r.reviewedAt)}</td>
                             <td className={`py-2.5 pr-3 text-xs ${r.approvedAt ? 'font-medium' : 'text-muted-foreground'}`}>{fmtDateTime(r.approvedAt)}</td>
-                            <td className={`py-2.5 pr-3 text-xs ${r.timing.status === 'late' ? 'text-orange-700 font-medium' : 'text-muted-foreground'}`}>
+                            <td className={`py-2.5 pr-3 text-xs ${r.timing.status === 'late' ? 'text-orange-700 dark:text-orange-300 font-medium' : 'text-muted-foreground'}`}>
                               {r.approvedAt ? formatVsDeadline(r.approvedAt, r.timing.deadline) : '—'}
                             </td>
                             <td className="py-2.5 pr-3">
                               <Badge variant="outline" className={`text-[10px] ${TIMING_BADGE_CLS[r.timing.status]}`}>{TIMING_LABEL[r.timing.status]}</Badge>
                             </td>
-                            <td className={`py-2.5 pr-3 text-right font-medium ${r.timing.penalty > 0 ? 'text-red-700' : 'text-muted-foreground'}`}>
+                            <td className={`py-2.5 pr-3 text-right font-medium ${r.timing.penalty > 0 ? 'text-red-700 dark:text-red-300' : 'text-muted-foreground'}`}>
                               {r.timing.penalty > 0 ? `−${r.timing.penalty}` : '0'}
                             </td>
                             {access.fullBranch && (
@@ -729,8 +729,8 @@ export default function SubmissionTimeReportPage() {
                                 )}
                               </td>
                             ))}
-                            <td className={`py-2.5 pr-3 text-right font-medium ${s.lateCount > 0 ? 'text-red-700' : 'text-muted-foreground'}`}>{s.lateCount}</td>
-                            <td className={`py-2.5 pr-0 text-right font-medium ${s.totalPenalty > 0 ? 'text-red-700' : 'text-muted-foreground'}`}>
+                            <td className={`py-2.5 pr-3 text-right font-medium ${s.lateCount > 0 ? 'text-red-700 dark:text-red-300' : 'text-muted-foreground'}`}>{s.lateCount}</td>
+                            <td className={`py-2.5 pr-0 text-right font-medium ${s.totalPenalty > 0 ? 'text-red-700 dark:text-red-300' : 'text-muted-foreground'}`}>
                               {s.totalPenalty > 0 ? `−${s.totalPenalty}` : '0'}
                             </td>
                           </tr>

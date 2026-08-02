@@ -32,9 +32,9 @@ function Card({ state, title, statusLabel, description, missingLabels, items, wa
 
   const Icon = state === 'pass' ? CheckCircle2 : state === 'fail' ? AlertCircle : Clock;
   const iconColor =
-    state === 'pass' ? 'text-emerald-600' : state === 'fail' ? 'text-rose-500' : 'text-muted-foreground';
+    state === 'pass' ? 'text-emerald-600 dark:text-emerald-400' : state === 'fail' ? 'text-rose-500' : 'text-muted-foreground';
   const statusColor =
-    state === 'pass' ? 'text-emerald-700' : state === 'fail' ? 'text-rose-600' : 'text-muted-foreground';
+    state === 'pass' ? 'text-emerald-700 dark:text-emerald-300' : state === 'fail' ? 'text-rose-600 dark:text-rose-400' : 'text-muted-foreground';
 
   return (
     <div className={cn('rounded-2xl border p-3.5 text-sm shadow-soft', tone)}>
@@ -206,7 +206,7 @@ export function SubmissionChecklist(props: Props) {
         <span
           className={cn(
             'text-xs font-medium px-2.5 py-1 rounded-full',
-            canSubmit ? 'text-emerald-700 bg-emerald-100/70' : 'text-amber-700 bg-amber-100/70',
+            canSubmit ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-100/70 dark:bg-emerald-500/15' : 'text-amber-700 dark:text-amber-300 bg-amber-100/70 dark:bg-amber-500/15',
           )}
         >
           {canSubmit ? 'Sẵn sàng gửi' : 'Còn mục chưa hoàn tất'}
@@ -224,7 +224,7 @@ export function SubmissionChecklist(props: Props) {
         </p>
       )}
       {!canSubmit && (
-        <p className="text-xs text-amber-700">
+        <p className="text-xs text-amber-700 dark:text-amber-300">
           Vui lòng hoàn tất các nội dung còn thiếu trong phần Kiểm tra trước khi gửi cấp trên.
         </p>
       )}

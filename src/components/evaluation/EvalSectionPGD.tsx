@@ -12,7 +12,7 @@ interface Props {
 
 const STATUS_LABEL: Record<string, { text: string; cls: string }> = {
   pending: { text: 'Chưa nhận xét', cls: 'bg-muted text-muted-foreground' },
-  approved: { text: 'Đã duyệt', cls: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+  approved: { text: 'Đã duyệt', cls: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40' },
   returned: { text: 'Trả lại', cls: 'bg-destructive/10 text-destructive border-destructive/30' },
 };
 

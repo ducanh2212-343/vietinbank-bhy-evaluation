@@ -469,7 +469,7 @@ function LevelUploadSlot({
 
       {image && (
         <div className="flex items-center justify-center gap-1">
-          <Check className="w-3 h-3 text-green-600" />
+          <Check className="w-3 h-3 text-green-600 dark:text-green-400" />
           <span className="text-[9px] text-muted-foreground truncate">{image.image_name || 'uploaded'}</span>
         </div>
       )}

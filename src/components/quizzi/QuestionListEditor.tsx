@@ -102,7 +102,7 @@ export function QuestionListEditor({
                     className={`shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-full border text-xs font-semibold transition-colors
                       ${q.correctIndex === oi
                         ? 'bg-emerald-500 border-emerald-500 text-white'
-                        : 'border-muted-foreground/30 text-muted-foreground hover:border-emerald-400'}`}
+                        : 'border-muted-foreground/30 text-muted-foreground hover:border-emerald-400 dark:hover:border-emerald-500/50'}`}
                   >
                     {q.correctIndex === oi ? <CheckCircle2 className="w-4 h-4" /> : String.fromCharCode(65 + oi)}
                   </button>

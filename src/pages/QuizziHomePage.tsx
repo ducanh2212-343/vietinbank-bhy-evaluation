@@ -171,7 +171,7 @@ export default function QuizziHomePage() {
               </Button>
             ) : attempt?.status === 'completed' ? (
               <>
-                <span className="inline-flex items-center gap-1 text-sm text-emerald-600 font-medium">
+                <span className="inline-flex items-center gap-1 text-sm text-emerald-600 dark:text-emerald-400 font-medium">
                   <CheckCircle2 className="w-4 h-4" /> {attempt.score} điểm
                 </span>
                 <Button size="sm" variant="outline" asChild>
