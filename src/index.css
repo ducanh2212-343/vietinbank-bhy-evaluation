@@ -82,9 +82,13 @@
     --glass-border: 214 45% 90% / 0.8;
 
     /* Level colors */
-    --level-1: 200 15% 55%;
-    --level-2: 210 80% 50%;
-    --level-3: 38 90% 50%;
+    /* Độ sáng hạ xuống cho đủ ≥4.5:1 trên nền huy hiệu tương ứng, cùng một mức
+       với nhóm sao bên dưới. Bản cũ để nguyên độ sáng gốc nên L3 chỉ đạt 1.97:1
+       (vàng trên nền vàng nhạt), L1 2.87:1 và L2 3.51:1 — chữ trong huy hiệu mờ
+       hẳn dù đây là nhãn xuất hiện dày đặc nhất trong ứng dụng. */
+    --level-1: 200 18% 36%;
+    --level-2: 210 80% 38%;
+    --level-3: 38 95% 29%;
     --level-4: 270 55% 50%;
 
     --level-1-bg: 200 25% 94%;

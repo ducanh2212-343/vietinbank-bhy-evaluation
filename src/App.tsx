@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { IdleLogoutGuard } from "@/components/IdleLogoutGuard";
 import { AdminRoute, ManagerOrAboveRoute, GuestGate } from "@/components/AdminRoute";
+import { RouteFallback } from "@/components/RouteFallback";
 
 
 // Retry dynamic import once on failure (handles stale chunk hashes after redeploys).
@@ -126,23 +127,23 @@ const queryClient = new QueryClient();
 function ProtectedRoutes() {
   const { user, loading, mustChangePassword } = useAuth();
   const location = useLocation();
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Đang tải...</div>;
+  if (loading) return <RouteFallback />;
   if (!user) return <Navigate to="/dang-nhap" replace />;
   // Đang dùng mật khẩu tạm: chặn mọi trang, ép về trang đổi mật khẩu trước.
   if (mustChangePassword && location.pathname !== '/doi-mat-khau') {
     return <Navigate to="/doi-mat-khau" replace />;
   }
-  return <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-muted-foreground">Đang tải...</div>}><AppLayout /></Suspense>;
+  return <Suspense fallback={<RouteFallback />}><AppLayout /></Suspense>;
 }
 
 function LoginRoute() {
   const { user, loading } = useAuth();
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Đang tải...</div>;
+  if (loading) return <RouteFallback />;
   // Cổng BHY ONE là cửa vào chung của mọi vai trò (sơ đồ site đã duyệt);
   // phân hệ nhân sự 343 vào từ menu "Nhân sự 343" của cổng.
   if (user) return <Navigate to="/one" replace />;
   return (
-    <Suspense fallback={<div className="flex min-h-[100dvh] items-center justify-center text-muted-foreground">Đang tải...</div>}>
+    <Suspense fallback={<RouteFallback />}>
       <Login />
     </Suspense>
   );

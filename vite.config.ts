@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, type PluginOption } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
@@ -57,6 +57,36 @@ function manualChunks(id: string): string | undefined {
   return undefined;
 }
 
+/**
+ * Bỏ chặn hiển thị cho biểu định kiểu chính.
+ *
+ * Đo trên 4G kèm CPU ×4: bảy tài nguyên tới hạn tải song song, chia nhau băng
+ * thông, và tệp CSS về sau cùng ở mốc 1,10 s — trình duyệt không vẽ được gì
+ * trước đó, nên FCP dính 1,26 s. Trong khi đó khung chờ #boot của index.html
+ * đã được tạo kiểu hoàn toàn bằng CSS nội tuyến, tức không cần đợi tệp này.
+ *
+ * Đổi sang nạp kiểu preload-rồi-đổi-rel (đúng lối đang dùng cho Google Fonts ở
+ * index.html) để khung chờ hiện ngay khi HTML về. Không sợ chớp nội dung chưa
+ * có kiểu: React chỉ gắn cây giao diện sau khi entry + vendor-react +
+ * vendor-data tải xong, mà cả ba đều lớn gấp bội và luôn về sau tệp CSS
+ * (1,29 / 1,32 / 1,41 s so với 1,10 s ở phép đo trên).
+ */
+function nonBlockingCss(): PluginOption {
+  return {
+    name: "bhy-non-blocking-css",
+    apply: "build",
+    enforce: "post",
+    transformIndexHtml(html) {
+      return html.replace(
+        /<link rel="stylesheet"([^>]*?)href="([^"]+\.css)"([^>]*)>/g,
+        (_m, before, href, after) =>
+          `<link rel="preload" as="style"${before}href="${href}"${after} onload="this.onload=null;this.rel='stylesheet'">` +
+          `<noscript><link rel="stylesheet" href="${href}"></noscript>`,
+      );
+    },
+  };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
@@ -69,7 +99,7 @@ export default defineConfig(({ mode }) => ({
   optimizeDeps: {
     include: ["@radix-ui/react-collapsible", "@radix-ui/react-alert-dialog"],
   },
-  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  plugins: [react(), nonBlockingCss(), mode === "development" && componentTagger()].filter(Boolean),
   build: {
     // Gói nhà cung cấp lớn nhất sau khi tách còn ~200 kB — nâng ngưỡng cảnh báo
     // để cảnh báo chỉ nổi lên khi có hồi quy thật.
