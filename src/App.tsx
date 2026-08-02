@@ -109,6 +109,7 @@ const OneHomePage = lazyWithRetry(() => import("./pages/one/OneHomePage"));
 const OneConnectPage = lazyWithRetry(() => import("./pages/one/OneConnectPage"));
 const One3806Page = lazyWithRetry(() => import("./pages/one/One3806Page"));
 const OneMove2Page = lazyWithRetry(() => import("./pages/one/OneMove2Page"));
+const LichNghiAdminPage = lazyWithRetry(() => import("./pages/LichNghiAdminPage"));
 const OneLearnPage = lazyWithRetry(() => import("./pages/one/OneLearnPage"));
 const OneNewsPage = lazyWithRetry(() => import("./pages/one/OneNewsPage"));
 const OneIdeasPage = lazyWithRetry(() => import("./pages/one/OneIdeasPage"));
@@ -272,6 +273,7 @@ const App = () => (
                 <Route path="/phan-tich-dau-moi" element={<CouncilAnalyticsPage />} />
                 <Route path="/ban-tin-quy" element={<QuarterlyNewsletterPage />} />
                 <Route path="/quan-ly-meo-tinh-nang" element={<FeatureTipsAdminPage />} />
+                <Route path="/lich-nghi-le" element={<LichNghiAdminPage />} />
                 <Route path="/quan-tri-tin-tuc" element={<NewsAdminPage />} />
                 <Route path="/quan-tri-khach" element={<GuestAccessAdminPage />} />
               </Route>

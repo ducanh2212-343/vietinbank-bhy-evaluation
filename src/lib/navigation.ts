@@ -5,7 +5,7 @@ import {
   UserCheck, Sparkles, GraduationCap, ClipboardList, KeyRound, ListPlus,
   CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag, GitBranch,
   ListChecks, Building2, Gavel, TrendingUp, Zap, Lightbulb,
-  Home, BookOpen, Compass, Layers, Share2,
+  Home, BookOpen, Compass, Layers, Share2, CalendarDays,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -387,6 +387,13 @@ export const NAV_SECTIONS: NavSection[] = [
           },
           { label: 'Bản tin quý', icon: Newspaper, path: '/ban-tin-quy', minRole: 'admin' },
           { label: 'Mẹo tính năng', icon: Lightbulb, path: '/quan-ly-meo-tinh-nang', minRole: 'admin' },
+          {
+            label: 'Lịch nghỉ lễ',
+            icon: CalendarDays,
+            path: '/lich-nghi-le',
+            minRole: 'admin',
+            keywords: ['ngay nghi', 'nghi le', 'tet', 'gio to', 'lam bu', 'ngay lam viec'],
+          },
           { label: 'Quản trị AI & Prompt', icon: Sparkles, path: '/quan-tri-ai', minRole: 'admin' },
           { label: 'Quản trị Email', icon: Mail, path: '/quan-tri-email', minRole: 'admin' },
           { label: 'Cài đặt', icon: SettingsIcon, path: '/cai-dat', minRole: 'admin' },
