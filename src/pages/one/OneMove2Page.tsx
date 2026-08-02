@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Banknote, ClipboardList, Compass, Grid3x3, Info, Inbox, RefreshCw, Target, UserRound } from 'lucide-react';
@@ -133,6 +134,29 @@ function NoiDung() {
 
   const chuaApMigration = laLoiThieuBangCt2(error as { code?: string; message?: string } | null);
 
+  // Mở đúng thứ mà thông báo trỏ tới. Nếu bấm push/chuông mà chỉ về trang chung
+  // thì cán bộ vẫn phải tự đi tìm thẻ — coi như thông báo không có tác dụng.
+  const [thamSo, datThamSo] = useSearchParams();
+  const [tab, setTab] = useState(() => thamSo.get('tab') ?? 'cua-toi');
+  const daMoTheoLien = useRef<string | null>(null);
+  useEffect(() => {
+    const id = thamSo.get('the');
+    if (!id || daMoTheoLien.current === id) return;
+    daMoTheoLien.current = id;
+    setTab('phong');
+    moTheTuId(id);
+    // Xoá tham số sau khi dùng — đóng thẻ rồi tải lại trang không bật lên nữa
+    const con = new URLSearchParams(thamSo);
+    con.delete('the');
+    datThamSo(con, { replace: true });
+    // moTheTuId phụ thuộc dsThe (đổi mỗi lần làm tươi) — cố ý chỉ chạy theo tham số
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [thamSo]);
+  // Tab tín dụng chỉ tồn tại với phòng có cấp tín dụng — về mặc định nếu không có
+  useEffect(() => {
+    if (tab === 'tin-dung' && phongCoPdtd.length > 0 && !coPdtd) setTab('cua-toi');
+  }, [tab, coPdtd, phongCoPdtd.length]);
+
   return (
     <>
       {/* Giới thiệu phương pháp */}
@@ -176,7 +200,7 @@ function NoiDung() {
             </AlertDescription>
           </Alert>
         ) : (
-          <Tabs defaultValue="cua-toi">
+          <Tabs value={tab} onValueChange={setTab}>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <TabsList>
                 <TabsTrigger value="cua-toi" className="gap-1.5">

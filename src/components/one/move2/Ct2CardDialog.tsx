@@ -1,27 +1,24 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { CalendarClock, MessageSquare, Rocket, Send, Star, Undo2 } from 'lucide-react';
+import { CalendarClock, Rocket, Star } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  CT2_CAM_XUC, CT2_COT, CT2_MAU_CAU, CT2_TEN_CO, CT2_TEN_NHAN, CT2_TEN_UU_TIEN,
+  CT2_COT, CT2_MAU_CAU, CT2_TEN_CO, CT2_TEN_NHAN, CT2_TEN_UU_TIEN,
   daDuKeHoach, goiYNhan, kiemTraCauNhip, lyDoChanChuyen, soNgayQuaHan,
   type Ct2Co, type Ct2DauViec, type Ct2NhanPdca, type Ct2TrangThai,
 } from '@/lib/ct2';
 import {
-  ct2GhiNhip, ct2GuiBinhLuan, ct2SuaDauViec, ct2ThuHoiBinhLuan,
-  useCt2BinhLuan, useCt2LamTuoi, useCt2NhatKy, type Ct2NhanSu,
+  ct2GhiNhip, ct2SuaDauViec, useCt2LamTuoi, useCt2NhatKy, type Ct2NhanSu,
 } from './useCt2Data';
+import { Ct2TrangTraoDoi, type NguoiTraoDoi } from './Ct2TrangTraoDoi';
 
 /**
  * Chi tiết thẻ: 5W2H + Cổng B (ghi nhịp <45 giây) + nhật ký PDCA append-only
@@ -46,9 +43,21 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
   const { profileId } = useAuth();
   const lamTuoi = useCt2LamTuoi();
   const { data: nhatKy = [] } = useCt2NhatKy(the?.id ?? null);
-  const { data: binhLuans = [] } = useCt2BinhLuan(the?.id ?? null);
 
   const tenNguoi = useMemo(() => new Map(nhanSu.map((n) => [n.id, n.full_name])), [nhanSu]);
+  // Người liên quan tới đúng thẻ này — hiện thành nút @nhắc tên một chạm
+  const nguoiLienQuan = useMemo<NguoiTraoDoi[]>(() => {
+    if (!the) return [];
+    const ds: NguoiTraoDoi[] = [];
+    const them = (id: string | null | undefined, vaiTro: string) => {
+      if (id && !ds.some((x) => x.id === id)) ds.push({ id, ten: tenNguoi.get(id) ?? 'Đồng nghiệp', vaiTro });
+    };
+    them(the.nguoi_chiu_trach_nhiem, 'chịu trách nhiệm');
+    them(the.lanh_dao_theo_doi, 'lãnh đạo theo dõi');
+    them(the.nguoi_dang_giu, 'đang giữ việc');
+    for (const id of the.nguoi_phoi_hop ?? []) them(id, 'phối hợp');
+    return ds;
+  }, [the, tenNguoi]);
   const laChuThe = the?.nguoi_chiu_trach_nhiem === profileId;
   const vong = useMemo(() => ({
     coDongP: nhatKy.some((n) => n.nhan_pdca === 'P'),
@@ -164,10 +173,13 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
           </div>
         </div>
 
-        <KhungBinhLuan
-          dauViecId={the.id}
-          binhLuans={binhLuans}
+        <Ct2TrangTraoDoi
+          phamVi="DAU_VIEC"
+          doiTuongId={the.id}
+          nguoiLienQuan={nguoiLienQuan}
           tenNguoi={tenNguoi}
+          tieuDe="Trao đổi trên thẻ"
+          goiY="Hỏi–đáp đúng ngữ cảnh thẻ. Sau khi gửi chỉ thu hồi được, không sửa."
           onXong={() => lamTuoi()}
         />
       </DialogContent>
@@ -396,134 +408,6 @@ export function FormGhiNhip({ the, cauGanNhat, onXong, tuDongNhan }: {
           : <span />}
         <Button onClick={ghi} disabled={dangGui || !kiem.hopLe}>
           {dangGui ? 'Đang lưu…' : 'Lưu nhịp'}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Bình luận + cảm xúc (bộ rút gọn, đặc tả §8)
-// ---------------------------------------------------------------------------
-
-interface CamXuc { binh_luan_id: string; nguoi: string; bieu_tuong: string }
-
-function KhungBinhLuan({ dauViecId, binhLuans, tenNguoi, onXong }: {
-  dauViecId: string;
-  binhLuans: Array<{ id: string; nguoi_gui: string; noi_dung: string; can_tra_loi: boolean; thu_hoi: boolean; ghim: boolean; created_at: string }>;
-  tenNguoi: Map<string, string>;
-  onXong: () => void;
-}) {
-  const { profileId } = useAuth();
-  const qc = useQueryClient();
-  const [noiDung, setNoiDung] = useState('');
-  const [canTraLoi, setCanTraLoi] = useState(false);
-  const [dangGui, setDangGui] = useState(false);
-
-  const dsId = binhLuans.map((b) => b.id);
-  const { data: camXucs = [] } = useQuery({
-    queryKey: ['ct2', 'cam-xuc', dauViecId, dsId.length],
-    enabled: dsId.length > 0,
-    staleTime: 10_000,
-    queryFn: async () => {
-      const db = supabase as unknown as {
-        from(t: string): { select(c: string): { in(c: string, v: string[]): PromiseLike<{ data: unknown }> } };
-      };
-      const { data } = await db.from('ct2_cam_xuc').select('binh_luan_id, nguoi, bieu_tuong').in('binh_luan_id', dsId);
-      return (data ?? []) as CamXuc[];
-    },
-  });
-
-  const gui = async () => {
-    if (!profileId || !noiDung.trim()) return;
-    setDangGui(true);
-    const { error } = await ct2GuiBinhLuan({
-      pham_vi: 'DAU_VIEC', doi_tuong_id: dauViecId, cha_id: null,
-      nguoi_gui: profileId, noi_dung: noiDung.trim(), nhac_ten: [], can_tra_loi: canTraLoi,
-    });
-    setDangGui(false);
-    if (error) { toast.error(error); return; }
-    setNoiDung(''); setCanTraLoi(false);
-    qc.invalidateQueries({ queryKey: ['ct2', 'binh-luan', dauViecId] });
-    onXong();
-  };
-
-  const thaCamXuc = async (binhLuanId: string, bieuTuong: string) => {
-    if (!profileId) return;
-    const daTha = camXucs.some((c) => c.binh_luan_id === binhLuanId && c.nguoi === profileId && c.bieu_tuong === bieuTuong);
-    const db = supabase as unknown as {
-      from(t: string): {
-        insert(v: unknown): PromiseLike<{ error: unknown }>;
-        delete(): { eq(c: string, v: string): { eq(c: string, v: string): { eq(c: string, v: string): PromiseLike<{ error: unknown }> } } };
-      };
-    };
-    if (daTha) {
-      await db.from('ct2_cam_xuc').delete().eq('binh_luan_id', binhLuanId).eq('nguoi', profileId).eq('bieu_tuong', bieuTuong);
-    } else {
-      await db.from('ct2_cam_xuc').insert({ binh_luan_id: binhLuanId, nguoi: profileId, bieu_tuong: bieuTuong });
-    }
-    qc.invalidateQueries({ queryKey: ['ct2', 'cam-xuc', dauViecId] });
-  };
-
-  return (
-    <div>
-      <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-brand-navy">
-        <MessageSquare className="h-4 w-4" /> Trao đổi trên thẻ ({binhLuans.filter((b) => !b.thu_hoi).length})
-      </p>
-      <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
-        {binhLuans.map((b) => (
-          <div key={b.id} className={`rounded-xl border p-2.5 text-sm ${b.ghim ? 'border-amber-300 bg-amber-50' : 'border-slate-200'}`}>
-            <p className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-              <span className="font-medium text-slate-700">{tenNguoi.get(b.nguoi_gui) ?? '—'}</span>
-              <span>{new Date(b.created_at).toLocaleString('vi-VN')}</span>
-              {b.ghim && <span>📌 Ghim</span>}
-              {b.can_tra_loi && !b.thu_hoi && (
-                <Badge variant="outline" className="border-red-300 text-red-700">Cần trả lời</Badge>
-              )}
-              {b.nguoi_gui === profileId && !b.thu_hoi && (
-                <button
-                  className="inline-flex items-center gap-0.5 text-slate-400 hover:text-red-600"
-                  onClick={async () => {
-                    const { error } = await ct2ThuHoiBinhLuan(b.id);
-                    if (error) toast.error(error);
-                    else qc.invalidateQueries({ queryKey: ['ct2', 'binh-luan', dauViecId] });
-                  }}
-                >
-                  <Undo2 className="h-3 w-3" /> Thu hồi
-                </button>
-              )}
-            </p>
-            <p className={`mt-1 whitespace-pre-wrap ${b.thu_hoi ? 'italic text-slate-400' : 'text-slate-800'}`}>
-              {b.thu_hoi ? '(Đã thu hồi — vẫn lưu vết trong hệ thống)' : b.noi_dung}
-            </p>
-            {!b.thu_hoi && (
-              <p className="mt-1.5 flex flex-wrap gap-1">
-                {CT2_CAM_XUC.map((e) => {
-                  const so = camXucs.filter((c) => c.binh_luan_id === b.id && c.bieu_tuong === e).length;
-                  const cuaToi = camXucs.some((c) => c.binh_luan_id === b.id && c.bieu_tuong === e && c.nguoi === profileId);
-                  return (
-                    <button key={e} onClick={() => thaCamXuc(b.id, e)}
-                      className={`rounded-full px-1.5 py-0.5 text-xs ${cuaToi ? 'bg-blue-100' : so > 0 ? 'bg-slate-100' : 'opacity-40 hover:opacity-100'}`}>
-                      {e}{so > 0 && <span className="ml-0.5 tabular-nums">{so}</span>}
-                    </button>
-                  );
-                })}
-              </p>
-            )}
-          </div>
-        ))}
-      </div>
-      <div className="mt-2 flex items-end gap-2">
-        <div className="flex-1">
-          <Textarea rows={2} value={noiDung} onChange={(e) => setNoiDung(e.target.value)}
-            placeholder="Hỏi–đáp đúng ngữ cảnh thẻ. Sau 15 phút không sửa được, chỉ thu hồi." />
-          <label className="mt-1 flex items-center gap-2 text-xs text-slate-600">
-            <Checkbox checked={canTraLoi} onCheckedChange={(v) => setCanTraLoi(v === true)} />
-            Đánh dấu «Cần trả lời» (quá 24h chưa trả lời sẽ nhắc lại)
-          </label>
-        </div>
-        <Button onClick={gui} disabled={dangGui || !noiDung.trim()}>
-          <Send className="h-4 w-4" />
         </Button>
       </div>
     </div>

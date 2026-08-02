@@ -67,9 +67,16 @@ export interface Ct2Nhip {
   dung_nhip: 'DUNG_GIO' | 'MUON' | 'MAT_NHIP' | 'KHONG_TINH';
 }
 
+/**
+ * Phạm vi của một luồng trao đổi. Cùng một bảng bình luận phục vụ cả ba bàn —
+ * Chiêu thức 2, Phê duyệt tín dụng và Kanban 38 skill/Dấu ấn — để cán bộ chỉ
+ * phải học một cách trao đổi, và để @nhắc tên chỉ phải viết một lần.
+ */
+export type Ct2PhamVi = 'DAU_VIEC' | 'PHONG' | 'CHIEN_DICH' | 'HO_SO_TIN_DUNG' | 'THE_KANBAN';
+
 export interface Ct2BinhLuan {
   id: string;
-  pham_vi: 'DAU_VIEC' | 'PHONG' | 'CHIEN_DICH';
+  pham_vi: Ct2PhamVi;
   doi_tuong_id: string;
   cha_id: string | null;
   nguoi_gui: string;
@@ -390,24 +397,75 @@ function ngayVn(iso: string | Date): number {
   return Math.floor(new Date(vn.getFullYear(), vn.getMonth(), vn.getDate()).getTime() / NGAY_MS);
 }
 
-/** Số ngày quá hạn (0 = chưa quá). Thẻ đã xong/đóng/hủy không tính. */
+/**
+ * Hôm nay có phải ngày làm việc không (thứ 2 → thứ 6, giờ Việt Nam).
+ *
+ * Nhịp Chiêu thức 2 CHỈ chạy ngày thường. Thứ Bảy và Chủ nhật không đòi ghi
+ * nhịp, không chấm giờ, không tính vào bất kỳ đồng hồ chờ nào.
+ */
+export function laNgayLamViec(moc: Date = new Date()): boolean {
+  const vn = new Date(moc.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
+  const thu = vn.getDay();
+  return thu !== 0 && thu !== 6;
+}
+
+/**
+ * Số NGÀY LÀM VIỆC (thứ 2 → thứ 6) trôi qua từ `tu` đến `den`, không tính ngày `tu`.
+ *
+ * Đây là đơn vị đúng cho mọi đồng hồ đo «người ta đã có bao nhiêu cơ hội để xử
+ * lý». Nếu đếm ngày lịch, một hồ sơ trình chiều thứ Sáu sẽ hiện «chờ 3 ngày»
+ * ngay sáng thứ Hai — báo đỏ một người chưa hề có ngày làm việc nào để xử lý.
+ * Cảnh báo sai kiểu đó lặp vài lần là cán bộ thôi tin bảng.
+ *
+ * Ngày nghỉ lễ chưa trừ — Chi nhánh chưa có bảng lịch nghỉ; khi có thì chỉ cần
+ * sửa đúng hàm này và hàm ct2_ngay_lam_viec tương ứng trong database.
+ */
+export function soNgayLamViec(tu: string | Date, den: string | Date = new Date()): number {
+  const a = ngayVn(tu);
+  const b = ngayVn(den);
+  if (b <= a) return 0;
+  // Chặn trên: mốc rác (giu_tu sai vài năm) không được kéo vòng lặp chạy mãi
+  const soNgay = Math.min(b - a, 400);
+  // Lấy thứ của mốc bắt đầu THEO LỊCH VN rồi cộng dồn — không suy ra thứ từ chỉ
+  // số ngày, vì chỉ số đó lệch một ngày ở máy chạy múi giờ dương.
+  const d0 = typeof tu === 'string' ? new Date(tu) : tu;
+  let thu = new Date(d0.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' })).getDay();
+  let dem = 0;
+  for (let i = 1; i <= soNgay; i++) {
+    thu = (thu + 1) % 7;
+    if (thu !== 0 && thu !== 6) dem++;
+  }
+  return dem;
+}
+
+/**
+ * Số ngày quá hạn (0 = chưa quá). Thẻ đã xong/đóng/hủy không tính.
+ *
+ * CỐ Ý đếm ngày lịch chứ không phải ngày làm việc: hạn hoàn thành là lời hứa
+ * theo một ngày trên tờ lịch. Trễ hai ngày vắt qua cuối tuần thì với khách hàng
+ * và với BGĐ vẫn là trễ hai ngày. Khác với đồng hồ chờ ở dưới — cái đó đo cơ
+ * hội xử lý của một người, nên phải trừ ngày nghỉ.
+ */
 export function soNgayQuaHan(dv: Pick<Ct2DauViec, 'han_hoan_thanh' | 'trang_thai'>, moc: Date = new Date()): number {
   if (!CT2_TRANG_THAI_CHAY.includes(dv.trang_thai)) return 0;
   const lech = ngayVn(moc) - ngayVn(`${dv.han_hoan_thanh}T00:00:00+07:00`);
   return Math.max(0, lech);
 }
 
-/** Số ngày thẻ "im lặng" — không có nhịp mới. Thẻ chưa từng có nhịp tính từ ngày bắt đầu. */
+/**
+ * Số NGÀY LÀM VIỆC thẻ "im lặng" — không có nhịp mới. Thẻ chưa từng có nhịp
+ * tính từ ngày bắt đầu. Cuối tuần không đòi nhịp nên không tính vào đây.
+ */
 export function soNgayImLang(dv: Pick<Ct2DauViec, 'nhip_gan_nhat' | 'ngay_bat_dau' | 'trang_thai'>, moc: Date = new Date()): number {
   if (dv.trang_thai !== 'DANG_LAM') return 0; // cột chờ: đồng hồ đã đổi chủ
   const tu = dv.nhip_gan_nhat ?? `${dv.ngay_bat_dau}T00:00:00+07:00`;
-  return Math.max(0, ngayVn(moc) - ngayVn(tu));
+  return soNgayLamViec(tu, moc);
 }
 
-/** Tuổi thẻ trong cột chờ (ngày) — quá CT2_NGUONG_TUOI_CHO thì escalate người giữ */
+/** Tuổi thẻ trong cột chờ (NGÀY LÀM VIỆC) — quá CT2_NGUONG_TUOI_CHO thì escalate người giữ */
 export function tuoiCho(dv: Pick<Ct2DauViec, 'giu_tu' | 'trang_thai'>, moc: Date = new Date()): number {
   if ((dv.trang_thai !== 'CHO_PHOI_HOP' && dv.trang_thai !== 'CHO_DUYET') || !dv.giu_tu) return 0;
-  return Math.max(0, ngayVn(moc) - ngayVn(dv.giu_tu));
+  return soNgayLamViec(dv.giu_tu, moc);
 }
 
 /** Cảnh báo "Chuẩn bị quá lâu": còn ≤ 25% quỹ thời gian mà chưa khởi động */
@@ -516,4 +574,45 @@ export function laLoiThieuBangCt2(error: { code?: string; message?: string } | n
   if (!error) return false;
   return error.code === '42P01' || /relation .* does not exist/i.test(error.message ?? '')
     || /Could not find the (function|table)/i.test(error.message ?? '');
+}
+
+// ---------------------------------------------------------------------------
+// Thông báo
+// ---------------------------------------------------------------------------
+
+/** Một dòng trong hàng đợi ct2_thong_bao (phần giao diện cần đọc) */
+export interface Ct2ThongBao {
+  id: string;
+  ma_su_kien: string;
+  dau_viec_id: string | null;
+  tieu_de: string;
+  noi_dung: string;
+  muc: 'NHE' | 'DO' | 'CHAN' | string;
+  created_at: string;
+  doc_luc: string | null;
+}
+
+export const CT2_DAU_MUC: Record<string, string> = { CHAN: '⛔', DO: '🔴', NHE: '🟡' };
+
+/**
+ * Bấm vào thông báo phải mở đúng thứ nó nói tới.
+ *
+ * Một thông báo dẫn về trang chung là thông báo hỏng: cán bộ vẫn phải tự đi tìm
+ * thẻ giữa bảy cột, và lần sau họ sẽ bỏ qua chuông. Quy tắc này dùng chung với
+ * edge function notify-ct2 để push và chuông trong ứng dụng không lệch nhau.
+ */
+export function duongDanThongBao(tb: Pick<Ct2ThongBao, 'ma_su_kien' | 'dau_viec_id'>): string {
+  if (tb.dau_viec_id) return `/one/chieu-thuc-2?the=${tb.dau_viec_id}`;
+  if (tb.ma_su_kien.startsWith('HS_')) return '/one/chieu-thuc-2?tab=tin-dung';
+  return '/one/chieu-thuc-2';
+}
+
+/** «12 phút trước» dễ đọc hơn dấu thời gian đầy đủ trong danh sách chuông */
+export function khiNaoThongBao(iso: string, moc: Date = new Date()): string {
+  const phut = Math.round((moc.getTime() - new Date(iso).getTime()) / 60000);
+  if (phut < 1) return 'vừa xong';
+  if (phut < 60) return `${phut} phút trước`;
+  const gio = Math.round(phut / 60);
+  if (gio < 24) return `${gio} giờ trước`;
+  return new Date(iso).toLocaleDateString('vi-VN');
 }

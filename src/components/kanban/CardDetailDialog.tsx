@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +8,7 @@ import { computeBadges, rpcConfirm, getSourceLabel, type KanbanCard } from '@/li
 import { ReturnCardDialog } from './ReturnCardDialog';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { Ct2TrangTraoDoi, type NguoiTraoDoi } from '@/components/one/move2/Ct2TrangTraoDoi';
 
 interface Props {
   card: KanbanCard;
@@ -53,6 +55,35 @@ export function CardDetailDialog({ card, open, onClose, onChanged, ownerName }: 
   const [loading, setLoading] = useState(false);
   const isOwner = profileId === card.profile_id;
   const b = computeBadges(card);
+
+  // Trao đổi trên thẻ 38 skill / thẻ Dấu ấn. Trước đây thẻ chỉ có timeline một
+  // chiều: cán bộ ghi tiến độ, quản lý nhận push, nhưng không ai trả lời được
+  // vào đúng chỗ — góp ý quay về Zalo và mất khỏi hồ sơ phát triển.
+  const { data: lienQuan } = useQuery({
+    queryKey: ['kanban', 'nguoi-lien-quan', card.profile_id],
+    enabled: open && !!card.profile_id,
+    staleTime: 300_000,
+    queryFn: async () => {
+      const { data: chu } = await supabase.from('profiles')
+        .select('id, full_name, manager_id, pgd_id').eq('id', card.profile_id).maybeSingle();
+      if (!chu) return [] as NguoiTraoDoi[];
+      const capTren = [chu.manager_id, chu.pgd_id].filter(Boolean) as string[];
+      const { data: ds } = capTren.length
+        ? await supabase.from('profiles').select('id, full_name').in('id', capTren)
+        : { data: [] as { id: string; full_name: string }[] };
+      const ket: NguoiTraoDoi[] = [{ id: chu.id, ten: chu.full_name, vaiTro: 'chủ thẻ' }];
+      for (const p of ds ?? []) {
+        if (!ket.some((x) => x.id === p.id)) {
+          ket.push({ id: p.id, ten: p.full_name, vaiTro: p.id === chu.manager_id ? 'quản lý trực tiếp' : 'lãnh đạo phụ trách' });
+        }
+      }
+      return ket;
+    },
+  });
+  const tenNguoi = useMemo(
+    () => new Map((lienQuan ?? []).map((n) => [n.id, n.ten])),
+    [lienQuan],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -120,6 +151,15 @@ export function CardDetailDialog({ card, open, onClose, onChanged, ownerName }: 
               </div>
             )}
           </div>
+
+          <Ct2TrangTraoDoi
+            phamVi="THE_KANBAN"
+            doiTuongId={card.id}
+            nguoiLienQuan={lienQuan ?? []}
+            tenNguoi={tenNguoi}
+            tieuDe="Trao đổi trên thẻ"
+            goiY="Góp ý, hỏi thêm, hoặc ghi nhận. VD «Phần này em làm tốt, thử áp dụng vào KH nào cụ thể chưa?»"
+          />
         </div>
         <ReturnCardDialog cardId={card.id} open={returnOpen} onClose={() => setReturnOpen(false)} onSaved={onChanged} />
       </DialogContent>

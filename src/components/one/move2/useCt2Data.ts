@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { trongKhungNhip, type Ct2BinhLuan, type Ct2DauViec, type Ct2Nhip } from '@/lib/ct2';
+import { trongKhungNhip, type Ct2BinhLuan, type Ct2DauViec, type Ct2Nhip, type Ct2PhamVi } from '@/lib/ct2';
 
 /**
  * Lớp dữ liệu Chiêu thức 2.
@@ -53,7 +53,8 @@ export interface Ct2NhipNguoi {
   so_viec_da_ghi: number;
   so_the_do: number;
   so_qua_han: number;
-  ket_qua: 'DUNG_GIO' | 'MUON' | 'CHUA_DU' | 'CHUA_GHI' | 'KHONG_CO_VIEC';
+  /** NGAY_NGHI = thứ Bảy/Chủ nhật — nhịp chỉ chạy thứ 2 đến thứ 6 */
+  ket_qua: 'DUNG_GIO' | 'MUON' | 'CHUA_DU' | 'CHUA_GHI' | 'KHONG_CO_VIEC' | 'NGAY_NGHI';
 }
 
 export interface Ct2DeXuat {
@@ -170,18 +171,22 @@ export function useCt2NhatKy(dauViecId: string | null) {
   });
 }
 
-/** Bình luận trên một thẻ */
-export function useCt2BinhLuan(dauViecId: string | null) {
+/**
+ * Trao đổi trên MỘT đối tượng bất kỳ — thẻ Chiêu thức 2, hồ sơ tín dụng, hay thẻ
+ * Kanban 38 skill. Một bảng, một hook, nên mọi bàn đều có @nhắc tên, «Cần trả
+ * lời», cảm xúc và thu hồi giống nhau — cán bộ học một lần dùng khắp nơi.
+ */
+export function useCt2BinhLuan(doiTuongId: string | null, phamVi: Ct2PhamVi = 'DAU_VIEC') {
   return useQuery({
-    queryKey: ['ct2', 'binh-luan', dauViecId],
-    enabled: !!dauViecId,
+    queryKey: ['ct2', 'binh-luan', phamVi, doiTuongId],
+    enabled: !!doiTuongId,
     staleTime: 10_000,
     queryFn: async () => {
       const { data, error } = await db
         .from('ct2_binh_luan')
         .select('*')
-        .eq('pham_vi', 'DAU_VIEC')
-        .eq('doi_tuong_id', dauViecId)
+        .eq('pham_vi', phamVi)
+        .eq('doi_tuong_id', doiTuongId)
         .order('created_at')
         .limit(300);
       if (error) throw error;
@@ -271,7 +276,7 @@ export async function ct2XuLyDeXuat(id: string, v: Record<string, unknown>): Pro
 }
 
 export async function ct2GuiBinhLuan(v: {
-  pham_vi: 'DAU_VIEC'; doi_tuong_id: string; cha_id: string | null; nguoi_gui: string;
+  pham_vi: Ct2PhamVi; doi_tuong_id: string; cha_id: string | null; nguoi_gui: string;
   noi_dung: string; nhac_ten: string[]; can_tra_loi: boolean;
 }): Promise<{ error: string | null }> {
   const { error } = await db.from('ct2_binh_luan').insert(v);

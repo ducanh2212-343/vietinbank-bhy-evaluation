@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { Ct2ChuongThongBao } from '@/components/one/move2/Ct2ChuongThongBao';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavTree } from '@/hooks/useNavTree';
 import { isFolder, matchesLeaf, leavesOf, type NavSection } from '@/lib/navigation';
@@ -387,6 +388,8 @@ export function TopNav({ onMoBangLenh }: Props) {
             {phimTat}
           </kbd>
         </button>
+
+        <Ct2ChuongThongBao />
 
         <ThemeToggle />
 
