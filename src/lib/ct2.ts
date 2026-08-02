@@ -6,6 +6,8 @@
  * client chặn để trải nghiệm tốt, server chặn để dữ liệu không thể sai.
  */
 
+import { ngayLamViecTheoLich, ngayVnChuoi } from './lichNghi';
+
 export type Ct2TrangThai =
   | 'CHUAN_BI' | 'DANG_LAM' | 'CHO_PHOI_HOP' | 'CHO_DUYET'
   | 'HOAN_THANH' | 'DA_DONG' | 'DUNG_HUY';
@@ -398,27 +400,27 @@ function ngayVn(iso: string | Date): number {
 }
 
 /**
- * Hôm nay có phải ngày làm việc không (thứ 2 → thứ 6, giờ Việt Nam).
+ * Hôm nay có phải ngày làm việc không (giờ Việt Nam).
  *
- * Nhịp Chiêu thức 2 CHỈ chạy ngày thường. Thứ Bảy và Chủ nhật không đòi ghi
- * nhịp, không chấm giờ, không tính vào bất kỳ đồng hồ chờ nào.
+ * Nhịp Chiêu thức 2 CHỈ chạy ngày làm việc: không phải thứ Bảy/Chủ nhật, và
+ * không nằm trong lịch nghỉ lễ mà TCTH đã nhập. Ngày «đi làm bù» thì ngược lại
+ * — vẫn là ngày làm việc dù rơi vào cuối tuần.
  */
 export function laNgayLamViec(moc: Date = new Date()): boolean {
   const vn = new Date(moc.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
-  const thu = vn.getDay();
-  return thu !== 0 && thu !== 6;
+  return ngayLamViecTheoLich(ngayVnChuoi(moc), vn.getDay());
 }
 
 /**
- * Số NGÀY LÀM VIỆC (thứ 2 → thứ 6) trôi qua từ `tu` đến `den`, không tính ngày `tu`.
+ * Số NGÀY LÀM VIỆC trôi qua từ `tu` đến `den`, không tính ngày `tu`.
  *
  * Đây là đơn vị đúng cho mọi đồng hồ đo «người ta đã có bao nhiêu cơ hội để xử
  * lý». Nếu đếm ngày lịch, một hồ sơ trình chiều thứ Sáu sẽ hiện «chờ 3 ngày»
  * ngay sáng thứ Hai — báo đỏ một người chưa hề có ngày làm việc nào để xử lý.
  * Cảnh báo sai kiểu đó lặp vài lần là cán bộ thôi tin bảng.
  *
- * Ngày nghỉ lễ chưa trừ — Chi nhánh chưa có bảng lịch nghỉ; khi có thì chỉ cần
- * sửa đúng hàm này và hàm ct2_ngay_lam_viec tương ứng trong database.
+ * Trừ thứ Bảy/Chủ nhật VÀ lịch nghỉ lễ do TCTH nhập; cộng lại ngày đi làm bù.
+ * Bên database, `ct2_ngay_lam_viec` đọc cùng bảng và cho cùng kết quả.
  */
 export function soNgayLamViec(tu: string | Date, den: string | Date = new Date()): number {
   const a = ngayVn(tu);
@@ -426,14 +428,18 @@ export function soNgayLamViec(tu: string | Date, den: string | Date = new Date()
   if (b <= a) return 0;
   // Chặn trên: mốc rác (giu_tu sai vài năm) không được kéo vòng lặp chạy mãi
   const soNgay = Math.min(b - a, 400);
-  // Lấy thứ của mốc bắt đầu THEO LỊCH VN rồi cộng dồn — không suy ra thứ từ chỉ
-  // số ngày, vì chỉ số đó lệch một ngày ở máy chạy múi giờ dương.
+  // Lấy thứ VÀ ngày của mốc bắt đầu THEO LỊCH VN rồi cộng dồn — không suy ra
+  // thứ từ chỉ số ngày, vì chỉ số đó lệch một ngày ở máy chạy múi giờ dương.
   const d0 = typeof tu === 'string' ? new Date(tu) : tu;
-  let thu = new Date(d0.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' })).getDay();
+  const vn0 = new Date(d0.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
+  let thu = vn0.getDay();
+  const chay = new Date(vn0.getFullYear(), vn0.getMonth(), vn0.getDate());
   let dem = 0;
   for (let i = 1; i <= soNgay; i++) {
     thu = (thu + 1) % 7;
-    if (thu !== 0 && thu !== 6) dem++;
+    chay.setDate(chay.getDate() + 1);
+    const chuoi = `${chay.getFullYear()}-${String(chay.getMonth() + 1).padStart(2, '0')}-${String(chay.getDate()).padStart(2, '0')}`;
+    if (ngayLamViecTheoLich(chuoi, thu)) dem++;
   }
   return dem;
 }

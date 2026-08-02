@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation, useNavigationType } from 'react-router-dom';
 import { NavTreeProvider, useNavTree } from '@/hooks/useNavTree';
+import { useLichNghi } from '@/hooks/useLichNghi';
 import { TopNav } from './TopNav';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
 import { MobileNav } from './MobileNav';
@@ -29,6 +30,10 @@ function KhungUngDung() {
   const lanDau = useRef(true);
 
   usePhimTatBangLenh(setMoBangLenh);
+
+  // Nạp lịch nghỉ lễ một lần cho cả phiên: mọi phép đếm ngày làm việc phía
+  // client (tuổi chờ thẻ, tuổi chờ hồ sơ, số ngày im lặng) đọc từ sổ này.
+  useLichNghi();
 
   // Chỉ ghi nhớ trang có mặt trên cây điều hướng
   useGhiNhoTrangGanDay(viTri.leaf?.path);
