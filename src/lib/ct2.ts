@@ -6,6 +6,7 @@
  * client chặn để trải nghiệm tốt, server chặn để dữ liệu không thể sai.
  */
 
+import { cauHinhNhip, gioSangPhut } from './cauHinhNhip';
 import { ngayLamViecTheoLich, ngayVnChuoi } from './lichNghi';
 
 export type Ct2TrangThai =
@@ -127,8 +128,18 @@ export const CT2_TRANG_THAI_CHAY: Ct2TrangThai[] =
 /** Ngưỡng WIP mặc định (TCTH cấu hình được): 4 thẻ "Đang làm"/người */
 export const CT2_NGUONG_WIP = 4;
 
-/** Tuổi tối đa cột chờ trước khi escalate: 3 ngày làm việc */
+/**
+ * Tuổi tối đa cột chờ trước khi escalate, tính bằng ngày làm việc.
+ *
+ * Hằng số này là MẶC ĐỊNH; giá trị đang chạy lấy qua `nguongTuoiCho()` vì TCTH
+ * cấu hình được trong «Cài đặt ngày giờ».
+ */
 export const CT2_NGUONG_TUOI_CHO = 3;
+
+/** Ngưỡng cột chờ đang áp dụng theo cài đặt của TCTH */
+export function nguongTuoiCho(): number {
+  return cauHinhNhip().nguong_tuoi_cho;
+}
 
 /** Bộ cảm xúc rút gọn cho bình luận (cố ý giới hạn — đặc tả §8.3) */
 export const CT2_CAM_XUC = ['👍', '✅', '👀', '🎯', '🙏', '❤️', '🔥'] as const;
@@ -536,7 +547,7 @@ export function mucChuY(
   moc: Date = new Date(),
 ): Ct2MucChuY {
   if (t.trang_thai === 'DA_DONG' || t.trang_thai === 'DUNG_HUY') return 'XONG';
-  if (soNgayQuaHan(t, moc) > 0 || t.co_tinh_trang === 'DO' || tuoiCho(t, moc) > CT2_NGUONG_TUOI_CHO) {
+  if (soNgayQuaHan(t, moc) > 0 || t.co_tinh_trang === 'DO' || tuoiCho(t, moc) > nguongTuoiCho()) {
     return 'DO';
   }
   if (t.co_tinh_trang === 'VANG' || soNgayImLang(t, moc) >= 3
@@ -568,11 +579,12 @@ export function locEmojiTieuDe(s: string): string {
  * websocket mở suốt ngày.
  */
 export function trongKhungNhip(moc: Date = new Date()): boolean {
+  // Ngày nghỉ lễ cũng không có nhịp — dùng chung luật với laNgayLamViec
+  if (!laNgayLamViec(moc)) return false;
   const vn = new Date(moc.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
-  const thu = vn.getDay();
-  if (thu === 0 || thu === 6) return false;
   const phut = vn.getHours() * 60 + vn.getMinutes();
-  return phut >= 6 * 60 + 45 && phut <= 8 * 60 + 45;
+  const ch = cauHinhNhip();
+  return phut >= gioSangPhut(ch.gio_mo_nhip) && phut <= gioSangPhut(ch.gio_dong_nhip);
 }
 
 /** Bảng này chưa có trong database — migration chưa được áp vào project. */

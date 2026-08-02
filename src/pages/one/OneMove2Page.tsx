@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Banknote, ClipboardList, Info, Inbox, UserRound } from 'lucide-react';
+import { Banknote, CalendarRange, ClipboardList, Info, Inbox, UserRound } from 'lucide-react';
 import { OnePageShell } from '@/components/one/OnePageShell';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { laLoiThieuBangCt2, type Ct2DauViec, type Ct2TrangThai } from '@/lib/ct2';
 import { Ct2Board } from '@/components/one/move2/Ct2Board';
 import { Ct2GioiThieu } from '@/components/one/move2/Ct2GioiThieu';
+import { Ct2BangNhip } from '@/components/one/move2/Ct2BangNhip';
 import { Ct2CardDialog } from '@/components/one/move2/Ct2CardDialog';
 import { Ct2CreateDialog } from '@/components/one/move2/Ct2CreateDialog';
 import { Ct2PlanDialog } from '@/components/one/move2/Ct2PlanDialog';
@@ -150,7 +151,8 @@ function NoiDung() {
   // Tab tín dụng chỉ tồn tại với phòng có cấp tín dụng — về mặc định nếu không có
   useEffect(() => {
     if (tab === 'tin-dung' && phongCoPdtd.length > 0 && !coPdtd) setTab('cua-toi');
-  }, [tab, coPdtd, phongCoPdtd.length]);
+    if (tab === 'bang-nhip' && !laLanhDao) setTab('cua-toi');
+  }, [tab, coPdtd, phongCoPdtd.length, laLanhDao]);
 
   return (
     <>
@@ -180,6 +182,14 @@ function NoiDung() {
                 {coPdtd && (
                   <TabsTrigger value="tin-dung" className="gap-1.5">
                     <Banknote className="h-4 w-4" /> Phê duyệt tín dụng
+                  </TabsTrigger>
+                )}
+                {/* Bảng tổng hợp nhịp là công cụ điều hành — chỉ lãnh đạo thấy.
+                    Cán bộ nhìn thấy bảng xếp mình so với đồng nghiệp mỗi sáng thì
+                    nhịp thành cuộc thi, không còn là tấm gương soi cho chính mình. */}
+                {laLanhDao && (
+                  <TabsTrigger value="bang-nhip" className="gap-1.5">
+                    <CalendarRange className="h-4 w-4" /> Bảng nhịp
                   </TabsTrigger>
                 )}
               </TabsList>
@@ -276,6 +286,11 @@ function NoiDung() {
                   onKeoHoSo={(h, den) => { setHoSoChuyenDen(den); setHoSoMo(h); }}
                   onTaoMoi={() => setDangMoHoSo(true)}
                 />
+              </TabsContent>
+            )}
+            {laLanhDao && (
+              <TabsContent value="bang-nhip">
+                <Ct2BangNhip phongId={phongId} />
               </TabsContent>
             )}
           </Tabs>

@@ -10,6 +10,7 @@
  */
 
 import { soNgayLamViec } from './ct2';
+import { cauHinhNhip } from './cauHinhNhip';
 
 export type HsTrangThai =
   | 'THU_THAP' | 'TRINH_LDP' | 'TRINH_LDCN' | 'TRINH_TSC'
@@ -118,6 +119,11 @@ export const HS_NGUONG_DEN_HAN = 60;
  * cấp trên có xử lý không; cái này đo cán bộ có còn bám hồ sơ không.
  */
 export const HS_NGUONG_IM_LANG = 2;
+
+/** Ngưỡng im lặng đang áp dụng theo cài đặt của TCTH */
+export function hsNguongImLang(): number {
+  return cauHinhNhip().nguong_im_lang_ho_so;
+}
 
 // ---------------------------------------------------------------------------
 // Cổng nhập — hồ sơ tín dụng cần đúng 6 điều, tất cả đều là dữ liệu có cấu trúc
@@ -293,8 +299,9 @@ export function hsMucImLang(
   moc: Date = new Date(),
 ): MucImLang {
   const n = hsNgayImLang(h, moc);
-  if (n >= HS_NGUONG_IM_LANG * 2) return 'BO_QUEN';
-  if (n >= HS_NGUONG_IM_LANG) return 'CHAM';
+  const nguong = hsNguongImLang();
+  if (n >= nguong * 2) return 'BO_QUEN';
+  if (n >= nguong) return 'CHAM';
   return 'MOI';
 }
 
