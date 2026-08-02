@@ -168,6 +168,11 @@ export default {
           "0%": { opacity: "0", transform: "translateY(8px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
+        // Vạch tiến trình của RouteFallback — trùng khớp #boot trong index.html
+        "boot-slide": {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(330%)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -177,8 +182,55 @@ export default {
         // Ra nhanh hơn vào (~65%) để thao tác thấy dứt khoát
         "menu-out": "menu-out 140ms cubic-bezier(0.4, 0, 1, 1)",
         "rise-in": "rise-in 260ms cubic-bezier(0.32, 0.72, 0, 1)",
+        "boot-slide": "boot-slide 1.15s cubic-bezier(0.4, 0, 0.2, 1) infinite",
+      },
+      /**
+       * Văn bản dài do AI sinh ra (react-markdown) hiển thị trong khối `prose`.
+       *
+       * Buộc mọi màu của prose đi qua token thay vì bảng xám mặc định: nhờ vậy
+       * một khối prose tự đúng ở cả hệ sáng, hệ tối lẫn "đảo sáng" của cổng ONE
+       * mà không cần rắc thêm `dark:prose-invert` ở từng chỗ dùng.
+       */
+      typography: {
+        DEFAULT: {
+          css: {
+            maxWidth: "none",
+            "--tw-prose-body": "hsl(var(--foreground) / 0.9)",
+            "--tw-prose-headings": "hsl(var(--foreground))",
+            "--tw-prose-lead": "hsl(var(--muted-foreground))",
+            "--tw-prose-links": "hsl(var(--primary))",
+            "--tw-prose-bold": "hsl(var(--foreground))",
+            "--tw-prose-counters": "hsl(var(--muted-foreground))",
+            "--tw-prose-bullets": "hsl(var(--muted-foreground) / 0.55)",
+            "--tw-prose-hr": "hsl(var(--border))",
+            "--tw-prose-quotes": "hsl(var(--foreground))",
+            "--tw-prose-quote-borders": "hsl(var(--border))",
+            "--tw-prose-captions": "hsl(var(--muted-foreground))",
+            "--tw-prose-code": "hsl(var(--foreground))",
+            "--tw-prose-pre-code": "hsl(var(--foreground))",
+            "--tw-prose-pre-bg": "hsl(var(--muted))",
+            "--tw-prose-th-borders": "hsl(var(--border))",
+            "--tw-prose-td-borders": "hsl(var(--border))",
+          },
+        },
+        // `prose-xs` được dùng ở 5 chỗ nhưng plugin không có sẵn cỡ này.
+        xs: {
+          css: {
+            fontSize: "0.75rem",
+            lineHeight: "1.5",
+            p: { marginTop: "0.5em", marginBottom: "0.5em" },
+            "ul, ol": { marginTop: "0.5em", marginBottom: "0.5em", paddingLeft: "1.25em" },
+            li: { marginTop: "0.125em", marginBottom: "0.125em" },
+            "h1, h2, h3, h4": { marginTop: "1em", marginBottom: "0.4em" },
+          },
+        },
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  /**
+   * `prose` được dùng ở 9 khối văn bản AI nhưng plugin typography chưa bao giờ
+   * được nạp, trong khi preflight của Tailwind đã xoá dấu đầu dòng, cỡ tiêu đề
+   * và lề đoạn — nên markdown đổ ra thành một mảng chữ liền không phân cấp.
+   */
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
 } satisfies Config;

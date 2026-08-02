@@ -31,7 +31,7 @@ export function StreakFlame({
         </span>
         {freezes > 0 && (
           <span
-            className="absolute -bottom-1 -right-1 inline-flex items-center gap-0.5 rounded-full bg-sky-100 dark:bg-sky-950 px-1.5 py-0.5 text-[10px] font-semibold text-sky-600"
+            className="absolute -bottom-1 -right-1 inline-flex items-center gap-0.5 rounded-full bg-sky-100 dark:bg-sky-950 px-1.5 py-0.5 text-[10px] font-semibold text-sky-600 dark:text-sky-400"
             title={`${freezes} lượt đóng băng chuỗi — tự dùng khi bạn lỡ một tuần`}
           >
             <Snowflake className="w-3 h-3" />

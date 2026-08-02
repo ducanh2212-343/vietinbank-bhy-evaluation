@@ -127,8 +127,10 @@ export default function QuizziManagePage() {
                       {live && (
                         <Badge className="gap-1">
                           <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white/70" />
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+                            {/* Theo chữ của badge, không phải màu trắng cứng: ở chế độ
+                                tối nền badge là xanh sáng nên chấm trắng chìm hẳn. */}
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-foreground/70" />
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary-foreground" />
                           </span>
                           {live.status === 'lobby' ? 'Sảnh chờ đang mở' : 'Đang diễn ra'}
                         </Badge>

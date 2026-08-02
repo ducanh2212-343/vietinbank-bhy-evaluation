@@ -27,16 +27,16 @@ interface SkillInfo { id: string; code: string | null; name: string; skill_group
 const cellTone = (count: number, hasStaff: boolean): string => {
   if (!hasStaff) return 'bg-muted/30 text-muted-foreground/50';
   if (count <= 0) return 'bg-muted/60 text-muted-foreground';
-  if (count === 1) return 'bg-orange-100 text-orange-800';
-  if (count === 2) return 'bg-amber-100 text-amber-800';
-  return 'bg-emerald-100 text-emerald-800';
+  if (count === 1) return 'bg-orange-100 dark:bg-orange-500/15 text-orange-800 dark:text-orange-300';
+  if (count === 2) return 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300';
+  return 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300';
 };
 
 const TIER_TONE: Record<RiskTier, string> = {
-  trong: 'bg-red-100 text-red-800 border-red-200',
-  nguy_cap: 'bg-orange-100 text-orange-800 border-orange-200',
-  mong_manh: 'bg-amber-100 text-amber-800 border-amber-200',
-  an_toan: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  trong: 'bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-300 border-red-200 dark:border-red-500/30',
+  nguy_cap: 'bg-orange-100 dark:bg-orange-500/15 text-orange-800 dark:text-orange-300 border-orange-200 dark:border-orange-500/30',
+  mong_manh: 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-500/30',
+  an_toan: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30',
 };
 
 export default function SkillRiskHeatmapPage() {
@@ -343,7 +343,7 @@ export default function SkillRiskHeatmapPage() {
                   </div>
                 )}
                 {detailRow.holders.length === 1 && (
-                  <p className="text-[11px] text-orange-700 bg-orange-50 border border-orange-200 rounded px-3 py-2">
+                  <p className="text-[11px] text-orange-700 dark:text-orange-300 bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/30 rounded px-3 py-2">
                     ⚠ Điểm nghẽn đơn lẻ: chỉ một cán bộ nắm kỹ năng này ở mức L{expertLevel}+. Nếu người này nghỉ phép
                     hoặc điều chuyển, chi nhánh không còn ai thay thế — cân nhắc bố trí kèm cặp ngay trong kỳ tới.
                   </p>

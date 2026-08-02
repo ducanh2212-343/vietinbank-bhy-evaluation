@@ -8,9 +8,9 @@ import { ReturnDialog } from './ReturnDialog';
 
 const STATUS_LABEL: Record<string, { text: string; cls: string }> = {
   draft: { text: 'Bản nháp', cls: 'bg-muted text-muted-foreground' },
-  submitted: { text: 'Cán bộ đã nộp · Chờ TP rà soát', cls: 'bg-amber-100 text-amber-800 border-amber-300' },
-  reviewed: { text: 'TP đã rà soát · Chờ PGĐ duyệt', cls: 'bg-sky-100 text-sky-800 border-sky-300' },
-  approved: { text: 'Đã phê duyệt', cls: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+  submitted: { text: 'Cán bộ đã nộp · Chờ TP rà soát', cls: 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-500/40' },
+  reviewed: { text: 'TP đã rà soát · Chờ PGĐ duyệt', cls: 'bg-sky-100 dark:bg-sky-500/15 text-sky-800 dark:text-sky-300 border-sky-300 dark:border-sky-500/40' },
+  approved: { text: 'Đã phê duyệt', cls: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40' },
   returned: { text: 'Đã trả lại', cls: 'bg-destructive/10 text-destructive border-destructive/30' },
   closed: { text: 'Đã đóng', cls: 'bg-muted text-muted-foreground' },
 };
@@ -174,7 +174,7 @@ export function EvalSectionG({
               Bạn là cấp trên trực tiếp duy nhất — phiếu được rà soát và phê duyệt hoàn tất trong một bước.
             </p>
             {formStatus === 'returned' && (
-              <p className="w-full text-xs text-amber-700 flex items-center gap-1">
+              <p className="w-full text-xs text-amber-700 dark:text-amber-300 flex items-center gap-1">
                 <Info className="w-3.5 h-3.5" />
                 Phiếu đã trả lại cán bộ — hai nút tạm khoá cho tới khi cán bộ chỉnh sửa và nộp lại.
               </p>

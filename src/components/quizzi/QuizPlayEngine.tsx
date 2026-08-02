@@ -300,7 +300,7 @@ export function QuizPlayEngine({ start, answer, backPath, resultsPath, completio
                 if (i === feedback.correct_index) {
                   cls = 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40';
                 } else if (i === selected && !feedback.is_correct) {
-                  cls = 'border-red-400 bg-red-50 dark:bg-red-950/40';
+                  cls = 'border-red-400 dark:border-red-500/50 bg-red-50 dark:bg-red-950/40';
                 } else {
                   cls = 'border-muted-foreground/10 opacity-60';
                 }
@@ -331,10 +331,10 @@ export function QuizPlayEngine({ start, answer, backPath, resultsPath, completio
       </Card>
 
       {inFeedback && feedback && (
-        <Card className={feedback.is_correct ? 'border-emerald-400' : 'border-red-300'}>
+        <Card className={feedback.is_correct ? 'border-emerald-400 dark:border-emerald-500/50' : 'border-red-300 dark:border-red-500/40'}>
           <CardContent className="py-4 space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <p className={`font-bold text-sm inline-flex items-center gap-1.5 ${feedback.is_correct ? 'text-emerald-600' : 'text-red-500'}`}>
+              <p className={`font-bold text-sm inline-flex items-center gap-1.5 ${feedback.is_correct ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
                 {feedback.is_correct
                   ? (<><CheckCircle2 className="w-4 h-4" /> Chính xác!</>)
                   : feedback.timed_out

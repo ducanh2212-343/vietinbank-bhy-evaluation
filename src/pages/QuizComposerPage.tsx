@@ -157,7 +157,7 @@ export default function QuizComposerPage() {
       </div>
 
       {hasAttempts && (
-        <Card className="border-amber-300">
+        <Card className="border-amber-300 dark:border-amber-500/40">
           <CardContent className="py-3 text-sm text-amber-700 dark:text-amber-400">
             Quiz đã có người làm — câu hỏi bị khoá để giữ công bằng xếp hạng.
             Bạn chỉ sửa được tiêu đề/mô tả hoặc gỡ xuất bản.

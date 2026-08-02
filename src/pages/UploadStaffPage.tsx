@@ -356,9 +356,9 @@ export default function UploadStaffPage() {
 
   const levelBadge = (lvl: ParsedRow['level']) =>
     lvl === 'ok'
-      ? <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Hợp lệ</Badge>
+      ? <Badge className="bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-500/20">Hợp lệ</Badge>
       : lvl === 'warning'
-        ? <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">Cảnh báo</Badge>
+        ? <Badge className="bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-500/20">Cảnh báo</Badge>
         : <Badge variant="destructive">Lỗi</Badge>;
 
   return (
@@ -455,9 +455,9 @@ export default function UploadStaffPage() {
           <CardContent className="space-y-3">
             <div className="flex gap-4 flex-wrap text-sm">
               <span>Tổng số dòng: <strong>{response.total}</strong></span>
-              <span className="text-green-700">Tạo mới: <strong>{response.created}</strong></span>
-              <span className="text-blue-700">Cập nhật: <strong>{response.updated}</strong></span>
-              <span className="text-red-700">Lỗi: <strong>{response.errors}</strong></span>
+              <span className="text-green-700 dark:text-green-300">Tạo mới: <strong>{response.created}</strong></span>
+              <span className="text-blue-700 dark:text-blue-300">Cập nhật: <strong>{response.updated}</strong></span>
+              <span className="text-red-700 dark:text-red-300">Lỗi: <strong>{response.errors}</strong></span>
             </div>
             <div className="overflow-x-auto">
               <Table>
@@ -481,9 +481,9 @@ export default function UploadStaffPage() {
                         <TableCell className="text-sm">{r.email}</TableCell>
                         <TableCell>
                           {r.status === 'created'
-                            ? <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Tạo mới</Badge>
+                            ? <Badge className="bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-500/20">Tạo mới</Badge>
                             : r.status === 'updated'
-                              ? <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">Cập nhật</Badge>
+                              ? <Badge className="bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-500/20">Cập nhật</Badge>
                               : <Badge variant="destructive">Lỗi</Badge>}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">{r.message}</TableCell>

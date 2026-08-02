@@ -48,7 +48,7 @@ const Unsubscribe = () => {
         {status === "invalid" && <p className="text-destructive">Liên kết không hợp lệ hoặc đã hết hạn.</p>}
         {status === "already" && <p className="text-muted-foreground">Bạn đã hủy đăng ký trước đó.</p>}
         {status === "error" && <p className="text-destructive">Đã xảy ra lỗi. Vui lòng thử lại sau.</p>}
-        {status === "success" && <p className="text-green-600 font-medium">Đã hủy đăng ký thành công. Bạn sẽ không nhận email nữa.</p>}
+        {status === "success" && <p className="text-green-600 dark:text-green-400 font-medium">Đã hủy đăng ký thành công. Bạn sẽ không nhận email nữa.</p>}
         {status === "valid" && (
           <div>
             <p className="text-muted-foreground mb-4">Bạn có chắc chắn muốn hủy đăng ký nhận email từ hệ thống?</p>

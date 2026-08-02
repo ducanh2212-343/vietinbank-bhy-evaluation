@@ -239,7 +239,7 @@ export default function EvaluatorAssignmentPage() {
                   const mgrOptions = r.department_id ? (managersByDept.get(r.department_id) || []).filter((m) => m.id !== r.id) : [];
                   const dirty = isDirty(r);
                   return (
-                    <tr key={r.id} className={`border-b last:border-0 ${dirty ? 'bg-amber-50/60' : 'hover:bg-muted/30'}`}>
+                    <tr key={r.id} className={`border-b last:border-0 ${dirty ? 'bg-amber-50/60 dark:bg-amber-500/10' : 'hover:bg-muted/30'}`}>
                       <td className="py-2 px-3">
                         <div className="font-medium">{r.full_name}</div>
                         <div className="text-[11px] text-muted-foreground">{posNameOf(r) || '—'}{r.employee_code ? ` · ${r.employee_code}` : ''}</div>
@@ -357,7 +357,7 @@ function BulkAssignDialog({
       <DialogContent className="max-w-md">
         <DialogHeader><DialogTitle>Gán người đánh giá hàng loạt</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          <div className="rounded-md border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800 flex items-start gap-1.5">
+          <div className="rounded-md border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-2.5 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-1.5">
             <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
             Áp dụng cho <strong>{scopeStaff.length} cán bộ</strong> đang hiển thị ({deptName}). Cán bộ là lãnh đạo phòng/chi nhánh sẽ được bỏ qua ở cấp tương ứng.
           </div>

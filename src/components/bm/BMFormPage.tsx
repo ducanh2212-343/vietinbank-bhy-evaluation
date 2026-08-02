@@ -686,11 +686,11 @@ export function BMFormPage({ config }: Props) {
 
       {/* Banner: kỳ đánh giá lại từ đầu (BM02 — Quý I làm trên bản Word/PDF, không nhập app) */}
       {config.autoCarryOver === false && (
-        <div className="rounded-lg border border-sky-300 bg-sky-50 p-3 text-sm space-y-1">
-          <div className="font-semibold text-sky-900">
+        <div className="rounded-lg border border-sky-300 dark:border-sky-500/40 bg-sky-50 dark:bg-sky-500/10 p-3 text-sm space-y-1">
+          <div className="font-semibold text-sky-900 dark:text-sky-200">
             Kỳ này đánh giá lại từ đầu toàn bộ kỹ năng &amp; thái độ
           </div>
-          <p className="text-xs text-sky-800">
+          <p className="text-xs text-sky-800 dark:text-sky-300">
             Biểu mẫu 01 kỳ trước thực hiện trên bản Word/PDF nên chưa đánh giá theo từng skill và nhóm thái độ.
             Kỳ này anh/chị tự đánh giá đầy đủ Mục B (kỹ năng) và Mục C (thái độ) — hệ thống không điền sẵn từ kỳ trước.
             Các hành động đã cam kết trong Biểu mẫu 01 (bản Word/PDF) đã được nhập sẵn ở mục
@@ -705,18 +705,18 @@ export function BMFormPage({ config }: Props) {
 
       {/* Level-up carry-over banner */}
       {levelUpCarryover.length > 0 && (
-        <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm">
-          <div className="font-semibold text-emerald-900 mb-1">
+        <div className="rounded-lg border border-emerald-300 dark:border-emerald-500/40 bg-emerald-50 dark:bg-emerald-500/10 p-3 text-sm">
+          <div className="font-semibold text-emerald-900 dark:text-emerald-200 mb-1">
             🎉 Đã tự động ghi nhận tăng level từ {previousCycleName}
           </div>
-          <ul className="list-disc pl-5 space-y-0.5 text-emerald-800">
+          <ul className="list-disc pl-5 space-y-0.5 text-emerald-800 dark:text-emerald-300">
             {levelUpCarryover.map(l => (
               <li key={l.skill_id}>
                 <span className="font-medium">{l.skill_name}</span> → Level {l.new_level} (đã upskill thành công)
               </li>
             ))}
           </ul>
-          <p className="text-xs text-emerald-700 mt-1">
+          <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-1">
             Các skill này đã được CBQL xác nhận hoàn thành kỳ trước. Mức level mới đã được điền sẵn ở Mục B — bạn có thể điều chỉnh nếu cần.
           </p>
         </div>

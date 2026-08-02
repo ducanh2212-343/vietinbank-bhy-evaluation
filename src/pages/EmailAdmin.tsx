@@ -22,9 +22,9 @@ type Overview = {
 };
 
 const STATUS_BADGE: Record<string, string> = {
-  sent: 'bg-green-100 text-green-800',
-  pending: 'bg-yellow-100 text-yellow-800',
-  failed: 'bg-red-100 text-red-800',
+  sent: 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-300',
+  pending: 'bg-yellow-100 dark:bg-yellow-500/15 text-yellow-800 dark:text-yellow-300',
+  failed: 'bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-300',
 };
 
 const TEMPLATE_LABELS: Record<string, string> = {
@@ -104,7 +104,7 @@ export default function EmailAdmin() {
         </Card>
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><AlertTriangle className="w-4 h-4" /> Lỗi 7 ngày</CardTitle></CardHeader>
-          <CardContent><div className={`text-2xl font-bold ${failed7d > 0 ? 'text-red-600' : ''}`}>{failed7d}</div></CardContent>
+          <CardContent><div className={`text-2xl font-bold ${failed7d > 0 ? 'text-red-600 dark:text-red-400' : ''}`}>{failed7d}</div></CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Clock3 className="w-4 h-4" /> Đang chờ gửi</CardTitle></CardHeader>
@@ -124,11 +124,11 @@ export default function EmailAdmin() {
             <div key={c.name} className="flex items-center justify-between gap-2 text-sm flex-wrap">
               <span className="font-medium">{CRON_LABELS[c.name] || c.name}</span>
               <span className="flex items-center gap-2">
-                <Badge className={c.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}>
+                <Badge className={c.active ? 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-300' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400'}>
                   {c.active ? 'Đang bật' : 'Đã tắt'}
                 </Badge>
                 {c.last_status && (
-                  <Badge className={c.last_status === 'succeeded' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                  <Badge className={c.last_status === 'succeeded' ? 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-300' : 'bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-300'}>
                     Lần cuối: {c.last_status === 'succeeded' ? 'OK' : 'Lỗi'}
                   </Badge>
                 )}
@@ -166,11 +166,11 @@ export default function EmailAdmin() {
                     <td className="py-2 pr-3">{TEMPLATE_LABELS[r.template] || r.template}</td>
                     <td className="py-2 pr-3">{r.recipient}</td>
                     <td className="py-2 pr-3">
-                      <Badge className={STATUS_BADGE[r.status] || 'bg-gray-100 text-gray-600'}>
+                      <Badge className={STATUS_BADGE[r.status] || 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400'}>
                         {r.status === 'sent' ? 'Đã gửi' : r.status === 'pending' ? 'Chờ gửi' : r.status === 'failed' ? 'Lỗi' : r.status}
                       </Badge>
                     </td>
-                    <td className="py-2 text-xs text-red-600 max-w-[220px] truncate" title={r.error || ''}>{r.error || ''}</td>
+                    <td className="py-2 text-xs text-red-600 dark:text-red-400 max-w-[220px] truncate" title={r.error || ''}>{r.error || ''}</td>
                   </tr>
                 ))}
                 {(data?.recent || []).length === 0 && !loading && (
