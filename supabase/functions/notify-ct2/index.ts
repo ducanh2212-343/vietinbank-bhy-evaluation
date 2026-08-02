@@ -9,8 +9,9 @@
 // Nhờ vậy chuông trong ứng dụng vẫn chạy kể cả khi hàm này hỏng hoặc người dùng
 // từ chối quyền push — bảng hàng đợi mới là nguồn sự thật, push chỉ là một kênh.
 //
-// Kích hoạt: pg_net từ trigger nghiệp vụ (public.ct2_kich_hoat_phat_push), hoặc
-// cron quét dọn. Body: {gioi_han?: number, dry_run?: boolean}. Chỉ service_role.
+// Kích hoạt: pg_net từ trigger nghiệp vụ (public.ct2_kich_hoat_phat_push) khi có
+// tin cần phát ngay, và cron 7h00 thứ 2–6 để phát nốt các tin đã hoãn qua đêm
+// hoặc qua cuối tuần. Body: {gioi_han?: number, dry_run?: boolean}. Chỉ service_role.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { buildPushPayload } from 'npm:@block65/webcrypto-web-push@1.0.2';
 
@@ -33,6 +34,7 @@ interface ThongBao {
   noi_dung: string;
   muc: string;
   kenh: string[] | null;
+  phat_luc: string;
 }
 
 function parseJwtClaims(token: string): Record<string, unknown> | null {
@@ -72,15 +74,20 @@ Deno.serve(async (req) => {
     const dryRun = body?.dry_run === true;
     const gioiHan = Math.min(Number(body?.gioi_han) || 200, 500);
 
-    // Chỉ lấy tin chưa gửi và còn mới. Tin để quá 6 tiếng thì đánh dấu đã gửi
-    // mà không đẩy: một lời nhắc của hôm qua bật lên sáng nay chỉ gây nhiễu.
-    const nguong = new Date(Date.now() - 6 * 3600 * 1000).toISOString();
+    // phat_luc do database quyết (ct2_moc_phat_gan_nhat): tin sinh ngoài giờ hoặc
+    // ngày nghỉ mang mốc 7h00 buổi sáng làm việc kế tiếp. Chưa tới mốc thì để
+    // yên trong hàng đợi — chuông trong ứng dụng vẫn đọc được ngay.
+    const bayGio = new Date().toISOString();
+    // Tin đã quá mốc phát 12 tiếng thì đóng dấu mà không đẩy: một lời nhắc của
+    // hôm qua bật lên hôm nay chỉ gây nhiễu.
+    const qua = new Date(Date.now() - 12 * 3600 * 1000).toISOString();
     const { data: rows, error: loiDoc } = await admin
       .from('ct2_thong_bao')
-      .select('id, ma_su_kien, nguoi_nhan, dau_viec_id, tieu_de, noi_dung, muc, kenh')
+      .select('id, ma_su_kien, nguoi_nhan, dau_viec_id, tieu_de, noi_dung, muc, kenh, phat_luc')
       .is('gui_luc', null)
-      .gte('created_at', nguong)
-      .order('created_at', { ascending: true })
+      .lte('phat_luc', bayGio)
+      .gte('phat_luc', qua)
+      .order('phat_luc', { ascending: true })
       .limit(gioiHan);
     if (loiDoc) throw loiDoc;
 
@@ -88,8 +95,8 @@ Deno.serve(async (req) => {
     if (!dsTb.length) {
       // Vẫn đóng dấu các tin quá cũ để hàng đợi không phình mãi
       if (!dryRun) {
-        await admin.from('ct2_thong_bao').update({ gui_luc: new Date().toISOString() })
-          .is('gui_luc', null).lt('created_at', nguong);
+        await admin.from('ct2_thong_bao').update({ gui_luc: bayGio })
+          .is('gui_luc', null).lt('phat_luc', qua);
       }
       return new Response(JSON.stringify({ hang_doi: 0, push_sent: 0 }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -160,11 +167,10 @@ Deno.serve(async (req) => {
     // Đóng dấu TẤT CẢ tin đã đọc ra — kể cả tin không có thiết bị nào đăng ký
     // hoặc kênh không có 'push'. Nếu không, mỗi lần chạy lại đọc lại đúng nhóm
     // đó và hàng đợi không bao giờ vơi.
-    const nowIso = new Date().toISOString();
-    await admin.from('ct2_thong_bao').update({ gui_luc: nowIso })
+    await admin.from('ct2_thong_bao').update({ gui_luc: bayGio })
       .in('id', dsTb.map((t) => t.id));
-    await admin.from('ct2_thong_bao').update({ gui_luc: nowIso })
-      .is('gui_luc', null).lt('created_at', nguong);
+    await admin.from('ct2_thong_bao').update({ gui_luc: bayGio })
+      .is('gui_luc', null).lt('phat_luc', qua);
 
     return new Response(JSON.stringify({ hang_doi: dsTb.length, da_day: daXuLy.length, push_sent: sent }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

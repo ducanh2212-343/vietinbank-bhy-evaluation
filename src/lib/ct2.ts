@@ -397,24 +397,75 @@ function ngayVn(iso: string | Date): number {
   return Math.floor(new Date(vn.getFullYear(), vn.getMonth(), vn.getDate()).getTime() / NGAY_MS);
 }
 
-/** Số ngày quá hạn (0 = chưa quá). Thẻ đã xong/đóng/hủy không tính. */
+/**
+ * Hôm nay có phải ngày làm việc không (thứ 2 → thứ 6, giờ Việt Nam).
+ *
+ * Nhịp Chiêu thức 2 CHỈ chạy ngày thường. Thứ Bảy và Chủ nhật không đòi ghi
+ * nhịp, không chấm giờ, không tính vào bất kỳ đồng hồ chờ nào.
+ */
+export function laNgayLamViec(moc: Date = new Date()): boolean {
+  const vn = new Date(moc.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
+  const thu = vn.getDay();
+  return thu !== 0 && thu !== 6;
+}
+
+/**
+ * Số NGÀY LÀM VIỆC (thứ 2 → thứ 6) trôi qua từ `tu` đến `den`, không tính ngày `tu`.
+ *
+ * Đây là đơn vị đúng cho mọi đồng hồ đo «người ta đã có bao nhiêu cơ hội để xử
+ * lý». Nếu đếm ngày lịch, một hồ sơ trình chiều thứ Sáu sẽ hiện «chờ 3 ngày»
+ * ngay sáng thứ Hai — báo đỏ một người chưa hề có ngày làm việc nào để xử lý.
+ * Cảnh báo sai kiểu đó lặp vài lần là cán bộ thôi tin bảng.
+ *
+ * Ngày nghỉ lễ chưa trừ — Chi nhánh chưa có bảng lịch nghỉ; khi có thì chỉ cần
+ * sửa đúng hàm này và hàm ct2_ngay_lam_viec tương ứng trong database.
+ */
+export function soNgayLamViec(tu: string | Date, den: string | Date = new Date()): number {
+  const a = ngayVn(tu);
+  const b = ngayVn(den);
+  if (b <= a) return 0;
+  // Chặn trên: mốc rác (giu_tu sai vài năm) không được kéo vòng lặp chạy mãi
+  const soNgay = Math.min(b - a, 400);
+  // Lấy thứ của mốc bắt đầu THEO LỊCH VN rồi cộng dồn — không suy ra thứ từ chỉ
+  // số ngày, vì chỉ số đó lệch một ngày ở máy chạy múi giờ dương.
+  const d0 = typeof tu === 'string' ? new Date(tu) : tu;
+  let thu = new Date(d0.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' })).getDay();
+  let dem = 0;
+  for (let i = 1; i <= soNgay; i++) {
+    thu = (thu + 1) % 7;
+    if (thu !== 0 && thu !== 6) dem++;
+  }
+  return dem;
+}
+
+/**
+ * Số ngày quá hạn (0 = chưa quá). Thẻ đã xong/đóng/hủy không tính.
+ *
+ * CỐ Ý đếm ngày lịch chứ không phải ngày làm việc: hạn hoàn thành là lời hứa
+ * theo một ngày trên tờ lịch. Trễ hai ngày vắt qua cuối tuần thì với khách hàng
+ * và với BGĐ vẫn là trễ hai ngày. Khác với đồng hồ chờ ở dưới — cái đó đo cơ
+ * hội xử lý của một người, nên phải trừ ngày nghỉ.
+ */
 export function soNgayQuaHan(dv: Pick<Ct2DauViec, 'han_hoan_thanh' | 'trang_thai'>, moc: Date = new Date()): number {
   if (!CT2_TRANG_THAI_CHAY.includes(dv.trang_thai)) return 0;
   const lech = ngayVn(moc) - ngayVn(`${dv.han_hoan_thanh}T00:00:00+07:00`);
   return Math.max(0, lech);
 }
 
-/** Số ngày thẻ "im lặng" — không có nhịp mới. Thẻ chưa từng có nhịp tính từ ngày bắt đầu. */
+/**
+ * Số NGÀY LÀM VIỆC thẻ "im lặng" — không có nhịp mới. Thẻ chưa từng có nhịp
+ * tính từ ngày bắt đầu. Cuối tuần không đòi nhịp nên không tính vào đây.
+ */
 export function soNgayImLang(dv: Pick<Ct2DauViec, 'nhip_gan_nhat' | 'ngay_bat_dau' | 'trang_thai'>, moc: Date = new Date()): number {
   if (dv.trang_thai !== 'DANG_LAM') return 0; // cột chờ: đồng hồ đã đổi chủ
   const tu = dv.nhip_gan_nhat ?? `${dv.ngay_bat_dau}T00:00:00+07:00`;
-  return Math.max(0, ngayVn(moc) - ngayVn(tu));
+  return soNgayLamViec(tu, moc);
 }
 
-/** Tuổi thẻ trong cột chờ (ngày) — quá CT2_NGUONG_TUOI_CHO thì escalate người giữ */
+/** Tuổi thẻ trong cột chờ (NGÀY LÀM VIỆC) — quá CT2_NGUONG_TUOI_CHO thì escalate người giữ */
 export function tuoiCho(dv: Pick<Ct2DauViec, 'giu_tu' | 'trang_thai'>, moc: Date = new Date()): number {
   if ((dv.trang_thai !== 'CHO_PHOI_HOP' && dv.trang_thai !== 'CHO_DUYET') || !dv.giu_tu) return 0;
-  return Math.max(0, ngayVn(moc) - ngayVn(dv.giu_tu));
+  return soNgayLamViec(dv.giu_tu, moc);
 }
 
 /** Cảnh báo "Chuẩn bị quá lâu": còn ≤ 25% quỹ thời gian mà chưa khởi động */

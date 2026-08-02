@@ -53,7 +53,8 @@ export interface Ct2NhipNguoi {
   so_viec_da_ghi: number;
   so_the_do: number;
   so_qua_han: number;
-  ket_qua: 'DUNG_GIO' | 'MUON' | 'CHUA_DU' | 'CHUA_GHI' | 'KHONG_CO_VIEC';
+  /** NGAY_NGHI = thứ Bảy/Chủ nhật — nhịp chỉ chạy thứ 2 đến thứ 6 */
+  ket_qua: 'DUNG_GIO' | 'MUON' | 'CHUA_DU' | 'CHUA_GHI' | 'KHONG_CO_VIEC' | 'NGAY_NGHI';
 }
 
 export interface Ct2DeXuat {

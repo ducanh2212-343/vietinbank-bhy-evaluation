@@ -105,8 +105,9 @@ describe('Cảnh báo hồ sơ — bộ kiểm cho board có rủi ro tài chín
   it('tính đúng quá hạn xử lý và tuổi cột chờ', () => {
     expect(hsQuaHan(hsGoc, moc)).toBe(0);      // hạn 20/08, hôm nay 12/08 → chưa quá
     expect(hsQuaHan({ ...hsGoc, han_xu_ly: '2026-08-05' }, moc)).toBe(7);
-    expect(hsTuoiCho(hsGoc, moc)).toBe(7);
-    expect(hsNghenCho(hsGoc, moc)).toBe(true); // ngưỡng TRINH_LDCN là 3 ngày
+    // Giữ từ 05/08 (thứ 4) → 12/08 (thứ 4): 7 ngày lịch nhưng 5 NGÀY LÀM VIỆC
+    expect(hsTuoiCho(hsGoc, moc)).toBe(5);
+    expect(hsNghenCho(hsGoc, moc)).toBe(true); // ngưỡng TRINH_LDCN là 3 ngày làm việc
   });
 
   it('hồ sơ đã xong không còn tính quá hạn', () => {
@@ -114,9 +115,11 @@ describe('Cảnh báo hồ sơ — bộ kiểm cho board có rủi ro tài chín
   });
 
   it('ngưỡng chờ khác nhau theo cấp trình', () => {
+    // 08/08 là thứ Bảy — hồ sơ trình cuối tuần chỉ bắt đầu đếm từ thứ Hai 10/08,
+    // nên tới thứ Tư 12/08 mới là 3 ngày làm việc chứ không phải 4 ngày lịch
     const tsc = { ...hsGoc, trang_thai: 'TRINH_TSC' as const, giu_tu: '2026-08-08T02:00:00Z' };
-    expect(hsTuoiCho(tsc, moc)).toBe(4);
-    expect(hsNghenCho(tsc, moc)).toBe(false);  // TSC cho 5 ngày
+    expect(hsTuoiCho(tsc, moc)).toBe(3);
+    expect(hsNghenCho(tsc, moc)).toBe(false);  // TSC cho 5 ngày làm việc
     const ldp = { ...hsGoc, trang_thai: 'TRINH_LDP' as const, giu_tu: '2026-08-08T02:00:00Z' };
     expect(hsNghenCho(ldp, moc)).toBe(true);   // Lãnh đạo Phòng chỉ 2 ngày
   });

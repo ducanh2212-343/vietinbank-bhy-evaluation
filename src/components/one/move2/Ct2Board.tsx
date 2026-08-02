@@ -85,9 +85,13 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoTh
 
   // Bảng nhịp hôm nay: chỉ số đầu bảng (đặc tả §7.2)
   const tongNhip = useMemo(() => {
+    // Thứ Bảy/Chủ nhật không đòi nhịp — hiện gạch ngang thay vì 0%, để không ai
+    // mở bảng ngày nghỉ ra và tưởng cả phòng vừa hỏng nhịp.
+    const ngayNghi = nhipNguoi.some((n) => n.ket_qua === 'NGAY_NGHI');
     const coViec = nhipNguoi.filter((n) => n.ket_qua !== 'KHONG_CO_VIEC');
     const daDu = coViec.filter((n) => n.ket_qua === 'DUNG_GIO' || n.ket_qua === 'MUON').length;
     return {
+      ngayNghi,
       tiLe: coViec.length ? Math.round((daDu / coViec.length) * 100) : 100,
       theDo: dsThe.filter((t) => t.co_tinh_trang === 'DO' && t.trang_thai !== 'DA_DONG' && t.trang_thai !== 'DUNG_HUY').length,
       quaHan: dsThe.filter((t) => soNgayQuaHan(t) > 0).length,
@@ -119,7 +123,11 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoTh
 
       {/* Dải chỉ số đầu trang */}
       <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <OSo nhan="Nhịp hôm nay" giaTri={`${tongNhip.tiLe}%`} tot={tongNhip.tiLe >= 80} />
+        <OSo
+          nhan={tongNhip.ngayNghi ? 'Nhịp hôm nay (ngày nghỉ)' : 'Nhịp hôm nay'}
+          giaTri={tongNhip.ngayNghi ? '—' : `${tongNhip.tiLe}%`}
+          tot={tongNhip.ngayNghi || tongNhip.tiLe >= 80}
+        />
         <OSo nhan="Thẻ 🔴 đang vướng" giaTri={String(tongNhip.theDo)} tot={tongNhip.theDo === 0} />
         <OSo nhan="Thẻ quá hạn" giaTri={String(tongNhip.quaHan)} tot={tongNhip.quaHan === 0} />
         <OSo nhan={`Nghẽn cột chờ > ${CT2_NGUONG_TUOI_CHO} ngày`} giaTri={String(tongNhip.nghenCho)} tot={tongNhip.nghenCho === 0} />

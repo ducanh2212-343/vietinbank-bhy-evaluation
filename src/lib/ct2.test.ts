@@ -6,6 +6,7 @@ import {
   demWip,
   diemRuiRo,
   duongDanThongBao,
+  laNgayLamViec,
   goiYNhan,
   gopCacBuoc,
   hanGoiY,
@@ -13,6 +14,7 @@ import {
   kiemTraGhiViec,
   khiNaoThongBao,
   kiemTraKeHoach,
+  soNgayLamViec,
   locEmojiTieuDe,
   lyDoChanChuyen,
   mucChuY,
@@ -191,21 +193,27 @@ describe('Cảnh báo ngoại lệ', () => {
   const moc = new Date('2026-08-12T02:00:00Z'); // 09:00 VN ngày 12/08
 
   it('tính đúng số ngày quá hạn và im lặng', () => {
+    // Quá hạn đếm NGÀY LỊCH: hạn 10/08 → 12/08 là trễ 2 ngày với BGĐ và khách
     expect(soNgayQuaHan(goc, moc)).toBe(2);
-    expect(soNgayImLang(goc, moc)).toBe(7);
+    // Im lặng đếm NGÀY LÀM VIỆC: nhịp gần nhất 05/08 (thứ 4) → 12/08 (thứ 4) là
+    // 7 ngày lịch nhưng chỉ 5 ngày làm việc (6, 7, 10, 11, 12) — hai ngày nghỉ
+    // không phải lỗi của ai
+    expect(soNgayImLang(goc, moc)).toBe(5);
     expect(soNgayQuaHan({ ...goc, trang_thai: 'HOAN_THANH' }, moc)).toBe(0);
   });
 
   it('cột chờ: đồng hồ đổi chủ — không tính im lặng cho người phụ trách', () => {
     const cho = { ...goc, trang_thai: 'CHO_DUYET' as const, giu_tu: '2026-08-06T01:00:00Z' };
     expect(soNgayImLang(cho, moc)).toBe(0);
-    expect(tuoiCho(cho, moc)).toBe(6);
+    // Giữ từ 06/08 (thứ 5) → 12/08 (thứ 4): 6 ngày lịch, 4 ngày làm việc
+    expect(tuoiCho(cho, moc)).toBe(4);
   });
 
   it('điểm rủi ro theo đúng công thức M4', () => {
-    // 2 ngày quá hạn × 3 + 7 ngày im lặng × 2 = 20; +5 trọng điểm; +3 liên phòng
-    expect(diemRuiRo(goc, moc)).toBe(20);
-    expect(diemRuiRo({ ...goc, muc_uu_tien: 'TRONG_DIEM_BGD', lien_phong: true }, moc)).toBe(28);
+    // 2 ngày quá hạn (lịch) × 3 + 5 ngày im lặng (làm việc) × 2 = 16;
+    // +5 trọng điểm; +3 liên phòng
+    expect(diemRuiRo(goc, moc)).toBe(16);
+    expect(diemRuiRo({ ...goc, muc_uu_tien: 'TRONG_DIEM_BGD', lien_phong: true }, moc)).toBe(24);
   });
 
   it('chuẩn bị quá lâu khi còn ≤ 25% quỹ thời gian', () => {
@@ -335,5 +343,58 @@ describe('Thông báo — bấm vào phải mở đúng thứ nó nói tới', (
     expect(khiNaoThongBao('2026-08-12T03:00:00Z', moc)).toBe('5 giờ trước');
     // Quá một ngày thì quay về ngày tháng — «37 giờ trước» không giúp ai
     expect(khiNaoThongBao('2026-08-09T08:00:00Z', moc)).toContain('2026');
+  });
+});
+
+
+describe('Nhịp chỉ chạy thứ 2 → thứ 6', () => {
+  // Mốc thật: 07/08/2026 là thứ Sáu, 08–09/08 cuối tuần, 10/08 thứ Hai.
+  const T6 = '2026-08-07T09:00:00+07:00';
+  const T7 = new Date('2026-08-08T09:00:00+07:00');
+  const CN = new Date('2026-08-09T09:00:00+07:00');
+  const T2 = new Date('2026-08-10T09:00:00+07:00');
+
+  it('nhận đúng ngày làm việc theo lịch Việt Nam', () => {
+    expect(laNgayLamViec(T7)).toBe(false);
+    expect(laNgayLamViec(CN)).toBe(false);
+    expect(laNgayLamViec(T2)).toBe(true);
+    expect(laNgayLamViec(new Date(T6))).toBe(true);
+  });
+
+  it('thứ Sáu → thứ Hai chỉ là MỘT ngày làm việc, không phải ba', () => {
+    expect(soNgayLamViec(T6, T2)).toBe(1);
+    // Trong chính cuối tuần thì chưa trôi ngày làm việc nào
+    expect(soNgayLamViec(T6, T7)).toBe(0);
+    expect(soNgayLamViec(T6, CN)).toBe(0);
+  });
+
+  it('trọn một tuần = 5 ngày làm việc, mốc sau mốc trước = 0', () => {
+    expect(soNgayLamViec('2026-08-03T09:00:00+07:00', new Date('2026-08-10T09:00:00+07:00'))).toBe(5);
+    expect(soNgayLamViec(T2, new Date(T6))).toBe(0);
+    expect(soNgayLamViec(T2, T2)).toBe(0);
+  });
+
+  it('thẻ chờ từ chiều thứ Sáu KHÔNG bị báo nghẽn vào sáng thứ Hai', () => {
+    const the = { trang_thai: 'CHO_DUYET' as const, giu_tu: '2026-08-07T16:30:00+07:00' };
+    // Ngày lịch là 3, nhưng người giữ mới có đúng 1 ngày làm việc để xử lý
+    expect(tuoiCho(the, T2)).toBe(1);
+    expect(tuoiCho(the, T2)).toBeLessThanOrEqual(3); // dưới ngưỡng escalate
+    // Sang thứ Năm 13/08 thì mới thật sự quá ngưỡng 3 ngày làm việc
+    expect(tuoiCho(the, new Date('2026-08-13T09:00:00+07:00'))).toBe(4);
+  });
+
+  it('thẻ đang làm không bị tính im lặng trong hai ngày nghỉ', () => {
+    const the = {
+      trang_thai: 'DANG_LAM' as const,
+      nhip_gan_nhat: '2026-08-07T07:30:00+07:00',
+      ngay_bat_dau: '2026-08-01',
+    };
+    expect(soNgayImLang(the, T2)).toBe(1);
+    expect(soNgayImLang(the, CN)).toBe(0);
+  });
+
+  it('nhưng QUÁ HẠN vẫn đếm ngày lịch — hạn là lời hứa theo tờ lịch', () => {
+    const the = { trang_thai: 'DANG_LAM' as const, han_hoan_thanh: '2026-08-07' };
+    expect(soNgayQuaHan(the, T2)).toBe(3);
   });
 });

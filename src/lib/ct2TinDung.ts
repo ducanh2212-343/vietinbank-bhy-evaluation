@@ -9,6 +9,8 @@
  * Hàm thuần — kiểm thử được không cần mạng.
  */
 
+import { soNgayLamViec } from './ct2';
+
 export type HsTrangThai =
   | 'THU_THAP' | 'TRINH_LDP' | 'TRINH_LDCN' | 'TRINH_TSC'
   | 'HOAN_THIEN_GN' | 'HOAN_THANH' | 'TU_CHOI';
@@ -217,16 +219,29 @@ function ngayVn(iso: string | Date): number {
   return Math.floor(new Date(vn.getFullYear(), vn.getMonth(), vn.getDate()).getTime() / NGAY_MS);
 }
 
-/** Số ngày quá hạn xử lý (0 = chưa quá). Hồ sơ đã xong/từ chối không tính. */
+/**
+ * Số ngày quá hạn xử lý (0 = chưa quá). Hồ sơ đã xong/từ chối không tính.
+ *
+ * CỐ Ý đếm ngày lịch: hạn xử lý là cam kết với khách hàng theo ngày trên lịch,
+ * cuối tuần không làm nó bớt trễ. Khác với hsTuoiCho — cái đó đo cơ hội xử lý
+ * của một người nên phải trừ ngày nghỉ.
+ */
 export function hsQuaHan(h: Pick<HoSoTinDung, 'han_xu_ly' | 'trang_thai'>, moc: Date = new Date()): number {
   if (!HS_DANG_CHAY.includes(h.trang_thai)) return 0;
   return Math.max(0, ngayVn(moc) - ngayVn(`${h.han_xu_ly}T00:00:00+07:00`));
 }
 
-/** Tuổi hồ sơ trong bước trình (ngày). Quá ngưỡng thì escalate NGƯỜI GIỮ. */
+/**
+ * Tuổi hồ sơ trong bước trình, tính bằng NGÀY LÀM VIỆC. Quá ngưỡng thì escalate
+ * NGƯỜI GIỮ.
+ *
+ * Ngưỡng HS_NGUONG_CHO (2/3/5) là ngày làm việc theo quy chế Miro §A5, nên đồng
+ * hồ cũng phải đếm ngày làm việc. Trình chiều thứ Sáu mà sáng thứ Hai đã báo đỏ
+ * «chờ 3 ngày» là oan cho người duyệt — họ chưa có buổi làm việc nào để xử lý.
+ */
 export function hsTuoiCho(h: Pick<HoSoTinDung, 'trang_thai' | 'giu_tu'>, moc: Date = new Date()): number {
   if (!HS_BUOC_CHO.includes(h.trang_thai) || !h.giu_tu) return 0;
-  return Math.max(0, ngayVn(moc) - ngayVn(h.giu_tu));
+  return soNgayLamViec(h.giu_tu, moc);
 }
 
 /** Bước trình đã quá ngưỡng chờ của chính cấp đó chưa */

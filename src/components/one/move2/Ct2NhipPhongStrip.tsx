@@ -35,6 +35,7 @@ const VIEN: Record<Ct2NhipNguoi['ket_qua'], string> = {
   CHUA_DU: 'ring-amber-400',
   CHUA_GHI: 'ring-slate-300',
   KHONG_CO_VIEC: 'ring-slate-200',
+  NGAY_NGHI: 'ring-slate-200',
 };
 
 const NHAN: Record<Ct2NhipNguoi['ket_qua'], string> = {
@@ -43,6 +44,7 @@ const NHAN: Record<Ct2NhipNguoi['ket_qua'], string> = {
   CHUA_DU: 'mới ghi một phần',
   CHUA_GHI: 'chưa ghi nhịp',
   KHONG_CO_VIEC: 'không có việc cần ghi',
+  NGAY_NGHI: 'ngày nghỉ — không tính nhịp',
 };
 
 export function Ct2NhipPhongStrip({ ds, dangTai, gonGang, onChonNguoi }: Props) {
@@ -51,6 +53,16 @@ export function Ct2NhipPhongStrip({ ds, dangTai, gonGang, onChonNguoi }: Props) 
       <div className="flex gap-3">
         {[0, 1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-14 w-11 rounded-xl" />)}
       </div>
+    );
+  }
+
+  // Thứ Bảy/Chủ nhật: nhịp không chạy, nên không bày ra một dãy vòng tròn xám
+  // rồi để cả phòng tưởng mình đang bị đánh dấu chưa ghi.
+  if (ds.some((n) => n.ket_qua === 'NGAY_NGHI')) {
+    return (
+      <p className="text-sm text-slate-500">
+        Hôm nay là ngày nghỉ — nhịp sáng chỉ chạy thứ 2 đến thứ 6. Hẹn gặp lại sáng thứ Hai.
+      </p>
     );
   }
 
