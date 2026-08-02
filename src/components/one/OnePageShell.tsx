@@ -29,6 +29,19 @@ function GuestBanner() {
  * phần dùng chung (Card, Dialog, Tabs…) không vỡ khi ứng dụng đang ở chế độ tối.
  */
 export const OnePageShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  /*
+   * Đảo sáng ở trên chỉ phủ các nút nằm trong cây DOM của shell. Dialog, Select,
+   * Popover, Sheet của Radix lại render qua portal ra thẳng <body> nên rơi ra
+   * ngoài đảo: ở chế độ tối chúng lấy token nền tối trong khi ruột của chúng vẫn
+   * là bảng màu sáng cố định, thành ra chữ tối trên nền tối. Gắn cờ lên <body>
+   * để quy tắc `body.one-portal-light > *:not(#root)` trong index.css kéo các
+   * lớp nổi ấy về hệ sáng suốt thời gian người dùng ở trong cổng.
+   */
+  React.useEffect(() => {
+    document.body.classList.add('one-portal-light');
+    return () => document.body.classList.remove('one-portal-light');
+  }, []);
+
   return (
     <AdminEditableProvider>
       {/* Cao tối thiểu = khung nhìn trừ thanh điều hướng 56px, để chân trang

@@ -228,7 +228,7 @@ export function ApprovedFormDetail({ form, employeeId, viewerIsEmployee, positio
                   </p>
                 )}
                 {needsImprovement && (!counts || counts.total === 0) && (
-                  <p className="text-xs text-amber-600">Chưa có kế hoạch cải thiện</p>
+                  <p className="text-xs text-amber-600 dark:text-amber-400">Chưa có kế hoạch cải thiện</p>
                 )}
               </div>
             );

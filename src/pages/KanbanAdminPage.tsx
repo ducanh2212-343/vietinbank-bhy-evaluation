@@ -284,8 +284,8 @@ export default function KanbanAdminPage() {
                     <td className={`py-2 pr-3 text-right font-semibold ${d.staffNotWeekly ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                       {d.staffNotWeekly}/{d.staffTracked}
                     </td>
-                    <td className={`py-2 pr-3 text-right ${d.overdue ? 'text-rose-600 font-semibold' : ''}`}>{d.overdue}</td>
-                    <td className={`py-2 text-right ${d.waiting ? 'text-blue-600 font-semibold' : ''}`}>{d.waiting}</td>
+                    <td className={`py-2 pr-3 text-right ${d.overdue ? 'text-rose-600 dark:text-rose-400 font-semibold' : ''}`}>{d.overdue}</td>
+                    <td className={`py-2 text-right ${d.waiting ? 'text-blue-600 dark:text-blue-400 font-semibold' : ''}`}>{d.waiting}</td>
                   </tr>
                 ))}
               </tbody>
@@ -364,7 +364,7 @@ export default function KanbanAdminPage() {
                                 <Badge variant="outline" className="text-[10px] py-0">{c.progress_percent}%</Badge>
                                 {b.notUpdatedThisWeek && <Badge className="text-[10px] py-0 bg-amber-500 hover:bg-amber-500">Chưa cập nhật tuần này</Badge>}
                                 {b.updatedThisWeek && !b.notUpdatedThisWeek && (
-                                  <Badge variant="outline" className="text-[10px] py-0 border-emerald-300 text-emerald-700">Đã cập nhật tuần này</Badge>
+                                  <Badge variant="outline" className="text-[10px] py-0 border-emerald-300 dark:border-emerald-500/40 text-emerald-700 dark:text-emerald-300">Đã cập nhật tuần này</Badge>
                                 )}
                                 {b.overdue && <Badge variant="destructive" className="text-[10px] py-0">Quá hạn</Badge>}
                                 {b.waitingConfirm && <Badge className="text-[10px] py-0 bg-blue-500 hover:bg-blue-500">Chờ QL xác nhận</Badge>}

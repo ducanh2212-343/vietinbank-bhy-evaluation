@@ -937,12 +937,12 @@ export default function SelfAssessmentPage() {
         </div>
       )}
       {formStatus === 'submitted' && (
-        <div className="rounded-md border border-amber-400/40 bg-amber-50 p-3 text-sm text-amber-900">
+        <div className="rounded-md border border-amber-400/40 dark:border-amber-500/50 bg-amber-50 dark:bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-200">
           Phiếu đang chờ người đánh giá duyệt.
         </div>
       )}
       {(formStatus === 'approved' || formStatus === 'reviewed') && (
-        <div className="rounded-md border border-emerald-400/40 bg-emerald-50 p-3 text-sm text-emerald-900">
+        <div className="rounded-md border border-emerald-400/40 dark:border-emerald-500/50 bg-emerald-50 dark:bg-emerald-500/10 p-3 text-sm text-emerald-900 dark:text-emerald-200">
           Phiếu đã được duyệt.
         </div>
       )}

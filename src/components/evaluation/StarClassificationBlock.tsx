@@ -250,20 +250,20 @@ export function StarClassificationBlock(props: Props) {
       items.push({ icon: Clock, text: soleApprover ? 'Chưa chốt phân nhóm' : 'Chưa đề xuất', tone: 'text-muted-foreground' });
     } else {
       items.push({ icon: CheckCircle2, text: soleApprover ? 'Đã chọn nhóm' : 'TP đã đề xuất', tone: 'text-foreground' });
-      if (pending) items.push({ icon: Clock, text: soleApprover ? 'Chưa chốt — bấm "Chốt phân nhóm" bên dưới' : 'Chờ cấp trên phê duyệt', tone: 'text-amber-600' });
+      if (pending) items.push({ icon: Clock, text: soleApprover ? 'Chưa chốt — bấm "Chốt phân nhóm" bên dưới' : 'Chờ cấp trên phê duyệt', tone: 'text-amber-600 dark:text-amber-400' });
       if (rejected) items.push({ icon: XCircle, text: 'Bị trả lại · TP cần đề xuất lại', tone: 'text-destructive' });
       if (approved) {
         const dt = record.approved_at ? new Date(record.approved_at).toLocaleDateString('vi-VN') : '';
-        items.push({ icon: CheckCircle2, text: `Đã duyệt${dt ? ' · ' + dt : ''}`, tone: 'text-emerald-600' });
+        items.push({ icon: CheckCircle2, text: `Đã duyệt${dt ? ' · ' + dt : ''}`, tone: 'text-emerald-600 dark:text-emerald-400' });
       }
       if (record.override_by) {
-        items.push({ icon: AlertTriangle, text: `GĐ điều chỉnh: ${record.override_reason || '—'}`, tone: 'text-amber-700' });
+        items.push({ icon: AlertTriangle, text: `GĐ điều chỉnh: ${record.override_reason || '—'}`, tone: 'text-amber-700 dark:text-amber-300' });
       }
       if (approved) {
         items.push({
           icon: record.visible_to_employee ? CheckCircle2 : Clock,
           text: record.visible_to_employee ? 'Đã hiện cho cán bộ' : 'Chưa hiện cho cán bộ',
-          tone: record.visible_to_employee ? 'text-emerald-600' : 'text-muted-foreground',
+          tone: record.visible_to_employee ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground',
         });
       }
     }

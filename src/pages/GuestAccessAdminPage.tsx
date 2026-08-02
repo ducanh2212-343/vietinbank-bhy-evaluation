@@ -159,7 +159,7 @@ export default function GuestAccessAdminPage() {
           </Button>
 
           {tempPassword && (
-            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-300 text-sm flex items-center gap-3 flex-wrap">
+            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-500/40 text-sm flex items-center gap-3 flex-wrap">
               <span className="font-semibold">Mật khẩu tạm (chỉ hiện một lần):</span>
               <code className="font-mono font-bold">{tempPassword}</code>
               <Button size="sm" variant="outline" onClick={() => {

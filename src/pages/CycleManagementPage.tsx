@@ -319,7 +319,7 @@ export default function CycleManagementPage() {
                     </div>
                   </div>
                   {noDeadlineSet && (
-                    <p className="text-xs text-amber-600 flex items-center gap-1">
+                    <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
                       <AlertTriangle className="w-3.5 h-3.5" />
                       Chưa thiết đặt mốc — hệ thống tạm dùng 23:59 ngày kết thúc kỳ ({effective.toLocaleString('vi-VN')}).
                     </p>

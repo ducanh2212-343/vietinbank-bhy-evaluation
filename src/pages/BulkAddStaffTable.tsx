@@ -246,9 +246,9 @@ export default function BulkAddStaffTable() {
           <CardHeader>
             <CardTitle className="text-base flex items-center justify-between flex-wrap gap-2">
               <span>
-                Tổng {response.total} — <span className="text-green-700">{response.created} tạo mới</span>,{' '}
-                <span className="text-blue-700">{response.updated} cập nhật</span>,{' '}
-                <span className="text-red-700">{response.errors} lỗi</span>
+                Tổng {response.total} — <span className="text-green-700 dark:text-green-300">{response.created} tạo mới</span>,{' '}
+                <span className="text-blue-700 dark:text-blue-300">{response.updated} cập nhật</span>,{' '}
+                <span className="text-red-700 dark:text-red-300">{response.errors} lỗi</span>
               </span>
               <span className="flex gap-2 flex-wrap">
                 <Button variant="outline" onClick={copyAllMessages}>
@@ -281,9 +281,9 @@ export default function BulkAddStaffTable() {
                         <TableCell className="text-sm">{r.email}</TableCell>
                         <TableCell>
                           {r.status === 'created'
-                            ? <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Tạo mới</Badge>
+                            ? <Badge className="bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-500/20">Tạo mới</Badge>
                             : r.status === 'updated'
-                              ? <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">Cập nhật</Badge>
+                              ? <Badge className="bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-500/20">Cập nhật</Badge>
                               : <Badge variant="destructive">Lỗi</Badge>}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">{r.message}</TableCell>
@@ -404,7 +404,7 @@ export default function BulkAddStaffTable() {
                         className="h-8"
                       />
                       {r.email && existingEmails.has(r.email.trim().toLowerCase()) && (
-                        <p className="text-xs text-amber-600 mt-1">Email đã tồn tại — sẽ cập nhật hồ sơ</p>
+                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Email đã tồn tại — sẽ cập nhật hồ sơ</p>
                       )}
                     </TableCell>
                     <TableCell>

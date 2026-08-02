@@ -213,7 +213,7 @@ export default function SkillCriteriaAdminPage() {
                         {[1, 2, 3, 4].map((l) => {
                           const n = rows.filter((r) => r.level_no === l).length;
                           return (
-                            <span key={l} className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${n > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-muted text-muted-foreground'}`}>
+                            <span key={l} className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${n > 0 ? 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' : 'bg-muted text-muted-foreground'}`}>
                               L{l}·{n}
                             </span>
                           );

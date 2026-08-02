@@ -59,7 +59,7 @@ export function SkillCriteriaEditor({ value, onChange, onGenerate, generating, a
           type="button"
           size="sm"
           variant="outline"
-          className="h-8 text-xs gap-1.5 border-violet-300 text-violet-700 hover:bg-violet-50"
+          className="h-8 text-xs gap-1.5 border-violet-300 dark:border-violet-500/40 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-500/15"
           disabled={generating}
           onClick={() => onGenerate(null)}
         >
@@ -83,7 +83,7 @@ export function SkillCriteriaEditor({ value, onChange, onGenerate, generating, a
                 {aiEnabled && onGenerate && (
                   <Button
                     type="button" size="sm" variant="ghost"
-                    className="h-6 px-2 text-[10px] gap-1 text-violet-700 hover:bg-violet-50"
+                    className="h-6 px-2 text-[10px] gap-1 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-500/15"
                     disabled={generating}
                     onClick={() => onGenerate(levelNo)}
                     title={`Sinh nháp AI riêng cho L${levelNo}`}
@@ -108,7 +108,7 @@ export function SkillCriteriaEditor({ value, onChange, onGenerate, generating, a
             ) : (
               <div className="divide-y">
                 {rows.map((row, idx) => (
-                  <div key={row.id || `new-${levelNo}-${idx}`} className={`p-2.5 space-y-1.5 ${row.isDraft ? 'bg-violet-50/50' : ''}`}>
+                  <div key={row.id || `new-${levelNo}-${idx}`} className={`p-2.5 space-y-1.5 ${row.isDraft ? 'bg-violet-50/50 dark:bg-violet-500/10' : ''}`}>
                     <div className="flex items-start gap-2">
                       <span className="text-[10px] text-muted-foreground font-medium pt-2 w-4 text-right flex-shrink-0">{idx + 1}.</span>
                       <Textarea
@@ -145,10 +145,10 @@ export function SkillCriteriaEditor({ value, onChange, onGenerate, generating, a
                           onCheckedChange={(v) => patch(row, { requires_evidence: !!v })}
                           className="w-3.5 h-3.5"
                         />
-                        <FileCheck className="w-3 h-3 text-sky-600" /> Yêu cầu minh chứng
+                        <FileCheck className="w-3 h-3 text-sky-600 dark:text-sky-400" /> Yêu cầu minh chứng
                       </label>
                       {row.isDraft && (
-                        <Badge variant="outline" className="text-[9px] border-violet-300 text-violet-700 bg-violet-50">
+                        <Badge variant="outline" className="text-[9px] border-violet-300 dark:border-violet-500/40 text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-500/10">
                           Nháp AI — chưa lưu
                         </Badge>
                       )}

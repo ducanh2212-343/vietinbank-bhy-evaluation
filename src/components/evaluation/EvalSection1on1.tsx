@@ -124,7 +124,7 @@ export function EvalSection1on1({ enabled, onEnabledChange, answers, onAnswersCh
                       placeholder='Nêu nhận định, căn cứ và định hướng — hạn chế ghi "đồng ý" đơn thuần…'
                       rows={3}
                       disabled={!isManager}
-                      className={`text-sm ${isBareAgreement(a.manager) ? 'border-amber-400 focus-visible:ring-amber-400' : ''}`}
+                      className={`text-sm ${isBareAgreement(a.manager) ? 'border-amber-400 dark:border-amber-500/50 focus-visible:ring-amber-400' : ''}`}
                     />
                     {isBareAgreement(a.manager) && (
                       <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-400">{BARE_AGREEMENT_HINT}</p>

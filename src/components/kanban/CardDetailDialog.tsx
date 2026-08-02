@@ -89,7 +89,7 @@ export function CardDetailDialog({ card, open, onClose, onChanged, ownerName }: 
           </div>
 
           {!isOwner && card.completion_status === 'waiting_manager_confirmation' && (
-            <div className="flex gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex gap-2 p-3 bg-blue-50 dark:bg-blue-500/10 rounded-lg border border-blue-200 dark:border-blue-500/30">
               <Button size="sm" onClick={confirm}>Xác nhận hoàn thành</Button>
               <Button size="sm" variant="outline" onClick={() => setReturnOpen(true)}>Yêu cầu làm tiếp</Button>
             </div>

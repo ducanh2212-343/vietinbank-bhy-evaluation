@@ -526,7 +526,7 @@ function CourseEditDialog({
               </div>
             )}
             {groups.size === 0 && (
-              <div className="text-xs text-amber-600 flex items-center gap-1">
+              <div className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
                 <AlertTriangle className="w-3 h-3" /> Chưa chọn nhóm vị trí — khóa này sẽ không xuất hiện ở bất kỳ ai.
               </div>
             )}
@@ -706,8 +706,8 @@ function ImportTab({ onReload, existing }: { onReload: () => void; existing: Vtb
             <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between p-3 border rounded bg-muted/30">
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
                 <span>📋 Tổng: <strong>{rows.length}</strong></span>
-                <span className="text-green-700">+ Mới: <strong>{rows.filter(r => r.status === 'new').length}</strong></span>
-                <span className="text-blue-700">↻ Cập nhật: <strong>{rows.filter(r => r.status === 'update').length}</strong></span>
+                <span className="text-green-700 dark:text-green-300">+ Mới: <strong>{rows.filter(r => r.status === 'new').length}</strong></span>
+                <span className="text-blue-700 dark:text-blue-300">↻ Cập nhật: <strong>{rows.filter(r => r.status === 'update').length}</strong></span>
                 <span className="text-destructive">✗ Lỗi: <strong>{rows.filter(r => r.status === 'error').length}</strong></span>
               </div>
               <div className="flex gap-2 items-center">
@@ -725,7 +725,7 @@ function ImportTab({ onReload, existing }: { onReload: () => void; existing: Vtb
               </div>
             </div>
             {mode === 'replace' && (
-              <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 flex gap-2">
+              <div className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded p-2 flex gap-2">
                 <AlertTriangle className="w-4 h-4 shrink-0" />
                 Sẽ XOÁ toàn bộ khóa có nguồn = Excel trước khi import lại. Khóa thủ công không bị ảnh hưởng.
               </div>
@@ -743,8 +743,8 @@ function ImportTab({ onReload, existing }: { onReload: () => void; existing: Vtb
                       <td className="px-2 py-1">{r.name || <em className="text-muted-foreground">(rỗng)</em>}</td>
                       <td className="px-2 py-1 text-center">{r.groups.length}</td>
                       <td className="px-2 py-1 text-center">
-                        {r.status === 'new' && <Badge className="bg-green-100 text-green-800 text-[10px]">Mới</Badge>}
-                        {r.status === 'update' && <Badge className="bg-blue-100 text-blue-800 text-[10px]">Cập nhật</Badge>}
+                        {r.status === 'new' && <Badge className="bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-300 text-[10px]">Mới</Badge>}
+                        {r.status === 'update' && <Badge className="bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-300 text-[10px]">Cập nhật</Badge>}
                         {r.status === 'error' && <Badge variant="destructive" className="text-[10px]">{r.error}</Badge>}
                       </td>
                     </tr>
@@ -793,7 +793,7 @@ function MappingTab({
                   <tr key={p.id} className="border-t">
                     <td className="px-2 py-1.5">
                       {p.name}
-                      {!g && <Badge variant="outline" className="ml-2 text-[10px] text-amber-600 border-amber-300">⚠ chưa map</Badge>}
+                      {!g && <Badge variant="outline" className="ml-2 text-[10px] text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-500/40">⚠ chưa map</Badge>}
                     </td>
                     <td className="px-2 py-1.5">
                       <Select value={g || 'none'} onValueChange={(v) => setMapping(p.id, v === 'none' ? null : v)}>

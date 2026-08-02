@@ -141,10 +141,10 @@ export function MentorSuggestion({
       </div>
 
       {pair ? (
-        <div className="flex items-center justify-between gap-2 rounded-md border border-sky-200 bg-sky-50 px-3 py-2">
+        <div className="flex items-center justify-between gap-2 rounded-md border border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-500/10 px-3 py-2">
           <div className="flex items-center gap-2 min-w-0">
-            <UserCheck className="w-4 h-4 text-sky-700 shrink-0" />
-            <span className="text-xs text-sky-900">
+            <UserCheck className="w-4 h-4 text-sky-700 dark:text-sky-300 shrink-0" />
+            <span className="text-xs text-sky-900 dark:text-sky-200">
               Đang được <b>{pair.mentor_name}</b> kèm cặp kỹ năng này trong kỳ.
             </span>
           </div>
@@ -176,7 +176,7 @@ export function MentorSuggestion({
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-xs font-medium">{m.full_name}</span>
                         <Badge variant="secondary" className="text-[9px]">L{m.skill_level}</Badge>
-                        {sameDept && <Badge variant="outline" className="text-[9px] border-emerald-300 text-emerald-700">Cùng phòng</Badge>}
+                        {sameDept && <Badge variant="outline" className="text-[9px] border-emerald-300 dark:border-emerald-500/40 text-emerald-700 dark:text-emerald-300">Cùng phòng</Badge>}
                       </div>
                       <div className="text-[10px] text-muted-foreground">
                         {m.department_name || 'Chưa gán phòng'} · {slots > 0 ? `còn ${slots}/${MENTOR_CAPACITY} chỗ kèm cặp kỳ này` : 'đã kín lịch kèm cặp kỳ này'}

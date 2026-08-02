@@ -185,7 +185,7 @@ export function LevelCheckWizard({
                       <p className="text-sm flex-1">
                         {c.statement}
                         {c.is_gate && (
-                          <Badge variant="outline" className="ml-1.5 text-[9px] border-orange-300 text-orange-600 bg-orange-50 align-middle gap-0.5">
+                          <Badge variant="outline" className="ml-1.5 text-[9px] border-orange-300 dark:border-orange-500/40 text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-500/10 align-middle gap-0.5">
                             <KeyRound className="w-2.5 h-2.5" /> Gate
                           </Badge>
                         )}
@@ -257,8 +257,8 @@ export function LevelCheckWizard({
                 <div key={r.levelNo} className="flex items-center gap-2 px-3 py-2 text-xs">
                   <span className={`level-badge level-${r.levelNo} text-[10px]`}>L{r.levelNo}</span>
                   <span className="text-muted-foreground">{r.metCount}/{r.total} tiêu chí đạt · điểm {Math.round(r.score * 100)}%</span>
-                  {!r.gatesMet && <Badge variant="outline" className="text-[9px] border-orange-300 text-orange-600">thiếu gate</Badge>}
-                  <span className={`ml-auto font-semibold ${r.passed ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+                  {!r.gatesMet && <Badge variant="outline" className="text-[9px] border-orange-300 dark:border-orange-500/40 text-orange-600 dark:text-orange-400">thiếu gate</Badge>}
+                  <span className={`ml-auto font-semibold ${r.passed ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
                     {r.passed ? '✓ Đạt' : '✗ Chưa đạt'}
                   </span>
                 </div>

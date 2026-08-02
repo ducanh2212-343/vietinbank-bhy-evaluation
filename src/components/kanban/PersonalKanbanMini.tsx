@@ -137,11 +137,11 @@ export function PersonalKanbanMini({ profileId, limit = 5 }: Props) {
           <>
             <div className="flex flex-wrap gap-2 text-xs">
               <span className="px-2 py-1 rounded-full bg-muted text-foreground">Đang làm: <b>{doingCount}</b></span>
-              <span className={`px-2 py-1 rounded-full ${notUpdatedCount > 0 ? 'bg-amber-100 text-amber-800' : 'bg-muted'}`}>Chưa cập nhật tuần này: <b>{notUpdatedCount}</b></span>
-              <span className={`px-2 py-1 rounded-full ${overdueCount > 0 ? 'bg-rose-100 text-rose-800' : 'bg-muted'}`}>Quá hạn: <b>{overdueCount}</b></span>
+              <span className={`px-2 py-1 rounded-full ${notUpdatedCount > 0 ? 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300' : 'bg-muted'}`}>Chưa cập nhật tuần này: <b>{notUpdatedCount}</b></span>
+              <span className={`px-2 py-1 rounded-full ${overdueCount > 0 ? 'bg-rose-100 dark:bg-rose-500/15 text-rose-800 dark:text-rose-300' : 'bg-muted'}`}>Quá hạn: <b>{overdueCount}</b></span>
             </div>
             {notUpdatedCount > 0 && (
-              <div className="flex items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              <div className="flex items-center justify-between gap-2 rounded-md border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4" />
                   <span>Bạn có <b>{notUpdatedCount}</b> hành động chưa cập nhật trong tuần này.</span>

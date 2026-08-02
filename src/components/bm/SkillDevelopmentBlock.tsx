@@ -38,9 +38,9 @@ interface Props {
 }
 
 const ACTION_TYPES = [
-  { value: '70', label: '70% Học qua công việc', short: '70%', color: 'bg-emerald-100 text-emerald-800 border-emerald-300', accent: 'border-l-emerald-500' },
-  { value: '20', label: '20% Coaching/Shadow', short: '20%', color: 'bg-sky-100 text-sky-800 border-sky-300', accent: 'border-l-sky-500' },
-  { value: '10', label: '10% Đào tạo/Tài liệu', short: '10%', color: 'bg-violet-100 text-violet-800 border-violet-300', accent: 'border-l-violet-500' },
+  { value: '70', label: '70% Học qua công việc', short: '70%', color: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40', accent: 'border-l-emerald-500' },
+  { value: '20', label: '20% Coaching/Shadow', short: '20%', color: 'bg-sky-100 dark:bg-sky-500/15 text-sky-800 dark:text-sky-300 border-sky-300 dark:border-sky-500/40', accent: 'border-l-sky-500' },
+  { value: '10', label: '10% Đào tạo/Tài liệu', short: '10%', color: 'bg-violet-100 dark:bg-violet-500/15 text-violet-800 dark:text-violet-300 border-violet-300 dark:border-violet-500/40', accent: 'border-l-violet-500' },
 ];
 
 const typeMeta = (v: string) => ACTION_TYPES.find(t => t.value === v) || ACTION_TYPES[0];
@@ -164,12 +164,12 @@ export function SkillDevelopmentBlock({
             .filter((x): x is { skill: Skill; current: number; minimum: number } => x !== null);
           if (gapSuggestions.length === 0 || readOnly || priorities.length >= 3) return null;
           return (
-            <div className="rounded-lg border border-amber-300/60 bg-amber-50/60 p-3 space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-800">
+            <div className="rounded-lg border border-amber-300/60 dark:border-amber-500/40 bg-amber-50/60 dark:bg-amber-500/10 p-3 space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-800 dark:text-amber-300">
                 <Target className="w-3.5 h-3.5" />
                 <span>Gợi ý skill còn GAP so với chuẩn vị trí (tham khảo)</span>
               </div>
-              <p className="text-[11px] text-amber-800/80">
+              <p className="text-[11px] text-amber-800/80 dark:text-amber-300">
                 Đây là gợi ý dựa trên mục B. Anh/chị không bắt buộc chọn các skill này — hãy chọn skill up kỳ phù hợp thực tiễn công việc.
               </p>
               <div className="flex flex-wrap gap-2">
@@ -178,7 +178,7 @@ export function SkillDevelopmentBlock({
                     key={g.skill.id}
                     type="button"
                     onClick={() => addSkill(g.skill)}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-amber-300 bg-background px-2 py-1 text-xs hover:bg-amber-100"
+                    className="inline-flex items-center gap-1.5 rounded-md border border-amber-300 dark:border-amber-500/40 bg-background px-2 py-1 text-xs hover:bg-amber-100 dark:hover:bg-amber-500/20"
                   >
                     <Plus className="w-3 h-3" />
                     {g.skill.code && <span className="font-mono text-[10px] text-muted-foreground">{g.skill.code}</span>}
