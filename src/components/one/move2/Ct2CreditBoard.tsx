@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 import { DndContext, DragEndEvent, PointerSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core';
-import { AlertTriangle, Banknote, CalendarClock, Plus, User2 } from 'lucide-react';
+import { AlertTriangle, Banknote, CalendarClock, Columns3, List, Plus, User2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   HS_COT, HS_TEN_CAP, HS_TEN_LOAI, canhBaoHoSo, dinhDangTien, hsTuoiCho,
   sapXepHoSo, tongTheoBuoc,
@@ -13,6 +14,7 @@ import {
 } from '@/lib/ct2TinDung';
 import type { Ct2NhanSu } from './useCt2Data';
 import type { HoSoSapDenHan } from './useCt2TinDung';
+import { CT2_GIAI_THICH_IM_LANG, Ct2CreditList } from './Ct2CreditList';
 
 /**
  * Bàn Kanban Phê duyệt tín dụng — 7 cột theo đúng quy trình phê duyệt mà
@@ -38,8 +40,13 @@ export function Ct2CreditBoard({
   dsHoSo, sapDenHan, nhanSu, laLanhDao, dangTai, onMoHoSo, onKeoHoSo, onTaoMoi,
 }: Props) {
   const { profileId } = useAuth();
+  const dienThoai = useIsMobile();
   const [locCanBo, setLocCanBo] = useState<string | null>(null);
   const [chiRuiRo, setChiRuiRo] = useState(false);
+  // Trên điện thoại mặc định mở «Toàn cảnh»: bảy cột cuộn ngang là bố cục của
+  // màn hình rộng, không phải của người đứng ở quầy cầm điện thoại.
+  const [cheDo, setCheDo] = useState<'cot' | 'danh-sach' | null>(null);
+  const dangXem = cheDo ?? (dienThoai ? 'danh-sach' : 'cot');
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 400, tolerance: 8 } }),
@@ -140,25 +147,44 @@ export function Ct2CreditBoard({
           onClick={() => setChiRuiRo(!chiRuiRo)}>
           Chỉ hồ sơ có cảnh báo
         </Button>
-        <Button size="sm" className="ml-auto h-8" onClick={onTaoMoi}>
-          <Plus className="mr-1 h-3.5 w-3.5" /> Mở hồ sơ
-        </Button>
+
+        {/* Đổi cách nhìn cùng một dữ liệu, không phải đổi bộ lọc */}
+        <div className="ml-auto flex items-center gap-1">
+          <Button size="sm" variant={dangXem === 'danh-sach' ? 'default' : 'outline'}
+            className="h-8 gap-1 px-2 text-xs" onClick={() => setCheDo('danh-sach')}>
+            <List className="h-3.5 w-3.5" /> Toàn cảnh
+          </Button>
+          <Button size="sm" variant={dangXem === 'cot' ? 'default' : 'outline'}
+            className="h-8 gap-1 px-2 text-xs" onClick={() => setCheDo('cot')}>
+            <Columns3 className="h-3.5 w-3.5" /> Cột
+          </Button>
+          <Button size="sm" className="h-8" onClick={onTaoMoi}>
+            <Plus className="mr-1 h-3.5 w-3.5" /> Mở hồ sơ
+          </Button>
+        </div>
       </div>
 
-      <DndContext sensors={sensors} onDragEnd={handleDrag}>
-        <div className="overflow-x-auto pb-2">
-          <div className="flex min-w-max gap-3">
-            {HS_COT.map((cot) => {
-              const ds = theoCot.get(cot.ma) ?? [];
-              const so = tong.get(cot.ma);
-              return (
-                <CotHoSo key={cot.ma} cot={cot} dsHoSo={ds} tienCot={so?.tien ?? 0}
-                  tenNguoi={tenNguoi} onMoHoSo={onMoHoSo} />
-              );
-            })}
+      {dangXem === 'danh-sach' ? (
+        <>
+          <Ct2CreditList dsHoSo={daLoc} tenNguoi={tenNguoi} onMoHoSo={onMoHoSo} />
+          <p className="mt-3 text-2xs leading-relaxed text-slate-400">{CT2_GIAI_THICH_IM_LANG}</p>
+        </>
+      ) : (
+        <DndContext sensors={sensors} onDragEnd={handleDrag}>
+          <div className="overflow-x-auto pb-2">
+            <div className="flex min-w-max gap-3">
+              {HS_COT.map((cot) => {
+                const ds = theoCot.get(cot.ma) ?? [];
+                const so = tong.get(cot.ma);
+                return (
+                  <CotHoSo key={cot.ma} cot={cot} dsHoSo={ds} tienCot={so?.tien ?? 0}
+                    tenNguoi={tenNguoi} onMoHoSo={onMoHoSo} />
+                );
+              })}
+            </div>
           </div>
-        </div>
-      </DndContext>
+        </DndContext>
+      )}
     </div>
   );
 }

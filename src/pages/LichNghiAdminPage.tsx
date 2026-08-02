@@ -34,6 +34,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLamTuoiLichNghi, useLichNghi } from '@/hooks/useLichNghi';
 import { gopThanhKy, nhanKhoangNgay, type KyNghi, type LoaiNgay } from '@/lib/lichNghi';
 import { conBaoNhieuNgay, mocLeTrongNam, type MocLe } from '@/lib/amLich';
+import { Ct2CaiDatMocGio } from '@/components/one/move2/Ct2CaiDatMocGio';
 
 const NGUONG_NHAC = 10;
 
@@ -130,14 +131,17 @@ export default function LichNghiAdminPage() {
     <div className="space-y-5">
       <div>
         <h1 className="flex items-center gap-2 text-xl font-semibold">
-          <CalendarDays className="h-5 w-5" /> Lịch nghỉ lễ Chi nhánh
+          <CalendarDays className="h-5 w-5" /> Cài đặt ngày giờ
         </h1>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-          Lịch nhập ở đây quyết định cách hệ thống đếm <b>ngày làm việc</b> — tuổi chờ thẻ
-          Kanban, tuổi chờ hồ sơ tín dụng, số ngày im lặng và giờ phát thông báo đều trừ
-          những ngày này. Nhập đúng thì cảnh báo đúng.
+          Hai thứ quyết định mọi con số của Chiêu thức 2: <b>mốc giờ</b> (thế nào là đúng
+          nhịp, khi nào được phép báo) và <b>lịch nghỉ</b> (ngày nào không tính là ngày làm
+          việc). Đặt đúng ở đây thì tuổi chờ thẻ Kanban, tuổi chờ hồ sơ tín dụng và bảng
+          tổng hợp nhịp đều đúng theo.
         </p>
       </div>
+
+      <Ct2CaiDatMocGio />
 
       {canNhapNgay.length > 0 && (
         <Alert className="border-amber-300 bg-amber-50">

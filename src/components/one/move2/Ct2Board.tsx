@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  CT2_COT, CT2_NGUONG_TUOI_CHO, CT2_NGUONG_WIP, chuanBiQuaLau, daDuKeHoach, demWip,
+  CT2_COT, CT2_NGUONG_WIP, chuanBiQuaLau, daDuKeHoach, demWip, nguongTuoiCho,
   sapXepThe, soNgayImLang, soNgayQuaHan, tuoiCho,
   type Ct2Co, type Ct2DauViec, type Ct2TrangThai,
 } from '@/lib/ct2';
@@ -95,7 +95,7 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoTh
       tiLe: coViec.length ? Math.round((daDu / coViec.length) * 100) : 100,
       theDo: dsThe.filter((t) => t.co_tinh_trang === 'DO' && t.trang_thai !== 'DA_DONG' && t.trang_thai !== 'DUNG_HUY').length,
       quaHan: dsThe.filter((t) => soNgayQuaHan(t) > 0).length,
-      nghenCho: dsThe.filter((t) => tuoiCho(t) > CT2_NGUONG_TUOI_CHO).length,
+      nghenCho: dsThe.filter((t) => tuoiCho(t) > nguongTuoiCho()).length,
     };
   }, [nhipNguoi, dsThe]);
 
@@ -130,7 +130,7 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoTh
         />
         <OSo nhan="Thẻ 🔴 đang vướng" giaTri={String(tongNhip.theDo)} tot={tongNhip.theDo === 0} />
         <OSo nhan="Thẻ quá hạn" giaTri={String(tongNhip.quaHan)} tot={tongNhip.quaHan === 0} />
-        <OSo nhan={`Nghẽn cột chờ > ${CT2_NGUONG_TUOI_CHO} ngày`} giaTri={String(tongNhip.nghenCho)} tot={tongNhip.nghenCho === 0} />
+        <OSo nhan={`Nghẽn cột chờ > ${nguongTuoiCho()} ngày`} giaTri={String(tongNhip.nghenCho)} tot={tongNhip.nghenCho === 0} />
       </div>
 
       {/* Bộ lọc chip */}
@@ -353,7 +353,7 @@ function TheKanban({ the, tenNguoi, wip, onMo }: {
         </span>
         <span className="tabular-nums">{the.phan_tram}%</span>
       </p>
-      {(quaHan > 0 || imLang >= 3 || cho > CT2_NGUONG_TUOI_CHO || chuanBiQuaLau(the)
+      {(quaHan > 0 || imLang >= 3 || cho > nguongTuoiCho() || chuanBiQuaLau(the)
         || (the.trang_thai === 'CHUAN_BI' && !daDuKeHoach(the))) && (
         <p className="mt-1.5 flex flex-wrap gap-1">
           {the.trang_thai === 'CHUAN_BI' && !daDuKeHoach(the) && (
@@ -361,7 +361,7 @@ function TheKanban({ the, tenNguoi, wip, onMo }: {
           )}
           {quaHan > 0 && <Nhan mau="red">Quá hạn {quaHan} ngày</Nhan>}
           {imLang >= 3 && <Nhan mau="amber">Im lặng {imLang} ngày</Nhan>}
-          {cho > CT2_NGUONG_TUOI_CHO && (
+          {cho > nguongTuoiCho() && (
             <Nhan mau="red">
               <Clock3 className="mr-0.5 inline h-3 w-3" />
               Chờ {cho} ngày — {tenNguoi.get(the.nguoi_dang_giu ?? '') ?? 'chưa rõ ai giữ'}

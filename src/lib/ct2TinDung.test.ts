@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  hsChuaGhiLanNao,
+  hsMucImLang,
+  hsNgayImLang,
   buocKeTiep,
   canhBaoHoSo,
   dinhDangTien,
@@ -144,7 +147,8 @@ describe('Cảnh báo hồ sơ — bộ kiểm cho board có rủi ro tài chín
 
   it('hồ sơ cấp mới không bị đòi ngày hạn mức', () => {
     const cb = canhBaoHoSo({
-      ...hsGoc, loai_ho_so: 'CAP_MOI', ngay_den_han_ghtd: null, giu_tu: null, han_xu_ly: '2026-08-31',
+      ...hsGoc, loai_ho_so: 'CAP_MOI', ngay_den_han_ghtd: null, giu_tu: null,
+      han_xu_ly: '2026-08-31', nhip_gan_nhat: '2026-08-11T02:00:00Z',
     }, moc);
     expect(cb).toEqual([]);
   });
@@ -159,7 +163,10 @@ describe('Số liệu điều hành — chỉ tính được vì số tiền là
   const ds: HoSoTinDung[] = [
     hsGoc,
     { ...hsGoc, id: 'h2', so_tien: 30_000, trang_thai: 'TRINH_LDCN' },
-    { ...hsGoc, id: 'h3', so_tien: 50_000, trang_thai: 'THU_THAP', giu_tu: null, ngay_den_han_ghtd: null, loai_ho_so: 'CAP_MOI' },
+    // Sạch cảnh báo: cấp mới nên không đòi ngày hạn mức, và vừa ghi nhịp hôm qua
+    // nên không bị đánh dấu «chưa cập nhật»
+    { ...hsGoc, id: 'h3', so_tien: 50_000, trang_thai: 'THU_THAP', giu_tu: null,
+      ngay_den_han_ghtd: null, loai_ho_so: 'CAP_MOI', nhip_gan_nhat: '2026-08-11T02:00:00Z' },
   ];
 
   it('cộng được tổng dư nợ đang trình theo từng bước', () => {
@@ -173,5 +180,44 @@ describe('Số liệu điều hành — chỉ tính được vì số tiền là
     expect(xep[0].id).toBe('h1');   // 160 tỷ, nghẽn chờ 7 ngày
     expect(xep[1].id).toBe('h2');   // 30 tỷ, cũng nghẽn nhưng nhỏ hơn
     expect(xep[2].id).toBe('h3');   // sạch cảnh báo
+  });
+});
+
+
+describe('Hồ sơ chưa cập nhật — cảnh báo bằng hình ảnh trên màn toàn cảnh', () => {
+  // moc = 09:00 thứ Tư 12/08/2026
+  const base = { ...hsGoc, trang_thai: 'THU_THAP' as const, ngay_nhan: '2026-08-03' };
+
+  it('đếm im lặng bằng NGÀY LÀM VIỆC, không phải ngày lịch', () => {
+    // Nhịp gần nhất thứ Sáu 07/08 → tới thứ Tư 12/08 là 3 ngày làm việc (10, 11, 12)
+    expect(hsNgayImLang({ ...base, nhip_gan_nhat: '2026-08-07T02:00:00Z' }, moc)).toBe(3);
+    // Ghi hôm qua thì chưa im lặng
+    expect(hsNgayImLang({ ...base, nhip_gan_nhat: '2026-08-11T02:00:00Z' }, moc)).toBe(1);
+  });
+
+  it('ba mức: mới · chậm · bỏ quên', () => {
+    expect(hsMucImLang({ ...base, nhip_gan_nhat: '2026-08-11T02:00:00Z' }, moc)).toBe('MOI');
+    expect(hsMucImLang({ ...base, nhip_gan_nhat: '2026-08-10T02:00:00Z' }, moc)).toBe('CHAM');
+    expect(hsMucImLang({ ...base, nhip_gan_nhat: '2026-08-06T02:00:00Z' }, moc)).toBe('BO_QUEN');
+  });
+
+  it('chưa ghi nhịp lần nào thì tính từ ngày nhận hồ sơ', () => {
+    const h = { ...base, nhip_gan_nhat: null };
+    expect(hsChuaGhiLanNao(h)).toBe(true);
+    // Nhận 03/08 (thứ Hai) → 12/08 là 7 ngày làm việc
+    expect(hsNgayImLang(h, moc)).toBe(7);
+    expect(hsMucImLang(h, moc)).toBe('BO_QUEN');
+  });
+
+  it('hồ sơ đã xong hoặc bị từ chối thì thôi không đòi cập nhật nữa', () => {
+    expect(hsNgayImLang({ ...base, trang_thai: 'HOAN_THANH', nhip_gan_nhat: null }, moc)).toBe(0);
+    expect(hsMucImLang({ ...base, trang_thai: 'TU_CHOI', nhip_gan_nhat: null }, moc)).toBe('MOI');
+  });
+
+  it('bỏ quên vào thẳng danh sách cảnh báo, mức đỏ', () => {
+    const cb = canhBaoHoSo({ ...base, nhip_gan_nhat: null, ngay_den_han_ghtd: null, loai_ho_so: 'CAP_MOI' }, moc);
+    const im = cb.find((c) => c.noi_dung.includes('Chưa cập nhật'));
+    expect(im?.muc).toBe('DO');
+    expect(im?.noi_dung).toContain('lần nào');
   });
 });

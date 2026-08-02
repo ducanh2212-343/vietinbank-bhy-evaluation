@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Banknote, ClipboardList, Compass, Grid3x3, Info, Inbox, RefreshCw, Target, UserRound } from 'lucide-react';
+import { Banknote, CalendarRange, ClipboardList, Info, Inbox, UserRound } from 'lucide-react';
 import { OnePageShell } from '@/components/one/OnePageShell';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { laLoiThieuBangCt2, type Ct2DauViec, type Ct2TrangThai } from '@/lib/ct2';
 import { Ct2Board } from '@/components/one/move2/Ct2Board';
+import { Ct2GioiThieu } from '@/components/one/move2/Ct2GioiThieu';
+import { Ct2BangNhip } from '@/components/one/move2/Ct2BangNhip';
 import { Ct2CardDialog } from '@/components/one/move2/Ct2CardDialog';
 import { Ct2CreateDialog } from '@/components/one/move2/Ct2CreateDialog';
 import { Ct2PlanDialog } from '@/components/one/move2/Ct2PlanDialog';
@@ -32,12 +34,6 @@ import {
 // (01/08/2026). Hai màn hình chính: M1 «Việc của tôi» (mặc định — nơi ghi nhịp
 // sáng 7h00–8h00) và M2 «Bảng của Phòng» (Kanban 7 cột, cả phòng cùng đọc).
 
-const BUOC = [
-  { icon: Compass, ten: 'SWOT', mo: 'Nhìn thẳng vào nội tại: điểm mạnh, điểm yếu của Phòng và cơ hội, thách thức từ địa bàn.' },
-  { icon: Grid3x3, ten: 'TOWS', mo: 'Ghép cặp các yếu tố để ra hướng đi: lấy điểm mạnh đón cơ hội, khắc phục điểm yếu trước thách thức.' },
-  { icon: Target, ten: '5W2H', mo: 'Biến hướng đi thành đầu việc cụ thể, DUY NHẤT một người chịu trách nhiệm: What · Why · When · Where · Who · How · How much.' },
-  { icon: RefreshCw, ten: 'PDCA', mo: 'Nhịp mỗi sáng trên chính thẻ việc — Plan, Do, Check, Act — vòng PDCA khép ở từng thẻ, không nằm trên giấy.' },
-];
 
 interface Cycle { id: string; name: string; status: string }
 
@@ -155,38 +151,12 @@ function NoiDung() {
   // Tab tín dụng chỉ tồn tại với phòng có cấp tín dụng — về mặc định nếu không có
   useEffect(() => {
     if (tab === 'tin-dung' && phongCoPdtd.length > 0 && !coPdtd) setTab('cua-toi');
-  }, [tab, coPdtd, phongCoPdtd.length]);
+    if (tab === 'bang-nhip' && !laLanhDao) setTab('cua-toi');
+  }, [tab, coPdtd, phongCoPdtd.length, laLanhDao]);
 
   return (
     <>
-      {/* Giới thiệu phương pháp */}
-      <section className="border-b border-slate-200 bg-gradient-to-b from-blue-50 via-white to-slate-50">
-        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
-          <p className="text-2xs font-semibold uppercase tracking-widest text-brand-red">Chiêu thức số 2</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-brand-navy sm:text-4xl">
-            Kế hoạch hành động — Kanban 5W2H + PDCA
-          </h1>
-          <p className="mt-3 max-w-3xl text-base leading-relaxed text-slate-600">
-            «Bí kíp bỏ túi» của các Phòng: SWOT → TOWS → 5W2H, theo dõi bằng nhịp PDCA mỗi sáng
-            7h00–8h00 ngay trên thẻ việc. Đây là tấm gương soi cho chính mình trước, báo cáo cho
-            lãnh đạo sau. Duy trì từ tháng 2/2024.
-          </p>
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {BUOC.map(({ icon: Icon, ten, mo }, i) => (
-              <div key={ten} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="mb-2 flex items-center gap-2">
-                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-navy/10 text-brand-navy">
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <span className="text-2xs font-semibold tabular-nums text-slate-400">Bước {i + 1}</span>
-                </div>
-                <p className="text-sm font-semibold text-brand-navy">{ten}</p>
-                <p className="mt-1 text-sm leading-relaxed text-slate-600">{mo}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <Ct2GioiThieu />
 
       <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {chuaApMigration ? (
@@ -212,6 +182,14 @@ function NoiDung() {
                 {coPdtd && (
                   <TabsTrigger value="tin-dung" className="gap-1.5">
                     <Banknote className="h-4 w-4" /> Phê duyệt tín dụng
+                  </TabsTrigger>
+                )}
+                {/* Bảng tổng hợp nhịp là công cụ điều hành — chỉ lãnh đạo thấy.
+                    Cán bộ nhìn thấy bảng xếp mình so với đồng nghiệp mỗi sáng thì
+                    nhịp thành cuộc thi, không còn là tấm gương soi cho chính mình. */}
+                {laLanhDao && (
+                  <TabsTrigger value="bang-nhip" className="gap-1.5">
+                    <CalendarRange className="h-4 w-4" /> Bảng nhịp
                   </TabsTrigger>
                 )}
               </TabsList>
@@ -308,6 +286,11 @@ function NoiDung() {
                   onKeoHoSo={(h, den) => { setHoSoChuyenDen(den); setHoSoMo(h); }}
                   onTaoMoi={() => setDangMoHoSo(true)}
                 />
+              </TabsContent>
+            )}
+            {laLanhDao && (
+              <TabsContent value="bang-nhip">
+                <Ct2BangNhip phongId={phongId} />
               </TabsContent>
             )}
           </Tabs>
