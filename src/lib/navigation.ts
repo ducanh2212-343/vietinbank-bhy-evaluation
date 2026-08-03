@@ -340,10 +340,23 @@ export const NAV_SECTIONS: NavSection[] = [
           { label: 'Báo cáo nộp biểu mẫu', icon: Timer, path: '/bao-cao-nop-bieu-mau', special: 'submission-report', keywords: ['tien do nop', 'han nop'] },
           // Khung dấu ấn BGĐ giao PGĐ — công cụ của Ban Giám đốc, khác Sao Xứng Đáng (khen thưởng chung)
           { label: 'Dấu ấn BHY Mark', icon: Star, path: '/dau-an', special: 'leadership-marks', keywords: ['bhy mark', 'dau an', 'giam doc'] },
-          // Hội đồng đánh giá đầu mối: thành viên HĐ chấm điểm; đầu mối + admin xem báo cáo
+        ],
+      },
+      {
+        // Hội đồng đánh giá đầu mối là MỘT CẤU PHẦN RIÊNG: có kỳ chấm, hội đồng,
+        // báo cáo và màn quản trị của chính nó. Gom đủ bốn màn hình vào một thư
+        // mục để người dùng thấy trọn cấu phần ở một chỗ, thay vì ba màn nằm lẫn
+        // trong "Quản trị đội ngũ" còn màn quản trị nằm tận thư mục cấu hình.
+        // Quyền từng màn giữ nguyên: thành viên HĐ chấm điểm; đầu mối và quản trị
+        // xem báo cáo; phân tích và cấu hình chỉ quản trị.
+        id: 'hoi-dong-dau-moi',
+        folder: 'Hội đồng đầu mối',
+        icon: Gavel,
+        items: [
           { label: 'Đánh giá đầu mối', icon: Gavel, path: '/danh-gia-dau-moi', special: 'council-member', keywords: ['hoi dong', 'cham diem'] },
           { label: 'Báo cáo đầu mối', icon: BarChart3, path: '/bao-cao-dau-moi', special: 'council-report', keywords: ['hoi dong', 'ket qua'] },
           { label: 'Phân tích đầu mối', icon: TrendingUp, path: '/phan-tich-dau-moi', minRole: 'admin', special: 'council-analytics', keywords: ['hoi dong', 'phan tich'] },
+          { label: 'Quản trị Hội đồng đầu mối', icon: Gavel, path: '/quan-tri-hoi-dong-dau-moi', minRole: 'admin', keywords: ['cau hinh hoi dong', 'thanh vien'] },
         ],
       },
       {
@@ -370,7 +383,6 @@ export const NAV_SECTIONS: NavSection[] = [
           { label: 'Quản trị hình ảnh skill', icon: Image, path: '/quan-tri-hinh-anh-skill', minRole: 'admin' },
           { label: 'Khóa học VietinBank', icon: GraduationCap, path: '/quan-tri-khoa-hoc-vtb', minRole: 'admin' },
           { label: 'Tổng hợp nhu cầu đào tạo', icon: GraduationCap, path: '/tong-hop-nhu-cau-dao-tao', minRole: 'admin' },
-          { label: 'Quản trị Hội đồng đầu mối', icon: Gavel, path: '/quan-tri-hoi-dong-dau-moi', minRole: 'admin' },
         ],
       },
       {

@@ -421,7 +421,7 @@ sửa tin tức hiện trên Trang chủ ONE.
 
 | Tính năng | Vì sao thuộc riêng 343 |
 |---|---|
-| Quản trị Hội đồng đầu mối | Cấu hình hội đồng của kỳ đánh giá → gộp vào thư mục «Cấu hình đánh giá» |
+| Quản trị Hội đồng đầu mối | Cấu hình hội đồng của kỳ đánh giá → xem mục tách cấu phần bên dưới |
 | Bản tin quý | Thư tổng kết phát triển cá nhân, dựng từ phiếu tự đánh giá của kỳ |
 | Quản trị AI & Prompt | 9 prompt thì 7 phục vụ nghiệp vụ đánh giá (skill, IDP, minh chứng, phiên 1-1, thư cuối kỳ); trợ lý AI chỉ chạy trong phân hệ này |
 
@@ -437,3 +437,23 @@ gây rối mà cả đợt tái cấu trúc này đang dọn.
 Nguyên tắc được khóa bằng test (`navigation.test.ts`): bốn đường dẫn dùng chung
 phải nằm ở khu `user-admin` và KHÔNG được xuất hiện trong `hr-343`; ba đường dẫn
 nghiệp vụ thì ngược lại.
+
+
+### Hội đồng đầu mối tách thành cấu phần riêng
+
+Đây là một cấu phần độc lập: có kỳ chấm, hội đồng, báo cáo và màn quản trị của
+chính nó. Trước đây ba màn hình nằm lẫn trong «Quản trị đội ngũ» còn màn quản
+trị nằm tận thư mục cấu hình — không ai thấy được trọn cấu phần ở một chỗ.
+
+Nay gom đủ bốn màn hình vào thư mục **«Hội đồng đầu mối»** trong phân hệ 343:
+
+| Màn hình | Ai vào được |
+|---|---|
+| Đánh giá đầu mối | Thành viên Hội đồng |
+| Báo cáo đầu mối | Đầu mối được đánh giá, người phụ trách và quản trị |
+| Phân tích đầu mối | Quản trị |
+| Quản trị Hội đồng đầu mối | Quản trị |
+
+Quyền từng màn **giữ nguyên** — chỉ đổi chỗ đứng trong menu. Test khóa: thư mục
+phải chứa đúng bốn đường dẫn theo thứ tự trên, và không thư mục nào khác trong
+phân hệ 343 được chứa mục có `dau-moi` trong đường dẫn.

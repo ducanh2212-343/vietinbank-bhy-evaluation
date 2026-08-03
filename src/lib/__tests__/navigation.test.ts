@@ -123,10 +123,31 @@ describe('Cấu trúc cây điều hướng', () => {
       expect(cuaQuanTri).toContain(p);
     }
 
-    // Ngược lại: công cụ chỉ phục vụ kỳ đánh giá phải Ở LẠI phân hệ 343
+    // Ngược lại: công cụ chỉ phục vụ nghiệp vụ đánh giá phải Ở LẠI phân hệ 343
     for (const p of ['/ban-tin-quy', '/quan-tri-ai', '/quan-tri-hoi-dong-dau-moi']) {
       expect(cua343).toContain(p);
       expect(cuaQuanTri).not.toContain(p);
+    }
+  });
+
+  it('cấu phần Hội đồng đầu mối nằm trọn trong một thư mục', () => {
+    // Bốn màn hình của cấu phần: chấm điểm, báo cáo, phân tích và cấu hình.
+    // Trước đây ba màn nằm lẫn trong «Quản trị đội ngũ» còn màn quản trị nằm ở
+    // thư mục cấu hình — người dùng không thấy được trọn cấu phần ở một chỗ.
+    const hr = NAV_SECTIONS.find((s) => s.id === 'hr-343');
+    const thuMuc = hr!.items.filter(isFolder).find((f) => f.id === 'hoi-dong-dau-moi');
+    expect(thuMuc).toBeDefined();
+    expect(thuMuc!.items.map((i) => i.path)).toEqual([
+      '/danh-gia-dau-moi',
+      '/bao-cao-dau-moi',
+      '/phan-tich-dau-moi',
+      '/quan-tri-hoi-dong-dau-moi',
+    ]);
+
+    // Và không sót mục đầu mối nào ở thư mục khác
+    for (const f of hr!.items.filter(isFolder)) {
+      if (f.id === 'hoi-dong-dau-moi') continue;
+      expect(f.items.some((i) => i.path.includes('dau-moi'))).toBe(false);
     }
   });
 
