@@ -191,7 +191,7 @@ export default function KanbanAdminPage() {
       for (const c of r.list) {
         const b = computeBadges(c, new Date(), weeklyMap[c.id]);
         lines.push([
-          r.profile.full_name, r.deptName, `"${(c.title || '').replaceAll('"', "'")}"`, getSourceLabel(c),
+          r.profile.full_name, r.deptName, `"${(c.title || '').replace(/"/g, "'")}"`, getSourceLabel(c),
           STATUS_LABEL[c.kanban_status] || c.kanban_status, String(c.progress_percent),
           isWeeklyTracked(c) ? (weeklyMap[c.id] ? 'Đã cập nhật' : 'CHƯA') : '—',
           b.overdue ? 'QUÁ HẠN' : '', c.deadline || '', fmtDate(c.last_progress_at),
