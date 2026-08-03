@@ -170,7 +170,7 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
             <PillarAdminUploader onUpload={v => onImageUpload(0, v)} />
           </div>
           <IdeaForm
-            defaultProposer={myName}
+            canSubmitForOthers={isContentAdmin}
             onCreate={createIdea}
             onUpdate={updateIdea}
             editing={editing}

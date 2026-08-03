@@ -4432,6 +4432,14 @@ export type Database = {
         Returns: undefined
       }
       admin_email_overview: { Args: never; Returns: Json }
+      bhy_danh_ba_can_bo: {
+        Args: never
+        Returns: {
+          ho_ten: string
+          phong: string
+          user_id: string
+        }[]
+      }
       can_view_profile: {
         Args: { _target_profile_id: string }
         Returns: boolean

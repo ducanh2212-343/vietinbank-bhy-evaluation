@@ -1,17 +1,20 @@
-import React, { useEffect, useState } from 'react';
-import { AlertTriangle, Lightbulb, Sparkles, X } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, Lightbulb, Sparkles, UserCheck, X } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import {
   IDEA_APPLICABILITIES,
-  IDEA_DEPARTMENTS,
   IDEA_LEVELS,
   type IdeaApplicability,
   type IdeaLevel,
 } from '@/data/one/ideasConfig';
+import { useStaffDirectory, type StaffOption } from './useStaffDirectory';
 import type { IdeaInput, PortalIdea } from './usePortalIdeas';
 
-// Form 9 trường đăng ký ý tưởng — nhãn/placeholder/lựa chọn giữ nguyên
-// DEFAULT_IDEA_FIELDS của bản deploy (UniquePrograms.tsx:224-246).
+// Form đăng ký ý tưởng — nhãn/placeholder/lựa chọn giữ nguyên DEFAULT_IDEA_FIELDS
+// của bản deploy (UniquePrograms.tsx:224-246), trừ hai trường "Cán bộ đề xuất" và
+// "Phòng/Ban": cán bộ đã đăng nhập nên hai thông tin này lấy thẳng từ hồ sơ nhân sự
+// thay vì gõ tay. Ô chữ tự do trước đây làm công sáng kiến gán sai người khi phòng
+// dùng chung một tài khoản để gửi hộ (xem docs/nap-du-lieu-bhy-ideas-2026-08.md).
 // Hỗ trợ chế độ sửa: truyền `editing` để đổ sẵn dữ liệu và gọi onUpdate.
 
 interface FieldConfig {
@@ -30,9 +33,7 @@ interface FormValues {
   currentStatus: string;
   proposedSolution: string;
   expectedBenefits: string;
-  departmentName: string;
   hasDemo: string; // 'Có' | 'Không' | '' — quy đổi boolean khi gửi
-  proposer: string;
 }
 
 const IDEA_FIELDS: FieldConfig[] = [
@@ -42,21 +43,17 @@ const IDEA_FIELDS: FieldConfig[] = [
   { id: 'currentStatus', label: 'Thực trạng hiện tại (Khó khăn, bất cập):', type: 'textarea', placeholder: 'Mô tả chi tiết những điểm chưa tối ưu, tốn thời gian...', required: true },
   { id: 'proposedSolution', label: 'Đề xuất cách làm mới / giải pháp:', type: 'textarea', placeholder: 'Mô tả cụ thể phương án, quy trình mới...', required: true },
   { id: 'expectedBenefits', label: 'Lợi ích dự kiến mang lại:', type: 'textarea', placeholder: 'Giảm bao nhiêu phút, tiết kiệm bao nhiêu chi phí...', required: true },
-  { id: 'departmentName', label: 'Khai báo thông tin Phòng/Ban:', type: 'select', required: true, options: IDEA_DEPARTMENTS },
   { id: 'hasDemo', label: 'Xác nhận có sản phẩm Demo?', type: 'select', required: true, options: ['Không', 'Có'] },
-  { id: 'proposer', label: 'Cán bộ / Nhóm đề xuất:', type: 'text', placeholder: 'Nhập tên cán bộ hoặc tên nhóm phòng ban đề xuất...', required: true },
 ];
 
-const emptyValues = (proposer: string): FormValues => ({
+const emptyValues = (): FormValues => ({
   level: '',
   applicability: '',
   title: '',
   currentStatus: '',
   proposedSolution: '',
   expectedBenefits: '',
-  departmentName: '',
   hasDemo: '',
-  proposer,
 });
 
 const valuesFromIdea = (idea: PortalIdea): FormValues => ({
@@ -66,40 +63,58 @@ const valuesFromIdea = (idea: PortalIdea): FormValues => ({
   currentStatus: idea.currentStatus,
   proposedSolution: idea.proposedSolution,
   expectedBenefits: idea.expectedBenefits,
-  departmentName: idea.departmentName,
   hasDemo: idea.hasDemo ? 'Có' : 'Không',
-  proposer: idea.proposer,
 });
 
 interface IdeaFormProps {
-  /** Tên mặc định của người gửi (profile.full_name) — đổ sẵn vào trường "Cán bộ / Nhóm đề xuất" */
-  defaultProposer?: string;
   onCreate: (input: IdeaInput) => Promise<boolean>;
   onUpdate: (id: string, input: IdeaInput) => Promise<boolean>;
   /** Chế độ sửa: đổ sẵn dữ liệu ý tưởng và gọi onUpdate thay vì onCreate */
   editing?: PortalIdea | null;
   /** Gọi khi cập nhật xong hoặc hủy sửa */
   onDone?: () => void;
+  /** Quản trị (TCTH/hệ thống) được nhập hộ cán bộ khác */
+  canSubmitForOthers?: boolean;
 }
 
-export const IdeaForm: React.FC<IdeaFormProps> = ({ defaultProposer = '', onCreate, onUpdate, editing = null, onDone }) => {
-  const [values, setValues] = useState<FormValues>(() => emptyValues(defaultProposer));
+export const IdeaForm: React.FC<IdeaFormProps> = ({
+  onCreate,
+  onUpdate,
+  editing = null,
+  onDone,
+  canSubmitForOthers = false,
+}) => {
+  const { staff, me, isLoading: loadingStaff } = useStaffDirectory();
+  const [values, setValues] = useState<FormValues>(emptyValues);
+  const [proposerId, setProposerId] = useState('');
+  const [coAuthorIds, setCoAuthorIds] = useState<string[]>([]);
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Đổ sẵn dữ liệu khi vào/thoát chế độ sửa
   useEffect(() => {
-    if (editing) setValues(valuesFromIdea(editing));
-    else setValues(emptyValues(defaultProposer));
+    setValues(editing ? valuesFromIdea(editing) : emptyValues());
+    if (!editing) setCoAuthorIds([]);
     setSubmitError('');
-  }, [editing, defaultProposer]);
+  }, [editing]);
 
-  // Đổ tên người gửi khi profile tải xong (không ghi đè nếu đã gõ tay)
+  // Mặc định người đề xuất là chính mình, ngay khi danh bạ tải xong
   useEffect(() => {
-    if (!editing && defaultProposer) {
-      setValues(prev => (prev.proposer ? prev : { ...prev, proposer: defaultProposer }));
-    }
-  }, [defaultProposer, editing]);
+    if (me && !proposerId) setProposerId(me.userId);
+  }, [me, proposerId]);
+
+  const proposer: StaffOption | null = useMemo(
+    () => staff.find(s => s.userId === proposerId) ?? me,
+    [staff, proposerId, me],
+  );
+  const coAuthors = useMemo(
+    () => coAuthorIds.map(id => staff.find(s => s.userId === id)).filter((s): s is StaffOption => !!s),
+    [coAuthorIds, staff],
+  );
+
+  /** Ô "Cán bộ / Nhóm đề xuất" gửi lên: người đề xuất trước, đồng tác giả nối sau */
+  const proposerText = [proposer?.fullName, ...coAuthors.map(s => s.fullName)]
+    .filter(Boolean).join(', ');
 
   const setField = (id: keyof FormValues, value: string) =>
     setValues(prev => ({ ...prev, [id]: value }));
@@ -115,6 +130,16 @@ export const IdeaForm: React.FC<IdeaFormProps> = ({ defaultProposer = '', onCrea
       }
     }
 
+    // Người đề xuất & phòng lấy từ hồ sơ nhân sự — chặn gửi khi hồ sơ chưa đủ
+    if (!editing && !proposer) {
+      setSubmitError('Chưa đọc được hồ sơ cán bộ của bạn. Vui lòng tải lại trang hoặc báo Phòng TCTH.');
+      return;
+    }
+    if (!editing && !proposer?.department) {
+      setSubmitError('Hồ sơ của bạn chưa gắn Phòng/Ban. Vui lòng liên hệ Phòng TCTH cập nhật trước khi gửi ý tưởng.');
+      return;
+    }
+
     setSubmitError('');
     setIsSubmitting(true);
     try {
@@ -125,9 +150,11 @@ export const IdeaForm: React.FC<IdeaFormProps> = ({ defaultProposer = '', onCrea
         currentStatus: values.currentStatus,
         proposedSolution: values.proposedSolution,
         expectedBenefits: values.expectedBenefits,
-        departmentName: values.departmentName,
+        // Chế độ sửa giữ nguyên người đề xuất & phòng đã lưu (sửa quy về quản trị)
+        departmentName: editing ? editing.departmentName : proposer!.department!,
         hasDemo: values.hasDemo === 'Có',
-        proposer: values.proposer,
+        proposer: editing ? editing.proposer : proposerText,
+        createdBy: editing ? undefined : proposer!.userId,
       };
 
       if (editing) {
@@ -137,13 +164,19 @@ export const IdeaForm: React.FC<IdeaFormProps> = ({ defaultProposer = '', onCrea
         const ok = await onCreate(input);
         if (ok) {
           confetti({ particleCount: 100, spread: 80, origin: { y: 0.6 } });
-          setValues(emptyValues(defaultProposer));
+          setValues(emptyValues());
+          setCoAuthorIds([]);
+          if (me) setProposerId(me.userId);
         }
       }
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const identityLabel = editing
+    ? { name: editing.proposer, dept: editing.departmentName }
+    : { name: proposer?.fullName ?? '', dept: proposer?.department ?? '' };
 
   return (
     <div className="space-y-4">
@@ -171,6 +204,62 @@ export const IdeaForm: React.FC<IdeaFormProps> = ({ defaultProposer = '', onCrea
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+        {/* Người đề xuất & Phòng/Ban lấy từ hồ sơ cán bộ đang đăng nhập, không gõ tay */}
+        <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 space-y-2">
+          <div className="flex items-start gap-2">
+            <UserCheck className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="font-bold text-slate-700">Cán bộ đề xuất</p>
+              {editing || !canSubmitForOthers ? (
+                <p className="font-black text-slate-800 truncate">
+                  {identityLabel.name || (loadingStaff ? 'Đang đọc hồ sơ…' : '—')}
+                </p>
+              ) : (
+                <select
+                  value={proposerId}
+                  onChange={e => setProposerId(e.target.value)}
+                  className="mt-1 w-full p-2 bg-white border border-amber-300 rounded-lg font-semibold outline-none focus:border-amber-500"
+                >
+                  {staff.map(s => (
+                    <option key={s.userId} value={s.userId}>
+                      {s.fullName}{s.department ? ` — ${s.department}` : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Phòng/Ban: <span className="font-bold text-slate-700">{identityLabel.dept || '—'}</span>
+                {' · '}Lấy từ hồ sơ nhân sự, không cần khai lại.
+              </p>
+            </div>
+          </div>
+
+          {!editing && (
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">
+                Đồng đề xuất <span className="font-medium text-slate-500">(bỏ trống nếu làm một mình)</span>
+              </label>
+              <select
+                multiple
+                value={coAuthorIds}
+                onChange={e => setCoAuthorIds(Array.from(e.target.selectedOptions, o => o.value))}
+                className="w-full p-2 bg-white border border-amber-300 rounded-lg font-semibold outline-none focus:border-amber-500 h-24"
+              >
+                {staff.filter(s => s.userId !== proposerId).map(s => (
+                  <option key={s.userId} value={s.userId}>
+                    {s.fullName}{s.department ? ` — ${s.department}` : ''}
+                  </option>
+                ))}
+              </select>
+              {coAuthors.length > 0 && (
+                <p className="text-[11px] text-slate-600 mt-1">
+                  Ghi nhận: <span className="font-bold">{proposerText}</span>
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
         {IDEA_FIELDS.map(field => {
           const val = values[field.id] ?? '';
           return (

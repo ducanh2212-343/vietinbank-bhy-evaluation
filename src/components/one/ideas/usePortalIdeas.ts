@@ -42,6 +42,8 @@ export interface IdeaInput {
   departmentName: string;
   hasDemo: boolean;
   proposer: string;
+  /** Chủ sở hữu phiếu — quản trị nhập hộ thì gán về đúng cán bộ đề xuất, mặc định là chính mình */
+  createdBy?: string;
 }
 
 export interface IdeaComment {
@@ -127,6 +129,7 @@ export function usePortalIdeas() {
       department_name: input.departmentName,
       has_demo: input.hasDemo,
       proposer: input.proposer.trim(),
+      created_by: input.createdBy ?? user?.id,
       creator_email: user?.email ?? null,
     });
     if (error) {

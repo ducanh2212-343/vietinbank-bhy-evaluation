@@ -69,21 +69,39 @@ Phó phòng giao dịch Ân Thi). Hàm dò phân giải bằng phòng ghi trên 
 không có bản ghi nào lẫn sang nhau. Ngoài ra còn 1 hồ sơ thứ ba trùng tên ở trạng thái
 `deleted` — hàm chỉ dò hồ sơ `active` nên không bị dính.
 
-**Kết quả:** 111/113 phiếu về đúng cán bộ, phân bổ cho **43 người** (trước đó 22).
-Còn 2 phiếu Phòng DVKH chưa xác định, tạm để dưới tài khoản người gửi:
+**Kết quả:** **113/113 phiếu** về đúng cán bộ, phân bổ cho **44 người** (trước đó 22).
+Hai phiếu Phòng DVKH ghi `Haich` và `Nguyễn Đức Mạnh` đã được xác nhận là Chu Hồng Hải và
+Vũ Đức Mạnh, bổ sung vào bảng bí danh ở migration `20260821090000`.
 
-| Ô "Cán bộ đề xuất" | Vướng mắc |
-|---|---|
-| `Haich` | Viết tắt, chưa rõ là ai (Chu Hồng Hải?) |
-| `Nguyễn Đức Mạnh` | chieuthuc3 chỉ có **Vũ Đức Mạnh** (DVKH) — nhầm họ hay người khác? |
-
-Khi xác định được, chỉ cần thêm một dòng vào `portal_idea_proposer_alias` rồi chạy lại
+Gặp bí danh mới thì chỉ cần thêm một dòng vào `portal_idea_proposer_alias` rồi chạy lại
 `admin_import_ideas_csv` với gói JSON cũ.
 
 **Điểm còn ngỏ:** hai email `thuylt120996@gmail.com` và `thuylt231096@gmail.com` cùng ghi
 tên "Lê Thị Thuý" – Phòng HTTD, nhưng chieuthuc3 chỉ có một hồ sơ **Lê Thị Thúy**. Theo
 quy tắc ưu tiên tên, cả 9 phiếu đang gộp về một người. Nếu thực tế là hai cán bộ trùng
 tên thì cần tạo hồ sơ thứ hai và tách lại.
+
+## Form gửi ý tưởng trên cổng mới
+
+Nguồn gốc của toàn bộ việc chỉnh tay ở trên là ô "Cán bộ / Nhóm đề xuất" và "Phòng/Ban"
+để cán bộ tự gõ. Cán bộ đã đăng nhập rồi thì không có lý do gì phải khai lại, nên form
+đã bỏ hai ô tự do đó:
+
+- **Cán bộ đề xuất** và **Phòng/Ban** lấy thẳng từ hồ sơ nhân sự của tài khoản đang đăng
+  nhập, hiển thị cố định. `created_by` gán đúng người ngay từ lúc gửi.
+- **Đồng đề xuất**: chọn nhiều cán bộ từ danh bạ (ý tưởng nhóm). Ô `proposer` ghi
+  `"Người chính, Đồng tác giả 1, Đồng tác giả 2"` — giữ nguyên nếp của dữ liệu cũ, còn
+  `created_by` là người đứng đầu.
+- **Quản trị TCTH/hệ thống** được chọn cán bộ khác trong danh bạ để nhập hộ (phiếu giấy),
+  và phiếu vẫn đứng tên đúng cán bộ đó chứ không đứng tên người nhập.
+- Hồ sơ chưa gắn Phòng/Ban thì form báo rõ và chặn gửi, thay vì cho chọn bừa.
+
+Danh bạ lấy qua RPC `bhy_danh_ba_can_bo` (migration `20260822090000`) — chỉ trả họ tên và
+phòng, không lộ email/điện thoại/ngày sinh, và chặn khách đối tác. Cần RPC riêng vì RLS
+bảng `profiles` không cho cán bộ thường đọc hồ sơ người khác.
+
+Ở chế độ **sửa** ý tưởng, người đề xuất và phòng giữ nguyên giá trị đã lưu (kể cả chuỗi
+nhiều tác giả của dữ liệu cũ) — muốn đổi thì đi đường quản trị, không sửa lẫn trong form.
 
 ## Bảo mật
 
