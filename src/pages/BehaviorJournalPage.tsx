@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { NotebookPen, Sparkles, ThumbsUp, Wrench, RotateCcw, Archive, Share2, CheckCircle2, Lock, LockOpen, Award, MessageCircle, Repeat } from 'lucide-react';
+import { NotebookPen, Sparkles, ThumbsUp, Wrench, RotateCcw, Archive, Share2, CheckCircle2, Lock, LockOpen, Award, MessageCircle, Repeat, Plus, SlidersHorizontal } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
 import { useNepTotAccess } from '@/hooks/useNepTotAccess';
@@ -55,6 +55,11 @@ export default function BehaviorJournalPage() {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [feedbackFilter, setFeedbackFilter] = useState(ALL);
+  // Bộ lọc gấp lại mặc định — màn hình chỉ còn tab + danh sách cho đỡ rối
+  const [showFilters, setShowFilters] = useState(false);
+  const activeFilterCount =
+    [employeeFilter, typeFilter, skillFilter, attitudeFilter, feedbackFilter].filter((v) => v !== ALL).length +
+    (fromDate ? 1 : 0) + (toDate ? 1 : 0);
 
   // Dialog hoàn thiện
   const [editing, setEditing] = useState<BehaviorNote | null>(null);
@@ -300,14 +305,21 @@ export default function BehaviorJournalPage() {
             <NotebookPen className="w-5 h-5 text-primary" /> Nhật ký Nếp Tốt
           </h1>
           <p className="text-sm text-muted-foreground">
-            Nếp Tốt — Sổ tay hành vi BHY. Ghi nhận hành động, phản hồi ngay; dữ liệu chỉ hỗ trợ tư vấn/coaching, không tự thay đổi điểm đánh giá.
+            Sổ tay riêng của lãnh đạo — ghi lại hành động của cán bộ và phản hồi ngay. Không ảnh hưởng điểm đánh giá.
           </p>
         </div>
-        {draftCount > 0 && (
-          <Badge variant="secondary" className="text-amber-700 bg-amber-100 dark:bg-amber-500/15 dark:text-amber-300">
-            {draftCount} mẩu nhớ chưa hoàn thiện
-          </Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {draftCount > 0 && (
+            <Badge variant="secondary" className="text-amber-700 bg-amber-100 dark:bg-amber-500/15 dark:text-amber-300">
+              {draftCount} mẩu nhớ chưa hoàn thiện
+            </Badge>
+          )}
+          {canRecord && (
+            <Button onClick={() => window.dispatchEvent(new Event('nep-tot:ghi-nhanh'))}>
+              <Plus className="w-4 h-4 mr-1" /> Ghi nhanh
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Nhắc phản hồi ngay — tác động trong tuần, không chờ cuối kỳ */}
@@ -336,8 +348,8 @@ export default function BehaviorJournalPage() {
         </Card>
       )}
 
-      {/* Tab trạng thái */}
-      <div className="flex gap-1.5">
+      {/* Tab trạng thái + nút bung bộ lọc */}
+      <div className="flex flex-wrap items-center gap-1.5">
         {(Object.keys(NOTE_STATUS_LABELS) as BehaviorNoteStatus[]).map((s) => (
           <button
             key={s}
@@ -349,9 +361,19 @@ export default function BehaviorJournalPage() {
             {NOTE_STATUS_LABELS[s]}
           </button>
         ))}
+        <button
+          onClick={() => setShowFilters((v) => !v)}
+          className={`ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-colors ${
+            showFilters || activeFilterCount > 0 ? 'bg-primary/10 text-primary' : 'bg-muted hover:bg-muted/70 text-muted-foreground'
+          }`}
+        >
+          <SlidersHorizontal className="w-3.5 h-3.5" />
+          Bộ lọc{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+        </button>
       </div>
 
-      {/* Bộ lọc */}
+      {/* Bộ lọc chi tiết — gấp lại mặc định cho màn hình gọn */}
+      {showFilters && (
       <Card>
         <CardContent className="p-3 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
           <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
@@ -401,6 +423,7 @@ export default function BehaviorJournalPage() {
           <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="h-9 text-sm" aria-label="Đến ngày" />
         </CardContent>
       </Card>
+      )}
 
       {/* Danh sách */}
       {loading ? (
@@ -408,8 +431,8 @@ export default function BehaviorJournalPage() {
       ) : filtered.length === 0 ? (
         <div className="text-center text-muted-foreground py-10">
           {statusFilter === 'nhap'
-            ? 'Không có mẩu nhớ nào — bấm nút “+” ở góc màn hình để ghi nhanh khi nhớ ra một tình huống.'
-            : 'Không có bản ghi phù hợp bộ lọc.'}
+            ? 'Chưa có mẩu nhớ nào — bấm nút “+ Ghi nhanh” phía trên, chọn cán bộ và gõ một câu là xong.'
+            : 'Không có bản ghi phù hợp.'}
         </div>
       ) : (
         <div className="space-y-2">

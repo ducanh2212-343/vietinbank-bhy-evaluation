@@ -20,10 +20,35 @@ export interface ObservableProfile {
  */
 export function useNepTotAccess() {
   const { roles, profileId, loading: authLoading } = useAuth();
-  const canRecord = roles.some((r) => r === 'manager' || r === 'pgd' || r === 'bgd');
-  // Admin chi nhánh (TCTH/System) đọc được nhật ký (bản đã xác nhận, loại
-  // 'quan_ly' — RLS quyết định), nhưng không ghi nhận nghiệp vụ
-  const canViewJournal = canRecord || roles.some((r) => r === 'tcth_admin' || r === 'system_admin');
+  const roleCanRecord = roles.some((r) => r === 'manager' || r === 'pgd' || r === 'bgd');
+  const isBranchAdmin = roles.some((r) => r === 'tcth_admin' || r === 'system_admin');
+
+  // Giám đốc chi nhánh dùng tài khoản admin (hệ thống chỉ cho 1 role/user nên
+  // không gán thêm được 'bgd'): nhận diện theo CHỨC DANH hồ sơ — khớp hàm
+  // is_branch_director() phía RLS (migration 20260803090000)
+  const [isDirectorByPosition, setIsDirectorByPosition] = useState(false);
+  useEffect(() => {
+    if (roleCanRecord || !isBranchAdmin || !profileId) return;
+    let cancelled = false;
+    void supabase
+      .from('profiles')
+      .select('position')
+      .eq('id', profileId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) {
+          setIsDirectorByPosition(
+            (data?.position ?? '').toLowerCase().startsWith('giám đốc'),
+          );
+        }
+      });
+    return () => { cancelled = true; };
+  }, [roleCanRecord, isBranchAdmin, profileId]);
+
+  const canRecord = roleCanRecord || isDirectorByPosition;
+  // Admin chi nhánh (TCTH/System) thuần đọc được nhật ký (bản đã xác nhận,
+  // loại 'quan_ly' — RLS quyết định), nhưng không ghi nhận nghiệp vụ
+  const canViewJournal = canRecord || isBranchAdmin;
 
   const [staff, setStaff] = useState<ObservableProfile[]>([]);
   const [staffLoading, setStaffLoading] = useState(false);

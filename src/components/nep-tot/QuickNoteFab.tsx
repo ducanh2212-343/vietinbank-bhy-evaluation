@@ -25,6 +25,14 @@ export function QuickNoteFab() {
   const navigate = useNavigate();
 
   const [open, setOpen] = useState(false);
+
+  // Trang khác (VD nút "+ Ghi nhanh" đầu Nhật ký) mở được ngăn ghi nhanh mà
+  // không cần kéo state lên: phát sự kiện 'nep-tot:ghi-nhanh' trên window
+  useEffect(() => {
+    const moNgan = () => setOpen(true);
+    window.addEventListener('nep-tot:ghi-nhanh', moNgan);
+    return () => window.removeEventListener('nep-tot:ghi-nhanh', moNgan);
+  }, []);
   const [saving, setSaving] = useState(false);
   const [employeeId, setEmployeeId] = useState<string | null>(null);
   const [rawText, setRawText] = useState('');

@@ -5,7 +5,7 @@ import {
   UserCheck, Sparkles, GraduationCap, ClipboardList, KeyRound, ListPlus,
   CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag, GitBranch,
   ListChecks, Building2, Gavel, TrendingUp, Zap, Lightbulb,
-  Home, BookOpen, Compass, Layers, Share2, CalendarDays,
+  Home, BookOpen, Compass, Layers, Share2, CalendarDays, NotebookPen, Sprout,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -290,6 +290,13 @@ export const NAV_SECTIONS: NavSection[] = [
             keywords: ['kanban', 'ke hoach hanh dong', 'viec cua toi', 'idp'],
           },
           {
+            // Bản ghi Nếp Tốt được lãnh đạo chia sẻ đích danh cho cán bộ
+            label: 'Nếp Tốt của tôi',
+            icon: Sprout,
+            path: '/nep-tot/cua-toi',
+            keywords: ['nep tot', 'hanh dong', 'khen ngoi', 'ghi nhan'],
+          },
+          {
             label: 'Hồ sơ cá nhân',
             icon: User,
             path: '/ho-so-ca-nhan',
@@ -334,6 +341,9 @@ export const NAV_SECTIONS: NavSection[] = [
           },
           // Màn điều hành Kanban kế hoạch hành động quý: TP (phòng), PGĐ (khối), TCTH/BGĐ (toàn CN)
           { label: 'Quản lý hành động Kanban', icon: ListChecks, path: '/quan-ly-hanh-dong', minRole: 'manager', keywords: ['kanban', 'ke hoach quy'] },
+          // Nếp Tốt — sổ tay ghi nhận hành động của lãnh đạo. minRole 'manager'
+          // khớp quyền xem trang (manager/pgd/bgd/admin); trang tự gác chi tiết.
+          { label: 'Nhật ký Nếp Tốt', icon: NotebookPen, path: '/nep-tot/nhat-ky', minRole: 'manager', keywords: ['nep tot', 'hanh vi', 'ghi nhanh', 'so tay'] },
           { label: 'Phân nhóm cán bộ', icon: Star, path: '/phan-nhom-can-bo', minRole: 'manager', keywords: ['xep nhom', 'phan loai'] },
           { label: 'Báo cáo', icon: BarChart3, path: '/bao-cao', minRole: 'manager', keywords: ['thong ke', 'bieu do'] },
           // Hiển thị theo phạm vi: GĐ/PGĐ (phòng phụ trách), lãnh đạo Phòng TCTH + admin (full chi nhánh)
