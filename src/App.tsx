@@ -106,6 +106,8 @@ const CouncilEvaluationPage = lazyWithRetry(() => import("./pages/CouncilEvaluat
 const CouncilReportPage = lazyWithRetry(() => import("./pages/CouncilReportPage"));
 const CouncilAdminPage = lazyWithRetry(() => import("./pages/CouncilAdminPage"));
 const CouncilAnalyticsPage = lazyWithRetry(() => import("./pages/CouncilAnalyticsPage"));
+const BehaviorJournalPage = lazyWithRetry(() => import("./pages/BehaviorJournalPage"));
+const MyBehaviorPage = lazyWithRetry(() => import("./pages/MyBehaviorPage"));
 const OneHomePage = lazyWithRetry(() => import("./pages/one/OneHomePage"));
 const OneConnectPage = lazyWithRetry(() => import("./pages/one/OneConnectPage"));
 const One3806Page = lazyWithRetry(() => import("./pages/one/One3806Page"));
@@ -203,6 +205,14 @@ const App = () => (
               <Route path="/quizzi/:id/sua" element={<QuizComposerPage />} />
               <Route path="/quizzi/:id/ket-qua" element={<QuizResultsPage />} />
               <Route path="/quizzi/:id" element={<QuizPlayPage />} />
+
+              {/* Nhật ký hành vi — sổ tay ghi nhận của lãnh đạo. Trang tự gác
+                  quyền (chỉ người có phạm vi ghi nhận); RLS là lớp chặn chính. */}
+              <Route path="/nhat-ky-hanh-vi" element={<BehaviorJournalPage />} />
+              <Route path="/hanh-vi-cua-toi" element={<MyBehaviorPage />} />
+              {/* Đường dẫn cũ thời còn tên "Nếp Tốt" — giữ để không gãy link đã gửi */}
+              <Route path="/nep-tot/nhat-ky" element={<Navigate to="/nhat-ky-hanh-vi" replace />} />
+              <Route path="/nep-tot/cua-toi" element={<Navigate to="/hanh-vi-cua-toi" replace />} />
 
               {/* Cổng BHY one — cổng thông tin thương hiệu Chi nhánh (port từ website bachungyen20) */}
               {/* Cổng BHY ONE — cấu trúc 6 menu đã duyệt (docs/so-do-site-bhy-one.md) */}

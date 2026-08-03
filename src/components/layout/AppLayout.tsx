@@ -9,6 +9,7 @@ import { MobileNav } from './MobileNav';
 import { Breadcrumbs } from './Breadcrumbs';
 import { CommandPalette, usePhimTatBangLenh, useGhiNhoTrangGanDay } from './CommandPalette';
 import { cn } from '@/lib/utils';
+import { QuickNoteFab } from '@/components/behavior/QuickNoteFab';
 
 /**
  * Khung ứng dụng sau đăng nhập.
@@ -102,6 +103,8 @@ function KhungUngDung() {
           {laKhuLamViec && <Breadcrumbs />}
           <Outlet />
         </main>
+        {/* Nút nổi Ghi nhanh hành vi — tự ẩn với người không có quyền ghi */}
+        <QuickNoteFab />
       </div>
 
       <MobileNav />
