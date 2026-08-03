@@ -3,11 +3,16 @@
 // Kích hoạt bởi DB trigger trên kanban_card_logs (progress_update / completion_requested)
 // qua pg_net → không phụ thuộc frontend, mọi lối vào cập nhật đều bắn thông báo.
 //
-// Quy tắc "2 cấp trên mình" (chốt với GĐ 26/07/2026):
-//   cấp 1 = manager_id (quản lý trực tiếp — với cán bộ/phó phòng là TP);
-//   cấp 2 = pgd_id (PGĐ/GĐ phụ trách) nếu khác cấp 1;
-//   nếu chưa đủ 2 người nhận (TP, PGĐ cập nhật) → thêm Giám đốc.
-//   Suy ra: cán bộ/PP → TP + PGĐ; TP → PGĐ phụ trách + GĐ; PGĐ → GĐ; GĐ → không ai.
+// Quy tắc "2 cấp trên mình" (chốt với GĐ 26/07/2026) — CHIẾU THEO CHỨC DANH người cập nhật:
+//   cán bộ/phó phòng/KSV → manager_id (TP) + pgd_id (PGĐ phụ trách);
+//   Trưởng phòng         → pgd_id (PGĐ phụ trách) + Giám đốc;
+//   Phó giám đốc         → Giám đốc;
+//   Giám đốc             → không báo ai.
+//
+// Trước 03/08/2026 luật này suy ra từ SỐ LƯỢNG người nhận giải được ("chưa đủ 2 thì thêm
+// Giám đốc"). Cách đó không phân biệt được "TP thì đúng là chỉ có 1 cấp trên" với "cán bộ
+// bị thiếu manager_id" → mọi cán bộ chưa gắn TP đều leo thẳng lên GĐ. Nay quyết định dựa
+// vào chức danh: cán bộ thiếu TP thì chỉ báo PGĐ và ghi log cảnh báo, KHÔNG leo lên GĐ.
 //
 // Nội dung push: tên cán bộ · tên hành động · trạng thái · tiến độ % · nội dung cập nhật.
 // Quyền: chỉ service_role (trigger). Body: {log_id, dry_run?} — dry_run trả danh sách
@@ -40,6 +45,24 @@ function short(s: string | null | undefined, max = 160): string {
 }
 
 const STATUS_LABEL: Record<string, string> = { todo: 'Phải làm', doing: 'Đang làm', done: 'Hoàn thành' };
+
+// Nhận diện cấp theo chức danh — giữ khớp với src/lib/reportingLine.ts (edge function
+// chạy Deno nên không import được từ src/, buộc phải chép logic; sửa 1 nơi thì sửa cả 2).
+const norm = (s: string | null | undefined) => (s || '').toLowerCase().trim();
+const laGiamDoc = (pos: string | null | undefined) => {
+  const n = norm(pos);
+  return n === 'giám đốc' || n === 'giám đốc chi nhánh';
+};
+const laPhoGiamDoc = (pos: string | null | undefined) => {
+  const n = norm(pos);
+  return n.startsWith('phó giám đốc') || n.startsWith('pgđ');
+};
+const laTruongPhong = (pos: string | null | undefined) => {
+  const n = norm(pos);
+  if (n === 'tp') return true;
+  return ['trưởng phòng', 'phụ trách phòng', 'trưởng pgd', 'phụ trách pgd', 'pt phòng', 'pt pgd']
+    .some((p) => n.startsWith(p));
+};
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -84,7 +107,7 @@ Deno.serve(async (req) => {
       });
     }
     const { data: owner } = await admin
-      .from('profiles').select('id, full_name, manager_id, pgd_id')
+      .from('profiles').select('id, full_name, position, manager_id, pgd_id')
       .eq('id', card.profile_id).maybeSingle();
     if (!owner) {
       return new Response(JSON.stringify({ skipped: 'không có hồ sơ cán bộ' }), {
@@ -92,18 +115,37 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ---- Chuỗi 2 cấp trên ----
+    // ---- Chuỗi 2 cấp trên, quyết theo CHỨC DANH người cập nhật ----
     const recipients: string[] = [];
     const push = (id: string | null | undefined) => {
       if (id && id !== owner.id && !recipients.includes(id)) recipients.push(id);
     };
-    push(owner.manager_id);
-    push(owner.pgd_id);
-    if (recipients.length < 2) {
-      // Chưa đủ 2 cấp (TP hoặc PGĐ cập nhật) → thêm Giám đốc
+    const layGiamDoc = async (): Promise<string | null> => {
       const { data: gd } = await admin
         .from('profiles').select('id').eq('status', 'active').eq('position', 'Giám đốc').limit(1).maybeSingle();
-      push(gd?.id);
+      return gd?.id ?? null;
+    };
+
+    let thieuQuanLy = false;
+    if (laGiamDoc(owner.position)) {
+      // GĐ tự cập nhật — trên GĐ không còn ai
+    } else if (laPhoGiamDoc(owner.position)) {
+      push(await layGiamDoc());
+    } else if (laTruongPhong(owner.position)) {
+      push(owner.pgd_id);
+      push(await layGiamDoc());
+    } else {
+      // Cán bộ / phó phòng / kiểm soát viên: dừng ở TP + PGĐ phụ trách.
+      // Thiếu manager_id thì chỉ còn PGĐ — KHÔNG đôn lên Giám đốc, vì đó là lỗ hổng dữ
+      // liệu chứ không phải ý đồ phân cấp. Ghi log để Tổ chức Tổng hợp gắn lại TP.
+      if (!owner.manager_id) {
+        thieuQuanLy = true;
+        console.warn('Hồ sơ thiếu manager_id — chỉ báo PGĐ', {
+          profile_id: owner.id, full_name: owner.full_name, position: owner.position,
+        });
+      }
+      push(owner.manager_id);
+      push(owner.pgd_id);
     }
     const finalRecipients = recipients.slice(0, 2);
 
@@ -124,7 +166,10 @@ Deno.serve(async (req) => {
 
     if (dryRun) {
       const { data: names } = await admin.from('profiles').select('id, full_name').in('id', finalRecipients);
-      return new Response(JSON.stringify({ dry_run: true, owner: owner.full_name, recipients: names, msg }), {
+      return new Response(JSON.stringify({
+        dry_run: true, owner: owner.full_name, position: owner.position,
+        thieu_quan_ly: thieuQuanLy, recipients: names, msg,
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -156,7 +201,9 @@ Deno.serve(async (req) => {
         } catch (e) { console.error('Push lỗi', { error: String(e) }); }
       }
     }
-    return new Response(JSON.stringify({ recipients: finalRecipients.length, push_sent: sent }), {
+    return new Response(JSON.stringify({
+      recipients: finalRecipients.length, push_sent: sent, thieu_quan_ly: thieuQuanLy,
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
