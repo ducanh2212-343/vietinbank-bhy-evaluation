@@ -27,7 +27,9 @@ const makeIdea = (overrides: Partial<PortalIdea> = {}): PortalIdea => ({
   myVote: null,
   commentCount: 0,
   createdAt: '2026-07-10T10:00:00',
+  updatedAt: '2026-07-10T10:00:00',
   createdBy: 'user-1',
+  creatorEmail: null,
   isMine: false,
   ...overrides,
 });
@@ -103,5 +105,47 @@ describe('buildIdeasCsv — kết xuất CSV', () => {
     expect(row).toContain('"Đề xuất Hội đồng"');
     expect(row).toContain('"1000000"');
     expect(row).toContain('"2 bình luận"');
+  });
+
+  it('16 cột đầu giữ nguyên thứ tự file gốc, phần KPI nối sau', () => {
+    const header = buildIdeasCsv(ideas).slice(1).split('\n')[0].split('","').map(c => c.replace(/"/g, ''));
+    expect(header.slice(0, 16)).toEqual([
+      'STT', 'Cấp đề xuất', 'Có thể thử/áp dụng ở đâu?', 'Tên ý tưởng/vấn đề?',
+      'Thực trạng hiện tại (Khó khăn, bất cập):', 'Đề xuất cách làm mới / giải pháp:',
+      'Lợi ích dự kiến mang lại:', 'Khai báo thông tin Phòng/Ban:',
+      'Xác nhận có sản phẩm Demo?', 'Cán bộ / Nhóm đề xuất:', 'Ngay gui', 'Email nguoi gui',
+      'Cap Do Phat Trien', 'De xuat Hoi dong', 'Du toan tien thuong (VND)', 'Y kien binh luan',
+    ]);
+    expect(header.slice(16)).toEqual([
+      'Ma can bo', 'Ho ten theo ho so', 'Phong theo ho so', 'Chuc vu',
+      'Dong de xuat', 'So luot thich', 'So luot khong thich', 'Ngay cap nhat gan nhat',
+    ]);
+  });
+
+  it('cột KPI lấy hồ sơ nhân sự theo createdBy của ý tưởng', () => {
+    const csv = buildIdeasCsv(
+      [makeIdea({ createdBy: 'u-9', likes: 4, unlikes: 1 })],
+      undefined,
+      undefined,
+      { 'u-9': { employeeCode: 'NV0123', fullName: 'Lê Thị Thúy', department: 'Phòng Hỗ trợ tín dụng', position: 'Cán bộ Hỗ trợ tín dụng' } },
+    );
+    const row = csv.split('\n')[1];
+    expect(row).toContain('"NV0123"');
+    expect(row).toContain('"Lê Thị Thúy"');
+    expect(row).toContain('"Phòng Hỗ trợ tín dụng"');
+    expect(row).toContain('"4"');
+    expect(row).toContain('"1"');
+  });
+
+  it('không có hồ sơ chủ sở hữu → cột KPI để rỗng, file vẫn hợp lệ', () => {
+    const row = buildIdeasCsv([makeIdea({ createdBy: 'khong-co' })]).split('\n')[1];
+    expect(row.split('","')).toHaveLength(24);
+  });
+
+  it('phiếu nhóm tách được danh sách đồng đề xuất', () => {
+    const row = buildIdeasCsv([
+      makeIdea({ proposer: 'Hàn Thị Thùy Linh, Lê Thị Tú Uyên, Ngô Thị Nhung' }),
+    ]).split('\n')[1];
+    expect(row).toContain('"Lê Thị Tú Uyên, Ngô Thị Nhung"');
   });
 });

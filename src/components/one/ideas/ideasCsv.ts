@@ -1,4 +1,5 @@
 import { IDEA_TIER_REWARDS } from '@/data/one/ideasConfig';
+import type { IdeaOwnerMap } from './useIdeaOwnerProfiles';
 import type { PortalIdea } from './usePortalIdeas';
 
 // Kết xuất CSV danh sách ý tưởng — port từ handleExportCSV của bản deploy
@@ -43,10 +44,21 @@ export function filterIdeasByDate(ideas: PortalIdea[], from?: string, to?: strin
 
 /**
  * Dựng nội dung file CSV (đã kèm BOM U+FEFF ở đầu).
- * Cột: STT + 9 trường form + Ngay gui / Email nguoi gui / Cap Do Phat Trien /
- * De xuat Hoi dong / Du toan tien thuong (VND) / Y kien binh luan.
+ *
+ * 16 cột đầu giữ nguyên thứ tự file gốc để Hội đồng và các bản đối chiếu cũ vẫn đọc được.
+ * Từ cột 17 là phần phục vụ cộng/trừ KPI của Phòng TCTH: khoá về hồ sơ nhân sự (mã cán
+ * bộ, họ tên chuẩn, phòng, chức vụ) thay vì chỉ có ô chữ "Cán bộ đề xuất", tách riêng
+ * đồng đề xuất, kèm lượt bình chọn và mốc cập nhật gần nhất.
+ *
+ * `owners` tra theo `idea.createdBy` (xem useIdeaOwnerProfiles) — bỏ trống thì các cột
+ * hồ sơ để rỗng, file vẫn hợp lệ.
  */
-export function buildIdeasCsv(ideas: PortalIdea[], from?: string, to?: string): string {
+export function buildIdeasCsv(
+  ideas: PortalIdea[],
+  from?: string,
+  to?: string,
+  owners: IdeaOwnerMap = {},
+): string {
   const filtered = filterIdeasByDate(ideas, from, to);
 
   const headers = [
@@ -58,10 +70,22 @@ export function buildIdeasCsv(ideas: PortalIdea[], from?: string, to?: string): 
     'De xuat Hoi dong',
     'Du toan tien thuong (VND)',
     'Y kien binh luan',
+    // --- Phần phục vụ KPI ---
+    'Ma can bo',
+    'Ho ten theo ho so',
+    'Phong theo ho so',
+    'Chuc vu',
+    'Dong de xuat',
+    'So luot thich',
+    'So luot khong thich',
+    'Ngay cap nhat gan nhat',
   ];
 
   const rows = filtered.map((idea, index) => {
     const reward = IDEA_TIER_REWARDS[idea.developmentLevel] ?? IDEA_TIER_REWARDS['Ươm mầm'];
+    const owner = owners[idea.createdBy];
+    // Ô "Cán bộ đề xuất" ghi "Người chính, Đồng tác giả 1, ..." — tách phần sau dấu phẩy
+    const coAuthors = idea.proposer.split(',').slice(1).map(s => s.trim()).filter(Boolean).join(', ');
     return [
       index + 1,
       idea.level,
@@ -74,12 +98,19 @@ export function buildIdeasCsv(ideas: PortalIdea[], from?: string, to?: string): 
       idea.hasDemo ? 'Có' : 'Không',
       idea.proposer,
       idea.createdAt ? new Date(idea.createdAt).toLocaleString('vi-VN') : 'Vừa xong',
-      // Bản Supabase không trả email người gửi về client (giữ cột để khớp file gốc)
-      'N/A',
+      idea.creatorEmail ?? 'N/A',
       idea.developmentLevel,
       idea.councilProposal ? 'Đề xuất Hội đồng' : 'Chưa đề xuất',
       reward,
       idea.commentCount > 0 ? `${idea.commentCount} bình luận` : '',
+      owner?.employeeCode ?? '',
+      owner?.fullName ?? '',
+      owner?.department ?? '',
+      owner?.position ?? '',
+      coAuthors,
+      idea.likes,
+      idea.unlikes,
+      idea.updatedAt ? new Date(idea.updatedAt).toLocaleString('vi-VN') : '',
     ];
   });
 

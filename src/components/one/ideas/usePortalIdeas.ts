@@ -28,7 +28,11 @@ export interface PortalIdea {
   myVote: 1 | -1 | null;
   commentCount: number;
   createdAt: string;
+  /** Lần sửa gần nhất (đổi cấp độ, cờ Hội đồng…) — dùng cho báo cáo KPI theo kỳ */
+  updatedAt: string;
   createdBy: string;
+  /** Email tài khoản đã gửi phiếu — chỉ dùng trong file kết xuất của quản trị */
+  creatorEmail: string | null;
   isMine: boolean;
 }
 
@@ -106,7 +110,9 @@ export function usePortalIdeas() {
         myVote: myVotes.get(r.id) ?? null,
         commentCount: commentCount.get(r.id) ?? 0,
         createdAt: r.created_at,
+        updatedAt: r.updated_at,
         createdBy: r.created_by,
+        creatorEmail: r.creator_email ?? null,
         isMine: r.created_by === user?.id,
       }));
     },

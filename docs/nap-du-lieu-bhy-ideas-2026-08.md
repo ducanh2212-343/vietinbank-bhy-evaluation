@@ -76,10 +76,9 @@ Vũ Đức Mạnh, bổ sung vào bảng bí danh ở migration `20260821090000`
 Gặp bí danh mới thì chỉ cần thêm một dòng vào `portal_idea_proposer_alias` rồi chạy lại
 `admin_import_ideas_csv` với gói JSON cũ.
 
-**Điểm còn ngỏ:** hai email `thuylt120996@gmail.com` và `thuylt231096@gmail.com` cùng ghi
-tên "Lê Thị Thuý" – Phòng HTTD, nhưng chieuthuc3 chỉ có một hồ sơ **Lê Thị Thúy**. Theo
-quy tắc ưu tiên tên, cả 9 phiếu đang gộp về một người. Nếu thực tế là hai cán bộ trùng
-tên thì cần tạo hồ sơ thứ hai và tách lại.
+Hai email `thuylt120996@gmail.com` và `thuylt231096@gmail.com` cùng ghi tên "Lê Thị Thuý"
+– Phòng HTTD: đã xác nhận là **một cán bộ dùng hai email**, cả 9 phiếu gộp về hồ sơ
+**Lê Thị Thúy**.
 
 ## Form gửi ý tưởng trên cổng mới
 
@@ -102,6 +101,44 @@ bảng `profiles` không cho cán bộ thường đọc hồ sơ người khác.
 
 Ở chế độ **sửa** ý tưởng, người đề xuất và phòng giữ nguyên giá trị đã lưu (kể cả chuỗi
 nhiều tác giả của dữ liệu cũ) — muốn đổi thì đi đường quản trị, không sửa lẫn trong form.
+
+## Xem toàn chi nhánh & tra trùng ý tưởng
+
+RLS `portal_ideas` cho **mọi cán bộ xem toàn bộ ý tưởng của tất cả phòng ban**
+(`Staff can view portal ideas` — điều kiện `is_staff`), không giới hạn theo phòng. Chỉ
+khách đối tác (`guest`) bị chặn. Bảng theo dõi nhóm theo phòng, mặc định mở hết.
+
+Bổ sung **ô tìm kiếm không dấu** trên toàn bộ nội dung phiếu (tiêu đề, người đề xuất,
+phòng, thực trạng, giải pháp, lợi ích) để cán bộ tra trước khi gửi, tránh đề xuất trùng
+ý tưởng phòng khác đã có. Gõ "giai ngan" vẫn ra "giải ngân". Khi lọc không ra kết quả,
+thông báo nói rõ là "chưa ai đề xuất nội dung này" thay vì "chưa có ý tưởng nào".
+
+## Kết xuất báo cáo cho Phòng TCTH (phục vụ cộng/trừ KPI)
+
+Nút **Xuất Excel** và bộ lọc khoảng ngày chỉ hiện với `tcth_admin` / `system_admin` —
+đúng đối tượng, không cần sửa.
+
+16 cột đầu giữ nguyên thứ tự file gốc (Hội đồng và các bản đối chiếu cũ vẫn đọc được).
+Bổ sung 8 cột phục vụ KPI:
+
+| Cột | Nguồn | Vì sao cần |
+|---|---|---|
+| `Ma can bo` | `profiles.employee_code` | Khoá ghép với hệ thống nhân sự/KPI |
+| `Ho ten theo ho so` | `profiles.full_name` | Tên chuẩn, không phụ thuộc cách gõ trên phiếu |
+| `Phong theo ho so` | `departments.name` | Phòng thực tế của cán bộ |
+| `Chuc vu` | `profiles.position` | Phân biệt cán bộ / lãnh đạo khi tính KPI |
+| `Dong de xuat` | phần sau dấu phẩy của ô người đề xuất | Chia công ý tưởng nhóm |
+| `So luot thich` / `So luot khong thich` | `portal_idea_votes` + seed | Mức độ đồng thuận |
+| `Ngay cap nhat gan nhat` | `portal_ideas.updated_at` | Chốt kỳ khi ý tưởng chuyển Vươn cành / Lan tỏa |
+
+Cột `Email nguoi gui` trước đây ghi cứng `N/A`, nay trả đúng email tài khoản đã gửi phiếu.
+
+Hồ sơ chủ sở hữu lấy qua `useIdeaOwnerProfiles`, chỉ tải khi người xem là quản trị (RLS
+`profiles` chỉ mở toàn bộ hồ sơ cho `system_admin` / `tcth_admin` / `bgd`).
+
+> **Việc cần làm trước khi tính KPI:** hiện **0/100 hồ sơ có `employee_code`**, nên cột
+> `Ma can bo` sẽ rỗng. Muốn ghép tự động với bảng KPI nhân sự thì phải điền mã cán bộ
+> vào hồ sơ trước; trong lúc chờ, ghép tạm bằng `Ho ten theo ho so` + `Phong theo ho so`.
 
 ## Bảo mật
 

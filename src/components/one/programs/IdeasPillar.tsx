@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ClipboardList, FileText, ArrowRight } from 'lucide-react';
+import { ClipboardList, FileText, ArrowRight, Search, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { EditableText } from '@/components/one/AdminEditableContext';
@@ -12,6 +12,8 @@ import { IdeaForm } from '@/components/one/ideas/IdeaForm';
 import { IdeaList } from '@/components/one/ideas/IdeaList';
 import { IdeaStatsPanel } from '@/components/one/ideas/IdeaStatsPanel';
 import { buildIdeasCsv, downloadIdeasCsv, filterIdeasByDate } from '@/components/one/ideas/ideasCsv';
+import { useIdeaOwnerProfiles } from '@/components/one/ideas/useIdeaOwnerProfiles';
+import { khopTimKiem } from '@/lib/vietnamese';
 import type { IdeaLevel } from '@/data/one/ideasConfig';
 
 // Trụ cột 5 — BHY Ideas (Đợt 4): hệ thống ý tưởng sáng kiến thời gian thực
@@ -102,10 +104,13 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
   const myName = useMyFullName();
 
   const [filterLevel, setFilterLevel] = useState<'all' | IdeaLevel>('all');
+  const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<PortalIdea | null>(null);
   const [exportStartDate, setExportStartDate] = useState('');
   const [exportEndDate, setExportEndDate] = useState('');
   const formRef = useRef<HTMLDivElement | null>(null);
+  // Hồ sơ chủ sở hữu — chỉ tải khi quản trị mở trang, dùng cho cột KPI của file kết xuất
+  const { owners } = useIdeaOwnerProfiles(isContentAdmin);
 
   // Trang đặc trưng (introOnly) và khách đối tác: chỉ xem giới thiệu tĩnh.
   // Cán bộ ở chế độ giới thiệu có nút dẫn sang nơi làm việc thật /one/y-tuong.
@@ -133,7 +138,16 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
     );
   }
 
-  const filteredIdeas = filterLevel === 'all' ? ideas : ideas.filter(i => i.level === filterLevel);
+  // Lọc theo cấp + tìm kiếm không dấu trên toàn bộ nội dung phiếu.
+  // Mục đích chính: cán bộ tra trước khi gửi để tránh đề xuất trùng ý tưởng đã có.
+  const byLevel = filterLevel === 'all' ? ideas : ideas.filter(i => i.level === filterLevel);
+  const filteredIdeas = search.trim()
+    ? byLevel.filter(i =>
+        khopTimKiem(
+          [i.title, i.proposer, i.departmentName, i.currentStatus, i.proposedSolution, i.expectedBenefits].join(' '),
+          search,
+        ))
+    : byLevel;
 
   const handleStartEdit = (idea: PortalIdea) => {
     setEditing(idea);
@@ -150,7 +164,7 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
       toast.error('Không có dữ liệu ý tưởng nào trong khoảng thời gian đã chọn!');
       return;
     }
-    const csv = buildIdeasCsv(ideas, exportStartDate || undefined, exportEndDate || undefined);
+    const csv = buildIdeasCsv(ideas, exportStartDate || undefined, exportEndDate || undefined, owners);
     downloadIdeasCsv(csv, exportStartDate || undefined, exportEndDate || undefined);
   };
 
@@ -188,6 +202,34 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
               <span>Bảng Theo Dõi Ý Tưởng Toàn Chi Nhánh</span>
             </h4>
             <p className="text-xs text-slate-500">Xem và học hỏi các sáng kiến cải tiến từ đồng nghiệp (Cập nhật thời gian thực)</p>
+
+            {/* Tra cứu trước khi gửi để khỏi đề xuất trùng ý tưởng phòng khác đã có */}
+            <div className="relative mt-3 max-w-md">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="search"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Tìm ý tưởng toàn chi nhánh (gõ không dấu cũng được)…"
+                className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  title="Xóa tìm kiếm"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+            {search.trim() && (
+              <p className="text-[11px] text-slate-500 mt-1.5 font-semibold">
+                Tìm thấy <span className="text-amber-600 font-black">{filteredIdeas.length}</span> ý tưởng khớp
+                {filteredIdeas.length > 0 && ' — đọc kỹ trước khi gửi ý tưởng mới để tránh trùng.'}
+              </p>
+            )}
           </div>
 
           {/* Bộ lọc cấp đề xuất + kết xuất (admin) */}
@@ -260,6 +302,7 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
 
         <IdeaList
           ideas={filteredIdeas}
+          isFiltered={!!search.trim() || filterLevel !== 'all'}
           isLoading={isLoading}
           isContentAdmin={isContentAdmin}
           myName={myName}
