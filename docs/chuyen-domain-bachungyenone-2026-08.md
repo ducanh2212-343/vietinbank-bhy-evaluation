@@ -220,8 +220,10 @@ nên có mấy thứ mọi người phải làm lại **một lần duy nhất**
 2. **Sửa dấu trang (bookmark)** và link đã ghim trên Zalo nhóm sang `bachungyenone.com`.
 3. **Ai đã cài app ra màn hình điện thoại** (biểu tượng BHY ONE): xoá biểu tượng cũ,
    mở `bachungyenone.com` rồi cài lại ("Thêm vào màn hình chính").
-4. **Ai đã bật thông báo đẩy**: vào lại phần cài đặt trong cổng và **bật lại thông báo**
-   một lần ở địa chỉ mới.
+4. **Ai đã bật thông báo đẩy**: thông báo đã đăng ký ở `chieuthuc3.com` **vẫn chạy bình
+   thường, không mất** (xem mục dưới). Chỉ khi muốn nhận thông báo *ở địa chỉ mới* thì
+   vào cài đặt trong cổng bật lại một lần — nếu bật cả hai nơi sẽ nhận **2 thông báo trùng
+   nhau**, khi đó tắt bớt ở địa chỉ cũ.
 
 Mẫu tin nhắn gửi nhóm:
 
@@ -234,6 +236,30 @@ Mẫu tin nhắn gửi nhóm:
 > bấm **"Not spam"** giúp. Trân trọng.
 
 ---
+
+## Thông báo đẩy (push): GIỮ NGUYÊN theo `chieuthuc3.com` — không đụng vào
+
+**Nguyên tắc:** đổi domain **không được** làm gãy các đăng ký thông báo đẩy đã có ở
+`chieuthuc3.com`. Cụ thể:
+
+- **Không đổi VAPID key** (`src/lib/pushNotifications.ts` và các function `notify-*`,
+  `send-*-push`). Đổi key = toàn bộ đăng ký cũ chết ngay lập tức.
+- **Không đổi `tag`** trong `public/sw.js` (`chieuthuc3-reminder`) và trong các function
+  gửi push. `tag` chỉ là mã gộp thông báo trùng chủ đề — đổi tên miền không liên quan.
+- **`url` trong payload push luôn là đường dẫn TƯƠNG ĐỐI** (`/tong-quan`, `/quizzi`,
+  `/hanh-dong-phat-trien?view=team`…), **tuyệt đối không ghép `APP_URL`**. Service worker
+  mở link theo đúng domain mà thiết bị đã đăng ký, nên máy nào subscribe ở
+  `chieuthuc3.com` thì bấm thông báo vẫn mở `chieuthuc3.com` (đang đăng nhập sẵn), máy nào
+  subscribe ở `bachungyenone.com` thì mở `bachungyenone.com`. Một dòng code duy nhất còn
+  ghép `APP_URL` (`quiz-reminders`) đã được sửa về tương đối trong lần thay đổi này.
+- **Điều kiện để đăng ký cũ tiếp tục sống:** `chieuthuc3.com` phải **còn gắn vào Worker
+  `343-noi-bo`** (Bước 1 đã dặn giữ). Còn gắn thì `sw.js` ở domain cũ vẫn tải được và
+  thông báo vẫn về bình thường; gỡ domain cũ ra thì các đăng ký đó mới hỏng.
+- Bảng `push_subscriptions` **không cần sửa gì** — mỗi dòng lưu `endpoint` do trình duyệt
+  cấp, không phụ thuộc tên miền của mình.
+
+Tóm lại: phần push **không nằm trong việc chuyển domain**. Ai đang nhận thông báo cứ nhận
+tiếp; ai muốn nhận ở địa chỉ mới thì bật thêm một lần (và nên tắt bên cũ để khỏi trùng).
 
 ## Phần code đã sửa sẵn (dành cho người kỹ thuật)
 
@@ -250,6 +276,11 @@ Nhánh `claude/cloudflare-domain-change-0dptld`:
   `window.location.origin`).
 - `src/pages/EmailAdmin.tsx`, `src/pages/AddStaff.tsx` — chữ hiển thị cho người dùng.
 - `README.md` — mục Production.
+- `quiz-reminders` — `url` của push chuyển từ `${APP_URL}/quizzi` về `/quizzi` (tương đối),
+  để đăng ký push ở domain cũ không bị đá sang domain mới. **Không** đổi VAPID key, không
+  đổi `tag`, không sửa `public/sw.js`, không sửa `notify-kanban-update` / `notify-ct2` /
+  `send-feature-tip-push` / phần push của `send-reminders` — các chỗ đó vốn đã dùng đường
+  dẫn tương đối.
 
 Nguyên tắc giữ nguyên: **domain là cấu hình, không phải code**. Mọi giá trị trên đều bị
 secret ở Supabase ghi đè, nên lần đổi domain sau chỉ cần sửa secret + Bước 1, 2, 3.
