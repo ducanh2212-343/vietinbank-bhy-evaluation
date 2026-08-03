@@ -5,7 +5,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
 // Phiếu Sao Xứng Đáng — bảng star_records (mỗi phiếu một dòng).
-// Cán bộ gửi phiếu từ form (source='form'); admin nhập/thay thế hàng loạt từ Excel/CSV.
+//
+// Nguồn dữ liệu duy nhất hiện nay là bản kết xuất từ form Lark của Chi nhánh, do
+// Phòng TCTH nhập vào cổng (source='import'). Cổng KHÔNG còn ô nhập phiếu riêng:
+// đường ghi nhận chính thức là form Lark → Zalo OA (xem StarRecognitionForm).
+// Cột source vẫn giữ giá trị 'form' cho dữ liệu lịch sử và cho khả năng nối API sau này.
 
 export interface StarRecord {
   id: string;
@@ -71,28 +75,6 @@ export function useStarRecords() {
     [queryClient],
   );
 
-  // Phiếu ghi nhận từ form (mọi cán bộ) — ghi THẬT, khác bản gốc chỉ confetti rồi mất
-  const submitFormRecord = useCallback(async (rec: StarRecordInput): Promise<boolean> => {
-    const { error } = await supabase.from('star_records').insert({
-      name: rec.name,
-      department: rec.department,
-      stars: rec.stars,
-      reason: rec.reason || null,
-      result: rec.result || null,
-      awarded_on: rec.date,
-      sender: rec.sender || null,
-      serial: rec.serial || null,
-      is_collective: rec.isCollective,
-      source: 'form',
-    });
-    if (error) {
-      toast.error(`Không lưu được phiếu: ${error.message}`);
-      return false;
-    }
-    refresh();
-    return true;
-  }, [refresh]);
-
   // Admin: thay thế TOÀN BỘ dữ liệu bằng kết quả nhập file (như bản gốc, nhưng có preview trước đó)
   const replaceAll = useCallback(async (recs: StarRecordInput[]): Promise<boolean> => {
     const { error: delErr } = await supabase.from('star_records')
@@ -147,5 +129,5 @@ export function useStarRecords() {
     refresh();
   }, [refresh]);
 
-  return { records, isLoading, isContentAdmin, submitFormRecord, replaceAll, deleteRecord, deleteAll };
+  return { records, isLoading, isContentAdmin, replaceAll, deleteRecord, deleteAll };
 }
