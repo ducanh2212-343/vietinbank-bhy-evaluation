@@ -68,7 +68,7 @@ const MODE_LABELS: Record<string, string> = {
   evidence_review: 'Thẩm định minh chứng level (L3+)',
   one_on_one_prep: 'Trang chuẩn bị phiên 1-1 cho quản lý',
   quarterly_letter: 'Thư tổng kết phát triển cá nhân cuối kỳ',
-  behavior_structuring: 'Nếp Tốt — cấu trúc hóa mẩu nhớ hành vi',
+  behavior_structuring: 'Nhật ký hành vi — cấu trúc hóa mẩu nhớ',
 };
 
 // Khuyến nghị model theo tác vụ để cân đối chi phí

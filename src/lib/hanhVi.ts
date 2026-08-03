@@ -1,4 +1,4 @@
-// Nếp Tốt — Sổ tay hành vi BHY: kiểu dữ liệu, nhãn hiển thị và logic thuần
+// Nhật ký hành vi — sổ tay ghi nhận BHY: kiểu dữ liệu, nhãn hiển thị và logic thuần
 // cho phân hệ ghi nhận & phát triển hành vi cán bộ.
 
 export type BehaviorType = 'tich_cuc' | 'can_cai_thien';
@@ -142,6 +142,8 @@ export function parseStructuringResponse(text: string): StructuringSuggestion | 
 }
 
 /** Nháp Ghi nhanh lưu localStorage — sống sót khi lỡ đóng sheet/mất mạng. */
+// Giữ nguyên khóa cũ dù phân hệ đã đổi tên: đổi khóa sẽ làm mất mẩu nhớ đang
+// viết dở trong localStorage của người dùng. Khóa này không hiện ra giao diện.
 export const QUICK_NOTE_DRAFT_KEY = '343skill:nep-tot-quick-note-draft';
 
 export interface QuickNoteDraft {
@@ -192,6 +194,21 @@ export function clearQuickNoteDraft(): void {
 
 /** datetime-local (giờ địa phương) ↔ ISO — input mobile dùng datetime-local. */
 export function toDatetimeLocalValue(date: Date): string {
+  if (Number.isNaN(date.getTime())) return '';
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+/**
+ * Đổi giá trị ô ngày/giờ của người dùng sang ISO, trả null nếu chưa hợp lệ.
+ *
+ * BẮT BUỘC dùng thay cho `new Date(v).toISOString()` với mọi giá trị đến từ ô
+ * nhập: trong lúc gõ/xóa, datetime-local và date trả chuỗi rỗng hoặc dở dang →
+ * `new Date(...)` ra Invalid Date và `.toISOString()` NÉM RangeError. Lỗi ném
+ * trong effect/render sẽ hạ cả cây React → trắng trang.
+ */
+export function toIsoOrNull(value: string): string | null {
+  if (!value) return null;
+  const t = new Date(value);
+  return Number.isNaN(t.getTime()) ? null : t.toISOString();
 }

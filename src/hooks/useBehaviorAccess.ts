@@ -12,13 +12,13 @@ export interface ObservableProfile {
 }
 
 /**
- * Quyền Nếp Tốt của người dùng hiện tại.
+ * Quyền Nhật ký hành vi của người dùng hiện tại.
  * - canRecord: được Ghi nhanh (TP/PP qua role manager, PGĐ, Giám đốc/BGĐ).
  *   tcth_admin/system_admin thuần không ghi nhận nghiệp vụ — khớp RLS.
  * - staff: danh sách cán bộ trong phạm vi ghi nhận (RPC get_observable_profiles,
  *   server tự lọc theo can_observe_profile — UI không tự suy phạm vi).
  */
-export function useNepTotAccess() {
+export function useBehaviorAccess() {
   const { roles, profileId, loading: authLoading } = useAuth();
   const roleCanRecord = roles.some((r) => r === 'manager' || r === 'pgd' || r === 'bgd');
   const isBranchAdmin = roles.some((r) => r === 'tcth_admin' || r === 'system_admin');
@@ -53,7 +53,7 @@ export function useNepTotAccess() {
   const [staff, setStaff] = useState<ObservableProfile[]>([]);
   const [staffLoading, setStaffLoading] = useState(false);
   const [staffLoaded, setStaffLoaded] = useState(false);
-  // Lỗi khi gọi RPC (VD: database chưa áp migration Nếp Tốt) — UI phải phân
+  // Lỗi khi gọi RPC (VD: database chưa áp migration hành vi) — UI phải phân
   // biệt với trường hợp "phạm vi rỗng" để không báo nhầm "chưa có cán bộ"
   const [staffError, setStaffError] = useState<string | null>(null);
 

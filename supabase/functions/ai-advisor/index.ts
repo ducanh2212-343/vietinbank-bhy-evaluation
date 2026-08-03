@@ -338,7 +338,7 @@ Trả lời markdown NGẮN GỌN theo đúng cấu trúc:
 (2-3 minh chứng cụ thể, kiểm chứng được, giúp người duyệt tin mức này)`;
   }
   if (mode === 'behavior_structuring') {
-    // Nếp Tốt: hoàn thiện mẩu nhớ hành vi thành bản ghi có cấu trúc.
+    // Nhật ký hành vi: hoàn thiện mẩu nhớ thành bản ghi có cấu trúc.
     // Client KHÔNG gửi tên/mã cán bộ — chỉ vị trí + đơn vị (ẩn danh chủ động).
     const { raw_text, behavior_type_label, occurred_at, position_title, department_name, skills_catalog, attitudes_catalog } = body;
     if (!raw_text) return null;

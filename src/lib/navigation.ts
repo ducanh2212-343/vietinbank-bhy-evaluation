@@ -290,11 +290,11 @@ export const NAV_SECTIONS: NavSection[] = [
             keywords: ['kanban', 'ke hoach hanh dong', 'viec cua toi', 'idp'],
           },
           {
-            // Bản ghi Nếp Tốt được lãnh đạo chia sẻ đích danh cho cán bộ
-            label: 'Nếp Tốt của tôi',
+            // Bản ghi hành vi được lãnh đạo chia sẻ đích danh cho cán bộ
+            label: 'Hành vi của tôi',
             icon: Sprout,
-            path: '/nep-tot/cua-toi',
-            keywords: ['nep tot', 'hanh dong', 'khen ngoi', 'ghi nhan'],
+            path: '/hanh-vi-cua-toi',
+            keywords: ['hanh vi', 'hanh dong', 'khen ngoi', 'ghi nhan'],
           },
           {
             label: 'Hồ sơ cá nhân',
@@ -341,9 +341,9 @@ export const NAV_SECTIONS: NavSection[] = [
           },
           // Màn điều hành Kanban kế hoạch hành động quý: TP (phòng), PGĐ (khối), TCTH/BGĐ (toàn CN)
           { label: 'Quản lý hành động Kanban', icon: ListChecks, path: '/quan-ly-hanh-dong', minRole: 'manager', keywords: ['kanban', 'ke hoach quy'] },
-          // Nếp Tốt — sổ tay ghi nhận hành động của lãnh đạo. minRole 'manager'
-          // khớp quyền xem trang (manager/pgd/bgd/admin); trang tự gác chi tiết.
-          { label: 'Nhật ký Nếp Tốt', icon: NotebookPen, path: '/nep-tot/nhat-ky', minRole: 'manager', keywords: ['nep tot', 'hanh vi', 'ghi nhanh', 'so tay'] },
+          // Sổ tay ghi nhận hành vi cán bộ của lãnh đạo. minRole 'manager' khớp
+          // quyền xem trang (manager/pgd/bgd/admin); trang tự gác chi tiết.
+          { label: 'Nhật ký hành vi', icon: NotebookPen, path: '/nhat-ky-hanh-vi', minRole: 'manager', keywords: ['hanh vi', 'ghi nhanh', 'so tay', 'quan sat'] },
           { label: 'Phân nhóm cán bộ', icon: Star, path: '/phan-nhom-can-bo', minRole: 'manager', keywords: ['xep nhom', 'phan loai'] },
           { label: 'Báo cáo', icon: BarChart3, path: '/bao-cao', minRole: 'manager', keywords: ['thong ke', 'bieu do'] },
           // Hiển thị theo phạm vi: GĐ/PGĐ (phòng phụ trách), lãnh đạo Phòng TCTH + admin (full chi nhánh)

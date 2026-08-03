@@ -3,14 +3,14 @@ import { toast } from 'sonner';
 import { NotebookPen, Sparkles, ThumbsUp, Wrench, RotateCcw, Archive, Share2, CheckCircle2, Lock, LockOpen, Award, MessageCircle, Repeat, Plus, SlidersHorizontal } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
-import { useNepTotAccess } from '@/hooks/useNepTotAccess';
+import { useBehaviorAccess } from '@/hooks/useBehaviorAccess';
 import { ATTITUDE_DIMENSIONS } from '@/components/bm/AttitudeConstants';
 import {
   type BehaviorNoteStatus, type BehaviorType, type ImpactLevel,
   BEHAVIOR_TYPE_LABELS, NOTE_STATUS_LABELS, IMPACT_LEVEL_LABELS,
   FEEDBACK_STATUS_LABELS, REPEATED_BEHAVIOR_LABEL, feedbackDoneStatusFor,
-  MAX_SKILLS_PER_NOTE, MAX_ATTITUDES_PER_NOTE, parseStructuringResponse,
-} from '@/lib/nepTot';
+  MAX_SKILLS_PER_NOTE, MAX_ATTITUDES_PER_NOTE, parseStructuringResponse, toIsoOrNull,
+} from '@/lib/hanhVi';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -35,11 +35,11 @@ function fmtDateTime(iso: string) {
 }
 
 /**
- * Nhật ký hành vi (Nếp Tốt): xem mẩu nhớ chưa hoàn thiện, hoàn thiện với gợi ý
+ * Nhật ký hành vi: xem mẩu nhớ chưa hoàn thiện, hoàn thiện với gợi ý
  * AI, xác nhận, chia sẻ cho cán bộ, lưu trữ. Không có xếp hạng/đếm công khai.
  */
 export default function BehaviorJournalPage() {
-  const { canRecord, canViewJournal, profileId, staff } = useNepTotAccess();
+  const { canRecord, canViewJournal, profileId, staff } = useBehaviorAccess();
 
   const [notes, setNotes] = useState<BehaviorNote[]>([]);
   const [loading, setLoading] = useState(true);
@@ -124,6 +124,11 @@ export default function BehaviorJournalPage() {
     [myActive],
   );
 
+  // Ô ngày đang gõ dở trả chuỗi không parse được → toIsoOrNull cho null và bộ
+  // lọc bỏ qua mốc đó, thay vì ném RangeError giữa render (trắng trang)
+  const fromIso = useMemo(() => toIsoOrNull(fromDate), [fromDate]);
+  const toIso = useMemo(() => toIsoOrNull(toDate && `${toDate}T23:59:59`), [toDate]);
+
   const filtered = useMemo(() => notes.filter((n) => {
     if (n.status !== statusFilter) return false;
     if (employeeFilter !== ALL && n.employee_id !== employeeFilter) return false;
@@ -132,10 +137,10 @@ export default function BehaviorJournalPage() {
     if (attitudeFilter !== ALL && !n.attitude_dimension_ids.includes(Number(attitudeFilter))) return false;
     if (feedbackFilter === 'chua_phan_hoi' && n.feedback_status !== 'chua_phan_hoi') return false;
     if (feedbackFilter === 'da_phan_hoi' && n.feedback_status === 'chua_phan_hoi') return false;
-    if (fromDate && n.occurred_at < new Date(fromDate).toISOString()) return false;
-    if (toDate && n.occurred_at > new Date(`${toDate}T23:59:59`).toISOString()) return false;
+    if (fromIso && n.occurred_at < fromIso) return false;
+    if (toIso && n.occurred_at > toIso) return false;
     return true;
-  }), [notes, statusFilter, employeeFilter, typeFilter, skillFilter, attitudeFilter, feedbackFilter, fromDate, toDate]);
+  }), [notes, statusFilter, employeeFilter, typeFilter, skillFilter, attitudeFilter, feedbackFilter, fromIso, toIso]);
 
   const openEdit = (n: BehaviorNote) => {
     setEditing(n);
@@ -302,7 +307,7 @@ export default function BehaviorJournalPage() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-xl font-bold flex items-center gap-2">
-            <NotebookPen className="w-5 h-5 text-primary" /> Nhật ký Nếp Tốt
+            <NotebookPen className="w-5 h-5 text-primary" /> Nhật ký hành vi
           </h1>
           <p className="text-sm text-muted-foreground">
             Sổ tay riêng của lãnh đạo — ghi lại hành động của cán bộ và phản hồi ngay. Không ảnh hưởng điểm đánh giá.
@@ -315,7 +320,7 @@ export default function BehaviorJournalPage() {
             </Badge>
           )}
           {canRecord && (
-            <Button onClick={() => window.dispatchEvent(new Event('nep-tot:ghi-nhanh'))}>
+            <Button onClick={() => window.dispatchEvent(new Event('hanh-vi:ghi-nhanh'))}>
               <Plus className="w-4 h-4 mr-1" /> Ghi nhanh
             </Button>
           )}

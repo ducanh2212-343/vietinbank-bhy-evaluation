@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-  parseStructuringResponse, validateQuickNote, toDatetimeLocalValue,
+  parseStructuringResponse, validateQuickNote, toDatetimeLocalValue, toIsoOrNull,
   saveQuickNoteDraft, loadQuickNoteDraft, clearQuickNoteDraft, QUICK_NOTE_DRAFT_KEY,
   MAX_ATTITUDES_PER_NOTE, MAX_SKILLS_PER_NOTE,
-} from './nepTot';
+} from './hanhVi';
 
 const validInput = {
   employeeId: 'abc',
@@ -36,6 +36,27 @@ describe('validateQuickNote', () => {
 
   it('chặn thời điểm không hợp lệ', () => {
     expect(validateQuickNote({ ...validInput, occurredAt: 'not-a-date' })).toMatch(/không hợp lệ/);
+  });
+});
+
+// Ô ngày/giờ đang gõ dở từng làm trắng trang: new Date('').toISOString() ném
+// RangeError ngay trong effect/render. toIsoOrNull phải trả null, không ném.
+describe('toIsoOrNull', () => {
+  // '' là giá trị ô datetime-local/date trả về khi người dùng đang xóa để gõ lại
+  it.each(['', '2026-08-03T', 'not-a-date', '0000-00-00T00:00'])(
+    'trả null (không ném) với giá trị dở dang: %s',
+    (v) => {
+      expect(() => toIsoOrNull(v)).not.toThrow();
+      expect(toIsoOrNull(v)).toBeNull();
+    },
+  );
+
+  it('đổi được giá trị datetime-local đầy đủ sang ISO', () => {
+    expect(toIsoOrNull('2026-08-03T14:30')).toBe(new Date('2026-08-03T14:30').toISOString());
+  });
+
+  it('toDatetimeLocalValue trả chuỗi rỗng với Invalid Date thay vì "NaN-aN-aN"', () => {
+    expect(toDatetimeLocalValue(new Date('không phải ngày'))).toBe('');
   });
 });
 

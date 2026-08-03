@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Building2, ChevronLeft, Lock, Plus, Search, ThumbsUp, Wrench } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useNepTotAccess, type ObservableProfile } from '@/hooks/useNepTotAccess';
+import { useBehaviorAccess, type ObservableProfile } from '@/hooks/useBehaviorAccess';
 import {
   Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle,
 } from '@/components/ui/drawer';
@@ -12,26 +12,26 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   type BehaviorType, validateQuickNote, saveQuickNoteDraft, loadQuickNoteDraft,
-  clearQuickNoteDraft, toDatetimeLocalValue,
-} from '@/lib/nepTot';
+  clearQuickNoteDraft, toDatetimeLocalValue, toIsoOrNull,
+} from '@/lib/hanhVi';
 
 /**
- * Nút nổi "+ Ghi nhanh hành vi" (Nếp Tốt) — hiện trên mọi trang cho người có
+ * Nút nổi "+ Ghi nhanh hành vi" — hiện trên mọi trang cho người có
  * quyền ghi nhận. Mở bottom-sheet 4 trường, mục tiêu ≤15 giây/lần trên điện
  * thoại. Nháp autosave vào localStorage, khôi phục khi mở lại.
  */
 export function QuickNoteFab() {
-  const { canRecord, profileId, staff, staffLoading, staffError, reloadStaff } = useNepTotAccess();
+  const { canRecord, profileId, staff, staffLoading, staffError, reloadStaff } = useBehaviorAccess();
   const navigate = useNavigate();
 
   const [open, setOpen] = useState(false);
 
   // Trang khác (VD nút "+ Ghi nhanh" đầu Nhật ký) mở được ngăn ghi nhanh mà
-  // không cần kéo state lên: phát sự kiện 'nep-tot:ghi-nhanh' trên window
+  // không cần kéo state lên: phát sự kiện 'hanh-vi:ghi-nhanh' trên window
   useEffect(() => {
     const moNgan = () => setOpen(true);
-    window.addEventListener('nep-tot:ghi-nhanh', moNgan);
-    return () => window.removeEventListener('nep-tot:ghi-nhanh', moNgan);
+    window.addEventListener('hanh-vi:ghi-nhanh', moNgan);
+    return () => window.removeEventListener('hanh-vi:ghi-nhanh', moNgan);
   }, []);
   const [saving, setSaving] = useState(false);
   const [employeeId, setEmployeeId] = useState<string | null>(null);
@@ -56,21 +56,25 @@ export function QuickNoteFab() {
       setRawText(draft.rawText);
       setBehaviorType(draft.behaviorType);
       setIsPrivate(draft.isPrivate !== false); // nháp cũ thiếu trường → coi là riêng tư (mặc định mới)
-      if (draft.occurredAt) setOccurredLocal(toDatetimeLocalValue(new Date(draft.occurredAt)));
+      // Nháp hỏng/thiếu thời điểm → về "bây giờ" thay vì để ô trống
+      const daLuu = draft.occurredAt ? toDatetimeLocalValue(new Date(draft.occurredAt)) : '';
+      setOccurredLocal(daLuu || toDatetimeLocalValue(new Date()));
       if (draft.rawText.trim()) toast.info('Đã khôi phục mẩu nhớ đang viết dở.');
     } else {
       setOccurredLocal(toDatetimeLocalValue(new Date()));
     }
   }, [open]);
 
-  // Autosave nháp
+  // Autosave nháp. Ô thời điểm đang sửa dở (rỗng/thiếu phút) thì giữ nguyên
+  // thời điểm của nháp cũ — KHÔNG ép sang ISO ở đây, vì Invalid Date sẽ ném lỗi
+  // ngay trong effect và hạ cả cây React (trắng trang).
   useEffect(() => {
     if (!open) return;
     saveQuickNoteDraft({
       employeeId,
       rawText,
       behaviorType,
-      occurredAt: new Date(occurredLocal).toISOString(),
+      occurredAt: toIsoOrNull(occurredLocal) ?? new Date().toISOString(),
       isPrivate,
     });
   }, [open, employeeId, rawText, behaviorType, occurredLocal, isPrivate]);
@@ -122,7 +126,11 @@ export function QuickNoteFab() {
   };
 
   const handleSave = async () => {
-    const occurredAt = new Date(occurredLocal).toISOString();
+    const occurredAt = toIsoOrNull(occurredLocal);
+    if (!occurredAt) {
+      toast.error('Chọn lại thời điểm xảy ra (ngày và giờ).');
+      return;
+    }
     const err = validateQuickNote({ employeeId, rawText, behaviorType, occurredAt });
     if (err) {
       toast.error(err);
@@ -148,7 +156,7 @@ export function QuickNoteFab() {
       setOpen(false);
       toast.success('Đã lưu mẩu nhớ (riêng của bạn).', {
         description: 'Hoàn thiện và xác nhận trong Nhật ký hành vi khi rảnh.',
-        action: { label: 'Mở Nhật ký', onClick: () => navigate('/nep-tot/nhat-ky') },
+        action: { label: 'Mở Nhật ký', onClick: () => navigate('/nhat-ky-hanh-vi') },
       });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -164,7 +172,7 @@ export function QuickNoteFab() {
     <>
       <button
         onClick={() => setOpen(true)}
-        aria-label="Ghi nhanh hành động (Nếp Tốt)"
+        aria-label="Ghi nhanh hành động của cán bộ"
         className="fixed z-40 bottom-5 right-4 sm:bottom-6 sm:right-6 h-[52px] w-[52px] sm:h-14 sm:w-14 rounded-full bg-primary text-primary-foreground shadow-lift flex items-center justify-center active:scale-95 transition-transform print:hidden"
       >
         <Plus className="w-6 h-6" />
@@ -300,11 +308,11 @@ export function QuickNoteFab() {
 
             {/* 4. Thời điểm */}
             <div className="flex items-center gap-2">
-              <label htmlFor="nep-tot-occurred" className="text-xs text-muted-foreground flex-shrink-0">
+              <label htmlFor="hanh-vi-occurred" className="text-xs text-muted-foreground flex-shrink-0">
                 Thời điểm
               </label>
               <Input
-                id="nep-tot-occurred"
+                id="hanh-vi-occurred"
                 type="datetime-local"
                 value={occurredLocal}
                 max={toDatetimeLocalValue(new Date())}

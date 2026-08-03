@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
 import { useAuth } from '@/hooks/useAuth';
 import { ATTITUDE_DIMENSIONS } from '@/components/bm/AttitudeConstants';
-import { BEHAVIOR_TYPE_LABELS, type BehaviorType } from '@/lib/nepTot';
+import { BEHAVIOR_TYPE_LABELS, type BehaviorType } from '@/lib/hanhVi';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
@@ -16,11 +16,11 @@ function fmtDate(iso: string) {
 }
 
 /**
- * Nếp Tốt của tôi — cán bộ xem các bản ghi hành vi lãnh đạo đã chia sẻ.
+ * Hành vi của tôi — cán bộ xem các bản ghi hành vi lãnh đạo đã chia sẻ.
  * (RLS chỉ trả về bản đã xác nhận + được chia sẻ; bản phân tích phát hành
  * sẽ xuất hiện tại đây ở Bước 3.)
  */
-export default function MyNepTotPage() {
+export default function MyBehaviorPage() {
   const { profileId, loading: authLoading } = useAuth();
   const [notes, setNotes] = useState<BehaviorNote[]>([]);
   const [skills, setSkills] = useState<SkillOption[]>([]);
@@ -91,7 +91,7 @@ export default function MyNepTotPage() {
     <div className="max-w-3xl mx-auto space-y-4">
       <div>
         <h1 className="text-xl font-bold flex items-center gap-2">
-          <Sprout className="w-5 h-5 text-primary" /> Nếp Tốt của tôi
+          <Sprout className="w-5 h-5 text-primary" /> Hành vi của tôi
         </h1>
         <p className="text-sm text-muted-foreground">
           Các ghi nhận hành vi lãnh đạo đã chia sẻ với bạn. Dữ liệu này hỗ trợ trao đổi và phát triển,
