@@ -11,7 +11,7 @@ import { usePortalIdeas, type PortalIdea } from '@/components/one/ideas/usePorta
 import { IdeaForm } from '@/components/one/ideas/IdeaForm';
 import { IdeaList } from '@/components/one/ideas/IdeaList';
 import { IdeaStatsPanel } from '@/components/one/ideas/IdeaStatsPanel';
-import { buildIdeasCsv, downloadIdeasCsv, filterIdeasByDate } from '@/components/one/ideas/ideasCsv';
+import { downloadIdeasExcel, filterIdeasByDate } from '@/components/one/ideas/ideasExcel';
 import { useIdeaOwnerProfiles } from '@/components/one/ideas/useIdeaOwnerProfiles';
 import { khopTimKiem } from '@/lib/vietnamese';
 import type { IdeaLevel } from '@/data/one/ideasConfig';
@@ -108,6 +108,7 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
   const [editing, setEditing] = useState<PortalIdea | null>(null);
   const [exportStartDate, setExportStartDate] = useState('');
   const [exportEndDate, setExportEndDate] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
   const formRef = useRef<HTMLDivElement | null>(null);
   // Hồ sơ chủ sở hữu — chỉ tải khi quản trị mở trang, dùng cho cột KPI của file kết xuất
   const { owners } = useIdeaOwnerProfiles(isContentAdmin);
@@ -154,7 +155,7 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const handleExportCsv = () => {
+  const handleExportExcel = async () => {
     if (ideas.length === 0) {
       toast.error('Không có dữ liệu ý tưởng để kết xuất!');
       return;
@@ -164,8 +165,15 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
       toast.error('Không có dữ liệu ý tưởng nào trong khoảng thời gian đã chọn!');
       return;
     }
-    const csv = buildIdeasCsv(ideas, exportStartDate || undefined, exportEndDate || undefined, owners);
-    downloadIdeasCsv(csv, exportStartDate || undefined, exportEndDate || undefined);
+    setIsExporting(true);
+    try {
+      await downloadIdeasExcel(ideas, owners, exportStartDate || undefined, exportEndDate || undefined);
+      toast.success(`Đã kết xuất ${inRange.length} ý tưởng ra file Excel`);
+    } catch {
+      toast.error('Không dựng được file Excel. Vui lòng thử lại.');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -289,12 +297,17 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
             {isContentAdmin && (
               <button
                 type="button"
-                onClick={handleExportCsv}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs shadow-sm transition-all cursor-pointer"
-                title="Kết xuất ý tưởng ra file Excel (.csv) theo khoảng thời gian đã chọn"
+                onClick={handleExportExcel}
+                disabled={isExporting}
+                className={`flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs shadow-sm transition-all cursor-pointer ${isExporting ? 'opacity-70 cursor-not-allowed' : ''}`}
+                title="Kết xuất ý tưởng ra file Excel (.xlsx) — gồm danh sách chi tiết và 3 sheet tổng hợp"
               >
-                <FileText className="w-3.5 h-3.5" />
-                <span>Xuất Excel</span>
+                {isExporting ? (
+                  <span className="inline-block animate-spin border-2 border-white border-t-transparent rounded-full w-3.5 h-3.5" />
+                ) : (
+                  <FileText className="w-3.5 h-3.5" />
+                )}
+                <span>{isExporting ? 'Đang dựng file…' : 'Xuất Excel'}</span>
               </button>
             )}
           </div>

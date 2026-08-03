@@ -118,27 +118,44 @@ thông báo nói rõ là "chưa ai đề xuất nội dung này" thay vì "chưa
 Nút **Xuất Excel** và bộ lọc khoảng ngày chỉ hiện với `tcth_admin` / `system_admin` —
 đúng đối tượng, không cần sửa.
 
-16 cột đầu giữ nguyên thứ tự file gốc (Hội đồng và các bản đối chiếu cũ vẫn đọc được).
-Bổ sung 8 cột phục vụ KPI:
+Trước đây nút này xuất **CSV thuần** — mở lên là một khối chữ, phải tự căn cột. Nay xuất
+**file .xlsx thật, 4 sheet**:
+
+| Sheet | Nội dung |
+|---|---|
+| **Danh sách ý tưởng** | 24 cột chi tiết, mỗi phiếu một dòng |
+| **Tổng hợp theo cán bộ** | Mỗi cán bộ một dòng: tổng ý tưởng, số theo từng cấp độ, đề xuất Hội đồng, có Demo, dự toán thưởng — xếp giảm dần |
+| **Tổng hợp theo phòng** | Như trên nhưng theo phòng, kèm số cán bộ tham gia |
+| **Tổng quan** | Khoảng thời gian, tổng số ý tưởng, số cán bộ/phòng tham gia, phân bổ cấp độ, tổng dự toán thưởng |
+
+Định dạng: tiêu đề in đậm nền đỏ/xanh thương hiệu, khoá dòng tiêu đề khi cuộn, bật bộ lọc
+tự động, cột đã đo bề rộng, ô văn bản dài tự xuống dòng, nền xen kẽ cho dễ dò ngang.
+Cột ngày là **ô kiểu ngày** và cột thưởng là **số có định dạng tiền** — lọc, sắp xếp,
+`SUMIF` được ngay, không phải chuyển kiểu như khi mở CSV.
+
+Dùng ExcelJS (nạp động, chỉ tải khi bấm xuất) vì thư viện `xlsx` bản cộng đồng sẵn có
+trong dự án không ghi được định dạng ô.
+
+Bộ cột chi tiết giữ nguyên trật tự quen thuộc của file cũ, bổ sung 8 cột phục vụ KPI:
 
 | Cột | Nguồn | Vì sao cần |
 |---|---|---|
-| `Ma can bo` | `profiles.employee_code` | Khoá ghép với hệ thống nhân sự/KPI |
-| `Ho ten theo ho so` | `profiles.full_name` | Tên chuẩn, không phụ thuộc cách gõ trên phiếu |
-| `Phong theo ho so` | `departments.name` | Phòng thực tế của cán bộ |
-| `Chuc vu` | `profiles.position` | Phân biệt cán bộ / lãnh đạo khi tính KPI |
-| `Dong de xuat` | phần sau dấu phẩy của ô người đề xuất | Chia công ý tưởng nhóm |
-| `So luot thich` / `So luot khong thich` | `portal_idea_votes` + seed | Mức độ đồng thuận |
-| `Ngay cap nhat gan nhat` | `portal_ideas.updated_at` | Chốt kỳ khi ý tưởng chuyển Vươn cành / Lan tỏa |
+| `Mã cán bộ` | `profiles.employee_code` | Khoá ghép với hệ thống nhân sự/KPI |
+| `Họ tên theo hồ sơ` | `profiles.full_name` | Tên chuẩn, không phụ thuộc cách gõ trên phiếu |
+| `Phòng theo hồ sơ` | `departments.name` | Phòng thực tế của cán bộ |
+| `Chức vụ` | `profiles.position` | Phân biệt cán bộ / lãnh đạo khi tính KPI |
+| `Đồng đề xuất` | phần sau dấu phẩy của ô người đề xuất | Chia công ý tưởng nhóm |
+| `Lượt thích` / `Lượt không thích` | `portal_idea_votes` + seed | Mức độ đồng thuận |
+| `Cập nhật gần nhất` | `portal_ideas.updated_at` | Chốt kỳ khi ý tưởng chuyển Vươn cành / Lan tỏa |
 
-Cột `Email nguoi gui` trước đây ghi cứng `N/A`, nay trả đúng email tài khoản đã gửi phiếu.
+Cột email người gửi trước đây ghi cứng `N/A`, nay trả đúng email tài khoản đã gửi phiếu.
 
 Hồ sơ chủ sở hữu lấy qua `useIdeaOwnerProfiles`, chỉ tải khi người xem là quản trị (RLS
 `profiles` chỉ mở toàn bộ hồ sơ cho `system_admin` / `tcth_admin` / `bgd`).
 
 > **Việc cần làm trước khi tính KPI:** hiện **0/100 hồ sơ có `employee_code`**, nên cột
-> `Ma can bo` sẽ rỗng. Muốn ghép tự động với bảng KPI nhân sự thì phải điền mã cán bộ
-> vào hồ sơ trước; trong lúc chờ, ghép tạm bằng `Ho ten theo ho so` + `Phong theo ho so`.
+> `Mã cán bộ` sẽ rỗng. Muốn ghép tự động với bảng KPI nhân sự thì phải điền mã cán bộ
+> vào hồ sơ trước; trong lúc chờ, ghép tạm bằng `Họ tên theo hồ sơ` + `Phòng theo hồ sơ`.
 
 ## Bảo mật
 
