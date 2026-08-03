@@ -14,8 +14,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { hanGoiY } from '@/lib/ct2';
 import {
   HS_COT, HS_TEN_CAP, HS_TEN_KY_HAN, HS_TEN_LOAI, buocKeTiep, canhBaoHoSo,
-  dinhDangTien, docSoTien, hsTuoiCho, kiemTraHoSo, lyDoChanChuyenHoSo,
-  type HoSoTinDung, type HsCap, type HsFormTao, type HsLoai, type HsTrangThai,
+  dinhDangTien, docSoTien, hsSuaDuocSoTien, hsTuoiCho, kiemTraHoSo,
+  lyDoChanChuyenHoSo,
+  type HoSoTinDung, type HsCap, type HsFormTao, type HsKyHan, type HsLoai,
+  type HsTrangThai,
 } from '@/lib/ct2TinDung';
 import type { Ct2NhanSu } from './useCt2Data';
 import { Ct2TrangTraoDoi, type NguoiTraoDoi } from './Ct2TrangTraoDoi';
@@ -263,6 +265,10 @@ export function Ct2CreditCardDialog({ hoSo, nhanSu, laLanhDao, chuyenDen, onClos
   const [lyDo, setLyDo] = useState('');
   const [cauNhip, setCauNhip] = useState('');
   const [dangGui, setDangGui] = useState(false);
+  // Form «Bổ sung thông tin» — chuỗi rỗng = ô đang trống trên hồ sơ
+  const [bs, setBs] = useState({
+    so_tien: '', ky_han: '' as HsKyHan | '', han_xu_ly: '', ngay_nhan: '', ngay_den_han_ghtd: '',
+  });
 
   useEffect(() => {
     if (!hoSo) return;
@@ -270,6 +276,13 @@ export function Ct2CreditCardDialog({ hoSo, nhanSu, laLanhDao, chuyenDen, onClos
     setNguoiGiu(hoSo.nguoi_dang_giu ?? '');
     setLyDo('');
     setCauNhip('');
+    setBs({
+      so_tien: hoSo.so_tien === null ? '' : String(hoSo.so_tien),
+      ky_han: hoSo.ky_han ?? '',
+      han_xu_ly: hoSo.han_xu_ly ?? '',
+      ngay_nhan: hoSo.ngay_nhan ?? '',
+      ngay_den_han_ghtd: hoSo.ngay_den_han_ghtd ?? '',
+    });
   }, [hoSo, chuyenDen]);
 
   if (!hoSo) return null;
@@ -300,6 +313,70 @@ export function Ct2CreditCardDialog({ hoSo, nhanSu, laLanhDao, chuyenDen, onClos
     setDangGui(false);
     if (error) { toast.error(error); return; }
     toast.success(`Đã chuyển sang «${HS_COT.find((c) => c.ma === den)?.ten}».`);
+    lamTuoi(); onXong();
+  };
+
+  // Những ô đang trống trên hồ sơ — để mở sẵn mục bổ sung và tô đúng ô
+  const oTrong = {
+    so_tien: hoSo.so_tien === null,
+    ky_han: !hoSo.ky_han,
+    han_xu_ly: !hoSo.han_xu_ly,
+    ngay_nhan: !hoSo.ngay_nhan,
+    ngay_den_han_ghtd: !hoSo.ngay_den_han_ghtd
+      && (hoSo.loai_ho_so === 'TAI_CAP' || hoSo.loai_ho_so === 'DIEU_CHINH'),
+  };
+  const soOTrong = Object.values(oTrong).filter(Boolean).length;
+  const suaDuocTien = hsSuaDuocSoTien(hoSo, laLanhDao);
+  const tienBoSung = bs.so_tien.trim() === '' ? null : docSoTien(bs.so_tien);
+
+  /**
+   * Chỉ gửi những trường THAY ĐỔI — và chặn trước ở client đúng các luật mà
+   * database sẽ chặn sau (xoá trắng, hạn trước ngày nhận), để người dùng nhận
+   * câu tiếng Việt tử tế thay vì lỗi constraint.
+   */
+  const luuBoSung = async () => {
+    const doi: Record<string, unknown> = {};
+
+    if (bs.so_tien.trim() === '') {
+      if (hoSo.so_tien !== null) {
+        toast.error('Không xoá trắng được số tiền đã có — chỉ sửa thành số khác.');
+        return;
+      }
+    } else {
+      if (tienBoSung === null || tienBoSung <= 0) {
+        toast.error('Số tiền phải là số dương, đơn vị triệu đồng (160000 = 160 tỷ).');
+        return;
+      }
+      if (tienBoSung !== hoSo.so_tien) doi.so_tien = tienBoSung;
+    }
+
+    if (bs.ky_han && bs.ky_han !== hoSo.ky_han) doi.ky_han = bs.ky_han;
+
+    if (bs.han_xu_ly === '' && hoSo.han_xu_ly) {
+      toast.error('Không xoá trắng được hạn xử lý đã có — chỉ dời sang ngày khác.');
+      return;
+    }
+    const hanSau = bs.han_xu_ly || hoSo.han_xu_ly;
+    const nhanSau = bs.ngay_nhan || hoSo.ngay_nhan;
+    if (hanSau && nhanSau && hanSau < nhanSau) {
+      toast.error('Hạn xử lý phải từ ngày nhận hồ sơ trở đi.');
+      return;
+    }
+    if (bs.han_xu_ly && bs.han_xu_ly !== hoSo.han_xu_ly) doi.han_xu_ly = bs.han_xu_ly;
+    if (bs.ngay_nhan && bs.ngay_nhan !== hoSo.ngay_nhan) doi.ngay_nhan = bs.ngay_nhan;
+    if (bs.ngay_den_han_ghtd && bs.ngay_den_han_ghtd !== hoSo.ngay_den_han_ghtd) {
+      doi.ngay_den_han_ghtd = bs.ngay_den_han_ghtd;
+    }
+
+    if (Object.keys(doi).length === 0) {
+      toast.info('Chưa có gì thay đổi để lưu.');
+      return;
+    }
+    setDangGui(true);
+    const { error } = await ct2SuaHoSo(hoSo.id, doi);
+    setDangGui(false);
+    if (error) { toast.error(error); return; }
+    toast.success(`Đã lưu ${Object.keys(doi).length} thông tin bổ sung.`);
     lamTuoi(); onXong();
   };
 
@@ -364,6 +441,86 @@ export function Ct2CreditCardDialog({ hoSo, nhanSu, laLanhDao, chuyenDen, onClos
           )}
           {hoSo.ly_do_tu_choi && <O ten="Lý do dừng" gia={hoSo.ly_do_tu_choi} />}
         </div>
+
+        {/*
+          Bổ sung thông tin còn thiếu — cảnh báo «chưa ghi» mà không có chỗ điền
+          ngay tại đây là ngõ cụt: người dùng thấy lỗi nhưng phải đi tìm đường
+          sửa. 47 hồ sơ nhập từ Miro thiếu nhiều trường, mục này là đường bổ
+          sung cho đợt đó và cho cả về sau (VD điền hạn mức mới sau khi tái cấp).
+        */}
+        {suaDuoc && (
+          <div className={`rounded-xl border p-3 ${soOTrong > 0 ? 'border-amber-300 bg-amber-50/40' : 'border-slate-200'}`}>
+            <p className="mb-2 text-sm font-semibold text-brand-navy">
+              Bổ sung / sửa thông tin
+              {soOTrong > 0 && (
+                <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                  {soOTrong} ô còn trống
+                </span>
+              )}
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="bs-so_tien" className="text-xs">Số tiền (triệu đồng)</Label>
+                <Input id="bs-so_tien" inputMode="numeric" value={bs.so_tien}
+                  disabled={!suaDuocTien}
+                  onChange={(e) => setBs((c) => ({ ...c, so_tien: e.target.value }))}
+                  placeholder="160000"
+                  className={oTrong.so_tien ? 'border-amber-400' : ''} />
+                <p className="mt-1 text-2xs text-slate-500">
+                  {!suaDuocTien
+                    ? 'Đổi số tiền đã có cần lãnh đạo Phòng — mọi lần đổi đều lưu vết.'
+                    : tienBoSung !== null && tienBoSung > 0
+                      ? <span className="font-medium text-brand-navy">= {dinhDangTien(tienBoSung)}</span>
+                      : oTrong.so_tien ? 'Đang trống — hồ sơ này chưa vào tổng dư nợ' : ''}
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="bs-ky_han" className="text-xs">Kỳ hạn</Label>
+                <Select value={bs.ky_han}
+                  onValueChange={(v) => setBs((c) => ({ ...c, ky_han: v as HsKyHan }))}>
+                  <SelectTrigger id="bs-ky_han" className={oTrong.ky_han ? 'border-amber-400' : ''}>
+                    <SelectValue placeholder="— chưa ghi —" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NGAN_HAN">{HS_TEN_KY_HAN.NGAN_HAN}</SelectItem>
+                    <SelectItem value="TRUNG_DAI_HAN">{HS_TEN_KY_HAN.TRUNG_DAI_HAN}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="bs-han_xu_ly" className="text-xs">Hạn xử lý hồ sơ</Label>
+                <Input id="bs-han_xu_ly" type="date" value={bs.han_xu_ly}
+                  onChange={(e) => setBs((c) => ({ ...c, han_xu_ly: e.target.value }))}
+                  className={oTrong.han_xu_ly ? 'border-amber-400' : ''} />
+                {oTrong.han_xu_ly && (
+                  <p className="mt-1 text-2xs text-slate-500">Đang trống — không đo được đúng hẹn hay trễ</p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="bs-ngay_nhan" className="text-xs">Ngày nhận hồ sơ</Label>
+                <Input id="bs-ngay_nhan" type="date" value={bs.ngay_nhan}
+                  onChange={(e) => setBs((c) => ({ ...c, ngay_nhan: e.target.value }))}
+                  className={oTrong.ngay_nhan ? 'border-amber-400' : ''} />
+              </div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="bs-den_han" className="text-xs">Hạn mức hiện tại đến hạn ngày</Label>
+                <Input id="bs-den_han" type="date" value={bs.ngay_den_han_ghtd}
+                  onChange={(e) => setBs((c) => ({ ...c, ngay_den_han_ghtd: e.target.value }))}
+                  className={oTrong.ngay_den_han_ghtd ? 'border-amber-400' : ''} />
+                <p className="mt-1 text-2xs text-slate-500">
+                  {hoSo.trang_thai === 'HOAN_THANH'
+                    ? 'Hồ sơ đã xong: điền ngày hết hạn của HẠN MỨC MỚI vừa cấp — để hệ thống nhắc tái cấp sớm 60 ngày cho chu kỳ sau.'
+                    : 'Có ngày này thì hệ thống cảnh báo sớm 60 ngày trước khi hạn mức của khách hết.'}
+                </p>
+              </div>
+            </div>
+            <div className="mt-2 flex justify-end">
+              <Button size="sm" onClick={luuBoSung} disabled={dangGui}>
+                {dangGui ? 'Đang lưu…' : 'Lưu thông tin'}
+              </Button>
+            </div>
+          </div>
+        )}
 
         {suaDuoc && (
           <div className="rounded-xl border border-slate-200 p-3">

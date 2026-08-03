@@ -351,6 +351,25 @@ export function hsChuaGhiLanNao(h: Pick<HoSoTinDung, 'nhip_gan_nhat'>): boolean 
   return !h.nhip_gan_nhat;
 }
 
+/**
+ * Ai được sửa SỐ TIỀN của hồ sơ — luật này phải khớp trigger DB
+ * `f_ct2_hs_truoc_sua` (hàng rào thật nằm ở đó, đây chỉ là bản chiếu cho
+ * giao diện khỏi mời người dùng làm việc sẽ bị chặn):
+ *
+ *  · Lãnh đạo Phòng: sửa được, kể cả đổi số đã có (mọi lần đổi đều lưu vết).
+ *  · Cán bộ phụ trách: chỉ BỔ SUNG được khi đang trống. Điền một sự thật còn
+ *    thiếu khác với đổi một con số đã có — 16 hồ sơ nhập từ Miro thiếu số
+ *    tiền mà bắt 2 lãnh đạo điền hết thì thành nút cổ chai.
+ *
+ * Các trường ngày (hạn xử lý, ngày nhận, hạn mức đến hạn) và kỳ hạn thì cán
+ * bộ sửa được như thường — không nằm trong nhóm rủi ro tài chính.
+ */
+export function hsSuaDuocSoTien(
+  h: Pick<HoSoTinDung, 'so_tien'>, laLanhDao: boolean,
+): boolean {
+  return laLanhDao || h.so_tien === null;
+}
+
 export interface CanhBaoHoSo { muc: 'DO' | 'VANG'; noi_dung: string }
 
 /**

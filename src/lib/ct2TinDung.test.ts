@@ -10,6 +10,7 @@ import {
   hsConLaiDenHan,
   hsNghenCho,
   hsQuaHan,
+  hsSuaDuocSoTien,
   hsThuocDaiDenHan,
   hsTuoiCho,
   kiemTraHoSo,
@@ -254,6 +255,18 @@ describe('Hồ sơ nhập từ dữ liệu lịch sử — ô trống phải nó
 
   it('hồ sơ đã xong thì thôi không đòi bổ sung nữa', () => {
     expect(canhBaoHoSo({ ...thieu, trang_thai: 'HOAN_THANH' }, moc)).toEqual([]);
+  });
+});
+
+describe('Ai được sửa số tiền — bản chiếu của trigger f_ct2_hs_truoc_sua', () => {
+  it('lãnh đạo sửa được cả số đã có', () => {
+    expect(hsSuaDuocSoTien({ so_tien: 160_000 }, true)).toBe(true);
+    expect(hsSuaDuocSoTien({ so_tien: null }, true)).toBe(true);
+  });
+
+  it('cán bộ chỉ BỔ SUNG được khi đang trống — 16 hồ sơ thiếu số mà bắt 2 lãnh đạo điền hết là nút cổ chai', () => {
+    expect(hsSuaDuocSoTien({ so_tien: null }, false)).toBe(true);
+    expect(hsSuaDuocSoTien({ so_tien: 160_000 }, false)).toBe(false);
   });
 });
 
