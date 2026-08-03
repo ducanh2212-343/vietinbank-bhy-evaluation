@@ -334,8 +334,13 @@ số tiền lẫn thiếu hạn xử lý mà không được ném lỗi.
 
 ### Việc Phòng KHDN cần làm tiếp
 
-1. **Bổ sung 16 số tiền và 13 hạn xử lý** còn trống. Mỗi hồ sơ đang hiện cảnh
-   báo vàng cho đúng ô thiếu.
+1. **Bổ sung 16 số tiền và 13 hạn xử lý** còn trống — mở hồ sơ, mục **«Bổ sung
+   / sửa thông tin»** ngay trong hộp thoại chi tiết: ô nào trống viền vàng, có
+   đếm «N ô còn trống». Cán bộ phụ trách tự điền được số tiền đang trống
+   (trigger đã nới đúng khe này — ĐIỀN một sự thật còn thiếu khác với ĐỔI một
+   con số đã có, đổi số đã có vẫn cần lãnh đạo, mọi lần đều lưu vết). Hồ sơ đã
+   hoàn thành cũng bổ sung được **ngày hết hạn của hạn mức MỚI** — đường đi
+   cho danh sách 12 khách hàng ở trên.
 2. **Xác nhận 5 chỗ suy đoán** — đều đã ghi trong `ghi_chu` của từng hồ sơ:
    tag «250» của Minh Anh Đô Lương không có đơn vị; Khải Minh có hai ngày không
    nhãn; «Tài sản Tiến Mạnh» không rõ là hồ sơ tín dụng hay tài sản bảo đảm;
