@@ -58,6 +58,62 @@
       :root { background-color: #F2F7FF; }
       html.dark { background-color: #0B1220; }
       #root { min-height: 100dvh; }
+
+      /*
+        Khung chờ vẽ thẳng từ HTML. Trước đây #root rỗng nên trang không hiện gì
+        cho tới khi ~600 kB JS tải và chạy xong — đo trên 4G kèm CPU ×4 là 1,76 s
+        trắng màn. Khối này hiện ngay khi HTML về; React thay nó lúc gắn cây
+        giao diện. Cố ý nội tuyến và không dùng ảnh: không thêm một request nào.
+      */
+      #boot {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        font-family: Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      }
+      #boot b {
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        color: #0057B8;
+      }
+      html.dark #boot b { color: #4da3ea; }
+      #boot span {
+        font-size: 12px;
+        letter-spacing: 0.04em;
+        color: #5b7089;
+      }
+      html.dark #boot span { color: #8aa0b8; }
+      #boot i {
+        display: block;
+        width: 132px;
+        height: 3px;
+        border-radius: 999px;
+        background: rgba(0, 87, 184, 0.14);
+        overflow: hidden;
+      }
+      html.dark #boot i { background: rgba(122, 178, 235, 0.16); }
+      #boot i::after {
+        content: '';
+        display: block;
+        width: 40%;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #0057B8, #1E88E5);
+        animation: boot-slide 1.15s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+      }
+      html.dark #boot i::after { background: linear-gradient(90deg, #2f7fd0, #6cb6f0); }
+      @keyframes boot-slide {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(330%); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #boot i::after { animation: none; width: 100%; }
+      }
     </style>
 
     <!--
@@ -83,7 +139,14 @@
   </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- React thay toàn bộ nội dung này khi gắn cây giao diện (xem #boot ở trên). -->
+      <div id="boot" role="status" aria-live="polite">
+        <b>BHY ONE</b>
+        <i></i>
+        <span>Đang mở cổng…</span>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

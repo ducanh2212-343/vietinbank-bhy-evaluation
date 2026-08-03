@@ -262,7 +262,7 @@ export default function TransferSimulationPage() {
                       Đạt {simulation.fit.met}/{simulation.fit.total} kỹ năng yêu cầu tối thiểu của vị trí {targetPosition.name}.
                     </p>
                     {simulation.fit.missing.length === 0 ? (
-                      <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-3 py-2">
+                      <p className="text-xs text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 rounded px-3 py-2">
                         ✓ Đáp ứng đầy đủ — có thể điều chuyển không cần đào tạo bổ sung.
                       </p>
                     ) : (
@@ -270,7 +270,7 @@ export default function TransferSimulationPage() {
                         {simulation.fit.missing.map((m) => (
                           <div key={m.skill_id} className="flex items-center justify-between gap-2 rounded border border-border px-2.5 py-1.5">
                             <span className="text-[11px]">{skillLabel(m.skill_id)}</span>
-                            <span className="text-[11px] whitespace-nowrap">L{m.current} → <b className="text-orange-700">L{m.required}</b></span>
+                            <span className="text-[11px] whitespace-nowrap">L{m.current} → <b className="text-orange-700 dark:text-orange-300">L{m.required}</b></span>
                           </div>
                         ))}
                       </div>
@@ -284,7 +284,7 @@ export default function TransferSimulationPage() {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <TrendingDown className="w-4 h-4 text-orange-600" />
+                  <TrendingDown className="w-4 h-4 text-orange-600 dark:text-orange-400" />
                   Phòng cũ hụt gì{simulation.oldDeptId ? ` — ${deptMap.get(simulation.oldDeptId) || ''}` : ''}
                 </CardTitle>
               </CardHeader>
@@ -303,13 +303,13 @@ export default function TransferSimulationPage() {
                       <div
                         key={l.skillId}
                         className={`flex items-center justify-between gap-2 rounded border px-2.5 py-1.5 ${
-                          l.after === 0 ? 'border-red-200 bg-red-50' : l.after === 1 ? 'border-orange-200 bg-orange-50' : 'border-border'
+                          l.after === 0 ? 'border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10' : l.after === 1 ? 'border-orange-200 dark:border-orange-500/30 bg-orange-50 dark:bg-orange-500/10' : 'border-border'
                         }`}
                       >
                         <div className="min-w-0">
                           <div className="text-[11px]">{skillLabel(l.skillId)}</div>
-                          {l.after === 0 && <div className="text-[10px] text-red-700 font-medium">⚠ Phòng cũ không còn ai đạt L{EXPERT_LEVEL}+</div>}
-                          {l.after === 1 && <div className="text-[10px] text-orange-700">Chỉ còn 1 người — rủi ro điểm nghẽn</div>}
+                          {l.after === 0 && <div className="text-[10px] text-red-700 dark:text-red-300 font-medium">⚠ Phòng cũ không còn ai đạt L{EXPERT_LEVEL}+</div>}
+                          {l.after === 1 && <div className="text-[10px] text-orange-700 dark:text-orange-300">Chỉ còn 1 người — rủi ro điểm nghẽn</div>}
                         </div>
                         <span className="text-[11px] whitespace-nowrap text-muted-foreground">{l.before} → <b>{l.after}</b> người</span>
                       </div>
@@ -323,7 +323,7 @@ export default function TransferSimulationPage() {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-emerald-600" />
+                  <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   Phòng mới nhận được gì{simulation.newDeptId ? ` — ${deptMap.get(simulation.newDeptId) || ''}` : ''}
                 </CardTitle>
               </CardHeader>
@@ -342,12 +342,12 @@ export default function TransferSimulationPage() {
                       <div
                         key={g.skillId}
                         className={`flex items-center justify-between gap-2 rounded border px-2.5 py-1.5 ${
-                          g.before === 0 ? 'border-emerald-200 bg-emerald-50' : 'border-border'
+                          g.before === 0 ? 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10' : 'border-border'
                         }`}
                       >
                         <div className="min-w-0">
                           <div className="text-[11px]">{skillLabel(g.skillId)}</div>
-                          {g.before === 0 && <div className="text-[10px] text-emerald-700 font-medium">★ Năng lực mới cho phòng (trước đó chưa ai đạt L{EXPERT_LEVEL}+)</div>}
+                          {g.before === 0 && <div className="text-[10px] text-emerald-700 dark:text-emerald-300 font-medium">★ Năng lực mới cho phòng (trước đó chưa ai đạt L{EXPERT_LEVEL}+)</div>}
                         </div>
                         <span className="text-[11px] whitespace-nowrap text-muted-foreground">{g.before} → <b>{g.after}</b> người</span>
                       </div>

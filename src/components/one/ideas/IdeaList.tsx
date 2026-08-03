@@ -20,8 +20,10 @@ interface AdminPatch {
 }
 
 interface IdeaListProps {
-  /** Danh sách đã lọc theo cấp đề xuất (Tất cả / Nội bộ CN / Đề xuất TSC) */
+  /** Danh sách đã lọc theo cấp đề xuất (Tất cả / Nội bộ CN / Đề xuất TSC) và ô tìm kiếm */
   ideas: PortalIdea[];
+  /** Đang áp bộ lọc/tìm kiếm — đổi thông báo khi rỗng để khỏi hiểu nhầm là chưa có dữ liệu */
+  isFiltered?: boolean;
   isLoading: boolean;
   isContentAdmin: boolean;
   /** Tên hiển thị khi gửi bình luận (profile.full_name) */
@@ -355,7 +357,7 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, isContentAdmin, myName, onEdi
 
 const OTHER_DEPT_KEY = 'Bộ phận khác';
 
-export const IdeaList: React.FC<IdeaListProps> = ({ ideas, isLoading, isContentAdmin, myName, onEdit, onDelete, onVote, onAdminUpdate }) => {
+export const IdeaList: React.FC<IdeaListProps> = ({ ideas, isFiltered = false, isLoading, isContentAdmin, myName, onEdit, onDelete, onVote, onAdminUpdate }) => {
   const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>({});
 
   if (isLoading) {
@@ -371,8 +373,17 @@ export const IdeaList: React.FC<IdeaListProps> = ({ ideas, isLoading, isContentA
     return (
       <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed">
         <Lightbulb className="w-12 h-12 text-slate-300 mx-auto mb-2" />
-        <p className="text-slate-500 text-sm font-semibold">Chưa có ý tưởng nào được gửi lên hệ thống.</p>
-        <p className="text-slate-400 text-xs mt-1">Hãy là người đầu tiên đóng góp ý tưởng cải tiến!</p>
+        {isFiltered ? (
+          <>
+            <p className="text-slate-500 text-sm font-semibold">Không có ý tưởng nào khớp bộ lọc/từ khóa.</p>
+            <p className="text-slate-400 text-xs mt-1">Chưa ai đề xuất nội dung này — bạn có thể gửi ý tưởng mới.</p>
+          </>
+        ) : (
+          <>
+            <p className="text-slate-500 text-sm font-semibold">Chưa có ý tưởng nào được gửi lên hệ thống.</p>
+            <p className="text-slate-400 text-xs mt-1">Hãy là người đầu tiên đóng góp ý tưởng cải tiến!</p>
+          </>
+        )}
       </div>
     );
   }

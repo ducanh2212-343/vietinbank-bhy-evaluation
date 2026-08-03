@@ -39,7 +39,7 @@ export function KanbanCardItem({ card, skillMap = {}, flags, weeklyUpdated, onUp
     >
       {b.needsContent ? (
         <div className="space-y-1.5">
-          <div className="flex items-center gap-1.5 text-amber-700">
+          <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-300">
             <FileWarning className="w-4 h-4" />
             <span className="text-sm font-medium">Chưa có nội dung hành động</span>
           </div>
@@ -66,14 +66,14 @@ export function KanbanCardItem({ card, skillMap = {}, flags, weeklyUpdated, onUp
         {card.learning_mode && <Badge variant="outline" className="text-[10px] py-0">{card.learning_mode}%</Badge>}
         {b.overdue && <Badge variant="destructive" className="text-[10px] py-0">Quá hạn</Badge>}
         {b.notUpdatedThisWeek && <Badge className="text-[10px] py-0 bg-amber-500 hover:bg-amber-500">Chưa cập nhật tuần này</Badge>}
-        {flags?.hasBlocker && <Badge variant="outline" className="text-[10px] py-0 border-rose-300 text-rose-700">Có vướng mắc</Badge>}
-        {flags?.needsSupport && <Badge variant="outline" className="text-[10px] py-0 border-violet-300 text-violet-700">Cần hỗ trợ</Badge>}
+        {flags?.hasBlocker && <Badge variant="outline" className="text-[10px] py-0 border-rose-300 dark:border-rose-500/40 text-rose-700 dark:text-rose-300">Có vướng mắc</Badge>}
+        {flags?.needsSupport && <Badge variant="outline" className="text-[10px] py-0 border-violet-300 dark:border-violet-500/40 text-violet-700 dark:text-violet-300">Cần hỗ trợ</Badge>}
         {b.dueSoon && <Badge className="text-[10px] py-0 bg-orange-400 hover:bg-orange-400">Sắp đến hạn</Badge>}
         {b.waitingConfirm && <Badge className="text-[10px] py-0 bg-blue-500 hover:bg-blue-500">Chờ QL xác nhận</Badge>}
         {b.confirmed && <Badge className="text-[10px] py-0 bg-emerald-600 hover:bg-emerald-600">Đã xác nhận</Badge>}
         {b.returned && <Badge variant="destructive" className="text-[10px] py-0">Cần làm tiếp</Badge>}
         {b.updatedThisWeek && !b.overdue && !b.notUpdatedThisWeek && (
-          <Badge variant="outline" className="text-[10px] py-0 border-emerald-300 text-emerald-700">Đã cập nhật tuần này</Badge>
+          <Badge variant="outline" className="text-[10px] py-0 border-emerald-300 dark:border-emerald-500/40 text-emerald-700 dark:text-emerald-300">Đã cập nhật tuần này</Badge>
         )}
       </div>
 

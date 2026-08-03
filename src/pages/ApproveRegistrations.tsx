@@ -33,7 +33,7 @@ type Dept = { id: string; name: string };
 type Pos = { id: string; name: string };
 
 const STATUS_LABELS: Record<string, string> = { pending: 'Chờ duyệt', approved: 'Đã duyệt', rejected: 'Từ chối' };
-const STATUS_COLORS: Record<string, string> = { pending: 'bg-yellow-100 text-yellow-800', approved: 'bg-green-100 text-green-800', rejected: 'bg-red-100 text-red-800' };
+const STATUS_COLORS: Record<string, string> = { pending: 'bg-yellow-100 dark:bg-yellow-500/15 text-yellow-800 dark:text-yellow-300', approved: 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-300', rejected: 'bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-300' };
 const ROLE_LABELS: Record<string, string> = { employee: 'Nhân viên', manager: 'Quản lý', tcth_admin: 'TCTH Admin', bgd: 'Ban Giám đốc' };
 const ASSIGNABLE_ROLES = ['employee', 'manager', 'tcth_admin', 'bgd'] as const;
 

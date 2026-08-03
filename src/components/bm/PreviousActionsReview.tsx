@@ -74,9 +74,9 @@ const STATUS_OPTIONS = [
 ];
 
 const TYPE_BADGE: Record<SourceType, { label: string; cls: string }> = {
-  skill: { label: 'Skill', cls: 'bg-blue-100 text-blue-700' },
-  attitude: { label: 'Thái độ', cls: 'bg-amber-100 text-amber-700' },
-  ai: { label: 'AI', cls: 'bg-violet-100 text-violet-700' },
+  skill: { label: 'Skill', cls: 'bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300' },
+  attitude: { label: 'Thái độ', cls: 'bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300' },
+  ai: { label: 'AI', cls: 'bg-violet-100 dark:bg-violet-500/15 text-violet-700 dark:text-violet-300' },
 };
 
 export function PreviousActionsReview({ formId, previousFormId, previousCycleName, isManager, onTransferIncomplete }: Props) {
@@ -349,8 +349,8 @@ export function PreviousActionsReview({ formId, previousFormId, previousCycleNam
           return (
             <div className="flex items-center gap-2 flex-wrap mt-2 text-[11px]">
               <Badge variant="outline">{total} hành động</Badge>
-              <Badge variant="outline" className="border-sky-300 text-sky-700">Tự đánh giá hoàn thành: {selfDone}/{total}</Badge>
-              <Badge variant="outline" className="border-amber-300 text-amber-700">CBQL xác nhận hoàn thành: {mgrDone}/{total} ({pct}%)</Badge>
+              <Badge variant="outline" className="border-sky-300 dark:border-sky-500/40 text-sky-700 dark:text-sky-300">Tự đánh giá hoàn thành: {selfDone}/{total}</Badge>
+              <Badge variant="outline" className="border-amber-300 dark:border-amber-500/40 text-amber-700 dark:text-amber-300">CBQL xác nhận hoàn thành: {mgrDone}/{total} ({pct}%)</Badge>
             </div>
           );
         })()}
@@ -362,7 +362,7 @@ export function PreviousActionsReview({ formId, previousFormId, previousCycleNam
             <div key={r.id || `new-${idx}`} className="border rounded-lg p-3 bg-muted/20 space-y-2">
               <div className="flex items-center gap-2 flex-wrap text-xs">
                 <Badge className={`${tb.cls} border-0`}>{tb.label}</Badge>
-                {r.is_extra && <Badge variant="outline" className="border-emerald-500 text-emerald-700">Ngoài kế hoạch</Badge>}
+                {r.is_extra && <Badge variant="outline" className="border-emerald-500 text-emerald-700 dark:text-emerald-300">Ngoài kế hoạch</Badge>}
                 {r._label && <span className="font-medium">{r._label}</span>}
                 {r.is_extra && !isManager && (
                   <Button size="sm" variant="ghost" className="ml-auto h-6 px-2 text-destructive" onClick={() => removeExtra(idx)}>
@@ -402,22 +402,22 @@ export function PreviousActionsReview({ formId, previousFormId, previousCycleNam
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[11px] text-muted-foreground font-medium text-sky-700">
+                  <label className="text-[11px] text-muted-foreground font-medium text-sky-700 dark:text-sky-300">
                     Tự đánh giá (cán bộ)
                   </label>
                   <Select value={r.self_status} onValueChange={(v) => update(idx, { self_status: v })} disabled={isManager}>
-                    <SelectTrigger className={`h-8 text-sm ${!isManager ? 'border-sky-300' : ''}`}><SelectValue /></SelectTrigger>
+                    <SelectTrigger className={`h-8 text-sm ${!isManager ? 'border-sky-300 dark:border-sky-500/40' : ''}`}><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {STATUS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <label className="text-[11px] text-muted-foreground font-medium text-amber-700">
+                  <label className="text-[11px] text-muted-foreground font-medium text-amber-700 dark:text-amber-300">
                     Trạng thái (CBQL đánh giá)
                   </label>
                   <Select value={r.status} onValueChange={(v) => update(idx, { status: v })} disabled={!isManager}>
-                    <SelectTrigger className={`h-8 text-sm ${isManager ? 'border-amber-300' : ''}`}><SelectValue /></SelectTrigger>
+                    <SelectTrigger className={`h-8 text-sm ${isManager ? 'border-amber-300 dark:border-amber-500/40' : ''}`}><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {STATUS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                     </SelectContent>
@@ -436,14 +436,14 @@ export function PreviousActionsReview({ formId, previousFormId, previousCycleNam
                   <Textarea value={r.employee_note} onChange={e => update(idx, { employee_note: e.target.value })} rows={2} disabled={isManager} />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="text-[11px] text-muted-foreground font-medium text-amber-700">Nhận xét CBQL</label>
+                  <label className="text-[11px] text-muted-foreground font-medium text-amber-700 dark:text-amber-300">Nhận xét CBQL</label>
                   <Textarea
                     value={r.manager_note}
                     onChange={e => update(idx, { manager_note: e.target.value })}
                     rows={2}
                     disabled={!isManager}
                     placeholder={isManager ? 'Nhận xét kết quả thực tế và việc cần làm tiếp — hạn chế ghi "đồng ý" đơn thuần…' : '(CBQL nhập)'}
-                    className={isManager ? 'border-amber-300 focus-visible:ring-amber-500' : ''}
+                    className={isManager ? 'border-amber-300 dark:border-amber-500/40 focus-visible:ring-amber-500' : ''}
                   />
                   {isBareAgreement(r.manager_note) && (
                     <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-400">{BARE_AGREEMENT_HINT}</p>

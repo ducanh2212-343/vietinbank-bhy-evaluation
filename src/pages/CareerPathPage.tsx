@@ -23,9 +23,9 @@ interface ProfileInfo {
 interface PositionInfo { id: string; name: string; department_id: string | null }
 
 const fitTone = (pct: number): string => {
-  if (pct >= 90) return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-  if (pct >= 70) return 'bg-sky-100 text-sky-800 border-sky-200';
-  return 'bg-amber-100 text-amber-800 border-amber-200';
+  if (pct >= 90) return 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30';
+  if (pct >= 70) return 'bg-sky-100 dark:bg-sky-500/15 text-sky-800 dark:text-sky-300 border-sky-200 dark:border-sky-500/30';
+  return 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-500/30';
 };
 
 const fitBarColor = (pct: number): string => {
@@ -265,7 +265,7 @@ export default function CareerPathPage() {
                 {isExpanded && (
                   <CardContent className="pt-0 pb-3 px-4">
                     {fit.missing.length === 0 ? (
-                      <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-3 py-2 ml-7">
+                      <p className="text-xs text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 rounded px-3 py-2 ml-7">
                         ✓ Đã đáp ứng toàn bộ yêu cầu tối thiểu của vị trí này.
                       </p>
                     ) : (
@@ -280,7 +280,7 @@ export default function CareerPathPage() {
                                 <span className="text-muted-foreground">hiện tại </span>
                                 <b>L{m.current}</b>
                                 <span className="text-muted-foreground"> → yêu cầu </span>
-                                <b className="text-orange-700">L{m.required}</b>
+                                <b className="text-orange-700 dark:text-orange-300">L{m.required}</b>
                               </span>
                             </div>
                           );

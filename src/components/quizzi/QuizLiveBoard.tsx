@@ -13,7 +13,7 @@ export interface LiveParticipant {
   total_time_ms: number;
 }
 
-const MEDAL_CLASSES = ['text-yellow-500', 'text-slate-400', 'text-orange-600'];
+const MEDAL_CLASSES = ['text-yellow-500', 'text-slate-400', 'text-orange-600 dark:text-orange-400'];
 const PODIUM_EMOJI = ['🥇', '🥈', '🥉'];
 
 /**

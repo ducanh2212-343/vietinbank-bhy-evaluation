@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '@/hooks/useTheme';
 import { AppLayout } from '../AppLayout';
 
@@ -34,17 +35,22 @@ vi.mock('@/hooks/useCouncilAccess', () => ({
   useCouncilAccess: () => ({ loading: false, isMember: false, isSubject: false, isSupervisor: false, memberGroup: null }),
 }));
 
+// Thanh ngang có chuông thông báo — chuông đọc dữ liệu qua react-query, nên
+// khung phải dựng trong QueryClientProvider đúng như App.tsx thật.
 function dungKhung(path: string) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <ThemeProvider>
-      <MemoryRouter initialEntries={[path]}>
-        <Routes>
-          <Route element={<AppLayout />}>
-            <Route path="*" element={<div data-testid="noi-dung-trang">nội dung</div>} />
-          </Route>
-        </Routes>
-      </MemoryRouter>
-    </ThemeProvider>,
+    <QueryClientProvider client={qc}>
+      <ThemeProvider>
+        <MemoryRouter initialEntries={[path]}>
+          <Routes>
+            <Route element={<AppLayout />}>
+              <Route path="*" element={<div data-testid="noi-dung-trang">nội dung</div>} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </ThemeProvider>
+    </QueryClientProvider>,
   );
 }
 

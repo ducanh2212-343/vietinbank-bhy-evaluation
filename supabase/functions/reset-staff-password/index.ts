@@ -7,7 +7,7 @@
 //     cán bộ bấm link là vào thẳng trang đặt mật khẩu mới. Admin không thấy mật khẩu.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { HttpError, requireRole } from "../_shared/auth.ts";
-import { STAFF_CREATOR_ROLES } from "../_shared/roles.ts";
+import { isElevatedRole, STAFF_CREATOR_ROLES } from "../_shared/roles.ts";
 import { generatePassword, writeAuditLog } from "../_shared/staff.ts";
 import { APP_URL } from "../_shared/email-config.ts";
 
@@ -52,6 +52,24 @@ Deno.serve(async (req) => {
     // Không cho tự cấp lại mật khẩu của chính mình qua đường admin (dùng trang Đổi mật khẩu).
     if (profile.user_id === caller.userId) {
       throw new HttpError("Không thể tự cấp lại mật khẩu cho chính mình — dùng trang Đổi mật khẩu", 400);
+    }
+
+    // Chống leo thang: tcth_admin không được cấp lại mật khẩu cho tài khoản đang giữ
+    // vai trò quản trị. Thiếu chốt này, một tcth_admin đặt lại mật khẩu của system_admin
+    // rồi dùng temp_password trả về ở cuối hàm để đăng nhập, chiếm toàn quyền hệ thống.
+    // Cùng khuôn với update-staff-email và _shared/staff.ts.
+    if (!caller.roles.includes("system_admin")) {
+      const { data: roleRow } = await adminClient
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", profile.user_id)
+        .maybeSingle();
+      if (isElevatedRole((roleRow as { role: string } | null)?.role ?? null)) {
+        throw new HttpError(
+          "Tài khoản này đang giữ vai trò quản trị — chỉ Quản trị hệ thống mới được cấp lại mật khẩu.",
+          403,
+        );
+      }
     }
 
     // Email ĐĂNG NHẬP thật nằm ở auth.users — profiles.email có thể lệch (vd hồ sơ

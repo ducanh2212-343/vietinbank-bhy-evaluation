@@ -26,6 +26,7 @@ import { Award, Download, Pencil, Plus, Sparkles, Archive, CalendarCheck, AlertT
 // (~106 kB gzip), không đáng tải chỉ để mở trang xem danh sách dấu ấn.
 import { fetchWeeklyUpdateMap, isWeeklyTracked, type KanbanCard, type WeeklyUpdateMap } from '@/lib/kanban';
 import { UpdateProgressDialog } from '@/components/kanban/UpdateProgressDialog';
+import { safeHref } from '@/lib/safeUrl';
 
 const sb = supabase as any;
 
@@ -452,7 +453,7 @@ export default function LeadershipMarksPage() {
                       <Badge variant="outline">{m.leadership_competencies.name}</Badge>
                     )}
                     {m.core_values?.name && (
-                      <Badge variant="outline" className="border-amber-300 text-amber-700 dark:text-amber-300">
+                      <Badge variant="outline" className="border-amber-300 dark:border-amber-500/40 text-amber-700 dark:text-amber-300">
                         {m.core_values.name}
                       </Badge>
                     )}
@@ -500,7 +501,7 @@ export default function LeadershipMarksPage() {
                           <Pencil className="w-3.5 h-3.5 mr-1" /> Sửa khung
                         </Button>
                         {m.status === 'active' && (
-                          <Button size="sm" variant="outline" className="text-emerald-700"
+                          <Button size="sm" variant="outline" className="text-emerald-700 dark:text-emerald-300"
                                   onClick={() => confirmMark(m)}>
                             Ghi nhận
                           </Button>
@@ -522,9 +523,13 @@ export default function LeadershipMarksPage() {
                           </p>
                           {logNote(l) && <p className="whitespace-pre-wrap">{logNote(l)}</p>}
                           {l.evidence_url && (
-                            <a href={l.evidence_url} target="_blank" rel="noreferrer" className="underline text-primary">
-                              Bằng chứng đính kèm
-                            </a>
+                            safeHref(l.evidence_url)
+                              ? (
+                                <a href={safeHref(l.evidence_url)} target="_blank" rel="noreferrer" className="underline text-primary">
+                                  Bằng chứng đính kèm
+                                </a>
+                              )
+                              : <span className="text-muted-foreground break-all">Bằng chứng: {l.evidence_url}</span>
                           )}
                         </div>
                       ))}

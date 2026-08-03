@@ -18,6 +18,25 @@ export const IDEA_DEPARTMENTS = [
   'PGD Yên Mỹ',
 ] as const;
 
+export type IdeaDepartment = (typeof IDEA_DEPARTMENTS)[number];
+
+// Bảng departments (hồ sơ nhân sự) dùng tên đầy đủ, Ideas dùng tên rút gọn.
+// Dùng để suy ra Phòng/Ban của phiếu từ hồ sơ cán bộ, khỏi bắt cán bộ chọn lại.
+// Đối xứng với hàm SQL public.bhy_phong_ideas_sang_ho_so (migration 20260818090000).
+export const HO_SO_PHONG_SANG_IDEAS: Record<string, IdeaDepartment> = {
+  'Ban Giám đốc': 'Ban Giám Đốc',
+  'Phòng KHDN': 'Phòng KHDN',
+  'Phòng Bán lẻ': 'Phòng KHBL',
+  'Phòng Dịch vụ khách hàng': 'Phòng DVKH',
+  'Phòng Tổ chức Tổng hợp': 'Phòng TCTH',
+  'Phòng Hỗ trợ tín dụng': 'Phòng HTTD',
+  'Phòng giao dịch Khoái Châu': 'PGD Khoái Châu',
+  'Phòng giao dịch Văn Lâm': 'PGD Văn Lâm',
+  'Phòng giao dịch Văn Giang': 'PGD Văn Giang',
+  'Phòng giao dịch Ân Thi': 'PGD Ân Thi',
+  'Phòng giao dịch Yên Mỹ': 'PGD Yên Mỹ',
+};
+
 export const IDEA_LEVELS = ['Nội bộ CN', 'Đề xuất TSC'] as const;
 export const IDEA_APPLICABILITIES = ['Cấp Phòng', 'Cấp Chi nhánh', 'Toàn hàng'] as const;
 export const IDEA_DEV_LEVELS = ['Ươm mầm', 'Bén rễ', 'Vươn cành', 'Lan tỏa'] as const;

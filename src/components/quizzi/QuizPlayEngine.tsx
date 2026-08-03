@@ -39,11 +39,14 @@ interface Summary {
 
 type RpcResult = { data: unknown; error: { message: string } | null };
 
+// PromiseLike chứ không phải Promise: supabase.rpc() trả về builder "thenable"
+// (await được nhưng không có .catch/.finally). Khai Promise khiến mọi trang
+// truyền thẳng supabase.rpc(...) đều báo lỗi kiểu, dù chạy hoàn toàn đúng.
 export interface QuizPlayEngineProps {
   /** Gọi RPC bắt đầu/tiếp tục lượt làm */
-  start: () => Promise<RpcResult>;
+  start: () => PromiseLike<RpcResult>;
   /** Gọi RPC trả lời câu hiện hành (index theo thứ tự đang hiển thị) */
-  answer: (attemptId: string, index: number | null) => Promise<RpcResult>;
+  answer: (attemptId: string, index: number | null) => PromiseLike<RpcResult>;
   backPath: string;
   resultsPath: string;
   /** Ghi chú nhỏ ở màn kết thúc (mặc định nói về chuỗi tuần) */
@@ -300,7 +303,7 @@ export function QuizPlayEngine({ start, answer, backPath, resultsPath, completio
                 if (i === feedback.correct_index) {
                   cls = 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40';
                 } else if (i === selected && !feedback.is_correct) {
-                  cls = 'border-red-400 bg-red-50 dark:bg-red-950/40';
+                  cls = 'border-red-400 dark:border-red-500/50 bg-red-50 dark:bg-red-950/40';
                 } else {
                   cls = 'border-muted-foreground/10 opacity-60';
                 }
@@ -331,10 +334,10 @@ export function QuizPlayEngine({ start, answer, backPath, resultsPath, completio
       </Card>
 
       {inFeedback && feedback && (
-        <Card className={feedback.is_correct ? 'border-emerald-400' : 'border-red-300'}>
+        <Card className={feedback.is_correct ? 'border-emerald-400 dark:border-emerald-500/50' : 'border-red-300 dark:border-red-500/40'}>
           <CardContent className="py-4 space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <p className={`font-bold text-sm inline-flex items-center gap-1.5 ${feedback.is_correct ? 'text-emerald-600' : 'text-red-500'}`}>
+              <p className={`font-bold text-sm inline-flex items-center gap-1.5 ${feedback.is_correct ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
                 {feedback.is_correct
                   ? (<><CheckCircle2 className="w-4 h-4" /> Chính xác!</>)
                   : feedback.timed_out

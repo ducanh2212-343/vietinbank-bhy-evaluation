@@ -22,6 +22,8 @@ const mockAuth = {
   isAdmin: false,
   isManager: false,
   isPgd: false,
+  scope: 'self',
+  visibleDeptIds: [] as string[],
   loading: false,
 };
 
@@ -39,6 +41,7 @@ vi.mock('@/integrations/supabase/client', () => {
   return {
     supabase: {
       from: () => builder,
+      rpc: () => Promise.resolve({ data: [], error: null }),
       channel: () => ({ on: () => ({ subscribe: () => ({}) }), subscribe: () => ({}) }),
       removeChannel: () => {},
       storage: { from: () => ({ createSignedUrl: () => Promise.resolve({ data: null, error: null }) }) },
@@ -97,24 +100,21 @@ describe('Trang Chiêu thức 2', () => {
     }
   });
 
-  it('cán bộ thường không thấy nút lập kế hoạch', () => {
+  it('mọi vai trò đều ghi được việc — cùng một cửa vào, Cổng 1 chỉ hỏi 3 điều', async () => {
     dung(<OneMove2Page />, '/one/chieu-thuc-2');
-    expect(screen.queryByText('Lập kế hoạch')).not.toBeInTheDocument();
+    expect(await screen.findByText('+ Ghi việc')).toBeInTheDocument();
   });
 
-  it('lãnh đạo Phòng thấy nút lập kế hoạch', async () => {
+  it('lãnh đạo Phòng cũng vào bằng đúng cửa đó', async () => {
     mockAuth.isManager = true;
     dung(<OneMove2Page />, '/one/chieu-thuc-2');
-    // Bảng chỉ hiện sau khi lượt đọc dữ liệu xong — chờ thay vì kiểm ngay
-    expect(await screen.findByText('Lập kế hoạch')).toBeInTheDocument();
+    expect(await screen.findByText('+ Ghi việc')).toBeInTheDocument();
   });
 
-  it('cán bộ thường vẫn xem được bảng kế hoạch, chỉ không lập được', async () => {
+  it('mặc định vào «Việc của tôi» — nơi ghi nhịp sáng', async () => {
     dung(<OneMove2Page />, '/one/chieu-thuc-2');
-    // Cột Kanban hiện với mọi vai trò; chỉ nút lập kế hoạch mới gác quyền
-    expect(await screen.findByText('Chưa bắt đầu')).toBeInTheDocument();
-    expect(screen.getByText('Đang làm')).toBeInTheDocument();
-    expect(screen.getByText('Hoàn thành')).toBeInTheDocument();
-    expect(screen.queryByText('Lập kế hoạch')).not.toBeInTheDocument();
+    expect(await screen.findByText(/chưa có đầu việc nào đang chạy/)).toBeInTheDocument();
+    expect(screen.getByText('Việc của tôi')).toBeInTheDocument();
+    expect(screen.getByText('Bảng của Phòng')).toBeInTheDocument();
   });
 });

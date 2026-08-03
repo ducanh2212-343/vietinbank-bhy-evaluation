@@ -416,6 +416,7 @@ sửa tin tức hiện trên Trang chủ ONE.
 | Mẹo tính năng | Mẹo hiện ở banner Trang chủ, hộp nhắc một lần và trang Mẹo hay — mọi vai trò, mọi phân hệ |
 | Quản trị Email | Hàng đợi email của cả hệ thống: nhắc nộp phiếu, thông báo, quiz… |
 | Cài đặt | Phiên bản ứng dụng, lịch sử nâng cấp, bảng tham chiếu vai trò |
+| Cài đặt ngày giờ | Lịch nghỉ lễ + mốc giờ nhịp: mọi đồng hồ đếm ngày làm việc đọc từ đây (tuổi thẻ Kanban Chiêu thức 2, tuổi hồ sơ tín dụng, số ngày im lặng, mốc phát thông báo) |
 
 ### Ở lại phân hệ 343 (chỉ phục vụ kỳ đánh giá)
 
@@ -434,7 +435,7 @@ Khu này giờ có bốn thư mục: Danh mục người dùng · Tổ chức & 
 «người dùng» mà chứa hàng đợi email và phiên bản ứng dụng thì đúng kiểu menu
 gây rối mà cả đợt tái cấu trúc này đang dọn.
 
-Nguyên tắc được khóa bằng test (`navigation.test.ts`): bốn đường dẫn dùng chung
+Nguyên tắc được khóa bằng test (`navigation.test.ts`): năm đường dẫn dùng chung
 phải nằm ở khu `user-admin` và KHÔNG được xuất hiện trong `hr-343`; ba đường dẫn
 nghiệp vụ thì ngược lại.
 

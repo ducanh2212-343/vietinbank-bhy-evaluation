@@ -159,7 +159,7 @@ export default function QuizCampaignsPage() {
               {section === 'running' && (
                 attemptStatus === 'completed' ? (
                   <>
-                    <span className="inline-flex items-center gap-1 text-sm text-emerald-600 font-medium">
+                    <span className="inline-flex items-center gap-1 text-sm text-emerald-600 dark:text-emerald-400 font-medium">
                       <CheckCircle2 className="w-4 h-4" /> Đã hoàn thành
                     </span>
                     <Button size="sm" variant="outline" asChild>

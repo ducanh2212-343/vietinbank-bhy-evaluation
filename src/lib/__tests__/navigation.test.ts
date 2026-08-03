@@ -110,9 +110,12 @@ describe('Cấu trúc cây điều hướng', () => {
 
   it('tính năng dùng chung toàn cổng nằm ở khu Quản trị chung, không nằm trong phân hệ 343', () => {
     // Tin tức hiện trên Trang chủ ONE; mẹo tính năng hiện ở mọi trang; email là
-    // hàng đợi chung; cài đặt là phiên bản ứng dụng — không thứ nào thuộc riêng
-    // nghiệp vụ nhân sự, nên để trong phân hệ 343 là đặt sai chỗ.
-    const DUNG_CHUNG = ['/quan-tri-tin-tuc', '/quan-ly-meo-tinh-nang', '/quan-tri-email', '/cai-dat'];
+    // hàng đợi chung; cài đặt là phiên bản ứng dụng; cài đặt ngày giờ là nguồn
+    // của mọi đồng hồ đếm ngày làm việc (thẻ Kanban, hồ sơ tín dụng, ngày im
+    // lặng) — không thứ nào thuộc riêng nghiệp vụ nhân sự, nên để trong phân hệ
+    // 343 là đặt sai chỗ.
+    const DUNG_CHUNG = ['/quan-tri-tin-tuc', '/quan-ly-meo-tinh-nang', '/quan-tri-email', '/cai-dat',
+      '/lich-nghi-le'];
     const duongDanCuaKhu = (id: string) =>
       flattenLeaves(NAV_SECTIONS.filter((s) => s.id === id)).map((x) => x.leaf.path);
 
@@ -264,13 +267,14 @@ describe('Mọi route khai trong App.tsx đều tra được trên cây', () => 
   // Route mất chỗ trên cây sẽ mất cả breadcrumb lẫn menu dọc — người dùng lạc
   // đường mà không có tín hiệu nào. Test này quét thẳng bảng định tuyến thật.
   const nguon = readFileSync(resolvePath(__dirname, '../../App.tsx'), 'utf8');
-  const duongDan = [...nguon.matchAll(/<Route\s+path="([^"]+)"/g)]
+  const duongDan = [...nguon.matchAll(/<Route\s+path="([^"]+)"\s+element=\{([^}]*)/g)]
+    // Route chỉ để chuyển hướng (element là <Navigate>) tự loại — đích đến mới
+    // là mục nằm trên cây, nên không phải bổ sung danh sách trừ mỗi lần đổi tên
+    .filter((m) => !m[2].includes('<Navigate'))
     .map((m) => m[1])
     .filter((p) => p !== '*' && p !== '/')
-    // Route chuyển hướng và trang ngoài khung đăng nhập không thuộc cây menu
-    .filter((p) => !['/dang-nhap', '/dang-ky-tai-khoan', '/quen-mat-khau', '/dat-lai-mat-khau', '/unsubscribe'].includes(p))
-    // Route chỉ để chuyển hướng — không phải mục menu
-    .filter((p) => !['/one/dac-trung', '/one/chieu-thuc', '/one/kho-du-lieu', '/one/nguon-coi', '/one/sang-kien', '/one/bhy-ways'].includes(p));
+    // Trang ngoài khung đăng nhập không thuộc cây menu
+    .filter((p) => !['/dang-nhap', '/dang-ky-tai-khoan', '/quen-mat-khau', '/dat-lai-mat-khau', '/unsubscribe'].includes(p));
 
   it('tìm được ít nhất 60 route để kiểm', () => {
     expect(duongDan.length).toBeGreaterThan(60);

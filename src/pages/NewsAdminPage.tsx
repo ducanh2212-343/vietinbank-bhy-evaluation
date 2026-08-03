@@ -97,8 +97,8 @@ export default function NewsAdminPage() {
       </div>
 
       {!bienTapDuoc && (
-        <Card className="border-amber-300 bg-amber-50/60">
-          <CardContent className="py-4 text-sm text-amber-900">
+        <Card className="border-amber-300 dark:border-amber-500/40 bg-amber-50/60 dark:bg-amber-500/10">
+          <CardContent className="py-4 text-sm text-amber-900 dark:text-amber-200">
             Bạn đang ở chế độ <strong>chỉ xem</strong>. Quyền biên tập tin nội bộ thuộc về
             System Admin và Admin TCTH — đây là ràng buộc ở tầng cơ sở dữ liệu, không phải chỉ
             ẩn nút trên giao diện.
@@ -124,7 +124,7 @@ export default function NewsAdminPage() {
       ) : (
         <div className="space-y-2.5">
           {danhSach.map((item) => (
-            <Card key={item.id} className={item.isFeatured ? 'border-amber-300' : undefined}>
+            <Card key={item.id} className={item.isFeatured ? 'border-amber-300 dark:border-amber-500/40' : undefined}>
               <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start">
                 {item.imageUrl && (
                   <img
@@ -138,7 +138,7 @@ export default function NewsAdminPage() {
                   <div className="mb-1 flex flex-wrap items-center gap-1.5">
                     <Badge variant="secondary">{CATEGORY_NAMES[item.category] || item.category}</Badge>
                     {item.isFeatured && <Badge className="bg-amber-500 hover:bg-amber-500">Ghim Trang chủ</Badge>}
-                    {item.isShared && <Badge variant="outline" className="text-emerald-700">Mở cho khách</Badge>}
+                    {item.isShared && <Badge variant="outline" className="text-emerald-700 dark:text-emerald-300">Mở cho khách</Badge>}
                   </div>
                   <p className="truncate font-semibold">{item.title}</p>
                   <p className="line-clamp-2 text-sm text-muted-foreground">{item.summary}</p>

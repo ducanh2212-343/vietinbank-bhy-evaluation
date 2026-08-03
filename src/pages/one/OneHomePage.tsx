@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom';
 import {
-  Sparkles, Zap, Star, ArrowRight, Upload, Lightbulb, ShieldAlert, Layers,
+  Sparkles, Zap, Star, ArrowRight, Upload, Lightbulb, ShieldAlert, Layers, ClipboardList,
 } from 'lucide-react';
 import { OnePageShell } from '@/components/one/OnePageShell';
 import { CultureTree } from '@/components/one/CultureTree';
 import { PersonalKanbanMini } from '@/components/kanban/PersonalKanbanMini';
+import { Ct2HomeStrip } from '@/components/one/move2/Ct2HomeStrip';
+import { Ct2DieuHanhBgd } from '@/components/one/move2/Ct2DieuHanhBgd';
 import { NewsRail } from '@/components/one/news/NewsRail';
 import { useOneUploads } from '@/components/one/useOneUploads';
 import { useAuth } from '@/hooks/useAuth';
@@ -23,6 +25,7 @@ import { MOVE3_ATTITUDES, MOVE3_SKILL_GROUPS } from '@/data/one/move3Data';
 // một cửa», docs/so-do-site-bhy-one.md).
 
 const THAO_TAC_NHANH = [
+  { to: '/one/chieu-thuc-2', icon: ClipboardList, label: 'Bảng việc & ghi nhịp', color: 'from-brand-navy to-blue-700' },
   { to: '/one/tin-tuc?action=chia-se', icon: Upload, label: 'Chia sẻ kinh nghiệm', color: 'from-blue-500 to-brand-royal' },
   { to: '/quizzi', icon: Zap, label: 'Làm BHY Quizzi', color: 'from-red-500 to-amber-500' },
   { to: '/one/y-tuong', icon: Lightbulb, label: 'Gửi BHY Ideas', color: 'from-amber-500 to-orange-500' },
@@ -82,6 +85,15 @@ function HomeContent() {
               : 'Nguồn cội → Học hỏi → Hành động → Thói quen → Năng lực và văn hóa → Thành quả.'}
           </p>
         </div>
+
+        {/* Nhịp sáng của Chiêu thức 2 đứng trên cùng: đây là thứ đổi mỗi ngày
+            và có khung giờ cố định, nên phải thấy ngay khi mở cổng, không bắt
+            cán bộ nhớ đường vào trang riêng. */}
+        {!isGuest && profileId && <Ct2HomeStrip />}
+
+        {/* BGĐ: gộp ba tầng điều hành về một chỗ thay vì bắt đi qua bốn nơi —
+            việc đang chờ chính mình · nhịp các phòng phụ trách · dấu ấn tuần này. */}
+        {!isGuest && profileId && <Ct2DieuHanhBgd />}
 
         {!isGuest && profileId && (
           <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-3">

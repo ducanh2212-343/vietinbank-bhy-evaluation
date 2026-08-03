@@ -5,7 +5,7 @@ import {
   UserCheck, Sparkles, GraduationCap, ClipboardList, KeyRound, ListPlus,
   CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag, GitBranch,
   ListChecks, Building2, Gavel, TrendingUp, Zap, Lightbulb,
-  Home, BookOpen, Compass, Layers, Share2,
+  Home, BookOpen, Compass, Layers, Share2, CalendarDays, NotebookPen, Sprout,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -290,6 +290,13 @@ export const NAV_SECTIONS: NavSection[] = [
             keywords: ['kanban', 'ke hoach hanh dong', 'viec cua toi', 'idp'],
           },
           {
+            // Bản ghi hành vi được lãnh đạo chia sẻ đích danh cho cán bộ
+            label: 'Hành vi của tôi',
+            icon: Sprout,
+            path: '/hanh-vi-cua-toi',
+            keywords: ['hanh vi', 'hanh dong', 'khen ngoi', 'ghi nhan'],
+          },
+          {
             label: 'Hồ sơ cá nhân',
             icon: User,
             path: '/ho-so-ca-nhan',
@@ -334,6 +341,9 @@ export const NAV_SECTIONS: NavSection[] = [
           },
           // Màn điều hành Kanban kế hoạch hành động quý: TP (phòng), PGĐ (khối), TCTH/BGĐ (toàn CN)
           { label: 'Quản lý hành động Kanban', icon: ListChecks, path: '/quan-ly-hanh-dong', minRole: 'manager', keywords: ['kanban', 'ke hoach quy'] },
+          // Sổ tay ghi nhận hành vi cán bộ của lãnh đạo. minRole 'manager' khớp
+          // quyền xem trang (manager/pgd/bgd/admin); trang tự gác chi tiết.
+          { label: 'Nhật ký hành vi', icon: NotebookPen, path: '/nhat-ky-hanh-vi', minRole: 'manager', keywords: ['hanh vi', 'ghi nhanh', 'so tay', 'quan sat'] },
           { label: 'Phân nhóm cán bộ', icon: Star, path: '/phan-nhom-can-bo', minRole: 'manager', keywords: ['xep nhom', 'phan loai'] },
           { label: 'Báo cáo', icon: BarChart3, path: '/bao-cao', minRole: 'manager', keywords: ['thong ke', 'bieu do'] },
           // Hiển thị theo phạm vi: GĐ/PGĐ (phòng phụ trách), lãnh đạo Phòng TCTH + admin (full chi nhánh)
@@ -479,6 +489,17 @@ export const NAV_SECTIONS: NavSection[] = [
         items: [
           // Hàng đợi email của cả hệ thống: nhắc nộp phiếu, thông báo, quiz…
           { label: 'Quản trị Email', icon: Mail, path: '/quan-tri-email', minRole: 'admin', keywords: ['hang doi', 'gui mail'] },
+          // Lịch nghỉ lễ + mốc giờ nhịp: mọi đồng hồ đếm ngày làm việc của chi
+          // nhánh đọc từ đây (tuổi thẻ Kanban, tuổi hồ sơ tín dụng, số ngày im
+          // lặng, mốc phát thông báo) — dùng chung, không riêng phân hệ nào
+          {
+            label: 'Cài đặt ngày giờ',
+            icon: CalendarDays,
+            path: '/lich-nghi-le',
+            minRole: 'admin',
+            keywords: ['ngay nghi', 'nghi le', 'tet', 'gio to', 'lam bu', 'ngay lam viec',
+              'moc gio', 'gio nhip', 'gio giao ban', 'nguong canh bao'],
+          },
           // Phiên bản ứng dụng, lịch sử nâng cấp, bảng tham chiếu vai trò
           { label: 'Cài đặt', icon: SettingsIcon, path: '/cai-dat', minRole: 'admin', keywords: ['phien ban', 'he thong'] },
         ],

@@ -137,7 +137,7 @@ export default function AddStaff() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-green-600" /> Đã tạo tài khoản cán bộ
+              <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" /> Đã tạo tài khoản cán bộ
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">

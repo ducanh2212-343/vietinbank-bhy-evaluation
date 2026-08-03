@@ -37,10 +37,10 @@ export function AutosaveStatusBar({ state, lastSavedAt, dirty }: Props) {
     icon = <Loader2 className="w-3 h-3 animate-spin" />;
     text = 'Đang tự lưu…';
   } else if (state === 'error') {
-    icon = <AlertTriangle className="w-3 h-3 text-amber-600" />;
+    icon = <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400" />;
     text = 'Chưa tự lưu được — sẽ thử lại';
   } else if (lastSavedAt) {
-    icon = <Check className="w-3 h-3 text-emerald-600" />;
+    icon = <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />;
     const hhmm = lastSavedAt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     text = dirty ? `Đã tự lưu ${hhmm} · có thay đổi mới` : `Đã tự lưu ${hhmm}`;
   } else if (dirty) {

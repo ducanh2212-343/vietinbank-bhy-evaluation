@@ -38,7 +38,7 @@ interface Review {
   questions: ReviewQuestion[];
 }
 
-const MEDAL_CLASSES = ['text-yellow-500', 'text-slate-400', 'text-orange-600'];
+const MEDAL_CLASSES = ['text-yellow-500', 'text-slate-400', 'text-orange-600 dark:text-orange-400'];
 
 /**
  * Kết quả một quiz: xếp hạng TRONG PHÒNG (top 3 nổi bật, dòng của mình được
@@ -150,7 +150,7 @@ export default function QuizResultsPage() {
         {review && (
           <TabsContent value="bailam" className="mt-3 space-y-3">
             {review.questions.map((q, i) => (
-              <Card key={i} className={q.is_correct ? 'border-emerald-300/60' : 'border-red-300/60'}>
+              <Card key={i} className={q.is_correct ? 'border-emerald-300/60 dark:border-emerald-500/40' : 'border-red-300/60 dark:border-red-500/40'}>
                 <CardContent className="py-4 space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-sm font-semibold">Câu {i + 1}. {q.statement}</p>
@@ -164,7 +164,7 @@ export default function QuizResultsPage() {
                         key={oi}
                         className={`text-sm px-2 py-1 rounded
                           ${oi === q.correct_index ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-medium' : ''}
-                          ${oi === q.selected_index && oi !== q.correct_index ? 'bg-red-50 dark:bg-red-950/40 text-red-600 line-through' : ''}`}
+                          ${oi === q.selected_index && oi !== q.correct_index ? 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 line-through' : ''}`}
                       >
                         {String.fromCharCode(65 + oi)}. {opt}
                         {oi === q.selected_index && ' ← bạn chọn'}

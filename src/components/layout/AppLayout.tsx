@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation, useNavigationType } from 'react-router-dom';
 import { NavTreeProvider, useNavTree } from '@/hooks/useNavTree';
+import { useLichNghi } from '@/hooks/useLichNghi';
+import { useCauHinhNhip } from '@/hooks/useCauHinhNhip';
 import { TopNav } from './TopNav';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
 import { MobileNav } from './MobileNav';
 import { Breadcrumbs } from './Breadcrumbs';
 import { CommandPalette, usePhimTatBangLenh, useGhiNhoTrangGanDay } from './CommandPalette';
 import { cn } from '@/lib/utils';
+import { QuickNoteFab } from '@/components/behavior/QuickNoteFab';
 
 /**
  * Khung ứng dụng sau đăng nhập.
@@ -29,6 +32,11 @@ function KhungUngDung() {
   const lanDau = useRef(true);
 
   usePhimTatBangLenh(setMoBangLenh);
+
+  // Nạp lịch nghỉ lễ một lần cho cả phiên: mọi phép đếm ngày làm việc phía
+  // client (tuổi chờ thẻ, tuổi chờ hồ sơ, số ngày im lặng) đọc từ sổ này.
+  useLichNghi();
+  useCauHinhNhip();
 
   // Chỉ ghi nhớ trang có mặt trên cây điều hướng
   useGhiNhoTrangGanDay(viTri.leaf?.path);
@@ -95,6 +103,8 @@ function KhungUngDung() {
           {laKhuLamViec && <Breadcrumbs />}
           <Outlet />
         </main>
+        {/* Nút nổi Ghi nhanh hành vi — tự ẩn với người không có quyền ghi */}
+        <QuickNoteFab />
       </div>
 
       <MobileNav />

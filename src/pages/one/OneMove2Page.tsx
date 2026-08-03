@@ -1,44 +1,39 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ClipboardList, Compass, Grid3x3, Info, RefreshCw, Target } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { Banknote, CalendarRange, ClipboardList, Info, Inbox, UserRound } from 'lucide-react';
 import { OnePageShell } from '@/components/one/OnePageShell';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useActionPlans } from '@/components/one/move2/useActionPlans';
-import { ActionPlanBoard } from '@/components/one/move2/ActionPlanBoard';
-import { ActionPlanDetailDialog, ActionPlanCreateDialog } from '@/components/one/move2/ActionPlanDialogs';
-import type { ActionPlan } from '@/lib/actionPlans';
+import { laLoiThieuBangCt2, type Ct2DauViec, type Ct2TrangThai } from '@/lib/ct2';
+import { Ct2Board } from '@/components/one/move2/Ct2Board';
+import { Ct2GioiThieu } from '@/components/one/move2/Ct2GioiThieu';
+import { Ct2BangNhip } from '@/components/one/move2/Ct2BangNhip';
+import { Ct2CardDialog } from '@/components/one/move2/Ct2CardDialog';
+import { Ct2CreateDialog } from '@/components/one/move2/Ct2CreateDialog';
+import { Ct2PlanDialog } from '@/components/one/move2/Ct2PlanDialog';
+import { Ct2CreditBoard } from '@/components/one/move2/Ct2CreditBoard';
+import { Ct2CreditCardDialog, Ct2CreditCreateDialog } from '@/components/one/move2/Ct2CreditDialogs';
+import {
+  useCt2HoSo, useCt2PhongPdtd, useCt2SapDenHan,
+} from '@/components/one/move2/useCt2TinDung';
+import type { HoSoTinDung, HsTrangThai } from '@/lib/ct2TinDung';
+import { Ct2MyWork } from '@/components/one/move2/Ct2MyWork';
+import {
+  ct2XuLyDeXuat, useCt2Board, useCt2DeXuat, useCt2LamTuoi, useCt2NhanSu,
+  useCt2NhipPhong, useCt2Phong, type Ct2DeXuat,
+} from '@/components/one/move2/useCt2Data';
 
-// Chiêu thức 2 — «Lập kế hoạch hành động». Trang gồm hai phần:
-//  1. Giới thiệu phương pháp: SWOT → TOWS → 5W2H (nội dung nghiệp vụ đã duyệt).
-//  2. Bảng kế hoạch hành động cấp Phòng của cả Chi nhánh, theo nhịp PDCA.
-// Phạm vi xem do RLS quyết định: phòng mình · phòng PGĐ phụ trách · toàn CN với
-// Giám đốc và Phòng TCTH · cộng thêm các phòng được thêm vào chiến dịch chung.
+// Chiêu thức 2 — «Kế hoạch hành động»: Kanban 5W2H + PDCA theo đặc tả v1.0
+// (01/08/2026). Hai màn hình chính: M1 «Việc của tôi» (mặc định — nơi ghi nhịp
+// sáng 7h00–8h00) và M2 «Bảng của Phòng» (Kanban 7 cột, cả phòng cùng đọc).
 
-const BUOC = [
-  {
-    icon: Compass,
-    ten: 'SWOT',
-    mo: 'Nhìn thẳng vào nội tại: điểm mạnh, điểm yếu của Phòng và cơ hội, thách thức từ địa bàn.',
-  },
-  {
-    icon: Grid3x3,
-    ten: 'TOWS',
-    mo: 'Ghép cặp các yếu tố để ra hướng đi: lấy điểm mạnh đón cơ hội, khắc phục điểm yếu trước thách thức.',
-  },
-  {
-    icon: Target,
-    ten: '5W2H',
-    mo: 'Biến hướng đi thành việc cụ thể: What · Why · When · Where · Who · How · How much.',
-  },
-  {
-    icon: RefreshCw,
-    ten: 'PDCA',
-    mo: 'Báo nhịp hằng tuần trên chính thẻ việc — Plan, Do, Check, Act — để kế hoạch không nằm trên giấy.',
-  },
-];
 
 interface Cycle { id: string; name: string; status: string }
 
@@ -51,167 +46,304 @@ export default function OneMove2Page() {
 }
 
 function NoiDung() {
-  const { isAdmin, isManager, isPgd } = useAuth();
-  const [cycles, setCycles] = useState<Cycle[]>([]);
-  const [cycleId, setCycleId] = useState<string | null>(null);
-  const [mo, setMo] = useState<ActionPlan | null>(null);
-  const [dangTao, setDangTao] = useState(false);
+  const { isAdmin, isManager, isPgd, departmentId, scope, visibleDeptIds, profileId } = useAuth();
+  const lamTuoi = useCt2LamTuoi();
 
+  const { data: phongs = [] } = useCt2Phong();
+  const { data: nhanSu = [] } = useCt2NhanSu();
+
+  // Phòng đang xem: cán bộ/quản lý = phòng mình; PGĐ = phòng phụ trách; QT = mọi phòng
+  const phongDuocChon = useMemo(() => {
+    if (scope === 'all' || isAdmin) return phongs;
+    const ids = new Set([departmentId, ...visibleDeptIds].filter(Boolean) as string[]);
+    return phongs.filter((p) => ids.has(p.id));
+  }, [phongs, scope, isAdmin, departmentId, visibleDeptIds]);
+
+  const [phongId, setPhongId] = useState<string | null>(null);
   useEffect(() => {
-    let huy = false;
-    (async () => {
+    if (phongId) return;
+    // Ưu tiên phòng của chính mình — không chờ danh mục phòng tải xong
+    if (departmentId) { setPhongId(departmentId); return; }
+    if (phongDuocChon.length > 0) setPhongId(phongDuocChon[0].id);
+  }, [phongId, phongDuocChon, departmentId]);
+
+  const { data: cycles = [] } = useQuery({
+    queryKey: ['ct2', 'cycles'],
+    staleTime: 300_000,
+    queryFn: async () => {
       const { data } = await supabase
         .from('evaluation_cycles')
         .select('id, name, status')
         .order('start_date', { ascending: false })
         .limit(8);
-      if (huy) return;
-      const ds = (data ?? []) as Cycle[];
-      setCycles(ds);
-      // Mặc định vào kỳ đang mở; không có kỳ mở thì lấy kỳ gần nhất
-      setCycleId(ds.find((c) => c.status === 'active')?.id ?? ds[0]?.id ?? null);
-    })();
-    return () => { huy = true; };
-  }, []);
+      return (data ?? []) as Cycle[];
+    },
+  });
+  const cycleId = cycles.find((c) => c.status === 'active')?.id ?? cycles[0]?.id ?? null;
 
-  const { plans, phongThamGia, departments, loading, chuaApMigration, loi, taiLai } = useActionPlans(cycleId);
+  const { data: dsThe = [], isLoading, error } = useCt2Board(phongId);
+  const { data: nhipNguoi = [] } = useCt2NhipPhong(phongId);
+  const { data: deXuats = [] } = useCt2DeXuat(phongId);
 
-  const coQuyenTao = isAdmin || isManager || isPgd;
-  const planDangMo = useMemo(
-    () => (mo ? plans.find((p) => p.id === mo.id) ?? mo : null),
-    [mo, plans],
+  // Quyền tạo/sửa với phòng đang xem (client chỉ để bố trí nút — RLS mới là hàng rào)
+  const laLanhDao = isAdmin || isPgd || (isManager && phongId === departmentId);
+
+  const [dangTao, setDangTao] = useState(false);
+  const [deXuatDangDuyet, setDeXuatDangDuyet] = useState<Ct2DeXuat | null>(null);
+  const [theMo, setTheMo] = useState<Ct2DauViec | null>(null);
+  const [chuyenDen, setChuyenDen] = useState<Ct2TrangThai | null>(null);
+  // Cổng 2 «Bắt đầu làm» — hỏi nốt 5W2H đúng lúc khởi động việc
+  const [theLapKeHoach, setTheLapKeHoach] = useState<Ct2DauViec | null>(null);
+  const [khoiDongLuon, setKhoiDongLuon] = useState(true);
+
+  // Bàn Phê duyệt tín dụng — chỉ phòng có cấp tín dụng mới thấy tab này
+  const { data: phongCoPdtd = [] } = useCt2PhongPdtd();
+  const coPdtd = !!phongId && phongCoPdtd.includes(phongId);
+  const { data: dsHoSo = [], isLoading: dangTaiHoSo } = useCt2HoSo(phongId, coPdtd);
+  const { data: sapDenHan = [] } = useCt2SapDenHan(phongId, coPdtd);
+  const [hoSoMo, setHoSoMo] = useState<HoSoTinDung | null>(null);
+  const [hoSoChuyenDen, setHoSoChuyenDen] = useState<HsTrangThai | null>(null);
+  const [dangMoHoSo, setDangMoHoSo] = useState(false);
+  const hoSoDangMo = useMemo(
+    () => (hoSoMo ? dsHoSo.find((h) => h.id === hoSoMo.id) ?? hoSoMo : null),
+    [hoSoMo, dsHoSo],
   );
+
+  // Thẻ đang mở luôn lấy bản mới nhất từ cache board (sau khi ghi nhịp/chuyển cột)
+  const theDangMo = useMemo(
+    () => (theMo ? dsThe.find((t) => t.id === theMo.id) ?? theMo : null),
+    [theMo, dsThe],
+  );
+
+  const moTheTuId = (id: string) => {
+    const t = dsThe.find((x) => x.id === id);
+    if (t) { setChuyenDen(null); setTheMo(t); return; }
+    // Thẻ liên phòng ngoài bảng đang xem — tải riêng một thẻ
+    (async () => {
+      const db = supabase as unknown as {
+        from(t: string): { select(c: string): { eq(c: string, v: string): { maybeSingle(): PromiseLike<{ data: unknown }> } } };
+      };
+      const { data } = await db.from('ct2_dau_viec').select('*').eq('id', id).maybeSingle();
+      if (data) { setChuyenDen(null); setTheMo(data as Ct2DauViec); }
+    })();
+  };
+
+  const chuaApMigration = laLoiThieuBangCt2(error as { code?: string; message?: string } | null);
+
+  // Mở đúng thứ mà thông báo trỏ tới. Nếu bấm push/chuông mà chỉ về trang chung
+  // thì cán bộ vẫn phải tự đi tìm thẻ — coi như thông báo không có tác dụng.
+  const [thamSo, datThamSo] = useSearchParams();
+  const [tab, setTab] = useState(() => thamSo.get('tab') ?? 'cua-toi');
+  const daMoTheoLien = useRef<string | null>(null);
+  useEffect(() => {
+    const id = thamSo.get('the');
+    if (!id || daMoTheoLien.current === id) return;
+    daMoTheoLien.current = id;
+    setTab('phong');
+    moTheTuId(id);
+    // Xoá tham số sau khi dùng — đóng thẻ rồi tải lại trang không bật lên nữa
+    const con = new URLSearchParams(thamSo);
+    con.delete('the');
+    datThamSo(con, { replace: true });
+    // moTheTuId phụ thuộc dsThe (đổi mỗi lần làm tươi) — cố ý chỉ chạy theo tham số
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [thamSo]);
+  // Tab tín dụng chỉ tồn tại với phòng có cấp tín dụng — về mặc định nếu không có
+  useEffect(() => {
+    if (tab === 'tin-dung' && phongCoPdtd.length > 0 && !coPdtd) setTab('cua-toi');
+    if (tab === 'bang-nhip' && !laLanhDao) setTab('cua-toi');
+  }, [tab, coPdtd, phongCoPdtd.length, laLanhDao]);
 
   return (
     <>
-      {/* Giới thiệu phương pháp */}
-      <section className="border-b border-slate-200 bg-gradient-to-b from-blue-50 via-white to-slate-50">
-        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
-          <p className="text-2xs font-semibold uppercase tracking-widest text-brand-red">Chiêu thức số 2</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-brand-navy sm:text-4xl">
-            Lập kế hoạch — Hành động
-          </h1>
-          <p className="mt-3 max-w-3xl text-base leading-relaxed text-slate-600">
-            «Bí kíp bỏ túi» để các Phòng giao chỉ tiêu và lập kế hoạch hành động: đánh giá nội tại theo
-            SWOT, kết hợp yếu tố theo ma trận TOWS, rồi cụ thể hóa thành hành động theo công thức 5W2H.
-            Nhờ vậy đầu mối PDCA định kỳ dễ dàng và có tính định lượng. Duy trì từ tháng 2/2024.
-          </p>
+      <Ct2GioiThieu />
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {BUOC.map(({ icon: Icon, ten, mo: moTa }, i) => (
-              <div key={ten} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="mb-2 flex items-center gap-2">
-                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-navy/10 text-brand-navy">
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <span className="text-2xs font-semibold tabular-nums text-slate-400">Bước {i + 1}</span>
-                </div>
-                <p className="text-sm font-semibold text-brand-navy">{ten}</p>
-                <p className="mt-1 text-sm leading-relaxed text-slate-600">{moTa}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Bảng kế hoạch hành động toàn Chi nhánh */}
-      <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="flex items-center gap-2 text-xl font-bold tracking-tight text-brand-navy">
-              <ClipboardList className="h-5 w-5" />
-              Kế hoạch hành động của Chi nhánh
-            </h2>
-            <p className="mt-1 text-sm text-slate-600">
-              Anh/chị thấy kế hoạch của phòng mình, các phòng mình phụ trách, và mọi chiến dịch chung
-              có phòng mình tham gia.
-            </p>
-          </div>
-          {cycles.length > 0 && (
-            <Select value={cycleId ?? ''} onValueChange={setCycleId}>
-              <SelectTrigger className="h-9 w-full sm:w-56" aria-label="Chọn kỳ">
-                <SelectValue placeholder="Chọn kỳ" />
-              </SelectTrigger>
-              <SelectContent>
-                {cycles.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
-
-        {chuaApMigration && (
+      <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        {chuaApMigration ? (
           <Alert>
             <Info className="h-4 w-4" />
             <AlertTitle>Tính năng đã sẵn sàng, còn chờ áp migration</AlertTitle>
             <AlertDescription>
-              Bảng kế hoạch hành động chưa có trong database. Quản trị viên cần áp migration
-              <code className="mx-1 rounded bg-muted px-1 py-0.5 text-xs">
-                20260805090000_chieu_thuc_2_ke_hoach_hanh_dong_phong.sql
-              </code>
-              vào project Supabase (SQL Editor hoặc <code className="text-xs">supabase db push</code>),
-              rồi tải lại trang.
+              Cần áp migration
+              <code className="mx-1 rounded bg-muted px-1 py-0.5 text-xs">20260806090000_ct2_kanban_5w2h_pdca.sql</code>
+              vào project Supabase (SQL Editor hoặc <code className="text-xs">supabase db push</code>), rồi tải lại trang.
             </AlertDescription>
           </Alert>
-        )}
-
-        {loi && !chuaApMigration && (
-          <Alert variant="destructive">
-            <AlertTitle>Không đọc được dữ liệu</AlertTitle>
-            <AlertDescription>{loi}</AlertDescription>
-          </Alert>
-        )}
-
-        {loading && !chuaApMigration && (
-          <div className="grid gap-4 lg:grid-cols-3">
-            {[0, 1, 2].map((i) => <Skeleton key={i} className="h-56 rounded-2xl" />)}
-          </div>
-        )}
-
-        {!loading && !chuaApMigration && !loi && (
-          <>
-            {plans.length === 0 ? (
-              <div className="rounded-2xl border border-dashed p-10 text-center">
-                <p className="text-sm text-slate-600">
-                  Kỳ này chưa có kế hoạch hành động nào trong tầm nhìn của anh/chị.
-                </p>
-                {coQuyenTao && (
-                  <p className="mt-1 text-sm text-slate-500">
-                    Bấm «Lập kế hoạch» để mở kế hoạch đầu tiên cho Phòng.
-                  </p>
+        ) : (
+          <Tabs value={tab} onValueChange={setTab}>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <TabsList>
+                <TabsTrigger value="cua-toi" className="gap-1.5">
+                  <UserRound className="h-4 w-4" /> Việc của tôi
+                </TabsTrigger>
+                <TabsTrigger value="phong" className="gap-1.5">
+                  <ClipboardList className="h-4 w-4" /> Bảng của Phòng
+                </TabsTrigger>
+                {coPdtd && (
+                  <TabsTrigger value="tin-dung" className="gap-1.5">
+                    <Banknote className="h-4 w-4" /> Phê duyệt tín dụng
+                  </TabsTrigger>
                 )}
+                {/* Bảng tổng hợp nhịp là công cụ điều hành — chỉ lãnh đạo thấy.
+                    Cán bộ nhìn thấy bảng xếp mình so với đồng nghiệp mỗi sáng thì
+                    nhịp thành cuộc thi, không còn là tấm gương soi cho chính mình. */}
+                {laLanhDao && (
+                  <TabsTrigger value="bang-nhip" className="gap-1.5">
+                    <CalendarRange className="h-4 w-4" /> Bảng nhịp
+                  </TabsTrigger>
+                )}
+              </TabsList>
+              <div className="flex flex-wrap items-center gap-2">
+                {phongDuocChon.length > 1 && (
+                  <Select value={phongId ?? ''} onValueChange={setPhongId}>
+                    <SelectTrigger className="h-9 w-full sm:w-52" aria-label="Chọn phòng">
+                      <SelectValue placeholder="Chọn phòng" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {phongDuocChon.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
+                <Button onClick={() => { setDeXuatDangDuyet(null); setDangTao(true); }}>
+                  + Ghi việc
+                </Button>
               </div>
-            ) : null}
-
-            <div className={plans.length === 0 ? 'mt-4' : ''}>
-              <ActionPlanBoard
-                plans={plans}
-                departments={departments}
-                phongThamGia={phongThamGia}
-                onMoKeHoach={setMo}
-                onTaoMoi={() => setDangTao(true)}
-                coQuyenTao={coQuyenTao}
-              />
             </div>
-          </>
+
+            <TabsContent value="cua-toi">
+              <Ct2MyWork onMoThe={moTheTuId} />
+            </TabsContent>
+
+            <TabsContent value="phong">
+              {/* Hộp đề xuất chờ duyệt — chỉ lãnh đạo thấy nút xử lý */}
+              {deXuats.length > 0 && (
+                <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-3">
+                  <p className="flex items-center gap-2 text-sm font-semibold text-amber-900">
+                    <Inbox className="h-4 w-4" /> Đề xuất việc chờ duyệt ({deXuats.length}) — chưa hiện trên Kanban
+                  </p>
+                  <div className="mt-2 space-y-2">
+                    {deXuats.map((dx) => (
+                      <div key={dx.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white p-2.5 text-sm">
+                        <span className="min-w-0">
+                          <span className="block font-medium text-slate-800">{dx.tieu_de}</span>
+                          <span className="block text-xs text-slate-500">
+                            {nhanSu.find((n) => n.id === dx.nguoi_de_xuat)?.full_name ?? '—'}: {dx.ly_do}
+                          </span>
+                        </span>
+                        {laLanhDao && (
+                          <span className="flex shrink-0 gap-2">
+                            <Button size="sm" onClick={() => { setDeXuatDangDuyet(dx); setDangTao(true); }}>
+                              Bổ sung 5W2H & duyệt
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={async () => {
+                              const { error: e } = await ct2XuLyDeXuat(dx.id, {
+                                trang_thai: 'TU_CHOI', xu_ly_boi: profileId, xu_ly_luc: new Date().toISOString(),
+                              });
+                              if (e) toast.error(e); else { toast.success('Đã từ chối đề xuất.'); lamTuoi(); }
+                            }}>
+                              Từ chối
+                            </Button>
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {isLoading ? (
+                <div className="grid gap-4 lg:grid-cols-4">
+                  {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-56 rounded-2xl" />)}
+                </div>
+              ) : (
+                <Ct2Board
+                  dsThe={dsThe}
+                  nhanSu={nhanSu}
+                  nhipNguoi={nhipNguoi}
+                  laLanhDao={laLanhDao}
+                  onMoThe={(t) => { setChuyenDen(null); setTheMo(t); }}
+                  onKeoThe={(t, den) => {
+                    if (den === 'DANG_LAM' && t.trang_thai === 'CHUAN_BI' && t.loai_dau_viec === 'TIEN_TRINH') {
+                      setKhoiDongLuon(true);
+                      setTheLapKeHoach(t);
+                      return;
+                    }
+                    setChuyenDen(den);
+                    setTheMo(t);
+                  }}
+                />
+              )}
+            </TabsContent>
+            {coPdtd && (
+              <TabsContent value="tin-dung">
+                <Ct2CreditBoard
+                  dsHoSo={dsHoSo}
+                  sapDenHan={sapDenHan}
+                  nhanSu={nhanSu}
+                  laLanhDao={laLanhDao}
+                  dangTai={dangTaiHoSo}
+                  onMoHoSo={(h) => { setHoSoChuyenDen(null); setHoSoMo(h); }}
+                  onKeoHoSo={(h, den) => { setHoSoChuyenDen(den); setHoSoMo(h); }}
+                  onTaoMoi={() => setDangMoHoSo(true)}
+                />
+              </TabsContent>
+            )}
+            {laLanhDao && (
+              <TabsContent value="bang-nhip">
+                <Ct2BangNhip phongId={phongId} />
+              </TabsContent>
+            )}
+          </Tabs>
         )}
       </section>
 
-      <ActionPlanDetailDialog
-        plan={planDangMo}
-        departments={departments}
-        phongThamGia={planDangMo ? phongThamGia[planDangMo.id] ?? [] : []}
-        onClose={() => setMo(null)}
-        onDaGhiNhip={taiLai}
+      <Ct2CardDialog
+        the={theLapKeHoach ? null : theDangMo}
+        nhanSu={nhanSu}
+        laLanhDao={laLanhDao}
+        chuyenDen={chuyenDen}
+        onLapKeHoach={(deKhoiDong) => {
+          setKhoiDongLuon(deKhoiDong);
+          setTheLapKeHoach(theDangMo);
+        }}
+        onClose={() => { setTheMo(null); setChuyenDen(null); }}
+        onXong={() => lamTuoi()}
       />
 
-      <ActionPlanCreateDialog
+      <Ct2PlanDialog
+        the={theLapKeHoach}
+        deKhoiDong={khoiDongLuon}
+        onClose={() => setTheLapKeHoach(null)}
+        onXong={() => { setTheLapKeHoach(null); setTheMo(null); setChuyenDen(null); lamTuoi(); }}
+      />
+
+      <Ct2CreditCardDialog
+        hoSo={hoSoDangMo}
+        nhanSu={nhanSu}
+        laLanhDao={laLanhDao}
+        chuyenDen={hoSoChuyenDen}
+        onClose={() => { setHoSoMo(null); setHoSoChuyenDen(null); }}
+        onXong={() => { setHoSoChuyenDen(null); }}
+      />
+
+      <Ct2CreditCreateDialog
+        open={dangMoHoSo}
+        phongId={phongId}
+        nhanSu={nhanSu}
+        onClose={() => setDangMoHoSo(false)}
+        onXong={() => undefined}
+      />
+
+      <Ct2CreateDialog
         open={dangTao}
-        departments={departments}
+        phongId={phongId}
+        phongs={phongs}
+        nhanSu={nhanSu}
         cycleId={cycleId}
-        onClose={() => setDangTao(false)}
-        onXong={taiLai}
+        laLanhDao={laLanhDao}
+        deXuat={deXuatDangDuyet}
+        onClose={() => { setDangTao(false); setDeXuatDangDuyet(null); }}
+        onXong={() => lamTuoi()}
       />
     </>
   );

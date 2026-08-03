@@ -1199,13 +1199,13 @@ export default function StaffEvaluation() {
             return <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30">Trả lại cán bộ chỉnh sửa</Badge>;
           }
           if (formStatus === 'submitted') {
-            return <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">Chờ Trưởng phòng rà soát</Badge>;
+            return <Badge variant="outline" className="bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-500/40">Chờ Trưởng phòng rà soát</Badge>;
           }
           if (formStatus === 'reviewed') {
-            return <Badge variant="outline" className="bg-sky-100 text-sky-800 border-sky-300">Trưởng phòng đã rà soát · Chờ PGĐ duyệt</Badge>;
+            return <Badge variant="outline" className="bg-sky-100 dark:bg-sky-500/15 text-sky-800 dark:text-sky-300 border-sky-300 dark:border-sky-500/40">Trưởng phòng đã rà soát · Chờ PGĐ duyệt</Badge>;
           }
           if (formStatus === 'approved') {
-            return <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-300">Đã phê duyệt</Badge>;
+            return <Badge variant="outline" className="bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40">Đã phê duyệt</Badge>;
           }
           return null;
         })()}
@@ -1213,7 +1213,7 @@ export default function StaffEvaluation() {
 
       {/* Cảnh báo dữ liệu nền: user có role TP nhưng không phải manager trực tiếp */}
       {isManager && !isSelfEval && reviewerLevel !== 'manager' && !isAdmin && !isPgd && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 flex items-start gap-2">
+        <div className="rounded-md border border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2">
           <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
           <span>
             Bạn có role Trưởng phòng nhưng không phải Quản lý trực tiếp của cán bộ này theo hồ sơ hiện tại.
@@ -1371,7 +1371,7 @@ export default function StaffEvaluation() {
 
       {/* Cảnh báo cập nhật khi CB nộp lại */}
       {isManagerMode && formMeta.needs_manager_review_update && (
-        <div className="rounded-md border border-amber-400 bg-amber-50 p-3 text-sm text-amber-900 flex items-center gap-2">
+        <div className="rounded-md border border-amber-400 dark:border-amber-500/50 bg-amber-50 dark:bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-200 flex items-center gap-2">
           <AlertTriangle className="w-4 h-4" />
           Cán bộ đã nộp lại phiếu sau khi bị trả. Vui lòng rà soát lại các cột <strong>QL ĐG skill</strong> và <strong>QL ĐG thái độ</strong>.
         </div>

@@ -64,7 +64,7 @@ export function SkillCollectionGridView({ items, cycleName }: { items: Collectio
             </p>
           </div>
           {withStandard > 0 && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-xs font-medium text-emerald-700">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
               <Trophy className="w-3.5 h-3.5" /> Đạt chuẩn {metStandard}/{withStandard}
             </span>
           )}
