@@ -222,6 +222,35 @@ describe('Hồ sơ nhập từ dữ liệu lịch sử — ô trống phải nó
     expect(dinhDangTien(null)).toBe('chưa có số tiền');
   });
 
+  /**
+   * ĐÂY LÀ TEST ĐÁNG GIÁ NHẤT CỦA CẢ TỆP NÀY.
+   *
+   * Bản mã trước đó xếp thứ tự bằng `a.han_xu_ly.localeCompare(b.han_xu_ly)`.
+   * Hai hồ sơ cùng cột, cùng thiếu số tiền → `b.so_tien - a.so_tien` ra 0 →
+   * rơi xuống localeCompare trên `null` → TypeError → **trắng cả trang**.
+   *
+   * Lỗi này đã xảy ra thật trên production ngày 03/08/2026: dữ liệu có ô trống
+   * vào database trước khi mã chịu được ô trống được triển khai. Test này giữ
+   * cho nó không tái diễn.
+   */
+  it('xếp được cả cột toàn hồ sơ thiếu số tiền lẫn thiếu hạn — KHÔNG được ném lỗi', () => {
+    const ds = [
+      thieu,
+      { ...thieu, id: 'hx2', khach_hang: 'Công ty B' },
+      { ...thieu, id: 'hx3', khach_hang: 'Công ty C', so_tien: 30_000 },
+      { ...thieu, id: 'hx4', khach_hang: 'Công ty D', han_xu_ly: '2026-09-01' },
+    ];
+    const xep = sapXepHoSo(ds, moc);
+    expect(xep).toHaveLength(4);
+    expect(xep[0].id).toBe('hx3');                       // có số tiền thì lên trước
+    expect(xep.map((x) => x.id).sort()).toEqual(['hx', 'hx2', 'hx3', 'hx4']);
+  });
+
+  it('hồ sơ có hạn xếp trước hồ sơ chưa có hạn', () => {
+    const coHan = { ...thieu, id: 'co-han', han_xu_ly: '2026-12-31' };
+    expect(sapXepHoSo([thieu, coHan], moc)[0].id).toBe('co-han');
+  });
+
   it('hồ sơ đã xong thì thôi không đòi bổ sung nữa', () => {
     expect(canhBaoHoSo({ ...thieu, trang_thai: 'HOAN_THANH' }, moc)).toEqual([]);
   });

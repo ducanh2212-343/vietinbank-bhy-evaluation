@@ -308,6 +308,30 @@ Lệnh nhập chạy với trigger thông báo tắt: đây là chuyển dữ li
 phải sự kiện nghiệp vụ. Bắn 3 tin push cho mỗi cán bộ lúc 08:20 sáng thứ Hai về
 những hồ sơ họ đã biết rõ là tiếng ồn, không phải thông tin.
 
+### Sự cố khi triển khai — và bài học thứ tự
+
+Ngày 03/08/2026, ngay sau khi nhập, bàn PDTD **trắng cả màn, tải mãi không
+xong**. Nguyên nhân không phải ở dữ liệu mà ở **thứ tự triển khai**: 47 hồ sơ
+có ô trống vào database trước, còn bản web chịu được ô trống thì vẫn nằm trên
+nhánh chưa lên production.
+
+Bản web đang chạy xếp thứ tự hồ sơ bằng `a.han_xu_ly.localeCompare(...)`. Hai
+hồ sơ cùng cột, cùng thiếu số tiền thì phép so số tiền ra 0 và rơi xuống dòng
+đó — gọi `localeCompare` trên `null` → `TypeError` → React bỏ nguyên cây, màn
+trắng.
+
+**Xử lý ngay:** tắt cờ `ct2_phong_pdtd.bat` của Phòng KHDN. Bản web bỏ hẳn
+truy vấn hồ sơ khi cờ tắt (`enabled: !!phongId && bat`), nên màn hồi phục lập
+tức mà **không mất một dòng dữ liệu nào** — hơn hẳn phương án xoá rồi nhập
+lại. Bật lại cờ sau khi bản sửa lên production.
+
+**Bài học, đã ghi vào đầu tệp migration:** bỏ `NOT NULL` là một thay đổi **phá
+vỡ** với bản web đang chạy trong trình duyệt của cán bộ. Đúng thứ tự phải là
+*triển khai mã → áp migration → nhập dữ liệu*, không được đảo.
+
+Đã thêm test chặn hồi quy cho đúng dòng gây lỗi: xếp một cột toàn hồ sơ thiếu
+số tiền lẫn thiếu hạn xử lý mà không được ném lỗi.
+
 ### Việc Phòng KHDN cần làm tiếp
 
 1. **Bổ sung 16 số tiền và 13 hạn xử lý** còn trống. Mỗi hồ sơ đang hiện cảnh

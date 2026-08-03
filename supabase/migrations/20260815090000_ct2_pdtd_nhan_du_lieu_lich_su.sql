@@ -28,6 +28,26 @@
 -- thao tác (auth.uid() IS NOT NULL). Nhập lịch sử chạy bằng service role,
 -- không có auth.uid(), nên đi qua được — và mỗi ô trống nó để lại đều hiện
 -- thành cảnh báo vàng trên thẻ.
+--
+-- ---------------------------------------------------------------------------
+-- ⚠ THỨ TỰ TRIỂN KHAI — ĐỌC TRƯỚC KHI ÁP
+--
+-- Bỏ NOT NULL là một THAY ĐỔI PHÁ VỠ đối với bản web ĐANG CHẠY. Trình duyệt
+-- của cán bộ vẫn giữ bản mã cũ, và bản cũ giả định các cột này luôn có giá
+-- trị. Cho ô trống vào database trước khi bản mã mới lên là làm vỡ màn của
+-- người đang dùng.
+--
+-- Việc này ĐÃ XẢY RA THẬT ngày 03/08/2026: 47 hồ sơ vào database trước, bản
+-- web sửa còn nằm trên nhánh. Bản đang chạy xếp thứ tự bằng
+-- `a.han_xu_ly.localeCompare(...)` → TypeError trên null → trắng cả trang
+-- Kanban PDTD. Phải tạm tắt bàn PDTD của Phòng KHDN để cứu màn.
+--
+-- ĐÚNG THỨ TỰ:
+--   1. Triển khai bản web có null-guard (đã có test chặn hồi quy trong
+--      src/lib/ct2TinDung.test.ts — «xếp được cả cột toàn hồ sơ thiếu…»)
+--   2. Áp migration này
+--   3. Nhập dữ liệu có ô trống
+-- ---------------------------------------------------------------------------
 -- ============================================================================
 
 -- ---------------------------------------------------------------------------
