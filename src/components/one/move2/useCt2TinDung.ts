@@ -53,7 +53,9 @@ export function useCt2HoSo(phongId: string | null, bat: boolean) {
         .from('ct2_ho_so_tin_dung')
         .select('*')
         .eq('phong', phongId)
-        .order('han_xu_ly');
+        // nullsFirst: false — hồ sơ chưa có hạn xếp cuối, không chen lên đầu
+        // như thể chúng gấp nhất
+        .order('han_xu_ly', { ascending: true, nullsFirst: false });
       if (error) throw error;
       return (data ?? []) as HoSoTinDung[];
     },
@@ -61,7 +63,7 @@ export function useCt2HoSo(phongId: string | null, bat: boolean) {
 }
 
 export interface HoSoSapDenHan {
-  id: string; ma_hs: string | null; khach_hang: string; so_tien: number;
+  id: string; ma_hs: string | null; khach_hang: string; so_tien: number | null;
   ngay_den_han_ghtd: string; con_lai: number; da_co_ho_so_moi: boolean;
 }
 

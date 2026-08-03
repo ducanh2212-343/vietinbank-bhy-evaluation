@@ -332,10 +332,12 @@ export function Ct2CreditCardDialog({ hoSo, nhanSu, laLanhDao, chuyenDen, onClos
             <span className="w-full text-base leading-snug">{hoSo.khach_hang}</span>
           </DialogTitle>
           <DialogDescription className="text-left">
-            <span className="font-semibold text-brand-navy">{dinhDangTien(hoSo.so_tien)}</span>
-            {' · '}{HS_TEN_KY_HAN[hoSo.ky_han]}
+            <span className={`font-semibold ${hoSo.so_tien === null ? 'text-amber-700' : 'text-brand-navy'}`}>
+              {dinhDangTien(hoSo.so_tien)}
+            </span>
+            {' · '}{hoSo.ky_han ? HS_TEN_KY_HAN[hoSo.ky_han] : 'chưa ghi kỳ hạn'}
             {' · '}{HS_TEN_CAP[hoSo.cap_phe_duyet]}
-            {' · hạn xử lý '}{new Date(`${hoSo.han_xu_ly}T00:00:00`).toLocaleDateString('vi-VN')}
+            {' · hạn xử lý '}{ngayVn(hoSo.han_xu_ly, 'chưa có')}
           </DialogDescription>
         </DialogHeader>
 
@@ -354,11 +356,8 @@ export function Ct2CreditCardDialog({ hoSo, nhanSu, laLanhDao, chuyenDen, onClos
         <div className="grid gap-2 rounded-xl bg-slate-50 p-3 text-sm sm:grid-cols-2">
           <O ten="Cán bộ phụ trách" gia={tenNguoi.get(hoSo.can_bo) ?? '—'} />
           <O ten="Bước hiện tại" gia={HS_COT.find((c) => c.ma === hoSo.trang_thai)?.ten ?? '—'} />
-          <O ten="Ngày nhận hồ sơ" gia={new Date(`${hoSo.ngay_nhan}T00:00:00`).toLocaleDateString('vi-VN')} />
-          <O ten="Hạn mức đến hạn"
-            gia={hoSo.ngay_den_han_ghtd
-              ? new Date(`${hoSo.ngay_den_han_ghtd}T00:00:00`).toLocaleDateString('vi-VN')
-              : '— chưa ghi'} />
+          <O ten="Ngày nhận hồ sơ" gia={ngayVn(hoSo.ngay_nhan, '— chưa ghi')} />
+          <O ten="Hạn mức đến hạn" gia={ngayVn(hoSo.ngay_den_han_ghtd, '— chưa ghi')} />
           {hoSo.nguoi_dang_giu && (
             <O ten="Hồ sơ đang ở"
               gia={`${tenNguoi.get(hoSo.nguoi_dang_giu) ?? '—'} — đã ${hsTuoiCho(hoSo)} ngày`} />
@@ -452,6 +451,15 @@ export function Ct2CreditCardDialog({ hoSo, nhanSu, laLanhDao, chuyenDen, onClos
       </DialogContent>
     </Dialog>
   );
+}
+
+/**
+ * Ngày dạng «31/07/2026», ô trống thì nói rõ là trống.
+ * Không để `new Date(null)` in ra "Invalid Date" — người đọc sẽ tưởng lỗi hệ thống.
+ */
+function ngayVn(ngay: string | null, khiTrong: string): string {
+  if (!ngay) return khiTrong;
+  return new Date(`${ngay}T00:00:00`).toLocaleDateString('vi-VN');
 }
 
 function O({ ten, gia }: { ten: string; gia: string }) {

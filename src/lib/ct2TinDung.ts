@@ -26,15 +26,21 @@ export interface HoSoTinDung {
   ma_hs: string | null;
   khach_hang: string;
   loai_ho_so: HsLoai;
-  /** Đơn vị: TRIỆU ĐỒNG */
-  so_tien: number;
-  ky_han: HsKyHan;
+  /**
+   * Đơn vị: TRIỆU ĐỒNG.
+   *
+   * NULL chỉ có ở hồ sơ nhập từ dữ liệu lịch sử (board Miro có 31/47 hồ sơ
+   * không ghi số tiền ở bất kỳ đâu). Hồ sơ mở mới trong ứng dụng luôn có số —
+   * trigger `f_ct2_hs_truoc_tao` chặn ở database, không chỉ ở form.
+   */
+  so_tien: number | null;
+  ky_han: HsKyHan | null;
   cap_phe_duyet: HsCap;
   trang_thai: HsTrangThai;
   can_bo: string;
   lanh_dao_theo_doi: string | null;
-  ngay_nhan: string;
-  han_xu_ly: string;
+  ngay_nhan: string | null;
+  han_xu_ly: string | null;
   ngay_den_han_ghtd: string | null;
   ngay_hoan_thanh: string | null;
   nguoi_dang_giu: string | null;
@@ -173,8 +179,14 @@ export function docSoTien(s: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/** 150000 (triệu) → "150 tỷ"; 850 → "850 triệu" */
-export function dinhDangTien(trieu: number): string {
+/**
+ * 150000 (triệu) → "150 tỷ"; 850 → "850 triệu"; thiếu số → "chưa có số tiền".
+ *
+ * CỐ Ý không trả "0 triệu" khi thiếu: số 0 trông y hệt một con số thật và sẽ
+ * lẫn vào tổng dư nợ mà không ai nhận ra.
+ */
+export function dinhDangTien(trieu: number | null | undefined): string {
+  if (trieu === null || trieu === undefined) return 'chưa có số tiền';
   if (trieu >= 1000) {
     const ty = trieu / 1000;
     return `${ty % 1 === 0 ? ty : ty.toFixed(1)} tỷ`;
@@ -242,7 +254,7 @@ function ngayVn(iso: string | Date): number {
  * của một người nên phải trừ ngày nghỉ.
  */
 export function hsQuaHan(h: Pick<HoSoTinDung, 'han_xu_ly' | 'trang_thai'>, moc: Date = new Date()): number {
-  if (!HS_DANG_CHAY.includes(h.trang_thai)) return 0;
+  if (!HS_DANG_CHAY.includes(h.trang_thai) || !h.han_xu_ly) return 0;
   return Math.max(0, ngayVn(moc) - ngayVn(`${h.han_xu_ly}T00:00:00+07:00`));
 }
 
@@ -274,13 +286,19 @@ export function hsConLaiDenHan(h: Pick<HoSoTinDung, 'ngay_den_han_ghtd'>, moc: D
 /**
  * Số NGÀY LÀM VIỆC hồ sơ không có nhịp mới. Chưa từng ghi nhịp thì tính từ ngày
  * nhận hồ sơ — hồ sơ mở ra rồi bỏ đó là trường hợp cần thấy nhất.
+ *
+ * Hồ sơ nhập từ dữ liệu lịch sử không có ngày nhận. Khi đó đếm từ `created_at`
+ * — ngày hồ sơ vào hệ thống này. Đồng hồ chạy chậm hơn sự thật, nhưng nó là sự
+ * thật KIỂM CHỨNG ĐƯỢC: từ hôm vào hệ thống đến nay chưa ai ghi gì.
  */
 export function hsNgayImLang(
-  h: Pick<HoSoTinDung, 'nhip_gan_nhat' | 'ngay_nhan' | 'trang_thai'>,
+  h: Pick<HoSoTinDung, 'nhip_gan_nhat' | 'ngay_nhan' | 'trang_thai' | 'created_at'>,
   moc: Date = new Date(),
 ): number {
   if (!HS_DANG_CHAY.includes(h.trang_thai)) return 0;
-  const tu = h.nhip_gan_nhat ?? `${h.ngay_nhan}T00:00:00+07:00`;
+  const tu = h.nhip_gan_nhat
+    ?? (h.ngay_nhan ? `${h.ngay_nhan}T00:00:00+07:00` : h.created_at);
+  if (!tu) return 0;
   return soNgayLamViec(tu, moc);
 }
 
@@ -295,7 +313,7 @@ export type MucImLang = 'MOI' | 'CHAM' | 'BO_QUEN';
  *  · BO_QUEN  — quá gấp đôi ngưỡng, đây là thứ phải xử lý ngay hôm nay
  */
 export function hsMucImLang(
-  h: Pick<HoSoTinDung, 'nhip_gan_nhat' | 'ngay_nhan' | 'trang_thai'>,
+  h: Pick<HoSoTinDung, 'nhip_gan_nhat' | 'ngay_nhan' | 'trang_thai' | 'created_at'>,
   moc: Date = new Date(),
 ): MucImLang {
   const n = hsNgayImLang(h, moc);
@@ -355,20 +373,47 @@ export function canhBaoHoSo(h: HoSoTinDung, moc: Date = new Date()): CanhBaoHoSo
     });
   }
 
-  // Thiếu dữ liệu hành chính, nhẹ nhất nhưng vẫn phải nêu
-  if (HS_DANG_CHAY.includes(h.trang_thai) && !h.ngay_den_han_ghtd
-      && (h.loai_ho_so === 'TAI_CAP' || h.loai_ho_so === 'DIEU_CHINH')) {
-    ds.push({ muc: 'VANG', noi_dung: 'Hồ sơ tái cấp/điều chỉnh nhưng chưa ghi ngày hạn mức đến hạn' });
+  // Thiếu dữ liệu hành chính, nhẹ nhất nhưng vẫn phải nêu.
+  //
+  // Hồ sơ nhập từ board Miro có thể trống số tiền / hạn xử lý / kỳ hạn. Ô trống
+  // KHÔNG được im lặng: nếu không nêu ra thì hồ sơ thiếu số tiền trông sạch sẽ
+  // y hệt hồ sơ đủ, và tổng dư nợ đang trình thiếu hụt mà không ai biết.
+  if (HS_DANG_CHAY.includes(h.trang_thai)) {
+    if (h.so_tien === null) {
+      ds.push({ muc: 'VANG', noi_dung: 'Chưa có số tiền — hồ sơ này không vào được tổng dư nợ' });
+    }
+    if (!h.han_xu_ly) {
+      ds.push({ muc: 'VANG', noi_dung: 'Chưa có hạn xử lý — không đo được đúng hẹn hay trễ' });
+    }
+    if (!h.ky_han) {
+      ds.push({ muc: 'VANG', noi_dung: 'Chưa ghi kỳ hạn (ngắn hạn / trung dài hạn)' });
+    }
+    if (!h.ngay_den_han_ghtd
+        && (h.loai_ho_so === 'TAI_CAP' || h.loai_ho_so === 'DIEU_CHINH')) {
+      ds.push({ muc: 'VANG', noi_dung: 'Hồ sơ tái cấp/điều chỉnh nhưng chưa ghi ngày hạn mức đến hạn' });
+    }
   }
   return ds;
 }
 
-/** Tổng dư nợ đang trình theo từng bước — chỉ tính được vì số tiền là SỐ */
-export function tongTheoBuoc(ds: HoSoTinDung[]): Map<HsTrangThai, { so: number; tien: number }> {
-  const m = new Map<HsTrangThai, { so: number; tien: number }>();
+/**
+ * Tổng dư nợ đang trình theo từng bước — chỉ tính được vì số tiền là SỐ.
+ *
+ * `thieu` đếm số hồ sơ KHÔNG có số tiền. Con số này phải đi kèm tổng, nếu
+ * không thì "tổng 480 tỷ" đọc như đã bao gồm tất cả, trong khi có thể còn 6
+ * hồ sơ chưa ai khai số.
+ */
+export function tongTheoBuoc(
+  ds: HoSoTinDung[],
+): Map<HsTrangThai, { so: number; tien: number; thieu: number }> {
+  const m = new Map<HsTrangThai, { so: number; tien: number; thieu: number }>();
   for (const h of ds) {
-    const cu = m.get(h.trang_thai) ?? { so: 0, tien: 0 };
-    m.set(h.trang_thai, { so: cu.so + 1, tien: cu.tien + h.so_tien });
+    const cu = m.get(h.trang_thai) ?? { so: 0, tien: 0, thieu: 0 };
+    m.set(h.trang_thai, {
+      so: cu.so + 1,
+      tien: cu.tien + (h.so_tien ?? 0),
+      thieu: cu.thieu + (h.so_tien === null ? 1 : 0),
+    });
   }
   return m;
 }
@@ -387,7 +432,12 @@ export function sapXepHoSo(ds: HoSoTinDung[], moc: Date = new Date()): HoSoTinDu
   return [...ds].sort((a, b) => {
     const d = diem(a) - diem(b);
     if (d !== 0) return d;
-    if (a.so_tien !== b.so_tien) return b.so_tien - a.so_tien;
+    // Hồ sơ thiếu số tiền xếp như 0 — xuống cuối nhóm, không giả vờ là hồ sơ nhỏ
+    const ta = a.so_tien ?? 0;
+    const tb = b.so_tien ?? 0;
+    if (ta !== tb) return tb - ta;
+    // Thiếu hạn thì xếp sau hồ sơ có hạn (chuỗi rỗng đứng trước nên đảo dấu)
+    if (!a.han_xu_ly || !b.han_xu_ly) return (a.han_xu_ly ? 0 : 1) - (b.han_xu_ly ? 0 : 1);
     return a.han_xu_ly.localeCompare(b.han_xu_ly);
   });
 }

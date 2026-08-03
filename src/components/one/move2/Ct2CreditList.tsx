@@ -69,7 +69,8 @@ export function Ct2CreditList({ dsHoSo, tenNguoi, onMoHoSo }: Props) {
           ds: xep,
           soBoQuen: ds.filter((h) => hsMucImLang(h) === 'BO_QUEN').length,
           soChuaCapNhat: ds.filter((h) => hsMucImLang(h) !== 'MOI').length,
-          tien: ds.reduce((s, h) => s + Number(h.so_tien || 0), 0),
+          tien: ds.reduce((s, h) => s + (h.so_tien ?? 0), 0),
+          soThieuTien: ds.filter((h) => h.so_tien === null).length,
         };
       })
       .sort((a, b) => (b.soBoQuen - a.soBoQuen)
@@ -122,7 +123,8 @@ export function Ct2CreditList({ dsHoSo, tenNguoi, onMoHoSo }: Props) {
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 pl-9">
               <span className="text-2xs tabular-nums text-slate-500">
-                {n.ds.length} hồ sơ · {dinhDangTien(n.tien)}
+                {n.ds.length} hồ sơ · {n.tien > 0 ? dinhDangTien(n.tien) : 'chưa có số tiền'}
+                {n.tien > 0 && n.soThieuTien > 0 && ` (thiếu ${n.soThieuTien} hồ sơ)`}
               </span>
               {n.soChuaCapNhat > 0 && (
                 <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-semibold ${
@@ -174,8 +176,10 @@ function DongHoSo({ hoSo, tenNguoi, onMo }: {
             <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800">
               {hoSo.khach_hang}
             </span>
-            <span className="shrink-0 text-xs font-semibold tabular-nums text-brand-navy">
-              {dinhDangTien(hoSo.so_tien)}
+            <span className={`shrink-0 text-xs font-semibold tabular-nums ${
+              hoSo.so_tien === null ? 'text-amber-600' : 'text-brand-navy'
+            }`}>
+              {hoSo.so_tien === null ? 'chưa có số' : dinhDangTien(hoSo.so_tien)}
             </span>
           </span>
 
