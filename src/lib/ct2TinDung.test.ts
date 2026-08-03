@@ -171,8 +171,15 @@ describe('Số liệu điều hành — chỉ tính được vì số tiền là
 
   it('cộng được tổng dư nợ đang trình theo từng bước', () => {
     const m = tongTheoBuoc(ds);
-    expect(m.get('TRINH_LDCN')).toEqual({ so: 2, tien: 190_000 });
-    expect(m.get('THU_THAP')).toEqual({ so: 1, tien: 50_000 });
+    expect(m.get('TRINH_LDCN')).toEqual({ so: 2, tien: 190_000, thieu: 0 });
+    expect(m.get('THU_THAP')).toEqual({ so: 1, tien: 50_000, thieu: 0 });
+  });
+
+  it('đếm riêng hồ sơ chưa có số tiền, không cộng chúng như 0', () => {
+    // Hồ sơ nhập từ Miro không có số tiền: tổng KHÔNG đổi, nhưng phải biết là
+    // tổng đang thiếu — nếu không thì «190 tỷ» đọc như đã gồm đủ.
+    const m = tongTheoBuoc([...ds, { ...hsGoc, id: 'h4', so_tien: null, trang_thai: 'TRINH_LDCN' }]);
+    expect(m.get('TRINH_LDCN')).toEqual({ so: 3, tien: 190_000, thieu: 1 });
   });
 
   it('xếp hồ sơ rủi ro lên trước, cùng mức thì hồ sơ to hơn trước', () => {
@@ -180,6 +187,43 @@ describe('Số liệu điều hành — chỉ tính được vì số tiền là
     expect(xep[0].id).toBe('h1');   // 160 tỷ, nghẽn chờ 7 ngày
     expect(xep[1].id).toBe('h2');   // 30 tỷ, cũng nghẽn nhưng nhỏ hơn
     expect(xep[2].id).toBe('h3');   // sạch cảnh báo
+  });
+});
+
+describe('Hồ sơ nhập từ dữ liệu lịch sử — ô trống phải nói ra, không được im lặng', () => {
+  const thieu: HoSoTinDung = {
+    ...hsGoc, id: 'hx', so_tien: null, han_xu_ly: null, ngay_nhan: null, ky_han: null,
+    giu_tu: null, trang_thai: 'THU_THAP', loai_ho_so: 'CAP_MOI', ngay_den_han_ghtd: null,
+    nhip_gan_nhat: '2026-08-11T02:00:00Z',
+  };
+
+  it('thiếu hạn xử lý thì KHÔNG bị coi là quá hạn', () => {
+    // Không có hạn thì không có gì để trễ. Coi là quá hạn sẽ báo đỏ oan
+    // toàn bộ 31 hồ sơ nhập từ Miro ngay hôm đầu tiên.
+    expect(hsQuaHan(thieu, moc)).toBe(0);
+  });
+
+  it('mỗi ô trống thành một cảnh báo vàng', () => {
+    const cb = canhBaoHoSo(thieu, moc);
+    expect(cb.every((c) => c.muc === 'VANG')).toBe(true);
+    expect(cb.some((c) => c.noi_dung.includes('số tiền'))).toBe(true);
+    expect(cb.some((c) => c.noi_dung.includes('hạn xử lý'))).toBe(true);
+    expect(cb.some((c) => c.noi_dung.includes('kỳ hạn'))).toBe(true);
+  });
+
+  it('thiếu ngày nhận thì đếm im lặng từ ngày hồ sơ vào hệ thống', () => {
+    // created_at thứ Sáu 07/08 → tới thứ Tư 12/08 là 3 ngày làm việc
+    expect(hsNgayImLang(
+      { ...thieu, nhip_gan_nhat: null, created_at: '2026-08-07T02:00:00Z' }, moc,
+    )).toBe(3);
+  });
+
+  it('thiếu số tiền thì hiện chữ, không hiện «0 triệu»', () => {
+    expect(dinhDangTien(null)).toBe('chưa có số tiền');
+  });
+
+  it('hồ sơ đã xong thì thôi không đòi bổ sung nữa', () => {
+    expect(canhBaoHoSo({ ...thieu, trang_thai: 'HOAN_THANH' }, moc)).toEqual([]);
   });
 });
 

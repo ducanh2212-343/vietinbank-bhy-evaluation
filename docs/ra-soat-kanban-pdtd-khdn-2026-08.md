@@ -210,18 +210,123 @@ Hai mã ở cột «Assigned To» là lãnh đạo theo dõi:
 | `…581081623947` | 6 | Ngành Ong · Minh Anh Đô Lương · Quỳnh Trang · Thành Đạt · TMC · Thịnh Phát |
 | `…546600259076` | 4 | Minh Hoàng · Mỹ Hương · GROWFEED · Đại Lợi |
 
-### Ba việc cần quyết trước khi nhập
+### Ba việc cần quyết trước khi nhập — ĐÃ XONG
 
-1. **Ánh xạ 8 + 2 mã trên sang cán bộ thật.**
-2. **Có nhập 22 hồ sơ đã Hoàn thành không?** Nhập thì có lịch sử và thống kê;
-   không nhập thì bàn chỉ có 25 hồ sơ đang chạy, nhẹ và sạch hơn. Khuyến nghị
-   nhập cả, vì thống kê tháng cần mẫu số.
-3. **Dữ liệu khách hàng thật** — 47 tên doanh nghiệp kèm số tiền vay. Việc này
-   nên ghi thẳng vào database, **không đưa vào mã nguồn** trong repo.
+1. ~~Ánh xạ 8 + 2 mã sang cán bộ thật~~ → bản export MD do Chi nhánh gửi có sẵn
+   tên người, khớp 10/10 với hồ sơ nhân sự Phòng KHDN.
+2. ~~Có nhập 22 hồ sơ đã Hoàn thành không~~ → **có**, thống kê tháng cần mẫu số.
+3. ~~Dữ liệu khách hàng~~ → ghi **thẳng vào database**, không có dòng nào trong
+   mã nguồn.
 
 ---
 
-## 5. Đối chiếu với phễu khách hàng (§B4)
+## 5. Đã nhập — 47/47 hồ sơ
+
+Ngày 03/08/2026. Nguồn: bản export Markdown của chính board Miro (mới hơn bản
+đọc qua API ngày 02/08).
+
+| Bước trong hệ thống | Số hồ sơ | Nguồn từ Miro |
+|---|---|---|
+| Thu thập hồ sơ | 15 | 7 từ cột (1) + 6 thẻ không có bước + 2 thẻ «Đến hạn GHTD» |
+| Trình Lãnh đạo Phòng | 4 | cột (2) |
+| Trình LĐ Chi nhánh | 3 | cột (3) |
+| Trình cấp PDTD TSC | 3 | cột (4) |
+| Hoàn thành | 22 | cột (6) |
+| **Tổng** | **47** | |
+
+Bước (5) Hoàn thiện HS giải ngân rỗng trên Miro — 22 hồ sơ hoàn thành đều
+không đi qua bước này. Trong hệ thống mới, luật chuyển bước bắt buộc qua (5)
+trước khi chốt Hoàn thành, nên con số này sẽ khác từ nay.
+
+### Hai điểm lệch giữa hai bản đọc — lấy theo bản MD
+
+| Hồ sơ | Bản API 02/08 | Bản MD (dùng) |
+|---|---|---|
+| Cơ cấu nợ Công ty Quỳnh Trang | Đến hạn GHTD 2 tháng tới | (2) Trình LĐP |
+| CT CP Bossco – Cụm CN Giai Phạm | Đến hạn GHTD 2 tháng tới | (1) Thu thập hồ sơ |
+
+Cả hai đã ghi lại trong `ghi_chu` của chính hồ sơ, để sau này không ai phải
+đoán vì sao số liệu hai bản khác nhau.
+
+### Cái gì KHÔNG được bịa
+
+Hơn hai phần ba board không có số tiền và không có ngày. Có hai lối: điền đại
+cho đủ trường, hoặc để trống. **Đã chọn để trống** — trong hệ thống tín dụng,
+một con số bịa trông y hệt một con số thật, và người đọc báo cáo không có cách
+nào phân biệt.
+
+Hệ quả là bảng `ct2_ho_so_tin_dung` phải nhận được ô trống ở `so_tien`,
+`han_xu_ly`, `ngay_nhan`, `ky_han`. Hàng rào **không mất đi, nó chuyển chỗ**:
+trước đây do `NOT NULL` giữ (chặn cả người nhập tay lẫn tiến trình nhập lịch
+sử), nay do trigger `f_ct2_hs_truoc_tao` giữ và chỉ áp khi có người thật đang
+thao tác. Hồ sơ mở mới trong ứng dụng vẫn bắt buộc đủ trường; hồ sơ lịch sử
+được vào với ô trống, và **mỗi ô trống hiện thành một cảnh báo vàng trên thẻ**.
+
+Thêm một chốt nữa: người dùng không được **xoá trắng** số tiền hay hạn xử lý đã
+có. Sửa thành giá trị khác thì được. Bổ sung được, gỡ bỏ thì không.
+
+### Tình trạng dữ liệu ngay sau khi nhập (25 hồ sơ đang chạy)
+
+| Chỉ số | Số hồ sơ |
+|---|---|
+| Thiếu số tiền | 16 |
+| Thiếu hạn xử lý | 13 |
+| Tái cấp/điều chỉnh mà thiếu ngày hạn mức đến hạn | 8 |
+| Chưa ghi nhịp lần nào | 25 |
+
+Tổng dư nợ đang trình cộng được **1.075 tỷ** trên 9 hồ sơ có số — giao diện nói
+rõ «thiếu 16 hồ sơ chưa có số» ngay cạnh con số tổng, vì một tổng không kèm
+mẫu số đọc như đã gồm đủ.
+
+### Việc mà bản Miro không làm được, nay làm được
+
+`ct2_pdtd_sap_den_han` trả về **12 khách hàng có hạn mức đã hết hoặc sắp hết mà
+không có hồ sơ tái cấp nào đang chạy**, dẫn đầu là **Hưng Phát — 300 tỷ, hạn
+mức ghi hết ngày 31/03/2025, tức đã quá 490 ngày**. Board Miro không thể phát
+hiện việc này vì «đến hạn GHTD» ở đó là một CỘT, mà một thẻ chỉ nằm được ở một
+cột — hồ sơ đã hoàn thành thì rời cột đó và ngày đến hạn biến mất khỏi tầm mắt.
+
+Cần đọc con số này đúng cách: các ngày đến hạn trên hồ sơ **đã hoàn thành** là
+ngày của **chu kỳ cũ** — chính là hạn mức mà hồ sơ đó vừa đi tái cấp. Sau khi
+tái cấp xong, hạn mức mới chưa được ghi ở đâu cả. Nên danh sách 12 khách hàng
+này là **danh sách cần vào bổ sung ngày hết hạn mới**, không phải 12 báo động
+đỏ. Bổ sung xong thì cảnh báo đường ống mới chạy đúng.
+
+### Một lỗi thật lộ ra ngay lệnh nhập đầu tiên
+
+Trigger thông báo `f_ct2_thong_bao_ho_so` dựng nội dung tin bằng phép nối chuỗi
+có `so_tien`. Trong Postgres nối chuỗi với NULL cho ra NULL, nên hồ sơ không có
+số tiền làm `noi_dung` thành NULL, vi phạm `NOT NULL` của bảng thông báo, và
+**huỷ toàn bộ lệnh ghi hồ sơ**. Trước đây lỗi này ẩn kín vì `so_tien` là
+`NOT NULL`.
+
+Sửa hai lớp: chỗ gốc dùng chữ thay khi thiếu số; và `ct2_dat_thong_bao` rơi về
+tiêu đề nếu nội dung rỗng — vì **một cái tin không bao giờ được phép chặn một
+lệnh ghi nghiệp vụ**. Thông báo là hệ quả; hồ sơ tín dụng là việc chính.
+
+Lệnh nhập chạy với trigger thông báo tắt: đây là chuyển dữ liệu lịch sử, không
+phải sự kiện nghiệp vụ. Bắn 3 tin push cho mỗi cán bộ lúc 08:20 sáng thứ Hai về
+những hồ sơ họ đã biết rõ là tiếng ồn, không phải thông tin.
+
+### Việc Phòng KHDN cần làm tiếp
+
+1. **Bổ sung 16 số tiền và 13 hạn xử lý** còn trống. Mỗi hồ sơ đang hiện cảnh
+   báo vàng cho đúng ô thiếu.
+2. **Xác nhận 5 chỗ suy đoán** — đều đã ghi trong `ghi_chu` của từng hồ sơ:
+   tag «250» của Minh Anh Đô Lương không có đơn vị; Khải Minh có hai ngày không
+   nhãn; «Tài sản Tiến Mạnh» không rõ là hồ sơ tín dụng hay tài sản bảo đảm;
+   «Phân Luồng công ty mỹ hương» không khớp loại hồ sơ nào; «Công ty Thụy Hải»
+   có thể trùng khách hàng với «Công ty TNHH Chế biến Thủy sản Thụy Hải».
+3. **Chọn bước thật cho 6 thẻ** Miro để ngoài mọi cột — trong đó có hồ sơ 290 tỷ
+   của Ngành Ong và 250 tỷ của Minh Anh Đô Lương, cả hai đều ưu tiên High và có
+   lãnh đạo theo dõi.
+4. **Chỉ người đang giữ hồ sơ** cho 4 hồ sơ ở bước trình chưa có ai giữ. Đồng hồ
+   chờ của chúng hiện tính từ ngày vào hệ thống, không phải ngày trình thật —
+   Miro không lưu mốc chuyển cột nên không có cách nào biết.
+
+---
+
+## 6. Đối chiếu với phễu khách hàng (§B4)
 
 Board này còn có bảng «Phễu lọc khách hàng» ở frame khác. Đánh giá đầy đủ đường
 ống tín dụng cần đối chiếu cả hai — bảng PDTD chỉ cho thấy phần đã vào quy

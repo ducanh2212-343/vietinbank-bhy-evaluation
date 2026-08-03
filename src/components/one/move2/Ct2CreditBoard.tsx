@@ -74,6 +74,12 @@ export function Ct2CreditBoard({
     () => [...tong.values()].reduce((s, v) => s + v.tien, 0),
     [tong],
   );
+  // Bao nhiêu hồ sơ KHÔNG có số tiền — con số này phải đi kèm tổng dư nợ, nếu
+  // không thì tổng đọc như đã gồm đủ, trong khi nó đang thiếu.
+  const thieuTien = useMemo(
+    () => [...tong.values()].reduce((s, v) => s + v.thieu, 0),
+    [tong],
+  );
   const soRuiRo = useMemo(
     () => dsHoSo.filter((h) => canhBaoHoSo(h).some((c) => c.muc === 'DO')).length,
     [dsHoSo],
@@ -101,7 +107,11 @@ export function Ct2CreditBoard({
       {/* Dải số điều hành */}
       <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <OSo nhan="Hồ sơ đang chạy" giaTri={String([...tong.values()].reduce((s, v) => s + v.so, 0))} />
-        <OSo nhan="Tổng dư nợ đang trình" giaTri={dinhDangTien(tongTien)} nhanManh />
+        <OSo
+          nhan={thieuTien > 0
+            ? `Tổng dư nợ đang trình (thiếu ${thieuTien} hồ sơ chưa có số)`
+            : 'Tổng dư nợ đang trình'}
+          giaTri={dinhDangTien(tongTien)} nhanManh />
         <OSo nhan="Hồ sơ cảnh báo đỏ" giaTri={String(soRuiRo)} xau={soRuiRo > 0} />
         <OSo nhan="Hạn mức sắp hết, chưa có hồ sơ" giaTri={String(hoTrong.length)} xau={hoTrong.length > 0} />
       </div>
@@ -117,7 +127,9 @@ export function Ct2CreditBoard({
             {hoTrong.slice(0, 6).map((s) => (
               <p key={s.id} className="flex flex-wrap items-center gap-x-2 text-sm text-slate-700">
                 <span className="font-medium">{s.khach_hang}</span>
-                <span className="text-slate-500">{dinhDangTien(Number(s.so_tien))}</span>
+                <span className="text-slate-500">
+                  {s.so_tien === null ? 'chưa có số tiền' : dinhDangTien(Number(s.so_tien))}
+                </span>
                 <span className={s.con_lai < 0 ? 'font-semibold text-red-700' : 'text-red-600'}>
                   {s.con_lai < 0 ? `đã hết hạn ${-s.con_lai} ngày` : `còn ${s.con_lai} ngày`}
                 </span>
@@ -260,8 +272,10 @@ function TheHoSo({ hoSo, tenNguoi, onMo }: {
     >
       <p className="flex items-start justify-between gap-1">
         <span className="font-mono text-2xs text-slate-400">{hoSo.ma_hs}</span>
-        <span className="shrink-0 text-2xs font-semibold tabular-nums text-brand-navy">
-          {dinhDangTien(hoSo.so_tien)}
+        <span className={`shrink-0 text-2xs font-semibold tabular-nums ${
+          hoSo.so_tien === null ? 'text-amber-600' : 'text-brand-navy'
+        }`}>
+          {hoSo.so_tien === null ? 'chưa có số' : dinhDangTien(hoSo.so_tien)}
         </span>
       </p>
       <p className="mt-0.5 line-clamp-2 text-sm font-medium leading-snug text-slate-800">
