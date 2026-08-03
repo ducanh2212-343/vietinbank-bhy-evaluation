@@ -19,6 +19,7 @@ import { useSkillCriteria } from '@/hooks/useSkillCriteria';
 import { LevelCheckWizard, type WizardApplyPayload } from '@/components/evaluation/LevelCheckWizard';
 import { saveCriteriaResponses } from '@/lib/skillCriteria';
 import { LevelQuickPick } from '@/components/evaluation/LevelQuickPick';
+import { BARE_AGREEMENT_HINT, isBareAgreement } from '@/lib/reviewTextQuality';
 
 export interface CoreSkillAssessment {
   skill_id: string;
@@ -365,7 +366,7 @@ export function EvalSectionB({
     return (
       <Collapsible key={rowKey} id={skillRowDomId(kind, a.skill_id)} open={isOpen} onOpenChange={() => toggleItem(rowKey)}>
         <CollapsibleTrigger className="w-full">
-          <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 border rounded-lg transition-colors ${isLevelUp ? 'border-emerald-300 bg-emerald-50/60 hover:bg-emerald-50' : 'hover:bg-muted/50'}`}>
+          <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 border rounded-lg transition-colors ${isLevelUp ? 'border-emerald-300 dark:border-emerald-500/40 bg-emerald-50/60 dark:bg-emerald-500/10 hover:bg-emerald-50 dark:hover:bg-emerald-500/15' : 'hover:bg-muted/50'}`}>
             <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap">
               <Badge variant={isSupp ? 'secondary' : 'outline'} className="text-[10px] flex-shrink-0">
                 {numberLabel}
@@ -375,7 +376,7 @@ export function EvalSectionB({
                 {a.skill_name}
               </span>
               {isLevelUp && (
-                <Badge className="text-[9px] bg-emerald-100 text-emerald-700 border border-emerald-300 hover:bg-emerald-100 flex-shrink-0">
+                <Badge className="text-[9px] bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/40 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 flex-shrink-0">
                   ✨ Vừa upskill
                 </Badge>
               )}
@@ -451,7 +452,7 @@ export function EvalSectionB({
                 <Badge variant="outline" className="text-[9px] text-muted-foreground flex-shrink-0">NV chưa chấm</Badge>
               )}
               {showAgreeControls && rawSelf != null && rawMgr != null && rawSelf !== rawMgr && (
-                <Badge className="text-[9px] bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/40 hover:bg-amber-100 flex-shrink-0">
+                <Badge className="text-[9px] bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/40 hover:bg-amber-100 dark:hover:bg-amber-500/20 flex-shrink-0">
                   Lệch · NV L{rawSelf}
                 </Badge>
               )}
@@ -485,8 +486,8 @@ export function EvalSectionB({
               <div className="flex flex-wrap gap-3 text-xs">
                 <span className="text-muted-foreground">Tối thiểu: <strong className="text-foreground">L{a.minimum_level}</strong></span>
                 <span className="text-muted-foreground">Nâng cao: <strong className="text-foreground">L{a.advanced_level}</strong></span>
-                <span className="text-muted-foreground">Gap tối thiểu: <strong className={gapMin > 0 ? 'text-destructive' : 'text-green-600'}>{gapMin > 0 ? `-${gapMin}` : '✓'}</strong></span>
-                <span className="text-muted-foreground">Gap nâng cao: <strong className={gapAdv > 0 ? 'text-orange-500' : 'text-green-600'}>{gapAdv > 0 ? `-${gapAdv}` : '✓'}</strong></span>
+                <span className="text-muted-foreground">Gap tối thiểu: <strong className={gapMin > 0 ? 'text-destructive' : 'text-green-600 dark:text-green-400'}>{gapMin > 0 ? `-${gapMin}` : '✓'}</strong></span>
+                <span className="text-muted-foreground">Gap nâng cao: <strong className={gapAdv > 0 ? 'text-orange-500' : 'text-green-600 dark:text-green-400'}>{gapAdv > 0 ? `-${gapAdv}` : '✓'}</strong></span>
               </div>
             )}
             {isSupp && (
@@ -556,19 +557,19 @@ export function EvalSectionB({
             <div>
               <label className="text-xs text-muted-foreground">
                 Minh chứng / Evidence
-                {selfLvl >= 3 && <span className="text-orange-600 font-medium"> — bắt buộc khi tự chấm L3+</span>}
+                {selfLvl >= 3 && <span className="text-orange-600 dark:text-orange-400 font-medium"> — bắt buộc khi tự chấm L3+</span>}
               </label>
               <Textarea
                 value={a.evidence}
                 onChange={(e) => updateRow(kind, idx, 'evidence', e.target.value)}
-                className={`min-h-[40px] text-xs ${selfLvl >= 3 && !(a.evidence || '').trim() ? 'border-orange-400 focus-visible:ring-orange-400' : ''}`}
+                className={`min-h-[40px] text-xs ${selfLvl >= 3 && !(a.evidence || '').trim() ? 'border-orange-400 dark:border-orange-500/50 focus-visible:ring-orange-400' : ''}`}
                 placeholder={selfLvl >= 3
                   ? 'Bắt buộc: hồ sơ/việc thật đã xử lý, chứng chỉ, xác nhận của đồng nghiệp…'
                   : 'Minh chứng cụ thể cho level đánh giá...'}
                 disabled={isManager}
               />
               {selfLvl >= 3 && !(a.evidence || '').trim() && (
-                <p className="mt-1 text-[11px] text-orange-700">
+                <p className="mt-1 text-[11px] text-orange-700 dark:text-orange-300">
                   Level Chuyên gia/Bậc thầy cần được chứng minh — phiếu sẽ không nộp được nếu bỏ trống minh chứng.
                 </p>
               )}
@@ -639,9 +640,9 @@ export function EvalSectionB({
                     AI thẩm định minh chứng L{selfLvl}
                   </Button>
                   {evidenceAiResults[a.skill_id] && (
-                    <div className="mt-2 rounded-md border border-violet-200 bg-violet-50/60 p-2.5 text-xs space-y-2">
+                    <div className="mt-2 rounded-md border border-violet-200 dark:border-violet-500/30 bg-violet-50/60 dark:bg-violet-500/10 p-2.5 text-xs space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="font-medium text-violet-800 flex items-center gap-1.5">
+                        <span className="font-medium text-violet-800 dark:text-violet-300 flex items-center gap-1.5">
                           <BrandMascotAI className="w-4 h-4" /> Kết quả thẩm định minh chứng
                         </span>
                         <button
@@ -715,6 +716,8 @@ export function EvalSectionB({
                 rawMgr != null &&
                 rawSelf !== rawMgr &&
                 !(a.manager_note || '').trim();
+              // "Đồng ý" suông: khuyến nghị mềm (không chặn lưu); nhường chỗ khi đã có cảnh báo chấm lệch.
+              const bareAgreement = !mismatchNeedsNote && isBareAgreement(a.manager_note);
               return (
                 <div>
                   <label className="text-xs text-muted-foreground">
@@ -726,7 +729,7 @@ export function EvalSectionB({
                   <Textarea
                     value={a.manager_note}
                     onChange={(e) => updateRow(kind, idx, 'manager_note', e.target.value)}
-                    className={`min-h-[36px] text-xs ${mismatchNeedsNote ? 'border-amber-400 focus-visible:ring-amber-400' : ''}`}
+                    className={`min-h-[36px] text-xs ${mismatchNeedsNote || bareAgreement ? 'border-amber-400 dark:border-amber-500/50 focus-visible:ring-amber-400' : ''}`}
                     placeholder={
                       showAgreeControls && isManager
                         ? 'Vì sao bạn chấm mức này? Cán bộ cần làm gì để lên mức tiếp theo? (căn cứ trao đổi 1-1)'
@@ -739,6 +742,9 @@ export function EvalSectionB({
                       Bạn chấm L{rawMgr} trong khi cán bộ tự chấm L{rawSelf} — ghi rõ lý do và định hướng upskill
                       để cán bộ hiểu (phiếu sẽ không xác nhận rà soát được nếu bỏ trống).
                     </p>
+                  )}
+                  {bareAgreement && (
+                    <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-400">{BARE_AGREEMENT_HINT}</p>
                   )}
                 </div>
               );
@@ -773,7 +779,7 @@ export function EvalSectionB({
               <Target className="w-4 h-4" /> B. Đánh giá Skill lõi theo vị trí
             </CardTitle>
             {quickRate && assessments.length > 0 && (
-              <span className={`text-xs font-semibold tabular-nums ${coreRatedCount === assessments.length ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+              <span className={`text-xs font-semibold tabular-nums ${coreRatedCount === assessments.length ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
                 Đã chấm {coreRatedCount}/{assessments.length}
                 {suppList.length > 0 ? ` · bổ trợ ${suppRatedCount}/${suppList.length}` : ''}
               </span>
@@ -812,12 +818,12 @@ export function EvalSectionB({
 
       {/* B2. Supplementary skills */}
       {supportsSupplementary && (
-        <Card className="border-violet-200/70">
+        <Card className="border-violet-200/70 dark:border-violet-500/30">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div>
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-violet-600" /> B2. Skill bổ trợ (ngoài chuẩn vị trí)
+                  <Layers className="w-4 h-4 text-violet-600 dark:text-violet-400" /> B2. Skill bổ trợ (ngoài chuẩn vị trí)
                 </CardTitle>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Tự thêm các skill khác trong bộ 38 mà bạn muốn được đánh giá thêm.
@@ -926,8 +932,8 @@ function SkillLevelReference({ assessment }: { assessment: CoreSkillAssessment }
                   <div className="flex items-center gap-1 mb-1.5">
                     <span className="font-bold text-foreground">L{l.n}</span>
                     <span className="text-[10px] text-muted-foreground">— {l.label}</span>
-                    {isMin && <span title="Tối thiểu cho vị trí" className="text-orange-600 text-[10px] font-semibold">★ TT</span>}
-                    {isAdv && <span title="Nâng cao cho vị trí" className="text-green-600 text-[10px] font-semibold">▲ NC</span>}
+                    {isMin && <span title="Tối thiểu cho vị trí" className="text-orange-600 dark:text-orange-400 text-[10px] font-semibold">★ TT</span>}
+                    {isAdv && <span title="Nâng cao cho vị trí" className="text-green-600 dark:text-green-400 text-[10px] font-semibold">▲ NC</span>}
                     {isCurrent && currentLvl > 0 && <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-primary/15 text-primary font-medium">Hiện tại</span>}
                   </div>
                   <p>{l.text || <span className="italic text-muted-foreground/70">(chưa có mô tả)</span>}</p>

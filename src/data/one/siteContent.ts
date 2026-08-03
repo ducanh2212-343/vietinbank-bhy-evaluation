@@ -1,0 +1,24 @@
+// Nội dung thật xuất từ bản BHY one đang chạy (Firebase, export 29/07/2026).
+// Đợt 1: dùng làm giá trị hiển thị tĩnh cho EditableText; Đợt 2 sẽ seed vào bảng site_content.
+export const SITE_CONTENT_SEED: Record<string, string> = {
+  "categories_config": "{\"sharing\":\"Bắc Hưng Yên Sharing\",\"quizzi\":\"Bắc Hưng Yên Quizzi\",\"ideas\":\"Bắc Hưng Yên Ideas\",\"credit360\":\"Bắc Hưng Yên Credit 360\",\"connect\":\"Bắc Hưng Yên Connect & Thư viện\",\"move1\":\"Chiêu thức 1 - Năng lượng ngày mới\",\"move2\":\"Chiêu thức 2 - Lập KHHĐ 5W2H\",\"move3\":\"Chiêu thức 3 - Phát triển nhân sự\",\"sao_xung_dang\":\"Chương trình Sao xứng đáng\",\"celebration20\":\"Kỷ niệm 20 Năm VietinBank BHY\",\"cs\":\"Chuyển Đổi số\"}",
+  "contact.card1.desc": "Số 88 đường Nguyễn Văn Linh, Phường Mỹ Hào, tỉnh Hưng Yên",
+  "contact.card2.desc": "Hotline: 0221 3943 501",
+  "contact.card2.title": "Đầu mối Tổng đài hỗ trợ",
+  "contact.card3.desc": "Email: cn343bachungyen@gmail.com",
+  "culture.desc": "Nhân dịp kỷ niệm 20 năm thành lập Chi nhánh (2006 – 2026), VietinBank Bắc Hưng Yên phát động chương trình thay ảnh đại diện Facebook/Zalo bằng khung hình kỷ niệm 20 năm như một cách lan tỏa niềm tự hào, tinh thần đoàn kết và dấu ấn đồng hành của mỗi cán bộ nhân viên với Chi nhánh ",
+  "culture.floating_badge": "Văn Hóa Bắc Hưng Yên",
+  "culture.nucleus_dept": "PP.Tổng Hợp",
+  "culture.nucleus_name": "NGUYỄN THỊ PHƯỢNG",
+  "culture.quote": "“Văn hóa đơn giản là: ở đây ai cũng vậy, Tin như vậy, Nghĩ như vậy và Làm như vậy”",
+  "departments_config": "[\"Phòng TCTH\",\"Phòng KHDN\",\"Phòng KHBL\",\"Phòng HTTD\",\"Phòng DVKH\",\"PGD Văn Giang\",\"PGD Văn Lâm\",\"PGD Yên Mỹ\",\"PGD Ân Thi\",\"PGD Khoái Châu\",\"Ban Giám Đốc\"]",
+  "hero.cta1": "Khám Phá Đặc Trưng",
+  "hero.slogan": "Vun Gốc Bền Rễ - Vươn Tầm Tương Lai",
+  "hero.title1": "VIETINBANK",
+  "moves.move3.title": "Phát Triển Nhân Sự & Ma Trận 4 Sao",
+  "programs.connect.competitive_content": "Khách hàng chia sẻ các kế hoạch dự án KD, lựa chọn VietinBank BHY là đối tác đồng hành từ khâu pháp lý đến phương án tài chính. Chi nhánh kết nối KHM từ hệ sinh thái KH — Là công cụ cạnh tranh quan trọng không phải bằng giá. Các KH trong HST BHY Connect cũng có sự gắn kết và  và thống nhất giá , hỗ trợ nhau triển khai dự án, phương thức quản trị",
+  "programs.connect.desc": "Chương trình được triển khai từ tháng 10/2024, tổ chức thành công Hội nghị kết nối kinh doanh KHDN vào tháng 11/2024 chủ đề “Thu” tại Melia Ba Vì, duy trì kết nối và đem lại hiệu quả lớn cho Chi nhánh trong công tác kinh doanh năm 2024 và 6T đầu năm 2025. Tháng 03/2025 tiếp tục dấu ấn với Hội nghị KHBL chủ đề “Xuân”. Tháng 8/2025 đặc biệt ghi dấu ấn với chương trình \"Sóng 25\", và cùng khám phá đất nước \"Mặt trời mọc\" vào tháng 3/2026 với những hoạt động CX nâng cao trải nghiệm và gắn kết KH, đem lại sự Tin cậy- Hài lòng- gắn bó",
+  "programs.ideas.tier2": "2. Bén rễ 🌿\nĐược sàng lọc và GĐCN phê duyệt thử nghiệm/ Được TSC phê duyệt \"đồng ý/đồng ý 1 phần\"\nThưởng: 300.000đ",
+  "programs.technology.cx_desc": "Bảng welcome điện tử; Thiệp chúc mừng cá nhân hóa; Clip Onepage hướng dẫn SPDV ngắn gọn sinh động do cán bộ Chi nhánh quay và dựng; Ký số hồ sơ nội bộ 100%; Khảo sát KH thường niên; ứng dụng các công cụ AI để làm công tác truyền thông ngắn gọn, hấp dẫn",
+  "programs.technology.ex_desc": "Kit quà tặng chạm cảm xúc; Kanban online MIRO; APC soạn thảo mẫu biểu; 100% VB trình ký eOffice nhanh chóng mọi lúc mọi nơi; Dùng AI đào tạo và làm chủ AI; \"Bac Hung Yen X01\".",
+};

@@ -1121,6 +1121,102 @@ export type Database = {
           },
         ]
       }
+      feature_tip_states: {
+        Row: {
+          created_at: string
+          dismissed_at: string | null
+          id: string
+          profile_id: string
+          pushed_at: string | null
+          seen_at: string | null
+          tip_id: string
+        }
+        Insert: {
+          created_at?: string
+          dismissed_at?: string | null
+          id?: string
+          profile_id: string
+          pushed_at?: string | null
+          seen_at?: string | null
+          tip_id: string
+        }
+        Update: {
+          created_at?: string
+          dismissed_at?: string | null
+          id?: string
+          profile_id?: string
+          pushed_at?: string | null
+          seen_at?: string | null
+          tip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feature_tip_states_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feature_tip_states_tip_id_fkey"
+            columns: ["tip_id"]
+            isOneToOne: false
+            referencedRelation: "feature_tips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feature_tips: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          cta_label: string | null
+          cta_url: string | null
+          display_mode: string
+          ends_at: string | null
+          id: string
+          is_active: boolean
+          priority: number
+          starts_at: string | null
+          target_roles: Database["public"]["Enums"]["app_role"][]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string | null
+          cta_label?: string | null
+          cta_url?: string | null
+          display_mode?: string
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          priority?: number
+          starts_at?: string | null
+          target_roles?: Database["public"]["Enums"]["app_role"][]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          cta_label?: string | null
+          cta_url?: string | null
+          display_mode?: string
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          priority?: number
+          starts_at?: string | null
+          target_roles?: Database["public"]["Enums"]["app_role"][]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       form_attitude_actions: {
         Row: {
           action_text: string
@@ -1676,6 +1772,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      guest_access: {
+        Row: {
+          created_at: string
+          created_by: string
+          display_name: string
+          email: string | null
+          expires_at: string
+          note: string | null
+          organization: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          display_name: string
+          email?: string | null
+          expires_at: string
+          note?: string | null
+          organization?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          display_name?: string
+          email?: string | null
+          expires_at?: string
+          note?: string | null
+          organization?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       kanban_card_logs: {
         Row: {
@@ -2286,6 +2418,332 @@ export type Database = {
           },
         ]
       }
+      portal_credit_sessions: {
+        Row: {
+          actual_revenue: string | null
+          business_field: string | null
+          created_at: string
+          created_by: string
+          creator_name: string | null
+          credit_limit: number | null
+          custom_values: Json | null
+          customer_name: string | null
+          department_name: string | null
+          dept_leader: string | null
+          id: string
+          legacy_id: string | null
+          session_date: string | null
+          underwriter: string | null
+          updated_at: string
+        }
+        Insert: {
+          actual_revenue?: string | null
+          business_field?: string | null
+          created_at?: string
+          created_by?: string
+          creator_name?: string | null
+          credit_limit?: number | null
+          custom_values?: Json | null
+          customer_name?: string | null
+          department_name?: string | null
+          dept_leader?: string | null
+          id?: string
+          legacy_id?: string | null
+          session_date?: string | null
+          underwriter?: string | null
+          updated_at?: string
+        }
+        Update: {
+          actual_revenue?: string | null
+          business_field?: string | null
+          created_at?: string
+          created_by?: string
+          creator_name?: string | null
+          credit_limit?: number | null
+          custom_values?: Json | null
+          customer_name?: string | null
+          department_name?: string | null
+          dept_leader?: string | null
+          id?: string
+          legacy_id?: string | null
+          session_date?: string | null
+          underwriter?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      portal_idea_comments: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          idea_id: string
+          legacy_id: string | null
+          user_id: string | null
+          user_name: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          idea_id: string
+          legacy_id?: string | null
+          user_id?: string | null
+          user_name: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          idea_id?: string
+          legacy_id?: string | null
+          user_id?: string | null
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_idea_comments_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "portal_ideas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_idea_votes: {
+        Row: {
+          created_at: string
+          idea_id: string
+          user_id: string
+          vote: number
+        }
+        Insert: {
+          created_at?: string
+          idea_id: string
+          user_id?: string
+          vote: number
+        }
+        Update: {
+          created_at?: string
+          idea_id?: string
+          user_id?: string
+          vote?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_idea_votes_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "portal_ideas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_ideas: {
+        Row: {
+          applicability: string
+          council_proposal: boolean
+          created_at: string
+          created_by: string
+          creator_email: string | null
+          current_status: string | null
+          custom_values: Json | null
+          department_name: string
+          development_level: string
+          expected_benefits: string | null
+          has_demo: boolean
+          id: string
+          legacy_id: string | null
+          level: string
+          proposed_solution: string | null
+          proposer: string
+          seed_likes: number
+          seed_unlikes: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          applicability: string
+          council_proposal?: boolean
+          created_at?: string
+          created_by?: string
+          creator_email?: string | null
+          current_status?: string | null
+          custom_values?: Json | null
+          department_name: string
+          development_level?: string
+          expected_benefits?: string | null
+          has_demo?: boolean
+          id?: string
+          legacy_id?: string | null
+          level: string
+          proposed_solution?: string | null
+          proposer: string
+          seed_likes?: number
+          seed_unlikes?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          applicability?: string
+          council_proposal?: boolean
+          created_at?: string
+          created_by?: string
+          creator_email?: string | null
+          current_status?: string | null
+          custom_values?: Json | null
+          department_name?: string
+          development_level?: string
+          expected_benefits?: string | null
+          has_demo?: boolean
+          id?: string
+          legacy_id?: string | null
+          level?: string
+          proposed_solution?: string | null
+          proposer?: string
+          seed_likes?: number
+          seed_unlikes?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      portal_images: {
+        Row: {
+          caption: string | null
+          created_at: string
+          created_by: string
+          id: string
+          image_path: string
+          is_active: boolean
+          slot_key: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          image_path: string
+          is_active?: boolean
+          slot_key: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          image_path?: string
+          is_active?: boolean
+          slot_key?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      portal_upload_likes: {
+        Row: {
+          created_at: string
+          upload_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          upload_id: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          upload_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_upload_likes_upload_id_fkey"
+            columns: ["upload_id"]
+            isOneToOne: false
+            referencedRelation: "portal_uploads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_uploads: {
+        Row: {
+          author_name: string
+          author_profile_id: string | null
+          category: string
+          content: string | null
+          created_at: string
+          created_by: string
+          custom_values: Json | null
+          department_name: string | null
+          id: string
+          image_path: string | null
+          image_paths: string[]
+          is_featured: boolean
+          is_shared_with_guests: boolean
+          legacy_id: string | null
+          seed_likes: number
+          summary: string | null
+          tags: string[]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author_name: string
+          author_profile_id?: string | null
+          category: string
+          content?: string | null
+          created_at?: string
+          created_by?: string
+          custom_values?: Json | null
+          department_name?: string | null
+          id?: string
+          image_path?: string | null
+          image_paths?: string[]
+          is_featured?: boolean
+          is_shared_with_guests?: boolean
+          legacy_id?: string | null
+          seed_likes?: number
+          summary?: string | null
+          tags?: string[]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author_name?: string
+          author_profile_id?: string | null
+          category?: string
+          content?: string | null
+          created_at?: string
+          created_by?: string
+          custom_values?: Json | null
+          department_name?: string | null
+          id?: string
+          image_path?: string | null
+          image_paths?: string[]
+          is_featured?: boolean
+          is_shared_with_guests?: boolean
+          legacy_id?: string | null
+          seed_likes?: number
+          summary?: string | null
+          tags?: string[]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_uploads_author_profile_id_fkey"
+            columns: ["author_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -2306,6 +2764,7 @@ export type Database = {
           phone: string | null
           position: string | null
           position_id: string | null
+          self_review_only: boolean
           status: string
           updated_at: string
           user_id: string
@@ -2329,6 +2788,7 @@ export type Database = {
           phone?: string | null
           position?: string | null
           position_id?: string | null
+          self_review_only?: boolean
           status?: string
           updated_at?: string
           user_id: string
@@ -2352,6 +2812,7 @@ export type Database = {
           phone?: string | null
           position?: string | null
           position_id?: string | null
+          self_review_only?: boolean
           status?: string
           updated_at?: string
           user_id?: string
@@ -3315,6 +3776,27 @@ export type Database = {
           },
         ]
       }
+      site_content: {
+        Row: {
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
       skill_assessments: {
         Row: {
           created_at: string
@@ -3720,6 +4202,54 @@ export type Database = {
         }
         Relationships: []
       }
+      star_records: {
+        Row: {
+          awarded_on: string
+          created_at: string
+          created_by: string | null
+          department: string
+          id: string
+          is_collective: boolean
+          name: string
+          reason: string | null
+          result: string | null
+          sender: string | null
+          serial: string | null
+          source: string
+          stars: number
+        }
+        Insert: {
+          awarded_on: string
+          created_at?: string
+          created_by?: string | null
+          department: string
+          id?: string
+          is_collective?: boolean
+          name: string
+          reason?: string | null
+          result?: string | null
+          sender?: string | null
+          serial?: string | null
+          source?: string
+          stars: number
+        }
+        Update: {
+          awarded_on?: string
+          created_at?: string
+          created_by?: string | null
+          department?: string
+          id?: string
+          is_collective?: boolean
+          name?: string
+          reason?: string | null
+          result?: string | null
+          sender?: string | null
+          serial?: string | null
+          source?: string
+          stars?: number
+        }
+        Relationships: []
+      }
       staff_star_classifications: {
         Row: {
           approval_status: Database["public"]["Enums"]["star_approval_status"]
@@ -4059,6 +4589,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_update_idea_status: {
+        Args: {
+          _council_proposal?: boolean
+          _department_name?: string
+          _development_level?: string
+          _idea_id: string
+        }
+        Returns: undefined
+      }
       admin_email_overview: { Args: never; Returns: Json }
       can_observe_profile: {
         Args: { _target: string }
@@ -4262,6 +4801,7 @@ export type Database = {
         | "tcth_admin"
         | "system_admin"
         | "bgd"
+        | "guest"
       evaluation_status:
         | "draft"
         | "in_progress"
@@ -4409,6 +4949,7 @@ export const Constants = {
         "tcth_admin",
         "system_admin",
         "bgd",
+        "guest",
       ],
       evaluation_status: [
         "draft",

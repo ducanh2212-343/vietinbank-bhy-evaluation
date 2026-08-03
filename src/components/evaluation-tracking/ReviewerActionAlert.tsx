@@ -127,8 +127,8 @@ export function ReviewerActionAlert({ onActionClick }: Props) {
   const hasOverdue = alert.overdue > 0;
 
   return (
-    <div className={`rounded-lg border p-3 flex items-start gap-3 ${hasOverdue ? 'bg-destructive/5 border-destructive/40' : 'bg-amber-50 border-amber-300'}`}>
-      <AlertTriangle className={`w-5 h-5 mt-0.5 shrink-0 ${hasOverdue ? 'text-destructive' : 'text-amber-600'}`} />
+    <div className={`rounded-lg border p-3 flex items-start gap-3 ${hasOverdue ? 'bg-destructive/5 border-destructive/40' : 'bg-amber-50 dark:bg-amber-500/10 border-amber-300 dark:border-amber-500/40'}`}>
+      <AlertTriangle className={`w-5 h-5 mt-0.5 shrink-0 ${hasOverdue ? 'text-destructive' : 'text-amber-600 dark:text-amber-400'}`} />
       <div className="flex-1 min-w-0 space-y-1">
         <div className="font-medium text-sm">
           Bạn có <span className="font-semibold">{alert.pendingForMe}</span> bản đánh giá cần xử lý

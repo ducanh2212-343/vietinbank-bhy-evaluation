@@ -1,0 +1,50 @@
+-- ============================================================
+-- send-feature-tip-push — BƯỚC LÊN LỊCH CRON (thao tác vận hành, không tự chạy khi apply)
+-- ============================================================
+-- Edge function `send-feature-tip-push` push "mẹo tính năng hay" cho cán bộ
+-- LÂU KHÔNG ĐĂNG NHẬP (mặc định >= 7 ngày, chỉ người đã bật thông báo đẩy).
+-- Migration này CHỈ ghi lại bước lên/gỡ lịch để có dấu vết trong repo — toàn bộ
+-- là comment, apply không gửi gì. Việc bật lịch là thao tác thủ công có kiểm
+-- soát, chạy 1 lần trong SQL Editor SAU KHI đã deploy edge function.
+--
+-- Không có secret trong file này: cron đọc service_role key từ Vault lúc chạy
+-- (cùng secret 'email_queue_service_role_key' mà cron process-email-queue và
+-- send-reminders đang dùng).
+--
+-- ------------------------------------------------------------
+-- 1) XEM TRƯỚC (không gửi) — chạy bằng tài khoản admin hoặc qua cron key:
+--    body {"dry_run": true} (mặc định) → trả về inactive_users / users_with_device
+--    / planned (ai sẽ nhận tip nào).
+--
+-- 2) BẬT LỊCH HẰNG NGÀY 10:00 giờ VN (= 03:00 UTC — sau lượt send-reminders 08:00
+--    để hai loại push không dồn cùng lúc). Chạy 1 lần:
+--
+--    select cron.schedule(
+--      'send-feature-tip-push-daily',
+--      '0 3 * * *',
+--      $cron$
+--        select net.http_post(
+--          url := 'https://whlysprzsguehxmrjwha.supabase.co/functions/v1/send-feature-tip-push',
+--          headers := jsonb_build_object(
+--            'Authorization',
+--            'Bearer ' || (select decrypted_secret from vault.decrypted_secrets
+--                          where name = 'email_queue_service_role_key'),
+--            'Content-Type', 'application/json'
+--          ),
+--          body := '{"dry_run": false}'::jsonb
+--        );
+--      $cron$
+--    );
+--
+-- 3) GỠ LỊCH (nếu cần dừng):
+--    select cron.unschedule('send-feature-tip-push-daily');
+--
+-- 4) KIỂM TRA:
+--    select jobname, schedule, active from cron.job where jobname = 'send-feature-tip-push-daily';
+--    select * from cron.job_run_details
+--      where jobid = (select jobid from cron.job where jobname = 'send-feature-tip-push-daily')
+--      order by start_time desc limit 5;
+--
+-- Chống spam trong function: mỗi người tối đa 1 tip/lần chạy; cùng một tip không
+-- push lại cho cùng một người trong 30 ngày (feature_tip_states.pushed_at).
+-- ============================================================

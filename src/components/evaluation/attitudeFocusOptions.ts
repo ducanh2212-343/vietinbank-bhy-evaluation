@@ -62,6 +62,33 @@ export function getFocusLabel(dimId: number, code: string): string {
   return opt?.label || code;
 }
 
+/**
+ * issue_summary trong form_attitude_priorities mang 2 định dạng:
+ * - Payload focus từ phiếu tự đánh giá: {"focus":["6a"],"other":""} (hoặc pipe cũ "6a|other:xxx")
+ * - Văn bản tự do (legacy).
+ * Giải mã về chữ dễ đọc để hiển thị/đưa vào AI — tránh lộ JSON thô ra giao diện.
+ */
+export function decodeFocusPayload(dimId: number, raw: string | null | undefined): { text: string; isFocusPayload: boolean } {
+  const s = (raw || '').trim();
+  if (!s) return { text: '', isFocusPayload: false };
+  try {
+    const parsed = JSON.parse(s);
+    if (parsed && Array.isArray(parsed.focus)) {
+      const labels = (parsed.focus as string[]).map((c) =>
+        c === 'other' ? ((parsed.other || '').trim() || 'Khác') : getFocusLabel(dimId, c),
+      );
+      return { text: labels.join(' • '), isFocusPayload: true };
+    }
+  } catch { /* không phải JSON → thử pipe cũ hoặc trả nguyên văn */ }
+  if (/^[0-9][a-z](\|[0-9][a-z])*(\|other:.*)?$/.test(s) || s.startsWith('other:')) {
+    const labels = s.split('|').filter(Boolean).map((p) =>
+      p.startsWith('other:') ? (p.slice('other:'.length).trim() || 'Khác') : getFocusLabel(dimId, p),
+    );
+    return { text: labels.join(' • '), isFocusPayload: true };
+  }
+  return { text: s, isFocusPayload: false };
+}
+
 /* Helpers — date presets */
 export function endOfMonth(d = new Date()): string {
   const end = new Date(d.getFullYear(), d.getMonth() + 1, 0);

@@ -42,7 +42,7 @@ import {
 import { OverallReviewBlock, type OverallReviewValue } from '@/components/evaluation/OverallReviewBlock';
 import { validateManagerReview } from '@/lib/evaluationValidation';
 import { StarClassificationBlock } from '@/components/evaluation/StarClassificationBlock';
-import { getReviewerLevel, getOverallReviewField } from '@/lib/reviewerScope';
+import { getReviewerLevel, getOverallReviewField, resolveDefaultReviewerId } from '@/lib/reviewerScope';
 import { useCycleOneOnOneQuestions } from '@/hooks/useCycleOneOnOneQuestions';
 import { useEvaluationAutosave } from '@/hooks/useEvaluationAutosave';
 import { AutosaveStatusBar } from '@/components/evaluation/AutosaveStatusBar';
@@ -98,6 +98,10 @@ export default function StaffEvaluation() {
   const [remark, setRemark] = useState('');
   const [managerConclusion, setManagerConclusion] = useState('');
   const [overallReview, setOverallReview] = useState<OverallReviewValue>({});
+  // Đánh giá của các cấp DƯỚI người xem (TP khi PGĐ/GĐ mở phiếu, thêm PGĐ khi GĐ mở)
+  // — chỉ đọc. Thiếu phần này, GĐ mở phiếu chỉ thấy khối của chính mình (trống) dù TP
+  // đã nhập đầy đủ (phản hồi 24/07).
+  const [peerOverallReviews, setPeerOverallReviews] = useState<{ label: string; value: OverallReviewValue }[]>([]);
   const [actionLoading, setActionLoading] = useState(false);
   const [returnEmpOpen, setReturnEmpOpen] = useState(false);
   const [confirmReviewOpen, setConfirmReviewOpen] = useState(false);
@@ -117,6 +121,7 @@ export default function StaffEvaluation() {
     pgd_review_status?: string | null;
     pgd_reviewed_at?: string | null;
     returned_by?: string | null;
+    returned_by_name?: string | null;
     returned_at?: string | null;
     return_reason?: string | null;
     return_target?: string | null;
@@ -147,8 +152,16 @@ export default function StaffEvaluation() {
   const isPgdReviewer = reviewerLevel === 'pgd';
   const isDirectorViewer = reviewerLevel === 'director';
   const isAssignedReviewer = !!profileId && formMeta.reviewer_id === profileId;
+  // "Không có TP trung gian" gồm cả trường hợp hồ sơ đặt Quản lý trực tiếp = chính
+  // PGĐ/GĐ phụ trách (cùng một người): khi đó vai 'pgd' thắng vai 'manager' trong
+  // getReviewerLevel nên không ai chuyển được submitted→reviewed → phiếu kẹt
+  // (sự cố Lý Văn Tám 24/07). Người đó phải được chấm + phê duyệt gộp một bước.
+  const managerIsSameSupervisor =
+    !!profile?.manager_id &&
+    (profile.manager_id === profile?.pgd_id || profile.manager_id === profile?.director_id);
   const isSoleApprover =
-    isAssignedReviewer && (isPgdReviewer || isDirectorViewer) && !profile?.manager_id && !isSelfEval;
+    isAssignedReviewer && (isPgdReviewer || isDirectorViewer) &&
+    (!profile?.manager_id || managerIsSameSupervisor) && !isSelfEval;
   const canEditManagerAssessment =
     (isDirectManagerReviewer &&
       (formStatus === 'submitted' ||
@@ -338,6 +351,7 @@ export default function StaffEvaluation() {
     setOneOnOneEnabled(false);
     setOneOnOneAnswers({});
     setFormMeta({});
+    setPeerOverallReviews([]);
 
     let resolvedCoreAssessments = initialCoreAssessments;
     let resolvedSuppAssessments: CoreSkillAssessment[] = [];
@@ -367,6 +381,11 @@ export default function StaffEvaluation() {
           const { data: rev } = await supabase.from('profiles').select('full_name').eq('id', f.reviewer_id).maybeSingle();
           reviewerName = rev?.full_name || null;
         }
+        let returnedByName: string | null = null;
+        if (f.returned_by) {
+          const { data: ret } = await supabase.from('profiles').select('full_name').eq('id', f.returned_by).maybeSingle();
+          returnedByName = ret?.full_name || null;
+        }
         setFormMeta({
           reviewer_id: f.reviewer_id ?? null,
           reviewer_name: reviewerName,
@@ -375,6 +394,7 @@ export default function StaffEvaluation() {
           pgd_review_status: f.pgd_review_status ?? null,
           pgd_reviewed_at: f.pgd_reviewed_at ?? null,
           returned_by: f.returned_by ?? null,
+          returned_by_name: returnedByName,
           returned_at: f.returned_at ?? null,
           return_reason: f.return_reason ?? null,
           return_target: f.return_target ?? null,
@@ -388,6 +408,21 @@ export default function StaffEvaluation() {
         const orField = localLevel ? getOverallReviewField(localLevel) : null;
         const existingOr = orField ? (form as any)[orField] : null;
         setOverallReview(existingOr && typeof existingOr === 'object' ? existingOr : {});
+
+        // Đánh giá của các cấp thấp hơn người xem — hiện chỉ đọc trong cụm G.
+        const hasReviewContent = (r: any) =>
+          !!r && typeof r === 'object' && Object.values(r).some((v) => typeof v === 'string' && v.trim() !== '');
+        const peers: { label: string; value: OverallReviewValue }[] = [];
+        if (localLevel !== 'manager' && hasReviewContent(f.manager_overall_review)) {
+          peers.push({ label: 'Trưởng phòng', value: f.manager_overall_review });
+        }
+        if ((localLevel === 'director' || !localLevel) && hasReviewContent(f.pgd_overall_review)) {
+          peers.push({ label: 'Phó giám đốc', value: f.pgd_overall_review });
+        }
+        if (!localLevel && hasReviewContent(f.director_overall_review)) {
+          peers.push({ label: 'Giám đốc', value: f.director_overall_review });
+        }
+        setPeerOverallReviews(peers);
 
         const [saRes, spRes, sActRes, apRes, aActRes, aiRes] = await Promise.all([
           supabase.from('skill_assessments').select('*').eq('form_id', fId),
@@ -871,6 +906,15 @@ export default function StaffEvaluation() {
       // Chỉ ghi submitted_at khi thực sự nộp — lưu nháp không được xóa mốc thời gian nộp
       if (submit && nextStatus === 'submitted') {
         formPayload.submitted_at = new Date().toISOString();
+        // Phiếu nộp qua màn này trước đây KHÔNG gán người đánh giá → treo vô chủ, không
+        // ai đứng vai để rà soát/phê duyệt (sự cố Dương Thị Thanh Thúy 25/07). Gán mặc
+        // định theo tuyến báo cáo; DB còn một lớp chặn nữa (trigger form_reviewer_fallback).
+        if (!formMeta.reviewer_id) {
+          const fallbackReviewer = resolveDefaultReviewerId(
+            profile ? { id: profile.id, manager_id: profile.manager_id, pgd_id: profile.pgd_id, director_id: profile.director_id } : null,
+          );
+          if (fallbackReviewer) formPayload.reviewer_id = fallbackReviewer;
+        }
       }
       if (isManagerMode) {
         if (oneOnOneEnabled || hasEmployeeAnswers) {
@@ -880,6 +924,12 @@ export default function StaffEvaluation() {
       } else {
         formPayload.one_on_one_enabled = oneOnOneEnabled || hasEmployeeAnswers;
         formPayload.one_on_one_answers = oneOnOneAnswers as any;
+      }
+      // Đánh giá tổng thể của cấp trên phải đi cùng cả đường "Lưu nháp"/nộp,
+      // không chỉ autosave — nếu bỏ sót, loadData sau khi lưu sẽ hydrate lại
+      // từ phiếu và mục này biến mất trên màn hình dù DB đã có.
+      if (isManagerMode && reviewField) {
+        formPayload[reviewField] = overallReview;
       }
       // CB nộp lại sau khi bị trả → bật cờ cần TP cập nhật, xóa thông tin trả lại cũ
       if (submit && formStatus === 'returned' && isSelfEval) {
@@ -901,13 +951,15 @@ export default function StaffEvaluation() {
       // Lưu toàn bộ bảng con qua RPC atomic (giữ UUID hành động → Kanban không reset; rollback nếu lỗi).
       await saveEvaluationChildren(fId, buildChildrenPayload());
 
-      // Save classification/remark
-      const evalPayload = {
+      // Save classification/remark. classification giờ do luồng duyệt nhóm sao đồng bộ
+      // (StarClassificationBlock.syncClassification) — chỉ ghi khi state có giá trị
+      // (dữ liệu cũ đã load), tuyệt đối không ghi đè null làm mất nhóm đã duyệt.
+      const evalPayload: any = {
         employee_id: id, cycle_id: cycleId || null,
-        classification: (classification || null) as any,
         remark: remark || null, updated_by: user?.id || null,
         completion_status: submit ? 'submitted' : 'draft',
       };
+      if (classification) evalPayload.classification = classification as any;
       const { data: existingEval } = await supabase.from('admin_evaluations')
         .select('id').eq('employee_id', id).eq('cycle_id', cycleId).limit(1);
       if (existingEval?.[0]) {
@@ -1006,7 +1058,17 @@ export default function StaffEvaluation() {
   // rà soát (reviewed) và phê duyệt (approved) để giữ nguyên các mốc thời gian.
   const handleReviewAndApprove = async () => {
     if (!formId) return;
-    await handleSave(false);
+    // Cùng nguyên tắc với handleConfirmReview: chỉ phê duyệt khi nội dung đã lưu
+    // THÀNH CÔNG — tránh chốt level trên dữ liệu chưa kịp ghi.
+    const saved = await handleSave(false);
+    if (!saved) {
+      toast({
+        title: 'Chưa thể phê duyệt',
+        description: 'Lưu nội dung đánh giá thất bại. Vui lòng kiểm tra kết nối và thử lại.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setActionLoading(true);
     const now = new Date().toISOString();
     try {
@@ -1049,6 +1111,57 @@ export default function StaffEvaluation() {
       return_target: 'manager',
     }, 'Đã trả lại trưởng phòng');
 
+  // BGĐ/TCTH chuyển trả phiếu ĐÃ PHÊ DUYỆT về Trưởng phòng (bổ sung Sao / sửa nội dung).
+  // Phiếu quay về 'submitted' + return_target='manager' — đúng shape PGĐ trả TP để tái dùng
+  // toàn bộ gate hiện có; pgd_review_status về 'pending' vì người trả là BGĐ (không phải PGĐ)
+  // và PGĐ phải phê duyệt LẠI. Đồng thời mở khóa bản ghi nhóm sao để TP đề xuất lại.
+  const handleReturnApprovedToManager = async (reason: string) => {
+    if (!formId || !isAdmin || formStatus !== 'approved') return; // 'closed' bị loại — kỳ đã khoá
+    if (!cycleOpen) {
+      toast({
+        title: 'Kỳ đánh giá chưa mở hoặc đã đóng',
+        description: 'Không thể chuyển trả phiếu của kỳ không mở. Mở lại kỳ trong Quản lý kỳ đánh giá nếu cần.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setActionLoading(true);
+    try {
+      const { error } = await supabase.from('form_submissions').update({
+        status: 'submitted' as any,
+        pgd_review_status: 'pending',
+        pgd_reviewed_at: null,
+        returned_by: profileId,
+        returned_at: new Date().toISOString(),
+        return_reason: reason || null,
+        return_target: 'manager',
+      }).eq('id', formId);
+      if (error) throw error;
+
+      // Nhóm sao đã duyệt khóa TP lại (StarClassificationBlock chỉ cho sửa khi
+      // !record hoặc rejected) → reset về 'rejected' như luồng PGĐ từ chối để TP đề xuất lại.
+      const { data: star } = await supabase
+        .from('staff_star_classifications')
+        .select('id, approval_status')
+        .eq('cycle_id', cycleId)
+        .eq('employee_id', id!)
+        .maybeSingle();
+      if (star && star.approval_status !== 'rejected') {
+        const { error: sErr } = await supabase
+          .from('staff_star_classifications')
+          .update({ approval_status: 'rejected', approved_at: null })
+          .eq('id', star.id);
+        if (sErr) throw sErr;
+      }
+      toast({ title: 'Đã chuyển trả phiếu cho Trưởng phòng' });
+      await loadData();
+    } catch (e: any) {
+      toast({ title: 'Lỗi chuyển trả phiếu', description: e?.message ?? String(e), variant: 'destructive' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   if (loading) return <div className="p-6 text-muted-foreground">Đang tải biểu mẫu đánh giá...</div>;
 
   return (
@@ -1074,19 +1187,25 @@ export default function StaffEvaluation() {
         <p className="page-subtitle">{profile?.full_name}</p>
         {(() => {
           if (formMeta.return_target === 'manager') {
-            return <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30">PGĐ trả lại · Trưởng phòng cần cập nhật</Badge>;
+            return (
+              <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30">
+                {formMeta.pgd_review_status === 'returned'
+                  ? 'PGĐ trả lại · Trưởng phòng cần cập nhật'
+                  : 'Trả lại · Trưởng phòng cần cập nhật'}
+              </Badge>
+            );
           }
           if (formStatus === 'returned' && formMeta.return_target === 'employee') {
             return <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30">Trả lại cán bộ chỉnh sửa</Badge>;
           }
           if (formStatus === 'submitted') {
-            return <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">Chờ Trưởng phòng rà soát</Badge>;
+            return <Badge variant="outline" className="bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-500/40">Chờ Trưởng phòng rà soát</Badge>;
           }
           if (formStatus === 'reviewed') {
-            return <Badge variant="outline" className="bg-sky-100 text-sky-800 border-sky-300">Trưởng phòng đã rà soát · Chờ PGĐ duyệt</Badge>;
+            return <Badge variant="outline" className="bg-sky-100 dark:bg-sky-500/15 text-sky-800 dark:text-sky-300 border-sky-300 dark:border-sky-500/40">Trưởng phòng đã rà soát · Chờ PGĐ duyệt</Badge>;
           }
           if (formStatus === 'approved') {
-            return <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-300">Đã phê duyệt</Badge>;
+            return <Badge variant="outline" className="bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40">Đã phê duyệt</Badge>;
           }
           return null;
         })()}
@@ -1094,7 +1213,7 @@ export default function StaffEvaluation() {
 
       {/* Cảnh báo dữ liệu nền: user có role TP nhưng không phải manager trực tiếp */}
       {isManager && !isSelfEval && reviewerLevel !== 'manager' && !isAdmin && !isPgd && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 flex items-start gap-2">
+        <div className="rounded-md border border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2">
           <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
           <span>
             Bạn có role Trưởng phòng nhưng không phải Quản lý trực tiếp của cán bộ này theo hồ sơ hiện tại.
@@ -1140,12 +1259,19 @@ export default function StaffEvaluation() {
       {formMeta.return_target === 'manager' && isManagerMode && reviewerLevel === 'manager' && (
         <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
           <div className="font-medium text-destructive flex items-center gap-1">
-            <AlertTriangle className="w-4 h-4" /> PGĐ đã trả lại phiếu cho trưởng phòng
+            <AlertTriangle className="w-4 h-4" />
+            {formMeta.pgd_review_status === 'returned'
+              ? 'PGĐ đã trả lại phiếu cho trưởng phòng'
+              : `Ban Giám đốc/TCTH đã chuyển trả phiếu đã phê duyệt${formMeta.returned_by_name ? ` (${formMeta.returned_by_name})` : ''}`}
           </div>
           {formMeta.return_reason && (
             <div className="mt-1 text-foreground/80"><span className="text-muted-foreground">Lý do:</span> {formMeta.return_reason}</div>
           )}
-          <div className="mt-1 text-xs text-muted-foreground">Vui lòng rà soát lại và bấm "Xác nhận rà soát" để chuyển PGĐ.</div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            {formMeta.pgd_review_status === 'returned'
+              ? 'Vui lòng rà soát lại và bấm "Xác nhận rà soát" để chuyển PGĐ.'
+              : 'Vui lòng bổ sung phân nhóm Sao, cập nhật nội dung, rồi bấm "Xác nhận rà soát" để chuyển PGĐ duyệt lại.'}
+          </div>
         </div>
       )}
 
@@ -1245,7 +1371,7 @@ export default function StaffEvaluation() {
 
       {/* Cảnh báo cập nhật khi CB nộp lại */}
       {isManagerMode && formMeta.needs_manager_review_update && (
-        <div className="rounded-md border border-amber-400 bg-amber-50 p-3 text-sm text-amber-900 flex items-center gap-2">
+        <div className="rounded-md border border-amber-400 dark:border-amber-500/50 bg-amber-50 dark:bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-200 flex items-center gap-2">
           <AlertTriangle className="w-4 h-4" />
           Cán bộ đã nộp lại phiếu sau khi bị trả. Vui lòng rà soát lại các cột <strong>QL ĐG skill</strong> và <strong>QL ĐG thái độ</strong>.
         </div>
@@ -1319,47 +1445,19 @@ export default function StaffEvaluation() {
       {/* F */}
       <AIActionsBlock aiActions={aiActions} onChange={setAiActions} skillPriorities={skillPriorities} attitudePriorities={attitudePriorities} quarterLabel="quý này" />
 
-      {/* G — kết luận chỉ Trưởng phòng trực tiếp được sửa; PGĐ chỉ duyệt/trả lại */}
-      <EvalSectionG
-        classification={classification}
-        remark={remark}
-        managerConclusion={managerConclusion}
-        formStatus={formStatus}
-        evaluatorLevel={isManagerMode ? reviewerLevel : null}
-        isManager={canEditManagerAssessment}
-        isAdmin={isAdmin}
-        canConfirmReview={canConfirmReview}
-        actionLoading={actionLoading}
-        hideManagerActions
-        soleApprover={isSoleApprover}
+      {/* Đánh giá của các cấp dưới người xem (chỉ đọc) — PGĐ/GĐ đọc được nội dung TP
+          đã nhập ngay tại trang này thay vì phải mở hồ sơ đã duyệt */}
+      {formId && peerOverallReviews.map((p) => (
+        <OverallReviewBlock
+          key={p.label}
+          title={`Kết luận & định hướng của ${p.label} (chỉ đọc)`}
+          value={p.value}
+          onChange={() => { /* chỉ đọc */ }}
+          disabled
+        />
+      ))}
 
-        onClassificationChange={setClassification}
-        onRemarkChange={setRemark}
-        onConclusionChange={setManagerConclusion}
-        onStatusChange={setFormStatus}
-        onConfirmReview={handleConfirmReview}
-        onReturnToEmployee={handleReturnToEmployee}
-        onApprove={handleApprove}
-        onReturnToManager={handleReturnToManager}
-        onApproveDirect={handleReviewAndApprove}
-      />
-
-      {/* H — Đánh giá tổng thể của lãnh đạo (chỉ hiện khi actor là cấp trên của target).
-          Nội dung được tự lưu cùng phiếu (autosave + Lưu nháp) — đã bỏ nút lưu riêng dễ quên. */}
-      {reviewerLevel && reviewField && formId && (
-        <div className="space-y-1">
-          <OverallReviewBlock
-            title={`Đánh giá tổng thể (${reviewerLevel === 'manager' ? 'Trưởng phòng' : reviewerLevel === 'pgd' ? 'Phó giám đốc' : 'Giám đốc'})`}
-            value={overallReview}
-            onChange={setOverallReview}
-          />
-          <p className="text-[11px] text-muted-foreground px-1">
-            Nội dung mục này được tự lưu cùng phiếu — không cần nút lưu riêng.
-          </p>
-        </div>
-      )}
-
-      {/* I — Phân nhóm sao */}
+      {/* Phân nhóm sao — nơi DUY NHẤT chọn nhóm (TP đề xuất → PGĐ duyệt → GĐ điều chỉnh) */}
       {reviewerLevel && cycleId && profileId && (
         <StarClassificationBlock
           cycleId={cycleId}
@@ -1370,7 +1468,30 @@ export default function StaffEvaluation() {
           approverDefaultId={profile?.pgd_id ?? null}
           canEvaluate={reviewerLevel === 'manager' || isSoleApprover}
           canApprove={reviewerLevel === 'pgd' || isSoleApprover}
+          soleApprover={isSoleApprover}
+          reloadKey={formStatus}
         />
+      )}
+
+      {/* Định hướng phát triển — 1 ô duy nhất, ghi vào key next_focus của *_overall_review
+          (giữ nguyên cột jsonb → BM01 và hồ sơ cá nhân không đổi; các key cũ hiện read-only).
+          Nội dung được tự lưu cùng phiếu (autosave + Lưu nháp) — đã bỏ nút lưu riêng dễ quên. */}
+      {reviewerLevel && reviewField && formId && (
+        <div className="space-y-1">
+          <OverallReviewBlock
+            title={`Kết luận & định hướng phát triển (${
+              reviewerLevel === 'manager' ? 'Trưởng phòng'
+              // Kiêm nhiệm PGĐ + GĐ (vai thực thi 'pgd' thắng): nhãn "Phó giám đốc" làm GĐ
+              // tưởng nhầm ô của người khác — sự cố phiếu PGĐ Thùy Linh 27/07
+              : reviewerLevel === 'pgd' ? (profile?.director_id && profile?.director_id === profile?.pgd_id ? 'Ban Giám đốc' : 'Phó giám đốc')
+              : 'Giám đốc'})`}
+            value={overallReview}
+            onChange={setOverallReview}
+          />
+          <p className="text-[11px] text-muted-foreground px-1">
+            Nội dung mục này được tự lưu cùng phiếu — không cần nút lưu riêng.
+          </p>
+        </div>
       )}
 
       {/* Tóm tắt duyệt-theo-ngoại-lệ cho TP trước khi xác nhận */}
@@ -1384,6 +1505,40 @@ export default function StaffEvaluation() {
         />
       )}
 
+      {/* G — trạng thái + nút duyệt/trả, đặt CUỐI trang (07/2026): trước đây nằm trên
+          khối phân nhóm sao và ô kết luận nên người duyệt gặp nút "Phê duyệt" trước khi
+          điền các phần điều kiện của nó — rối và dễ ép trạng thái (phiếu PGĐ Thùy Linh). */}
+      <EvalSectionG
+        remark={remark}
+        managerConclusion={managerConclusion}
+        formStatus={formStatus}
+        evaluatorLevel={isManagerMode ? reviewerLevel : null}
+        isAdmin={isAdmin}
+        canConfirmReview={canConfirmReview}
+        actionLoading={actionLoading}
+        hideManagerActions
+        soleApprover={isSoleApprover}
+        onStatusChange={(v) => {
+          // Dropdown admin ép trạng thái đi TẮT quy trình: không ghi mốc rà soát/duyệt,
+          // và trigger chốt level sẽ lấy mức TỰ đánh giá cho các skill cấp trên chưa chấm
+          // (sự cố phiếu PGĐ Thùy Linh 27/07). Cảnh báo rõ, không chặn quyền admin.
+          if (v === 'approved' && formStatus !== 'approved' && reviewMissing.length > 0) {
+            toast({
+              title: 'Ép duyệt khi chưa đánh giá đủ?',
+              description: `Phiếu chưa đạt điều kiện duyệt: ${reviewMissing.join(' · ')}. Nếu vẫn lưu, level sẽ chốt theo mức TỰ đánh giá ở các skill chưa được cấp trên chấm. Nên dùng nút "Đánh giá & phê duyệt" sau khi chấm đủ.`,
+              variant: 'destructive',
+            });
+          }
+          setFormStatus(v);
+        }}
+        onConfirmReview={handleConfirmReview}
+        onReturnToEmployee={handleReturnToEmployee}
+        onApprove={handleApprove}
+        onReturnToManager={handleReturnToManager}
+        onApproveDirect={handleReviewAndApprove}
+        onReturnApproved={handleReturnApprovedToManager}
+      />
+
       {/* Sticky bottom bar */}
       {(() => {
         const tpCanAct = canEditManagerAssessment;
@@ -1392,7 +1547,7 @@ export default function StaffEvaluation() {
 
         return (
           <div
-            className="fixed bottom-0 left-0 right-0 lg:left-60 bg-background border-t p-3 z-50"
+            className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:bottom-0 left-0 right-0 lg:left-60 bg-background border-t p-3 z-50"
             style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
           >
             <div className="max-w-4xl mx-auto flex flex-col gap-2">

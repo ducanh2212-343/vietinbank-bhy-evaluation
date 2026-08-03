@@ -204,7 +204,7 @@ export function CouncilProgressTab({ roundId, roundName, roundOpen, votingDeadli
                         <Button
                           size="sm"
                           variant="ghost"
-                          className={`h-6 w-6 p-0 ${remindedIds.has(m.profile_id) ? 'text-emerald-600' : 'text-muted-foreground'}`}
+                          className={`h-6 w-6 p-0 ${remindedIds.has(m.profile_id) ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}
                           title={m.email
                             ? `Nhắc email ${m.full_name} (gửi tới ${m.email}) — còn ${pendingSubjectsOf(m).length} phiếu chưa gửi`
                             : `${m.full_name} chưa có email trong hồ sơ — bổ sung tại Danh sách cán bộ`}

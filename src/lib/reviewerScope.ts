@@ -10,6 +10,27 @@ export interface ProfileLike {
   manager_id?: string | null;
   pgd_id?: string | null;
   director_id?: string | null;
+  /** Cờ phiếu TỰ SOI — xem isSelfReviewProfile */
+  self_review_only?: boolean | null;
+}
+
+/**
+ * Phiếu TỰ SOI: người không có cấp trên nào trong tuyến báo cáo (Giám đốc chi nhánh).
+ * Nguyên tắc Giám đốc chốt 27/07: KHÔNG cần người chấm — TỰ ĐÁNH GIÁ CHÍNH LÀ MỨC CHỐT;
+ * phiếu tự nộp, tự phê duyệt; hồ sơ được miễn trừ khỏi luật "phải gán người đánh giá
+ * trước khi mở kỳ".
+ *
+ * Nguồn sự thật DUY NHẤT là cột profiles.self_review_only (đặt bởi TCTH/quản trị).
+ * Trước 08/2026 nguyên tắc nằm rải ở 3 nơi, mỗi nơi so khớp CHUỖI chức danh theo một
+ * danh sách khác nhau — đổi tên chức danh là ba nơi hiểu khác nhau, và nhánh
+ * "chứa 'giám đốc chi nhánh'" còn cho tự phê duyệt KỂ CẢ khi người đó có cấp trên.
+ *
+ * Vẫn kiểm tra lại "không có cấp trên" ở đây cho chắc: DB đã có ràng buộc
+ * chk_self_review_no_supervisor, hai lớp phải cùng nói một điều.
+ */
+export function isSelfReviewProfile(profile: ProfileLike | null | undefined): boolean {
+  if (!profile?.self_review_only) return false;
+  return !profile.manager_id && !profile.pgd_id && !profile.director_id;
 }
 
 export interface ActorRoles {
@@ -29,9 +50,12 @@ export function getReviewerLevel(
   if (!target || !actor.profileId) return null;
   if (target.id === actor.profileId) return null; // never self
   if (actor.isAdmin) {
-    // admins can act on the highest pending level
-    if (target.director_id === actor.profileId) return 'director';
+    // Kiêm nhiệm: khi một người vừa là PGĐ phụ trách vừa là Giám đốc của cán bộ này
+    // (VD Giám đốc trực tiếp phụ trách Phòng TCTH), vai THỰC THI 'pgd' — cấp duy nhất
+    // có nút Phê duyệt — phải thắng vai giám sát 'director'. Xét ngược lại thì phiếu
+    // kẹt vĩnh viễn ở 'reviewed' vì không còn ai khác đứng vai PGĐ (sự cố 27/07).
     if (target.pgd_id === actor.profileId) return 'pgd';
+    if (target.director_id === actor.profileId) return 'director';
     if (target.manager_id === actor.profileId) return 'manager';
     // generic admin acts as director by default
     return 'director';
@@ -39,6 +63,17 @@ export function getReviewerLevel(
   if (actor.isPgd && target.pgd_id === actor.profileId) return 'pgd';
   if (actor.isManager && target.manager_id === actor.profileId) return 'manager';
   return null;
+}
+
+/**
+ * Người đánh giá mặc định của một cán bộ theo tuyến báo cáo:
+ * Quản lý trực tiếp → PGĐ phụ trách → Giám đốc.
+ * Dùng khi nộp phiếu mà chưa chọn người đánh giá — không có giá trị này thì phiếu
+ * "vô chủ": không ai đứng vai nào để rà soát/phê duyệt (sự cố Dương Thị Thanh Thúy 25/07).
+ */
+export function resolveDefaultReviewerId(target: ProfileLike | null): string | null {
+  if (!target) return null;
+  return target.manager_id || target.pgd_id || target.director_id || null;
 }
 
 export function getOverallReviewField(

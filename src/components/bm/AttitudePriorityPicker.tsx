@@ -4,6 +4,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ATTITUDE_DIMENSIONS } from './AttitudeConstants';
+import { decodeFocusPayload } from '@/components/evaluation/attitudeFocusOptions';
 
 export interface AttitudePriority {
   id?: string;
@@ -71,7 +72,11 @@ export function AttitudePriorityPicker({ priorities, onChange, readOnly }: Props
           })}
         </div>
 
-        {priorities.map(p => (
+        {priorities.map(p => {
+          // issue_summary có thể là payload focus từ phiếu tự đánh giá (JSON) — hiển thị
+          // nhãn dễ đọc, chỉ-đọc để không ghi đè mất lựa chọn "Điểm cần cải thiện" của mục B
+          const decodedIssue = decodeFocusPayload(p.attitude_dimension_id, p.issue_summary);
+          return (
           <div key={p.attitude_dimension_id} className="border rounded-lg p-3 space-y-2">
             <div className="flex items-center gap-2">
               <Badge>{p.priority_order}</Badge>
@@ -80,7 +85,14 @@ export function AttitudePriorityPicker({ priorities, onChange, readOnly }: Props
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div>
                 <label className="text-xs text-muted-foreground">Biểu hiện chưa đạt</label>
-                <Textarea value={p.issue_summary} onChange={e => updateField(p.attitude_dimension_id, 'issue_summary', e.target.value)} className="min-h-[36px] text-xs" disabled={readOnly} />
+                {decodedIssue.isFocusPayload ? (
+                  <div className="min-h-[36px] text-xs border rounded-md px-3 py-2 bg-muted/40">
+                    {decodedIssue.text}
+                    <span className="block text-[10px] text-muted-foreground mt-0.5">(chọn từ mục "Điểm cần cải thiện" của phiếu đánh giá thái độ)</span>
+                  </div>
+                ) : (
+                  <Textarea value={p.issue_summary} onChange={e => updateField(p.attitude_dimension_id, 'issue_summary', e.target.value)} className="min-h-[36px] text-xs" disabled={readOnly} />
+                )}
               </div>
               <div>
                 <label className="text-xs text-muted-foreground">Trạng thái mong đợi</label>
@@ -100,7 +112,8 @@ export function AttitudePriorityPicker({ priorities, onChange, readOnly }: Props
               </SelectContent>
             </Select>
           </div>
-        ))}
+          );
+        })}
       </CardContent>
     </Card>
   );

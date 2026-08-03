@@ -38,6 +38,7 @@ import {
   saveEvaluationChildren,
 } from '@/lib/evaluationPersistence';
 import { validateSubmissionDetailed } from '@/lib/evaluationValidation';
+import { isSelfReviewProfile } from '@/lib/reviewerScope';
 import { useCycleOneOnOneQuestions } from '@/hooks/useCycleOneOnOneQuestions';
 import { SubmissionChecklist } from '@/components/evaluation/SubmissionChecklist';
 import { useHistoricalSkillLevels, mergeAssessedLevels } from '@/hooks/useHistoricalSkillLevels';
@@ -144,15 +145,13 @@ export default function SelfAssessmentPage() {
     const seen = new Set<string>();
     const p: any = prof;
 
-    // Điều kiện "tự đánh giá – tự phê duyệt": chức danh Giám đốc (không phải Phó GĐ)
-    // và không có bất kỳ cấp trên nào trong hồ sơ; hoặc chức danh Giám đốc chi nhánh.
-    const posName = (p?.pos_name || '').toLowerCase();
-    const isDirectorTitle = posName.includes('giám đốc') && !posName.includes('phó');
-    const hasNoSuperior = !p?.manager_id && !p?.pgd_id && !p?.director_id;
-    const canSelfApprove = posName.includes('giám đốc chi nhánh') || (isDirectorTitle && hasNoSuperior);
+    // Phiếu TỰ SOI — nguồn sự thật là cờ profiles.self_review_only (xem isSelfReviewProfile).
+    // Trước đây suy ra từ chuỗi chức danh, lệch với luật phía DB và cho tự phê duyệt
+    // kể cả khi có cấp trên.
+    const canSelfApprove = isSelfReviewProfile(p);
     setIsGdcnSelf(canSelfApprove);
     if (canSelfApprove && profileId) {
-      opts.push({ id: profileId, name: p?.full_name || 'Tôi', role_label: 'Giám đốc — tự đánh giá, tự phê duyệt' });
+      opts.push({ id: profileId, name: p?.full_name || 'Tôi', role_label: 'Tự soi — tự đánh giá là mức chốt' });
       seen.add(profileId);
     }
 
@@ -168,7 +167,10 @@ export default function SelfAssessmentPage() {
       opts.push({ id: p.director_id, name: p.director_name || 'Giám đốc phụ trách', role_label: 'Giám đốc phụ trách' });
       seen.add(p.director_id);
     }
-    const { data: bgdRoles } = await supabase.from('user_roles').select('user_id').eq('role', 'bgd');
+    // Ban Giám đốc: gồm cả tài khoản Giám đốc mang quyền quản trị hệ thống (mỗi user chỉ
+    // một quyền, nên Giám đốc kiêm quản trị sẽ có role 'system_admin' thay vì 'bgd').
+    const { data: bgdRoles } = await supabase
+      .from('user_roles').select('user_id').in('role', ['bgd', 'system_admin']);
     const bgdUserIds = (bgdRoles || []).map((r: any) => r.user_id);
     if (bgdUserIds.length) {
       const { data: bgdProfiles } = await supabase
@@ -935,12 +937,12 @@ export default function SelfAssessmentPage() {
         </div>
       )}
       {formStatus === 'submitted' && (
-        <div className="rounded-md border border-amber-400/40 bg-amber-50 p-3 text-sm text-amber-900">
+        <div className="rounded-md border border-amber-400/40 dark:border-amber-500/50 bg-amber-50 dark:bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-200">
           Phiếu đang chờ người đánh giá duyệt.
         </div>
       )}
       {(formStatus === 'approved' || formStatus === 'reviewed') && (
-        <div className="rounded-md border border-emerald-400/40 bg-emerald-50 p-3 text-sm text-emerald-900">
+        <div className="rounded-md border border-emerald-400/40 dark:border-emerald-500/50 bg-emerald-50 dark:bg-emerald-500/10 p-3 text-sm text-emerald-900 dark:text-emerald-200">
           Phiếu đã được duyệt.
         </div>
       )}
@@ -1118,7 +1120,7 @@ export default function SelfAssessmentPage() {
 
       {/* Sticky bottom action bar */}
       <div
-        className="fixed bottom-0 left-0 right-0 lg:left-60 bg-background border-t p-3 flex flex-wrap gap-2 z-50 max-w-4xl mx-auto"
+        className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:bottom-0 left-0 right-0 lg:left-60 bg-background border-t p-3 flex flex-wrap gap-2 z-50 max-w-4xl mx-auto"
         style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
       >
         <div className="w-full empty:hidden">

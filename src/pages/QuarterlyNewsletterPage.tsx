@@ -290,9 +290,9 @@ export default function QuarterlyNewsletterPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    {st.status === 'sent' && <Badge className="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-100"><MailCheck className="w-3 h-3 mr-1" />Đã vào hàng đợi gửi</Badge>}
+                    {st.status === 'sent' && <Badge className="text-[10px] bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/40 hover:bg-emerald-100 dark:hover:bg-emerald-500/20"><MailCheck className="w-3 h-3 mr-1" />Đã vào hàng đợi gửi</Badge>}
                     {st.status === 'skipped' && <Badge variant="outline" className="text-[10px]">{st.note || 'Bỏ qua'}</Badge>}
-                    {st.status === 'error' && <Badge variant="outline" className="text-[10px] border-red-300 text-red-700">Lỗi: {st.note?.slice(0, 60)}</Badge>}
+                    {st.status === 'error' && <Badge variant="outline" className="text-[10px] border-red-300 dark:border-red-500/40 text-red-700 dark:text-red-300">Lỗi: {st.note?.slice(0, 60)}</Badge>}
                     <Button
                       size="sm" variant="outline" className="h-7 text-xs"
                       disabled={st.status === 'generating' || st.status === 'sending' || bulkRunning}

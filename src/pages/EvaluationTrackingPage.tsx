@@ -83,6 +83,8 @@ export default function EvaluationTrackingPage() {
   // Xuất gộp PDF hồ sơ toàn bộ phiếu đã phê duyệt của kỳ đang chọn
   const [bulkExporting, setBulkExporting] = useState(false);
   const [bulkProgress, setBulkProgress] = useState('');
+  // Đang tải biểu mẫu Word của riêng một cán bộ (giữ submissionId để quay spinner đúng dòng)
+  const [rowExporting, setRowExporting] = useState<string | null>(null);
   // Ref giữ intent focus=pending qua suốt vòng load() async (URL param có thể đã bị xoá)
   const focusPendingRef = useRef<boolean>(searchParams.get('focus') === 'pending');
 
@@ -164,7 +166,11 @@ export default function EvaluationTrackingPage() {
     const evalMap = new Map<string, any>();
     (evalsRes.data || []).forEach((e) => evalMap.set(subKey(e.employee_id, e.cycle_id || ''), e));
 
-    // 5. Build rows: one per (employee × cycle) for any cycle with a submission, OR active cycle only if none
+    // 5. Build rows: one per (employee × cycle) for any cycle with a submission,
+    // PLUS luôn thêm kỳ đang mở cho MỌI cán bộ active — để ai chưa tạo phiếu kỳ này
+    // vẫn hiện "Chưa bắt đầu" (trước đây chỉ thêm khi cán bộ chưa từng có phiếu ở
+    // BẤT KỲ kỳ nào, nên người có phiếu quý trước nhưng chưa làm quý này biến mất
+    // khỏi danh sách khi lọc theo kỳ → BGĐ/TP không thấy ai chưa làm).
     // Kỳ "đang làm việc" = kỳ in_progress MỚI NHẤT (admin mở/đóng thủ công) — KHÔNG lấy kỳ
     // mới nhất theo ngày: Quý III/2026 tạo sẵn nhưng đã đóng, phải hết 30/9 mới đánh giá.
     // Trước đây lấy cyclesData[0] khiến dòng "Chưa bắt đầu" sinh cho kỳ Quý III và
@@ -177,7 +183,8 @@ export default function EvaluationTrackingPage() {
       (subsRes.data || []).forEach((s) => {
         if (s.employee_id === p.id && s.cycle_id) cyclesForEmp.add(s.cycle_id);
       });
-      if (cyclesForEmp.size === 0 && activeCycle) cyclesForEmp.add(activeCycle.id);
+      // Cán bộ nghỉ việc: giữ các kỳ đã có phiếu (lịch sử), không sinh "chưa bắt đầu".
+      if (activeCycle && p.status === 'active') cyclesForEmp.add(activeCycle.id);
 
       for (const cid of cyclesForEmp) {
         const sub = subMap.get(subKey(p.id, cid)) || null;
@@ -327,6 +334,34 @@ export default function EvaluationTrackingPage() {
     }
   };
 
+  // Tải biểu mẫu Word của RIÊNG một cán bộ (Trưởng phòng / TCTH / BGĐ dùng chung;
+  // phạm vi nhìn thấy đã do RLS + bộ lọc trang quyết định). Phiếu chưa duyệt vẫn
+  // tải được nhưng bản in tự mang watermark trạng thái.
+  const exportRowForm = async (r: Row) => {
+    if (!r.submissionId) {
+      toast.info(`${r.fullName} chưa có phiếu trong kỳ này.`);
+      return;
+    }
+    setRowExporting(r.submissionId);
+    try {
+      const [{ loadFormForExport }, { exportBM01ToWord }] = await Promise.all([
+        import('@/lib/exportBM01Bulk'),
+        import('@/lib/exportBM01'),
+      ]);
+      const item = await loadFormForExport(r.submissionId);
+      if (!item) {
+        toast.error('Không tải được dữ liệu phiếu (có thể bạn không có quyền xem phiếu này).');
+        return;
+      }
+      await exportBM01ToWord(item);
+      toast.success(`Đã tải biểu mẫu của ${r.fullName}.`);
+    } catch (e) {
+      toast.error('Lỗi xuất biểu mẫu: ' + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setRowExporting(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div>
@@ -348,6 +383,7 @@ export default function EvaluationTrackingPage() {
             overdue={counts.overdue}
             activeFilter={statusFilter}
             onFilter={(s) => setStatusFilter(s)}
+            totalLabel={cycleFilter === 'all' ? 'Tổng bản đánh giá (mọi kỳ)' : 'Tổng cán bộ'}
           />
 
           {(viewerRole === 'manager' || viewerRole === 'pgd' || viewerRole === 'admin') && (
@@ -456,9 +492,24 @@ export default function EvaluationTrackingPage() {
                             {r.endDate ? new Date(r.endDate).toLocaleDateString('vi-VN') : '—'}
                           </td>
                           <td className="py-2.5 px-3">
-                            <Button variant="ghost" size="sm" onClick={() => navigate(`/danh-gia/${r.profileId}`)}>
-                              <Eye className="w-4 h-4 mr-1" /> Mở
-                            </Button>
+                            <div className="flex items-center gap-1 justify-end">
+                              <Button variant="ghost" size="sm" onClick={() => navigate(`/danh-gia/${r.profileId}`)}>
+                                <Eye className="w-4 h-4 mr-1" /> Mở
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => exportRowForm(r)}
+                                disabled={!r.submissionId || rowExporting !== null}
+                                title={r.submissionId
+                                  ? `Tải biểu mẫu Word của ${r.fullName} (phiếu chưa duyệt sẽ có dấu chìm trạng thái)`
+                                  : 'Cán bộ chưa có phiếu trong kỳ này'}
+                              >
+                                {rowExporting === r.submissionId
+                                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                                  : <FileDown className="w-4 h-4" />}
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -481,9 +532,23 @@ export default function EvaluationTrackingPage() {
                     </div>
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-muted-foreground">Cần xử lý: <span className="font-medium text-foreground">{ACTOR_LABEL[r.actor]}</span></span>
-                      <Button variant="ghost" size="sm" onClick={() => navigate(`/danh-gia/${r.profileId}`)} className="h-7">
-                        Mở <ArrowRight className="w-3 h-3 ml-1" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => exportRowForm(r)}
+                          disabled={!r.submissionId || rowExporting !== null}
+                          className="h-7"
+                          title={r.submissionId ? `Tải biểu mẫu Word của ${r.fullName}` : 'Chưa có phiếu trong kỳ này'}
+                        >
+                          {rowExporting === r.submissionId
+                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            : <FileDown className="w-3.5 h-3.5" />}
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => navigate(`/danh-gia/${r.profileId}`)} className="h-7">
+                          Mở <ArrowRight className="w-3 h-3 ml-1" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -499,6 +564,7 @@ export default function EvaluationTrackingPage() {
               counts={counts.counts}
               notStartedEmployees={counts.notStartedEmp}
               overdue={counts.overdue}
+              totalLabel={cycleFilter === 'all' ? 'Tổng bản đánh giá (mọi kỳ)' : 'Tổng cán bộ'}
             />
             <div className="bg-card rounded-lg border overflow-x-auto">
               <table className="w-full text-sm">

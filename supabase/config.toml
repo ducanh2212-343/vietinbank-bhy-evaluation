@@ -21,6 +21,8 @@ project_id = "whlysprzsguehxmrjwha"
     verify_jwt = true
   [functions.reset-staff-password]
     verify_jwt = true
+  [functions.update-staff-email]
+    verify_jwt = true
   [functions.delete-staff]
     verify_jwt = true
   [functions.send-reminders]
@@ -28,4 +30,7 @@ project_id = "whlysprzsguehxmrjwha"
     # (cổng nền tảng chặn JWT sai trước khi vào code; code vẫn kiểm role/quyền).
     verify_jwt = true
   [functions.send-hr-notification]
+    verify_jwt = true
+  [functions.send-feature-tip-push]
+    # Cron gửi service_role JWT; admin chạy tay bằng JWT của họ → verify_jwt = true
     verify_jwt = true

@@ -11,9 +11,9 @@ interface Props {
 
 const STATUS_LABEL: Record<string, { text: string; cls: string }> = {
   draft: { text: 'Chưa nộp', cls: 'bg-muted text-muted-foreground' },
-  submitted: { text: 'Chờ duyệt', cls: 'bg-amber-100 text-amber-800 border-amber-300' },
-  approved: { text: 'Đã duyệt', cls: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
-  reviewed: { text: 'Đã duyệt', cls: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+  submitted: { text: 'Chờ duyệt', cls: 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-500/40' },
+  approved: { text: 'Đã duyệt', cls: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40' },
+  reviewed: { text: 'Đã duyệt', cls: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40' },
   returned: { text: 'Đã trả lại', cls: 'bg-destructive/10 text-destructive border-destructive/30' },
 };
 

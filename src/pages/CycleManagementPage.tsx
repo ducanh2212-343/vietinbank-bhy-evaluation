@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import { useAuth } from '@/hooks/useAuth';
@@ -73,8 +74,26 @@ export default function CycleManagementPage() {
     penalty: '1',
   });
 
+  // Cán bộ chưa gán người đánh giá nào (trừ hồ sơ đánh dấu phiếu tự soi). Còn người
+  // trong danh sách này thì KHÔNG được mở kỳ: họ nộp phiếu xong sẽ không ai duyệt
+  // (sự cố Dương Thị Thanh Thúy 25/07). DB cũng chặn bằng trigger cùng luật.
+  const [missingLine, setMissingLine] = useState<{ id: string; full_name: string }[]>([]);
+  const blockOpen = missingLine.length > 0;
+
   const load = useCallback(async () => {
     setLoading(true);
+    // Miễn trừ theo CỜ self_review_only (phiếu tự soi), không so khớp chuỗi chức danh —
+    // cùng một luật với trigger guard_open_cycle_requires_reporting_line phía DB.
+    const { data: unassigned } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .eq('status', 'active')
+      .is('manager_id', null)
+      .is('pgd_id', null)
+      .is('director_id', null)
+      .eq('self_review_only', false)
+      .order('full_name');
+    setMissingLine(((unassigned || []) as any[]).map((p) => ({ id: p.id, full_name: p.full_name })));
     const { data, error } = await supabase
       .from('evaluation_cycles')
       .select('id, name, description, start_date, end_date, cycle_type, status, submission_deadline, late_penalty_points')
@@ -131,6 +150,10 @@ export default function CycleManagementPage() {
   };
 
   const createCycle = async () => {
+    if (blockOpen) {
+      toast.error(`Còn ${missingLine.length} cán bộ chưa gán người đánh giá — gán xong mới mở được kỳ`);
+      return;
+    }
     if (!newCycle.name.trim() || !newCycle.start || !newCycle.end) {
       toast.error('Cần nhập tên kỳ, ngày bắt đầu và ngày kết thúc');
       return;
@@ -163,6 +186,11 @@ export default function CycleManagementPage() {
   const saveCycle = async (c: CycleRow) => {
     const e = edits[c.id];
     if (!e) return;
+    // Mở kỳ (kể cả mở lại kỳ đã đóng) chỉ được phép khi mọi cán bộ đã có tuyến duyệt
+    if (blockOpen && e.status === 'in_progress' && c.status !== 'in_progress') {
+      toast.error(`Còn ${missingLine.length} cán bộ chưa gán người đánh giá — gán xong mới mở được kỳ`);
+      return;
+    }
     setSavingId(c.id);
     const { error } = await supabase
       .from('evaluation_cycles')
@@ -204,8 +232,29 @@ export default function CycleManagementPage() {
         </p>
       </div>
 
+      {!loading && blockOpen && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm">
+          <p className="font-medium text-destructive flex items-center gap-1.5">
+            <AlertTriangle className="w-4 h-4" />
+            Chưa mở được kỳ: còn {missingLine.length} cán bộ chưa gán người đánh giá
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Cán bộ chưa có Quản lý trực tiếp / PGĐ phụ trách / Giám đốc phụ trách sẽ nộp phiếu
+            mà không ai rà soát, phê duyệt được. Gán tuyến tại{' '}
+            <Link to="/phan-cong-danh-gia" className="underline text-primary">Phân công người đánh giá</Link>
+            {' '}rồi quay lại mở kỳ. (Giám đốc chi nhánh được miễn — không có cấp trên.)
+          </p>
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {missingLine.map((p) => (
+              <Badge key={p.id} variant="outline" className="text-[11px] border-destructive/40">{p.full_name}</Badge>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-end">
-        <Button size="sm" onClick={openCreate}>
+        <Button size="sm" onClick={openCreate} disabled={blockOpen}
+                title={blockOpen ? 'Gán hết người đánh giá rồi mới mở được kỳ' : undefined}>
           <Plus className="w-4 h-4 mr-1" /> Tạo kỳ mới{latestQuarter ? ` (${nextQuarterName(latestQuarter.name) || 'kỳ tiếp theo'})` : ''}
         </Button>
       </div>
@@ -270,7 +319,7 @@ export default function CycleManagementPage() {
                     </div>
                   </div>
                   {noDeadlineSet && (
-                    <p className="text-xs text-amber-600 flex items-center gap-1">
+                    <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
                       <AlertTriangle className="w-3.5 h-3.5" />
                       Chưa thiết đặt mốc — hệ thống tạm dùng 23:59 ngày kết thúc kỳ ({effective.toLocaleString('vi-VN')}).
                     </p>

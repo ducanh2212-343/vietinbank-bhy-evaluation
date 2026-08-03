@@ -100,7 +100,7 @@ export function AttitudeBehaviorStandards({ groupId, selectedLevel, alwaysOpen }
         />
       </div>
       {selectedLevel === 'noi_bat' && (
-        <div className="mt-2 flex items-start gap-1.5 rounded-md border border-violet-200 bg-violet-50/50 px-2.5 py-1.5 text-[11px] text-violet-900">
+        <div className="mt-2 flex items-start gap-1.5 rounded-md border border-violet-200 dark:border-violet-500/30 bg-violet-50/50 dark:bg-violet-500/10 px-2.5 py-1.5 text-[11px] text-violet-900 dark:text-violet-200">
           <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
           <span>
             Mức <b>Nổi bật</b> cần có minh chứng cụ thể về tác động tích cực hoặc sự lan tỏa đến người khác.

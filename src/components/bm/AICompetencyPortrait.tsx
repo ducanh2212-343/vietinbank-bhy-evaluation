@@ -10,6 +10,7 @@ import { useAiFeatures } from '@/hooks/useAiFeatures';
 import { BrandMascotAI } from '@/components/branding/BrandAssets';
 import type { CoreSkillAssessment } from '@/components/evaluation/EvalSectionB';
 import type { AttitudeAssessment } from '@/components/evaluation/EvalSectionC';
+import { decodeFocusPayload } from '@/components/evaluation/attitudeFocusOptions';
 
 interface Props {
   profile: any;
@@ -108,7 +109,7 @@ export function AICompetencyPortrait({
           self_status: a.self_status || '',
           manager_status: a.manager_status || '',
           current_status: a.current_status || '',
-          issue_summary: a.issue_summary || '',
+          issue_summary: decodeFocusPayload(a.attitude_dimension_id, a.issue_summary).text,
           desired_status: a.desired_status || '',
           evidence: a.evidence || '',
           improvement_goal: a.improvement_goal || '',

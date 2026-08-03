@@ -96,6 +96,14 @@ export default function EvaluatorAssignmentPage() {
 
   const nameById = (id: string | null) => (id ? staff.find((s) => s.id === id)?.full_name || '—' : '—');
 
+  // Cán bộ KHÔNG có bất kỳ cấp trên nào → phiếu nộp xong sẽ không có người rà soát/phê
+  // duyệt (sự cố Dương Thị Thanh Thúy 25/07). Ban Giám đốc không tính: GĐ không có cấp
+  // trên, PGĐ được Giám đốc duyệt qua cột "Giám đốc phụ trách".
+  const missingLine = useMemo(
+    () => staff.filter((r) => !r.manager_id && !r.pgd_id && !r.director_id && !isBgd(asProfileLite(r))),
+    [staff, posNameMap],
+  );
+
   const isDirty = (r: StaffRow) => {
     const e = edits[r.id];
     return e && (e.manager_id !== r.manager_id || e.pgd_id !== r.pgd_id || e.director_id !== r.director_id);
@@ -171,6 +179,27 @@ export default function EvaluatorAssignmentPage() {
         </div>
       </div>
 
+      {!loading && missingLine.length > 0 && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm">
+          <p className="font-medium text-destructive flex items-center gap-1.5">
+            <AlertTriangle className="w-4 h-4" />
+            {missingLine.length} cán bộ chưa có cấp trên nào — phiếu nộp sẽ không ai duyệt được
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Cần gán ít nhất một trong ba cấp (Quản lý trực tiếp / PGĐ phụ trách / Giám đốc phụ trách)
+            trước khi cán bộ nộp phiếu:
+          </p>
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {missingLine.map((r) => (
+              <Badge key={r.id} variant="outline" className="text-[11px] border-destructive/40">
+                {r.full_name}
+                {r.department_id ? ` · ${deptMap.get(r.department_id) || '—'}` : ''}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative">
           <Search className="w-4 h-4 absolute left-2.5 top-2.5 text-muted-foreground" />
@@ -210,7 +239,7 @@ export default function EvaluatorAssignmentPage() {
                   const mgrOptions = r.department_id ? (managersByDept.get(r.department_id) || []).filter((m) => m.id !== r.id) : [];
                   const dirty = isDirty(r);
                   return (
-                    <tr key={r.id} className={`border-b last:border-0 ${dirty ? 'bg-amber-50/60' : 'hover:bg-muted/30'}`}>
+                    <tr key={r.id} className={`border-b last:border-0 ${dirty ? 'bg-amber-50/60 dark:bg-amber-500/10' : 'hover:bg-muted/30'}`}>
                       <td className="py-2 px-3">
                         <div className="font-medium">{r.full_name}</div>
                         <div className="text-[11px] text-muted-foreground">{posNameOf(r) || '—'}{r.employee_code ? ` · ${r.employee_code}` : ''}</div>
@@ -328,7 +357,7 @@ function BulkAssignDialog({
       <DialogContent className="max-w-md">
         <DialogHeader><DialogTitle>Gán người đánh giá hàng loạt</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          <div className="rounded-md border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800 flex items-start gap-1.5">
+          <div className="rounded-md border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-2.5 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-1.5">
             <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
             Áp dụng cho <strong>{scopeStaff.length} cán bộ</strong> đang hiển thị ({deptName}). Cán bộ là lãnh đạo phòng/chi nhánh sẽ được bỏ qua ở cấp tương ứng.
           </div>

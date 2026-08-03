@@ -7,11 +7,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { IdleLogoutGuard } from "@/components/IdleLogoutGuard";
-import { AppLayout } from "@/components/layout/AppLayout";
-import { AdminRoute, ManagerOrAboveRoute } from "@/components/AdminRoute";
+import { AdminRoute, ManagerOrAboveRoute, GuestGate } from "@/components/AdminRoute";
+import { RouteFallback } from "@/components/RouteFallback";
 
-import Login from "./pages/Login";
-import Unsubscribe from "./pages/Unsubscribe";
 
 // Retry dynamic import once on failure (handles stale chunk hashes after redeploys).
 function lazyWithRetry<T extends ComponentType<any>>(factory: () => Promise<{ default: T }>) {
@@ -29,6 +27,20 @@ function lazyWithRetry<T extends ComponentType<any>>(factory: () => Promise<{ de
     }
   });
 }
+
+// Khung ứng dụng (thanh menu, nhận diện Chi nhánh) chỉ nạp SAU đăng nhập —
+// giữ gói tải trước đăng nhập sạch mọi dấu hiệu thương hiệu, tránh bị nền tảng
+// triển khai chấm nhầm là trang giả mạo ngân hàng.
+const AppLayout = lazyWithRetry(() =>
+  import("@/components/layout/AppLayout").then((m) => ({ default: m.AppLayout })),
+);
+
+// Đăng nhập và Hủy đăng ký cũng nạp lười. Nạp tĩnh khiến gói entry kéo theo bộ
+// biểu tượng dùng chung (~12 kB gzip) vào lần tải đầu của MỌI người, kể cả người
+// đã đăng nhập. Vì màn đăng nhập luôn phải chờ lượt kiểm phiên bất đồng bộ, gói
+// này tải song song với lượt kiểm đó nên không thêm độ trễ thực tế.
+const Login = lazyWithRetry(() => import("./pages/Login"));
+const Unsubscribe = lazyWithRetry(() => import("./pages/Unsubscribe"));
 
 const Overview = lazyWithRetry(() => import("./pages/Overview"));
 const PersonalProfile = lazyWithRetry(() => import("./pages/PersonalProfile"));
@@ -68,6 +80,7 @@ const EvaluatorAssignmentPage = lazyWithRetry(() => import("./pages/EvaluatorAss
 const SubmissionTimeReportPage = lazyWithRetry(() => import("./pages/SubmissionTimeReportPage"));
 const VtbCoursesAdminPage = lazyWithRetry(() => import("./pages/VtbCoursesAdminPage"));
 const PersonalKanbanPage = lazyWithRetry(() => import("./pages/PersonalKanbanPage"));
+const KanbanAdminPage = lazyWithRetry(() => import("./pages/KanbanAdminPage"));
 const LeadershipMarksPage = lazyWithRetry(() => import("./pages/LeadershipMarksPage"));
 const TrainingNeedsPage = lazyWithRetry(() => import("./pages/TrainingNeedsPage"));
 const SkillRiskHeatmapPage = lazyWithRetry(() => import("./pages/SkillRiskHeatmapPage"));
@@ -75,6 +88,9 @@ const CareerPathPage = lazyWithRetry(() => import("./pages/CareerPathPage"));
 const TransferSimulationPage = lazyWithRetry(() => import("./pages/TransferSimulationPage"));
 const QuarterlyNewsletterPage = lazyWithRetry(() => import("./pages/QuarterlyNewsletterPage"));
 const LearningCampaignsPage = lazyWithRetry(() => import("./pages/LearningCampaignsPage"));
+const FeatureTipsPage = lazyWithRetry(() => import("./pages/FeatureTipsPage"));
+const FeatureTipsAdminPage = lazyWithRetry(() => import("./pages/FeatureTipsAdminPage"));
+const NewsAdminPage = lazyWithRetry(() => import("./pages/NewsAdminPage"));
 const QuizziHomePage = lazyWithRetry(() => import("./pages/QuizziHomePage"));
 const QuizComposerPage = lazyWithRetry(() => import("./pages/QuizComposerPage"));
 const QuizPlayPage = lazyWithRetry(() => import("./pages/QuizPlayPage"));
@@ -92,6 +108,17 @@ const CouncilAdminPage = lazyWithRetry(() => import("./pages/CouncilAdminPage"))
 const CouncilAnalyticsPage = lazyWithRetry(() => import("./pages/CouncilAnalyticsPage"));
 const BehaviorJournalPage = lazyWithRetry(() => import("./pages/BehaviorJournalPage"));
 const MyNepTotPage = lazyWithRetry(() => import("./pages/MyNepTotPage"));
+const OneHomePage = lazyWithRetry(() => import("./pages/one/OneHomePage"));
+const OneConnectPage = lazyWithRetry(() => import("./pages/one/OneConnectPage"));
+const One3806Page = lazyWithRetry(() => import("./pages/one/One3806Page"));
+const OneMove2Page = lazyWithRetry(() => import("./pages/one/OneMove2Page"));
+const LichNghiAdminPage = lazyWithRetry(() => import("./pages/LichNghiAdminPage"));
+const OneLearnPage = lazyWithRetry(() => import("./pages/one/OneLearnPage"));
+const OneNewsPage = lazyWithRetry(() => import("./pages/one/OneNewsPage"));
+const OneIdeasPage = lazyWithRetry(() => import("./pages/one/OneIdeasPage"));
+const OneCreditPage = lazyWithRetry(() => import("./pages/one/OneCreditPage"));
+const OneRecognitionPage = lazyWithRetry(() => import("./pages/one/OneRecognitionPage"));
+const GuestAccessAdminPage = lazyWithRetry(() => import("./pages/GuestAccessAdminPage"));
 const ChangePassword = lazyWithRetry(() => import("./pages/ChangePassword"));
 const ForgotPassword = lazyWithRetry(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
@@ -103,20 +130,30 @@ const queryClient = new QueryClient();
 function ProtectedRoutes() {
   const { user, loading, mustChangePassword } = useAuth();
   const location = useLocation();
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Đang tải...</div>;
+  if (loading) return <RouteFallback />;
   if (!user) return <Navigate to="/dang-nhap" replace />;
   // Đang dùng mật khẩu tạm: chặn mọi trang, ép về trang đổi mật khẩu trước.
   if (mustChangePassword && location.pathname !== '/doi-mat-khau') {
     return <Navigate to="/doi-mat-khau" replace />;
   }
-  return <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-muted-foreground">Đang tải...</div>}><AppLayout /></Suspense>;
+  return <Suspense fallback={<RouteFallback />}><AppLayout /></Suspense>;
 }
 
 function LoginRoute() {
   const { user, loading } = useAuth();
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Đang tải...</div>;
-  if (user) return <Navigate to="/tong-quan" replace />;
-  return <Login />;
+  if (loading) return <RouteFallback />;
+  // Cổng BHY ONE là cửa vào chung của mọi vai trò (sơ đồ site đã duyệt);
+  // phân hệ nhân sự 343 vào từ menu "Nhân sự 343" của cổng.
+  if (user) return <Navigate to="/one" replace />;
+  return (
+    <Suspense fallback={<RouteFallback />}>
+      <Login />
+    </Suspense>
+  );
+}
+
+function HomeRedirect() {
+  return <Navigate to="/one" replace />;
 }
 
 const App = () => (
@@ -133,9 +170,10 @@ const App = () => (
             <Route path="/dang-ky-tai-khoan" element={<Navigate to="/dang-nhap" replace />} />
             <Route path="/quen-mat-khau" element={<Suspense fallback={null}><ForgotPassword /></Suspense>} />
             <Route path="/dat-lai-mat-khau" element={<Suspense fallback={null}><ResetPassword /></Suspense>} />
-            <Route path="/unsubscribe" element={<Unsubscribe />} />
+            <Route path="/unsubscribe" element={<Suspense fallback={null}><Unsubscribe /></Suspense>} />
             <Route element={<ProtectedRoutes />}>
-              <Route path="/" element={<Navigate to="/tong-quan" replace />} />
+              <Route element={<GuestGate />}>
+              <Route path="/" element={<HomeRedirect />} />
 
               {/* Group 1: Cá nhân / Năng lực */}
               <Route path="/tong-quan" element={<Overview />} />
@@ -150,8 +188,10 @@ const App = () => (
               <Route path="/ung-dung-ai" element={<AIApplicationPage />} />
               <Route path="/thai-do-tu-duy" element={<AttitudeMindset />} />
               <Route path="/hanh-dong-phat-trien" element={<PersonalKanbanPage />} />
+              <Route path="/quan-ly-hanh-dong" element={<KanbanAdminPage />} />
               <Route path="/dau-an" element={<LeadershipMarksPage />} />
               <Route path="/chien-dich-hoc-tap" element={<LearningCampaignsPage />} />
+              <Route path="/meo-hay" element={<FeatureTipsPage />} />
               <Route path="/quizzi" element={<QuizziHomePage />} />
               <Route path="/quan-tri-quizzi" element={<QuizziManagePage />} />
               <Route path="/quizzi/live/:sessionId/dieu-hanh" element={<QuizLiveHostPage />} />
@@ -170,6 +210,27 @@ const App = () => (
                   (chỉ người có phạm vi ghi nhận); RLS là lớp chặn chính. */}
               <Route path="/nep-tot/nhat-ky" element={<BehaviorJournalPage />} />
               <Route path="/nep-tot/cua-toi" element={<MyNepTotPage />} />
+
+              {/* Cổng BHY one — cổng thông tin thương hiệu Chi nhánh (port từ website bachungyen20) */}
+              {/* Cổng BHY ONE — cấu trúc 6 menu đã duyệt (docs/so-do-site-bhy-one.md) */}
+              <Route path="/one" element={<OneHomePage />} />
+              <Route path="/one/bhy-connect" element={<OneConnectPage />} />
+              <Route path="/one/bhy-3806" element={<One3806Page />} />
+              <Route path="/one/chieu-thuc-2" element={<OneMove2Page />} />
+              <Route path="/one/hoc-hoi" element={<OneLearnPage />} />
+              <Route path="/one/tin-tuc" element={<OneNewsPage />} />
+              <Route path="/one/y-tuong" element={<OneIdeasPage />} />
+              <Route path="/one/credit-360" element={<OneCreditPage />} />
+              <Route path="/one/ghi-nhan" element={<OneRecognitionPage />} />
+              {/* Link cũ trước tái cấu trúc — chuyển hướng để không gãy bookmark.
+                  "Nguồn cội & Bản sắc" đã gộp vào trang chủ; "Sáng kiến & Nghiệp vụ"
+                  nay là một phần của hệ sinh thái Bắc Hưng Yên Ways. */}
+              <Route path="/one/nguon-coi" element={<Navigate to="/one" replace />} />
+              <Route path="/one/dac-trung" element={<Navigate to="/one" replace />} />
+              <Route path="/one/chieu-thuc" element={<Navigate to="/one" replace />} />
+              <Route path="/one/sang-kien" element={<Navigate to="/one/y-tuong" replace />} />
+              <Route path="/one/bhy-ways" element={<Navigate to="/one/y-tuong" replace />} />
+              <Route path="/one/kho-du-lieu" element={<Navigate to="/one/hoc-hoi" replace />} />
 
               {/* Hội đồng đánh giá đầu mối — trang tự gác quyền: thành viên HĐ chấm điểm, đầu mối/admin xem báo cáo */}
               <Route path="/danh-gia-dau-moi" element={<CouncilEvaluationPage />} />
@@ -219,8 +280,13 @@ const App = () => (
                 <Route path="/quan-tri-hoi-dong-dau-moi" element={<CouncilAdminPage />} />
                 <Route path="/phan-tich-dau-moi" element={<CouncilAnalyticsPage />} />
                 <Route path="/ban-tin-quy" element={<QuarterlyNewsletterPage />} />
+                <Route path="/quan-ly-meo-tinh-nang" element={<FeatureTipsAdminPage />} />
+                <Route path="/lich-nghi-le" element={<LichNghiAdminPage />} />
+                <Route path="/quan-tri-tin-tuc" element={<NewsAdminPage />} />
+                <Route path="/quan-tri-khach" element={<GuestAccessAdminPage />} />
               </Route>
 
+              </Route>
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

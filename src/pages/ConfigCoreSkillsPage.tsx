@@ -153,7 +153,8 @@ export default function ConfigCoreSkillsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-12">#</TableHead>
+                      <TableHead className="w-14">STT</TableHead>
+                      <TableHead className="w-20">Mã skill</TableHead>
                       <TableHead>Kỹ năng</TableHead>
                       <TableHead>Nhóm</TableHead>
                       <TableHead className="w-28">Min Level</TableHead>
@@ -166,7 +167,8 @@ export default function ConfigCoreSkillsPage() {
                       const skill = skills.find(s => s.id === m.skill_id);
                       return (
                         <TableRow key={m.skill_id}>
-                          <TableCell className="text-muted-foreground">{i + 1}</TableCell>
+                          <TableCell className="text-muted-foreground tabular-nums">{i + 1}</TableCell>
+                          <TableCell><Badge variant="secondary" className="font-mono">{skill?.code || '—'}</Badge></TableCell>
                           <TableCell className="font-medium">{skill?.name || m.skill_id}</TableCell>
                           <TableCell><Badge variant="outline">{skill?.skill_group || '—'}</Badge></TableCell>
                           <TableCell>

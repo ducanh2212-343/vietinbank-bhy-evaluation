@@ -2,35 +2,151 @@
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <link rel="preconnect" href="https://cdn.gpteng.co" crossorigin />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+    <!--
+      Chữ Inter tải theo trục biến thiên 300..900 trong MỘT tệp.
+      Trước đây chỉ nạp 400;500;600;700 trong khi giao diện dùng font-extrabold (800)
+      và font-black (900) ở hàng trăm chỗ — trình duyệt phải "bôi đậm giả", nét chữ
+      bị nhòe và dày không đều. Nạp đủ trục làm chữ sắc lại mà không thêm request.
+
+      Tải KHÔNG chặn hiển thị: preload as=style rồi mới đổi thành stylesheet, nên
+      trình duyệt vẽ khung trang ngay thay vì đợi vòng lượt đi-về tới Google Fonts.
+    -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300..900&display=swap"
+      onload="this.onload=null;this.rel='stylesheet'"
     />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#1f2937" />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300..900&display=swap"
+      />
+    </noscript>
+
+    <!-- Một thẻ duy nhất: applyTheme() trong src/hooks/useTheme.tsx cập nhật nội
+         dung thẻ này khi đổi sáng/tối. Nhiều thẻ kèm media sẽ khiến querySelector
+         luôn bắt trúng thẻ đầu và ghi sai. -->
+    <meta name="theme-color" content="#003A8C" />
+    <meta name="color-scheme" content="light dark" />
     <meta name="robots" content="noindex, nofollow" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="343 Nội bộ" />
+    <meta name="apple-mobile-web-app-title" content="BHY ONE" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <title>343 — Hệ thống quản trị năng lực nội bộ</title>
-    <meta name="description" content="Hệ thống nội bộ quản trị năng lực nhân sự — chỉ dành cho cán bộ được phân quyền." />
+    <title>Bắc Hưng Yên ONE — Cổng quản trị nội bộ</title>
+    <meta name="description" content="Công cụ quản trị nội bộ, chỉ dành cho cán bộ được phân quyền. Không phải website ngân hàng, không phải cổng giao dịch hay dịch vụ khách hàng." />
 
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="343 — Hệ thống quản trị năng lực nội bộ">
-    <meta property="og:description" content="Hệ thống nội bộ quản trị năng lực nhân sự — chỉ dành cho cán bộ được phân quyền.">
+    <meta property="og:title" content="Bắc Hưng Yên ONE — Cổng quản trị nội bộ">
+    <meta property="og:description" content="Công cụ quản trị nội bộ, chỉ dành cho cán bộ được phân quyền. Không phải website ngân hàng, không phải cổng giao dịch hay dịch vụ khách hàng.">
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="343 — Hệ thống quản trị năng lực nội bộ">
-    <meta name="twitter:description" content="Hệ thống nội bộ quản trị năng lực nhân sự — chỉ dành cho cán bộ được phân quyền.">
-</head>
+    <meta name="twitter:title" content="Bắc Hưng Yên ONE — Cổng quản trị nội bộ">
+    <meta name="twitter:description" content="Công cụ quản trị nội bộ, chỉ dành cho cán bộ được phân quyền. Không phải website ngân hàng, không phải cổng giao dịch hay dịch vụ khách hàng.">
+
+    <!--
+      Màu nền vẽ ngay từ HTML để lần tải đầu không chớp trắng trước khi CSS về.
+      Giữ đồng bộ với token --background của src/index.css (sáng #F2F7FF / tối #0B1220).
+    -->
+    <style>
+      :root { background-color: #F2F7FF; }
+      html.dark { background-color: #0B1220; }
+      #root { min-height: 100dvh; }
+
+      /*
+        Khung chờ vẽ thẳng từ HTML. Trước đây #root rỗng nên trang không hiện gì
+        cho tới khi ~600 kB JS tải và chạy xong — đo trên 4G kèm CPU ×4 là 1,76 s
+        trắng màn. Khối này hiện ngay khi HTML về; React thay nó lúc gắn cây
+        giao diện. Cố ý nội tuyến và không dùng ảnh: không thêm một request nào.
+      */
+      #boot {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        font-family: Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      }
+      #boot b {
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        color: #0057B8;
+      }
+      html.dark #boot b { color: #4da3ea; }
+      #boot span {
+        font-size: 12px;
+        letter-spacing: 0.04em;
+        color: #5b7089;
+      }
+      html.dark #boot span { color: #8aa0b8; }
+      #boot i {
+        display: block;
+        width: 132px;
+        height: 3px;
+        border-radius: 999px;
+        background: rgba(0, 87, 184, 0.14);
+        overflow: hidden;
+      }
+      html.dark #boot i { background: rgba(122, 178, 235, 0.16); }
+      #boot i::after {
+        content: '';
+        display: block;
+        width: 40%;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #0057B8, #1E88E5);
+        animation: boot-slide 1.15s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+      }
+      html.dark #boot i::after { background: linear-gradient(90deg, #2f7fd0, #6cb6f0); }
+      @keyframes boot-slide {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(330%); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #boot i::after { animation: none; width: 100%; }
+      }
+    </style>
+
+    <!--
+      Đặt chế độ sáng/tối TRƯỚC khi vẽ khung hình đầu tiên, đọc đúng khoá mà
+      useTheme dùng. Không có bước này, người chọn giao diện tối sẽ thấy một
+      nháy trắng mỗi lần tải trang, vì class `dark` chỉ được gắn sau khi React
+      khởi động. Kịch bản cố ý để nội tuyến và đồng bộ — nằm ngoài gói build.
+    -->
+    <script>
+      (function () {
+        try {
+          var luu = localStorage.getItem('vtb-theme');
+          var toi = luu === 'dark'
+            || (!luu && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (toi) {
+            document.documentElement.classList.add('dark');
+            var meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.setAttribute('content', '#0b1220');
+          }
+        } catch (e) { /* chế độ riêng tư chặn localStorage — dùng giao diện sáng */ }
+      })();
+    </script>
+  </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- React thay toàn bộ nội dung này khi gắn cây giao diện (xem #boot ở trên). -->
+      <div id="boot" role="status" aria-live="polite">
+        <b>BHY ONE</b>
+        <i></i>
+        <span>Đang mở cổng…</span>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

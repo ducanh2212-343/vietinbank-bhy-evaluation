@@ -48,6 +48,14 @@ describe('filterQueueRows', () => {
     expect(q.map((x) => x.profileId).sort()).toEqual(['e1', 'e2', 'e3']);
   });
 
+  it('TP thấy phiếu đã duyệt bị BGĐ/TCTH chuyển trả (submitted + return_target=manager)', () => {
+    const forms = [mkForm({ employee_id: 'e1', return_target: 'manager' })];
+    const profiles = [mkProfile({ id: 'e1', manager_id: 'tp' })];
+    const q = filterQueueRows({ forms, profiles, viewer: viewer('tp') });
+    expect(q).toHaveLength(1);
+    expect(q[0].displayStatus).toBe('returned_manager');
+  });
+
   it('PGĐ thấy phiếu reviewed của cán bộ mình phụ trách', () => {
     const forms = [
       mkForm({ employee_id: 'e1', status: 'reviewed' }),

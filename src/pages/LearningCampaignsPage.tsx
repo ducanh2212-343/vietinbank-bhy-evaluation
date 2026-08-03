@@ -131,7 +131,7 @@ export default function LearningCampaignsPage() {
             <div className="text-right text-[11px] text-muted-foreground shrink-0">
               <div>{fmtDate(c.start_date)} → {fmtDate(c.end_date)}</div>
               {c.is_active && (
-                <div className={left < 0 ? 'text-red-600 font-medium' : left <= 14 ? 'text-orange-600 font-medium' : ''}>
+                <div className={left < 0 ? 'text-red-600 dark:text-red-400 font-medium' : left <= 14 ? 'text-orange-600 dark:text-orange-400 font-medium' : ''}>
                   {left < 0 ? `Quá hạn ${-left} ngày` : `Còn ${left} ngày`}
                 </div>
               )}
@@ -149,7 +149,7 @@ export default function LearningCampaignsPage() {
             <span className="text-[11px] text-muted-foreground whitespace-nowrap">cán bộ đạt mục tiêu ({pct}%)</span>
           </div>
           {pct >= 100 && p.total_members > 0 && (
-            <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-3 py-1.5">
+            <p className="text-xs text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 rounded px-3 py-1.5">
               🎉 Cả tập thể đã đạt mục tiêu — thành tựu chung, xứng đáng được vinh danh trong giao ban!
             </p>
           )}
@@ -494,7 +494,7 @@ function CampaignDetailDialog({
                   </div>
                   <Badge
                     variant="outline"
-                    className={`text-[10px] ${achieved ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'text-muted-foreground'}`}
+                    className={`text-[10px] ${achieved ? 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30' : 'text-muted-foreground'}`}
                   >
                     {m.level == null ? 'Chưa có dữ liệu' : achieved ? `Đạt · L${m.level}` : `L${m.level}`}
                   </Badge>

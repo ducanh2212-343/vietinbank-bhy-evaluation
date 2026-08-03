@@ -22,9 +22,11 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Award, Download, Pencil, Plus, Sparkles, Archive, CalendarCheck, AlertTriangle, History } from 'lucide-react';
-import { exportLeadershipJourney } from '@/lib/exportLeadershipJourney';
-import { fetchWeeklyUpdateMap, rpcMove, type KanbanCard, type WeeklyUpdateMap } from '@/lib/kanban';
+// exportLeadershipJourney nạp lúc bấm nút — nó kéo theo docx + file-saver
+// (~106 kB gzip), không đáng tải chỉ để mở trang xem danh sách dấu ấn.
+import { fetchWeeklyUpdateMap, isWeeklyTracked, type KanbanCard, type WeeklyUpdateMap } from '@/lib/kanban';
 import { UpdateProgressDialog } from '@/components/kanban/UpdateProgressDialog';
+import { safeHref } from '@/lib/safeUrl';
 
 const sb = supabase as any;
 
@@ -41,8 +43,8 @@ const STAR_HINT = 'Viết theo khung STAR: Bối cảnh → Nhiệm vụ → Hà
 
 const LOG_LABEL: Record<string, string> = {
   created: 'Tạo thẻ', status_change: 'Chuyển trạng thái', progress_update: 'Cập nhật tiến độ',
-  completion_requested: 'Gửi hoàn thành', completion_confirmed: 'Lãnh đạo xác nhận',
-  returned: 'Trả lại bổ sung', evidence_added: 'Bổ sung bằng chứng',
+  completion_requested: 'Gửi hoàn thành', manager_confirmed: 'Lãnh đạo xác nhận',
+  manager_returned: 'Trả lại bổ sung', evidence_added: 'Bổ sung bằng chứng',
 };
 const KANBAN_LABEL: Record<string, string> = { todo: 'Chưa bắt đầu', doing: 'Đang làm', done: 'Hoàn thành' };
 
@@ -171,14 +173,16 @@ export default function LeadershipMarksPage() {
       setMarks(markRows);
       // Thẻ Kanban của từng dấu ấn + trạng thái "đã cập nhật tuần này" + dòng thời gian
       const ids = markRows.map(m => m.id);
+      // Luôn ghi đè state phụ thuộc để không giữ dữ liệu cũ khi danh sách rỗng lại
+      const byMark: Record<string, KanbanCard> = {};
+      const lbm: Record<string, LogRow[]> = {};
+      let weeklyMap: WeeklyUpdateMap = {};
       if (ids.length) {
         const { data: cardRows } = await sb.from('kanban_cards')
           .select('*').in('leadership_mark_id', ids).eq('is_active', true);
-        const byMark: Record<string, KanbanCard> = {};
         ((cardRows || []) as any[]).forEach(c => { if (c.leadership_mark_id) byMark[c.leadership_mark_id] = c; });
-        setCardByMark(byMark);
         const cardList = Object.values(byMark);
-        setWeekly(await fetchWeeklyUpdateMap(cardList));
+        weeklyMap = await fetchWeeklyUpdateMap(cardList);
         if (cardList.length) {
           const cardToMark: Record<string, string> = {};
           Object.entries(byMark).forEach(([mid, c]) => { cardToMark[c.id] = mid; });
@@ -186,15 +190,16 @@ export default function LeadershipMarksPage() {
             .select('card_id, log_type, new_status, progress_percent, progress_note, current_result, blocker_note, support_needed, evidence_text, evidence_url, created_at')
             .in('card_id', cardList.map(c => c.id))
             .order('created_at', { ascending: false });
-          const lbm: Record<string, LogRow[]> = {};
           ((logRows || []) as LogRow[]).forEach(l => {
             const mid = cardToMark[l.card_id];
             if (!mid) return;
             (lbm[mid] = lbm[mid] || []).push(l);
           });
-          setLogsByMark(lbm);
         }
       }
+      setCardByMark(byMark);
+      setWeekly(weeklyMap);
+      setLogsByMark(lbm);
     }
     setCompetencies((compRes.data as Option[]) || []);
     setCoreValues((cvRes.data as Option[]) || []);
@@ -344,6 +349,7 @@ export default function LeadershipMarksPage() {
   const doExport = async (pid: string, name: string) => {
     setExporting(pid);
     try {
+      const { exportLeadershipJourney } = await import('@/lib/exportLeadershipJourney');
       await exportLeadershipJourney(pid, name);
       toast.success('Đã xuất hành trình dấu ấn');
     } catch (e: any) {
@@ -416,8 +422,8 @@ export default function LeadershipMarksPage() {
               const starDone = [m.star_situation, m.star_task, m.star_action, m.star_result].filter(Boolean).length;
               const isOwner = m.profile_id === profileId;
               const card = cardByMark[m.id];
-              // Nhịp hằng tuần áp dụng khi dấu ấn đang chạy và thẻ chưa hoàn thành
-              const needsWeekly = m.status === 'active' && !!card && card.kanban_status !== 'done';
+              // Nhịp hằng tuần: cùng quy tắc isWeeklyTracked với bảng Kanban cá nhân
+              const needsWeekly = !!card && isWeeklyTracked(card);
               const updatedThisWeek = card ? !!weekly[card.id] : false;
               const weeklyRed = needsWeekly && !updatedThisWeek;
               const logs = logsByMark[m.id] || [];
@@ -447,7 +453,7 @@ export default function LeadershipMarksPage() {
                       <Badge variant="outline">{m.leadership_competencies.name}</Badge>
                     )}
                     {m.core_values?.name && (
-                      <Badge variant="outline" className="border-amber-300 text-amber-700 dark:text-amber-300">
+                      <Badge variant="outline" className="border-amber-300 dark:border-amber-500/40 text-amber-700 dark:text-amber-300">
                         {m.core_values.name}
                       </Badge>
                     )}
@@ -495,7 +501,7 @@ export default function LeadershipMarksPage() {
                           <Pencil className="w-3.5 h-3.5 mr-1" /> Sửa khung
                         </Button>
                         {m.status === 'active' && (
-                          <Button size="sm" variant="outline" className="text-emerald-700"
+                          <Button size="sm" variant="outline" className="text-emerald-700 dark:text-emerald-300"
                                   onClick={() => confirmMark(m)}>
                             Ghi nhận
                           </Button>
@@ -517,9 +523,13 @@ export default function LeadershipMarksPage() {
                           </p>
                           {logNote(l) && <p className="whitespace-pre-wrap">{logNote(l)}</p>}
                           {l.evidence_url && (
-                            <a href={l.evidence_url} target="_blank" rel="noreferrer" className="underline text-primary">
-                              Bằng chứng đính kèm
-                            </a>
+                            safeHref(l.evidence_url)
+                              ? (
+                                <a href={safeHref(l.evidence_url)} target="_blank" rel="noreferrer" className="underline text-primary">
+                                  Bằng chứng đính kèm
+                                </a>
+                              )
+                              : <span className="text-muted-foreground break-all">Bằng chứng: {l.evidence_url}</span>
                           )}
                         </div>
                       ))}
@@ -543,14 +553,7 @@ export default function LeadershipMarksPage() {
           card={updateCard}
           open={!!updateCard}
           onClose={() => setUpdateCard(null)}
-          onSaved={async () => {
-            // Có cập nhật đầu tiên nghĩa là đã bắt đầu: kéo thẻ 'Phải làm' → 'Đang làm'
-            // để bảng Kanban cá nhân phản ánh đúng (đồng bộ 2 nơi).
-            if (updateCard.kanban_status === 'todo') {
-              try { await rpcMove(updateCard.id, 'doing'); } catch { /* không chặn reload */ }
-            }
-            load();
-          }}
+          onSaved={load}
           dialogTitle="Cập nhật tuần — Dấu ấn"
           hint={STAR_HINT}
           suggestions={STAR_SUGGESTIONS}

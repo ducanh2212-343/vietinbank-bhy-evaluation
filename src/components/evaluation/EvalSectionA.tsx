@@ -53,9 +53,9 @@ export function EvalSectionA({ profile, cycleId, onCycleChange, cycles, lockedQu
           </Alert>
         )}
         {missingPositionIdOnly && (
-          <Alert className="py-2 border-yellow-300 bg-yellow-50">
-            <AlertTriangle className="w-4 h-4 text-yellow-600" />
-            <AlertDescription className="text-xs text-yellow-800">
+          <Alert className="py-2 border-yellow-300 dark:border-yellow-500/40 bg-yellow-50 dark:bg-yellow-500/10">
+            <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+            <AlertDescription className="text-xs text-yellow-800 dark:text-yellow-300">
               Chưa map được position_id cho cán bộ này. Skill lõi sẽ không load được. Vui lòng kiểm tra hồ sơ hoặc gán vị trí.
             </AlertDescription>
           </Alert>

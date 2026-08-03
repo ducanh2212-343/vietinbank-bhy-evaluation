@@ -7,7 +7,7 @@
 //     cán bộ bấm link là vào thẳng trang đặt mật khẩu mới. Admin không thấy mật khẩu.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { HttpError, requireRole } from "../_shared/auth.ts";
-import { STAFF_CREATOR_ROLES } from "../_shared/roles.ts";
+import { isElevatedRole, STAFF_CREATOR_ROLES } from "../_shared/roles.ts";
 import { generatePassword, writeAuditLog } from "../_shared/staff.ts";
 import { APP_URL } from "../_shared/email-config.ts";
 
@@ -54,13 +54,43 @@ Deno.serve(async (req) => {
       throw new HttpError("Không thể tự cấp lại mật khẩu cho chính mình — dùng trang Đổi mật khẩu", 400);
     }
 
+    // Chống leo thang: tcth_admin không được cấp lại mật khẩu cho tài khoản đang giữ
+    // vai trò quản trị. Thiếu chốt này, một tcth_admin đặt lại mật khẩu của system_admin
+    // rồi dùng temp_password trả về ở cuối hàm để đăng nhập, chiếm toàn quyền hệ thống.
+    // Cùng khuôn với update-staff-email và _shared/staff.ts.
+    if (!caller.roles.includes("system_admin")) {
+      const { data: roleRow } = await adminClient
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", profile.user_id)
+        .maybeSingle();
+      if (isElevatedRole((roleRow as { role: string } | null)?.role ?? null)) {
+        throw new HttpError(
+          "Tài khoản này đang giữ vai trò quản trị — chỉ Quản trị hệ thống mới được cấp lại mật khẩu.",
+          403,
+        );
+      }
+    }
+
+    // Email ĐĂNG NHẬP thật nằm ở auth.users — profiles.email có thể lệch (vd hồ sơ
+    // được sửa tay). Mọi hiển thị "tên đăng nhập" và link đặt lại phải dùng email Auth,
+    // nếu không admin sẽ bàn giao nhầm tên đăng nhập cho cán bộ (mật khẩu đúng, email sai).
+    const { data: existingUser, error: getUserError } = await adminClient.auth.admin
+      .getUserById(profile.user_id);
+    if (getUserError || !existingUser?.user) {
+      throw new HttpError("Không tìm thấy tài khoản đăng nhập của cán bộ này", 404);
+    }
+    const authEmail = existingUser.user.email ?? null;
+    const emailMismatch = !!authEmail && !!profile.email &&
+      authEmail.toLowerCase() !== profile.email.toLowerCase();
+
     // ---- Chế độ gửi email link đặt lại (không đổi mật khẩu, cán bộ tự đặt) ----
     if (sendEmail) {
-      if (!profile.email) {
-        throw new HttpError("Cán bộ này chưa có email — không thể gửi link đặt lại", 400);
+      if (!authEmail) {
+        throw new HttpError("Tài khoản này chưa có email đăng nhập — không thể gửi link đặt lại", 400);
       }
       const { error: mailError } = await adminClient.auth.resetPasswordForEmail(
-        profile.email,
+        authEmail,
         { redirectTo: resetRedirect },
       );
       if (mailError) {
@@ -72,7 +102,9 @@ Deno.serve(async (req) => {
         entityId: profile.user_id,
         metadata: {
           target_user_id: profile.user_id,
-          target_email: profile.email,
+          target_email: authEmail,
+          profile_email: profile.email,
+          email_mismatch: emailMismatch,
           profile_id: profile.id,
           mode: "email_link",
         },
@@ -81,18 +113,15 @@ Deno.serve(async (req) => {
         success: true,
         mode: "email_link",
         profile_id: profile.id,
-        email: profile.email,
+        email: authEmail,
+        profile_email: profile.email,
+        email_mismatch: emailMismatch,
         full_name: profile.full_name,
         message: "Đã gửi email link đặt lại mật khẩu cho cán bộ",
       });
     }
 
     // Merge metadata thay vì ghi đè để không mất các key khác (vd: full_name).
-    const { data: existingUser, error: getUserError } = await adminClient.auth.admin
-      .getUserById(profile.user_id);
-    if (getUserError || !existingUser?.user) {
-      throw new HttpError("Không tìm thấy tài khoản đăng nhập của cán bộ này", 404);
-    }
 
     const tempPassword = generatePassword();
     const { error: updateError } = await adminClient.auth.admin.updateUserById(
@@ -115,7 +144,9 @@ Deno.serve(async (req) => {
       entityId: profile.user_id,
       metadata: {
         target_user_id: profile.user_id,
-        target_email: profile.email,
+        target_email: authEmail,
+        profile_email: profile.email,
+        email_mismatch: emailMismatch,
         profile_id: profile.id,
       },
     });
@@ -124,7 +155,10 @@ Deno.serve(async (req) => {
       success: true,
       mode: "temp_password",
       profile_id: profile.id,
-      email: profile.email,
+      // Tên đăng nhập bàn giao = email Auth thật (không phải profiles.email).
+      email: authEmail ?? profile.email,
+      profile_email: profile.email,
+      email_mismatch: emailMismatch,
       full_name: profile.full_name,
       temp_password: tempPassword,
       message: "Đã cấp lại mật khẩu tạm — bàn giao cho cán bộ và yêu cầu đổi ngay khi đăng nhập",

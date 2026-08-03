@@ -111,8 +111,6 @@ export interface CardBadges {
   updatedThisWeek: boolean;
 }
 
-export type WeeklyUpdateStatus = 'updated_this_week' | 'not_updated_this_week' | 'not_applicable';
-
 /** Thứ Hai 00:00 giờ VN (UTC+7) của tuần hiện tại, trả về Date UTC. */
 export function getVietnamWeekStart(now: Date = new Date()): Date {
   const vn = new Date(now.getTime() + 7 * 3600 * 1000);
@@ -124,25 +122,32 @@ export function getVietnamWeekStart(now: Date = new Date()): Date {
 
 export type WeeklyUpdateMap = Record<string, boolean>;
 
-/** 1 query: log hợp lệ trong tuần hiện tại, gom theo card_id. */
+/**
+ * 1 query: log hợp lệ trong tuần hiện tại, gom theo card_id.
+ * Mọi thẻ truyền vào đều có mặt trong map (false nếu chưa cập nhật) — nhờ đó
+ * sortCards/computeBadges phân biệt được "chưa cập nhật" với "không có dữ liệu".
+ * Log 'created' trong tuần cũng tính là đạt: thẻ vừa sinh từ phiếu được ân hạn
+ * tuần đầu, sang tuần sau mới bắt đầu báo đỏ.
+ */
 export async function fetchWeeklyUpdateMap(cards: KanbanCard[]): Promise<WeeklyUpdateMap> {
   const ids = cards.map(c => c.id);
   if (!ids.length) return {};
+  const out: WeeklyUpdateMap = {};
+  ids.forEach(id => { out[id] = false; });
   const weekStart = getVietnamWeekStart().toISOString();
   const { data, error } = await supabase
     .from('kanban_card_logs')
-    .select('card_id, log_type, new_status, created_at')
+    .select('card_id, log_type, created_at')
     .in('card_id', ids)
     .gte('created_at', weekStart);
-  if (error) return {};
-  const out: WeeklyUpdateMap = {};
+  if (error) return out;
   (data || []).forEach((r: any) => {
     const t = r.log_type as string;
     const valid =
       t === 'progress_update' ||
       t === 'completion_requested' ||
       t === 'evidence_added' ||
-      (t === 'status_change' && r.new_status === 'doing');
+      t === 'created';
     if (valid) out[r.card_id] = true;
   });
   return out;
@@ -150,25 +155,31 @@ export async function fetchWeeklyUpdateMap(cards: KanbanCard[]): Promise<WeeklyU
 
 /**
  * Thẻ nào phải theo nhịp cập nhật hằng tuần?
- * - Thẻ 'doing' (luồng tự đánh giá quen thuộc).
- * - Thẻ DẤU ẤN (leadership_mark_id) tính từ lúc được giao — kể cả còn ở 'todo',
- *   để bảng Kanban cá nhân và trang /dau-an báo đỏ NHẤT QUÁN với nhau.
+ * MỌI thẻ của kế hoạch hành động quý còn hiệu lực — kể cả đang nằm 'todo'.
+ * (Trước đây chỉ soi thẻ 'doing' + dấu ấn nên ai để nguyên thẻ ở "Phải làm"
+ * suốt quý sẽ không bao giờ bị báo đỏ.) Ngoại lệ:
+ * - thẻ 'done' (đã xong, chỉ chờ/được xác nhận);
+ * - thẻ placeholder chưa có nội dung (đã có cảnh báo "Cần bổ sung" riêng).
  */
-export function isWeeklyTracked(card: Pick<KanbanCard, 'kanban_status' | 'leadership_mark_id'>): boolean {
+export function isWeeklyTracked(card: Pick<KanbanCard, 'kanban_status' | 'title'>): boolean {
   if (card.kanban_status === 'done') return false;
-  return card.kanban_status === 'doing' || !!card.leadership_mark_id;
+  if (isTitleMissing(card.title)) return false;
+  return true;
 }
 
-export function getWeeklyUpdateStatus(card: KanbanCard, updated: boolean | undefined): WeeklyUpdateStatus {
-  if (!isWeeklyTracked(card)) return 'not_applicable';
-  return updated ? 'updated_this_week' : 'not_updated_this_week';
+/** Ngày (YYYY-MM-DD) theo giờ Việt Nam của một thời điểm. */
+export function toVietnamDateString(now: Date = new Date()): string {
+  return new Date(now.getTime() + 7 * 3600 * 1000).toISOString().slice(0, 10);
 }
 
 export function computeBadges(c: KanbanCard, now = new Date(), weeklyUpdated?: boolean): CardBadges {
-  const overdue = !!c.deadline && c.kanban_status !== 'done' && new Date(c.deadline) < now;
-  const dueSoon = !overdue && !!c.deadline && (() => {
-    const d = daysBetween(new Date(c.deadline!), now);
-    return d >= 0 && d <= 3 && c.kanban_status !== 'done';
+  // So sánh theo NGÀY giờ VN: quá hạn khi đã sang ngày sau deadline
+  // (trước đây new Date('YYYY-MM-DD') hiểu là 00:00 UTC → báo quá hạn từ 7h sáng ngày hạn)
+  const todayVn = toVietnamDateString(now);
+  const overdue = !!c.deadline && c.kanban_status !== 'done' && c.deadline < todayVn;
+  const dueSoon = !overdue && !!c.deadline && c.kanban_status !== 'done' && (() => {
+    const d = Math.round((Date.parse(c.deadline!) - Date.parse(todayVn)) / 86400000);
+    return d >= 0 && d <= 3;
   })();
   const needsUpdate =
     c.kanban_status === 'doing' &&

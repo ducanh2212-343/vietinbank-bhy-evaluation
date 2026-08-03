@@ -222,14 +222,14 @@ export default function QuizCampaignComposerPage() {
       </div>
 
       {status === 'rejected' && rejectedReason && (
-        <Card className="border-red-300">
-          <CardContent className="py-3 text-sm text-red-600">
+        <Card className="border-red-300 dark:border-red-500/40">
+          <CardContent className="py-3 text-sm text-red-600 dark:text-red-400">
             Ban Giám đốc từ chối: {rejectedReason}. Sửa nội dung rồi gửi duyệt lại.
           </CardContent>
         </Card>
       )}
       {status === 'pending' && (
-        <Card className="border-amber-300">
+        <Card className="border-amber-300 dark:border-amber-500/40">
           <CardContent className="py-3 text-sm text-amber-700 dark:text-amber-400 flex items-center justify-between gap-2 flex-wrap">
             <span>Đang chờ Ban Giám đốc phê duyệt — cấu hình đã khoá, muốn sửa hãy rút về nháp.</span>
             <Button size="sm" variant="outline" onClick={withdraw}>Rút về nháp</Button>
@@ -237,7 +237,7 @@ export default function QuizCampaignComposerPage() {
         </Card>
       )}
       {hasAttempts && (
-        <Card className="border-amber-300">
+        <Card className="border-amber-300 dark:border-amber-500/40">
           <CardContent className="py-3 text-sm text-amber-700 dark:text-amber-400">
             Chiến dịch đã duyệt/đang chạy — nội dung khoá để giữ công bằng.
           </CardContent>
