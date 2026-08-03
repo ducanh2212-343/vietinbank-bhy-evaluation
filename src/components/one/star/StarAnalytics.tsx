@@ -1,10 +1,11 @@
 import React, { useMemo, useRef, useState } from 'react';
 import {
   Award, CheckCircle2, ChevronDown, ChevronUp, DollarSign, Download, FileText,
-  Gift, Loader2, Search, Sparkles, Star, Trash2, TrendingUp, Upload, Users, X,
+  Gift, Loader2, Lock, Search, Sparkles, Star, Trash2, TrendingUp, Upload, Users, X,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useStarRecords } from './useStarRecords';
+import { STAR_WRITE_LOCKED, STAR_WRITE_LOCK_REASON } from './starImportLock';
 import {
   calculateRewardValue, formatVnd, getMilestoneInfo, getRewardBreakdown,
 } from './starMath';
@@ -210,8 +211,24 @@ export const StarAnalytics: React.FC = () => {
         )}
       </div>
 
-      {/* Khu nhập file (admin) / banner chế độ xem (cán bộ) */}
-      {isContentAdmin ? (
+      {/* Khu nhập file (admin) / banner khóa ghi / banner chế độ xem (cán bộ) */}
+      {isContentAdmin && STAR_WRITE_LOCKED ? (
+        <div className="p-5 sm:p-6 rounded-2xl border-2 border-amber-300 bg-amber-50/70 flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-6 shadow-sm">
+          <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 shrink-0">
+            <Lock className="w-5 h-5" />
+          </div>
+          <div className="text-left flex-1">
+            <h5 className="font-black text-xs sm:text-sm text-slate-800">Đã tạm khóa nhập dữ liệu Sao</h5>
+            <p className="text-[11px] sm:text-xs text-slate-600 mt-1 leading-relaxed">{STAR_WRITE_LOCK_REASON}</p>
+            <p className="text-[11px] sm:text-xs text-slate-600 mt-1 leading-relaxed">
+              Phần xem, thống kê và <strong>Xuất file đối soát (Excel)</strong> vẫn dùng bình thường.
+            </p>
+          </div>
+          <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black uppercase shrink-0">
+            Chỉ đọc
+          </span>
+        </div>
+      ) : isContentAdmin ? (
         <div className="relative p-6 sm:p-8 rounded-2xl border-2 border-dashed border-slate-300 hover:border-brand-navy/50 bg-slate-50/60 hover:bg-slate-50 transition-all text-center">
           <input
             ref={fileInputRef}
@@ -730,7 +747,7 @@ export const StarAnalytics: React.FC = () => {
                     <span className="text-slate-500 font-bold">
                       Danh sách hiển thị toàn bộ các phiếu ghi nhận trong hệ thống đối soát:
                     </span>
-                    {isContentAdmin && records.length > 0 && (
+                    {isContentAdmin && !STAR_WRITE_LOCKED && records.length > 0 && (
                       <button
                         type="button"
                         onClick={() => {
@@ -757,7 +774,7 @@ export const StarAnalytics: React.FC = () => {
                           <th className="p-2.5">Hiệu quả đem lại</th>
                           <th className="p-2.5 text-center">Ngày nhận</th>
                           <th className="p-2.5 text-center">Nguồn</th>
-                          {isContentAdmin && <th className="p-2.5 text-center">Hành động</th>}
+                          {isContentAdmin && !STAR_WRITE_LOCKED && <th className="p-2.5 text-center">Hành động</th>}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 font-medium text-slate-600">
@@ -783,7 +800,7 @@ export const StarAnalytics: React.FC = () => {
                                   {rec.source === 'form' ? 'Form' : 'Import'}
                                 </span>
                               </td>
-                              {isContentAdmin && (
+                              {isContentAdmin && !STAR_WRITE_LOCKED && (
                                 <td className="p-2.5 text-center">
                                   <button
                                     type="button"
