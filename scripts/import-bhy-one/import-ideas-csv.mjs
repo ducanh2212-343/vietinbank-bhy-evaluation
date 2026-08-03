@@ -17,6 +17,9 @@
 //   - Cột "Ngay gui" là giờ Việt Nam (toLocaleString vi-VN) → quy về ISO +07:00.
 //   - Bình luận dạng '[Tên (tài khoản)]: nội dung' tách thành một dòng bình luận.
 //   - CSV không có cột lượt thích/không thích → seed_likes/seed_unlikes để 0.
+//   - Chủ sở hữu phiếu do hàm SQL quyết định, ưu tiên TÊN người đề xuất rồi mới đến
+//     email người gửi (nhiều phiếu gửi bằng tài khoản dùng chung của phòng) — xem
+//     migration 20260820090000. Script chỉ giữ nguyên hai trường này của file gốc.
 
 import { readFileSync } from 'node:fs';
 

@@ -11,7 +11,7 @@ cũ (Firebase), 113 phiếu từ 01/07/2026 đến 03/08/2026. File gốc **khô
 | `portal_ideas` | **113/113 ý tưởng** nạp mới |
 | `portal_idea_comments` | **21/21 bình luận** (cột "Y kien binh luan") |
 | Phiếu gửi thẳng trên cổng mới | **1 phiếu giữ nguyên** (không bị đụng tới) → tổng 114 |
-| Chủ sở hữu khớp tài khoản thật | **21/36 email** khớp hồ sơ cán bộ; số còn lại gán system_admin |
+| Chủ sở hữu khớp tài khoản thật | **111/113 phiếu** về đúng cán bộ (43 người) — xem mục "Gán chủ sở hữu" |
 | Đối chiếu nội dung với file gốc | **113/113 khớp md5** (tiêu đề, thực trạng, giải pháp, lợi ích, người đề xuất, phòng) |
 | Đối chiếu cột phân loại | **khớp md5 toàn bộ** (cấp đề xuất, phạm vi, phòng, demo, cấp độ, cờ Hội đồng, email, thời điểm gửi) |
 
@@ -35,15 +35,55 @@ Phân bố sau khi nạp: 69 "Đề xuất TSC" / 44 "Nội bộ CN"; 94 "Ươm 
   bị thay ở đúng những ý tưởng có trong gói, nên nạp nhiều lô liên tiếp không xoá lô trước.
   Bình luận cán bộ nhập trên cổng (`legacy_id` NULL) luôn được giữ.
 - **Thời gian**: cột "Ngay gui" là giờ Việt Nam (`toLocaleString` vi-VN) → quy về ISO `+07:00`.
-- **Chủ sở hữu**: dò `profiles.email` / `profiles.personal_email` theo email người gửi;
-  không khớp thì gán tài khoản system_admin (như các đợt import trước). Nhờ vậy 21 cán bộ
-  thấy đúng phiếu của mình trên cổng và tự sửa được.
+- **Chủ sở hữu**: xem mục riêng bên dưới.
 - **Bình luận**: dạng `[Tên (tài khoản)]: nội dung`; tài khoản cổng cũ được dò sang hồ sơ
   cán bộ để hiển thị tên thật thay vì mã đăng nhập.
 - **Chuẩn hoá NFC**: một ô trong file gốc để dấu tiếng Việt ở dạng tách rời (NFD) — nhìn
   giống hệt nhưng khác chuỗi byte. Script gộp về NFC cho khớp phần còn lại của dữ liệu.
 - **Lượt thích**: file kết xuất không có cột lượt thích/không thích → `seed_likes` và
   `seed_unlikes` để 0. Đây là dữ liệu duy nhất của cổng cũ không khôi phục được.
+
+## Gán chủ sở hữu phiếu (`created_by`)
+
+Đợt đầu gán theo **email người gửi** — sai bản chất, vì nhiều phòng dùng chung một tài
+khoản để gửi hộ: 13 phiếu qua tài khoản Trưởng phòng DVKH, 5 phiếu qua email chung Phòng
+Bán lẻ, 3 phiếu qua tài khoản Trưởng PGD Ân Thi, 2 phiếu qua tài khoản Phó phòng TCTH.
+Gán theo email thì công đổi mới sáng tạo dồn hết về trưởng/phó phòng.
+
+Từ migration `20260820090000`, thứ tự xác định chủ sở hữu là:
+
+1. **Tên người đề xuất** — bỏ dấu, gộp khoảng trắng, không phân biệt hoa thường
+   (`bhy_tim_can_bo_theo_ten`). Phiếu nhóm `"A, B, C"` lấy người đứng đầu làm chủ sở hữu
+   nhưng **giữ nguyên** ô tên để không mất tên đồng tác giả.
+2. **Bí danh** trong `portal_idea_proposer_alias` (phiếu ghi tên đăng nhập: `lypham`,
+   `duy.nd`, `PHUONGNT5`). Quản trị bổ sung dần khi gặp trường hợp mới.
+3. **Email người gửi** khớp `profiles.email`.
+4. Tài khoản system_admin.
+
+Tên trên phiếu được chuẩn hoá lại theo `profiles.full_name` (nguồn chuẩn là chieuthuc3),
+bản gốc lưu ở `custom_values->>'ten_goc_tren_phieu'` — 49 phiếu đã chuẩn hoá.
+
+**Trùng tên:** chi nhánh có 2 chị **Nguyễn Thị Phượng** (Phó phòng TCTH – tcth_admin, và
+Phó phòng giao dịch Ân Thi). Hàm dò phân giải bằng phòng ghi trên phiếu; đã kiểm chứng
+21 bình luận + 2 ý tưởng về chị TCTH, 1 ý tưởng "Đặt ngoại tệ trùng lặp" về chị Ân Thi,
+không có bản ghi nào lẫn sang nhau. Ngoài ra còn 1 hồ sơ thứ ba trùng tên ở trạng thái
+`deleted` — hàm chỉ dò hồ sơ `active` nên không bị dính.
+
+**Kết quả:** 111/113 phiếu về đúng cán bộ, phân bổ cho **43 người** (trước đó 22).
+Còn 2 phiếu Phòng DVKH chưa xác định, tạm để dưới tài khoản người gửi:
+
+| Ô "Cán bộ đề xuất" | Vướng mắc |
+|---|---|
+| `Haich` | Viết tắt, chưa rõ là ai (Chu Hồng Hải?) |
+| `Nguyễn Đức Mạnh` | chieuthuc3 chỉ có **Vũ Đức Mạnh** (DVKH) — nhầm họ hay người khác? |
+
+Khi xác định được, chỉ cần thêm một dòng vào `portal_idea_proposer_alias` rồi chạy lại
+`admin_import_ideas_csv` với gói JSON cũ.
+
+**Điểm còn ngỏ:** hai email `thuylt120996@gmail.com` và `thuylt231096@gmail.com` cùng ghi
+tên "Lê Thị Thuý" – Phòng HTTD, nhưng chieuthuc3 chỉ có một hồ sơ **Lê Thị Thúy**. Theo
+quy tắc ưu tiên tên, cả 9 phiếu đang gộp về một người. Nếu thực tế là hai cán bộ trùng
+tên thì cần tạo hồ sơ thứ hai và tách lại.
 
 ## Bảo mật
 
