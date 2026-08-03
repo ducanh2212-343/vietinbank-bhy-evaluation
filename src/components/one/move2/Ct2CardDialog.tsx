@@ -13,6 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import {
   CT2_COT, CT2_MAU_CAU, CT2_TEN_CO, CT2_TEN_NHAN, CT2_TEN_UU_TIEN,
   daDuKeHoach, goiYNhan, kiemTraCauNhip, lyDoChanChuyen, soNgayQuaHan,
+  thieuTruongBatBuoc,
   type Ct2Co, type Ct2DauViec, type Ct2NhanPdca, type Ct2TrangThai,
 } from '@/lib/ct2';
 import {
@@ -83,14 +84,37 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
             <span className="w-full text-base leading-snug">{the.tieu_de}</span>
           </DialogTitle>
           <DialogDescription className="text-left">
-            {CT2_TEN_CO[the.co_tinh_trang]} · {the.phan_tram}% ·
-            hạn {new Date(`${the.han_hoan_thanh}T00:00:00`).toLocaleDateString('vi-VN')}
+            {CT2_TEN_CO[the.co_tinh_trang]} · {the.phan_tram}% ·{' '}
+            {the.han_hoan_thanh
+              ? <>hạn {new Date(`${the.han_hoan_thanh}T00:00:00`).toLocaleDateString('vi-VN')}</>
+              : <span className="font-medium text-amber-700">chưa có hạn</span>}
             {soNgayQuaHan(the) > 0 && <span className="font-semibold text-red-600"> — quá hạn {soNgayQuaHan(the)} ngày</span>}
             {the.han_goc && the.han_goc !== the.han_hoan_thanh && (
               <span className="text-amber-600"> (hạn gốc {new Date(`${the.han_goc}T00:00:00`).toLocaleDateString('vi-VN')} — đã lùi, có ghi vết)</span>
             )}
           </DialogDescription>
         </DialogHeader>
+
+        {/*
+          Ô trống phải nói ra được. Thẻ nhập từ board Miro cũ thiếu người phụ
+          trách / hạn / ngày bắt đầu — nếu im lặng thì thẻ vô chủ trông sạch sẽ
+          y hệt thẻ có chủ, mà «card vô chủ» là lỗi nặng nhất của quy chế §A1.
+        */}
+        {thieuTruongBatBuoc(the).length > 0 && (
+          <div className="rounded-xl border border-amber-300 bg-amber-50 p-3">
+            <p className="text-sm font-semibold text-amber-900">
+              Thẻ còn thiếu {thieuTruongBatBuoc(the).length} thông tin bắt buộc
+            </p>
+            <p className="mt-1.5 flex flex-wrap gap-1.5">
+              {thieuTruongBatBuoc(the).map((t) => (
+                <span key={t.truong}
+                  className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-amber-800">
+                  {t.ten}{t.ly_do ? ` — ${t.ly_do}` : ''}
+                </span>
+              ))}
+            </p>
+          </div>
+        )}
 
         {/* Chưa lập kế hoạch → mời bắt đầu, không bày ra một loạt ô trống */}
         {!daDuKeHoach(the) && the.trang_thai === 'CHUAN_BI' && (laChuThe || laLanhDao) && (
@@ -110,8 +134,14 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
         <div className="grid gap-2 rounded-xl bg-slate-50 p-3 text-sm sm:grid-cols-2">
           <O ten="Kết quả đầu ra" gia={the.ket_qua_dau_ra || '— chưa ghi'} />
           <O ten="Gắn mục tiêu" gia={the.muc_tieu_lien_ket || '— chưa ghi'} />
-          <O ten="Người chịu trách nhiệm" gia={tenNguoi.get(the.nguoi_chiu_trach_nhiem) ?? '—'} />
-          <O ten="Lãnh đạo theo dõi" gia={tenNguoi.get(the.lanh_dao_theo_doi) ?? '—'} />
+          <O ten="Người chịu trách nhiệm"
+            gia={the.nguoi_chiu_trach_nhiem
+              ? (tenNguoi.get(the.nguoi_chiu_trach_nhiem) ?? '—')
+              : '— thẻ đang vô chủ'} />
+          <O ten="Lãnh đạo theo dõi"
+            gia={the.lanh_dao_theo_doi
+              ? (tenNguoi.get(the.lanh_dao_theo_doi) ?? '—')
+              : '— chưa ghi'} />
           <div className="sm:col-span-2"><O ten="Cách làm" gia={the.cach_lam || '— chưa ghi'} /></div>
           {the.chi_tieu_dinh_luong !== null && (
             <O ten="Chỉ tiêu" gia={`${the.chi_tieu_dinh_luong} ${the.don_vi ?? ''}`} />

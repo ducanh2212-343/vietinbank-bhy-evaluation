@@ -27,6 +27,7 @@ export function Ct2MyWork({ onMoThe }: Props) {
   const soLieu = useMemo(() => ({
     dangLam: viec.filter((v) => v.trang_thai === 'DANG_LAM').length,
     sapToiHan: viec.filter((v) => {
+      if (!v.han_hoan_thanh) return false;   // chưa có hạn thì không thể «sắp tới hạn»
       const conLai = Math.ceil((new Date(`${v.han_hoan_thanh}T23:59:59+07:00`).getTime() - Date.now()) / 86_400_000);
       return conLai >= 0 && conLai <= 3;
     }).length,
@@ -83,7 +84,9 @@ export function Ct2MyWork({ onMoThe }: Props) {
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium text-slate-800">{v.tieu_de}</span>
               <span className="mt-0.5 block text-xs text-slate-500">
-                {v.ma_hien_thi} · {v.phan_tram}% · hạn {new Date(`${v.han_hoan_thanh}T00:00:00`).toLocaleDateString('vi-VN')}
+                {v.ma_hien_thi} · {v.phan_tram}% · {v.han_hoan_thanh
+                  ? `hạn ${new Date(`${v.han_hoan_thanh}T00:00:00`).toLocaleDateString('vi-VN')}`
+                  : 'chưa có hạn'}
                 {v.lien_phong && ' · 🤝'}
               </span>
             </span>
@@ -137,7 +140,11 @@ function GhiNhipNhanh({ dsThe, onDong }: { dsThe: Ct2ViecCuaToi[]; onDong: () =>
           <Button variant="ghost" size="sm" onClick={onDong}>Đóng</Button>
         </div>
         <p className="mb-1 text-sm font-medium text-slate-800">{the.tieu_de}</p>
-        <p className="mb-3 text-xs text-slate-500">{the.ma_hien_thi} · hạn {new Date(`${the.han_hoan_thanh}T00:00:00`).toLocaleDateString('vi-VN')}</p>
+        <p className="mb-3 text-xs text-slate-500">
+          {the.ma_hien_thi} · {the.han_hoan_thanh
+            ? `hạn ${new Date(`${the.han_hoan_thanh}T00:00:00`).toLocaleDateString('vi-VN')}`
+            : 'chưa có hạn'}
+        </p>
         <FormGhiNhip
           the={{
             id: the.id,

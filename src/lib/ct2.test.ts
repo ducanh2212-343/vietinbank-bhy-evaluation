@@ -23,6 +23,7 @@ import {
   soNgayImLang,
   soNgayQuaHan,
   tachCacBuoc,
+  thieuTruongBatBuoc,
   tuoiCho,
   type BoiCanhChuyen,
   type Ct2DauViec,
@@ -235,6 +236,10 @@ describe('Chế độ Toàn cảnh — gộp mọi tín hiệu xấu về một 
     ngay_bat_dau: '2026-08-01', ket_qua_dau_ra: 'Bộ hồ sơ đã xong',
     muc_tieu_lien_ket: 'Tăng trưởng tín dụng',
     cach_lam: 'B1. Rà hồ sơ\nB2. Trình ký duyệt lần cuối',
+    // Việc «bình thường» nay phải có đủ chủ và lãnh đạo theo dõi mới được XANH:
+    // xanh nghĩa là «ổn», mà một thẻ vô chủ thì không ổn.
+    nguoi_chiu_trach_nhiem: 'p1', lanh_dao_theo_doi: 'p2',
+    loai_dau_viec: 'TIEN_TRINH' as const, created_at: '2026-08-01T01:00:00Z',
   };
   const moc = new Date('2026-08-12T02:00:00Z');
 
@@ -396,5 +401,84 @@ describe('Nhịp chỉ chạy thứ 2 → thứ 6', () => {
   it('nhưng QUÁ HẠN vẫn đếm ngày lịch — hạn là lời hứa theo tờ lịch', () => {
     const the = { trang_thai: 'DANG_LAM' as const, han_hoan_thanh: '2026-08-07' };
     expect(soNgayQuaHan(the, T2)).toBe(3);
+  });
+});
+
+
+describe('Thẻ nhập từ board cũ — ô trống phải nói ra, không được im lặng', () => {
+  const goc: Ct2DauViec = {
+    id: 'x', cycle_id: null, chien_dich_id: null, ma_hien_thi: 'KHDN-2608-050',
+    tieu_de: 'KHAI THÁC NGUỒN VỐN KHCN BIG4', ket_qua_dau_ra: null,
+    muc_tieu_lien_ket: null, cach_lam: null,
+    chi_tieu_dinh_luong: null, don_vi: null, nguon_luc_du_kien: null,
+    nguoi_chiu_trach_nhiem: null, nguoi_phoi_hop: [], lanh_dao_theo_doi: null,
+    phong: 'd1', pham_vi: 'PHONG', loai_dau_viec: 'TIEN_TRINH', lien_phong: false,
+    cac_phong_tham_gia: [], muc_uu_tien: 'THUONG', trang_thai: 'DANG_LAM',
+    phan_tram: 0, co_tinh_trang: 'XANH', ngay_bat_dau: null,
+    han_hoan_thanh: null, han_goc: null, ly_do_dung_huy: null,
+    nguoi_dang_giu: null, giu_tu: null, nhip_gan_nhat: null,
+    nguon_viec: 'CHU_DONG', cuoc_hop: null, nguoi_tao: 'p2',
+    created_at: '2026-08-07T01:00:00Z', updated_at: '2026-08-07T01:00:00Z',
+  };
+  const moc = new Date('2026-08-12T02:00:00Z'); // 09:00 VN thứ Tư 12/08
+
+  it('thiếu hạn thì KHÔNG bị coi là quá hạn', () => {
+    // Coi thiếu hạn là quá hạn sẽ báo đỏ oan mọi thẻ nhập từ board cũ ngay
+    // hôm đầu tiên — cái thiếu ở đây là dữ liệu, không phải tiến độ.
+    expect(soNgayQuaHan(goc, moc)).toBe(0);
+  });
+
+  it('liệt kê đúng các trường bắt buộc còn thiếu', () => {
+    const t = thieuTruongBatBuoc(goc).map((x) => x.truong);
+    expect(t).toContain('nguoi_chiu_trach_nhiem');
+    expect(t).toContain('han_hoan_thanh');
+    expect(t).toContain('ngay_bat_dau');
+    expect(t).toContain('lanh_dao_theo_doi');
+  });
+
+  it('việc THƯỜNG TRỰC không bị đòi hạn — sai loại thước', () => {
+    const tt = thieuTruongBatBuoc({ ...goc, loai_dau_viec: 'THUONG_TRUC' });
+    expect(tt.some((x) => x.truong === 'han_hoan_thanh')).toBe(false);
+  });
+
+  it('việc đã đóng thì thôi không đòi bổ sung nữa', () => {
+    expect(thieuTruongBatBuoc({ ...goc, trang_thai: 'DA_DONG' })).toEqual([]);
+  });
+
+  it('thiếu trường bắt buộc là VÀNG — dứt khoát không được XANH', () => {
+    expect(mucChuY(goc, moc)).toBe('VANG');
+  });
+
+  it('thiếu ngày bắt đầu thì đếm im lặng từ ngày thẻ vào hệ thống', () => {
+    // created_at thứ Sáu 07/08 → thứ Tư 12/08 là 3 ngày làm việc (10, 11, 12)
+    expect(soNgayImLang(goc, moc)).toBe(3);
+  });
+
+  it('thẻ vô chủ không cộng vào WIP của ai', () => {
+    const wip = demWip([goc, { ...goc, id: 'y', nguoi_chiu_trach_nhiem: 'p1' }]);
+    expect(wip.get('p1')).toBe(1);
+    expect(wip.size).toBe(1);
+  });
+
+  /**
+   * ĐÂY LÀ TEST ĐÁNG GIÁ NHẤT CỦA CẢ NHÓM NÀY.
+   *
+   * Đúng dòng `a.han_hoan_thanh.localeCompare(...)` ở bàn PDTD đã làm TRẮNG CẢ
+   * MÀN ngày 03/08/2026 khi dữ liệu có ô trống vào database trước bản mã chịu
+   * được ô trống. Bàn đầu việc có y hệt dòng đó — bịt trước khi nhập.
+   */
+  it('xếp được cả cột thẻ chưa có hạn — KHÔNG được ném lỗi', () => {
+    const ds = [
+      goc,
+      { ...goc, id: 'b', tieu_de: 'Việc B' },
+      { ...goc, id: 'c', tieu_de: 'Việc C', han_hoan_thanh: '2026-09-01' },
+    ];
+    const xep = sapXepThe(ds, moc);
+    expect(xep).toHaveLength(3);
+    expect(xep[0].id).toBe('c');   // có hạn thì lên trước
+  });
+
+  it('chuanBiQuaLau không đoán bừa khi thiếu mốc', () => {
+    expect(chuanBiQuaLau({ ...goc, trang_thai: 'CHUAN_BI' }, moc)).toBe(false);
   });
 });

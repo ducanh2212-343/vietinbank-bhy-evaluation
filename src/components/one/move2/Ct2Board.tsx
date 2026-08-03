@@ -6,9 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  CT2_COT, CT2_NGUONG_WIP, chuanBiQuaLau, daDuKeHoach, demWip, nguongTuoiCho,
-  sapXepThe, soNgayImLang, soNgayQuaHan, tuoiCho,
-  type Ct2Co, type Ct2DauViec, type Ct2TrangThai,
+  CT2_COT, CT2_NGUONG_WIP, chuanBiQuaLau, daDuKeHoach, demWip, mucChuY,
+  nguongTuoiCho, sapXepThe, soNgayImLang, soNgayQuaHan, thieuTruongBatBuoc, tuoiCho,
+  type Ct2Co, type Ct2DauViec, type Ct2MucChuY, type Ct2TrangThai,
 } from '@/lib/ct2';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Ct2NhipPhongStrip } from './Ct2NhipPhongStrip';
@@ -33,10 +33,19 @@ interface Props {
   onKeoThe: (the: Ct2DauViec, den: Ct2TrangThai) => void;
 }
 
-const VIEN_CO: Record<Ct2Co, string> = {
+/**
+ * Viền thẻ đọc theo mucChuY chứ KHÔNG theo cờ co_tinh_trang trần.
+ *
+ * `co_tinh_trang` là cờ CÁN BỘ TỰ ĐÁNH GIÁ, không có gì tự tính lại nó. Một
+ * thẻ quá hạn 125 ngày mà cờ vẫn để XANH thì viền xanh đang nói dối — và thẻ
+ * nhập từ board cũ đều mặc định XANH. Chế độ «Toàn cảnh» vốn đã dùng mucChuY;
+ * để cột dùng thước khác là cùng một thẻ hai màu ở hai màn.
+ */
+const VIEN_CO: Record<Ct2MucChuY, string> = {
   XANH: 'border-l-emerald-500',
   VANG: 'border-l-amber-500',
   DO: 'border-l-red-500',
+  XONG: 'border-l-slate-300',
 };
 
 export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoThe }: Props) {
@@ -142,9 +151,11 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoTh
           aria-label="Lọc theo người phụ trách"
         >
           <option value="">Mọi người phụ trách</option>
-          {[...new Set(dsThe.map((t) => t.nguoi_chiu_trach_nhiem))].map((id) => (
-            <option key={id} value={id}>{tenNguoi.get(id) ?? '—'}</option>
-          ))}
+          {[...new Set(dsThe.map((t) => t.nguoi_chiu_trach_nhiem))]
+            .filter((id): id is string => !!id)
+            .map((id) => (
+              <option key={id} value={id}>{tenNguoi.get(id) ?? '—'}</option>
+            ))}
         </select>
         {(['XANH', 'VANG', 'DO'] as Ct2Co[]).map((co) => (
           <Button
@@ -228,7 +239,9 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoTh
               >
                 <span className="font-medium text-slate-800">{t.tieu_de}</span>
                 <span className="mt-1 block text-xs text-slate-500">
-                  {tenNguoi.get(t.nguoi_chiu_trach_nhiem) ?? '—'}
+                  {t.nguoi_chiu_trach_nhiem
+                    ? (tenNguoi.get(t.nguoi_chiu_trach_nhiem) ?? '—')
+                    : <span className="text-amber-700">chưa có người phụ trách</span>}
                 </span>
               </button>
             ))}
@@ -330,7 +343,7 @@ function TheKanban({ the, tenNguoi, wip, onMo }: {
       {...attributes}
       {...listeners}
       onClick={onMo}
-      className={`cursor-pointer rounded-xl border border-l-4 bg-white p-2.5 text-left shadow-sm transition hover:shadow ${VIEN_CO[the.co_tinh_trang]} ${isDragging ? 'opacity-40' : ''}`}
+      className={`cursor-pointer rounded-xl border border-l-4 bg-white p-2.5 text-left shadow-sm transition hover:shadow ${VIEN_CO[mucChuY(the)]} ${isDragging ? 'opacity-40' : ''}`}
     >
       <p className="flex items-start justify-between gap-1">
         <span className="text-2xs font-mono text-slate-400">{the.ma_hien_thi}</span>
@@ -346,14 +359,18 @@ function TheKanban({ the, tenNguoi, wip, onMo }: {
       <p className="mt-1.5 flex items-center justify-between text-2xs text-slate-500">
         <span className="inline-flex items-center gap-1">
           <User2 className="h-3 w-3" />
-          {tenNguoi.get(the.nguoi_chiu_trach_nhiem) ?? '—'}
-          {(wip.get(the.nguoi_chiu_trach_nhiem) ?? 0) >= CT2_NGUONG_WIP && the.trang_thai === 'DANG_LAM' && (
+          {the.nguoi_chiu_trach_nhiem
+            ? (tenNguoi.get(the.nguoi_chiu_trach_nhiem) ?? '—')
+            : <span className="font-medium text-amber-700">chưa có người</span>}
+          {the.nguoi_chiu_trach_nhiem
+            && (wip.get(the.nguoi_chiu_trach_nhiem) ?? 0) >= CT2_NGUONG_WIP && the.trang_thai === 'DANG_LAM' && (
             <span title={`Vượt ngưỡng WIP ${CT2_NGUONG_WIP}`}>⚠️</span>
           )}
         </span>
         <span className="tabular-nums">{the.phan_tram}%</span>
       </p>
       {(quaHan > 0 || imLang >= 3 || cho > nguongTuoiCho() || chuanBiQuaLau(the)
+        || thieuTruongBatBuoc(the).length > 0
         || (the.trang_thai === 'CHUAN_BI' && !daDuKeHoach(the))) && (
         <p className="mt-1.5 flex flex-wrap gap-1">
           {the.trang_thai === 'CHUAN_BI' && !daDuKeHoach(the) && (
@@ -368,6 +385,10 @@ function TheKanban({ the, tenNguoi, wip, onMo }: {
             </Nhan>
           )}
           {chuanBiQuaLau(the) && <Nhan mau="amber">Chưa khởi động, sắp cạn quỹ thời gian</Nhan>}
+          {/* Ô trống nói ra ngay trên thẻ — không phải mở hộp thoại mới thấy */}
+          {thieuTruongBatBuoc(the).map((t) => (
+            <Nhan key={t.truong} mau="amber">Thiếu: {t.ten}</Nhan>
+          ))}
         </p>
       )}
     </div>
