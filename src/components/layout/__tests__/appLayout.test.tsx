@@ -127,10 +127,10 @@ describe('Khung ứng dụng', () => {
     const thuMuc = within(tam).getAllByRole('button', { expanded: false });
     expect(thuMuc.length).toBeGreaterThanOrEqual(4);
     // Mục nằm sâu trong thư mục đang đóng thì chưa hiện
-    expect(within(tam).queryByText('Quản trị Email')).not.toBeInTheDocument();
+    expect(within(tam).queryByText('Quản trị AI & Prompt')).not.toBeInTheDocument();
     // Nhưng bung thư mục ra là thấy
-    fireEvent.click(within(tam).getByRole('button', { name: /Nội dung & Hệ thống/ }));
-    expect(within(tam).getByText('Quản trị Email')).toBeInTheDocument();
+    fireEvent.click(within(tam).getByRole('button', { name: /Bản tin & Trợ lý AI/ }));
+    expect(within(tam).getByText('Quản trị AI & Prompt')).toBeInTheDocument();
   });
 
   it('tấm «Thêm» không lặp lại khu đã có trên thanh tab', async () => {
@@ -143,7 +143,7 @@ describe('Khung ứng dụng', () => {
     // Chiêu thức 3 đã có tab riêng nên không xuất hiện lại ở đây
     expect(within(tam).queryByText('Chiêu thức 3 - Phát triển nhân sự')).not.toBeInTheDocument();
     // Khu chưa có tab thì vẫn phải tới được
-    expect(within(tam).getByText('Quản trị người dùng')).toBeInTheDocument();
+    expect(within(tam).getByText('Quản trị chung')).toBeInTheDocument();
   });
 
   it('ô tìm kiếm là nút mở bảng lệnh, không còn là ô nhập trang trí', () => {
@@ -158,20 +158,20 @@ describe('Khung ứng dụng', () => {
     expect(screen.queryByLabelText('Điều hướng phân hệ')).not.toBeInTheDocument();
     const thanhNav = screen.getByLabelText('Điều hướng chính cổng BHY ONE');
     expect(within(thanhNav).queryByRole('button', { name: 'Phát triển nhân sự 343' })).not.toBeInTheDocument();
-    expect(within(thanhNav).queryByRole('button', { name: 'Quản trị người dùng' })).not.toBeInTheDocument();
+    expect(within(thanhNav).queryByRole('button', { name: 'Quản trị chung' })).not.toBeInTheDocument();
   });
 
-  it('quản trị viên thấy khu Quản trị người dùng trên thanh chính', () => {
+  it('quản trị viên thấy khu Quản trị chung trên thanh chính', () => {
     mockAuth.isAdmin = true;
     dungKhung('/tong-quan');
     const thanhNav = screen.getByLabelText('Điều hướng chính cổng BHY ONE');
-    expect(within(thanhNav).getByRole('button', { name: 'Quản trị người dùng' })).toBeInTheDocument();
+    expect(within(thanhNav).getByRole('button', { name: 'Quản trị chung' })).toBeInTheDocument();
   });
 
-  it('cán bộ thường KHÔNG thấy khu Quản trị người dùng', () => {
+  it('cán bộ thường KHÔNG thấy khu Quản trị chung', () => {
     dungKhung('/tong-quan');
     const thanhNav = screen.getByLabelText('Điều hướng chính cổng BHY ONE');
-    expect(within(thanhNav).queryByRole('button', { name: 'Quản trị người dùng' })).not.toBeInTheDocument();
+    expect(within(thanhNav).queryByRole('button', { name: 'Quản trị chung' })).not.toBeInTheDocument();
   });
 
   it('mở nhiều thư mục trong menu dọc: trạng thái không ghi đè lẫn nhau', () => {

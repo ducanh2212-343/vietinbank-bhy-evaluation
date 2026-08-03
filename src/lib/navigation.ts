@@ -370,42 +370,44 @@ export const NAV_SECTIONS: NavSection[] = [
           { label: 'Quản trị hình ảnh skill', icon: Image, path: '/quan-tri-hinh-anh-skill', minRole: 'admin' },
           { label: 'Khóa học VietinBank', icon: GraduationCap, path: '/quan-tri-khoa-hoc-vtb', minRole: 'admin' },
           { label: 'Tổng hợp nhu cầu đào tạo', icon: GraduationCap, path: '/tong-hop-nhu-cau-dao-tao', minRole: 'admin' },
+          { label: 'Quản trị Hội đồng đầu mối', icon: Gavel, path: '/quan-tri-hoi-dong-dau-moi', minRole: 'admin' },
         ],
       },
       {
-        id: 'noi-dung-he-thong',
-        folder: 'Nội dung & Hệ thống',
-        icon: Building2,
+        // Chỉ còn công cụ phục vụ RIÊNG kỳ đánh giá nhân sự. Bốn mục dùng chung
+        // toàn cổng (tin tức, mẹo tính năng, email, cài đặt) đã chuyển sang khu
+        // "Quản trị chung" — xem ghi chú ở khu đó.
+        id: 'ban-tin-tro-ly-ai',
+        folder: 'Bản tin & Trợ lý AI',
+        icon: Newspaper,
         items: [
-          { label: 'Quản trị Hội đồng đầu mối', icon: Gavel, path: '/quan-tri-hoi-dong-dau-moi', minRole: 'admin' },
-          {
-            label: 'Quản trị tin tức nội bộ',
-            icon: Newspaper,
-            path: '/quan-tri-tin-tuc',
-            minRole: 'admin',
-            keywords: ['tin tuc', 'ghim tin', 'bien tap', 'dong chia se'],
-          },
+          // Thư tổng kết phát triển cá nhân cuối kỳ, dựng từ phiếu tự đánh giá của kỳ
           { label: 'Bản tin quý', icon: Newspaper, path: '/ban-tin-quy', minRole: 'admin' },
-          { label: 'Mẹo tính năng', icon: Lightbulb, path: '/quan-ly-meo-tinh-nang', minRole: 'admin' },
+          // 9 prompt thì 7 phục vụ nghiệp vụ đánh giá (skill, IDP, minh chứng,
+          // phiên 1-1, thư cuối kỳ) — trợ lý AI chỉ chạy trong phân hệ này
           { label: 'Quản trị AI & Prompt', icon: Sparkles, path: '/quan-tri-ai', minRole: 'admin' },
-          { label: 'Quản trị Email', icon: Mail, path: '/quan-tri-email', minRole: 'admin' },
-          { label: 'Cài đặt', icon: SettingsIcon, path: '/cai-dat', minRole: 'admin' },
         ],
       },
     ],
   },
 
-  // ---- Quản trị người dùng CHUNG toàn cổng (nguyên lý chieuthuc3.com:
-  // một danh sách cán bộ + một hệ phân quyền, mọi phân hệ dùng chung) ----
+  // ---- Quản trị CHUNG toàn cổng (nguyên lý chieuthuc3.com: một danh sách cán
+  // bộ + một hệ phân quyền, mọi phân hệ dùng chung).
+  //
+  // Ở đây đặt những thứ KHÔNG thuộc riêng phân hệ nào: người dùng, nội dung
+  // cổng và hệ thống. Trước đây tin tức, mẹo tính năng, email và cài đặt nằm
+  // trong phân hệ Phát triển nhân sự — sai chỗ, vì cả bốn đều phục vụ toàn cổng:
+  // tin tức hiện trên Trang chủ ONE, mẹo tính năng hiện ở mọi trang, email là
+  // hàng đợi chung, cài đặt là phiên bản ứng dụng. ----
   {
     id: 'user-admin',
     mobileOrder: 5,
-    label: 'Quản trị người dùng',
-    shortLabel: 'Người dùng',
+    label: 'Quản trị chung',
+    shortLabel: 'Quản trị',
     icon: Shield,
     accent: '#FB7185',
     zone: 'workspace',
-    desc: 'Danh mục cán bộ, phân quyền và tài khoản khách đối tác',
+    desc: 'Người dùng, nội dung cổng và hệ thống — dùng chung cho mọi phân hệ',
     items: [
       {
         id: 'danh-muc-nguoi-dung',
@@ -436,6 +438,37 @@ export const NAV_SECTIONS: NavSection[] = [
           { label: 'Phân quyền', icon: Shield, path: '/phan-quyen', minRole: 'admin', keywords: ['vai tro', 'role'] },
           { label: 'Duyệt yêu cầu user', icon: UserCheck, path: '/duyet-yeu-cau-user', minRole: 'admin' },
           { label: 'Tài khoản khách đối tác', icon: UserCheck, path: '/quan-tri-khach', minRole: 'admin', keywords: ['guest', 'doi tac'] },
+        ],
+      },
+      {
+        // Nội dung hiển thị cho TOÀN CỔNG, không riêng phân hệ nào
+        id: 'noi-dung-cong',
+        folder: 'Nội dung cổng',
+        icon: Newspaper,
+        items: [
+          // Tin hiện trên Trang chủ ONE và trang Tin tức; dùng chung kho dữ liệu
+          // với Kho tri thức nên cán bộ đăng một lần là cả hai nơi cùng có
+          {
+            label: 'Quản trị tin tức nội bộ',
+            icon: Newspaper,
+            path: '/quan-tri-tin-tuc',
+            minRole: 'admin',
+            keywords: ['tin tuc', 'ghim tin', 'bien tap', 'dong chia se'],
+          },
+          // Mẹo hiện ở banner Trang chủ, hộp nhắc một lần và trang Mẹo hay —
+          // áp dụng cho mọi vai trò, mọi phân hệ
+          { label: 'Mẹo tính năng', icon: Lightbulb, path: '/quan-ly-meo-tinh-nang', minRole: 'admin', keywords: ['tips', 'huong dan'] },
+        ],
+      },
+      {
+        id: 'he-thong-chung',
+        folder: 'Hệ thống',
+        icon: SettingsIcon,
+        items: [
+          // Hàng đợi email của cả hệ thống: nhắc nộp phiếu, thông báo, quiz…
+          { label: 'Quản trị Email', icon: Mail, path: '/quan-tri-email', minRole: 'admin', keywords: ['hang doi', 'gui mail'] },
+          // Phiên bản ứng dụng, lịch sử nâng cấp, bảng tham chiếu vai trò
+          { label: 'Cài đặt', icon: SettingsIcon, path: '/cai-dat', minRole: 'admin', keywords: ['phien ban', 'he thong'] },
         ],
       },
     ],

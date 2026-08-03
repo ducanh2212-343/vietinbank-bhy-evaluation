@@ -62,7 +62,7 @@ describe('Cấu trúc cây điều hướng', () => {
       'Bắc Hưng Yên Ways',
       'Chiêu thức 2',
       'Chiêu thức 3 - Phát triển nhân sự',
-      'Quản trị người dùng',
+      'Quản trị chung',
     ]);
   });
 
@@ -106,6 +106,28 @@ describe('Cấu trúc cây điều hướng', () => {
     const workspace = NAV_SECTIONS.filter((s) => s.zone === 'workspace').map((s) => s.id);
     expect(portal).toEqual(['one-home', 'bhy-ways', 'chieu-thuc-2']);
     expect(workspace).toEqual(['hr-343', 'user-admin']);
+  });
+
+  it('tính năng dùng chung toàn cổng nằm ở khu Quản trị chung, không nằm trong phân hệ 343', () => {
+    // Tin tức hiện trên Trang chủ ONE; mẹo tính năng hiện ở mọi trang; email là
+    // hàng đợi chung; cài đặt là phiên bản ứng dụng — không thứ nào thuộc riêng
+    // nghiệp vụ nhân sự, nên để trong phân hệ 343 là đặt sai chỗ.
+    const DUNG_CHUNG = ['/quan-tri-tin-tuc', '/quan-ly-meo-tinh-nang', '/quan-tri-email', '/cai-dat'];
+    const duongDanCuaKhu = (id: string) =>
+      flattenLeaves(NAV_SECTIONS.filter((s) => s.id === id)).map((x) => x.leaf.path);
+
+    const cua343 = duongDanCuaKhu('hr-343');
+    const cuaQuanTri = duongDanCuaKhu('user-admin');
+    for (const p of DUNG_CHUNG) {
+      expect(cua343).not.toContain(p);
+      expect(cuaQuanTri).toContain(p);
+    }
+
+    // Ngược lại: công cụ chỉ phục vụ kỳ đánh giá phải Ở LẠI phân hệ 343
+    for (const p of ['/ban-tin-quy', '/quan-tri-ai', '/quan-tri-hoi-dong-dau-moi']) {
+      expect(cua343).toContain(p);
+      expect(cuaQuanTri).not.toContain(p);
+    }
   });
 
   it('không có đường dẫn trùng nhau giữa các mục lá', () => {
