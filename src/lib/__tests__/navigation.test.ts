@@ -62,7 +62,7 @@ describe('Cấu trúc cây điều hướng', () => {
       'Bắc Hưng Yên Ways',
       'Chiêu thức 2',
       'Chiêu thức 3 - Phát triển nhân sự',
-      'Quản trị người dùng',
+      'Quản trị chung',
     ]);
   });
 
@@ -106,6 +106,52 @@ describe('Cấu trúc cây điều hướng', () => {
     const workspace = NAV_SECTIONS.filter((s) => s.zone === 'workspace').map((s) => s.id);
     expect(portal).toEqual(['one-home', 'bhy-ways', 'chieu-thuc-2']);
     expect(workspace).toEqual(['hr-343', 'user-admin']);
+  });
+
+  it('tính năng dùng chung toàn cổng nằm ở khu Quản trị chung, không nằm trong phân hệ 343', () => {
+    // Tin tức hiện trên Trang chủ ONE; mẹo tính năng hiện ở mọi trang; email là
+    // hàng đợi chung; cài đặt là phiên bản ứng dụng; cài đặt ngày giờ là nguồn
+    // của mọi đồng hồ đếm ngày làm việc (thẻ Kanban, hồ sơ tín dụng, ngày im
+    // lặng) — không thứ nào thuộc riêng nghiệp vụ nhân sự, nên để trong phân hệ
+    // 343 là đặt sai chỗ.
+    const DUNG_CHUNG = ['/quan-tri-tin-tuc', '/quan-ly-meo-tinh-nang', '/quan-tri-email', '/cai-dat',
+      '/lich-nghi-le'];
+    const duongDanCuaKhu = (id: string) =>
+      flattenLeaves(NAV_SECTIONS.filter((s) => s.id === id)).map((x) => x.leaf.path);
+
+    const cua343 = duongDanCuaKhu('hr-343');
+    const cuaQuanTri = duongDanCuaKhu('user-admin');
+    for (const p of DUNG_CHUNG) {
+      expect(cua343).not.toContain(p);
+      expect(cuaQuanTri).toContain(p);
+    }
+
+    // Ngược lại: công cụ chỉ phục vụ nghiệp vụ đánh giá phải Ở LẠI phân hệ 343
+    for (const p of ['/ban-tin-quy', '/quan-tri-ai', '/quan-tri-hoi-dong-dau-moi']) {
+      expect(cua343).toContain(p);
+      expect(cuaQuanTri).not.toContain(p);
+    }
+  });
+
+  it('cấu phần Hội đồng đầu mối nằm trọn trong một thư mục', () => {
+    // Bốn màn hình của cấu phần: chấm điểm, báo cáo, phân tích và cấu hình.
+    // Trước đây ba màn nằm lẫn trong «Quản trị đội ngũ» còn màn quản trị nằm ở
+    // thư mục cấu hình — người dùng không thấy được trọn cấu phần ở một chỗ.
+    const hr = NAV_SECTIONS.find((s) => s.id === 'hr-343');
+    const thuMuc = hr!.items.filter(isFolder).find((f) => f.id === 'hoi-dong-dau-moi');
+    expect(thuMuc).toBeDefined();
+    expect(thuMuc!.items.map((i) => i.path)).toEqual([
+      '/danh-gia-dau-moi',
+      '/bao-cao-dau-moi',
+      '/phan-tich-dau-moi',
+      '/quan-tri-hoi-dong-dau-moi',
+    ]);
+
+    // Và không sót mục đầu mối nào ở thư mục khác
+    for (const f of hr!.items.filter(isFolder)) {
+      if (f.id === 'hoi-dong-dau-moi') continue;
+      expect(f.items.some((i) => i.path.includes('dau-moi'))).toBe(false);
+    }
   });
 
   it('không có đường dẫn trùng nhau giữa các mục lá', () => {

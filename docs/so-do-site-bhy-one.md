@@ -265,7 +265,7 @@ chỉnh lại như sau (đã triển khai):
 | 2 | **Bắc Hưng Yên Ways** | *(nhóm menu)* | Bấm là bung thẳng 6 thương hiệu |
 | 3 | **Chiêu thức 2** | `/one/chieu-thuc-2` | Kế hoạch hành động Chi nhánh (5W2H + PDCA) |
 | 4 | **Chiêu thức 3 - Phát triển nhân sự** | phân hệ | Nội dung nghiệp vụ giữ nguyên như cũ |
-| 5 | **Quản trị người dùng** | phân hệ | Admin, giữ nguyên |
+| 5 | **Quản trị chung** | phân hệ | Admin: người dùng, nội dung cổng, hệ thống |
 
 ### Những thay đổi cụ thể
 
@@ -397,3 +397,64 @@ từng cán bộ**, sinh từ phiếu tự đánh giá. Bảng mới `action_pla
 **Khi triển khai:** phải áp migration
 `20260805090000_chieu_thuc_2_ke_hoach_hanh_dong_phong.sql` vào project Supabase.
 Chưa áp thì trang Chiêu thức 2 hiện lời nhắc rõ ràng thay vì màn lỗi trắng.
+
+
+---
+
+## 7. Cập nhật 08/2026 — tách tính năng dùng chung ra khỏi phân hệ 343
+
+Rà lại thư mục «Nội dung & Hệ thống» của Chiêu thức 3 cho thấy nó đang chứa lẫn
+hai loại: công cụ phục vụ riêng kỳ đánh giá nhân sự, và công cụ phục vụ toàn
+cổng. Loại thứ hai nằm sai chỗ — quản trị viên phải chui vào phân hệ nhân sự để
+sửa tin tức hiện trên Trang chủ ONE.
+
+### Đã chuyển sang khu quản trị chung
+
+| Tính năng | Vì sao là dùng chung |
+|---|---|
+| Quản trị tin tức nội bộ | Tin hiện trên Trang chủ ONE và trang Tin tức; chung kho `portal_uploads` với Kho tri thức |
+| Mẹo tính năng | Mẹo hiện ở banner Trang chủ, hộp nhắc một lần và trang Mẹo hay — mọi vai trò, mọi phân hệ |
+| Quản trị Email | Hàng đợi email của cả hệ thống: nhắc nộp phiếu, thông báo, quiz… |
+| Cài đặt | Phiên bản ứng dụng, lịch sử nâng cấp, bảng tham chiếu vai trò |
+| Cài đặt ngày giờ | Lịch nghỉ lễ + mốc giờ nhịp: mọi đồng hồ đếm ngày làm việc đọc từ đây (tuổi thẻ Kanban Chiêu thức 2, tuổi hồ sơ tín dụng, số ngày im lặng, mốc phát thông báo) |
+
+### Ở lại phân hệ 343 (chỉ phục vụ kỳ đánh giá)
+
+| Tính năng | Vì sao thuộc riêng 343 |
+|---|---|
+| Quản trị Hội đồng đầu mối | Cấu hình hội đồng của kỳ đánh giá → xem mục tách cấu phần bên dưới |
+| Bản tin quý | Thư tổng kết phát triển cá nhân, dựng từ phiếu tự đánh giá của kỳ |
+| Quản trị AI & Prompt | 9 prompt thì 7 phục vụ nghiệp vụ đánh giá (skill, IDP, minh chứng, phiên 1-1, thư cuối kỳ); trợ lý AI chỉ chạy trong phân hệ này |
+
+Hai mục sau nằm trong thư mục mới «Bản tin & Trợ lý AI».
+
+### Khu cấp 1 đổi tên: «Quản trị người dùng» → «Quản trị chung»
+
+Khu này giờ có bốn thư mục: Danh mục người dùng · Tổ chức & Phân quyền ·
+**Nội dung cổng** · **Hệ thống**. Giữ tên cũ sẽ thành sai nhãn — một khu tên
+«người dùng» mà chứa hàng đợi email và phiên bản ứng dụng thì đúng kiểu menu
+gây rối mà cả đợt tái cấu trúc này đang dọn.
+
+Nguyên tắc được khóa bằng test (`navigation.test.ts`): năm đường dẫn dùng chung
+phải nằm ở khu `user-admin` và KHÔNG được xuất hiện trong `hr-343`; ba đường dẫn
+nghiệp vụ thì ngược lại.
+
+
+### Hội đồng đầu mối tách thành cấu phần riêng
+
+Đây là một cấu phần độc lập: có kỳ chấm, hội đồng, báo cáo và màn quản trị của
+chính nó. Trước đây ba màn hình nằm lẫn trong «Quản trị đội ngũ» còn màn quản
+trị nằm tận thư mục cấu hình — không ai thấy được trọn cấu phần ở một chỗ.
+
+Nay gom đủ bốn màn hình vào thư mục **«Hội đồng đầu mối»** trong phân hệ 343:
+
+| Màn hình | Ai vào được |
+|---|---|
+| Đánh giá đầu mối | Thành viên Hội đồng |
+| Báo cáo đầu mối | Đầu mối được đánh giá, người phụ trách và quản trị |
+| Phân tích đầu mối | Quản trị |
+| Quản trị Hội đồng đầu mối | Quản trị |
+
+Quyền từng màn **giữ nguyên** — chỉ đổi chỗ đứng trong menu. Test khóa: thư mục
+phải chứa đúng bốn đường dẫn theo thứ tự trên, và không thư mục nào khác trong
+phân hệ 343 được chứa mục có `dau-moi` trong đường dẫn.
