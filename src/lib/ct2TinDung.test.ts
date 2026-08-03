@@ -10,6 +10,7 @@ import {
   hsConLaiDenHan,
   hsNghenCho,
   hsQuaHan,
+  hsThuocDaiDenHan,
   hsTuoiCho,
   kiemTraHoSo,
   lyDoChanChuyenHoSo,
@@ -253,6 +254,32 @@ describe('Hồ sơ nhập từ dữ liệu lịch sử — ô trống phải nó
 
   it('hồ sơ đã xong thì thôi không đòi bổ sung nữa', () => {
     expect(canhBaoHoSo({ ...thieu, trang_thai: 'HOAN_THANH' }, moc)).toEqual([]);
+  });
+});
+
+describe('Dải «Đến hạn GHTD 2 tháng tới» — cột dẫn xuất, không phải trạng thái', () => {
+  // moc = thứ Tư 12/08/2026
+  const goc = { trang_thai: 'THU_THAP' as const, loai_ho_so: 'CAP_MOI' as const };
+
+  it('trong cửa sổ 60 ngày thì vào dải, xa hơn thì không', () => {
+    expect(hsThuocDaiDenHan({ ...goc, ngay_den_han_ghtd: '2026-09-30' }, moc)).toBe(true);
+    expect(hsThuocDaiDenHan({ ...goc, ngay_den_han_ghtd: '2026-12-01' }, moc)).toBe(false);
+  });
+
+  it('đã quá hạn mức vẫn ở trong dải — đó là hồ sơ cần thấy nhất', () => {
+    expect(hsThuocDaiDenHan({ ...goc, ngay_den_han_ghtd: '2026-07-31' }, moc)).toBe(true);
+  });
+
+  it('tái cấp/điều chỉnh CHƯA có ngày cũng vào dải — như hai thẻ Đông Dương trên Miro', () => {
+    expect(hsThuocDaiDenHan({ ...goc, loai_ho_so: 'TAI_CAP', ngay_den_han_ghtd: null }, moc)).toBe(true);
+    expect(hsThuocDaiDenHan({ ...goc, loai_ho_so: 'DIEU_CHINH', ngay_den_han_ghtd: null }, moc)).toBe(true);
+    // Cấp mới không theo dõi hạn mức cũ — không có ngày là bình thường
+    expect(hsThuocDaiDenHan({ ...goc, ngay_den_han_ghtd: null }, moc)).toBe(false);
+  });
+
+  it('hồ sơ đã xong / bị dừng thì rời dải', () => {
+    expect(hsThuocDaiDenHan({ ...goc, trang_thai: 'HOAN_THANH', ngay_den_han_ghtd: '2026-08-20' }, moc)).toBe(false);
+    expect(hsThuocDaiDenHan({ ...goc, trang_thai: 'TU_CHOI', ngay_den_han_ghtd: '2026-08-20' }, moc)).toBe(false);
   });
 });
 

@@ -284,6 +284,29 @@ export function hsConLaiDenHan(h: Pick<HoSoTinDung, 'ngay_den_han_ghtd'>, moc: D
 }
 
 /**
+ * Hồ sơ có thuộc dải theo dõi «Đến hạn GHTD 2 tháng tới» không.
+ *
+ * Trên Miro đây là một CỘT và Phòng đã quen nhìn nó — nên bàn Kanban giữ lại
+ * đúng cột đó, nhưng là CỘT DẪN XUẤT tính từ trường ngày: hồ sơ hiện ở đây
+ * VẪN GIỮ NGUYÊN bước thật của nó, không phải một trạng thái để kéo vào.
+ * (Miro không làm được thế: một thẻ chỉ nằm được ở một cột, vào cột đến hạn
+ * là mất dấu bước.)
+ *
+ * Tái cấp/điều chỉnh mà CHƯA ghi ngày đến hạn cũng vào dải — đó chính là
+ * những hồ sơ lẽ ra phải theo dõi hạn mức mà không ai biết còn bao nhiêu
+ * ngày, ví dụ hai thẻ Đông Dương nằm ở cột này trên Miro mà không có ngày.
+ */
+export function hsThuocDaiDenHan(
+  h: Pick<HoSoTinDung, 'trang_thai' | 'ngay_den_han_ghtd' | 'loai_ho_so'>,
+  moc: Date = new Date(),
+): boolean {
+  if (!HS_DANG_CHAY.includes(h.trang_thai)) return false;
+  const conLai = hsConLaiDenHan(h, moc);
+  if (conLai !== null) return conLai <= HS_NGUONG_DEN_HAN;
+  return h.loai_ho_so === 'TAI_CAP' || h.loai_ho_so === 'DIEU_CHINH';
+}
+
+/**
  * Số NGÀY LÀM VIỆC hồ sơ không có nhịp mới. Chưa từng ghi nhịp thì tính từ ngày
  * nhận hồ sơ — hồ sơ mở ra rồi bỏ đó là trường hợp cần thấy nhất.
  *
