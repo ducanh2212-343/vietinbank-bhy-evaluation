@@ -59,6 +59,22 @@ SUPABASE_SERVICE_ROLE_KEY=<key> node scripts/import-bhy-one/import-credit-sessio
 
 Cả ba idempotent — chạy lại không tạo trùng. Cảnh báo (ngày/sao/phòng lạ) in ra cuối script.
 
+## Nạp Ideas từ file kết xuất CSV (đã chạy 03/08/2026)
+
+Khi trong tay chỉ có file CSV cán bộ tải về từ nút "Kết xuất Excel" của cổng cũ
+(không có dump Firestore, không cần service role key):
+
+```sh
+node scripts/import-bhy-one/import-ideas-csv.mjs <file.csv> > payload.json
+# rồi chạy trong SQL Editor của Supabase:
+#   SELECT public.admin_import_ideas_csv($json$ ...dán payload.json... $json$::jsonb);
+```
+
+Hàm `admin_import_ideas_csv` đến từ migration `20260817090000_bhy_ideas_nap_du_lieu_csv.sql`,
+idempotent theo `legacy_id` và nạp được theo lô. Kết quả đợt 03/08/2026 (113 ý tưởng,
+21 bình luận) ghi tại `docs/nap-du-lieu-bhy-ideas-2026-08.md`. **Không commit file CSV**
+— repo công khai, dữ liệu có email cá nhân của cán bộ.
+
 ## Lưu ý
 
 - `userId`/`likedBy` của Firebase không map được sang tài khoản Supabase — bỏ;
