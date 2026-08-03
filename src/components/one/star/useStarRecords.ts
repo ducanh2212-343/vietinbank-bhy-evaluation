@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { STAR_WRITE_LOCKED, STAR_WRITE_LOCK_TOAST } from './starImportLock';
 
 // Phiếu Sao Xứng Đáng — bảng star_records (mỗi phiếu một dòng).
 //
@@ -77,6 +78,10 @@ export function useStarRecords() {
 
   // Admin: thay thế TOÀN BỘ dữ liệu bằng kết quả nhập file (như bản gốc, nhưng có preview trước đó)
   const replaceAll = useCallback(async (recs: StarRecordInput[]): Promise<boolean> => {
+    if (STAR_WRITE_LOCKED) {
+      toast.error(STAR_WRITE_LOCK_TOAST);
+      return false;
+    }
     const { error: delErr } = await supabase.from('star_records')
       .delete().neq('id', '00000000-0000-0000-0000-000000000000');
     if (delErr) {
@@ -110,6 +115,10 @@ export function useStarRecords() {
   }, [refresh]);
 
   const deleteRecord = useCallback(async (id: string) => {
+    if (STAR_WRITE_LOCKED) {
+      toast.error(STAR_WRITE_LOCK_TOAST);
+      return;
+    }
     const { error } = await supabase.from('star_records').delete().eq('id', id);
     if (error) {
       toast.error(`Không xóa được: ${error.message}`);
@@ -119,6 +128,10 @@ export function useStarRecords() {
   }, [refresh]);
 
   const deleteAll = useCallback(async () => {
+    if (STAR_WRITE_LOCKED) {
+      toast.error(STAR_WRITE_LOCK_TOAST);
+      return;
+    }
     const { error } = await supabase.from('star_records')
       .delete().neq('id', '00000000-0000-0000-0000-000000000000');
     if (error) {
