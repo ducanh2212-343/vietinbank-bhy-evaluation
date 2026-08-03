@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { canAssignRole, isValidRole } from "../_shared/roles.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -49,6 +50,21 @@ Deno.serve(async (req) => {
     // (đoán được — ai biết SĐT có thể đăng nhập trước chủ tài khoản). Server tự
     // sinh mật khẩu ngẫu nhiên và trả về đúng 1 lần cho người duyệt bàn giao riêng.
     const { request_id, assigned_role, review_comment, action } = await req.json();
+
+    // Chống leo thang quyền: assigned_role đến thẳng từ client. Thiếu chốt này, một
+    // tcth_admin (hoặc bgd) duyệt một hồ sơ đăng ký do chính họ tạo với
+    // assigned_role="system_admin" là có ngay tài khoản toàn quyền, kèm mật khẩu tạm
+    // trả về ở cuối hàm. Chỉ system_admin mới được gán vai trò cấp cao.
+    const callerRoleNames = (callerRoles ?? []).map((r: any) => r.role as string);
+    const roleToAssign = assigned_role || "employee";
+    if (!isValidRole(roleToAssign)) {
+      throw new Error(`Vai trò không hợp lệ: ${roleToAssign}`);
+    }
+    if (!canAssignRole(callerRoleNames, roleToAssign)) {
+      throw new Error(
+        "Bạn không đủ quyền để gán vai trò quản trị này. Chỉ Quản trị hệ thống mới được cấp vai trò cấp cao.",
+      );
+    }
 
     // Handle rejection
     if (action === "reject") {
@@ -173,8 +189,7 @@ Deno.serve(async (req) => {
 
     if (profileError) throw new Error(`Failed to create profile: ${profileError.message}`);
 
-    // Assign role
-    const roleToAssign = assigned_role || "employee";
+    // Assign role (roleToAssign đã được kiểm tra hợp lệ + chống leo thang ở đầu hàm)
     const { error: roleError } = await adminClient
       .from("user_roles")
       .insert({ user_id: newUserId, role: roleToAssign });

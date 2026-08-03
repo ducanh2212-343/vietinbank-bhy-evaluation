@@ -9,6 +9,7 @@ import { ReturnCardDialog } from './ReturnCardDialog';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { Ct2TrangTraoDoi, type NguoiTraoDoi } from '@/components/one/move2/Ct2TrangTraoDoi';
+import { safeHref } from '@/lib/safeUrl';
 
 interface Props {
   card: KanbanCard;
@@ -145,7 +146,11 @@ export function CardDetailDialog({ card, open, onClose, onChanged, ownerName }: 
                     {l.blocker_note && <div className="text-xs mt-0.5"><b>Vướng/Lý do:</b> {l.blocker_note}</div>}
                     {l.support_needed && <div className="text-xs mt-0.5"><b>Cần hỗ trợ:</b> {l.support_needed}</div>}
                     {l.evidence_text && <div className="text-xs mt-0.5"><b>Bằng chứng:</b> {l.evidence_text}</div>}
-                    {l.evidence_url && <a href={l.evidence_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">{l.evidence_url}</a>}
+                    {l.evidence_url && (
+                      safeHref(l.evidence_url)
+                        ? <a href={safeHref(l.evidence_url)} target="_blank" rel="noreferrer" className="text-xs text-primary underline">{l.evidence_url}</a>
+                        : <span className="text-xs text-muted-foreground break-all">{l.evidence_url}</span>
+                    )}
                   </div>
                 ))}
               </div>
