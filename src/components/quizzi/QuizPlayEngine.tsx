@@ -39,11 +39,14 @@ interface Summary {
 
 type RpcResult = { data: unknown; error: { message: string } | null };
 
+// PromiseLike chứ không phải Promise: supabase.rpc() trả về builder "thenable"
+// (await được nhưng không có .catch/.finally). Khai Promise khiến mọi trang
+// truyền thẳng supabase.rpc(...) đều báo lỗi kiểu, dù chạy hoàn toàn đúng.
 export interface QuizPlayEngineProps {
   /** Gọi RPC bắt đầu/tiếp tục lượt làm */
-  start: () => Promise<RpcResult>;
+  start: () => PromiseLike<RpcResult>;
   /** Gọi RPC trả lời câu hiện hành (index theo thứ tự đang hiển thị) */
-  answer: (attemptId: string, index: number | null) => Promise<RpcResult>;
+  answer: (attemptId: string, index: number | null) => PromiseLike<RpcResult>;
   backPath: string;
   resultsPath: string;
   /** Ghi chú nhỏ ở màn kết thúc (mặc định nói về chuỗi tuần) */

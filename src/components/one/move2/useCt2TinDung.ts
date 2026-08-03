@@ -10,7 +10,10 @@ import type { HoSoTinDung, NhipHoSo } from '@/lib/ct2TinDung';
 interface Ket { data: unknown; error: { code?: string; message?: string } | null }
 interface Chain extends PromiseLike<Ket> {
   eq(c: string, v: unknown): Chain;
-  order(c: string, o?: { ascending?: boolean }): Chain;
+  // nullsFirst có trong supabase-js thật; khai ở đây để lát cắt kiểu này không
+  // hẹp hơn thứ đang gọi (thiếu nó, .order(..., { nullsFirst }) báo lỗi kiểu
+  // dù chạy vẫn đúng)
+  order(c: string, o?: { ascending?: boolean; nullsFirst?: boolean }): Chain;
   limit(n: number): Chain;
 }
 const db = supabase as unknown as {
