@@ -4,9 +4,9 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 import { TEMPLATES } from '../_shared/transactional-email-templates/registry.ts'
 // Domain gửi + link đích cấu hình tập trung (secret APP_URL / EMAIL_FROM_DOMAIN /
 // EMAIL_SENDER_DOMAIN) — xem _shared/email-config.ts.
-import { FROM_DOMAIN, SENDER_DOMAIN } from '../_shared/email-config.ts'
+import { FROM_DOMAIN, FROM_NAME, SENDER_DOMAIN } from '../_shared/email-config.ts'
 
-const SITE_NAME = "chieuthuc3"
+const SITE_NAME = FROM_NAME
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

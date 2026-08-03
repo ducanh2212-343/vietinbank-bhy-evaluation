@@ -2,12 +2,12 @@
 // qua kênh nội bộ (Zalo/SMS). Dùng chung cho: tạo 1 cán bộ, tạo hàng loạt,
 // và cấp lại mật khẩu tạm.
 
-// Lấy theo domain đang chạy (chieuthuc3.com / domain dự phòng) — không hardcode
+// Lấy theo domain đang chạy (bachungyenone.com / domain dự phòng) — không hardcode
 // để đổi domain không phải sửa code. Fallback cho môi trường không có window (test).
 export const SITE_LOGIN_URL =
   typeof window !== 'undefined' && window.location?.origin
     ? window.location.origin
-    : 'https://chieuthuc3.com';
+    : 'https://bachungyenone.com';
 
 export interface HandoverInfo {
   fullName?: string | null;

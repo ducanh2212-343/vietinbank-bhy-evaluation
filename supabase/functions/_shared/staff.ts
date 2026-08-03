@@ -354,5 +354,5 @@ export function resolveSiteUrl(req: Request): string {
   if (fromEnv) return fromEnv.replace(/\/$/, "");
   const origin = req.headers.get("origin");
   if (origin) return origin.replace(/\/$/, "");
-  return "https://chieuthuc3.com";
+  return "https://bachungyenone.com";
 }

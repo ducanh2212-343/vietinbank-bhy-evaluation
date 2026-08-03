@@ -13,11 +13,11 @@
 // Quyền: service_role (cron) hoặc user admin (system_admin/bgd/tcth_admin).
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { buildPushPayload } from 'npm:@block65/webcrypto-web-push@1.0.2';
-import { APP_URL, FROM_DOMAIN, SENDER_DOMAIN } from '../_shared/email-config.ts';
+import { APP_URL, FROM_DOMAIN, FROM_NAME, SENDER_DOMAIN } from '../_shared/email-config.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const SITE_NAME = 'chieuthuc3';
+const SITE_NAME = FROM_NAME;
 
 // Web Push (07/2026): kênh nhắc chính cho TỪNG cán bộ (email cá nhân đã tắt để giữ
 // Resend trong ngưỡng miễn phí — email chỉ còn gửi cấp quản lý TP/PGĐ/TCTH/BGĐ).
