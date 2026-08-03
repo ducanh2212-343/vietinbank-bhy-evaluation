@@ -40,7 +40,7 @@ export interface Ct2NhanSu { id: string; full_name: string; department_id: strin
 
 export interface Ct2ViecCuaToi {
   id: string; ma_hien_thi: string | null; tieu_de: string; trang_thai: string;
-  phan_tram: number; co_tinh_trang: 'XANH' | 'VANG' | 'DO'; han_hoan_thanh: string;
+  phan_tram: number; co_tinh_trang: 'XANH' | 'VANG' | 'DO'; han_hoan_thanh: string | null;
   muc_uu_tien: string; loai_dau_viec: string; lien_phong: boolean; phong: string;
   nhip_gan_nhat: string | null; da_ghi_nhip_hom_nay: boolean;
 }
@@ -115,7 +115,8 @@ export function useCt2Board(phongId: string | null) {
         .from('ct2_dau_viec')
         .select('*')
         .or(`phong.eq.${phongId},cac_phong_tham_gia.cs.{${phongId}}`)
-        .order('han_hoan_thanh');
+        // nullsFirst: false — thẻ chưa có hạn xếp cuối, không chen lên đầu
+        .order('han_hoan_thanh', { ascending: true, nullsFirst: false });
       if (error) throw error;
       return (data ?? []) as Ct2DauViec[];
     },

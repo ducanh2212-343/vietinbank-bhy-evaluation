@@ -30,9 +30,20 @@ export interface Ct2DauViec {
   chi_tieu_dinh_luong: number | null;
   don_vi: string | null;
   nguon_luc_du_kien: string | null;
-  nguoi_chiu_trach_nhiem: string;
+  /**
+   * Bốn trường dưới đây để trống được, NHƯNG chỉ ở dữ liệu nhập từ board cũ.
+   *
+   * Bàn Kanban của Phòng KHDN trên Miro có 1/21 thẻ không có người phụ trách,
+   * 4/21 không có hạn, 18/21 không có ngày bắt đầu, và không có cột lãnh đạo
+   * theo dõi nào. Bịa một cái tên vào ô «ai chịu trách nhiệm» là gán trách
+   * nhiệm cho người không nhận — nên để trống và hiện thành cảnh báo.
+   *
+   * Thẻ ghi mới trong ứng dụng vẫn bắt buộc đủ: trigger `f_ct2_dv_truoc_tao`
+   * chặn ở database, không chỉ ở form.
+   */
+  nguoi_chiu_trach_nhiem: string | null;
   nguoi_phoi_hop: string[];
-  lanh_dao_theo_doi: string;
+  lanh_dao_theo_doi: string | null;
   phong: string;
   pham_vi: 'PHONG' | 'PGD' | 'CHI_NHANH';
   loai_dau_viec: Ct2Loai;
@@ -42,8 +53,8 @@ export interface Ct2DauViec {
   trang_thai: Ct2TrangThai;
   phan_tram: number;
   co_tinh_trang: Ct2Co;
-  ngay_bat_dau: string;
-  han_hoan_thanh: string;
+  ngay_bat_dau: string | null;
+  han_hoan_thanh: string | null;
   han_goc: string | null;
   ly_do_dung_huy: string | null;
   nguoi_dang_giu: string | null;
@@ -464,7 +475,10 @@ export function soNgayLamViec(tu: string | Date, den: string | Date = new Date()
  * hội xử lý của một người, nên phải trừ ngày nghỉ.
  */
 export function soNgayQuaHan(dv: Pick<Ct2DauViec, 'han_hoan_thanh' | 'trang_thai'>, moc: Date = new Date()): number {
-  if (!CT2_TRANG_THAI_CHAY.includes(dv.trang_thai)) return 0;
+  // Không có hạn thì không có gì để trễ. Coi thẻ thiếu hạn là quá hạn sẽ báo
+  // đỏ oan toàn bộ thẻ nhập từ board cũ ngay hôm đầu — cái thiếu ở đây là DỮ
+  // LIỆU, và nó đã được nêu riêng ở thieuTruongBatBuoc().
+  if (!CT2_TRANG_THAI_CHAY.includes(dv.trang_thai) || !dv.han_hoan_thanh) return 0;
   const lech = ngayVn(moc) - ngayVn(`${dv.han_hoan_thanh}T00:00:00+07:00`);
   return Math.max(0, lech);
 }
@@ -473,9 +487,17 @@ export function soNgayQuaHan(dv: Pick<Ct2DauViec, 'han_hoan_thanh' | 'trang_thai
  * Số NGÀY LÀM VIỆC thẻ "im lặng" — không có nhịp mới. Thẻ chưa từng có nhịp
  * tính từ ngày bắt đầu. Cuối tuần không đòi nhịp nên không tính vào đây.
  */
-export function soNgayImLang(dv: Pick<Ct2DauViec, 'nhip_gan_nhat' | 'ngay_bat_dau' | 'trang_thai'>, moc: Date = new Date()): number {
+export function soNgayImLang(
+  dv: Pick<Ct2DauViec, 'nhip_gan_nhat' | 'ngay_bat_dau' | 'trang_thai' | 'created_at'>,
+  moc: Date = new Date(),
+): number {
   if (dv.trang_thai !== 'DANG_LAM') return 0; // cột chờ: đồng hồ đã đổi chủ
-  const tu = dv.nhip_gan_nhat ?? `${dv.ngay_bat_dau}T00:00:00+07:00`;
+  // Thẻ nhập từ board cũ không có ngày bắt đầu — đếm từ `created_at`, tức ngày
+  // thẻ vào hệ thống này. Đồng hồ chạy chậm hơn sự thật, nhưng đó là sự thật
+  // KIỂM CHỨNG ĐƯỢC: từ hôm vào hệ thống tới nay chưa ai ghi nhịp nào.
+  const tu = dv.nhip_gan_nhat
+    ?? (dv.ngay_bat_dau ? `${dv.ngay_bat_dau}T00:00:00+07:00` : dv.created_at);
+  if (!tu) return 0;
   return soNgayLamViec(tu, moc);
 }
 
@@ -488,6 +510,9 @@ export function tuoiCho(dv: Pick<Ct2DauViec, 'giu_tu' | 'trang_thai'>, moc: Date
 /** Cảnh báo "Chuẩn bị quá lâu": còn ≤ 25% quỹ thời gian mà chưa khởi động */
 export function chuanBiQuaLau(dv: Pick<Ct2DauViec, 'trang_thai' | 'ngay_bat_dau' | 'han_hoan_thanh'>, moc: Date = new Date()): boolean {
   if (dv.trang_thai !== 'CHUAN_BI') return false;
+  // Thiếu một trong hai mốc thì không tính được quỹ thời gian. Trả false chứ
+  // không đoán bừa — cái thiếu là dữ liệu, thieuTruongBatBuoc() đã nêu rồi.
+  if (!dv.han_hoan_thanh || !dv.ngay_bat_dau) return false;
   const tong = ngayVn(`${dv.han_hoan_thanh}T00:00:00+07:00`) - ngayVn(`${dv.ngay_bat_dau}T00:00:00+07:00`);
   if (tong <= 0) return true;
   const conLai = ngayVn(`${dv.han_hoan_thanh}T00:00:00+07:00`) - ngayVn(moc);
@@ -498,11 +523,42 @@ export function chuanBiQuaLau(dv: Pick<Ct2DauViec, 'trang_thai' | 'ngay_bat_dau'
 export function demWip(ds: Array<Pick<Ct2DauViec, 'trang_thai' | 'nguoi_chiu_trach_nhiem'>>): Map<string, number> {
   const m = new Map<string, number>();
   for (const d of ds) {
-    if (d.trang_thai === 'DANG_LAM') {
+    // Thẻ vô chủ không cộng vào WIP của ai — nó là vấn đề riêng, và cộng nó
+    // vào một nhóm «không rõ ai» chỉ làm sai con số nghẽn của người thật.
+    if (d.trang_thai === 'DANG_LAM' && d.nguoi_chiu_trach_nhiem) {
       m.set(d.nguoi_chiu_trach_nhiem, (m.get(d.nguoi_chiu_trach_nhiem) ?? 0) + 1);
     }
   }
   return m;
+}
+
+/**
+ * Ba trường bắt buộc của quy chế §A1 mà thẻ này đang thiếu.
+ *
+ * Quy chế nói rõ mỗi thẻ phải có Status + Assignee + End Date, không hơn — vì
+ * bắt điền quá nhiều trường trên điện thoại là lý do chính khiến thẻ bị bỏ
+ * trống hoàn toàn. Status luôn có (là cột Kanban), nên chỉ còn hai thứ đáng
+ * đòi, cộng thêm lãnh đạo theo dõi vì hệ thống dùng nó để định tuyến báo cáo.
+ *
+ * Ô trống PHẢI nói ra được. Nếu im lặng thì thẻ vô chủ trông sạch sẽ y hệt
+ * thẻ có chủ, và «card vô chủ» là lỗi nặng nhất của quy chế.
+ */
+export function thieuTruongBatBuoc(
+  dv: Pick<Ct2DauViec, 'nguoi_chiu_trach_nhiem' | 'han_hoan_thanh' | 'ngay_bat_dau'
+    | 'lanh_dao_theo_doi' | 'trang_thai' | 'loai_dau_viec'>,
+): Ct2ThieuTruong[] {
+  const ds: Ct2ThieuTruong[] = [];
+  if (dv.trang_thai === 'DA_DONG' || dv.trang_thai === 'DUNG_HUY') return ds;
+  if (!dv.nguoi_chiu_trach_nhiem) {
+    ds.push({ truong: 'nguoi_chiu_trach_nhiem', ten: 'Ai làm', ly_do: 'thẻ đang vô chủ' });
+  }
+  // Việc thường trực không có điểm kết thúc — đòi hạn ở đó là sai loại thước
+  if (!dv.han_hoan_thanh && dv.loai_dau_viec !== 'THUONG_TRUC') {
+    ds.push({ truong: 'han_hoan_thanh', ten: 'Xong khi nào', ly_do: 'không đo được đúng hẹn' });
+  }
+  if (!dv.ngay_bat_dau) ds.push({ truong: 'ngay_bat_dau', ten: 'Bắt đầu từ ngày' });
+  if (!dv.lanh_dao_theo_doi) ds.push({ truong: 'lanh_dao_theo_doi', ten: 'Lãnh đạo theo dõi' });
+  return ds;
 }
 
 /**
@@ -528,6 +584,11 @@ export function sapXepThe(ds: Ct2DauViec[], moc: Date = new Date()): Ct2DauViec[
     if (diemCo[a.co_tinh_trang] !== diemCo[b.co_tinh_trang]) {
       return diemCo[a.co_tinh_trang] - diemCo[b.co_tinh_trang];
     }
+    // Thẻ chưa có hạn xếp cuối nhóm — KHÔNG gọi localeCompare trên null.
+    // Đúng dòng này ở bàn PDTD từng làm trắng cả màn hồi 03/08/2026.
+    if (!a.han_hoan_thanh || !b.han_hoan_thanh) {
+      return (a.han_hoan_thanh ? 0 : 1) - (b.han_hoan_thanh ? 0 : 1);
+    }
     return a.han_hoan_thanh.localeCompare(b.han_hoan_thanh);
   });
 }
@@ -543,14 +604,19 @@ export type Ct2MucChuY = 'DO' | 'VANG' | 'XANH' | 'XONG';
 
 export function mucChuY(
   t: Pick<Ct2DauViec, 'trang_thai' | 'co_tinh_trang' | 'han_hoan_thanh' | 'giu_tu'
-    | 'nhip_gan_nhat' | 'ngay_bat_dau' | 'ket_qua_dau_ra' | 'muc_tieu_lien_ket' | 'cach_lam'>,
+    | 'nhip_gan_nhat' | 'ngay_bat_dau' | 'ket_qua_dau_ra' | 'muc_tieu_lien_ket' | 'cach_lam'
+    | 'nguoi_chiu_trach_nhiem' | 'lanh_dao_theo_doi' | 'loai_dau_viec' | 'created_at'>,
   moc: Date = new Date(),
 ): Ct2MucChuY {
   if (t.trang_thai === 'DA_DONG' || t.trang_thai === 'DUNG_HUY') return 'XONG';
   if (soNgayQuaHan(t, moc) > 0 || t.co_tinh_trang === 'DO' || tuoiCho(t, moc) > nguongTuoiCho()) {
     return 'DO';
   }
+  // Thiếu trường bắt buộc là VÀNG chứ không đỏ: cái thiếu ở đây là dữ liệu,
+  // chưa phải rủi ro tiến độ đã xảy ra. Nhưng dứt khoát không được xanh —
+  // xanh nghĩa là «ổn», mà một thẻ vô chủ thì không ổn.
   if (t.co_tinh_trang === 'VANG' || soNgayImLang(t, moc) >= 3
+      || thieuTruongBatBuoc(t).length > 0
       || (t.trang_thai === 'CHUAN_BI' && !daDuKeHoach(t))) {
     return 'VANG';
   }
