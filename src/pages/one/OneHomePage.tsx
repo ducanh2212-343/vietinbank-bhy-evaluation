@@ -11,7 +11,7 @@ import { NewsRail } from '@/components/one/news/NewsRail';
 import { useOneUploads } from '@/components/one/useOneUploads';
 import { useAuth } from '@/hooks/useAuth';
 import { useMyFullName } from '@/components/one/useMyFullName';
-import { useStarRecords } from '@/components/one/star/useStarRecords';
+import { useMyStars } from '@/components/one/star/useMyStars';
 import { useAdminEditable, EditableText } from '@/components/one/AdminEditableContext';
 import { BHY_WAYS, BHY_WAYS_DINH_NGHIA } from '@/data/one/bhyWays';
 import { BO_3_CHIEU_THUC } from '@/data/one/chieuThuc';
@@ -51,12 +51,10 @@ function HomeContent() {
   // đã mở, nên ở đây không cần lọc lại theo vai trò
   const { items } = useOneUploads();
 
-  // Sao của tôi: phiếu ghi đúng họ tên (chương trình ghi nhận theo tên cán bộ)
-  const { records } = useStarRecords();
-  const myRecords = myName
-    ? records.filter(r => !r.isCollective && r.name.trim().toLowerCase() === myName.trim().toLowerCase())
-    : [];
-  const myStars = myRecords.reduce((s, r) => s + r.stars, 0);
+  // Sao của tôi: phiếu ghi đúng họ tên VÀ đúng phòng — chi nhánh có cán bộ trùng
+  // họ tên (hai chị Nguyễn Thị Phượng, Phòng TCTH và Phòng Ân Thi), lọc theo mỗi
+  // tên thì mỗi chị nhìn thấy cả sao của người kia.
+  const { myRecords, myStars } = useMyStars();
 
   const treeImage = siteContent['culture.tree_image']?.trim() || 'https://i.ibb.co/kV5cgsbp/c-y-k-c.jpg';
   const soSkill = MOVE3_SKILL_GROUPS.reduce((s, g) => s + g.skills.length, 0);

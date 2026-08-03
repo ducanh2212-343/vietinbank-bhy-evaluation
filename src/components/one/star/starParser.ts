@@ -56,13 +56,19 @@ const DEFAULT_DEPT = 'Phòng KHDN';
 /**
  * Chuẩn hóa tên phòng ban. Trả về null nếu KHÔNG nhận diện được (khác bản gốc trả
  * thẳng 'Phòng KHDN') — để nơi gọi biết fallback đã xảy ra mà phát cảnh báo.
+ *
+ * THỨ TỰ KIỂM TRA QUAN TRỌNG: tên đầy đủ của 5 phòng giao dịch trong danh bạ là
+ * "Phòng giao dịch Ân Thi / Khoái Châu / Văn Giang / Văn Lâm / Yên Mỹ". Bản trước
+ * bắt cụm chung "giao dịch" → Phòng DVKH ngay trước các luật riêng, nên cả 5 PGD
+ * đều bị dồn nhầm về Phòng DVKH. Vì vậy cụm chung "giao dịch" phải xét SAU CÙNG,
+ * sau khi đã loại hết các phòng có tên riêng.
  */
-const standardizeDepartmentOrNull = (deptStr: string): string | null => {
+export const standardizeDepartment = (deptStr: string): string | null => {
   const s = deptStr.toLowerCase().trim();
   if (!s) return null;
   if (s.includes('tcth') || s.includes('tổng hợp') || s.includes('hành chính') || s.includes('tổ chức')) return 'Phòng TCTH';
   if (s.includes('khdn') || s.includes('doanh nghiệp') || s.includes('khách hàng doanh nghiệp')) return 'Phòng KHDN';
-  if (s.includes('dvkh') || s.includes('dịch vụ khách hàng') || s.includes('giao dịch') || s.includes('giao dịch viên')) return 'Phòng DVKH';
+  if (s.includes('dvkh') || s.includes('dịch vụ khách hàng')) return 'Phòng DVKH';
   if (s.includes('khoái châu') || s.includes('khoai chau')) return 'Phòng Khoái Châu';
   if (s.includes('văn giang') || s.includes('van giang')) return 'Phòng Văn Giang';
   if (s.includes('văn lâm') || s.includes('van lam')) return 'Phòng Văn Lâm';
@@ -70,6 +76,8 @@ const standardizeDepartmentOrNull = (deptStr: string): string | null => {
   if (s.includes('bán lẻ') || s.includes('khbl') || s.includes('cá nhân') || s.includes('ban le')) return 'Phòng Bán lẻ';
   if (s.includes('ân thi') || s.includes('an thi')) return 'Phòng Ân Thi';
   if (s.includes('httd') || s.includes('hỗ trợ tín dụng') || s.includes('hỗ trợ')) return 'Phòng HTTD';
+  // Cụm chung, chỉ dùng khi không khớp phòng giao dịch có tên riêng nào ở trên
+  if (s.includes('giao dịch')) return 'Phòng DVKH';
 
   // Khớp mờ với danh sách phòng chuẩn (như bản gốc)
   const depts = Object.keys(DEPT_QUOTAS);
@@ -97,7 +105,7 @@ const standardizeCollectiveName = (name: string, department: string): string => 
   if (s.includes('tổ fdi') || s.includes('fdi')) {
     return 'Tập thể Tổ FDI';
   }
-  const stdDept = standardizeDepartmentOrNull(department || name) ?? DEFAULT_DEPT;
+  const stdDept = standardizeDepartment(department || name) ?? DEFAULT_DEPT;
   return `Tập thể ${stdDept}`;
 };
 
@@ -356,7 +364,7 @@ const parseRows2D = (rows2D: Cell[][]): ParseResult => {
       ? String(row[recipientDeptIdx]).trim()
       : '';
     if (rawDept) {
-      const std = standardizeDepartmentOrNull(rawDept);
+      const std = standardizeDepartment(rawDept);
       if (std) {
         department = std;
       } else {
@@ -375,7 +383,7 @@ const parseRows2D = (rows2D: Cell[][]): ParseResult => {
     if (!isCollective) {
       name = splitName;
       if (!department && splitDept) {
-        const std = standardizeDepartmentOrNull(splitDept);
+        const std = standardizeDepartment(splitDept);
         if (std) {
           department = std;
         } else {

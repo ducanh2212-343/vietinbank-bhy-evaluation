@@ -4,31 +4,17 @@ import {
   Gift, Loader2, Search, Sparkles, Star, Trash2, TrendingUp, Upload, Users, X,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { useStarRecords, type StarRecord } from './useStarRecords';
+import { useStarRecords } from './useStarRecords';
 import {
   calculateRewardValue, formatVnd, getMilestoneInfo, getRewardBreakdown,
 } from './starMath';
 import {
   DEPT_QUOTAS, buildTemplateWorkbook, parseStarWorkbook, type ParseResult,
 } from './starParser';
+import { buildDepartmentStats, buildIndividualStats, individualKey } from './starStats';
 
 // Trình tổng hợp & phân tích Sao tích lũy — port từ app "Sao Xứng Đáng" đã triển khai,
 // dữ liệu thật từ Supabase (bảng star_records) thay cho Firestore.
-
-interface IndividualStat {
-  name: string;
-  department: string;
-  totalStars: number;
-  records: StarRecord[];
-}
-
-interface DepartmentStat {
-  department: string;
-  collectiveName: string;
-  totalStars: number;
-  staffCount: number;
-  recordsCount: number;
-}
 
 interface PreviewState extends ParseResult {
   fileName: string;
@@ -49,48 +35,16 @@ export const StarAnalytics: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ---- Tổng hợp cá nhân: gộp theo (tên, phòng), LOẠI phiếu tập thể ----
-  const individualStats = useMemo<IndividualStat[]>(() => {
-    const statsMap: Record<string, IndividualStat> = {};
-    records.forEach((rec) => {
-      if (rec.isCollective) return;
-      const key = `${rec.name}-${rec.department}`;
-      if (!statsMap[key]) {
-        statsMap[key] = { name: rec.name, department: rec.department, totalStars: 0, records: [] };
-      }
-      statsMap[key].totalStars += Number(rec.stars) || 0;
-      statsMap[key].records.push(rec);
-    });
-    return Object.values(statsMap).sort((a, b) => b.totalStars - a.totalStars);
-  }, [records]);
+  const individualStats = useMemo(() => buildIndividualStats(records), [records]);
 
-  // ---- Tổng hợp phòng ban ----
-  // SỬA CÓ CHỦ ĐÍCH so với bản gốc: tổng sao của phòng bao gồm CẢ phiếu cá nhân lẫn
-  // phiếu tập thể của phòng đó. Bản gốc chỉ cộng phiếu tập thể, khiến sao cá nhân
-  // không được tính vào thi đua phòng ban.
-  const departmentStats = useMemo<DepartmentStat[]>(() => {
-    const statsMap: Record<string, { totalStars: number; staff: Set<string>; recordsCount: number }> = {};
-    Object.keys(DEPT_QUOTAS).forEach((dept) => {
-      statsMap[dept] = { totalStars: 0, staff: new Set(), recordsCount: 0 };
-    });
-    records.forEach((rec) => {
-      const dept = rec.department || 'Phòng KHDN';
-      if (!statsMap[dept]) {
-        statsMap[dept] = { totalStars: 0, staff: new Set(), recordsCount: 0 };
-      }
-      statsMap[dept].totalStars += Number(rec.stars) || 0;
-      statsMap[dept].recordsCount += 1;
-      if (!rec.isCollective) statsMap[dept].staff.add(rec.name);
-    });
-    return Object.entries(statsMap)
-      .map(([dept, s]) => ({
-        department: dept,
-        collectiveName: dept === 'Ban Giám đốc' ? dept : `Tập thể ${dept}`,
-        totalStars: s.totalStars,
-        staffCount: s.staff.size,
-        recordsCount: s.recordsCount,
-      }))
-      .sort((a, b) => b.totalStars - a.totalStars);
-  }, [records]);
+  // ---- Thi đua phòng ban: xếp theo SAO TẬP THỂ, không cộng sao cán bộ ----
+  // Cán bộ nhận sao và tập thể phòng nhận sao là hai chủ thể khác nhau: phần thưởng
+  // quy đổi của cán bộ về chính cán bộ đó. Cộng gộp vào bảng tập thể vừa sai chủ thể,
+  // vừa khiến phòng đông người luôn xếp trên phòng ít người.
+  const departmentStats = useMemo(() => buildDepartmentStats(records), [records]);
+
+  // Mốc so sánh cho thanh tiến độ: phòng dẫn đầu về sao tập thể
+  const topCollectiveStars = departmentStats[0]?.collectiveStars ?? 0;
 
   const getTopIndividualForDept = (deptName: string): string => {
     const deptIndividuals = individualStats.filter((st) => st.department === deptName);
@@ -174,22 +128,23 @@ export const StarAnalytics: React.FC = () => {
       });
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(individualData), 'Thống kê cá nhân');
 
+      // Xếp hạng thi đua tính trên SAO TẬP THỂ. Sao cán bộ để cột riêng (tham khảo),
+      // không cộng vào — chủ thể nhận sao khác nhau.
       const deptData = departmentStats.map((dept, idx) => {
-        const milestone = getMilestoneInfo(dept.totalStars);
-        const totalReward = calculateRewardValue(dept.totalStars);
-        const breakdown = getRewardBreakdown(dept.totalStars);
-        const quota = DEPT_QUOTAS[dept.department] || 20;
+        const milestone = getMilestoneInfo(dept.collectiveStars);
+        const totalReward = calculateRewardValue(dept.collectiveStars);
+        const breakdown = getRewardBreakdown(dept.collectiveStars);
         return {
           'Hạng': idx + 1,
           'Tập thể': dept.collectiveName,
+          'Sao tập thể (xếp hạng thi đua)': dept.collectiveStars,
+          'Số phiếu ghi cho tập thể': dept.collectiveRecords,
+          'Sao cán bộ trong phòng (tham khảo)': dept.staffStars,
           'Số CB được ghi nhận': dept.staffCount,
-          'Tổng Sao đạt được': dept.totalStars,
-          'Chỉ tiêu / Quota năm': quota,
-          // Không giới hạn 100% để thấy phòng vượt chỉ tiêu
-          'Tỷ lệ hoàn thành': `${Math.round((dept.totalStars / quota) * 100)}%`,
+          'Sao phòng được phân bổ để TRAO cả năm': DEPT_QUOTAS[dept.department] ?? '',
           'Mốc quà đạt được': milestone.achievedTier?.name || 'Chưa đạt mốc',
-          'Giá trị quà tặng': formatVnd(totalReward),
-          'Chi tiết quy đổi': `${dept.totalStars} Sao × 100k (gốc: ${formatVnd(breakdown.baseValue)}) + ${breakdown.threeStarCount} mốc 3 Sao × 300k (${formatVnd(breakdown.threeStarValue)}) + Mốc 6 Sao (${formatVnd(breakdown.sixStarValue)}) + Mốc cao nhất >= 8 Sao (${formatVnd(breakdown.highTierValue)})`,
+          'Giá trị quà tặng của tập thể': formatVnd(totalReward),
+          'Chi tiết quy đổi': `${dept.collectiveStars} Sao × 100k (gốc: ${formatVnd(breakdown.baseValue)}) + ${breakdown.threeStarCount} mốc 3 Sao × 300k (${formatVnd(breakdown.threeStarValue)}) + Mốc 6 Sao (${formatVnd(breakdown.sixStarValue)}) + Mốc cao nhất >= 8 Sao (${formatVnd(breakdown.highTierValue)})`,
           'Cán bộ xuất sắc nhất': getTopIndividualForDept(dept.department),
         };
       });
@@ -519,8 +474,9 @@ export const StarAnalytics: React.FC = () => {
                         return matchesSearch && matchesDept;
                       })
                       .map((staff, idx) => {
-                        // Khóa mở rộng theo (tên, phòng) — không dùng index để không lệch khi lọc
-                        const expandKey = `${staff.name}-${staff.department}`;
+                        // Khóa mở rộng theo (tên, phòng) — không dùng index để không lệch khi lọc,
+                        // và phải có phòng vì chi nhánh có cán bộ trùng họ tên
+                        const expandKey = individualKey(staff.name, staff.department);
                         const isExpanded = !!expandedStaff[expandKey];
                         const { nextTier } = getMilestoneInfo(staff.totalStars);
                         const breakdown = getRewardBreakdown(staff.totalStars);
@@ -653,29 +609,39 @@ export const StarAnalytics: React.FC = () => {
               {/* TAB 2: PHÒNG BAN */}
               {activeTab === 'department' && (
                 <div className="space-y-4">
+                  <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-3 text-[11px] leading-relaxed text-slate-600">
+                    <strong className="text-brand-navy">Cách xếp hạng:</strong> thi đua tập thể tính trên
+                    {' '}<strong>số sao mà TẬP THỂ phòng được ghi nhận</strong> (phiếu ghi cho "Tập thể Phòng…").
+                    Sao của từng cán bộ trong phòng là thành tích và phần thưởng của chính cán bộ đó —
+                    hai chủ thể khác nhau — nên để ở cột tham khảo, không cộng vào bảng này.
+                  </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs text-left border-collapse">
                       <thead>
                         <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 font-black">
                           <th className="p-3 rounded-l-xl text-center">Hạng</th>
                           <th className="p-3">Tập thể Phòng ban</th>
+                          <th className="p-3 text-center">Sao tập thể nhận được</th>
+                          <th className="p-3">So với phòng dẫn đầu</th>
+                          <th className="p-3 text-center" title="Chỉ để tham khảo — sao của cá nhân không cộng vào thi đua tập thể">
+                            Sao cán bộ trong phòng<br /><span className="font-bold text-[9px] uppercase text-slate-400">(tham khảo)</span>
+                          </th>
                           <th className="p-3 text-center">Số CB được ghi nhận</th>
-                          <th className="p-3 text-center">Tổng Sao đạt được</th>
-                          <th className="p-3 text-center">Chỉ tiêu / Quota năm</th>
-                          <th className="p-3">Tỷ lệ hoàn thành chỉ tiêu</th>
-                          <th className="p-3">Mốc quà đạt được</th>
+                          <th className="p-3">Mốc quà của tập thể</th>
                           <th className="p-3 text-right">Giá trị quà tặng</th>
                           <th className="p-3 rounded-r-xl pl-4">Cán bộ xuất sắc nhất</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 font-medium text-slate-600">
                         {departmentStats.map((dept, idx) => {
-                          const quota = DEPT_QUOTAS[dept.department] || 20;
-                          // Không giới hạn 100% — hiển thị đúng mức vượt chỉ tiêu
-                          const pct = Math.round((dept.totalStars / quota) * 100);
-                          const barPct = Math.min(100, pct);
-                          const { achievedTier, nextTier } = getMilestoneInfo(dept.totalStars);
-                          const breakdown = getRewardBreakdown(dept.totalStars);
+                          // So với phòng dẫn đầu, KHÔNG so với quota năm: con số trong
+                          // DEPT_QUOTAS là lượng sao phòng được phân bổ để TRAO ĐI, không
+                          // phải chỉ tiêu sao phòng phải nhận về.
+                          const barPct = topCollectiveStars > 0
+                            ? Math.round((dept.collectiveStars / topCollectiveStars) * 100)
+                            : 0;
+                          const { achievedTier, nextTier } = getMilestoneInfo(dept.collectiveStars);
+                          const breakdown = getRewardBreakdown(dept.collectiveStars);
 
                           return (
                             <tr key={dept.department} className="hover:bg-slate-50 transition-colors">
@@ -691,22 +657,27 @@ export const StarAnalytics: React.FC = () => {
                                 )}
                               </td>
                               <td className="p-3 font-extrabold text-slate-800">{dept.collectiveName}</td>
-                              <td className="p-3 text-center font-bold text-slate-600">{dept.staffCount} đ/c</td>
-                              <td className="p-3 text-center font-black text-brand-navy text-sm">{dept.totalStars} ⭐</td>
-                              <td className="p-3 text-center font-bold text-slate-500">{quota} sao</td>
+                              <td className="p-3 text-center font-black text-brand-navy text-sm">
+                                {dept.collectiveStars} ⭐
+                                <span className="block text-[9px] font-bold text-slate-400">
+                                  {dept.collectiveRecords} phiếu tập thể
+                                </span>
+                              </td>
                               <td className="p-3 min-w-40">
                                 <div className="flex items-center gap-2">
                                   <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
                                     <div
                                       className={`h-full rounded-full transition-all duration-500 ${
-                                        pct >= 100 ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-500' : 'bg-blue-500'
+                                        barPct >= 100 ? 'bg-emerald-500' : barPct >= 50 ? 'bg-amber-500' : 'bg-blue-500'
                                       }`}
                                       style={{ width: `${barPct}%` }}
                                     />
                                   </div>
-                                  <span className="text-[10px] font-black shrink-0 w-10">{pct}%</span>
+                                  <span className="text-[10px] font-black shrink-0 w-10">{barPct}%</span>
                                 </div>
                               </td>
+                              <td className="p-3 text-center font-bold text-slate-500">{dept.staffStars} ⭐</td>
+                              <td className="p-3 text-center font-bold text-slate-600">{dept.staffCount} đ/c</td>
                               <td className="p-3">
                                 <div className="flex flex-col gap-1">
                                   {achievedTier ? (
@@ -719,7 +690,7 @@ export const StarAnalytics: React.FC = () => {
                                   )}
                                   {nextTier ? (
                                     <span className="text-[9px] text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded-md w-fit">
-                                      Cần thêm {nextTier.stars - dept.totalStars} ⭐ (Lên {nextTier.stars}⭐)
+                                      Cần thêm {nextTier.stars - dept.collectiveStars} ⭐ (Lên {nextTier.stars}⭐)
                                     </span>
                                   ) : (
                                     <span className="text-[9px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md w-fit animate-pulse">
@@ -734,7 +705,7 @@ export const StarAnalytics: React.FC = () => {
                                     {formatVnd(breakdown.totalValue)}
                                   </span>
                                   <span className="text-[9px] text-slate-400 font-mono text-right leading-tight max-w-[220px]" title="Chi tiết: Gốc + Mốc 3 Sao + Mốc 6 Sao + Mốc Cao Nhất >= 8 Sao">
-                                    ({dept.totalStars}×100k + {breakdown.threeStarCount}×300k + {breakdown.sixStarValue > 0 ? '500k' : '0'} + {breakdown.highTierValue > 0 ? formatVnd(breakdown.highTierValue) : '0'})
+                                    ({dept.collectiveStars}×100k + {breakdown.threeStarCount}×300k + {breakdown.sixStarValue > 0 ? '500k' : '0'} + {breakdown.highTierValue > 0 ? formatVnd(breakdown.highTierValue) : '0'})
                                   </span>
                                 </div>
                               </td>
