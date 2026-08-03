@@ -4,6 +4,7 @@ import {
   parseStarWorkbook,
   buildTemplateWorkbook,
   isCollectiveName,
+  standardizeDepartment,
   TEMPLATE_HEADERS,
 } from '../starParser';
 
@@ -32,7 +33,43 @@ describe('isCollectiveName — quy tắc tập thể ĐÃ SỬA', () => {
   });
 });
 
+describe('standardizeDepartment — tên phòng giao dịch phải thắng cụm chung "giao dịch"', () => {
+  it('5 phòng giao dịch trong danh bạ về đúng phòng, không dồn về Phòng DVKH', () => {
+    expect(standardizeDepartment('Phòng giao dịch Ân Thi')).toBe('Phòng Ân Thi');
+    expect(standardizeDepartment('Phòng giao dịch Khoái Châu')).toBe('Phòng Khoái Châu');
+    expect(standardizeDepartment('Phòng giao dịch Văn Giang')).toBe('Phòng Văn Giang');
+    expect(standardizeDepartment('Phòng giao dịch Văn Lâm')).toBe('Phòng Văn Lâm');
+    expect(standardizeDepartment('Phòng giao dịch Yên Mỹ')).toBe('Phòng Yên Mỹ');
+  });
+
+  it('vẫn nhận Phòng DVKH qua cụm chung khi không có tên phòng giao dịch riêng', () => {
+    expect(standardizeDepartment('Phòng Dịch vụ khách hàng')).toBe('Phòng DVKH');
+    expect(standardizeDepartment('DVKH')).toBe('Phòng DVKH');
+    expect(standardizeDepartment('Giao dịch viên')).toBe('Phòng DVKH');
+    expect(standardizeDepartment('Phòng giao dịch')).toBe('Phòng DVKH');
+  });
+
+  it('các phòng hội sở khác giữ nguyên cách nhận diện', () => {
+    expect(standardizeDepartment('Phòng Tổ chức Tổng hợp')).toBe('Phòng TCTH');
+    expect(standardizeDepartment('Phòng KHDN')).toBe('Phòng KHDN');
+    expect(standardizeDepartment('Phòng Hỗ trợ tín dụng')).toBe('Phòng HTTD');
+    expect(standardizeDepartment('Phòng Bán lẻ')).toBe('Phòng Bán lẻ');
+    expect(standardizeDepartment('')).toBeNull();
+    expect(standardizeDepartment('Ban Giám đốc')).toBeNull();
+  });
+});
+
 describe('parseStarWorkbook — đọc file chuẩn C→J', () => {
+  it('cột phòng ghi tên đầy đủ "Phòng giao dịch Ân Thi" không bị xếp sang Phòng DVKH', async () => {
+    const buf = makeWorkbook([
+      ['05/07/2026', 'Lý Văn Tám', 'SXD', 'Phòng giao dịch Ân Thi', 'Nguyễn Thị Phượng', 'Hỗ trợ mở tài khoản FDI', 1, '150'],
+    ]);
+    const { records, warnings } = await parseStarWorkbook(buf);
+    expect(records[0].department).toBe('Phòng Ân Thi');
+    expect(records[0].isCollective).toBe(false);
+    expect(warnings).toHaveLength(0);
+  });
+
   it('FIX 1: "Nguyễn Văn A - Phòng KHDN" phải ra CÁ NHÂN (bản gốc xếp nhầm tập thể)', async () => {
     const buf = makeWorkbook([
       ['05/07/2026', 'Trần Thị B', 'Sao Xứng Đáng 2026', '', 'Nguyễn Văn A - Phòng KHDN', 'Hỗ trợ thẩm định gấp', 2, 'SXD-001'],
