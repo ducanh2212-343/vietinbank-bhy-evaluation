@@ -26,6 +26,7 @@ import { Award, Download, Pencil, Plus, Sparkles, Archive, CalendarCheck, AlertT
 // (~106 kB gzip), không đáng tải chỉ để mở trang xem danh sách dấu ấn.
 import { fetchWeeklyUpdateMap, isWeeklyTracked, type KanbanCard, type WeeklyUpdateMap } from '@/lib/kanban';
 import { UpdateProgressDialog } from '@/components/kanban/UpdateProgressDialog';
+import { safeHref } from '@/lib/safeUrl';
 
 const sb = supabase as any;
 
@@ -522,9 +523,13 @@ export default function LeadershipMarksPage() {
                           </p>
                           {logNote(l) && <p className="whitespace-pre-wrap">{logNote(l)}</p>}
                           {l.evidence_url && (
-                            <a href={l.evidence_url} target="_blank" rel="noreferrer" className="underline text-primary">
-                              Bằng chứng đính kèm
-                            </a>
+                            safeHref(l.evidence_url)
+                              ? (
+                                <a href={safeHref(l.evidence_url)} target="_blank" rel="noreferrer" className="underline text-primary">
+                                  Bằng chứng đính kèm
+                                </a>
+                              )
+                              : <span className="text-muted-foreground break-all">Bằng chứng: {l.evidence_url}</span>
                           )}
                         </div>
                       ))}
