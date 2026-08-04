@@ -17,9 +17,10 @@ import {
   type Ct2Co, type Ct2DauViec, type Ct2NhanPdca, type Ct2TrangThai,
 } from '@/lib/ct2';
 import {
-  ct2DoiTheoDoi, ct2GhiNhip, ct2SuaDauViec, useCt2DsPgd, useCt2LamTuoi,
-  useCt2NhatKy, useCt2PgdCuaPhong, useCt2Phong, useCt2TheoDoi, type Ct2NhanSu,
+  ct2DoiTheoDoi, ct2GhiNhip, ct2SuaDauViec, useCt2LamTuoi, useCt2NhatKy,
+  useCt2TheoDoi, type Ct2NhanSu,
 } from './useCt2Data';
+import { Ct2CapPhuTrach } from './Ct2CapPhuTrach';
 import { Ct2DongThoiGian, type NguoiTraoDoi } from './Ct2DongThoiGian';
 
 /**
@@ -164,12 +165,10 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
             gia={the.nguoi_chiu_trach_nhiem
               ? (tenNguoi.get(the.nguoi_chiu_trach_nhiem) ?? '—')
               : '— thẻ đang vô chủ'} />
-          <O ten="Lãnh đạo theo dõi"
-            gia={the.lanh_dao_theo_doi
-              ? (tenNguoi.get(the.lanh_dao_theo_doi) ?? '—')
-              : '— chưa ghi'} />
-          <CapPhuTrach
-            the={the} nhanSu={nhanSu} tenNguoi={tenNguoi} laLanhDao={laLanhDao}
+          <Ct2CapPhuTrach
+            phongId={the.phong} nguoiLam={the.nguoi_chiu_trach_nhiem}
+            gia={the} nhanSu={nhanSu} suaDuoc={laLanhDao}
+            onLuu={(v) => ct2SuaDauViec(the.id, v)}
             onXong={() => { lamTuoi('board'); onXong(); }}
           />
           <div className="sm:col-span-2"><O ten="Cách làm" gia={the.cach_lam || '— chưa ghi'} /></div>
@@ -243,148 +242,6 @@ function O({ ten, gia }: { ten: string; gia: string }) {
       <span className="text-xs uppercase tracking-wide text-slate-400">{ten}</span>
       <span className="block text-slate-800">{gia}</span>
     </p>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Ba cấp phụ trách — xem gộp một dòng, lãnh đạo sửa được ngay tại chỗ
-// ---------------------------------------------------------------------------
-
-/**
- * Ba cấp phụ trách gộp MỘT ô, mỗi cấp một dòng nhỏ — ba ô riêng đẩy hộp thoại
- * dài thêm ba dòng trên điện thoại, mà đây là thông tin tra cứu chứ không phải
- * thứ đọc mỗi ngày.
- *
- * Vì sao phải sửa được SAU khi tạo thẻ: 23 thẻ nhập từ board Miro cũ (Phòng
- * KHDN và BGĐ) ra đời trước khi có ba cột này nên đều trống. Nếu chỉ đặt được
- * lúc tạo thẻ thì cách duy nhất để điền là xoá thẻ tạo lại — tức là mất sạch
- * nhật ký PDCA. Ô trống ở đây cũng phải nói ra được, không im lặng ẩn đi.
- *
- * Hàng rào thật vẫn ở DB: RLS `ct2_sua_duoc_phong()` + trigger chặn cán bộ
- * thường đổi cấp phụ trách. Nút này chỉ là tấm gương soi đúng luật đó.
- */
-function CapPhuTrach({ the, nhanSu, tenNguoi, laLanhDao, onXong }: {
-  the: Ct2DauViec;
-  nhanSu: Ct2NhanSu[];
-  tenNguoi: Map<string, string>;
-  laLanhDao: boolean;
-  onXong: () => void;
-}) {
-  const [moSua, setMoSua] = useState(false);
-  const [pp, setPp] = useState('');
-  const [tp, setTp] = useState('');
-  const [pgd, setPgd] = useState('');
-  const [dangLuu, setDangLuu] = useState(false);
-
-  const { data: phongs = [] } = useCt2Phong();
-  const { data: pgdMacDinh = '' } = useCt2PgdCuaPhong(moSua ? the.phong : null);
-  const { data: dsPgd = [] } = useCt2DsPgd(moSua);
-  const nguoiTrongPhong = useMemo(
-    () => nhanSu.filter((n) => n.department_id === the.phong),
-    [nhanSu, the.phong],
-  );
-  const truongPhongMacDinh = phongs.find((p) => p.id === the.phong)?.manager_id ?? '';
-
-  // Mở form: giữ nguyên cái đã có, chỉ điền hộ chỗ TRỐNG. Không bao giờ đè lên
-  // lựa chọn con người bằng giá trị suy ra từ danh mục.
-  useEffect(() => {
-    if (!moSua) return;
-    setPp(the.pho_phong ?? '');
-    setTp(the.truong_phong ?? truongPhongMacDinh);
-    setPgd(the.pgd_phu_trach ?? pgdMacDinh);
-  }, [moSua, the.pho_phong, the.truong_phong, the.pgd_phu_trach, truongPhongMacDinh, pgdMacDinh]);
-
-  const trong = !the.pho_phong && !the.truong_phong && !the.pgd_phu_trach;
-
-  const luu = async () => {
-    setDangLuu(true);
-    const { error } = await ct2SuaDauViec(the.id, {
-      pho_phong: pp || null,
-      truong_phong: tp || null,
-      pgd_phu_trach: pgd || null,
-    });
-    setDangLuu(false);
-    if (error) { toast.error(error); return; }
-    toast.success('Đã cập nhật cấp phụ trách — các cấp này sẽ nhận nhịp và trao đổi của thẻ.');
-    setMoSua(false);
-    onXong();
-  };
-
-  return (
-    <div className="sm:col-span-2">
-      <span className="text-xs uppercase tracking-wide text-slate-400">Cấp phụ trách</span>
-      <span className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-slate-800">
-        {the.pho_phong && (
-          <span><span className="text-slate-400">PP </span>{tenNguoi.get(the.pho_phong) ?? '—'}</span>
-        )}
-        {the.truong_phong && (
-          <span><span className="text-slate-400">TP </span>{tenNguoi.get(the.truong_phong) ?? '—'}</span>
-        )}
-        {the.pgd_phu_trach && (
-          <span><span className="text-slate-400">PGĐ </span>{tenNguoi.get(the.pgd_phu_trach) ?? '—'}</span>
-        )}
-        {trong && <span className="font-medium text-amber-700">— chưa gán cấp phụ trách</span>}
-        {laLanhDao && !moSua && (
-          <button
-            className="text-xs font-medium text-brand-navy underline underline-offset-2"
-            onClick={() => setMoSua(true)}
-          >
-            {trong ? 'Gán cấp phụ trách' : 'Sửa'}
-          </button>
-        )}
-      </span>
-
-      {moSua && (
-        <div className="mt-2 rounded-xl border border-amber-300 bg-white p-3">
-          <div className="grid gap-2 sm:grid-cols-3">
-            <div>
-              <Label className="text-xs">Phó phòng</Label>
-              <ChonNguoi gia={pp} dat={setPp} ds={nguoiTrongPhong} />
-            </div>
-            <div>
-              <Label className="text-xs">Trưởng phòng</Label>
-              <ChonNguoi gia={tp} dat={setTp} ds={nguoiTrongPhong} macDinh={truongPhongMacDinh} ghi="mặc định" />
-            </div>
-            <div>
-              <Label className="text-xs">PGĐ phụ trách</Label>
-              <ChonNguoi gia={pgd} dat={setPgd} ds={dsPgd} macDinh={pgdMacDinh} ghi="phụ trách phòng" />
-            </div>
-          </div>
-          <p className="mt-2 text-2xs text-slate-500">
-            Trưởng phòng và PGĐ điền sẵn theo danh mục phòng — sửa được. Ba cấp này
-            nhận thông báo mọi nhịp và trao đổi của thẻ.
-          </p>
-          <div className="mt-2 flex gap-2">
-            <Button size="sm" className="h-8" disabled={dangLuu} onClick={luu}>
-              {dangLuu ? 'Đang lưu…' : 'Lưu'}
-            </Button>
-            <Button size="sm" variant="ghost" className="h-8" onClick={() => setMoSua(false)}>Hủy</Button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ChonNguoi({ gia, dat, ds, macDinh, ghi }: {
-  gia: string;
-  dat: (v: string) => void;
-  ds: Ct2NhanSu[];
-  macDinh?: string;
-  ghi?: string;
-}) {
-  return (
-    <Select value={gia || 'KHONG'} onValueChange={(v) => dat(v === 'KHONG' ? '' : v)}>
-      <SelectTrigger className="mt-1 h-9 text-xs"><SelectValue /></SelectTrigger>
-      <SelectContent>
-        <SelectItem value="KHONG">— Không gán —</SelectItem>
-        {ds.map((n) => (
-          <SelectItem key={n.id} value={n.id}>
-            {n.full_name}{macDinh && n.id === macDinh ? ` (${ghi})` : ''}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
   );
 }
 

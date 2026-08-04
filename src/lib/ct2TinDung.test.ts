@@ -36,7 +36,7 @@ const hsGoc: HoSoTinDung = {
   id: 'h1', phong: 'd1', ma_hs: 'KHDN-TD-2608-001',
   khach_hang: 'Công ty CP Tập đoàn Thaicom', loai_ho_so: 'TAI_CAP',
   so_tien: 160_000, ky_han: 'NGAN_HAN', cap_phe_duyet: 'TSC',
-  trang_thai: 'TRINH_LDCN', can_bo: 'p1', lanh_dao_theo_doi: 'p2',
+  trang_thai: 'TRINH_LDCN', can_bo: 'p1', lanh_dao_theo_doi: 'p2', pho_phong: null, truong_phong: null, pgd_phu_trach: null,
   ngay_nhan: '2026-08-01', han_xu_ly: '2026-08-20', ngay_den_han_ghtd: '2026-09-30',
   ngay_hoan_thanh: null, nguoi_dang_giu: 'p3', giu_tu: '2026-08-05T02:00:00Z',
   nhip_gan_nhat: null, ly_do_tu_choi: null, ghi_chu: null, nguoi_tao: 'p2',
