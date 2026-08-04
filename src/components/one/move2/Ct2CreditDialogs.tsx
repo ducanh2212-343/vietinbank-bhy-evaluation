@@ -20,7 +20,7 @@ import {
   type HsTrangThai,
 } from '@/lib/ct2TinDung';
 import type { Ct2NhanSu } from './useCt2Data';
-import { Ct2TrangTraoDoi, type NguoiTraoDoi } from './Ct2TrangTraoDoi';
+import { Ct2DongThoiGian, type NguoiTraoDoi } from './Ct2DongThoiGian';
 import {
   ct2GhiNhipHoSo, ct2SuaHoSo, ct2TaoHoSo, useCt2LamTuoiHoSo, useCt2NhatKyHoSo,
 } from './useCt2TinDung';
@@ -564,44 +564,37 @@ export function Ct2CreditCardDialog({ hoSo, nhanSu, laLanhDao, chuyenDen, onClos
           </div>
         )}
 
-        <div>
-          <p className="mb-2 text-sm font-semibold text-brand-navy">
-            Nhật ký hồ sơ ({nhatKy.length}) — chỉ thêm, không sửa/xóa
-          </p>
-          {suaDuoc && (
-            <div className="mb-2 flex items-end gap-2">
-              <Textarea rows={2} value={cauNhip} onChange={(e) => setCauNhip(e.target.value)}
+        {/* Cửa viết BÁO CÁO — tách khỏi ô trao đổi trong Dòng thời gian bên dưới */}
+        {suaDuoc && (
+          <div className="rounded-xl border-2 border-brand-navy/20 bg-blue-50/40 p-3">
+            <p className="mb-2 flex flex-wrap items-baseline gap-2 text-sm font-semibold text-brand-navy">
+              Ghi nhịp hồ sơ
+              <span className="text-2xs font-normal text-slate-500">— thành một dòng 📊 Báo cáo trong Dòng thời gian</span>
+            </p>
+            <div className="flex items-end gap-2">
+              <Textarea rows={2} className="bg-white" value={cauNhip} onChange={(e) => setCauNhip(e.target.value)}
                 placeholder="Hôm nay hồ sơ đi tới đâu? Vướng gì? VD: Đã bổ sung BCTC kiểm toán, chờ ý kiến thẩm định." />
               <Button onClick={ghiNhip} disabled={dangGui || cauNhip.trim().length < 10}>
                 <Send className="h-4 w-4" />
               </Button>
             </div>
-          )}
-          <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
-            {nhatKy.length === 0 && (
-              <p className="text-sm text-slate-500">Chưa có dòng nào.</p>
-            )}
-            {nhatKy.map((n) => (
-              <div key={n.id} className="rounded-xl border border-slate-200 p-2.5 text-sm">
-                <p className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                  <span className="font-medium text-slate-700">{tenNguoi.get(n.nguoi_ghi) ?? '—'}</span>
-                  <span>{new Date(n.ghi_luc).toLocaleString('vi-VN')}</span>
-                  <Badge variant="outline" className="px-1 py-0 text-2xs font-normal">
-                    {HS_COT.find((c) => c.ma === n.buoc)?.ten ?? n.buoc}
-                  </Badge>
-                </p>
-                <p className="mt-1 whitespace-pre-wrap text-slate-800">{n.noi_dung}</p>
-              </div>
-            ))}
           </div>
-        </div>
+        )}
 
-        <Ct2TrangTraoDoi
+        <Ct2DongThoiGian
           phamVi="HO_SO_TIN_DUNG"
           doiTuongId={hoSo.id}
+          baoCao={nhatKy.map((n) => ({
+            id: n.id,
+            luc: n.ghi_luc,
+            nguoi: n.nguoi_ghi,
+            tieu_de: HS_COT.find((c) => c.ma === n.buoc)?.ten ?? n.buoc,
+            noi_dung: n.noi_dung,
+            chi_tiet: n.vuong_mac ? [{ nhan: 'Vướng mắc', gia: n.vuong_mac, mau: 'DO' as const }] : [],
+          }))}
           nguoiLienQuan={nguoiLienQuan}
           tenNguoi={tenNguoi}
-          tieuDe="Trao đổi về hồ sơ"
+          loiMoiDau="Chưa có dòng nào — nhịp đầu tiên của hồ sơ sẽ mở mạch chuyện."
           goiY="Hỏi thẳng ở đây thay vì gọi điện — VD «Hồ sơ vướng gì ạ?», «Cần bổ sung giấy tờ nào?»."
           onXong={() => lamTuoi()}
         />

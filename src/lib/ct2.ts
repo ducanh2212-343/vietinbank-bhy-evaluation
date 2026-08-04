@@ -104,6 +104,83 @@ export interface Ct2BinhLuan {
 }
 
 // ---------------------------------------------------------------------------
+// Dòng thời gian — MỘT mạch kể chuyện cho mỗi thẻ, dùng chung cả ba bàn
+// ---------------------------------------------------------------------------
+
+/**
+ * Một dòng «Báo cáo» đã chuẩn hoá — nguồn có thể là nhịp PDCA (đầu việc),
+ * nhật ký hồ sơ tín dụng, hay log tiến độ của thẻ BHY Mark. Ba bảng khác nhau
+ * nhưng với người đọc chúng là CÙNG MỘT THỨ: cán bộ báo cáo mình đang ở đâu.
+ */
+export interface DongBaoCao {
+  id: string;
+  /** ISO — mốc để trộn với trao đổi thành một mạch */
+  luc: string;
+  /** profile_id; null = dòng hệ thống tự ghi (tạo thẻ, đổi trạng thái…) */
+  nguoi: string | null;
+  /** Nhãn loại dòng: «Cập nhật tiến độ», «Đổi trạng thái», tên bước hồ sơ… */
+  tieu_de?: string | null;
+  nhan_pdca?: Ct2NhanPdca | null;
+  co?: Ct2Co | null;
+  phan_tram?: number | null;
+  dung_nhip?: 'DUNG_GIO' | 'MUON' | null;
+  noi_dung?: string | null;
+  /** Các cặp nhãn–giá trị phụ: vướng mắc, hành động, bằng chứng, kết quả… */
+  chi_tiet?: Array<{ nhan: string; gia: string; mau?: 'DO' | 'XANH' }>;
+  /** Link bằng chứng (thẻ BHY Mark) */
+  url?: string | null;
+  /** Dòng sự kiện hệ thống — hiện mảnh, không đóng khung như báo cáo */
+  he_thong?: boolean;
+}
+
+export type Ct2LocDong = 'TAT_CA' | 'BAO_CAO' | 'TRAO_DOI';
+
+/** Một dòng trong mạch trộn: hoặc báo cáo, hoặc trao đổi */
+export type DongThoiGian =
+  | { kieu: 'BAO_CAO'; luc: string; bc: DongBaoCao }
+  | { kieu: 'TRAO_DOI'; luc: string; bl: Ct2BinhLuan };
+
+export interface NhomNgay { nhan: string; items: DongThoiGian[] }
+
+function nhanNgayVn(iso: string): string {
+  return new Date(iso).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+}
+
+/**
+ * Trộn báo cáo và trao đổi thành MỘT dòng thời gian, mới nhất trước, gom theo
+ * ngày.
+ *
+ * Vì sao trộn: quản lý mở thẻ ra muốn đọc CÂU CHUYỆN — «hôm 25/7 cán bộ báo
+ * 50%, hôm sau lãnh đạo hỏi lại, hôm 30/7 báo 75%». Hai danh sách tách rời
+ * bắt người đọc tự ráp hai luồng theo trí nhớ. Nhưng trộn KHÔNG có nghĩa là
+ * lẫn: hai loại dòng giữ hai hình dạng khác hẳn nhau, và có bộ lọc.
+ *
+ * Gom theo ngày để bỏ phần lặp «4/8/2026» ở từng dòng — mỗi ngày một vạch,
+ * trong ngày chỉ còn giờ:phút.
+ */
+export function gopDongThoiGian(
+  baoCao: DongBaoCao[],
+  traoDoi: Ct2BinhLuan[],
+  loc: Ct2LocDong = 'TAT_CA',
+): NhomNgay[] {
+  const tron: DongThoiGian[] = [
+    ...(loc !== 'TRAO_DOI' ? baoCao.map((bc) => ({ kieu: 'BAO_CAO' as const, luc: bc.luc, bc })) : []),
+    ...(loc !== 'BAO_CAO' ? traoDoi.map((bl) => ({ kieu: 'TRAO_DOI' as const, luc: bl.created_at, bl })) : []),
+    // So bằng Date chứ không localeCompare chuỗi: hai nguồn có thể trả hai
+    // định dạng ISO khác nhau ('…Z' và '…+00:00'), so chuỗi sẽ xếp sai.
+  ].sort((a, b) => new Date(b.luc).getTime() - new Date(a.luc).getTime());
+
+  const nhom: NhomNgay[] = [];
+  for (const d of tron) {
+    const nhan = nhanNgayVn(d.luc);
+    const cuoi = nhom[nhom.length - 1];
+    if (cuoi && cuoi.nhan === nhan) cuoi.items.push(d);
+    else nhom.push({ nhan, items: [d] });
+  }
+  return nhom;
+}
+
+// ---------------------------------------------------------------------------
 // Cột Kanban chuẩn toàn Chi nhánh (đặc tả §4.1)
 // ---------------------------------------------------------------------------
 

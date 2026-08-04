@@ -8,7 +8,7 @@ import { computeBadges, rpcConfirm, getSourceLabel, type KanbanCard } from '@/li
 import { ReturnCardDialog } from './ReturnCardDialog';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
-import { Ct2TrangTraoDoi, type NguoiTraoDoi } from '@/components/one/move2/Ct2TrangTraoDoi';
+import { Ct2DongThoiGian, type NguoiTraoDoi } from '@/components/one/move2/Ct2DongThoiGian';
 import { safeHref } from '@/lib/safeUrl';
 
 interface Props {
@@ -127,44 +127,43 @@ export function CardDetailDialog({ card, open, onClose, onChanged, ownerName }: 
             </div>
           )}
 
-          <div>
-            <h4 className="font-semibold mb-2">Timeline</h4>
-            {loading ? <p className="text-muted-foreground">Đang tải...</p> : (
-              <div className="space-y-2">
-                {logs.length === 0 && <p className="text-muted-foreground">Chưa có lịch sử.</p>}
-                {logs.map(l => (
-                  <div key={l.id} className="border-l-2 border-primary/30 pl-3 py-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="font-medium">{LOG_LABEL[l.log_type] || l.log_type}</span>
-                      <span className="text-muted-foreground">{new Date(l.created_at).toLocaleString('vi-VN')}</span>
-                    </div>
-                    {l.progress_percent != null && <div className="text-xs mt-0.5">Tiến độ: {l.progress_percent}%</div>}
-                    {l.old_status && <div className="text-xs">{l.old_status} → {l.new_status}</div>}
-                    {l.progress_note && <div className="mt-1">{l.progress_note}</div>}
-                    {l.current_result && <div className="text-xs mt-0.5"><b>Kết quả:</b> {l.current_result}</div>}
-                    {l.next_step && <div className="text-xs mt-0.5"><b>Tiếp theo:</b> {l.next_step}</div>}
-                    {l.blocker_note && <div className="text-xs mt-0.5"><b>Vướng/Lý do:</b> {l.blocker_note}</div>}
-                    {l.support_needed && <div className="text-xs mt-0.5"><b>Cần hỗ trợ:</b> {l.support_needed}</div>}
-                    {l.evidence_text && <div className="text-xs mt-0.5"><b>Bằng chứng:</b> {l.evidence_text}</div>}
-                    {l.evidence_url && (
-                      safeHref(l.evidence_url)
-                        ? <a href={safeHref(l.evidence_url)} target="_blank" rel="noreferrer" className="text-xs text-primary underline">{l.evidence_url}</a>
-                        : <span className="text-xs text-muted-foreground break-all">{l.evidence_url}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <Ct2TrangTraoDoi
-            phamVi="THE_KANBAN"
-            doiTuongId={card.id}
-            nguoiLienQuan={lienQuan ?? []}
-            tenNguoi={tenNguoi}
-            tieuDe="Trao đổi trên thẻ"
-            goiY="Góp ý, hỏi thêm, hoặc ghi nhận. VD «Phần này em làm tốt, thử áp dụng vào KH nào cụ thể chưa?»"
-          />
+          {/*
+            Dòng thời gian: log tiến độ và trao đổi chung MỘT mạch — cùng thành
+            phần với bàn Chiêu thức 2 và PDTD, để cả ba bàn kể chuyện một kiểu.
+            Cập nhật tiến độ là dòng «Báo cáo» đóng khung; tạo thẻ / đổi trạng
+            thái / đổi deadline là dòng hệ thống hiện mảnh.
+          */}
+          {loading ? <p className="text-muted-foreground">Đang tải...</p> : (
+            <Ct2DongThoiGian
+              phamVi="THE_KANBAN"
+              doiTuongId={card.id}
+              baoCao={logs.map((l) => {
+                const heThong = l.log_type !== 'progress_update' && l.log_type !== 'evidence_added'
+                  && l.log_type !== 'completion_requested';
+                return {
+                  id: l.id,
+                  luc: l.created_at,
+                  nguoi: l.created_by,
+                  tieu_de: (LOG_LABEL[l.log_type] || l.log_type)
+                    + (l.old_status ? ` (${l.old_status} → ${l.new_status})` : ''),
+                  phan_tram: l.progress_percent,
+                  noi_dung: l.progress_note,
+                  chi_tiet: [
+                    ...(l.current_result ? [{ nhan: 'Kết quả', gia: l.current_result, mau: 'XANH' as const }] : []),
+                    ...(l.next_step ? [{ nhan: 'Tiếp theo', gia: l.next_step }] : []),
+                    ...(l.blocker_note ? [{ nhan: 'Vướng/Lý do', gia: l.blocker_note, mau: 'DO' as const }] : []),
+                    ...(l.support_needed ? [{ nhan: 'Cần hỗ trợ', gia: l.support_needed, mau: 'DO' as const }] : []),
+                    ...(l.evidence_text ? [{ nhan: 'Bằng chứng', gia: l.evidence_text }] : []),
+                  ],
+                  url: l.evidence_url ? (safeHref(l.evidence_url) ?? l.evidence_url) : null,
+                  he_thong: heThong,
+                };
+              })}
+              nguoiLienQuan={lienQuan ?? []}
+              tenNguoi={tenNguoi}
+              goiY="Góp ý, hỏi thêm, hoặc ghi nhận. VD «Phần này em làm tốt, thử áp dụng vào KH nào cụ thể chưa?»"
+            />
+          )}
         </div>
         <ReturnCardDialog cardId={card.id} open={returnOpen} onClose={() => setReturnOpen(false)} onSaved={onChanged} />
       </DialogContent>
