@@ -19,7 +19,7 @@ import {
 import {
   ct2GhiNhip, ct2SuaDauViec, useCt2LamTuoi, useCt2NhatKy, type Ct2NhanSu,
 } from './useCt2Data';
-import { Ct2TrangTraoDoi, type NguoiTraoDoi } from './Ct2TrangTraoDoi';
+import { Ct2DongThoiGian, type NguoiTraoDoi } from './Ct2DongThoiGian';
 
 /**
  * Chi tiết thẻ: 5W2H + Cổng B (ghi nhịp <45 giây) + nhật ký PDCA append-only
@@ -174,41 +174,31 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
           />
         )}
 
-        {/* Nhật ký PDCA — dòng thời gian, không sửa không xóa */}
-        <div>
-          <p className="mb-2 text-sm font-semibold text-brand-navy">
-            Nhật ký PDCA ({nhatKy.length}) — chỉ thêm, không sửa/xóa
-          </p>
-          <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
-            {nhatKy.length === 0 && (
-              <p className="text-sm text-slate-500">
-                Chưa có dòng nào. Ghi dòng <b>P (Plan)</b> đầu tiên để khởi động thẻ.
-              </p>
-            )}
-            {nhatKy.map((n) => (
-              <div key={n.id} className="rounded-xl border border-slate-200 p-2.5 text-sm">
-                <p className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                  <Badge variant="outline" className="font-mono">{n.nhan_pdca}</Badge>
-                  <span className="font-medium text-slate-700">{tenNguoi.get(n.nguoi_ghi) ?? '—'}</span>
-                  <span>{new Date(n.ghi_luc).toLocaleString('vi-VN')}</span>
-                  <span>{n.co_tinh_trang === 'XANH' ? '🟢' : n.co_tinh_trang === 'VANG' ? '🟡' : '🔴'} {n.phan_tram}%</span>
-                  {n.dung_nhip === 'DUNG_GIO' && <span className="text-emerald-600">✅ đúng nhịp</span>}
-                  {n.dung_nhip === 'MUON' && <span className="text-amber-600">🟡 nhịp muộn</span>}
-                </p>
-                <p className="mt-1 whitespace-pre-wrap text-slate-800">{n.noi_dung}</p>
-                {n.vuong_mac && <p className="mt-1 text-xs text-red-700">Đang vướng vì: {n.vuong_mac}</p>}
-                {n.hanh_dong_hom_nay && <p className="text-xs text-emerald-700">Hôm nay tôi làm: {n.hanh_dong_hom_nay}</p>}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <Ct2TrangTraoDoi
+        {/*
+          Dòng thời gian: nhịp PDCA và trao đổi chung MỘT mạch. Hai danh sách
+          tách rời bắt người đọc tự ráp «cán bộ báo 50% hôm nào, mình hỏi lại
+          hôm nào» theo trí nhớ — trộn lại nhưng hai loại dòng hai hình dạng.
+        */}
+        <Ct2DongThoiGian
           phamVi="DAU_VIEC"
           doiTuongId={the.id}
+          baoCao={nhatKy.map((n) => ({
+            id: n.id,
+            luc: n.ghi_luc,
+            nguoi: n.nguoi_ghi,
+            nhan_pdca: n.nhan_pdca,
+            co: n.co_tinh_trang,
+            phan_tram: n.phan_tram,
+            dung_nhip: n.dung_nhip === 'DUNG_GIO' || n.dung_nhip === 'MUON' ? n.dung_nhip : null,
+            noi_dung: n.noi_dung,
+            chi_tiet: [
+              ...(n.vuong_mac ? [{ nhan: 'Đang vướng vì', gia: n.vuong_mac, mau: 'DO' as const }] : []),
+              ...(n.hanh_dong_hom_nay ? [{ nhan: 'Hôm nay tôi làm', gia: n.hanh_dong_hom_nay, mau: 'XANH' as const }] : []),
+            ],
+          }))}
           nguoiLienQuan={nguoiLienQuan}
           tenNguoi={tenNguoi}
-          tieuDe="Trao đổi trên thẻ"
+          loiMoiDau="Chưa có dòng nào. Ghi dòng P (Plan) đầu tiên ở ô «Ghi nhịp hôm nay» để khởi động thẻ."
           goiY="Hỏi–đáp đúng ngữ cảnh thẻ. Sau khi gửi chỉ thu hồi được, không sửa."
           onXong={() => lamTuoi()}
         />
@@ -381,8 +371,9 @@ export function FormGhiNhip({ the, cauGanNhat, onXong, tuDongNhan }: {
 
   return (
     <div className="rounded-xl border-2 border-brand-navy/20 bg-blue-50/40 p-3">
-      <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-brand-navy">
-        <CalendarClock className="h-4 w-4" /> Ghi nhịp hôm nay
+      <p className="mb-2 flex flex-wrap items-baseline gap-2 text-sm font-semibold text-brand-navy">
+        <span className="inline-flex items-center gap-2"><CalendarClock className="h-4 w-4" /> Ghi nhịp hôm nay</span>
+        <span className="text-2xs font-normal text-slate-500">— thành một dòng 📊 Báo cáo trong Dòng thời gian</span>
       </p>
       <div className="flex flex-wrap items-center gap-2">
         {/* Cờ tình trạng — chip bấm 1 lần */}

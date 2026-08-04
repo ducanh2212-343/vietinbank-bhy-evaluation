@@ -21,6 +21,7 @@ import {
   trongKhungNhip,
   sapXepThe,
   soNgayImLang,
+  gopDongThoiGian,
   soNgayQuaHan,
   tachCacBuoc,
   thieuTruongBatBuoc,
@@ -480,5 +481,52 @@ describe('Thẻ nhập từ board cũ — ô trống phải nói ra, không đư
 
   it('chuanBiQuaLau không đoán bừa khi thiếu mốc', () => {
     expect(chuanBiQuaLau({ ...goc, trang_thai: 'CHUAN_BI' }, moc)).toBe(false);
+  });
+});
+
+
+describe('Dòng thời gian — trộn báo cáo và trao đổi thành MỘT mạch', () => {
+  const bc = (id: string, luc: string) => ({ id, luc, nguoi: 'p1', noi_dung: 'x' });
+  const bl = (id: string, luc: string) => ({
+    id, pham_vi: 'DAU_VIEC' as const, doi_tuong_id: 'd', cha_id: null,
+    nguoi_gui: 'p2', noi_dung: 'y', nhac_ten: [], can_tra_loi: false,
+    da_tra_loi_luc: null, ghim: false, thu_hoi: false, created_at: luc,
+  });
+
+  it('trộn đúng thứ tự thời gian, mới nhất trước, xuyên qua hai nguồn', () => {
+    const nhom = gopDongThoiGian(
+      [bc('a', '2026-08-03T01:00:00Z'), bc('b', '2026-08-03T05:00:00Z')],
+      [bl('c', '2026-08-03T03:00:00Z')],
+    );
+    expect(nhom).toHaveLength(1);
+    expect(nhom[0].items.map((d) => (d.kieu === 'BAO_CAO' ? d.bc.id : d.bl.id)))
+      .toEqual(['b', 'c', 'a']);   // báo cáo – trao đổi – báo cáo, đan xen theo giờ
+  });
+
+  it('gom theo NGÀY GIỜ VIỆT NAM — nửa đêm UTC vẫn là chiều hôm đó ở VN', () => {
+    // 18:00 UTC ngày 3/8 = 01:00 VN ngày 4/8 → phải nằm ở nhóm ngày 4/8
+    const nhom = gopDongThoiGian([bc('a', '2026-08-03T18:00:00Z'), bc('b', '2026-08-03T02:00:00Z')], []);
+    expect(nhom).toHaveLength(2);
+    expect(nhom[0].nhan).toBe('4/8/2026');
+    expect(nhom[1].nhan).toBe('3/8/2026');
+  });
+
+  it('lọc «Báo cáo» / «Trao đổi» đúng — quản lý họp giao ban chỉ đọc báo cáo', () => {
+    const baoCao = [bc('a', '2026-08-03T01:00:00Z')];
+    const traoDoi = [bl('c', '2026-08-03T03:00:00Z')];
+    const chiBc = gopDongThoiGian(baoCao, traoDoi, 'BAO_CAO');
+    expect(chiBc[0].items).toHaveLength(1);
+    expect(chiBc[0].items[0].kieu).toBe('BAO_CAO');
+    const chiTd = gopDongThoiGian(baoCao, traoDoi, 'TRAO_DOI');
+    expect(chiTd[0].items[0].kieu).toBe('TRAO_DOI');
+  });
+
+  it('hai định dạng ISO khác nhau vẫn xếp đúng — so bằng Date, không so chuỗi', () => {
+    const nhom = gopDongThoiGian(
+      [bc('a', '2026-08-03T05:00:00+07:00')],          // 22:00 UTC 2/8
+      [bl('c', '2026-08-03T01:00:00Z')],               // 01:00 UTC 3/8 — MỚI hơn
+    );
+    const phang = nhom.flatMap((n) => n.items);
+    expect(phang[0].kieu).toBe('TRAO_DOI');
   });
 });
