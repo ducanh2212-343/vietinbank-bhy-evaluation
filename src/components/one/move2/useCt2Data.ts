@@ -1,7 +1,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { trongKhungNhip, type Ct2BinhLuan, type Ct2DauViec, type Ct2Nhip, type Ct2PhamVi } from '@/lib/ct2';
+import {
+  trongKhungNhip,
+  type Ct2Bang, type Ct2BinhLuan, type Ct2DauViec, type Ct2Nhip, type Ct2PhamVi,
+} from '@/lib/ct2';
 
 /**
  * Lớp dữ liệu Chiêu thức 2.
@@ -20,11 +23,14 @@ interface SelectChain extends PromiseLike<Ket<unknown>> {
   eq(c: string, v: unknown): SelectChain;
   or(f: string): SelectChain;
   in(c: string, v: unknown[]): SelectChain;
-  order(c: string, o?: { ascending?: boolean }): SelectChain;
+  order(c: string, o?: { ascending?: boolean; nullsFirst?: boolean }): SelectChain;
   limit(n: number): SelectChain;
   maybeSingle(): PromiseLike<Ket<unknown>>;
 }
-interface UpdateChain extends PromiseLike<Ket<unknown>> { eq(c: string, v: unknown): UpdateChain }
+interface UpdateChain extends PromiseLike<Ket<unknown>> {
+  eq(c: string, v: unknown): UpdateChain;
+  in(c: string, v: unknown[]): UpdateChain;
+}
 const db = supabase as unknown as {
   from(t: string): {
     select(c: string): SelectChain;
@@ -102,15 +108,27 @@ export function useCt2NhanSu() {
  * Bảng Kanban một phòng: thẻ phòng chủ trì + thẻ liên phòng có phòng này tham
  * gia. MỘT query, đi qua index (phong, trang_thai) + GIN cac_phong_tham_gia.
  */
-export function useCt2Board(phongId: string | null) {
+export function useCt2Board(phongId: string | null, bangId: string | null = null) {
   return useQuery({
-    queryKey: ['ct2', 'board', phongId],
+    queryKey: ['ct2', 'board', phongId, bangId],
     enabled: !!phongId,
     staleTime: NUA_PHUT,
     // Trong khung nhịp sáng bảng đổi liên tục → tự làm mới cho có cảm giác
     // «bảng sống»; ngoài khung thì tắt hẳn, không tốn query vô ích.
     refetchInterval: () => (trongKhungNhip() ? NUA_PHUT : false),
     queryFn: async () => {
+      // Đang xem một bảng cụ thể → lấy theo bảng, KHÔNG theo phòng: bảng liên
+      // phòng chứa thẻ của phòng đầu mối, người phòng khác là thành viên vẫn
+      // phải thấy đủ.
+      if (bangId) {
+        const { data, error } = await db
+          .from('ct2_dau_viec')
+          .select('*')
+          .eq('bang_id', bangId)
+          .order('han_hoan_thanh', { ascending: true, nullsFirst: false });
+        if (error) throw error;
+        return (data ?? []) as Ct2DauViec[];
+      }
       const { data, error } = await db
         .from('ct2_dau_viec')
         .select('*')
@@ -118,7 +136,47 @@ export function useCt2Board(phongId: string | null) {
         // nullsFirst: false — thẻ chưa có hạn xếp cuối, không chen lên đầu
         .order('han_hoan_thanh', { ascending: true, nullsFirst: false });
       if (error) throw error;
-      return (data ?? []) as Ct2DauViec[];
+      // Kanban chung chỉ hiện thẻ KHÔNG thuộc bảng nào — thẻ của các mảng nằm
+      // trong bảng mảng, không hiện đúp ở hai nơi
+      return ((data ?? []) as Ct2DauViec[]).filter((t) => !t.bang_id);
+    },
+  });
+}
+
+/**
+ * Các bảng Kanban người này thấy được: bảng của phòng đang xem + bảng liên
+ * phòng của phòng khác mà mình là thành viên (RLS đã lọc — client chỉ chia
+ * nhóm để bày).
+ */
+export function useCt2DsBang(phongId: string | null) {
+  return useQuery({
+    queryKey: ['ct2', 'ds-bang', phongId],
+    enabled: !!phongId,
+    staleTime: NAM_PHUT,
+    queryFn: async () => {
+      const { data, error } = await db.from('ct2_bang').select('*').order('ten');
+      if (error) throw error;
+      const tatCa = (data ?? []) as Ct2Bang[];
+      return {
+        cuaPhong: tatCa.filter((b) => b.phong === phongId),
+        lienPhongKhac: tatCa.filter((b) => b.phong !== phongId && b.loai === 'LIEN_PHONG'),
+      };
+    },
+  });
+}
+
+export interface Ct2ThanhVienBang { profile_id: string }
+
+export function useCt2ThanhVienBang(bangId: string | null) {
+  return useQuery({
+    queryKey: ['ct2', 'thanh-vien-bang', bangId],
+    enabled: !!bangId,
+    staleTime: NUA_PHUT,
+    queryFn: async () => {
+      const { data, error } = await db
+        .from('ct2_bang_thanh_vien').select('profile_id').eq('bang_id', bangId);
+      if (error) throw error;
+      return ((data ?? []) as Ct2ThanhVienBang[]).map((t) => t.profile_id);
     },
   });
 }
@@ -247,6 +305,41 @@ function thongDiep(error: { message?: string } | null): string | null {
 }
 
 /** Cổng 1 — ghi việc: chỉ 3 trường bắt buộc, phần 5W2H còn lại do Cổng 2 điền */
+export async function ct2TaoBang(v: {
+  phong: string; ten: string; mo_ta: string | null;
+  loai: 'MANG' | 'LIEN_PHONG'; che_do_xem: 'PHONG' | 'HAN_CHE'; nguoi_tao: string;
+}): Promise<{ error: string | null; id: string | null }> {
+  const { data, error } = await db.from('ct2_bang').insert(v).select('id').single();
+  return { error: thongDiep(error), id: (data as { id: string } | null)?.id ?? null };
+}
+
+export async function ct2SuaBang(id: string, v: Record<string, unknown>): Promise<{ error: string | null }> {
+  const { error } = await db.from('ct2_bang').update(v).eq('id', id);
+  return { error: thongDiep(error) };
+}
+
+/**
+ * Ghi đè danh sách thành viên: xoá người bị bỏ, thêm người mới. Hai lệnh nhỏ
+ * thay vì delete-all-insert-all để RLS kiểm được từng dòng.
+ */
+export async function ct2DatThanhVienBang(
+  bangId: string, moi: string[], cu: string[], nguoiThem: string,
+): Promise<{ error: string | null }> {
+  const them = moi.filter((id) => !cu.includes(id));
+  const xoa = cu.filter((id) => !moi.includes(id));
+  if (them.length > 0) {
+    const { error } = await db.from('ct2_bang_thanh_vien')
+      .insert(them.map((profile_id) => ({ bang_id: bangId, profile_id, nguoi_them: nguoiThem })));
+    if (error) return { error: thongDiep(error) };
+  }
+  if (xoa.length > 0) {
+    const { error } = await db.from('ct2_bang_thanh_vien')
+      .delete().eq('bang_id', bangId).in('profile_id', xoa);
+    if (error) return { error: thongDiep(error) };
+  }
+  return { error: null };
+}
+
 export async function ct2TaoDauViec(v: Record<string, unknown>): Promise<{ error: string | null; id: string | null }> {
   const { data, error } = await db.from('ct2_dau_viec').insert(v).select('id').single();
   return { error: thongDiep(error), id: (data as { id: string } | null)?.id ?? null };

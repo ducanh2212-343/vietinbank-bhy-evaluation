@@ -142,6 +142,16 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
             gia={the.lanh_dao_theo_doi
               ? (tenNguoi.get(the.lanh_dao_theo_doi) ?? '—')
               : '— chưa ghi'} />
+          {/* Ba cấp phụ trách — chỉ hiện cấp đã gán, không bày ô trống vô nghĩa */}
+          {the.pho_phong && (
+            <O ten="Phó phòng" gia={tenNguoi.get(the.pho_phong) ?? '—'} />
+          )}
+          {the.truong_phong && (
+            <O ten="Trưởng phòng" gia={tenNguoi.get(the.truong_phong) ?? '—'} />
+          )}
+          {the.pgd_phu_trach && (
+            <O ten="PGĐ phụ trách" gia={tenNguoi.get(the.pgd_phu_trach) ?? '—'} />
+          )}
           <div className="sm:col-span-2"><O ten="Cách làm" gia={the.cach_lam || '— chưa ghi'} /></div>
           {the.chi_tieu_dinh_luong !== null && (
             <O ten="Chỉ tiêu" gia={`${the.chi_tieu_dinh_luong} ${the.don_vi ?? ''}`} />

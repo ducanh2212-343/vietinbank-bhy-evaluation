@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  CT2_COT, CT2_NGUONG_WIP, chuanBiQuaLau, daDuKeHoach, demWip, mucChuY,
+  CT2_COT, CT2_NGUONG_WIP, chuanBiQuaLau, cotHienThi, daDuKeHoach, demWip, mucChuY,
   nguongTuoiCho, sapXepThe, soNgayImLang, soNgayQuaHan, thieuTruongBatBuoc, tuoiCho,
   type Ct2Co, type Ct2DauViec, type Ct2MucChuY, type Ct2TrangThai,
 } from '@/lib/ct2';
@@ -81,7 +81,9 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoTh
     for (const cot of CT2_COT) m.set(cot.ma, []);
     // Loại THƯỜNG TRỰC không vào luồng Kanban tiến trình (đặc tả §2.2)
     for (const t of daLoc.filter((x) => x.loai_dau_viec === 'TIEN_TRINH')) {
-      m.get(t.trang_thai)?.push(t);
+      // cotHienThi: thẻ mang trạng thái cũ (chờ phối hợp/duyệt, đã đóng) xếp
+      // về cột gần nghĩa nhất — bỏ cột không được làm mất thẻ
+      m.get(cotHienThi(t.trang_thai))?.push(t);
     }
     for (const [k, v] of m) m.set(k, sapXepThe(v));
     return m;
@@ -104,7 +106,7 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoTh
       tiLe: coViec.length ? Math.round((daDu / coViec.length) * 100) : 100,
       theDo: dsThe.filter((t) => t.co_tinh_trang === 'DO' && t.trang_thai !== 'DA_DONG' && t.trang_thai !== 'DUNG_HUY').length,
       quaHan: dsThe.filter((t) => soNgayQuaHan(t) > 0).length,
-      nghenCho: dsThe.filter((t) => tuoiCho(t) > nguongTuoiCho()).length,
+      thieuThongTin: dsThe.filter((t) => thieuTruongBatBuoc(t).length > 0).length,
     };
   }, [nhipNguoi, dsThe]);
 
@@ -139,7 +141,7 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoTh
         />
         <OSo nhan="Thẻ 🔴 đang vướng" giaTri={String(tongNhip.theDo)} tot={tongNhip.theDo === 0} />
         <OSo nhan="Thẻ quá hạn" giaTri={String(tongNhip.quaHan)} tot={tongNhip.quaHan === 0} />
-        <OSo nhan={`Nghẽn cột chờ > ${nguongTuoiCho()} ngày`} giaTri={String(tongNhip.nghenCho)} tot={tongNhip.nghenCho === 0} />
+        <OSo nhan="Thẻ thiếu thông tin" giaTri={String(tongNhip.thieuThongTin)} tot={tongNhip.thieuThongTin === 0} />
       </div>
 
       {/* Bộ lọc chip */}
