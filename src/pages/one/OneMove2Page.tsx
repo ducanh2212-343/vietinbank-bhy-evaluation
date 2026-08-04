@@ -48,8 +48,10 @@ export default function OneMove2Page() {
 }
 
 function NoiDung() {
-  const { isAdmin, isManager, isPgd, departmentId, scope, visibleDeptIds, profileId, roles } = useAuth();
-  const laBgd = roles.includes('bgd');
+  const { isAdmin, isManager, isPgd, departmentId, scope, visibleDeptIds, profileId } = useAuth();
+  // Giám đốc Chi nhánh trong danh bạ thật mang vai system_admin chứ không phải
+  // 'bgd' — dò theo tên vai làm nút «Theo dõi phòng» tàng hình với chính GĐ
+  const laBgd = isAdmin || isPgd;
   const lamTuoi = useCt2LamTuoi();
 
   const { data: phongs = [] } = useCt2Phong();

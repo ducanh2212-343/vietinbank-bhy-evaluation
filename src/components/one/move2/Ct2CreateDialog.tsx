@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { CalendarDays, Info } from 'lucide-react';
 import {
@@ -10,14 +9,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import {
   CT2_NGUON_VIEC, hanGoiY, kiemTraGhiViec, locEmojiTieuDe,
   type Ct2FormGhiViec, type Ct2NguonViec,
 } from '@/lib/ct2';
 import {
-  ct2TaoDauViec, ct2TaoDeXuat, ct2XuLyDeXuat,
+  ct2TaoDauViec, ct2TaoDeXuat, ct2XuLyDeXuat, useCt2DsPgd, useCt2PgdCuaPhong,
   type Ct2DeXuat, type Ct2NhanSu, type Ct2Phong,
 } from './useCt2Data';
 
@@ -104,37 +102,12 @@ export function Ct2CreateDialog({ open, phongId, phongs, nhanSu, cycleId, laLanh
     if (open) setTruongPhongChon(truongPhongMacDinh);
   }, [open, truongPhongMacDinh]);
 
-  const { data: pgdMacDinh } = useQuery({
-    queryKey: ['ct2', 'pgd-cua-phong', phong],
-    enabled: open && !!phong,
-    staleTime: 300_000,
-    queryFn: async () => {
-      const { data } = await (supabase as unknown as {
-        rpc(fn: string, a: Record<string, unknown>): PromiseLike<{ data: unknown }>;
-      }).rpc('ct2_pgd_cua_phong', { _phong: phong });
-      return (data as string | null) ?? '';
-    },
-  });
+  const { data: pgdMacDinh } = useCt2PgdCuaPhong(open ? (phong || null) : null);
   useEffect(() => {
     if (open) setPgdChon(pgdMacDinh ?? '');
   }, [open, pgdMacDinh]);
 
-  // Ứng viên PGĐ: những người đang là pgd_id của ít nhất một cán bộ — suy từ
-  // danh bạ, không cần bảng vai trò riêng
-  const { data: dsPgd = [] } = useQuery({
-    queryKey: ['ct2', 'ds-pgd'],
-    enabled: open,
-    staleTime: 300_000,
-    queryFn: async () => {
-      const { data } = await supabase.from('profiles')
-        .select('pgd_id').not('pgd_id', 'is', null);
-      const ids = [...new Set(((data ?? []) as Array<{ pgd_id: string }>).map((r) => r.pgd_id))];
-      if (ids.length === 0) return [] as Ct2NhanSu[];
-      const { data: ds } = await supabase.from('profiles')
-        .select('id, full_name, department_id').in('id', ids).order('full_name');
-      return (ds ?? []) as Ct2NhanSu[];
-    },
-  });
+  const { data: dsPgd = [] } = useCt2DsPgd(open);
 
   // Cán bộ thường giao việc cho người khác → hệ thống tự chuyển thành đề xuất
   const laDeXuat = !laLanhDao && f.nguoi_chiu_trach_nhiem !== profileId;
