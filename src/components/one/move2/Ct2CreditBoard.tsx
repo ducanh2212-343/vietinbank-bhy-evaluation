@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
-import { useIsMobile } from '@/hooks/use-mobile';
 import {
   HS_COT, HS_TEN_CAP, HS_TEN_LOAI, canhBaoHoSo, dinhDangTien, hsConLaiDenHan,
   hsThuocDaiDenHan, hsTuoiCho, sapXepHoSo, tongTheoBuoc,
@@ -57,13 +56,13 @@ export function Ct2CreditBoard({
   dsHoSo, sapDenHan, nhanSu, laLanhDao, dangTai, onMoHoSo, onKeoHoSo, onTaoMoi,
 }: Props) {
   const { profileId } = useAuth();
-  const dienThoai = useIsMobile();
   const [locCanBo, setLocCanBo] = useState<string | null>(null);
   const [chiRuiRo, setChiRuiRo] = useState(false);
-  // Trên điện thoại mặc định mở «Toàn cảnh»: bảy cột cuộn ngang là bố cục của
-  // màn hình rộng, không phải của người đứng ở quầy cầm điện thoại.
+  // Mặc định «Cột» ở mọi khổ màn hình: bảng phải mở ra bằng hình ảnh mọi người
+  // đã quen ở Miro — hồ sơ đang đứng ở bước nào. «Toàn cảnh» vẫn ngay bên cạnh
+  // cho ai muốn soát cả danh sách trên một màn dọc.
   const [cheDo, setCheDo] = useState<'cot' | 'danh-sach' | null>(null);
-  const dangXem = cheDo ?? (dienThoai ? 'danh-sach' : 'cot');
+  const dangXem = cheDo ?? 'cot';
   // Kéo thả khoá mặc định — xem mục 1 ở đầu tệp
   const [moKeo, setMoKeo] = useState(false);
   const sensors = useSensors(
@@ -224,13 +223,14 @@ export function Ct2CreditBoard({
                 : <><Lock className="h-3.5 w-3.5" /> Kéo thả đang khoá</>}
             </Button>
           )}
-          <Button size="sm" variant={dangXem === 'danh-sach' ? 'default' : 'outline'}
-            className="h-8 gap-1 px-2 text-xs" onClick={() => { setCheDo('danh-sach'); setMoKeo(false); }}>
-            <List className="h-3.5 w-3.5" /> Toàn cảnh
-          </Button>
+          {/* «Cột» trước, và là mặc định — xem ghi chú cùng nội dung ở Ct2Board */}
           <Button size="sm" variant={dangXem === 'cot' ? 'default' : 'outline'}
             className="h-8 gap-1 px-2 text-xs" onClick={() => setCheDo('cot')}>
             <Columns3 className="h-3.5 w-3.5" /> Cột
+          </Button>
+          <Button size="sm" variant={dangXem === 'danh-sach' ? 'default' : 'outline'}
+            className="h-8 gap-1 px-2 text-xs" onClick={() => { setCheDo('danh-sach'); setMoKeo(false); }}>
+            <List className="h-3.5 w-3.5" /> Toàn cảnh
           </Button>
           <Button size="sm" className="h-8" onClick={onTaoMoi}>
             <Plus className="mr-1 h-3.5 w-3.5" /> Mở hồ sơ

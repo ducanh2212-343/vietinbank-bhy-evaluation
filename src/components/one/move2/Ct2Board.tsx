@@ -10,7 +10,6 @@ import {
   nguongTuoiCho, sapXepThe, soNgayImLang, soNgayQuaHan, thieuTruongBatBuoc, tuoiCho,
   type Ct2Co, type Ct2DauViec, type Ct2MucChuY, type Ct2TrangThai,
 } from '@/lib/ct2';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { Ct2NhipPhongStrip } from './Ct2NhipPhongStrip';
 import { Ct2OverviewGrid } from './Ct2OverviewGrid';
 import type { Ct2NhanSu, Ct2NhipNguoi } from './useCt2Data';
@@ -50,11 +49,12 @@ const VIEN_CO: Record<Ct2MucChuY, string> = {
 
 export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoThe }: Props) {
   const { profileId } = useAuth();
-  const dienThoai = useIsMobile();
-  // Trên điện thoại mặc định mở «Toàn cảnh»: cả bảng lọt một màn hình, không
-  // phải cuộn ngang qua 7 cột mới biết phòng đang thế nào.
+  // Mặc định «Cột» ở cả điện thoại lẫn máy tính: bảng Kanban phải mở ra bằng
+  // hình ảnh mà mọi người đã quen ở Miro — việc xếp theo bước. Trước đây điện
+  // thoại mở thẳng «Toàn cảnh», tiện cho người đã hiểu bảng nhưng lại giấu mất
+  // chính chức năng cần dạy.
   const [cheDo, setCheDo] = useState<'cot' | 'toan-canh' | null>(null);
-  const dangXem = cheDo ?? (dienThoai ? 'toan-canh' : 'cot');
+  const dangXem = cheDo ?? 'cot';
   const [locNguoi, setLocNguoi] = useState<string | null>(null);
   const [locCo, setLocCo] = useState<Ct2Co | null>(null);
   const [chiQuaHan, setChiQuaHan] = useState(false);
@@ -174,16 +174,13 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoTh
         >
           Quá hạn
         </Button>
+        {/*
+          «Cột» đứng TRƯỚC và là mặc định ở mọi khổ màn hình: cái người ta cần
+          nắm đầu tiên là việc đang nằm ở bước nào — đó là chức năng của Kanban,
+          và cũng là hình ảnh mọi người đã quen ở Miro. «Toàn cảnh» là cách xem
+          bổ trợ để soát nhanh, không phải cửa vào.
+        */}
         <span className="ml-auto inline-flex overflow-hidden rounded-lg border border-slate-200">
-          <button
-            type="button"
-            onClick={() => setCheDo('toan-canh')}
-            className={`inline-flex h-8 items-center gap-1 px-2 text-xs ${
-              dangXem === 'toan-canh' ? 'bg-brand-navy text-white' : 'bg-white text-slate-600'
-            }`}
-          >
-            <Grid2x2 className="h-3.5 w-3.5" /> Toàn cảnh
-          </button>
           <button
             type="button"
             onClick={() => setCheDo('cot')}
@@ -192,6 +189,15 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoTh
             }`}
           >
             <Columns3 className="h-3.5 w-3.5" /> Cột
+          </button>
+          <button
+            type="button"
+            onClick={() => setCheDo('toan-canh')}
+            className={`inline-flex h-8 items-center gap-1 px-2 text-xs ${
+              dangXem === 'toan-canh' ? 'bg-brand-navy text-white' : 'bg-white text-slate-600'
+            }`}
+          >
+            <Grid2x2 className="h-3.5 w-3.5" /> Toàn cảnh
           </button>
         </span>
         {locNguoi && (wip.get(locNguoi) ?? 0) >= CT2_NGUONG_WIP && (
