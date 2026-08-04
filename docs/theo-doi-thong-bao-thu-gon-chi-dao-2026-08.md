@@ -20,8 +20,10 @@ Nay MỘT hàm `ct2_ds_nhan_dau_viec()` quyết danh sách nhận, mọi trigger
 đọc: **cán bộ · người phối hợp · Phó phòng · Trưởng phòng · PGĐ phụ trách ·
 lãnh đạo theo dõi · người bấm Theo dõi** (thẻ hoặc phòng).
 
-- Nhịp cờ **đỏ** («đang vướng») đi mức **DO** — kèm email, không chịu trần:
-  điểm nghẽn là thứ GĐ cần thấy ngay.
+- Nhịp cờ **đỏ** («đang vướng») đi mức **DO** — không chịu trần: điểm nghẽn
+  là thứ GĐ cần thấy ngay. (08/2026: mọi mức đều CHỈ push + chuông, không
+  email — xem `20260820090000`, Resend có hạn mức nên email để dành cho đặt
+  lại mật khẩu và digest tuần.)
 - Nhịp xanh/vàng và trao đổi đi mức NHẸ, **chịu trần chống nhiễu** (mặc định
   3 tin nhẹ/người/ngày — TCTH chỉnh trong «Cài đặt ngày giờ»). «Tối thiểu
   những người này trong danh sách nhận» không có nghĩa là bỏ van chống dội
