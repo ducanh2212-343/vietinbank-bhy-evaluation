@@ -98,7 +98,7 @@ export function Ct2NhipPhongStrip({ ds, dangTai, gonGang, onChonNguoi }: Props) 
               type="button"
               onClick={() => onChonNguoi?.(n.profile_id)}
               title={`${n.full_name} — ${NHAN[n.ket_qua]} (${n.so_viec_da_ghi}/${n.so_viec_dang_chay} việc)`}
-              className="flex w-14 shrink-0 flex-col items-center gap-1 rounded-xl px-0.5 py-1 transition hover:bg-slate-50"
+              className="flex w-16 shrink-0 flex-col items-center gap-1 rounded-xl px-0.5 py-1 transition hover:bg-slate-50"
             >
               <span className="relative">
                 {n.avatar_url ? (

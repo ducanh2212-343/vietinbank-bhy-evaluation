@@ -165,15 +165,26 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
             gia={the.lanh_dao_theo_doi
               ? (tenNguoi.get(the.lanh_dao_theo_doi) ?? '—')
               : '— chưa ghi'} />
-          {/* Ba cấp phụ trách — chỉ hiện cấp đã gán, không bày ô trống vô nghĩa */}
-          {the.pho_phong && (
-            <O ten="Phó phòng" gia={tenNguoi.get(the.pho_phong) ?? '—'} />
-          )}
-          {the.truong_phong && (
-            <O ten="Trưởng phòng" gia={tenNguoi.get(the.truong_phong) ?? '—'} />
-          )}
-          {the.pgd_phu_trach && (
-            <O ten="PGĐ phụ trách" gia={tenNguoi.get(the.pgd_phu_trach) ?? '—'} />
+          {/*
+            Ba cấp phụ trách gộp MỘT ô, mỗi cấp một dòng nhỏ — ba ô riêng đẩy
+            hộp thoại dài thêm ba dòng trên điện thoại, mà đây là thông tin
+            tra cứu chứ không phải thứ đọc mỗi ngày.
+          */}
+          {(the.pho_phong || the.truong_phong || the.pgd_phu_trach) && (
+            <div className="sm:col-span-2">
+              <span className="text-xs uppercase tracking-wide text-slate-400">Cấp phụ trách</span>
+              <span className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-slate-800">
+                {the.pho_phong && (
+                  <span><span className="text-slate-400">PP </span>{tenNguoi.get(the.pho_phong) ?? '—'}</span>
+                )}
+                {the.truong_phong && (
+                  <span><span className="text-slate-400">TP </span>{tenNguoi.get(the.truong_phong) ?? '—'}</span>
+                )}
+                {the.pgd_phu_trach && (
+                  <span><span className="text-slate-400">PGĐ </span>{tenNguoi.get(the.pgd_phu_trach) ?? '—'}</span>
+                )}
+              </span>
+            </div>
           )}
           <div className="sm:col-span-2"><O ten="Cách làm" gia={the.cach_lam || '— chưa ghi'} /></div>
           {the.chi_tieu_dinh_luong !== null && (
