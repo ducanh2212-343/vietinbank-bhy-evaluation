@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { CalendarDays, Info } from 'lucide-react';
 import {
@@ -9,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import {
   CT2_NGUON_VIEC, hanGoiY, kiemTraGhiViec, locEmojiTieuDe,
@@ -48,16 +50,22 @@ interface Props {
   laLanhDao: boolean;
   /** Duyệt một đề xuất của cán bộ: điền sẵn tên việc, tạo xong đánh dấu ĐÃ DUYỆT */
   deXuat?: Ct2DeXuat | null;
+  /** Đang xem bảng nào thì việc mới vào thẳng bảng đó; null = Kanban chung */
+  bangId?: string | null;
   onClose: () => void;
   onXong: () => void;
 }
 
-export function Ct2CreateDialog({ open, phongId, phongs, nhanSu, cycleId, laLanhDao, deXuat, onClose, onXong }: Props) {
+export function Ct2CreateDialog({ open, phongId, phongs, nhanSu, cycleId, laLanhDao, deXuat, bangId = null, onClose, onXong }: Props) {
   const { profileId, departmentId } = useAuth();
   const [f, setF] = useState<Ct2FormGhiViec>({
     nguon_viec: 'CHU_DONG', cuoc_hop: '', tieu_de: '', nguoi_chiu_trach_nhiem: '', han_hoan_thanh: '',
   });
   const [lienPhong, setLienPhong] = useState(false);
+  // Ba cấp phụ trách — Trưởng phòng và PGĐ tự điền sẵn theo phòng, sửa được
+  const [phoPhong, setPhoPhong] = useState('');
+  const [truongPhongChon, setTruongPhongChon] = useState('');
+  const [pgdChon, setPgdChon] = useState('');
   const [phongThamGia, setPhongThamGia] = useState<string[]>([]);
   const [dangGui, setDangGui] = useState(false);
   const [tiepTuc, setTiepTuc] = useState(false);
@@ -79,6 +87,7 @@ export function Ct2CreateDialog({ open, phongId, phongs, nhanSu, cycleId, laLanh
     setPhongThamGia([]);
     setTiepTuc(false);
     setTruongDo(null);
+    setPhoPhong('');
   }, [open, deXuat, profileId]);
 
   const thieu = useMemo(() => kiemTraGhiViec(f), [f]);
@@ -87,6 +96,45 @@ export function Ct2CreateDialog({ open, phongId, phongs, nhanSu, cycleId, laLanh
     () => nhanSu.filter((n) => n.department_id === phong),
     [nhanSu, phong],
   );
+
+  // Trưởng phòng tự link từ danh mục phòng; PGĐ phụ trách tự link qua RPC —
+  // cả hai đều SỬA ĐƯỢC trước khi lưu (yêu cầu của GĐ: auto nhưng không khoá)
+  const truongPhongMacDinh = phongs.find((p) => p.id === phong)?.manager_id ?? '';
+  useEffect(() => {
+    if (open) setTruongPhongChon(truongPhongMacDinh);
+  }, [open, truongPhongMacDinh]);
+
+  const { data: pgdMacDinh } = useQuery({
+    queryKey: ['ct2', 'pgd-cua-phong', phong],
+    enabled: open && !!phong,
+    staleTime: 300_000,
+    queryFn: async () => {
+      const { data } = await (supabase as unknown as {
+        rpc(fn: string, a: Record<string, unknown>): PromiseLike<{ data: unknown }>;
+      }).rpc('ct2_pgd_cua_phong', { _phong: phong });
+      return (data as string | null) ?? '';
+    },
+  });
+  useEffect(() => {
+    if (open) setPgdChon(pgdMacDinh ?? '');
+  }, [open, pgdMacDinh]);
+
+  // Ứng viên PGĐ: những người đang là pgd_id của ít nhất một cán bộ — suy từ
+  // danh bạ, không cần bảng vai trò riêng
+  const { data: dsPgd = [] } = useQuery({
+    queryKey: ['ct2', 'ds-pgd'],
+    enabled: open,
+    staleTime: 300_000,
+    queryFn: async () => {
+      const { data } = await supabase.from('profiles')
+        .select('pgd_id').not('pgd_id', 'is', null);
+      const ids = [...new Set(((data ?? []) as Array<{ pgd_id: string }>).map((r) => r.pgd_id))];
+      if (ids.length === 0) return [] as Ct2NhanSu[];
+      const { data: ds } = await supabase.from('profiles')
+        .select('id, full_name, department_id').in('id', ids).order('full_name');
+      return (ds ?? []) as Ct2NhanSu[];
+    },
+  });
 
   // Cán bộ thường giao việc cho người khác → hệ thống tự chuyển thành đề xuất
   const laDeXuat = !laLanhDao && f.nguoi_chiu_trach_nhiem !== profileId;
@@ -113,15 +161,18 @@ export function Ct2CreateDialog({ open, phongId, phongs, nhanSu, cycleId, laLanh
       return;
     }
 
-    const truongPhong = phongs.find((p) => p.id === phong)?.manager_id ?? '';
     const { error, id } = await ct2TaoDauViec({
       cycle_id: cycleId,
       nguon_viec: f.nguon_viec,
       cuoc_hop: f.nguon_viec === 'GIAO_BAN' ? (f.cuoc_hop.trim() || null) : null,
       tieu_de: locEmojiTieuDe(f.tieu_de),
       nguoi_chiu_trach_nhiem: f.nguoi_chiu_trach_nhiem,
-      // Lãnh đạo theo dõi mặc định là Trưởng phòng (đặc tả 2.3 — tự điền)
-      lanh_dao_theo_doi: truongPhong || f.nguoi_chiu_trach_nhiem,
+      // Lãnh đạo theo dõi = Trưởng phòng đã chọn (đặc tả 2.3 — tự điền, sửa được)
+      lanh_dao_theo_doi: truongPhongChon || truongPhongMacDinh || f.nguoi_chiu_trach_nhiem,
+      pho_phong: phoPhong || null,
+      truong_phong: truongPhongChon || null,
+      pgd_phu_trach: pgdChon || null,
+      bang_id: bangId,
       phong,
       // Phạm vi suy ra, không hỏi: liên phòng thì là việc toàn Chi nhánh
       pham_vi: lienPhong ? 'CHI_NHANH' : 'PHONG',
@@ -265,6 +316,59 @@ export function Ct2CreateDialog({ open, phongId, phongs, nhanSu, cycleId, laLanh
                   onChange={(e) => dat('han_hoan_thanh', e.target.value)}
                 />
               </span>
+            </div>
+          </div>
+
+          {/*
+            Các cấp phụ trách — GĐ yêu cầu nhập được Phó phòng · Trưởng phòng ·
+            PGĐ phụ trách. Trưởng phòng và PGĐ TỰ ĐIỀN SẴN theo phòng (auto-link)
+            nhưng sửa được; Phó phòng chọn tay vì hệ thống không biết phó nào
+            phụ trách mảng việc này.
+          */}
+          <div className="rounded-xl border border-slate-200 p-3">
+            <p className="mb-2 text-sm font-medium text-slate-700">Các cấp phụ trách</p>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <div>
+                <Label className="text-xs">Phó phòng</Label>
+                <Select value={phoPhong || 'KHONG'} onValueChange={(v) => setPhoPhong(v === 'KHONG' ? '' : v)}>
+                  <SelectTrigger className="mt-1 h-9 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="KHONG">— Không gán —</SelectItem>
+                    {nguoiTrongPhong.map((n) => (
+                      <SelectItem key={n.id} value={n.id}>{n.full_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Trưởng phòng</Label>
+                <Select value={truongPhongChon || 'KHONG'} onValueChange={(v) => setTruongPhongChon(v === 'KHONG' ? '' : v)}>
+                  <SelectTrigger className="mt-1 h-9 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="KHONG">— Không gán —</SelectItem>
+                    {nguoiTrongPhong.map((n) => (
+                      <SelectItem key={n.id} value={n.id}>
+                        {n.full_name}{n.id === truongPhongMacDinh ? ' (mặc định)' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">PGĐ phụ trách</Label>
+                <Select value={pgdChon || 'KHONG'} onValueChange={(v) => setPgdChon(v === 'KHONG' ? '' : v)}>
+                  <SelectTrigger className="mt-1 h-9 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="KHONG">— Không gán —</SelectItem>
+                    {dsPgd.map((n) => (
+                      <SelectItem key={n.id} value={n.id}>
+                        {n.full_name}{n.id === (pgdMacDinh ?? '') ? ' (phụ trách phòng)' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="mt-1 text-2xs text-slate-400">Tự link theo PGĐ phụ trách phòng — sửa được.</p>
+              </div>
             </div>
           </div>
 

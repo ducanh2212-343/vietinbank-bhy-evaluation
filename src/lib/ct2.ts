@@ -44,6 +44,16 @@ export interface Ct2DauViec {
   nguoi_chiu_trach_nhiem: string | null;
   nguoi_phoi_hop: string[];
   lanh_dao_theo_doi: string | null;
+  /**
+   * Ba cấp phụ trách theo yêu cầu của Giám đốc: Phó phòng · Trưởng phòng ·
+   * PGĐ phụ trách (tự link từ PGĐ của phòng lúc ghi việc, sửa được).
+   * `lanh_dao_theo_doi` giữ nguyên vai trò định tuyến thông báo.
+   */
+  pho_phong: string | null;
+  truong_phong: string | null;
+  pgd_phu_trach: string | null;
+  /** Thuộc bảng Kanban nào; NULL = «Kanban chung» của phòng */
+  bang_id: string | null;
   phong: string;
   pham_vi: 'PHONG' | 'PGD' | 'CHI_NHANH';
   loai_dau_viec: Ct2Loai;
@@ -101,6 +111,34 @@ export interface Ct2BinhLuan {
   ghim: boolean;
   thu_hoi: boolean;
   created_at: string;
+}
+
+// ---------------------------------------------------------------------------
+// Nhiều bảng Kanban một phòng — mảng công việc / liên phòng
+// ---------------------------------------------------------------------------
+
+/**
+ * Một bảng Kanban cùng mẫu «Kanban của Phòng» nhưng cho một mảng công việc
+ * riêng (VD TCTH: hành chính · tổ chức · tổng hợp) hoặc một việc liên phòng.
+ *
+ * Bảng LIÊN PHÒNG đặt ở PHÒNG ĐẦU MỐI — không treo lên trang chủ. Người phòng
+ * khác được thêm làm thành viên thì bảng tự hiện trong màn của họ; hàng rào
+ * thật là RLS đọc theo danh sách thành viên, giao diện chỉ phản chiếu.
+ *
+ * HAN_CHE (VD mảng tổ chức — nhân sự): chỉ thành viên đích danh + BGĐ thấy.
+ * Danh sách thành viên CHÍNH LÀ hàng rào — không đoán «phó phụ trách» từ
+ * chức danh.
+ */
+export interface Ct2Bang {
+  id: string;
+  phong: string;
+  ten: string;
+  mo_ta: string | null;
+  loai: 'MANG' | 'LIEN_PHONG';
+  che_do_xem: 'PHONG' | 'HAN_CHE';
+  nguoi_tao: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -184,15 +222,30 @@ export function gopDongThoiGian(
 // Cột Kanban chuẩn toàn Chi nhánh (đặc tả §4.1)
 // ---------------------------------------------------------------------------
 
+/**
+ * BỐN cột, theo chỉ đạo của Giám đốc Chi nhánh 08/2026 — bỏ «Chờ phối hợp»,
+ * «Chờ ý kiến/duyệt», «Đã đóng». Kanban vận hành theo stand-up hằng ngày:
+ * việc hoặc đang chạy hoặc xong, trạng thái «chờ» diễn đạt bằng cờ vàng/đỏ
+ * kèm câu «Đang vướng vì…» trong nhịp — chỗ đó nói được VÌ SAO chờ, còn một
+ * cột chờ thì không.
+ *
+ * Các mã cũ vẫn hợp lệ trong kiểu dữ liệu (database còn CHECK cho chúng, dữ
+ * liệu lịch sử có thể mang chúng) — thẻ cũ được XẾP VỀ cột gần nghĩa nhất
+ * bằng cotHienThi(), không mất thẻ nào.
+ */
 export const CT2_COT: Array<{ ma: Ct2TrangThai; ten: string; icon: string }> = [
   { ma: 'CHUAN_BI', ten: 'Chuẩn bị', icon: '📋' },
   { ma: 'DANG_LAM', ten: 'Đang làm', icon: '🔨' },
-  { ma: 'CHO_PHOI_HOP', ten: 'Chờ phối hợp', icon: '🤝' },
-  { ma: 'CHO_DUYET', ten: 'Chờ ý kiến / duyệt', icon: '⏳' },
   { ma: 'HOAN_THANH', ten: 'Hoàn thành', icon: '✅' },
-  { ma: 'DA_DONG', ten: 'Đã đóng', icon: '📦' },
   { ma: 'DUNG_HUY', ten: 'Dừng/Hủy', icon: '⛔' },
 ];
+
+/** Thẻ mang trạng thái cũ hiện ở cột nào — không thẻ nào được phép biến mất */
+export function cotHienThi(t: Ct2TrangThai): Ct2TrangThai {
+  if (t === 'CHO_PHOI_HOP' || t === 'CHO_DUYET') return 'DANG_LAM';
+  if (t === 'DA_DONG') return 'HOAN_THANH';
+  return t;
+}
 
 export const CT2_TEN_CO: Record<Ct2Co, string> = {
   XANH: '🟢 Đúng hẹn', VANG: '🟡 Có rủi ro', DO: '🔴 Đang vướng',
@@ -251,12 +304,15 @@ export const CT2_CAM_XUC = ['👍', '✅', '👀', '🎯', '🙏', '❤️', '�
 // ---------------------------------------------------------------------------
 
 /** Ba nguồn việc vào Kanban. Việc lặp hằng ngày KHÔNG thuộc nhóm nào — không vào bảng. */
-export type Ct2NguonViec = 'KE_HOACH' | 'GIAO_BAN' | 'CHU_DONG';
+export type Ct2NguonViec = 'KE_HOACH' | 'GIAO_BAN' | 'CHU_DONG' | 'CHI_DAO';
 
 export const CT2_NGUON_VIEC: Array<{ ma: Ct2NguonViec; ten: string; icon: string; mo: string }> = [
   { ma: 'KE_HOACH', ten: 'Kế hoạch hành động', icon: '📋', mo: 'Việc đã có trong KHHĐ của Phòng kỳ này' },
   { ma: 'GIAO_BAN', ten: 'Chỉ đạo giao ban', icon: '🗣️', mo: 'Việc phát sinh từ giao ban tuần/tháng' },
   { ma: 'CHU_DONG', ten: 'Phòng/cá nhân chủ động', icon: '💡', mo: 'Việc tự thấy cần làm, không ai giao' },
+  // Bổ sung theo yêu cầu GĐ 08/2026: việc từ chỉ đạo trực tiếp của cấp trên,
+  // ngoài kênh giao ban — VD BGĐ gọi điện giao gấp, văn bản chỉ đạo của TSC
+  { ma: 'CHI_DAO', ten: 'Chỉ đạo của cấp trên', icon: '📌', mo: 'Việc do cấp trên chỉ đạo trực tiếp (ngoài giao ban)' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -643,7 +699,7 @@ export function thieuTruongBatBuoc(
  * (ngày quá hạn × 3) + (ngày im lặng × 2) + (5 nếu Trọng điểm BGĐ) + (3 nếu chặn phòng khác)
  */
 export function diemRuiRo(
-  dv: Pick<Ct2DauViec, 'han_hoan_thanh' | 'trang_thai' | 'nhip_gan_nhat' | 'ngay_bat_dau' | 'muc_uu_tien' | 'lien_phong'>,
+  dv: Pick<Ct2DauViec, 'han_hoan_thanh' | 'trang_thai' | 'nhip_gan_nhat' | 'ngay_bat_dau' | 'muc_uu_tien' | 'lien_phong' | 'created_at'>,
   moc: Date = new Date(),
 ): number {
   return soNgayQuaHan(dv, moc) * 3

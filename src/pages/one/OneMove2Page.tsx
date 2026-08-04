@@ -11,8 +11,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { laLoiThieuBangCt2, type Ct2DauViec, type Ct2TrangThai } from '@/lib/ct2';
+import { laLoiThieuBangCt2, type Ct2Bang, type Ct2DauViec, type Ct2TrangThai } from '@/lib/ct2';
 import { Ct2Board } from '@/components/one/move2/Ct2Board';
+import { Ct2BangDialog } from '@/components/one/move2/Ct2BangDialog';
 import { Ct2GioiThieu } from '@/components/one/move2/Ct2GioiThieu';
 import { Ct2BangNhip } from '@/components/one/move2/Ct2BangNhip';
 import { Ct2CardDialog } from '@/components/one/move2/Ct2CardDialog';
@@ -26,13 +27,14 @@ import {
 import type { HoSoTinDung, HsTrangThai } from '@/lib/ct2TinDung';
 import { Ct2MyWork } from '@/components/one/move2/Ct2MyWork';
 import {
-  ct2XuLyDeXuat, useCt2Board, useCt2DeXuat, useCt2LamTuoi, useCt2NhanSu,
+  ct2DoiTheoDoi, ct2XuLyDeXuat, useCt2Board, useCt2DeXuat, useCt2DsBang,
+  useCt2LamTuoi, useCt2NhanSu, useCt2TheoDoi,
   useCt2NhipPhong, useCt2Phong, type Ct2DeXuat,
 } from '@/components/one/move2/useCt2Data';
 
 // Chiêu thức 2 — «Kế hoạch hành động»: Kanban 5W2H + PDCA theo đặc tả v1.0
 // (01/08/2026). Hai màn hình chính: M1 «Việc của tôi» (mặc định — nơi ghi nhịp
-// sáng 7h00–8h00) và M2 «Bảng của Phòng» (Kanban 7 cột, cả phòng cùng đọc).
+// sáng 7h00–8h00) và M2 «Kanban của Phòng» (Kanban 4 cột, cả phòng cùng đọc).
 
 
 interface Cycle { id: string; name: string; status: string }
@@ -46,7 +48,8 @@ export default function OneMove2Page() {
 }
 
 function NoiDung() {
-  const { isAdmin, isManager, isPgd, departmentId, scope, visibleDeptIds, profileId } = useAuth();
+  const { isAdmin, isManager, isPgd, departmentId, scope, visibleDeptIds, profileId, roles } = useAuth();
+  const laBgd = roles.includes('bgd');
   const lamTuoi = useCt2LamTuoi();
 
   const { data: phongs = [] } = useCt2Phong();
@@ -81,7 +84,12 @@ function NoiDung() {
   });
   const cycleId = cycles.find((c) => c.status === 'active')?.id ?? cycles[0]?.id ?? null;
 
-  const { data: dsThe = [], isLoading, error } = useCt2Board(phongId);
+  // Bảng Kanban đang xem trong tab «Kanban của Phòng» — null = Kanban chung
+  const [bangId, setBangId] = useState<string | null>(null);
+  const { data: dsBang } = useCt2DsBang(phongId);
+  // GĐ theo dõi cả phòng: mọi nhịp và trao đổi trong phòng sẽ báo về
+  const { data: dangTheoDoiPhong = false } = useCt2TheoDoi('PHONG', laBgd ? phongId : null);
+  const { data: dsThe = [], isLoading, error } = useCt2Board(phongId, bangId);
   const { data: nhipNguoi = [] } = useCt2NhipPhong(phongId);
   const { data: deXuats = [] } = useCt2DeXuat(phongId);
 
@@ -89,6 +97,8 @@ function NoiDung() {
   const laLanhDao = isAdmin || isPgd || (isManager && phongId === departmentId);
 
   const [dangTao, setDangTao] = useState(false);
+  const [bangDangSua, setBangDangSua] = useState<Ct2Bang | null>(null);
+  const [moTaoBang, setMoTaoBang] = useState(false);
   const [deXuatDangDuyet, setDeXuatDangDuyet] = useState<Ct2DeXuat | null>(null);
   const [theMo, setTheMo] = useState<Ct2DauViec | null>(null);
   const [chuyenDen, setChuyenDen] = useState<Ct2TrangThai | null>(null);
@@ -177,7 +187,7 @@ function NoiDung() {
                   <UserRound className="h-4 w-4" /> Việc của tôi
                 </TabsTrigger>
                 <TabsTrigger value="phong" className="gap-1.5">
-                  <ClipboardList className="h-4 w-4" /> Bảng của Phòng
+                  <ClipboardList className="h-4 w-4" /> Kanban của Phòng
                 </TabsTrigger>
                 {coPdtd && (
                   <TabsTrigger value="tin-dung" className="gap-1.5">
@@ -195,7 +205,7 @@ function NoiDung() {
               </TabsList>
               <div className="flex flex-wrap items-center gap-2">
                 {phongDuocChon.length > 1 && (
-                  <Select value={phongId ?? ''} onValueChange={setPhongId}>
+                  <Select value={phongId ?? ''} onValueChange={(v) => { setPhongId(v); setBangId(null); }}>
                     <SelectTrigger className="h-9 w-full sm:w-52" aria-label="Chọn phòng">
                       <SelectValue placeholder="Chọn phòng" />
                     </SelectTrigger>
@@ -203,6 +213,26 @@ function NoiDung() {
                       {phongDuocChon.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                )}
+                {laBgd && phongId && (
+                  <Button
+                    variant={dangTheoDoiPhong ? 'default' : 'outline'}
+                    className={dangTheoDoiPhong ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                    title="Nhận thông báo mọi nhịp và trao đổi của phòng này"
+                    onClick={async () => {
+                      if (!profileId) return;
+                      const { error: e } = await ct2DoiTheoDoi(profileId, 'PHONG', phongId, !dangTheoDoiPhong);
+                      if (e) toast.error(e);
+                      else {
+                        toast.success(dangTheoDoiPhong
+                          ? 'Đã bỏ theo dõi phòng.'
+                          : 'Đang theo dõi phòng — mọi nhịp và trao đổi sẽ báo về anh/chị.');
+                        lamTuoi();
+                      }
+                    }}
+                  >
+                    {dangTheoDoiPhong ? '👁 Đang theo dõi phòng' : '👁 Theo dõi phòng'}
+                  </Button>
                 )}
                 <Button onClick={() => { setDeXuatDangDuyet(null); setDangTao(true); }}>
                   + Ghi việc
@@ -215,6 +245,53 @@ function NoiDung() {
             </TabsContent>
 
             <TabsContent value="phong">
+              {/*
+                Một phòng nhiều bảng Kanban cùng mẫu: Kanban chung + các mảng
+                công việc + bảng liên phòng (đặt ở phòng đầu mối, thành viên
+                phòng khác tự thấy). Bảng 🔒 hạn chế: RLS chỉ trả về cho thành
+                viên đích danh và BGĐ — người khác không thấy cả cái chip.
+              */}
+              <div className="mb-3 flex flex-wrap items-center gap-1.5">
+                <button type="button" onClick={() => setBangId(null)}
+                  className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                    bangId === null ? 'border-brand-navy bg-brand-navy font-medium text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-brand-navy/40'
+                  }`}>
+                  Kanban chung
+                </button>
+                {(dsBang?.cuaPhong ?? []).map((b) => (
+                  <button key={b.id} type="button" onClick={() => setBangId(b.id)}
+                    className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                      bangId === b.id ? 'border-brand-navy bg-brand-navy font-medium text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-brand-navy/40'
+                    }`}>
+                    {b.che_do_xem === 'HAN_CHE' && '🔒 '}{b.loai === 'LIEN_PHONG' && '🤝 '}{b.ten}
+                  </button>
+                ))}
+                {(dsBang?.lienPhongKhac ?? []).map((b) => (
+                  <button key={b.id} type="button" onClick={() => setBangId(b.id)}
+                    className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                      bangId === b.id ? 'border-brand-navy bg-brand-navy font-medium text-white' : 'border-dashed border-slate-300 bg-white text-slate-600 hover:border-brand-navy/40'
+                    }`}
+                    title={`Bảng liên phòng — đầu mối: ${phongs.find((p) => p.id === b.phong)?.name ?? ''}`}>
+                    🤝 {b.ten} <span className="text-slate-400">· {phongs.find((p) => p.id === b.phong)?.code ?? ''}</span>
+                  </button>
+                ))}
+                {laLanhDao && (
+                  <>
+                    <button type="button" onClick={() => { setBangDangSua(null); setMoTaoBang(true); }}
+                      className="rounded-full border border-dashed border-slate-300 px-3 py-1.5 text-xs text-slate-500 hover:border-brand-navy/40 hover:text-brand-navy">
+                      + Bảng mới
+                    </button>
+                    {bangId && (dsBang?.cuaPhong ?? []).some((b) => b.id === bangId) && (
+                      <button type="button"
+                        onClick={() => { setBangDangSua(dsBang!.cuaPhong.find((b) => b.id === bangId)!); setMoTaoBang(true); }}
+                        className="rounded-full border border-slate-200 px-3 py-1.5 text-xs text-slate-500 hover:border-brand-navy/40 hover:text-brand-navy">
+                        ⚙️ Thành viên & cài đặt
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+
               {/* Hộp đề xuất chờ duyệt — chỉ lãnh đạo thấy nút xử lý */}
               {deXuats.length > 0 && (
                 <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-3">
@@ -342,9 +419,22 @@ function NoiDung() {
         cycleId={cycleId}
         laLanhDao={laLanhDao}
         deXuat={deXuatDangDuyet}
+        bangId={tab === 'phong' ? bangId : null}
         onClose={() => { setDangTao(false); setDeXuatDangDuyet(null); }}
         onXong={() => lamTuoi()}
       />
+
+      {phongId && (
+        <Ct2BangDialog
+          open={moTaoBang}
+          bang={bangDangSua}
+          phongId={phongId}
+          nhanSu={nhanSu}
+          phongs={phongs}
+          onClose={() => setMoTaoBang(false)}
+          onXong={() => lamTuoi()}
+        />
+      )}
     </>
   );
 }

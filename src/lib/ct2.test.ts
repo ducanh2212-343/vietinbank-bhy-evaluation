@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CT2_COT,
   cauPlanTuKeHoach,
+  cotHienThi,
   chuanBiQuaLau,
   daDuKeHoach,
   demWip,
@@ -178,6 +180,19 @@ describe('Luật chuyển trạng thái — PDCA khép vòng ở cấp thẻ', (
   });
 });
 
+describe('Bốn cột theo chỉ đạo GĐ — thẻ trạng thái cũ không được biến mất', () => {
+  it('bảng chỉ còn 4 cột, không còn cột chờ và đã đóng', () => {
+    expect(CT2_COT.map((c) => c.ma)).toEqual(['CHUAN_BI', 'DANG_LAM', 'HOAN_THANH', 'DUNG_HUY']);
+  });
+
+  it('thẻ mang trạng thái cũ xếp về cột gần nghĩa nhất', () => {
+    expect(cotHienThi('CHO_PHOI_HOP')).toBe('DANG_LAM');
+    expect(cotHienThi('CHO_DUYET')).toBe('DANG_LAM');
+    expect(cotHienThi('DA_DONG')).toBe('HOAN_THANH');
+    expect(cotHienThi('DANG_LAM')).toBe('DANG_LAM');
+  });
+});
+
 describe('Cảnh báo ngoại lệ', () => {
   const goc: Ct2DauViec = {
     id: 'x', cycle_id: null, chien_dich_id: null, ma_hien_thi: 'KHDN-2608-001',
@@ -185,6 +200,7 @@ describe('Cảnh báo ngoại lệ', () => {
     muc_tieu_lien_ket: 'casa', cach_lam: 'các bước triển khai chi tiết đầy đủ',
     chi_tieu_dinh_luong: null, don_vi: null, nguon_luc_du_kien: null,
     nguoi_chiu_trach_nhiem: 'p1', nguoi_phoi_hop: [], lanh_dao_theo_doi: 'p2',
+    pho_phong: null, truong_phong: null, pgd_phu_trach: null, bang_id: null,
     phong: 'd1', pham_vi: 'PHONG', loai_dau_viec: 'TIEN_TRINH', lien_phong: false,
     cac_phong_tham_gia: [], muc_uu_tien: 'THUONG', trang_thai: 'DANG_LAM',
     phan_tram: 40, co_tinh_trang: 'XANH', ngay_bat_dau: '2026-08-01',
@@ -394,6 +410,7 @@ describe('Nhịp chỉ chạy thứ 2 → thứ 6', () => {
       trang_thai: 'DANG_LAM' as const,
       nhip_gan_nhat: '2026-08-07T07:30:00+07:00',
       ngay_bat_dau: '2026-08-01',
+      created_at: '2026-08-01T01:00:00Z',
     };
     expect(soNgayImLang(the, T2)).toBe(1);
     expect(soNgayImLang(the, CN)).toBe(0);
@@ -413,6 +430,7 @@ describe('Thẻ nhập từ board cũ — ô trống phải nói ra, không đư
     muc_tieu_lien_ket: null, cach_lam: null,
     chi_tieu_dinh_luong: null, don_vi: null, nguon_luc_du_kien: null,
     nguoi_chiu_trach_nhiem: null, nguoi_phoi_hop: [], lanh_dao_theo_doi: null,
+    pho_phong: null, truong_phong: null, pgd_phu_trach: null, bang_id: null,
     phong: 'd1', pham_vi: 'PHONG', loai_dau_viec: 'TIEN_TRINH', lien_phong: false,
     cac_phong_tham_gia: [], muc_uu_tien: 'THUONG', trang_thai: 'DANG_LAM',
     phan_tram: 0, co_tinh_trang: 'XANH', ngay_bat_dau: null,

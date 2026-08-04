@@ -17,7 +17,8 @@ import {
   type Ct2Co, type Ct2DauViec, type Ct2NhanPdca, type Ct2TrangThai,
 } from '@/lib/ct2';
 import {
-  ct2GhiNhip, ct2SuaDauViec, useCt2LamTuoi, useCt2NhatKy, type Ct2NhanSu,
+  ct2DoiTheoDoi, ct2GhiNhip, ct2SuaDauViec, useCt2LamTuoi, useCt2NhatKy,
+  useCt2TheoDoi, type Ct2NhanSu,
 } from './useCt2Data';
 import { Ct2DongThoiGian, type NguoiTraoDoi } from './Ct2DongThoiGian';
 
@@ -41,7 +42,10 @@ interface Props {
 const NAC_PHAN_TRAM = [0, 25, 50, 75, 100];
 
 export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach, onClose, onXong }: Props) {
-  const { profileId } = useAuth();
+  const { profileId, roles } = useAuth();
+  const laBgd = roles.includes('bgd');
+  // GĐ theo dõi riêng thẻ này — độc lập với theo dõi cả phòng
+  const { data: dangTheoDoiThe = false, refetch: docLaiTheoDoi } = useCt2TheoDoi('DAU_VIEC', laBgd ? (the?.id ?? null) : null);
   const lamTuoi = useCt2LamTuoi();
   const { data: nhatKy = [] } = useCt2NhatKy(the?.id ?? null);
 
@@ -95,6 +99,25 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
           </DialogDescription>
         </DialogHeader>
 
+        {/* GĐ theo dõi riêng thẻ này — mọi nhịp/trao đổi trên thẻ báo về */}
+        {laBgd && (
+          <div className="flex justify-end">
+            <Button size="sm" variant={dangTheoDoiThe ? 'default' : 'outline'}
+              className={`h-7 px-2 text-xs ${dangTheoDoiThe ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`}
+              onClick={async () => {
+                if (!profileId) return;
+                const { error: e } = await ct2DoiTheoDoi(profileId, 'DAU_VIEC', the.id, !dangTheoDoiThe);
+                if (e) toast.error(e);
+                else {
+                  toast.success(dangTheoDoiThe ? 'Đã bỏ theo dõi thẻ.' : 'Đang theo dõi — nhịp và trao đổi của thẻ sẽ báo về anh/chị.');
+                  docLaiTheoDoi();
+                }
+              }}>
+              {dangTheoDoiThe ? '👁 Đang theo dõi thẻ' : '👁 Theo dõi thẻ'}
+            </Button>
+          </div>
+        )}
+
         {/*
           Ô trống phải nói ra được. Thẻ nhập từ board Miro cũ thiếu người phụ
           trách / hạn / ngày bắt đầu — nếu im lặng thì thẻ vô chủ trông sạch sẽ
@@ -142,6 +165,16 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
             gia={the.lanh_dao_theo_doi
               ? (tenNguoi.get(the.lanh_dao_theo_doi) ?? '—')
               : '— chưa ghi'} />
+          {/* Ba cấp phụ trách — chỉ hiện cấp đã gán, không bày ô trống vô nghĩa */}
+          {the.pho_phong && (
+            <O ten="Phó phòng" gia={tenNguoi.get(the.pho_phong) ?? '—'} />
+          )}
+          {the.truong_phong && (
+            <O ten="Trưởng phòng" gia={tenNguoi.get(the.truong_phong) ?? '—'} />
+          )}
+          {the.pgd_phu_trach && (
+            <O ten="PGĐ phụ trách" gia={tenNguoi.get(the.pgd_phu_trach) ?? '—'} />
+          )}
           <div className="sm:col-span-2"><O ten="Cách làm" gia={the.cach_lam || '— chưa ghi'} /></div>
           {the.chi_tieu_dinh_luong !== null && (
             <O ten="Chỉ tiêu" gia={`${the.chi_tieu_dinh_luong} ${the.don_vi ?? ''}`} />
