@@ -45,8 +45,8 @@ thứ cần nhìn mỗi sáng là việc ĐANG chạy.
 ## 5. Nguồn việc «Chỉ đạo của cấp trên»
 
 Thêm 📌 CHI_DAO bên cạnh Kế hoạch / Giao ban / Chủ động (CHECK ở DB + chip
-ở form). Chọn nguồn này thì hiện ô «Ai chỉ đạo / văn bản nào?» — lưu cùng
-chỗ với tên cuộc họp giao ban.
+ở form). Chọn chip là xong — GĐ quyết không hỏi thêm «ai chỉ đạo»: mỗi ô
+nhập thêm là một lý do để cán bộ bỏ dở form.
 
 ## Kiểm chứng & triển khai
 

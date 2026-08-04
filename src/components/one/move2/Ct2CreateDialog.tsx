@@ -164,7 +164,7 @@ export function Ct2CreateDialog({ open, phongId, phongs, nhanSu, cycleId, laLanh
     const { error, id } = await ct2TaoDauViec({
       cycle_id: cycleId,
       nguon_viec: f.nguon_viec,
-      cuoc_hop: (f.nguon_viec === 'GIAO_BAN' || f.nguon_viec === 'CHI_DAO') ? (f.cuoc_hop.trim() || null) : null,
+      cuoc_hop: f.nguon_viec === 'GIAO_BAN' ? (f.cuoc_hop.trim() || null) : null,
       tieu_de: locEmojiTieuDe(f.tieu_de),
       nguoi_chiu_trach_nhiem: f.nguoi_chiu_trach_nhiem,
       // Lãnh đạo theo dõi = Trưởng phòng đã chọn (đặc tả 2.3 — tự điền, sửa được)
@@ -242,14 +242,6 @@ export function Ct2CreateDialog({ open, phongId, phongs, nhanSu, cycleId, laLanh
                   value={f.cuoc_hop}
                   onChange={(e) => dat('cuoc_hop', e.target.value)}
                   placeholder="Cuộc họp nào? VD: Giao ban tuần 32/2026 (tùy chọn)"
-                />
-              )}
-              {f.nguon_viec === 'CHI_DAO' && (
-                <Input
-                  className="mt-2"
-                  value={f.cuoc_hop}
-                  onChange={(e) => dat('cuoc_hop', e.target.value)}
-                  placeholder="Ai chỉ đạo / văn bản nào? VD: GĐ chỉ đạo qua điện thoại 05/08 (tùy chọn)"
                 />
               )}
             </div>
