@@ -105,6 +105,43 @@ export function useCt2NhanSu() {
 }
 
 /**
+ * PGĐ phụ trách một phòng — suy từ `pgd_id` của Trưởng phòng (RPC
+ * `ct2_pgd_cua_phong`). Dùng làm giá trị mặc định khi tạo/sửa thẻ.
+ */
+export function useCt2PgdCuaPhong(phongId: string | null) {
+  return useQuery({
+    queryKey: ['ct2', 'pgd-cua-phong', phongId],
+    enabled: !!phongId,
+    staleTime: NAM_PHUT,
+    queryFn: async () => {
+      const { data } = await db.rpc('ct2_pgd_cua_phong', { _phong: phongId });
+      return (data as string | null) ?? '';
+    },
+  });
+}
+
+/**
+ * Ứng viên PGĐ: những người đang là `pgd_id` của ít nhất một cán bộ — suy từ
+ * danh bạ, không cần bảng vai trò riêng.
+ */
+export function useCt2DsPgd(bat = true) {
+  return useQuery({
+    queryKey: ['ct2', 'ds-pgd'],
+    enabled: bat,
+    staleTime: NAM_PHUT,
+    queryFn: async () => {
+      const { data } = await supabase.from('profiles')
+        .select('pgd_id').not('pgd_id', 'is', null);
+      const ids = [...new Set(((data ?? []) as Array<{ pgd_id: string }>).map((r) => r.pgd_id))];
+      if (ids.length === 0) return [] as Ct2NhanSu[];
+      const { data: ds } = await supabase.from('profiles')
+        .select('id, full_name, department_id').in('id', ids).order('full_name');
+      return (ds ?? []) as Ct2NhanSu[];
+    },
+  });
+}
+
+/**
  * Bảng Kanban một phòng: thẻ phòng chủ trì + thẻ liên phòng có phòng này tham
  * gia. MỘT query, đi qua index (phong, trang_thai) + GIN cac_phong_tham_gia.
  */

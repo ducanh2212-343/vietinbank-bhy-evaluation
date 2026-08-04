@@ -48,8 +48,10 @@ export default function OneMove2Page() {
 }
 
 function NoiDung() {
-  const { isAdmin, isManager, isPgd, departmentId, scope, visibleDeptIds, profileId, roles } = useAuth();
-  const laBgd = roles.includes('bgd');
+  const { isAdmin, isManager, isPgd, departmentId, scope, visibleDeptIds, profileId } = useAuth();
+  // Giám đốc Chi nhánh trong danh bạ thật mang vai system_admin chứ không phải
+  // 'bgd' — dò theo tên vai làm nút «Theo dõi phòng» tàng hình với chính GĐ
+  const laBgd = isAdmin || isPgd;
   const lamTuoi = useCt2LamTuoi();
 
   const { data: phongs = [] } = useCt2Phong();
@@ -181,32 +183,52 @@ function NoiDung() {
           </Alert>
         ) : (
           <Tabs value={tab} onValueChange={setTab}>
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <TabsList>
-                <TabsTrigger value="cua-toi" className="gap-1.5">
-                  <UserRound className="h-4 w-4" /> Việc của tôi
-                </TabsTrigger>
-                <TabsTrigger value="phong" className="gap-1.5">
-                  <ClipboardList className="h-4 w-4" /> Kanban của Phòng
-                </TabsTrigger>
-                {coPdtd && (
-                  <TabsTrigger value="tin-dung" className="gap-1.5">
-                    <Banknote className="h-4 w-4" /> Phê duyệt tín dụng
+            <div className="mb-4 space-y-2 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 sm:space-y-0">
+              {/*
+                TabsList là inline-flex KHÔNG cuộn: ở khổ 390px bốn tab tiếng
+                Việt tràn khỏi màn, «Phê duyệt tín dụng» còn mỗi icon và «Bảng
+                nhịp» mất hẳn — tức là bấm không tới. Hai lớp sửa: nhãn ngắn
+                trên điện thoại để bốn tab vừa một hàng, và bọc trong khung
+                cuộn ngang làm lưới an toàn cho máy hẹp hơn nữa.
+              */}
+              <div className="-mx-1 overflow-x-auto px-1 pb-0.5">
+                <TabsList className="w-max">
+                  <TabsTrigger value="cua-toi" className="gap-1.5 px-2.5 sm:px-3">
+                    <UserRound className="h-4 w-4 shrink-0" />
+                    <span className="sm:hidden">Của tôi</span>
+                    <span className="hidden sm:inline">Việc của tôi</span>
                   </TabsTrigger>
-                )}
-                {/* Bảng tổng hợp nhịp là công cụ điều hành — chỉ lãnh đạo thấy.
-                    Cán bộ nhìn thấy bảng xếp mình so với đồng nghiệp mỗi sáng thì
-                    nhịp thành cuộc thi, không còn là tấm gương soi cho chính mình. */}
-                {laLanhDao && (
-                  <TabsTrigger value="bang-nhip" className="gap-1.5">
-                    <CalendarRange className="h-4 w-4" /> Bảng nhịp
+                  <TabsTrigger value="phong" className="gap-1.5 px-2.5 sm:px-3">
+                    <ClipboardList className="h-4 w-4 shrink-0" />
+                    <span className="sm:hidden">Phòng</span>
+                    <span className="hidden sm:inline">Kanban của Phòng</span>
                   </TabsTrigger>
-                )}
-              </TabsList>
-              <div className="flex flex-wrap items-center gap-2">
+                  {coPdtd && (
+                    <TabsTrigger value="tin-dung" className="gap-1.5 px-2.5 sm:px-3">
+                      <Banknote className="h-4 w-4 shrink-0" />
+                      <span className="sm:hidden">Tín dụng</span>
+                      <span className="hidden sm:inline">Phê duyệt tín dụng</span>
+                    </TabsTrigger>
+                  )}
+                  {/* Bảng tổng hợp nhịp là công cụ điều hành — chỉ lãnh đạo thấy.
+                      Cán bộ nhìn thấy bảng xếp mình so với đồng nghiệp mỗi sáng thì
+                      nhịp thành cuộc thi, không còn là tấm gương soi cho chính mình. */}
+                  {laLanhDao && (
+                    <TabsTrigger value="bang-nhip" className="gap-1.5 px-2.5 sm:px-3">
+                      <CalendarRange className="h-4 w-4 shrink-0" />
+                      <span className="sm:hidden">Nhịp</span>
+                      <span className="hidden sm:inline">Bảng nhịp</span>
+                    </TabsTrigger>
+                  )}
+                </TabsList>
+              </div>
+              {/* Một hàng trên điện thoại: select co lại, nút giữ nguyên chiều
+                  cao chạm được — trước đây mỗi thứ chiếm trọn một hàng, đẩy
+                  bảng Kanban xuống quá nửa màn hình */}
+              <div className="flex items-center gap-2">
                 {phongDuocChon.length > 1 && (
                   <Select value={phongId ?? ''} onValueChange={(v) => { setPhongId(v); setBangId(null); }}>
-                    <SelectTrigger className="h-9 w-full sm:w-52" aria-label="Chọn phòng">
+                    <SelectTrigger className="h-9 min-w-0 flex-1 sm:w-52 sm:flex-none" aria-label="Chọn phòng">
                       <SelectValue placeholder="Chọn phòng" />
                     </SelectTrigger>
                     <SelectContent>
@@ -217,7 +239,8 @@ function NoiDung() {
                 {laBgd && phongId && (
                   <Button
                     variant={dangTheoDoiPhong ? 'default' : 'outline'}
-                    className={dangTheoDoiPhong ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                    size="icon"
+                    className={`h-9 w-9 shrink-0 sm:w-auto sm:px-3 ${dangTheoDoiPhong ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`}
                     title="Nhận thông báo mọi nhịp và trao đổi của phòng này"
                     onClick={async () => {
                       if (!profileId) return;
@@ -231,10 +254,14 @@ function NoiDung() {
                       }
                     }}
                   >
-                    {dangTheoDoiPhong ? '👁 Đang theo dõi phòng' : '👁 Theo dõi phòng'}
+                    <span aria-hidden>👁</span>
+                    <span className="ml-1 hidden sm:inline">
+                      {dangTheoDoiPhong ? 'Đang theo dõi phòng' : 'Theo dõi phòng'}
+                    </span>
                   </Button>
                 )}
-                <Button onClick={() => { setDeXuatDangDuyet(null); setDangTao(true); }}>
+                <Button className="h-9 shrink-0 px-3"
+                  onClick={() => { setDeXuatDangDuyet(null); setDangTao(true); }}>
                   + Ghi việc
                 </Button>
               </div>
@@ -251,16 +278,16 @@ function NoiDung() {
                 phòng khác tự thấy). Bảng 🔒 hạn chế: RLS chỉ trả về cho thành
                 viên đích danh và BGĐ — người khác không thấy cả cái chip.
               */}
-              <div className="mb-3 flex flex-wrap items-center gap-1.5">
+              <div className="-mx-1 mb-3 flex items-center gap-1.5 overflow-x-auto px-1 pb-1">
                 <button type="button" onClick={() => setBangId(null)}
-                  className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                  className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs transition ${
                     bangId === null ? 'border-brand-navy bg-brand-navy font-medium text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-brand-navy/40'
                   }`}>
                   Kanban chung
                 </button>
                 {(dsBang?.cuaPhong ?? []).map((b) => (
                   <button key={b.id} type="button" onClick={() => setBangId(b.id)}
-                    className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                    className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs transition ${
                       bangId === b.id ? 'border-brand-navy bg-brand-navy font-medium text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-brand-navy/40'
                     }`}>
                     {b.che_do_xem === 'HAN_CHE' && '🔒 '}{b.loai === 'LIEN_PHONG' && '🤝 '}{b.ten}
@@ -268,7 +295,7 @@ function NoiDung() {
                 ))}
                 {(dsBang?.lienPhongKhac ?? []).map((b) => (
                   <button key={b.id} type="button" onClick={() => setBangId(b.id)}
-                    className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                    className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs transition ${
                       bangId === b.id ? 'border-brand-navy bg-brand-navy font-medium text-white' : 'border-dashed border-slate-300 bg-white text-slate-600 hover:border-brand-navy/40'
                     }`}
                     title={`Bảng liên phòng — đầu mối: ${phongs.find((p) => p.id === b.phong)?.name ?? ''}`}>
@@ -278,13 +305,13 @@ function NoiDung() {
                 {laLanhDao && (
                   <>
                     <button type="button" onClick={() => { setBangDangSua(null); setMoTaoBang(true); }}
-                      className="rounded-full border border-dashed border-slate-300 px-3 py-1.5 text-xs text-slate-500 hover:border-brand-navy/40 hover:text-brand-navy">
+                      className="shrink-0 whitespace-nowrap rounded-full border border-dashed border-slate-300 px-3 py-1.5 text-xs text-slate-500 hover:border-brand-navy/40 hover:text-brand-navy">
                       + Bảng mới
                     </button>
                     {bangId && (dsBang?.cuaPhong ?? []).some((b) => b.id === bangId) && (
                       <button type="button"
                         onClick={() => { setBangDangSua(dsBang!.cuaPhong.find((b) => b.id === bangId)!); setMoTaoBang(true); }}
-                        className="rounded-full border border-slate-200 px-3 py-1.5 text-xs text-slate-500 hover:border-brand-navy/40 hover:text-brand-navy">
+                        className="shrink-0 whitespace-nowrap rounded-full border border-slate-200 px-3 py-1.5 text-xs text-slate-500 hover:border-brand-navy/40 hover:text-brand-navy">
                         ⚙️ Thành viên & cài đặt
                       </button>
                     )}
