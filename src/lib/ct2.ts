@@ -304,12 +304,15 @@ export const CT2_CAM_XUC = ['👍', '✅', '👀', '🎯', '🙏', '❤️', '�
 // ---------------------------------------------------------------------------
 
 /** Ba nguồn việc vào Kanban. Việc lặp hằng ngày KHÔNG thuộc nhóm nào — không vào bảng. */
-export type Ct2NguonViec = 'KE_HOACH' | 'GIAO_BAN' | 'CHU_DONG';
+export type Ct2NguonViec = 'KE_HOACH' | 'GIAO_BAN' | 'CHU_DONG' | 'CHI_DAO';
 
 export const CT2_NGUON_VIEC: Array<{ ma: Ct2NguonViec; ten: string; icon: string; mo: string }> = [
   { ma: 'KE_HOACH', ten: 'Kế hoạch hành động', icon: '📋', mo: 'Việc đã có trong KHHĐ của Phòng kỳ này' },
   { ma: 'GIAO_BAN', ten: 'Chỉ đạo giao ban', icon: '🗣️', mo: 'Việc phát sinh từ giao ban tuần/tháng' },
   { ma: 'CHU_DONG', ten: 'Phòng/cá nhân chủ động', icon: '💡', mo: 'Việc tự thấy cần làm, không ai giao' },
+  // Bổ sung theo yêu cầu GĐ 08/2026: việc từ chỉ đạo trực tiếp của cấp trên,
+  // ngoài kênh giao ban — VD BGĐ gọi điện giao gấp, văn bản chỉ đạo của TSC
+  { ma: 'CHI_DAO', ten: 'Chỉ đạo của cấp trên', icon: '📌', mo: 'Việc do cấp trên chỉ đạo trực tiếp (ngoài giao ban)' },
 ];
 
 // ---------------------------------------------------------------------------

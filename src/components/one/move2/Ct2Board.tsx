@@ -295,6 +295,10 @@ function OSo({ nhan, giaTri, tot }: { nhan: string; giaTri: string; tot: boolean
   );
 }
 
+/** Cột đã kết thúc mặc định chỉ hé vài thẻ — việc xong tích lại theo tháng
+ *  sẽ kéo bảng dài vô tận, mà thứ cần nhìn mỗi sáng là việc ĐANG chạy. */
+const SO_THE_HE_LO = 3;
+
 function CotKanban({ cot, dsThe, tenNguoi, wip, onMoThe }: {
   cot: (typeof CT2_COT)[number];
   dsThe: Ct2DauViec[];
@@ -303,6 +307,11 @@ function CotKanban({ cot, dsThe, tenNguoi, wip, onMoThe }: {
   onMoThe: (t: Ct2DauViec) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: cot.ma });
+  const cotKetThuc = cot.ma === 'HOAN_THANH' || cot.ma === 'DUNG_HUY';
+  const [moRong, setMoRong] = useState(false);
+  const hienThi = cotKetThuc && !moRong ? dsThe.slice(0, SO_THE_HE_LO) : dsThe;
+  const soAn = dsThe.length - hienThi.length;
+
   return (
     <div
       ref={setNodeRef}
@@ -315,9 +324,27 @@ function CotKanban({ cot, dsThe, tenNguoi, wip, onMoThe }: {
         <span className="tabular-nums text-slate-400">{dsThe.length}</span>
       </p>
       <div className="mt-1 flex flex-col gap-2">
-        {dsThe.map((t) => (
+        {hienThi.map((t) => (
           <TheKanban key={t.id} the={t} tenNguoi={tenNguoi} wip={wip} onMo={() => onMoThe(t)} />
         ))}
+        {soAn > 0 && (
+          <button
+            type="button"
+            onClick={() => setMoRong(true)}
+            className="rounded-xl border border-dashed border-slate-300 p-2 text-center text-xs text-slate-500 hover:border-brand-navy/40 hover:text-brand-navy"
+          >
+            Hiện thêm {soAn} thẻ đã kết thúc
+          </button>
+        )}
+        {cotKetThuc && moRong && dsThe.length > SO_THE_HE_LO && (
+          <button
+            type="button"
+            onClick={() => setMoRong(false)}
+            className="rounded-xl p-1.5 text-center text-2xs text-slate-400 hover:text-brand-navy"
+          >
+            Thu gọn lại
+          </button>
+        )}
         {dsThe.length === 0 && (
           <p className="rounded-xl border border-dashed border-slate-200 p-3 text-center text-xs text-slate-400">
             Trống

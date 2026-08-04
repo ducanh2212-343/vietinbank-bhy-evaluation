@@ -27,7 +27,8 @@ import {
 import type { HoSoTinDung, HsTrangThai } from '@/lib/ct2TinDung';
 import { Ct2MyWork } from '@/components/one/move2/Ct2MyWork';
 import {
-  ct2XuLyDeXuat, useCt2Board, useCt2DeXuat, useCt2DsBang, useCt2LamTuoi, useCt2NhanSu,
+  ct2DoiTheoDoi, ct2XuLyDeXuat, useCt2Board, useCt2DeXuat, useCt2DsBang,
+  useCt2LamTuoi, useCt2NhanSu, useCt2TheoDoi,
   useCt2NhipPhong, useCt2Phong, type Ct2DeXuat,
 } from '@/components/one/move2/useCt2Data';
 
@@ -47,7 +48,8 @@ export default function OneMove2Page() {
 }
 
 function NoiDung() {
-  const { isAdmin, isManager, isPgd, departmentId, scope, visibleDeptIds, profileId } = useAuth();
+  const { isAdmin, isManager, isPgd, departmentId, scope, visibleDeptIds, profileId, roles } = useAuth();
+  const laBgd = roles.includes('bgd');
   const lamTuoi = useCt2LamTuoi();
 
   const { data: phongs = [] } = useCt2Phong();
@@ -85,6 +87,8 @@ function NoiDung() {
   // Bảng Kanban đang xem trong tab «Kanban của Phòng» — null = Kanban chung
   const [bangId, setBangId] = useState<string | null>(null);
   const { data: dsBang } = useCt2DsBang(phongId);
+  // GĐ theo dõi cả phòng: mọi nhịp và trao đổi trong phòng sẽ báo về
+  const { data: dangTheoDoiPhong = false } = useCt2TheoDoi('PHONG', laBgd ? phongId : null);
   const { data: dsThe = [], isLoading, error } = useCt2Board(phongId, bangId);
   const { data: nhipNguoi = [] } = useCt2NhipPhong(phongId);
   const { data: deXuats = [] } = useCt2DeXuat(phongId);
@@ -209,6 +213,26 @@ function NoiDung() {
                       {phongDuocChon.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                )}
+                {laBgd && phongId && (
+                  <Button
+                    variant={dangTheoDoiPhong ? 'default' : 'outline'}
+                    className={dangTheoDoiPhong ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                    title="Nhận thông báo mọi nhịp và trao đổi của phòng này"
+                    onClick={async () => {
+                      if (!profileId) return;
+                      const { error: e } = await ct2DoiTheoDoi(profileId, 'PHONG', phongId, !dangTheoDoiPhong);
+                      if (e) toast.error(e);
+                      else {
+                        toast.success(dangTheoDoiPhong
+                          ? 'Đã bỏ theo dõi phòng.'
+                          : 'Đang theo dõi phòng — mọi nhịp và trao đổi sẽ báo về anh/chị.');
+                        lamTuoi();
+                      }
+                    }}
+                  >
+                    {dangTheoDoiPhong ? '👁 Đang theo dõi phòng' : '👁 Theo dõi phòng'}
+                  </Button>
                 )}
                 <Button onClick={() => { setDeXuatDangDuyet(null); setDangTao(true); }}>
                   + Ghi việc

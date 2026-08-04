@@ -181,6 +181,39 @@ export function useCt2ThanhVienBang(bangId: string | null) {
   });
 }
 
+/**
+ * GĐ theo dõi cả phòng / từng thẻ. RLS chỉ trả về dòng CỦA MÌNH, nên query
+ * này trả lời đúng một câu: «tôi có đang theo dõi thứ này không».
+ */
+export function useCt2TheoDoi(phamVi: 'PHONG' | 'DAU_VIEC', doiTuongId: string | null) {
+  const { profileId } = useAuth();
+  return useQuery({
+    queryKey: ['ct2', 'theo-doi', phamVi, doiTuongId],
+    enabled: !!doiTuongId && !!profileId,
+    staleTime: NUA_PHUT,
+    queryFn: async () => {
+      const { data, error } = await db
+        .from('ct2_theo_doi').select('nguoi')
+        .eq('pham_vi', phamVi).eq('doi_tuong_id', doiTuongId);
+      if (error) throw error;
+      return ((data ?? []) as Array<{ nguoi: string }>).length > 0;
+    },
+  });
+}
+
+export async function ct2DoiTheoDoi(
+  nguoi: string, phamVi: 'PHONG' | 'DAU_VIEC', doiTuongId: string, bat: boolean,
+): Promise<{ error: string | null }> {
+  if (bat) {
+    const { error } = await db.from('ct2_theo_doi')
+      .insert({ nguoi, pham_vi: phamVi, doi_tuong_id: doiTuongId });
+    return { error: thongDiep(error) };
+  }
+  const { error } = await db.from('ct2_theo_doi')
+    .delete().eq('nguoi', nguoi).eq('pham_vi', phamVi).eq('doi_tuong_id', doiTuongId);
+  return { error: thongDiep(error) };
+}
+
 /** M1 «Việc của tôi» — 1 RPC trả kèm cờ "đã ghi nhịp hôm nay" */
 export function useCt2ViecCuaToi() {
   const { profileId } = useAuth();
