@@ -20,6 +20,7 @@ import {
   type HsTrangThai,
 } from '@/lib/ct2TinDung';
 import type { Ct2NhanSu } from './useCt2Data';
+import { Ct2CapPhuTrach } from './Ct2CapPhuTrach';
 import { Ct2DongThoiGian, type NguoiTraoDoi } from './Ct2DongThoiGian';
 import {
   ct2GhiNhipHoSo, ct2SuaHoSo, ct2TaoHoSo, useCt2LamTuoiHoSo, useCt2NhatKyHoSo,
@@ -440,6 +441,17 @@ export function Ct2CreditCardDialog({ hoSo, nhanSu, laLanhDao, chuyenDen, onClos
               gia={`${tenNguoi.get(hoSo.nguoi_dang_giu) ?? '—'} — đã ${hsTuoiCho(hoSo)} ngày`} />
           )}
           {hoSo.ly_do_tu_choi && <O ten="Lý do dừng" gia={hoSo.ly_do_tu_choi} />}
+          {/*
+            Cùng khối, cùng luật với thẻ Kanban: hồ sơ tín dụng cũng phải biết
+            ai là lãnh đạo theo dõi và ba cấp phụ trách — đây là nơi khoản vay
+            đi qua, không phải nơi ít cần giám sát hơn.
+          */}
+          <Ct2CapPhuTrach
+            phongId={hoSo.phong} nguoiLam={hoSo.can_bo}
+            gia={hoSo} nhanSu={nhanSu} suaDuoc={laLanhDao}
+            onLuu={(v) => ct2SuaHoSo(hoSo.id, v)}
+            onXong={() => { lamTuoi(); onXong(); }}
+          />
         </div>
 
         {/*

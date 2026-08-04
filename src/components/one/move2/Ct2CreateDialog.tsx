@@ -109,6 +109,19 @@ export function Ct2CreateDialog({ open, phongId, phongs, nhanSu, cycleId, laLanh
 
   const { data: dsPgd = [] } = useCt2DsPgd(open);
 
+  // Lãnh đạo theo dõi suy ra từ Trưởng phòng. Người làm không được là lãnh đạo
+  // theo dõi của chính mình — trừ khi chính họ là Trưởng phòng (không còn ai
+  // trên nữa trong phòng) hoặc là Ban Giám đốc.
+  const lanhDaoTheoDoi = truongPhongChon || truongPhongMacDinh;
+  const tuTheoDoiMinh = !!lanhDaoTheoDoi && lanhDaoTheoDoi === f.nguoi_chiu_trach_nhiem;
+  const duocTuTheoDoi = f.nguoi_chiu_trach_nhiem === truongPhongMacDinh
+    || (laLanhDao && f.nguoi_chiu_trach_nhiem === profileId);
+  const thieuLanhDao = !lanhDaoTheoDoi
+    ? 'Phòng chưa có Trưởng phòng trong danh mục — chọn người theo dõi việc này.'
+    : (tuTheoDoiMinh && !duocTuTheoDoi
+      ? 'Người làm không tự theo dõi chính mình — chọn Trưởng phòng hoặc lãnh đạo khác.'
+      : null);
+
   // Cán bộ thường giao việc cho người khác → hệ thống tự chuyển thành đề xuất
   const laDeXuat = !laLanhDao && f.nguoi_chiu_trach_nhiem !== profileId;
 
@@ -140,8 +153,10 @@ export function Ct2CreateDialog({ open, phongId, phongs, nhanSu, cycleId, laLanh
       cuoc_hop: f.nguon_viec === 'GIAO_BAN' ? (f.cuoc_hop.trim() || null) : null,
       tieu_de: locEmojiTieuDe(f.tieu_de),
       nguoi_chiu_trach_nhiem: f.nguoi_chiu_trach_nhiem,
-      // Lãnh đạo theo dõi = Trưởng phòng đã chọn (đặc tả 2.3 — tự điền, sửa được)
-      lanh_dao_theo_doi: truongPhongChon || truongPhongMacDinh || f.nguoi_chiu_trach_nhiem,
+      // Lãnh đạo theo dõi = Trưởng phòng đã chọn (đặc tả 2.3 — tự điền, sửa được).
+      // KHÔNG có đường lùi «không chọn ai thì lấy chính người làm»: đó là cách
+      // sinh ra thẻ tự-theo-dõi-mình, giám sát trên giấy mà không ai giám sát.
+      lanh_dao_theo_doi: lanhDaoTheoDoi || null,
       pho_phong: phoPhong || null,
       truong_phong: truongPhongChon || null,
       pgd_phu_trach: pgdChon || null,
@@ -326,6 +341,11 @@ export function Ct2CreateDialog({ open, phongId, phongs, nhanSu, cycleId, laLanh
                     ))}
                   </SelectContent>
                 </Select>
+                {/* Trưởng phòng cũng chính là lãnh đạo theo dõi — nói thẳng ra
+                    khi chưa chọn được ai, thay vì lặng lẽ điền tên người làm */}
+                {thieuLanhDao && (
+                  <p className="mt-1 text-2xs font-medium text-amber-700">{thieuLanhDao}</p>
+                )}
               </div>
               <div>
                 <Label className="text-xs">PGĐ phụ trách</Label>

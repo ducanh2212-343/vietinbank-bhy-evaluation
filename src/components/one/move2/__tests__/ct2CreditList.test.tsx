@@ -24,7 +24,7 @@ const hsTuMiro: HoSoTinDung = {
   khach_hang: 'Công ty Nhựa và Khuôn Đông Dương',
   loai_ho_so: 'TAI_CAP', so_tien: null, ky_han: null,
   cap_phe_duyet: 'CHI_NHANH', trang_thai: 'THU_THAP',
-  can_bo: CAN_BO, lanh_dao_theo_doi: null,
+  can_bo: CAN_BO, lanh_dao_theo_doi: null, pho_phong: null, truong_phong: null, pgd_phu_trach: null,
   ngay_nhan: null, han_xu_ly: null, ngay_den_han_ghtd: null, ngay_hoan_thanh: null,
   nguoi_dang_giu: null, giu_tu: null, nhip_gan_nhat: null,
   ly_do_tu_choi: null, ghi_chu: 'Nhập từ Miro 08/2026.',

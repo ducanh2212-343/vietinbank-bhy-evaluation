@@ -39,6 +39,10 @@ export interface HoSoTinDung {
   trang_thai: HsTrangThai;
   can_bo: string;
   lanh_dao_theo_doi: string | null;
+  /** Ba cấp phụ trách — cùng luật với thẻ Kanban, chỉ lãnh đạo gán được */
+  pho_phong: string | null;
+  truong_phong: string | null;
+  pgd_phu_trach: string | null;
   ngay_nhan: string | null;
   han_xu_ly: string | null;
   ngay_den_han_ghtd: string | null;
