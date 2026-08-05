@@ -105,6 +105,22 @@ gộp vào app này thành cổng thông tin thương hiệu sau đăng nhập:
   `20260803100000` + `20260803110000` **đã áp** (29/07/2026). Hết hạn: client
   đăng xuất + RLS chặn (không cần cron).
 
+## Góp ý cải thiện hệ thống BHY One (08/2026)
+
+Nút «Góp ý» (biểu tượng bong bóng thoại) trên thanh điều hướng — hiện ở **mọi
+trang** cho mọi cán bộ: form tick chọn menu/tính năng liên quan (mục của trang
+đang mở được tick sẵn, danh sách tick lấy từ cây điều hướng đã lọc theo quyền)
++ nội dung tự do; bên dưới là góp ý đã gửi của chính mình kèm trạng thái.
+Người tiếp nhận: **Phòng TCTH (tcth_admin) + Giám đốc Chi nhánh (bgd)** — trang
+`/gop-y-he-thong` (menu Quản trị chung → Nội dung cổng) tích «Đã xem xét» /
+«Đã xử lý» từng góp ý và **tải Excel** (2 sheet: danh sách + tổng quan).
+Code: `src/components/one/feedback/`, `src/pages/GopYAdminPage.tsx`.
+Bảng `portal_gop_y` — người gửi chỉ thấy góp ý của mình, người duyệt thấy tất
+cả; đổi trạng thái qua RPC `gop_y_cap_nhat_trang_thai` (không có policy UPDATE
+để người duyệt không sửa được lời người gửi). Migration
+`20260827090000_gop_y_bhy_one.sql` **đã áp** vào project `whlysprzsguehxmrjwha`
+(05/08/2026), kèm cập nhật `types.ts`.
+
 ## Chiêu thức 2 — Kanban 5W2H + PDCA (08/2026)
 
 Trang `/one/chieu-thuc-2` được dựng lại theo đặc tả đầy đủ

@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Ct2ChuongThongBao } from '@/components/one/move2/Ct2ChuongThongBao';
+import { GopYNut } from '@/components/one/feedback/GopYNut';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavTree } from '@/hooks/useNavTree';
 import { isFolder, matchesLeaf, leavesOf, type NavSection } from '@/lib/navigation';
@@ -388,6 +389,9 @@ export function TopNav({ onMoBangLenh }: Props) {
             {phimTat}
           </kbd>
         </button>
+
+        {/* Góp ý cải thiện hệ thống — ai cũng bấm được, ở mọi trang */}
+        <GopYNut />
 
         <Ct2ChuongThongBao />
 
