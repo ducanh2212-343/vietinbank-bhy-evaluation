@@ -420,6 +420,40 @@ export async function ct2SuaDauViec(id: string, v: Record<string, unknown>): Pro
   return { error: thongDiep(error) };
 }
 
+export interface Ct2TheDaGo {
+  id: string; ma_hien_thi: string | null; tieu_de: string;
+  go_boi: string; go_luc: string; ly_do: string | null;
+}
+
+/**
+ * Thẻ nhập nhầm đã gỡ — KHÁC Dừng/Hủy. Chỉ lãnh đạo Phòng và chính người đã gỡ
+ * nhìn thấy (RLS quyết định, đây chỉ là truy vấn).
+ */
+export function useCt2TheDaGo(phongId: string | null, bat: boolean) {
+  return useQuery({
+    queryKey: ['ct2', 'the-da-go', phongId],
+    enabled: bat && !!phongId,
+    staleTime: NUA_PHUT,
+    queryFn: async () => {
+      const { data, error } = await db.from('ct2_the_da_go')
+        .select('id, ma_hien_thi, tieu_de, go_boi, go_luc, ly_do')
+        .eq('phong', phongId).order('go_luc', { ascending: false }).limit(20);
+      if (error) throw error;
+      return (data ?? []) as Ct2TheDaGo[];
+    },
+  });
+}
+
+export async function ct2GoThe(id: string, lyDo: string): Promise<{ error: string | null }> {
+  const { error } = await db.rpc('ct2_go_the', { _id: id, _ly_do: lyDo });
+  return { error: thongDiep(error) };
+}
+
+export async function ct2PhucHoiThe(id: string): Promise<{ error: string | null }> {
+  const { error } = await db.rpc('ct2_phuc_hoi_the', { _id: id });
+  return { error: thongDiep(error) };
+}
+
 export async function ct2GhiNhip(v: {
   dau_viec_id: string; nguoi_ghi: string; nhan_pdca: string; noi_dung: string;
   vuong_mac: string | null; hanh_dong_hom_nay: string | null;

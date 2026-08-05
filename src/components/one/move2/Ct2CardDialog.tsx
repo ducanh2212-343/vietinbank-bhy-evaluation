@@ -17,8 +17,8 @@ import {
   type Ct2Co, type Ct2DauViec, type Ct2NhanPdca, type Ct2TrangThai,
 } from '@/lib/ct2';
 import {
-  ct2DoiTheoDoi, ct2GhiNhip, ct2SuaDauViec, useCt2LamTuoi, useCt2NhatKy,
-  useCt2TheoDoi, type Ct2NhanSu,
+  ct2DoiTheoDoi, ct2GhiNhip, ct2GoThe, ct2SuaDauViec, useCt2LamTuoi,
+  useCt2NhatKy, useCt2TheoDoi, type Ct2NhanSu,
 } from './useCt2Data';
 import { Ct2CapPhuTrach } from './Ct2CapPhuTrach';
 import { Ct2DongThoiGian, type NguoiTraoDoi } from './Ct2DongThoiGian';
@@ -68,6 +68,9 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
     return ds;
   }, [the, tenNguoi]);
   const laChuThe = the?.nguoi_chiu_trach_nhiem === profileId;
+  // Cửa 24 giờ: quá mốc đó thì thẻ đã là việc của Phòng, muốn bỏ phải Dừng/Hủy
+  const conGoDuoc = !!the?.created_at
+    && Date.now() - new Date(the.created_at).getTime() < 24 * 3600_000;
   const vong = useMemo(() => ({
     coDongP: nhatKy.some((n) => n.nhan_pdca === 'P'),
     coDongC: nhatKy.some((n) => n.nhan_pdca === 'C'),
@@ -188,6 +191,17 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
           )}
         </div>
 
+        {/*
+          Gỡ thẻ nhập nhầm — KHÁC Dừng/Hủy và cố ý nhỏ, nằm cuối, không phải nút
+          đỏ to. Chỉ hiện khi thẻ CÒN SẠCH: ở cột Chuẩn bị, chưa có nhịp nào,
+          tạo trong vòng 24 giờ. Bốn điều kiện đầy đủ do database gác — đây chỉ
+          là tấm gương để người dùng không bấm vào rồi ăn lỗi.
+        */}
+        {(laChuThe || laLanhDao) && the.trang_thai === 'CHUAN_BI'
+          && nhatKy.length === 0 && conGoDuoc && (
+          <GoThe the={the} onXong={() => { lamTuoi('board'); onXong(); onClose(); }} />
+        )}
+
         <ChuyenTrangThai
           the={the} laLanhDao={laLanhDao} laChuThe={laChuThe} vong={vong}
           nhanSu={nhanSu} chuyenDen={chuyenDen}
@@ -233,6 +247,62 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
         />
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Gỡ thẻ nhập nhầm
+// ---------------------------------------------------------------------------
+
+/**
+ * Thẻ gõ sai / tạo trùng / chọn nhầm phòng. KHÔNG phải Dừng/Hủy: Dừng/Hủy là
+ * quyết định nghiệp vụ («việc này thôi không làm»), phải có lý do ≥30 ký tự và
+ * ở lại bảng làm vết. Bắt một thẻ gõ nhầm đi qua cửa đó làm cột Dừng/Hủy lẫn
+ * rác với quyết định thật, và con số «bao nhiêu việc bị hủy trong kỳ» mất nghĩa.
+ *
+ * Thẻ được cất nguyên vẹn sang ct2_the_da_go trước khi xoá — khôi phục được.
+ * Bốn điều kiện «thẻ còn sạch» do database gác; đây chỉ là tấm gương soi luật.
+ */
+function GoThe({ the, onXong }: { the: Ct2DauViec; onXong: () => void }) {
+  const [mo, setMo] = useState(false);
+  const [lyDo, setLyDo] = useState('');
+  const [dangGui, setDangGui] = useState(false);
+
+  if (!mo) {
+    return (
+      <button
+        className="self-start text-left text-xs text-slate-400 underline underline-offset-2 hover:text-red-600"
+        onClick={() => setMo(true)}
+      >
+        Gỡ thẻ nhập nhầm
+      </button>
+    );
+  }
+  return (
+    <div className="rounded-xl border border-slate-300 bg-slate-50 p-3">
+      <p className="text-sm font-medium text-slate-800">Gỡ thẻ này khỏi bảng?</p>
+      <p className="mt-1 text-xs text-slate-600">
+        Dùng khi thẻ bị gõ sai hoặc tạo trùng. Thẻ được cất lại và lãnh đạo Phòng
+        khôi phục được. Nếu việc là có thật nhưng thôi không làm nữa thì dùng
+        «Dừng/Hủy» để còn giữ vết.
+      </p>
+      <Textarea rows={2} className="mt-2 text-sm" placeholder="Gỡ vì sao? (không bắt buộc)"
+        value={lyDo} onChange={(e) => setLyDo(e.target.value)} />
+      <div className="mt-2 flex gap-2">
+        <Button size="sm" variant="destructive" className="h-8" disabled={dangGui}
+          onClick={async () => {
+            setDangGui(true);
+            const { error } = await ct2GoThe(the.id, lyDo);
+            setDangGui(false);
+            if (error) { toast.error(error); return; }
+            toast.success('Đã gỡ thẻ. Lãnh đạo Phòng khôi phục lại được nếu cần.');
+            onXong();
+          }}>
+          {dangGui ? 'Đang gỡ…' : 'Gỡ thẻ'}
+        </Button>
+        <Button size="sm" variant="ghost" className="h-8" onClick={() => setMo(false)}>Hủy</Button>
+      </div>
+    </div>
   );
 }
 
