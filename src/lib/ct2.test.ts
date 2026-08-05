@@ -155,24 +155,22 @@ describe('Cổng 2 — lập kế hoạch làm', () => {
   });
 });
 
-describe('Luật chuyển trạng thái — PDCA khép vòng ở cấp thẻ', () => {
-  const bc: BoiCanhChuyen = { coDongP: true, coDongC: false, coDongA: false, phanTram: 50, laLanhDao: false, loai: 'TIEN_TRINH' };
+describe('Luật chuyển trạng thái — Kanban là vòng lặp, không có barie Check/Act', () => {
+  const bc: BoiCanhChuyen = { coDongP: true, phanTram: 50, laLanhDao: false, loai: 'TIEN_TRINH' };
 
-  it('Chuẩn bị → Đang làm cần dòng P', () => {
+  it('Chuẩn bị → Đang làm cần dòng P (kế hoạch làm)', () => {
     expect(lyDoChanChuyen('CHUAN_BI', 'DANG_LAM', { ...bc, coDongP: false })).toContain('Plan');
     expect(lyDoChanChuyen('CHUAN_BI', 'DANG_LAM', bc)).toBeNull();
   });
 
-  it('Hoàn thành cần 100% và dòng C', () => {
+  it('Hoàn thành chỉ cần 100% — GĐ bỏ cổng Check 08/2026: check thấy vấn đề thì tạo việc mới', () => {
     expect(lyDoChanChuyen('DANG_LAM', 'HOAN_THANH', bc)).toContain('100%');
-    expect(lyDoChanChuyen('DANG_LAM', 'HOAN_THANH', { ...bc, phanTram: 100 })).toContain('Check');
-    expect(lyDoChanChuyen('DANG_LAM', 'HOAN_THANH', { ...bc, phanTram: 100, coDongC: true })).toBeNull();
+    expect(lyDoChanChuyen('DANG_LAM', 'HOAN_THANH', { ...bc, phanTram: 100 })).toBeNull();
   });
 
-  it('Đã đóng cần lãnh đạo + dòng A', () => {
-    expect(lyDoChanChuyen('HOAN_THANH', 'DA_DONG', { ...bc, coDongA: true })).toContain('Trưởng/Phó');
-    expect(lyDoChanChuyen('HOAN_THANH', 'DA_DONG', { ...bc, laLanhDao: true })).toContain('Act');
-    expect(lyDoChanChuyen('HOAN_THANH', 'DA_DONG', { ...bc, laLanhDao: true, coDongA: true })).toBeNull();
+  it('Đã đóng chỉ cần lãnh đạo — không đòi dòng Act nữa', () => {
+    expect(lyDoChanChuyen('HOAN_THANH', 'DA_DONG', bc)).toContain('Trưởng/Phó');
+    expect(lyDoChanChuyen('HOAN_THANH', 'DA_DONG', { ...bc, laLanhDao: true })).toBeNull();
   });
 
   it('việc THƯỜNG TRỰC không vào cột tiến trình', () => {

@@ -64,7 +64,9 @@ function NoiDung() {
     return phongs.filter((p) => ids.has(p.id));
   }, [phongs, scope, isAdmin, departmentId, visibleDeptIds]);
 
-  const [phongId, setPhongId] = useState<string | null>(null);
+  // Vào thẳng bảng một phòng từ «Điều hành của tôi» trên trang chủ: ?phong=<id>
+  const [thamSoDau] = useSearchParams();
+  const [phongId, setPhongId] = useState<string | null>(() => thamSoDau.get('phong'));
   useEffect(() => {
     if (phongId) return;
     // Ưu tiên phòng của chính mình — không chờ danh mục phòng tải xong
@@ -239,8 +241,10 @@ function NoiDung() {
                 {laBgd && phongId && (
                   <Button
                     variant={dangTheoDoiPhong ? 'default' : 'outline'}
-                    size="icon"
-                    className={`h-9 w-9 shrink-0 sm:w-auto sm:px-3 ${dangTheoDoiPhong ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`}
+                    /* KHÔNG dùng size="icon": biến thể đó phát md:w-10, thắng
+                       sm:w-auto ở màn ≥768px — nút bị ép 40px trong khi vẫn
+                       hiện chữ, chữ tràn đè lên nút «Ghi việc» bên cạnh */
+                    className={`h-9 shrink-0 whitespace-nowrap px-2.5 sm:px-3 ${dangTheoDoiPhong ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`}
                     title="Nhận thông báo mọi nhịp và trao đổi của phòng này"
                     onClick={async () => {
                       if (!profileId) return;

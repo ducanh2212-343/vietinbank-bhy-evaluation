@@ -510,8 +510,6 @@ export const CT2_MAU_CAU: Record<Ct2Co, string> = {
 
 export interface BoiCanhChuyen {
   coDongP: boolean;
-  coDongC: boolean;
-  coDongA: boolean;
   phanTram: number;
   laLanhDao: boolean;
   loai: Ct2Loai;
@@ -526,13 +524,14 @@ export function lyDoChanChuyen(tu: Ct2TrangThai, den: Ct2TrangThai, bc: BoiCanhC
   if (den === 'DANG_LAM' && tu === 'CHUAN_BI' && bc.loai === 'TIEN_TRINH' && !bc.coDongP) {
     return 'Chưa có dòng Plan (P) — ghi cách làm/mốc kiểm soát trước khi bắt đầu.';
   }
-  if (den === 'HOAN_THANH') {
-    if (bc.phanTram !== 100) return 'Chưa đạt 100% — cập nhật tiến độ trước khi chuyển Hoàn thành.';
-    if (!bc.coDongC) return 'Thiếu bước Check (C) — đối chiếu kết quả với chỉ tiêu trước khi Hoàn thành.';
+  // 08/2026, GĐ bỏ cổng Check/Act: Kanban vốn là vòng lặp — xong thì Done,
+  // check thấy vấn đề thì TẠO VIỆC MỚI chứ không giữ thẻ cũ làm con tin.
+  // Nhãn P/D/C/A trên nhịp vẫn còn (để đọc nhật ký), chỉ bỏ vai trò barie.
+  if (den === 'HOAN_THANH' && bc.phanTram !== 100) {
+    return 'Chưa đạt 100% — cập nhật tiến độ trước khi chuyển Hoàn thành.';
   }
-  if (den === 'DA_DONG') {
-    if (!bc.laLanhDao) return 'Chỉ Trưởng/Phó phòng được chốt «Đã đóng».';
-    if (!bc.coDongA) return 'Thiếu bước Act (A) — ghi bài học rút ra trước khi đóng.';
+  if (den === 'DA_DONG' && !bc.laLanhDao) {
+    return 'Chỉ Trưởng/Phó phòng được chốt «Đã đóng».';
   }
   if (den === 'DUNG_HUY' && !bc.laLanhDao) {
     return 'Chỉ Trưởng/Phó phòng được Dừng/Hủy đầu việc.';

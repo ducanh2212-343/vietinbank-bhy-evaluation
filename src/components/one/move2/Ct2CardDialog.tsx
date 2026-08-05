@@ -68,13 +68,13 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
     return ds;
   }, [the, tenNguoi]);
   const laChuThe = the?.nguoi_chiu_trach_nhiem === profileId;
-  // Cửa 24 giờ: quá mốc đó thì thẻ đã là việc của Phòng, muốn bỏ phải Dừng/Hủy
-  const conGoDuoc = !!the?.created_at
-    && Date.now() - new Date(the.created_at).getTime() < 24 * 3600_000;
+  // Cửa 24 giờ áp cho CÁN BỘ tự gỡ thẻ mình vừa gõ nhầm. Lãnh đạo Phòng không
+  // vướng mốc này — 22 thẻ nhập từ Miro đều quá 24h từ lâu, mà dọn thẻ trùng
+  // trong đợt nhập chính là việc của lãnh đạo. Rào thật vẫn ở DB, cùng luật.
+  const conGoDuoc = laLanhDao || (!!the?.created_at
+    && Date.now() - new Date(the.created_at).getTime() < 24 * 3600_000);
   const vong = useMemo(() => ({
     coDongP: nhatKy.some((n) => n.nhan_pdca === 'P'),
-    coDongC: nhatKy.some((n) => n.nhan_pdca === 'C'),
-    coDongA: nhatKy.some((n) => n.nhan_pdca === 'A'),
   }), [nhatKy]);
 
   if (!the) return null;
@@ -323,7 +323,7 @@ function ChuyenTrangThai({ the, laLanhDao, laChuThe, vong, nhanSu, chuyenDen, on
   the: Ct2DauViec;
   laLanhDao: boolean;
   laChuThe: boolean;
-  vong: { coDongP: boolean; coDongC: boolean; coDongA: boolean };
+  vong: { coDongP: boolean };
   nhanSu: Ct2NhanSu[];
   chuyenDen: Ct2TrangThai | null;
   onKhoiDong: () => void;
