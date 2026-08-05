@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Flame, Zap } from 'lucide-react';
+import { Flame, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { soNgayQuaHan, type Ct2Co, type Ct2DauViec, type Ct2TrangThai } from '@/lib/ct2';
-import { FormGhiNhip } from './Ct2CardDialog';
-import { useCt2LamTuoi, useCt2NhatKy, useCt2ViecCuaToi, type Ct2ViecCuaToi } from './useCt2Data';
+import { soNgayQuaHan, type Ct2TrangThai } from '@/lib/ct2';
+import { Ct2GhiNhipNhanh } from './Ct2GhiNhipNhanh';
+import { useCt2ViecCuaToi } from './useCt2Data';
 
 /**
  * M1 — «Việc của tôi» (đặc tả §7.1): khối "cần ghi nhịp cho [n] việc" + 4 ô số
@@ -100,7 +100,7 @@ export function Ct2MyWork({ onMoThe }: Props) {
       </div>
 
       {ghiNhanh && canNhip.length > 0 && (
-        <GhiNhipNhanh dsThe={canNhip} onDong={() => setGhiNhanh(false)} />
+        <Ct2GhiNhipNhanh dsThe={canNhip} onDong={() => setGhiNhanh(false)} />
       )}
     </div>
   );
@@ -115,56 +115,3 @@ function OSo({ nhan, giaTri, canhBao }: { nhan: string; giaTri: number; canhBao?
   );
 }
 
-/** Chế độ lướt từng thẻ — mỗi thẻ một câu, xong tự sang thẻ kế */
-function GhiNhipNhanh({ dsThe, onDong }: { dsThe: Ct2ViecCuaToi[]; onDong: () => void }) {
-  const lamTuoi = useCt2LamTuoi();
-  const [buoc, setBuoc] = useState(0);
-  const the = dsThe[buoc];
-  // Câu nhịp gần nhất của thẻ đang mở — để chặn copy-paste ngay tại client
-  const { data: nhatKy = [] } = useCt2NhatKy(the?.id ?? null);
-
-  if (!the) return null;
-
-  const sangKe = () => {
-    if (buoc + 1 >= dsThe.length) { onDong(); return; }
-    setBuoc(buoc + 1);
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" role="dialog" aria-modal>
-      <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-4 sm:rounded-2xl">
-        <div className="mb-2 flex items-center justify-between">
-          <p className="text-sm font-semibold text-brand-navy">
-            Ghi nhịp nhanh — thẻ {buoc + 1}/{dsThe.length}
-          </p>
-          <Button variant="ghost" size="sm" onClick={onDong}>Đóng</Button>
-        </div>
-        <p className="mb-1 text-sm font-medium text-slate-800">{the.tieu_de}</p>
-        <p className="mb-3 text-xs text-slate-500">
-          {the.ma_hien_thi} · {the.han_hoan_thanh
-            ? `hạn ${new Date(`${the.han_hoan_thanh}T00:00:00`).toLocaleDateString('vi-VN')}`
-            : 'chưa có hạn'}
-        </p>
-        <FormGhiNhip
-          the={{
-            id: the.id,
-            trang_thai: the.trang_thai as Ct2DauViec['trang_thai'],
-            phan_tram: the.phan_tram,
-            co_tinh_trang: the.co_tinh_trang as Ct2Co,
-          }}
-          cauGanNhat={nhatKy[0]?.noi_dung ?? null}
-          tuDongNhan
-          onXong={() => { lamTuoi('nhip'); sangKe(); }}
-        />
-        <div className="mt-3 flex justify-between">
-          <Button variant="outline" size="sm" disabled={buoc === 0} onClick={() => setBuoc(buoc - 1)}>
-            <ChevronLeft className="h-4 w-4" /> Thẻ trước
-          </Button>
-          <Button variant="outline" size="sm" onClick={sangKe}>
-            Bỏ qua thẻ này <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}

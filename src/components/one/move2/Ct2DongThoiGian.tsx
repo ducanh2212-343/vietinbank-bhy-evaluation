@@ -191,17 +191,13 @@ export function Ct2DongThoiGian({
           ))}
         </div>
       </div>
-      <p className="mb-2 text-2xs text-slate-400">
-        Báo cáo của cán bộ và trao đổi chung một mạch, mới nhất trước — chỉ thêm, không sửa/xóa.
-      </p>
-
       {nhomNgay.length === 0 && (
         <p className="rounded-xl border border-dashed border-slate-200 p-3 text-xs text-slate-500">
           {loc === 'BAO_CAO'
             ? 'Chưa có báo cáo nào.'
             : loc === 'TRAO_DOI'
-              ? 'Chưa có trao đổi nào. Hỏi ở đây thay vì gọi điện — người sau mở ra là đọc được cả mạch.'
-              : (loiMoiDau ?? 'Chưa có dòng nào — báo cáo đầu tiên sẽ mở mạch chuyện của thẻ này.')}
+              ? 'Chưa có trao đổi nào.'
+              : (loiMoiDau ?? 'Chưa có dòng nào.')}
         </p>
       )}
 
@@ -318,7 +314,9 @@ function DongBaoCaoRow({ bc, ten }: { bc: DongBaoCao; ten: Map<string, string> }
     }`}>
       <p className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
         <Badge variant="outline" className="border-brand-navy/30 px-1.5 py-0 text-2xs font-semibold text-brand-navy">
-          📊 {bc.nhan_pdca ?? 'Báo cáo'}
+          {/* Chữ cái P/D/C/A không nói gì với người đọc nhật ký. Dòng lập kế
+              hoạch đáng phân biệt vì nó là cách làm; còn lại đều là báo cáo. */}
+          {bc.nhan_pdca === 'P' ? '🧭 Kế hoạch' : '📊 Báo cáo'}
         </Badge>
         <span className="font-medium text-slate-700">{bc.nguoi ? (ten.get(bc.nguoi) ?? '—') : 'Hệ thống'}</span>
         <span className="tabular-nums">{gioVn(bc.luc)}</span>

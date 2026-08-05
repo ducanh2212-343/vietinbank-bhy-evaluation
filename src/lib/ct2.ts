@@ -497,11 +497,18 @@ export function kiemTraCauNhip(input: {
   return { hopLe: true, loi: null };
 }
 
-/** Mẫu câu gợi ý theo cờ (hiện sẵn dưới ô nhập) */
+/**
+ * Công thức MỘT câu nhịp — Giám đốc chốt 08/2026: «hôm qua đã làm gì, kế hoạch
+ * ngày hôm nay, đề xuất gì». Đây là hướng dẫn duy nhất còn giữ trong hộp thoại
+ * thẻ; mọi lời dẫn khác đã gỡ vì dàn trang quá dài.
+ */
+export const CT2_CONG_THUC_NHIP = 'Hôm qua đã làm gì · kế hoạch hôm nay · đề xuất gì (nếu có)';
+
+/** Mẫu câu gợi ý theo cờ (placeholder ô nhập) — cùng công thức, đổi theo tình trạng */
 export const CT2_MAU_CAU: Record<Ct2Co, string> = {
-  XANH: 'Đã xong bước [X], dự kiến hoàn thành đúng hẹn ngày [dd/mm].',
-  VANG: 'Đang chậm ở bước [X] vì [lý do]. Hôm nay tôi [hành động] để bắt kịp.',
-  DO: 'Đang vướng [nguyên nhân, ai đang giữ]. Hôm nay tôi [hành động] và cần [ai] hỗ trợ [việc gì] trước [ngày].',
+  XANH: 'Hôm qua đã [làm gì], hôm nay [làm gì], đề xuất [nếu có].',
+  VANG: 'Hôm qua chậm ở [bước] vì [lý do], hôm nay [làm gì để bắt kịp], đề xuất [hỗ trợ nếu cần].',
+  DO: 'Đang vướng [gì, ai đang giữ], hôm nay [làm gì], đề xuất [ai hỗ trợ việc gì, trước ngày nào].',
 };
 
 // ---------------------------------------------------------------------------
@@ -631,6 +638,35 @@ export function soNgayImLang(
     ?? (dv.ngay_bat_dau ? `${dv.ngay_bat_dau}T00:00:00+07:00` : dv.created_at);
   if (!tu) return 0;
   return soNgayLamViec(tu, moc);
+}
+
+/**
+ * Thẻ đã có nhịp trong NGÀY VIỆT NAM hôm nay chưa.
+ *
+ * Cùng một phép so sánh mà RPC `ct2_viec_cua_toi` làm ở database (đổi
+ * `nhip_gan_nhat` sang lịch Asia/Ho_Chi_Minh rồi so ngày). Viết lại thành hàm
+ * thuần ở đây để những màn hình đọc thẳng bảng `ct2_dau_viec` — không đi qua
+ * RPC đó — không phải tự chế một phép so sánh thứ hai rồi lệch nhau lúc nửa đêm.
+ */
+export function daGhiNhipHomNay(nhipGanNhat: string | null, moc: Date = new Date()): boolean {
+  if (!nhipGanNhat) return false;
+  return ngayVnChuoi(new Date(nhipGanNhat)) === ngayVnChuoi(moc);
+}
+
+/**
+ * Sáng nay thẻ này còn chờ nhịp không.
+ *
+ * Chỉ việc TIẾN TRÌNH đang làm mới đòi nhịp: việc THƯỜNG TRỰC là việc lặp
+ * hằng ngày, bắt ghi nhịp cho nó thì mỗi sáng cán bộ phải gõ một câu vô nghĩa
+ * — đúng cách giết một nếp sinh hoạt.
+ */
+export function canGhiNhipHomNay(
+  dv: Pick<Ct2DauViec, 'loai_dau_viec' | 'trang_thai' | 'nhip_gan_nhat'>,
+  moc: Date = new Date(),
+): boolean {
+  return dv.loai_dau_viec === 'TIEN_TRINH'
+    && dv.trang_thai === 'DANG_LAM'
+    && !daGhiNhipHomNay(dv.nhip_gan_nhat, moc);
 }
 
 /** Tuổi thẻ trong cột chờ (NGÀY LÀM VIỆC) — quá CT2_NGUONG_TUOI_CHO thì escalate người giữ */

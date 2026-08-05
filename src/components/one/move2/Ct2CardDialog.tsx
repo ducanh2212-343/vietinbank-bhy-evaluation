@@ -11,16 +11,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  CT2_COT, CT2_MAU_CAU, CT2_TEN_CO, CT2_TEN_NHAN, CT2_TEN_UU_TIEN,
-  daDuKeHoach, goiYNhan, kiemTraCauNhip, lyDoChanChuyen, soNgayQuaHan,
+  CT2_CONG_THUC_NHIP, CT2_COT, CT2_MAU_CAU, CT2_TEN_CO, CT2_TEN_UU_TIEN,
+  daDuKeHoach, goiYNhan, kiemTraCauNhip, lyDoChanChuyen, mucChuY, soNgayQuaHan,
   thieuTruongBatBuoc,
-  type Ct2Co, type Ct2DauViec, type Ct2NhanPdca, type Ct2TrangThai,
+  type Ct2Co, type Ct2DauViec, type Ct2TrangThai,
 } from '@/lib/ct2';
 import {
   ct2DoiTheoDoi, ct2GhiNhip, ct2GoThe, ct2SuaDauViec, useCt2LamTuoi,
   useCt2NhatKy, useCt2TheoDoi, type Ct2NhanSu,
 } from './useCt2Data';
 import { Ct2CapPhuTrach } from './Ct2CapPhuTrach';
+import { Ct2SuaThongTin } from './Ct2SuaThongTin';
 import { Ct2DongThoiGian, type NguoiTraoDoi } from './Ct2DongThoiGian';
 
 /**
@@ -81,7 +82,9 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
 
   return (
     <Dialog open={!!the} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto">
+      {/* max-w-2xl + gap-3: GĐ chê hộp thoại dàn quá dài và rộng — thu khổ
+          giấy lại và bớt khe giữa các khối, phần chữ dẫn đã gỡ ở từng khối */}
+      <DialogContent className="max-h-[92vh] max-w-2xl gap-3 overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex flex-wrap items-center gap-2 pr-6 text-left">
             <span className="font-mono text-xs text-slate-400">{the.ma_hien_thi}</span>
@@ -95,7 +98,15 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
             <span className="w-full text-base leading-snug">{the.tieu_de}</span>
           </DialogTitle>
           <DialogDescription className="text-left">
-            {CT2_TEN_CO[the.co_tinh_trang]} · {the.phan_tram}% ·{' '}
+            {/*
+              Đọc mucChuY chứ KHÔNG in thẳng cờ cán bộ tự đặt. Thẻ «Triển khai
+              Chiêu thức số 3» hiện «Đúng hẹn» ngay cạnh «quá hạn 145 ngày» —
+              cờ co_tinh_trang là tự đánh giá, không có gì tự tính lại nó, nên
+              in trần là để màn hình nói dối.
+            */}
+            {mucChuY(the) === 'DO' ? <span className="font-semibold text-red-700">Cần xử lý</span>
+              : mucChuY(the) === 'VANG' ? <span className="font-medium text-amber-700">Có rủi ro</span>
+              : CT2_TEN_CO[the.co_tinh_trang]} · {the.phan_tram}% ·{' '}
             {the.han_hoan_thanh
               ? <>hạn {new Date(`${the.han_hoan_thanh}T00:00:00`).toLocaleDateString('vi-VN')}</>
               : <span className="font-medium text-amber-700">chưa có hạn</span>}
@@ -131,39 +142,37 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
           y hệt thẻ có chủ, mà «card vô chủ» là lỗi nặng nhất của quy chế §A1.
         */}
         {thieuTruongBatBuoc(the).length > 0 && (
-          <div className="rounded-xl border border-amber-300 bg-amber-50 p-3">
-            <p className="text-sm font-semibold text-amber-900">
-              Thẻ còn thiếu {thieuTruongBatBuoc(the).length} thông tin bắt buộc
-            </p>
-            <p className="mt-1.5 flex flex-wrap gap-1.5">
-              {thieuTruongBatBuoc(the).map((t) => (
-                <span key={t.truong}
-                  className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-amber-800">
-                  {t.ten}{t.ly_do ? ` — ${t.ly_do}` : ''}
-                </span>
-              ))}
-            </p>
-          </div>
+          <p className="flex flex-wrap items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2">
+            <span className="text-xs font-semibold text-amber-900">
+              Thiếu {thieuTruongBatBuoc(the).length} thông tin:
+            </span>
+            {thieuTruongBatBuoc(the).map((t) => (
+              <span key={t.truong}
+                className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-amber-800">
+                {t.ten}
+              </span>
+            ))}
+          </p>
         )}
 
         {/* Chưa lập kế hoạch → mời bắt đầu, không bày ra một loạt ô trống */}
         {!daDuKeHoach(the) && the.trang_thai === 'CHUAN_BI' && (laChuThe || laLanhDao) && (
-          <div className="rounded-xl border-2 border-brand-navy/20 bg-blue-50/50 p-3">
-            <p className="text-sm font-semibold text-brand-navy">Sẵn sàng bắt tay vào việc này chưa?</p>
-            <p className="mt-1 text-sm text-slate-600">
-              Còn ba câu ngắn: xong thì có gì · phục vụ mục tiêu nào · làm theo mấy bước.
-              Trả lời xong là việc chạy.
-            </p>
-            <Button className="mt-2" onClick={() => onLapKeHoach(true)}>
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-navy/20 bg-blue-50/50 px-3 py-2">
+            <p className="text-sm font-medium text-brand-navy">Sẵn sàng bắt tay vào việc này chưa?</p>
+            <Button size="sm" className="h-8" onClick={() => onLapKeHoach(true)}>
               <Rocket className="mr-1 h-4 w-4" /> Bắt đầu làm
             </Button>
           </div>
         )}
 
-        {/* 5W2H tóm tắt */}
-        <div className="grid gap-2 rounded-xl bg-slate-50 p-3 text-sm sm:grid-cols-2">
-          <O ten="Kết quả đầu ra" gia={the.ket_qua_dau_ra || '— chưa ghi'} />
-          <O ten="Gắn mục tiêu" gia={the.muc_tieu_lien_ket || '— chưa ghi'} />
+        {/*
+          5W2H tóm tắt — chỉ bày trường CÓ nội dung. Ba dòng «— chưa ghi» xếp
+          hàng chỉ làm hộp thoại dài ra; đường điền chúng là «Bắt đầu làm» /
+          «Sửa kế hoạch làm», và cái thiếu bắt buộc đã có dải cảnh báo vàng nêu.
+        */}
+        <div className="grid gap-1.5 rounded-xl bg-slate-50 p-2.5 text-sm sm:grid-cols-2">
+          {the.ket_qua_dau_ra && <O ten="Kết quả đầu ra" gia={the.ket_qua_dau_ra} />}
+          {the.muc_tieu_lien_ket && <O ten="Gắn mục tiêu" gia={the.muc_tieu_lien_ket} />}
           <O ten="Người chịu trách nhiệm"
             gia={the.nguoi_chiu_trach_nhiem
               ? (tenNguoi.get(the.nguoi_chiu_trach_nhiem) ?? '—')
@@ -174,21 +183,26 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
             onLuu={(v) => ct2SuaDauViec(the.id, v)}
             onXong={() => { lamTuoi('board'); onXong(); }}
           />
-          <div className="sm:col-span-2"><O ten="Cách làm" gia={the.cach_lam || '— chưa ghi'} /></div>
+          {the.cach_lam && <div className="sm:col-span-2"><O ten="Cách làm" gia={the.cach_lam} /></div>}
           {the.chi_tieu_dinh_luong !== null && (
             <O ten="Chỉ tiêu" gia={`${the.chi_tieu_dinh_luong} ${the.don_vi ?? ''}`} />
           )}
           {(the.trang_thai === 'CHO_DUYET' || the.trang_thai === 'CHO_PHOI_HOP') && the.nguoi_dang_giu && (
             <O ten="Đang giữ việc" gia={`${tenNguoi.get(the.nguoi_dang_giu) ?? '—'} (đồng hồ trách nhiệm đã đổi chủ)`} />
           )}
-          {daDuKeHoach(the) && (laChuThe || laLanhDao) && (
+          {/* Thẻ Chuẩn bị chưa có kế hoạch đã có nút «Bắt đầu làm» ở trên */}
+          {(laChuThe || laLanhDao) && (daDuKeHoach(the) || the.trang_thai !== 'CHUAN_BI') && (
             <button
               className="text-left text-xs font-medium text-brand-navy underline underline-offset-2 sm:col-span-2"
               onClick={() => onLapKeHoach(false)}
             >
-              Sửa kế hoạch làm
+              {daDuKeHoach(the) ? 'Sửa kế hoạch làm' : 'Ghi kế hoạch làm (kết quả · mục tiêu · cách làm)'}
             </button>
           )}
+          <Ct2SuaThongTin
+            the={the} nhanSu={nhanSu} laLanhDao={laLanhDao}
+            onXong={() => { lamTuoi('board'); onXong(); }}
+          />
         </div>
 
         {/*
@@ -241,8 +255,8 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
           }))}
           nguoiLienQuan={nguoiLienQuan}
           tenNguoi={tenNguoi}
-          loiMoiDau="Chưa có dòng nào. Ghi dòng P (Plan) đầu tiên ở ô «Ghi nhịp hôm nay» để khởi động thẻ."
-          goiY="Hỏi–đáp đúng ngữ cảnh thẻ. Sau khi gửi chỉ thu hồi được, không sửa."
+          loiMoiDau="Chưa có dòng nào — nhịp đầu tiên ghi ở ô trên."
+          goiY="Trao đổi về thẻ này…"
           onXong={() => lamTuoi()}
         />
       </DialogContent>
@@ -376,11 +390,10 @@ function ChuyenTrangThai({ the, laLanhDao, laChuThe, vong, nhanSu, chuyenDen, on
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 p-3">
-      <p className="mb-2 text-sm font-semibold text-brand-navy">Chuyển trạng thái</p>
+    <div className="rounded-xl border border-slate-200 p-2.5">
       <div className="flex flex-wrap items-end gap-2">
         <div className="min-w-44">
-          <Label>Cột đích</Label>
+          <Label>Chuyển trạng thái</Label>
           <Select value={den} onValueChange={(v) => setDen(v as Ct2TrangThai)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -422,15 +435,24 @@ function ChuyenTrangThai({ the, laLanhDao, laChuThe, vong, nhanSu, chuyenDen, on
 // Cổng B — ghi nhịp: 3 trường + 1 câu, tối ưu dưới 45 giây
 // ---------------------------------------------------------------------------
 
-export function FormGhiNhip({ the, cauGanNhat, onXong, tuDongNhan }: {
+/**
+ * Ghi nhịp — cờ tình trạng + % + một câu. KHÔNG hỏi nhãn P/D/C/A.
+ *
+ * Giám đốc bỏ nhãn 08/2026, cùng lý lẽ đã bỏ cổng Check/Act: trên Kanban, một
+ * việc là lập kế hoạch rồi làm liên tục tới khi ra kết quả. Bắt cán bộ mỗi
+ * sáng phân loại câu của mình vào bốn ô lý thuyết là thêm một bước suy nghĩ
+ * không đổi lấy quyết định nào — và người vội thì bấm bừa, làm nhật ký sai.
+ *
+ * Cột `nhan_pdca` vẫn ghi, suy ra từ trạng thái thẻ qua `goiYNhan()`: nhật ký
+ * cũ đọc được tiếp, và dòng Plan (P) — thứ mà cổng «Bắt đầu làm» còn soi — vẫn
+ * do Ct2PlanDialog ghi khi người dùng lập cách làm. Bỏ ô CHỌN, không bỏ cột.
+ */
+export function FormGhiNhip({ the, cauGanNhat, onXong }: {
   the: Pick<Ct2DauViec, 'id' | 'trang_thai' | 'phan_tram' | 'co_tinh_trang'>;
   cauGanNhat: string | null;
   onXong: () => void;
-  /** Ghi nhịp nhanh: nhãn tự gợi ý, không hiện ô chọn nhãn */
-  tuDongNhan?: boolean;
 }) {
   const { profileId } = useAuth();
-  const [nhan, setNhan] = useState<Ct2NhanPdca>(goiYNhan(the.trang_thai, the.phan_tram));
   const [co, setCo] = useState<Ct2Co>(the.co_tinh_trang);
   const [phanTram, setPhanTram] = useState(the.phan_tram);
   const [cau, setCau] = useState('');
@@ -439,7 +461,6 @@ export function FormGhiNhip({ the, cauGanNhat, onXong, tuDongNhan }: {
   const [dangGui, setDangGui] = useState(false);
 
   useEffect(() => {
-    setNhan(goiYNhan(the.trang_thai, the.phan_tram));
     setCo(the.co_tinh_trang);
     setPhanTram(the.phan_tram);
     setCau(''); setVuongMac(''); setHanhDong('');
@@ -454,7 +475,8 @@ export function FormGhiNhip({ the, cauGanNhat, onXong, tuDongNhan }: {
     const { error } = await ct2GhiNhip({
       dau_viec_id: the.id,
       nguoi_ghi: profileId,
-      nhan_pdca: nhan,
+      // Suy từ trạng thái thẻ, không hỏi người dùng nữa
+      nhan_pdca: goiYNhan(the.trang_thai, phanTram),
       noi_dung: cau.trim(),
       vuong_mac: co !== 'XANH' ? vuongMac.trim() : null,
       hanh_dong_hom_nay: co !== 'XANH' ? hanhDong.trim() : null,
@@ -469,10 +491,11 @@ export function FormGhiNhip({ the, cauGanNhat, onXong, tuDongNhan }: {
   };
 
   return (
-    <div className="rounded-xl border-2 border-brand-navy/20 bg-blue-50/40 p-3">
-      <p className="mb-2 flex flex-wrap items-baseline gap-2 text-sm font-semibold text-brand-navy">
+    <div className="rounded-xl border-2 border-brand-navy/20 bg-blue-50/40 p-2.5">
+      {/* Hướng dẫn DUY NHẤT còn giữ trong hộp thoại — công thức của GĐ */}
+      <p className="mb-2 flex flex-wrap items-baseline gap-x-2 text-sm font-semibold text-brand-navy">
         <span className="inline-flex items-center gap-2"><CalendarClock className="h-4 w-4" /> Ghi nhịp hôm nay</span>
-        <span className="text-2xs font-normal text-slate-500">— thành một dòng 📊 Báo cáo trong Dòng thời gian</span>
+        <span className="text-2xs font-normal text-slate-500">{CT2_CONG_THUC_NHIP}</span>
       </p>
       <div className="flex flex-wrap items-center gap-2">
         {/* Cờ tình trạng — chip bấm 1 lần */}
@@ -490,16 +513,6 @@ export function FormGhiNhip({ the, cauGanNhat, onXong, tuDongNhan }: {
             {p}%
           </Button>
         ))}
-        {!tuDongNhan && (
-          <Select value={nhan} onValueChange={(v) => setNhan(v as Ct2NhanPdca)}>
-            <SelectTrigger className="h-8 w-56 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {(Object.keys(CT2_TEN_NHAN) as Ct2NhanPdca[]).map((k) => (
-                <SelectItem key={k} value={k}>{CT2_TEN_NHAN[k]}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
       </div>
 
       <Textarea
@@ -507,7 +520,6 @@ export function FormGhiNhip({ the, cauGanNhat, onXong, tuDongNhan }: {
         onChange={(e) => setCau(e.target.value)}
         placeholder={CT2_MAU_CAU[co]}
       />
-      <p className="mt-1 text-2xs text-slate-500">Gợi ý: {CT2_MAU_CAU[co]}</p>
 
       {co !== 'XANH' && (
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
