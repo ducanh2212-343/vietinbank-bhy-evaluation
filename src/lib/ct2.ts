@@ -96,7 +96,10 @@ export interface Ct2Nhip {
  * Chiêu thức 2, Phê duyệt tín dụng và Kanban 38 skill/Dấu ấn — để cán bộ chỉ
  * phải học một cách trao đổi, và để @nhắc tên chỉ phải viết một lần.
  */
-export type Ct2PhamVi = 'DAU_VIEC' | 'PHONG' | 'CHIEN_DICH' | 'HO_SO_TIN_DUNG' | 'THE_KANBAN';
+export type Ct2PhamVi =
+  | 'DAU_VIEC' | 'PHONG' | 'CHIEN_DICH' | 'HO_SO_TIN_DUNG' | 'THE_KANBAN'
+  /** Thẻ dấu ấn BHY Mark — trao đổi bổ sung 08/2026, cùng mạch với ba bàn kia */
+  | 'DAU_AN';
 
 export interface Ct2BinhLuan {
   id: string;
