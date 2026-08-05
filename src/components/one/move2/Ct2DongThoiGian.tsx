@@ -240,8 +240,12 @@ export function Ct2DongThoiGian({
 
         {dsCoTheNhac.length > 0 && (
           <div>
+            {/* Từ 06/08 tuyến phụ trách (người chịu trách nhiệm · TP · PGĐ · lãnh
+                đạo theo dõi) TỰ nhận thông báo mọi trao đổi và nhịp — bấm tên chỉ
+                còn nghĩa NHẮC ĐÍCH DANH: tin của người được bấm sẽ ghi «nhắc tên
+                anh/chị» thay vì «vừa trao đổi», và gọi được cả người ngoài tuyến. */}
             <p className="mb-1 flex items-center gap-1 text-xs text-slate-500">
-              <AtSign className="h-3 w-3" /> Ai cần đọc? Bấm tên để họ nhận thông báo ngay.
+              <AtSign className="h-3 w-3" /> Tuyến phụ trách tự nhận thông báo — bấm tên để nhắc đích danh ai đó.
             </p>
             <div className="flex flex-wrap gap-1.5">
               {dsCoTheNhac.map((n) => {

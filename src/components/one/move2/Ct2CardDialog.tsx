@@ -11,9 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  CT2_CONG_THUC_NHIP, CT2_MAU_CAU, CT2_TEN_CO, CT2_TEN_UU_TIEN, CT2_TRANG_THAI_CHON,
-  daDuKeHoach, goiYNhan, kiemTraCauNhip, lyDoChanChuyen, mucChuY, soNgayQuaHan,
-  thieuTruongBatBuoc,
+  CT2_CONG_THUC_NHIP, CT2_COT, CT2_MAU_CAU, CT2_TEN_CO, CT2_TEN_UU_TIEN,
+  cotHienThi, daDuKeHoach, goiYNhan, kiemTraCauNhip, lyDoChanChuyen, mucChuY,
+  soNgayQuaHan, thieuTruongBatBuoc, tuoiCho,
   type Ct2Co, type Ct2DauViec, type Ct2TrangThai,
 } from '@/lib/ct2';
 import {
@@ -343,70 +343,73 @@ function ChuyenTrangThai({ the, laLanhDao, laChuThe, vong, nhanSu, chuyenDen, on
   onKhoiDong: () => void;
   onXong: () => void;
 }) {
-  const [den, setDen] = useState<Ct2TrangThai>(the.trang_thai);
-  const [nguoiGiu, setNguoiGiu] = useState('');
+  /*
+    GĐ chỉnh sáng 06/08 (ngày triển khai): cột Kanban có 4 trạng thái mà ô
+    chuyển bày 7 — hai nơi nói hai thứ. ĐỒNG BỘ VỀ 4: ô chọn chỉ còn đúng bốn
+    cột của bảng. Ba trạng thái con không biến mất — chúng đổi vai:
+     · CHỜ (phối hợp/duyệt) = THUỘC TÍNH của «Đang làm»: nút «Giao đồng hồ
+       chờ» ngay dưới, thẻ vẫn nằm cột Đang làm như trên bảng.
+     · ĐÃ ĐÓNG = CHỮ KÝ của lãnh đạo trên thẻ Hoàn thành: nút «Chốt», không
+       phải một đích để chọn. Thẻ đóng vẫn nằm cột Hoàn thành.
+    Database giữ nguyên bảy trạng thái và mọi luật — chỉ cách BÀY đổi.
+  */
+  const cotHienTai = cotHienThi(the.trang_thai);
+  const [den, setDen] = useState<Ct2TrangThai>(cotHienTai);
   const [lyDoHuy, setLyDoHuy] = useState('');
   const [dangGui, setDangGui] = useState(false);
+  // Giao đồng hồ chờ — mở gọn khi cần, không chiếm chỗ của người không dùng
+  const [moGiao, setMoGiao] = useState(false);
+  const [loaiCho, setLoaiCho] = useState<'CHO_DUYET' | 'CHO_PHOI_HOP'>('CHO_DUYET');
+  const [nguoiGiu, setNguoiGiu] = useState('');
 
   useEffect(() => {
-    setDen(chuyenDen ?? the.trang_thai);
-    setNguoiGiu(the.nguoi_dang_giu ?? '');
+    setDen(cotHienThi(chuyenDen ?? the.trang_thai));
     setLyDoHuy(the.ly_do_dung_huy ?? '');
+    setMoGiao(false);
+    setNguoiGiu('');
   }, [the, chuyenDen]);
 
   if (!laLanhDao && !laChuThe) return null;
 
-  /*
-    Đích chuyển lấy từ CT2_TRANG_THAI_CHON — đủ bảy trạng thái, lọc trước theo
-    quyền và loại việc để người dùng không chọn được thứ chắc chắn bị chặn:
-     · Dừng/Hủy, Đã đóng: chỉ lãnh đạo (đúng luật trigger).
-     · Việc THƯỜNG TRỰC: không đi qua cột chờ / Hoàn thành.
-    Đây là chỗ từng có lỗ: luật cho CHO_PHOI_HOP / CHO_DUYET / DA_DONG nằm đủ
-    hai phía nhưng ô chọn chỉ bày 4 cột — ba trạng thái không có cửa vào.
-  */
-  const dsLoc = CT2_TRANG_THAI_CHON
-    .filter((c) => !c.chiLanhDao || laLanhDao)
-    .filter((c) => the.loai_dau_viec !== 'THUONG_TRUC'
-      || !['CHO_PHOI_HOP', 'CHO_DUYET', 'HOAN_THANH'].includes(c.ma));
-  // Trạng thái HIỆN TẠI luôn có mặt — thẻ đang «Đã đóng» mà người xem là cán bộ
-  // thì ô chọn vẫn phải hiện đúng «Đã đóng», không được trống
-  const dsDich = dsLoc.some((c) => c.ma === the.trang_thai)
-    ? dsLoc
-    : [...CT2_TRANG_THAI_CHON.filter((c) => c.ma === the.trang_thai), ...dsLoc];
-  const canNguoiGiu = !!CT2_TRANG_THAI_CHON.find((c) => c.ma === den)?.canNguoiGiu;
+  const dangCho = the.trang_thai === 'CHO_DUYET' || the.trang_thai === 'CHO_PHOI_HOP';
+  const dsDich = CT2_COT
+    .filter((c) => c.ma !== 'DUNG_HUY' || laLanhDao)
+    .filter((c) => the.loai_dau_viec !== 'THUONG_TRUC' || c.ma !== 'HOAN_THANH');
   const lyDoChan = lyDoChanChuyen(the.trang_thai, den, {
     ...vong, phanTram: the.phan_tram, laLanhDao, loai: the.loai_dau_viec,
   });
 
+  const doi = async (
+    thay: Partial<Ct2DauViec> & { trang_thai: Ct2TrangThai }, loiNhan: string,
+  ) => {
+    setDangGui(true);
+    const { error } = await ct2SuaDauViec(the.id, thay);
+    setDangGui(false);
+    if (error) { toast.error(error); return; }
+    toast.success(loiNhan);
+    onXong();
+  };
+
   const chuyen = async () => {
-    if (den === the.trang_thai) return;
+    if (den === cotHienTai) return;
     // Khởi động việc đi qua Cổng 2 — hỏi nốt 5W2H rồi tự chuyển cột
     if (den === 'DANG_LAM' && the.trang_thai === 'CHUAN_BI' && the.loai_dau_viec === 'TIEN_TRINH') {
       onKhoiDong();
       return;
     }
     if (lyDoChan) { toast.error(lyDoChan); return; }
-    if (canNguoiGiu && !nguoiGiu) {
-      toast.error('Vào cột chờ phải chọn người đang giữ việc — đồng hồ trách nhiệm chuyển sang họ.');
-      return;
-    }
     if (den === 'DUNG_HUY' && lyDoHuy.trim().length < 30) {
       toast.error('Dừng/Hủy phải ghi rõ lý do, tối thiểu 30 ký tự.');
       return;
     }
-    setDangGui(true);
-    const { error } = await ct2SuaDauViec(the.id, {
-      trang_thai: den,
-      nguoi_dang_giu: canNguoiGiu ? nguoiGiu : null,
-      ...(den === 'DUNG_HUY' ? { ly_do_dung_huy: lyDoHuy.trim() } : {}),
-    });
-    setDangGui(false);
-    if (error) { toast.error(error); return; }
-    toast.success(canNguoiGiu
-      ? 'Đã chuyển — đồng hồ trách nhiệm sang người giữ việc, tính từ bây giờ.'
-      : `Đã chuyển sang «${CT2_TRANG_THAI_CHON.find((c) => c.ma === den)?.ten.replace(/^\S+ /, '')}».`);
-    onXong();
+    await doi(
+      { trang_thai: den, ...(den === 'DUNG_HUY' ? { ly_do_dung_huy: lyDoHuy.trim() } : {}) },
+      `Đã chuyển sang «${CT2_COT.find((c) => c.ma === den)?.ten}».`,
+    );
   };
+
+  const tenGiu = the.nguoi_dang_giu
+    ? nhanSu.find((n) => n.id === the.nguoi_dang_giu)?.full_name ?? '—' : '—';
 
   return (
     <div className="rounded-xl border border-slate-200 p-2.5">
@@ -417,33 +420,103 @@ function ChuyenTrangThai({ the, laLanhDao, laChuThe, vong, nhanSu, chuyenDen, on
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               {dsDich.map((c) => (
-                <SelectItem key={c.ma} value={c.ma}>{c.ten}</SelectItem>
+                <SelectItem key={c.ma} value={c.ma}>{c.icon} {c.ten}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
-        {canNguoiGiu && (
-          <div className="min-w-52">
-            <Label>Ai đang giữ việc? (người duyệt / đầu mối phối hợp)</Label>
-            <Select value={nguoiGiu} onValueChange={setNguoiGiu}>
-              <SelectTrigger><SelectValue placeholder="Chọn người giữ" /></SelectTrigger>
-              <SelectContent>
-                {nhanSu.map((n) => <SelectItem key={n.id} value={n.id}>{n.full_name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-        <Button onClick={chuyen} disabled={dangGui || den === the.trang_thai}>
+        <Button onClick={chuyen} disabled={dangGui || den === cotHienTai}>
           {dangGui ? 'Đang chuyển…' : 'Chuyển'}
         </Button>
+        {/* Chữ ký của lãnh đạo — thẻ vẫn ở cột Hoàn thành, chỉ thêm dấu chốt.
+            Việc thường trực không có «xong» nên lãnh đạo đóng thẳng khi hết vai. */}
+        {laLanhDao && !dangGui && the.trang_thai === 'HOAN_THANH' && (
+          <Button variant="outline" className="border-emerald-300 text-emerald-700"
+            onClick={() => doi({ trang_thai: 'DA_DONG' },
+              'Đã chốt «Đã đóng» — thẻ khép lại, vẫn nằm ở cột Hoàn thành.')}>
+            🔒 Chốt «Đã đóng»
+          </Button>
+        )}
+        {laLanhDao && !dangGui && the.loai_dau_viec === 'THUONG_TRUC'
+          && (the.trang_thai === 'CHUAN_BI' || the.trang_thai === 'DANG_LAM') && (
+          <Button variant="outline" className="border-emerald-300 text-emerald-700"
+            onClick={() => doi({ trang_thai: 'DA_DONG' }, 'Đã đóng việc thường trực.')}>
+            🔒 Đóng việc thường trực
+          </Button>
+        )}
       </div>
+
+      {the.trang_thai === 'DA_DONG' && (
+        <p className="mt-2 text-xs text-slate-500">
+          🔒 Thẻ đã được lãnh đạo chốt «Đã đóng»
+          {laLanhDao && ' — chọn cột khác ở trên nếu cần mở lại.'}
+        </p>
+      )}
+
+      {/* Đồng hồ chờ — thuộc tính của «Đang làm», không phải một cột riêng */}
+      {dangCho ? (
+        <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-amber-50 px-2.5 py-1.5">
+          <span className="text-xs text-amber-900">
+            {the.trang_thai === 'CHO_DUYET' ? '⏳ Đang trình' : '🤝 Đang chờ phối hợp'} —{' '}
+            <b>{tenGiu}</b> giữ việc {tuoiCho(the) > 0 && <>· đã {tuoiCho(the)} ngày làm việc</>}
+          </span>
+          {(laChuThe || laLanhDao) && (
+            <Button size="sm" variant="outline" className="h-7 px-2 text-xs" disabled={dangGui}
+              onClick={() => doi({ trang_thai: 'DANG_LAM' },
+                'Đã nhận lại việc — đồng hồ về tay mình.')}>
+              Nhận lại việc
+            </Button>
+          )}
+        </div>
+      ) : the.trang_thai === 'DANG_LAM' && the.loai_dau_viec === 'TIEN_TRINH' && (
+        <div className="mt-2">
+          {!moGiao ? (
+            <button type="button"
+              className="text-xs font-medium text-brand-navy underline underline-offset-2"
+              onClick={() => setMoGiao(true)}>
+              ⏳ Việc đang nằm ở người khác? Giao đồng hồ chờ
+            </button>
+          ) : (
+            <div className="flex flex-wrap items-end gap-2 rounded-lg bg-slate-50 p-2">
+              <div className="flex gap-1">
+                {([['CHO_DUYET', '⏳ Trình duyệt'], ['CHO_PHOI_HOP', '🤝 Chờ phối hợp']] as const)
+                  .map(([ma, ten]) => (
+                    <Button key={ma} size="sm" variant={loaiCho === ma ? 'default' : 'outline'}
+                      className="h-8 px-2 text-xs" onClick={() => setLoaiCho(ma)}>
+                      {ten}
+                    </Button>
+                  ))}
+              </div>
+              <div className="min-w-44">
+                <Select value={nguoiGiu || undefined} onValueChange={setNguoiGiu}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Ai đang giữ việc?" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {nhanSu.map((n) => <SelectItem key={n.id} value={n.id}>{n.full_name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button size="sm" className="h-8" disabled={dangGui || !nguoiGiu}
+                onClick={() => doi({ trang_thai: loaiCho, nguoi_dang_giu: nguoiGiu },
+                  'Đã giao đồng hồ chờ — thẻ vẫn ở cột Đang làm, đồng hồ tính cho người giữ.')}>
+                Giao
+              </Button>
+              <Button size="sm" variant="ghost" className="h-8" onClick={() => setMoGiao(false)}>
+                Thôi
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
       {den === 'DUNG_HUY' && (
         <div className="mt-2">
           <Label>Lý do dừng/hủy (≥ 30 ký tự, lưu vết)</Label>
           <Textarea value={lyDoHuy} onChange={(e) => setLyDoHuy(e.target.value)} rows={2} />
         </div>
       )}
-      {den !== the.trang_thai && lyDoChan && (
+      {den !== cotHienTai && lyDoChan && (
         <p className="mt-2 rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800">{lyDoChan}</p>
       )}
     </div>

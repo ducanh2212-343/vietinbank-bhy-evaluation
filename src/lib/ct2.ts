@@ -247,36 +247,22 @@ export function cotHienThi(t: Ct2TrangThai): Ct2TrangThai {
   return t;
 }
 
-/**
- * Danh sách trạng thái CHỌN ĐƯỢC ở mục «Chuyển trạng thái».
+/*
+ * Ghi chú hai lần chỉnh liên tiếp của mục «Chuyển trạng thái» (06/08, ngày
+ * triển khai) — để người sau không lặp lại vòng này:
  *
- * Rà soát trước ngày triển khai 06/08 phát hiện: hai trạng thái chờ
- * (CHO_PHOI_HOP, CHO_DUYET) và «Đã đóng» có LUẬT ở cả client lẫn trigger
- * database — nhưng KHÔNG CÓ CỬA: ô chọn cột đích lấy theo CT2_COT (4 cột hiển
- * thị), nên không ai vào được ba trạng thái đó. Hệ quả dây chuyền: đồng hồ
- * «tuổi cột chờ» không bao giờ chạy, tầng «Đang chờ chính tôi» của BGĐ không
- * bao giờ có đầu việc, và thông báo «mời anh/chị rà và đóng thẻ» trỏ tới một
- * nút không tồn tại.
+ *  1. Rà soát phát hiện CHO_PHOI_HOP / CHO_DUYET / DA_DONG có luật ở cả client
+ *     lẫn trigger nhưng KHÔNG CÓ CỬA vào → mở ô chọn đủ 7 đích.
+ *  2. GĐ chỉnh ngay trong sáng: bảng có 4 cột mà ô chuyển bày 7 — hai nơi nói
+ *     hai thứ. ĐỒNG BỘ VỀ 4: ô chọn chỉ còn đúng CT2_COT. Ba trạng thái con
+ *     đổi vai chứ không mất cửa: CHỜ là nút «Giao đồng hồ chờ» bên trong
+ *     «Đang làm» (thẻ vẫn nằm cột Đang làm), ĐÃ ĐÓNG là nút «Chốt» của lãnh
+ *     đạo trên thẻ Hoàn thành. Database giữ nguyên bảy trạng thái và mọi luật.
  *
- * CT2_COT vẫn là danh sách CỘT trên bảng (thẻ chờ hiện trong «Đang làm», thẻ
- * đã đóng hiện trong «Hoàn thành» — cotHienThi lo việc gấp); còn đây là danh
- * sách ĐÍCH CHUYỂN, đủ bảy trạng thái với điều kiện của từng cái.
+ * Bài học: cửa phải mở ĐÚNG HÌNH của bảng — thêm đích vào ô chọn thì dễ,
+ * nhưng người dùng đọc bảng bằng cột, và một đích không phải cột là một trạng
+ * thái họ không biết xếp vào đâu.
  */
-export const CT2_TRANG_THAI_CHON: Array<{
-  ma: Ct2TrangThai; ten: string;
-  /** Chỉ Trưởng/Phó phòng (và cấp trên) — đúng luật trigger, lọc trước cho đỡ ăn lỗi */
-  chiLanhDao?: boolean;
-  /** Vào trạng thái này phải chọn người đang giữ việc — đồng hồ trách nhiệm đổi chủ */
-  canNguoiGiu?: boolean;
-}> = [
-  { ma: 'CHUAN_BI', ten: '📋 Chuẩn bị' },
-  { ma: 'DANG_LAM', ten: '🔨 Đang làm' },
-  { ma: 'CHO_PHOI_HOP', ten: '🤝 Chờ phối hợp', canNguoiGiu: true },
-  { ma: 'CHO_DUYET', ten: '⏳ Chờ duyệt', canNguoiGiu: true },
-  { ma: 'HOAN_THANH', ten: '✅ Hoàn thành' },
-  { ma: 'DA_DONG', ten: '🔒 Đã đóng — lãnh đạo chốt sau khi rà', chiLanhDao: true },
-  { ma: 'DUNG_HUY', ten: '⛔ Dừng/Hủy', chiLanhDao: true },
-];
 
 export const CT2_TEN_CO: Record<Ct2Co, string> = {
   XANH: '🟢 Đúng hẹn', VANG: '🟡 Có rủi ro', DO: '🔴 Đang vướng',

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   CT2_COT,
-  CT2_TRANG_THAI_CHON,
   cauPlanTuKeHoach,
   cotHienThi,
   chuanBiQuaLau,
@@ -187,25 +186,24 @@ describe('Luật chuyển trạng thái — Kanban là vòng lặp, không có b
   });
 });
 
-describe('Ô «Chuyển trạng thái» — đủ bảy đích, rà soát ngày triển khai 06/08', () => {
-  it('hai cột chờ và Đã đóng có cửa vào — trước đây luật có ở cả hai phía mà không có cửa', () => {
-    const ma = CT2_TRANG_THAI_CHON.map((c) => c.ma);
-    expect(ma).toContain('CHO_PHOI_HOP');
-    expect(ma).toContain('CHO_DUYET');
-    expect(ma).toContain('DA_DONG');
-    expect(ma).toHaveLength(7);
+describe('Ô «Chuyển trạng thái» đồng bộ với bảng — GĐ chỉnh sáng 06/08', () => {
+  it('đích chuyển = đúng 4 cột của bảng, không hơn — hai nơi phải nói cùng một thứ', () => {
+    // Chờ phối hợp/duyệt là nút «Giao đồng hồ chờ» trong Đang làm; Đã đóng là
+    // nút «Chốt» của lãnh đạo trên thẻ Hoàn thành — không phải đích để chọn.
+    expect(CT2_COT.map((c) => c.ma)).toEqual(['CHUAN_BI', 'DANG_LAM', 'HOAN_THANH', 'DUNG_HUY']);
   });
 
-  it('vào cột chờ bắt buộc chọn người giữ — đồng hồ trách nhiệm phải có chủ', () => {
-    for (const c of CT2_TRANG_THAI_CHON) {
-      expect(!!c.canNguoiGiu).toBe(c.ma === 'CHO_PHOI_HOP' || c.ma === 'CHO_DUYET');
-    }
+  it('thẻ đang chờ / đã đóng vẫn quy về đúng cột của nó trên ô chọn', () => {
+    expect(cotHienThi('CHO_DUYET')).toBe('DANG_LAM');
+    expect(cotHienThi('CHO_PHOI_HOP')).toBe('DANG_LAM');
+    expect(cotHienThi('DA_DONG')).toBe('HOAN_THANH');
   });
 
-  it('Dừng/Hủy và Đã đóng chỉ bày cho lãnh đạo — đúng tấm gương của trigger', () => {
-    for (const c of CT2_TRANG_THAI_CHON) {
-      expect(!!c.chiLanhDao).toBe(c.ma === 'DUNG_HUY' || c.ma === 'DA_DONG');
-    }
+  it('luật của bảy trạng thái thật vẫn nguyên ở lyDoChanChuyen — chỉ cách bày đổi', () => {
+    const bc: BoiCanhChuyen = { coDongP: true, phanTram: 50, laLanhDao: false, loai: 'TIEN_TRINH' };
+    expect(lyDoChanChuyen('DANG_LAM', 'CHO_DUYET', { ...bc, loai: 'THUONG_TRUC' })).toContain('THƯỜNG TRỰC');
+    expect(lyDoChanChuyen('HOAN_THANH', 'DA_DONG', bc)).toContain('Trưởng/Phó');
+    expect(lyDoChanChuyen('DANG_LAM', 'CHO_DUYET', bc)).toBeNull();
   });
 });
 
