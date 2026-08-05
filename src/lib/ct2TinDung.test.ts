@@ -412,11 +412,12 @@ describe('Hồ sơ chưa cập nhật — cảnh báo bằng hình ảnh trên m
     expect(hsMucImLang({ ...base, nhip_gan_nhat: '2026-08-06T02:00:00Z' }, moc)).toBe('BO_QUEN');
   });
 
-  it('chưa ghi nhịp lần nào thì tính từ ngày nhận hồ sơ', () => {
+  it('chưa ghi nhịp lần nào thì tính từ ngày nhận hồ sơ, kẹp từ ngày triển khai', () => {
     const h = { ...base, nhip_gan_nhat: null };
     expect(hsChuaGhiLanNao(h)).toBe(true);
-    // Nhận 03/08 (thứ Hai) → 12/08 là 7 ngày làm việc
-    expect(hsNgayImLang(h, moc)).toBe(7);
+    // Nhận 03/08 — TRƯỚC ngày triển khai 06/08 → kỷ luật cập nhật đếm từ 06/08:
+    // tới 12/08 là 4 ngày làm việc (7, 10, 11, 12), không phải 7 ngày từ ngày nhận
+    expect(hsNgayImLang(h, moc)).toBe(4);
     expect(hsMucImLang(h, moc)).toBe('BO_QUEN');
   });
 

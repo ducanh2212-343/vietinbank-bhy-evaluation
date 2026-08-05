@@ -1,10 +1,11 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Flame, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import { soNgayQuaHan, type Ct2TrangThai } from '@/lib/ct2';
+import { Ct2GhiNhipNhanh } from './Ct2GhiNhipNhanh';
 import { Ct2NhipPhongStrip } from './Ct2NhipPhongStrip';
 import { useCt2NhipPhong, useCt2ViecCuaToi } from './useCt2Data';
 
@@ -18,12 +19,19 @@ import { useCt2NhipPhong, useCt2ViecCuaToi } from './useCt2Data';
  * Khối này đặt ngay đầu trang chủ, trả lời hai câu trong một cái liếc:
  *  1. «Sáng nay tôi còn phải ghi nhịp cho mấy việc?» → số to + nút Ghi nhịp.
  *  2. «Cả phòng đang thế nào?» → dải ảnh đại diện đồng nghiệp.
+ *
+ * Từ ngày triển khai 06/08: nút «Ghi nhịp» mở CỬA LƯỚT NGAY TẠI CHỖ, không
+ * điều hướng sang trang Chiêu thức 2 nữa. Đo bằng giây cho buổi họp sáng:
+ * điều hướng trang là tải lại dữ liệu + tự tìm lại nút — mất 5–8 giây và một
+ * lần «đang ở đâu ấy nhỉ». Mở tại chỗ thì từ cú bấm tới lúc GÕ ĐƯỢC CHỮ ĐẦU
+ * TIÊN dưới một giây (ô câu tự chiếm con trỏ, cờ và % điền sẵn theo thẻ).
  */
 
 export function Ct2HomeStrip() {
   const { departmentId } = useAuth();
   const { data: viec, isLoading, isError } = useCt2ViecCuaToi();
   const { data: nhipPhong = [] } = useCt2NhipPhong(departmentId ?? null);
+  const [ghiNhanh, setGhiNhanh] = useState(false);
 
   const ds = useMemo(() => viec ?? [], [viec]);
   const canNhip = useMemo(
@@ -69,13 +77,21 @@ export function Ct2HomeStrip() {
         </div>
 
         <div className="flex shrink-0 gap-2">
-          <Button asChild size="sm" variant={canNhip.length > 0 ? 'default' : 'outline'}>
-            <Link to="/one/chieu-thuc-2">
-              {canNhip.length > 0 ? <><Zap className="mr-1 h-4 w-4" /> Ghi nhịp</> : 'Mở bảng việc'}
-            </Link>
-          </Button>
+          {canNhip.length > 0 ? (
+            <Button size="sm" onClick={() => setGhiNhanh(true)}>
+              <Zap className="mr-1 h-4 w-4" /> Ghi nhịp ngay
+            </Button>
+          ) : (
+            <Button asChild size="sm" variant="outline">
+              <Link to="/one/chieu-thuc-2">Mở bảng việc</Link>
+            </Button>
+          )}
         </div>
       </div>
+
+      {ghiNhanh && canNhip.length > 0 && (
+        <Ct2GhiNhipNhanh dsThe={canNhip} onDong={() => setGhiNhanh(false)} />
+      )}
 
       {/* Cả phòng trong một dòng — thứ Miro làm được mà bảng thường không */}
       {nhipPhong.length > 0 && (

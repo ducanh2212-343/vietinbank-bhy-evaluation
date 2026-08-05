@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { CalendarClock, Rocket, Star } from 'lucide-react';
 import {
@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  CT2_CONG_THUC_NHIP, CT2_COT, CT2_MAU_CAU, CT2_TEN_CO, CT2_TEN_UU_TIEN,
+  CT2_CONG_THUC_NHIP, CT2_MAU_CAU, CT2_TEN_CO, CT2_TEN_UU_TIEN, CT2_TRANG_THAI_CHON,
   daDuKeHoach, goiYNhan, kiemTraCauNhip, lyDoChanChuyen, mucChuY, soNgayQuaHan,
   thieuTruongBatBuoc,
   type Ct2Co, type Ct2DauViec, type Ct2TrangThai,
@@ -356,7 +356,24 @@ function ChuyenTrangThai({ the, laLanhDao, laChuThe, vong, nhanSu, chuyenDen, on
 
   if (!laLanhDao && !laChuThe) return null;
 
-  const canNguoiGiu = den === 'CHO_DUYET' || den === 'CHO_PHOI_HOP';
+  /*
+    Đích chuyển lấy từ CT2_TRANG_THAI_CHON — đủ bảy trạng thái, lọc trước theo
+    quyền và loại việc để người dùng không chọn được thứ chắc chắn bị chặn:
+     · Dừng/Hủy, Đã đóng: chỉ lãnh đạo (đúng luật trigger).
+     · Việc THƯỜNG TRỰC: không đi qua cột chờ / Hoàn thành.
+    Đây là chỗ từng có lỗ: luật cho CHO_PHOI_HOP / CHO_DUYET / DA_DONG nằm đủ
+    hai phía nhưng ô chọn chỉ bày 4 cột — ba trạng thái không có cửa vào.
+  */
+  const dsLoc = CT2_TRANG_THAI_CHON
+    .filter((c) => !c.chiLanhDao || laLanhDao)
+    .filter((c) => the.loai_dau_viec !== 'THUONG_TRUC'
+      || !['CHO_PHOI_HOP', 'CHO_DUYET', 'HOAN_THANH'].includes(c.ma));
+  // Trạng thái HIỆN TẠI luôn có mặt — thẻ đang «Đã đóng» mà người xem là cán bộ
+  // thì ô chọn vẫn phải hiện đúng «Đã đóng», không được trống
+  const dsDich = dsLoc.some((c) => c.ma === the.trang_thai)
+    ? dsLoc
+    : [...CT2_TRANG_THAI_CHON.filter((c) => c.ma === the.trang_thai), ...dsLoc];
+  const canNguoiGiu = !!CT2_TRANG_THAI_CHON.find((c) => c.ma === den)?.canNguoiGiu;
   const lyDoChan = lyDoChanChuyen(the.trang_thai, den, {
     ...vong, phanTram: the.phan_tram, laLanhDao, loai: the.loai_dau_viec,
   });
@@ -385,7 +402,9 @@ function ChuyenTrangThai({ the, laLanhDao, laChuThe, vong, nhanSu, chuyenDen, on
     });
     setDangGui(false);
     if (error) { toast.error(error); return; }
-    toast.success(`Đã chuyển sang «${CT2_COT.find((c) => c.ma === den)?.ten}».`);
+    toast.success(canNguoiGiu
+      ? 'Đã chuyển — đồng hồ trách nhiệm sang người giữ việc, tính từ bây giờ.'
+      : `Đã chuyển sang «${CT2_TRANG_THAI_CHON.find((c) => c.ma === den)?.ten.replace(/^\S+ /, '')}».`);
     onXong();
   };
 
@@ -397,8 +416,8 @@ function ChuyenTrangThai({ the, laLanhDao, laChuThe, vong, nhanSu, chuyenDen, on
           <Select value={den} onValueChange={(v) => setDen(v as Ct2TrangThai)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              {CT2_COT.map((c) => (
-                <SelectItem key={c.ma} value={c.ma}>{c.icon} {c.ten}</SelectItem>
+              {dsDich.map((c) => (
+                <SelectItem key={c.ma} value={c.ma}>{c.ten}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -447,10 +466,16 @@ function ChuyenTrangThai({ the, laLanhDao, laChuThe, vong, nhanSu, chuyenDen, on
  * cũ đọc được tiếp, và dòng Plan (P) — thứ mà cổng «Bắt đầu làm» còn soi — vẫn
  * do Ct2PlanDialog ghi khi người dùng lập cách làm. Bỏ ô CHỌN, không bỏ cột.
  */
-export function FormGhiNhip({ the, cauGanNhat, onXong }: {
+export function FormGhiNhip({ the, cauGanNhat, onXong, tuTap }: {
   the: Pick<Ct2DauViec, 'id' | 'trang_thai' | 'phan_tram' | 'co_tinh_trang'>;
   cauGanNhat: string | null;
   onXong: () => void;
+  /**
+   * Ghi nhịp nhanh buổi sáng: con trỏ nhảy thẳng vào ô câu — cờ và % đã điền
+   * sẵn theo thẻ, việc duy nhất còn lại là GÕ. Chỉ bật ở cửa lướt; trong hộp
+   * thoại chi tiết mà tự chiếm con trỏ thì trang nhảy qua phần 5W2H phía trên.
+   */
+  tuTap?: boolean;
 }) {
   const { profileId } = useAuth();
   const [co, setCo] = useState<Ct2Co>(the.co_tinh_trang);
@@ -459,12 +484,14 @@ export function FormGhiNhip({ the, cauGanNhat, onXong }: {
   const [vuongMac, setVuongMac] = useState('');
   const [hanhDong, setHanhDong] = useState('');
   const [dangGui, setDangGui] = useState(false);
+  const oCau = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     setCo(the.co_tinh_trang);
     setPhanTram(the.phan_tram);
     setCau(''); setVuongMac(''); setHanhDong('');
-  }, [the.id, the.trang_thai, the.phan_tram, the.co_tinh_trang]);
+    if (tuTap) oCau.current?.focus();
+  }, [the.id, the.trang_thai, the.phan_tram, the.co_tinh_trang, tuTap]);
 
   const kiem = kiemTraCauNhip({ noiDung: cau, co, vuongMac, hanhDongHomNay: hanhDong, cauGanNhat });
 
@@ -516,8 +543,14 @@ export function FormGhiNhip({ the, cauGanNhat, onXong }: {
       </div>
 
       <Textarea
+        ref={oCau}
         className="mt-2 bg-white" rows={2} value={cau}
         onChange={(e) => setCau(e.target.value)}
+        // Ctrl/Cmd+Enter = Lưu: tay không rời bàn phím trong buổi họp sáng.
+        // Enter thường vẫn xuống dòng — trên điện thoại không có Ctrl, nút Lưu lo.
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !dangGui && kiem.hopLe) ghi();
+        }}
         placeholder={CT2_MAU_CAU[co]}
       />
 

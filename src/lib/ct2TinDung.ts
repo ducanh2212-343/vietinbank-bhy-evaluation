@@ -10,7 +10,8 @@
  */
 
 import { soNgayLamViec } from './ct2';
-import { cauHinhNhip } from './cauHinhNhip';
+import { NGAY_TRIEN_KHAI, cauHinhNhip } from './cauHinhNhip';
+import { ngayVnChuoi } from './lichNghi';
 
 export type HsTrangThai =
   | 'DEN_HAN_GHTD'
@@ -354,7 +355,11 @@ export function hsNgayImLang(
   const tu = h.nhip_gan_nhat
     ?? (h.ngay_nhan ? `${h.ngay_nhan}T00:00:00+07:00` : h.created_at);
   if (!tu) return 0;
-  return soNgayLamViec(tu, moc);
+  // Cùng phép kẹp với soNgayImLang bên đầu việc: kỷ luật cập nhật tính từ ngày
+  // triển khai chính thức, không tính lùi về những ngày hệ thống chưa vận hành
+  const tuKep = ngayVnChuoi(new Date(tu)) < NGAY_TRIEN_KHAI
+    ? `${NGAY_TRIEN_KHAI}T00:00:00+07:00` : tu;
+  return soNgayLamViec(tuKep, moc);
 }
 
 /** Mức «chưa cập nhật» để giao diện chọn màu và biểu tượng */
