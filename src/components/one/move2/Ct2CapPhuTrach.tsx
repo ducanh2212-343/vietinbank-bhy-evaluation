@@ -67,6 +67,21 @@ export function Ct2CapPhuTrach({ phongId, nguoiLam, gia, nhanSu, suaDuoc, onLuu,
   }, [moSua, gia.lanh_dao_theo_doi, gia.pho_phong, gia.truong_phong, gia.pgd_phu_trach,
     truongPhongMacDinh, pgdMacDinh]);
 
+  // Ba cấp ĐANG chọn trong form (không phải giá trị đã lưu) — để đổi Trưởng
+  // phòng ở ô bên là ô «Lãnh đạo theo dõi» có ngay người đó
+  const dsBaCap = useMemo(
+    () => [pp, tp, pgd]
+      .filter((id, i, a) => id && a.indexOf(id) === i)
+      .map((id) => nhanSu.find((n) => n.id === id))
+      .filter((n): n is Ct2NhanSu => !!n),
+    [pp, tp, pgd, nhanSu],
+  );
+  // Chọn xong ba cấp mà lãnh đạo theo dõi rơi ra ngoài thì bỏ chọn, đỡ để người
+  // dùng bấm Lưu rồi mới ăn lỗi từ database
+  useEffect(() => {
+    if (ldtd && dsBaCap.length > 0 && !dsBaCap.some((n) => n.id === ldtd)) setLdtd('');
+  }, [ldtd, dsBaCap]);
+
   const trong = !gia.lanh_dao_theo_doi && !gia.pho_phong && !gia.truong_phong && !gia.pgd_phu_trach;
   // Trưởng phòng tự theo dõi việc của mình là đúng — trên họ không còn ai
   const duocTuTheoDoi = !!nguoiLam && nguoiLam === truongPhongMacDinh;
@@ -128,8 +143,19 @@ export function Ct2CapPhuTrach({ phongId, nguoiLam, gia, nhanSu, suaDuoc, onLuu,
           <div className="grid gap-2 sm:grid-cols-2">
             <div>
               <Label className="text-xs">Lãnh đạo theo dõi</Label>
-              <ChonNguoi gia={ldtd} dat={setLdtd} ds={nguoiTrongPhong}
-                macDinh={truongPhongMacDinh} ghi="Trưởng phòng" />
+              {/*
+                CHỈ chọn trong ba cấp đã gán, không phải cả phòng. «Lãnh đạo
+                theo dõi» = ai TRONG ba cấp đó đang trực tiếp bám việc này —
+                chính chỗ tự do chọn bất kỳ ai trước đây đã đẻ ra thẻ lấy một
+                chuyên viên làm lãnh đạo theo dõi. DB cũng chặn đúng luật này.
+              */}
+              <ChonNguoi gia={ldtd} dat={setLdtd} ds={dsBaCap}
+                macDinh={tp || truongPhongMacDinh} ghi="Trưởng phòng" />
+              {dsBaCap.length === 0 && (
+                <p className="mt-1 text-2xs text-slate-500">
+                  Gán Phó phòng / Trưởng phòng / PGĐ ở ba ô bên rồi chọn ở đây.
+                </p>
+              )}
               {loiTuTheoDoi && (
                 <p className="mt-1 text-2xs font-medium text-amber-700">{loiTuTheoDoi}</p>
               )}

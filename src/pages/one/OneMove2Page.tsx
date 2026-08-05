@@ -365,6 +365,7 @@ function NoiDung() {
                   nhanSu={nhanSu}
                   nhipNguoi={nhipNguoi}
                   laLanhDao={laLanhDao}
+                  phongId={phongId}
                   onMoThe={(t) => { setChuyenDen(null); setTheMo(t); }}
                   onKeoThe={(t, den) => {
                     if (den === 'DANG_LAM' && t.trang_thai === 'CHUAN_BI' && t.loai_dau_viec === 'TIEN_TRINH') {

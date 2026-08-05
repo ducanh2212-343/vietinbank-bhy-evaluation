@@ -19,7 +19,9 @@ import {
   type HoSoTinDung, type HsCap, type HsFormTao, type HsKyHan, type HsLoai,
   type HsTrangThai,
 } from '@/lib/ct2TinDung';
-import type { Ct2NhanSu } from './useCt2Data';
+import {
+  useCt2DsPgd, useCt2PgdCuaPhong, useCt2Phong, type Ct2NhanSu,
+} from './useCt2Data';
 import { Ct2CapPhuTrach } from './Ct2CapPhuTrach';
 import { Ct2DongThoiGian, type NguoiTraoDoi } from './Ct2DongThoiGian';
 import {
@@ -248,6 +250,9 @@ export function Ct2CreditCardDialog({ hoSo, nhanSu, laLanhDao, chuyenDen, onClos
   const lamTuoi = useCt2LamTuoiHoSo();
   const { data: nhatKy = [] } = useCt2NhatKyHoSo(hoSo?.id ?? null);
   const tenNguoi = useMemo(() => new Map(nhanSu.map((n) => [n.id, n.full_name])), [nhanSu]);
+  const { data: phongs = [] } = useCt2Phong();
+  const { data: dsPgd = [] } = useCt2DsPgd();
+  const { data: pgdCuaPhong = '' } = useCt2PgdCuaPhong(hoSo?.phong ?? null);
   // Ba vai gắn với một hồ sơ: cán bộ làm, lãnh đạo theo dõi, người đang cầm hồ sơ
   const nguoiLienQuan = useMemo<NguoiTraoDoi[]>(() => {
     if (!hoSo) return [];
@@ -292,6 +297,31 @@ export function Ct2CreditCardDialog({ hoSo, nhanSu, laLanhDao, chuyenDen, onClos
   const suaDuoc = laLanhDao || laCanBo;
   const canhBao = canhBaoHoSo(hoSo);
   const canNguoiGiu = den === 'TRINH_LDP' || den === 'TRINH_LDCN';
+
+  /*
+    «Trình ai?» phải là danh sách CẤP DUYỆT, không phải danh bạ Chi nhánh.
+    Bày cả 102 cán bộ ra đây vừa mời chọn nhầm, vừa vô nghĩa: một chuyên viên
+    không duyệt được hồ sơ tín dụng. Nay suy thẳng từ cấp phụ trách đã gán:
+      · Trình Lãnh đạo Phòng  → Phó phòng / Trưởng phòng của phòng giữ hồ sơ
+      · Trình LĐ Chi nhánh    → PGĐ phụ trách và các PGĐ/Giám đốc khác
+    Trình TSC không hỏi người — cấp duyệt đó nằm ngoài Chi nhánh.
+  */
+  const dsTrinh = (() => {
+    const ds: Array<{ id: string; ghi?: string }> = [];
+    const them = (id: string | null | undefined, ghi?: string) => {
+      if (id && !ds.some((x) => x.id === id)) ds.push({ id, ghi });
+    };
+    if (den === 'TRINH_LDP') {
+      them(hoSo.pho_phong, 'Phó phòng');
+      them(hoSo.truong_phong, 'Trưởng phòng');
+      them(phongs.find((p) => p.id === hoSo.phong)?.manager_id, 'Trưởng phòng');
+    } else if (den === 'TRINH_LDCN') {
+      them(hoSo.pgd_phu_trach, 'PGĐ phụ trách');
+      them(pgdCuaPhong, 'PGĐ phụ trách');
+      for (const n of dsPgd) them(n.id, 'Lãnh đạo Chi nhánh');
+    }
+    return ds;
+  })();
   const lyDoChan = lyDoChanChuyenHoSo(hoSo.trang_thai, den, {
     cap_phe_duyet: hoSo.cap_phe_duyet,
     laLanhDao,
@@ -551,13 +581,26 @@ export function Ct2CreditCardDialog({ hoSo, nhanSu, laLanhDao, chuyenDen, onClos
               </div>
               {canNguoiGiu && (
                 <div className="min-w-48">
-                  <Label className="text-xs">Trình ai?</Label>
+                  <Label className="text-xs">
+                    Trình ai? <span className="text-slate-400">
+                      — {den === 'TRINH_LDP' ? 'lãnh đạo Phòng' : 'lãnh đạo Chi nhánh'}
+                    </span>
+                  </Label>
                   <Select value={nguoiGiu} onValueChange={setNguoiGiu}>
                     <SelectTrigger><SelectValue placeholder="Chọn người duyệt" /></SelectTrigger>
                     <SelectContent>
-                      {nhanSu.map((n) => <SelectItem key={n.id} value={n.id}>{n.full_name}</SelectItem>)}
+                      {dsTrinh.map((n) => (
+                        <SelectItem key={n.id} value={n.id}>
+                          {tenNguoi.get(n.id) ?? '—'}{n.ghi ? ` (${n.ghi})` : ''}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
+                  {dsTrinh.length === 0 && (
+                    <p className="mt-1 text-2xs font-medium text-amber-700">
+                      Hồ sơ chưa gán cấp phụ trách — bổ sung ở mục «Cấp phụ trách» phía trên.
+                    </p>
+                  )}
                 </div>
               )}
               <Button onClick={chuyen} disabled={dangGui || den === hoSo.trang_thai}>

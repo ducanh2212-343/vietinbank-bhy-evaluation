@@ -10,7 +10,9 @@ import {
   nguongTuoiCho, sapXepThe, soNgayImLang, soNgayQuaHan, thieuTruongBatBuoc, tuoiCho,
   type Ct2Co, type Ct2DauViec, type Ct2MucChuY, type Ct2TrangThai,
 } from '@/lib/ct2';
-import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  ct2PhucHoiThe, useCt2LamTuoi, useCt2TheDaGo,
+} from './useCt2Data';
 import { Ct2NhipPhongStrip } from './Ct2NhipPhongStrip';
 import { Ct2OverviewGrid } from './Ct2OverviewGrid';
 import type { Ct2NhanSu, Ct2NhipNguoi } from './useCt2Data';
@@ -28,6 +30,8 @@ interface Props {
   nhanSu: Ct2NhanSu[];
   nhipNguoi: Ct2NhipNguoi[];
   laLanhDao: boolean;
+  /** Phòng đang xem — để tra danh sách thẻ đã gỡ của đúng phòng đó */
+  phongId: string | null;
   onMoThe: (the: Ct2DauViec) => void;
   /** Chuyển trạng thái cần thêm thông tin (người giữ / lý do) → mở hộp thoại */
   onKeoThe: (the: Ct2DauViec, den: Ct2TrangThai) => void;
@@ -48,13 +52,14 @@ const VIEN_CO: Record<Ct2MucChuY, string> = {
   XONG: 'border-l-slate-300',
 };
 
-export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoThe }: Props) {
+export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, phongId, onMoThe, onKeoThe }: Props) {
   const { profileId } = useAuth();
-  const dienThoai = useIsMobile();
-  // Trên điện thoại mặc định mở «Toàn cảnh»: cả bảng lọt một màn hình, không
-  // phải cuộn ngang qua 7 cột mới biết phòng đang thế nào.
+  // Mặc định «Cột» ở cả điện thoại lẫn máy tính: bảng Kanban phải mở ra bằng
+  // hình ảnh mà mọi người đã quen ở Miro — việc xếp theo bước. Trước đây điện
+  // thoại mở thẳng «Toàn cảnh», tiện cho người đã hiểu bảng nhưng lại giấu mất
+  // chính chức năng cần dạy.
   const [cheDo, setCheDo] = useState<'cot' | 'toan-canh' | null>(null);
-  const dangXem = cheDo ?? (dienThoai ? 'toan-canh' : 'cot');
+  const dangXem = cheDo ?? 'cot';
   const [locNguoi, setLocNguoi] = useState<string | null>(null);
   const [locCo, setLocCo] = useState<Ct2Co | null>(null);
   const [chiQuaHan, setChiQuaHan] = useState(false);
@@ -174,16 +179,13 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoTh
         >
           Quá hạn
         </Button>
+        {/*
+          «Cột» đứng TRƯỚC và là mặc định ở mọi khổ màn hình: cái người ta cần
+          nắm đầu tiên là việc đang nằm ở bước nào — đó là chức năng của Kanban,
+          và cũng là hình ảnh mọi người đã quen ở Miro. «Toàn cảnh» là cách xem
+          bổ trợ để soát nhanh, không phải cửa vào.
+        */}
         <span className="ml-auto inline-flex overflow-hidden rounded-lg border border-slate-200">
-          <button
-            type="button"
-            onClick={() => setCheDo('toan-canh')}
-            className={`inline-flex h-8 items-center gap-1 px-2 text-xs ${
-              dangXem === 'toan-canh' ? 'bg-brand-navy text-white' : 'bg-white text-slate-600'
-            }`}
-          >
-            <Grid2x2 className="h-3.5 w-3.5" /> Toàn cảnh
-          </button>
           <button
             type="button"
             onClick={() => setCheDo('cot')}
@@ -192,6 +194,15 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoTh
             }`}
           >
             <Columns3 className="h-3.5 w-3.5" /> Cột
+          </button>
+          <button
+            type="button"
+            onClick={() => setCheDo('toan-canh')}
+            className={`inline-flex h-8 items-center gap-1 px-2 text-xs ${
+              dangXem === 'toan-canh' ? 'bg-brand-navy text-white' : 'bg-white text-slate-600'
+            }`}
+          >
+            <Grid2x2 className="h-3.5 w-3.5" /> Toàn cảnh
           </button>
         </span>
         {locNguoi && (wip.get(locNguoi) ?? 0) >= CT2_NGUONG_WIP && (
@@ -207,6 +218,8 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoTh
       )}
 
       {/* 7 cột Kanban — cuộn ngang trong khung riêng, trang không vỡ */}
+      <TheDaGo phongId={phongId} laLanhDao={laLanhDao} />
+
       {dangXem === 'cot' && (
       <DndContext sensors={sensors} onDragEnd={handleDrag}>
         <div className="overflow-x-auto pb-2">
@@ -291,6 +304,45 @@ function OSo({ nhan, giaTri, tot }: { nhan: string; giaTri: string; tot: boolean
     <div className="rounded-2xl border border-slate-200 bg-white p-3">
       <p className={`text-2xl font-bold tabular-nums ${tot ? 'text-emerald-600' : 'text-red-600'}`}>{giaTri}</p>
       <p className="mt-0.5 text-xs text-slate-500">{nhan}</p>
+    </div>
+  );
+}
+
+/**
+ * Dải «Thẻ đã gỡ» — chỉ hiện khi thật sự có thẻ vừa bị gỡ nhầm, và chỉ với
+ * người được phép khôi phục. Cố ý đặt ngay trên bảng chứ không giấu trong một
+ * trang quản trị riêng: thẻ gỡ nhầm cần được nhìn thấy trong vài phút sau đó,
+ * chứ không phải đi tìm ở nơi không ai mở.
+ */
+function TheDaGo({ phongId, laLanhDao }: { phongId: string | null; laLanhDao: boolean }) {
+  const lamTuoi = useCt2LamTuoi();
+  const { data: ds = [], refetch } = useCt2TheDaGo(phongId, laLanhDao);
+  if (ds.length === 0) return null;
+  return (
+    <div className="mb-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 py-2">
+      <p className="text-xs font-medium text-slate-600">
+        Thẻ đã gỡ ({ds.length}) — không phải Dừng/Hủy, khôi phục lại được
+      </p>
+      <ul className="mt-1 space-y-1">
+        {ds.map((t) => (
+          <li key={t.id} className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+            <span className="font-mono text-slate-400">{t.ma_hien_thi ?? '—'}</span>
+            <span className="text-slate-800">{t.tieu_de}</span>
+            {t.ly_do && <span className="text-slate-400">· {t.ly_do}</span>}
+            <button
+              className="font-medium text-brand-navy underline underline-offset-2"
+              onClick={async () => {
+                const { error } = await ct2PhucHoiThe(t.id);
+                if (error) { toast.error(error); return; }
+                toast.success('Đã khôi phục thẻ về cột Chuẩn bị.');
+                lamTuoi('board'); refetch();
+              }}
+            >
+              Khôi phục
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
