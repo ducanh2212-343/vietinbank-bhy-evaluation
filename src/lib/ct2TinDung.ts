@@ -13,6 +13,7 @@ import { soNgayLamViec } from './ct2';
 import { cauHinhNhip } from './cauHinhNhip';
 
 export type HsTrangThai =
+  | 'DEN_HAN_GHTD'
   | 'THU_THAP' | 'TRINH_LDP' | 'TRINH_LDCN' | 'TRINH_TSC'
   | 'HOAN_THIEN_GN' | 'HOAN_THANH' | 'TU_CHOI';
 
@@ -72,6 +73,9 @@ export interface NhipHoSo {
 // ---------------------------------------------------------------------------
 
 export const HS_COT: Array<{ ma: HsTrangThai; ten: string; icon: string }> = [
+  // Cột DỰ KIẾN, đứng đầu đường ống. Không phải hồ sơ đang làm — là công việc
+  // sắp phải làm, cho trước vào bảng để Phòng thấy khối lượng đang tới.
+  { ma: 'DEN_HAN_GHTD', ten: 'Đến hạn GHTD 2 tháng tới', icon: '⏰' },
   { ma: 'THU_THAP', ten: 'Thu thập hồ sơ', icon: '📂' },
   { ma: 'TRINH_LDP', ten: 'Trình Lãnh đạo Phòng', icon: '📤' },
   { ma: 'TRINH_LDCN', ten: 'Trình LĐ Chi nhánh', icon: '🏢' },
@@ -104,9 +108,35 @@ export const HS_TEN_KY_HAN: Record<HsKyHan, string> = {
 /** Ba bước «trình» — hồ sơ nằm trong tay người khác, không phải lỗi cán bộ */
 export const HS_BUOC_CHO: HsTrangThai[] = ['TRINH_LDP', 'TRINH_LDCN', 'TRINH_TSC'];
 
-/** Hồ sơ còn đang chạy (vào mẫu số mọi chỉ số) */
+/**
+ * Hồ sơ còn đang chạy (vào mẫu số mọi chỉ số).
+ *
+ * DEN_HAN_GHTD CỐ Ý đứng ngoài: thẻ ở cột dự kiến chưa phải hồ sơ, chưa có số
+ * tiền, chưa có hạn xử lý, chưa ai bắt tay làm. Đếm nó vào «hồ sơ đang chạy»
+ * hay cộng vào tổng dư nợ đang trình là báo cáo một khối lượng công việc chưa
+ * tồn tại — và đòi nó ghi nhịp mỗi ngày thì còn vô lý hơn.
+ */
 export const HS_DANG_CHAY: HsTrangThai[] =
   ['THU_THAP', 'TRINH_LDP', 'TRINH_LDCN', 'TRINH_TSC', 'HOAN_THIEN_GN'];
+
+/**
+ * Ba trường phải có TRƯỚC KHI thẻ dự kiến vào «Thu thập hồ sơ».
+ *
+ * Đây là hàng rào được DỜI CHỖ, không phải bị gỡ: `f_ct2_hs_truoc_tao` vốn bắt
+ * đủ ba thứ này ngay lúc mở hồ sơ. Thẻ dự kiến sinh ra từ một sự thật duy nhất
+ * — hạn mức của khách sắp hết — nên lúc đó chưa thể biết vay bao nhiêu, kỳ hạn
+ * nào, hẹn xong ngày nào. Bắt điền ngay là ép người ta bịa; bỏ hẳn thì hồ sơ
+ * trôi vào đường ống mà không có gì đo được. Nên hỏi đúng lúc bắt tay làm.
+ */
+export function hsThieuDeVaoThuThap(
+  h: Pick<HoSoTinDung, 'so_tien' | 'han_xu_ly' | 'ky_han'>,
+): string[] {
+  const thieu: string[] = [];
+  if (h.so_tien === null) thieu.push('số tiền');
+  if (!h.han_xu_ly) thieu.push('hạn xử lý');
+  if (!h.ky_han) thieu.push('kỳ hạn');
+  return thieu;
+}
 
 /**
  * Ngưỡng tuổi cột chờ theo cấp — quy chế Miro §A5 nêu 3–5 ngày làm việc.
@@ -206,11 +236,31 @@ export interface BoiCanhHoSo {
   cap_phe_duyet: HsCap;
   laLanhDao: boolean;
   coLyDoTuChoi: boolean;
+  /** Các trường còn thiếu để rời cột dự kiến — xem hsThieuDeVaoThuThap() */
+  thieuDeVaoThuThap?: string[];
 }
 
 /** null = được chuyển; chuỗi = lý do từ chối (hiện cho người dùng) */
 export function lyDoChanChuyenHoSo(tu: HsTrangThai, den: HsTrangThai, bc: BoiCanhHoSo): string | null {
   if (tu === den) return null;
+
+  // Cột dự kiến là điểm XUẤT PHÁT, một chiều.
+  //
+  // Không cho lùi về: hồ sơ đã vào Thu thập là đã có người bắt tay làm, kéo
+  // ngược về «dự kiến» xoá mất sự thật đó và làm đồng hồ xử lý chạy lại từ đầu.
+  // Muốn dừng thì có Từ chối/Dừng — cửa đó ghi lý do và giữ vết.
+  if (den === 'DEN_HAN_GHTD') {
+    return 'Cột «Đến hạn GHTD» là điểm xuất phát — hồ sơ đã bắt đầu không quay lại được. Cần dừng thì dùng Từ chối/Dừng.';
+  }
+  if (tu === 'DEN_HAN_GHTD') {
+    if (den !== 'THU_THAP' && den !== 'TU_CHOI') {
+      return 'Từ cột dự kiến chỉ đi sang «Thu thập hồ sơ» — chưa thu thập thì chưa có gì để trình.';
+    }
+    if (den === 'THU_THAP' && bc.thieuDeVaoThuThap && bc.thieuDeVaoThuThap.length > 0) {
+      return `Bắt tay làm thì cần điền ${bc.thieuDeVaoThuThap.join(' · ')} — thẻ dự kiến chưa có các thông tin này.`;
+    }
+  }
+
   if (den === 'TRINH_TSC' && bc.cap_phe_duyet !== 'TSC') {
     return `Hồ sơ này thuộc ${HS_TEN_CAP[bc.cap_phe_duyet].toLowerCase()} — không trình lên cấp PDTD Trụ sở chính.`;
   }
@@ -227,6 +277,7 @@ export function lyDoChanChuyenHoSo(tu: HsTrangThai, den: HsTrangThai, bc: BoiCan
 /** Bước kế tiếp hợp lý theo cấp phê duyệt — dùng cho nút «Chuyển bước tiếp» */
 export function buocKeTiep(tu: HsTrangThai, cap: HsCap): HsTrangThai | null {
   switch (tu) {
+    case 'DEN_HAN_GHTD': return 'THU_THAP';
     case 'THU_THAP': return 'TRINH_LDP';
     case 'TRINH_LDP':
       return cap === 'PHONG' ? 'HOAN_THIEN_GN' : 'TRINH_LDCN';
@@ -363,8 +414,11 @@ export function canhBaoHoSo(h: HoSoTinDung, moc: Date = new Date()): CanhBaoHoSo
   const ds: CanhBaoHoSo[] = [];
   const conLai = hsConLaiDenHan(h, moc);
 
-  // Nặng nhất: hạn mức của khách hàng sắp hết mà hồ sơ vẫn chưa xong
-  if (conLai !== null && HS_DANG_CHAY.includes(h.trang_thai)) {
+  // Nặng nhất: hạn mức của khách hàng sắp hết mà hồ sơ vẫn chưa xong.
+  // Thẻ ở cột dự kiến cũng tính — nó SINH RA từ đúng cái hạn này, im lặng ở
+  // đây là bỏ trống chỗ duy nhất cảnh báo có nghĩa.
+  if (conLai !== null
+      && (HS_DANG_CHAY.includes(h.trang_thai) || h.trang_thai === 'DEN_HAN_GHTD')) {
     if (conLai < 0) {
       ds.push({ muc: 'DO', noi_dung: `Hạn mức đã hết ${-conLai} ngày, hồ sơ chưa xong` });
     } else if (conLai <= 30) {
@@ -401,6 +455,10 @@ export function canhBaoHoSo(h: HoSoTinDung, moc: Date = new Date()): CanhBaoHoSo
   // Hồ sơ nhập từ board Miro có thể trống số tiền / hạn xử lý / kỳ hạn. Ô trống
   // KHÔNG được im lặng: nếu không nêu ra thì hồ sơ thiếu số tiền trông sạch sẽ
   // y hệt hồ sơ đủ, và tổng dư nợ đang trình thiếu hụt mà không ai biết.
+  //
+  // Trừ cột dự kiến: ở đó ba ô này TRỐNG LÀ ĐÚNG — chưa bắt tay làm thì chưa
+  // biết vay bao nhiêu, kỳ hạn nào, hẹn xong ngày nào. Gắn cờ vàng cho cả cột
+  // chỉ dạy người dùng bỏ qua cờ vàng. Chúng được hỏi ở cổng vào Thu thập.
   if (HS_DANG_CHAY.includes(h.trang_thai)) {
     if (h.so_tien === null) {
       ds.push({ muc: 'VANG', noi_dung: 'Chưa có số tiền — hồ sơ này không vào được tổng dư nợ' });

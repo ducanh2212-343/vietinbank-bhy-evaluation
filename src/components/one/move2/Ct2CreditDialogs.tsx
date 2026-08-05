@@ -14,7 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { hanGoiY } from '@/lib/ct2';
 import {
   HS_COT, HS_TEN_CAP, HS_TEN_KY_HAN, HS_TEN_LOAI, buocKeTiep, canhBaoHoSo,
-  dinhDangTien, docSoTien, hsSuaDuocSoTien, hsTuoiCho, kiemTraHoSo,
+  dinhDangTien, docSoTien, hsSuaDuocSoTien, hsThieuDeVaoThuThap, hsTuoiCho, kiemTraHoSo,
   lyDoChanChuyenHoSo,
   type HoSoTinDung, type HsCap, type HsFormTao, type HsKyHan, type HsLoai,
   type HsTrangThai,
@@ -326,6 +326,9 @@ export function Ct2CreditCardDialog({ hoSo, nhanSu, laLanhDao, chuyenDen, onClos
     cap_phe_duyet: hoSo.cap_phe_duyet,
     laLanhDao,
     coLyDoTuChoi: lyDo.trim().length >= 20,
+    // Thẻ dự kiến rời cột phải điền đủ ba trường — cùng luật trigger DB gác,
+    // nêu ở đây để người dùng thấy TRƯỚC khi bấm, kèm mục «Bổ sung» ngay dưới
+    thieuDeVaoThuThap: hsThieuDeVaoThuThap(hoSo),
   });
 
   const chuyen = async () => {

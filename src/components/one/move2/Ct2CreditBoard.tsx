@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  HS_COT, HS_TEN_CAP, HS_TEN_LOAI, canhBaoHoSo, dinhDangTien,
-  hsTuoiCho, sapXepHoSo, tongTheoBuoc,
+  HS_COT, HS_DANG_CHAY, HS_TEN_CAP, HS_TEN_LOAI, canhBaoHoSo, dinhDangTien,
+  hsConLaiDenHan, hsTuoiCho, sapXepHoSo, tongTheoBuoc,
   type HoSoTinDung, type HsTrangThai,
 } from '@/lib/ct2TinDung';
 import type { Ct2NhanSu } from './useCt2Data';
@@ -34,12 +34,16 @@ import { CT2_GIAI_THICH_IM_LANG, Ct2CreditList } from './Ct2CreditList';
  *     cột nào. Bảng có khung cuộn dọc riêng để sticky top hoạt động (sticky
  *     theo trang không ăn được bên trong một khung overflow).
  *
- *  3. KHÔNG còn cột «Đến hạn GHTD 2 tháng tới». GĐ chốt 08/2026: các hồ sơ
- *     đến hạn được cho trước vào bảng chính là để đi tiếp sang «Thu thập hồ
- *     sơ» — thẻ nằm ở bước thật, không hiện trùng hai nơi như một cột giả.
- *     Thứ giữ lại là CẢNH BÁO «Hạn mức sắp hết»: bấm vào ra tên khách sắp hết
- *     hạn mà chưa có hồ sơ hoặc hồ sơ chưa xong (cờ tính ở RPC, đối chiếu
- *     đường ống hồ sơ đang chạy — việc bản Miro không làm được).
+ *  3. Cột «Đến hạn GHTD 2 tháng tới» là TRẠNG THÁI THẬT, không phải cột dẫn
+ *     xuất. GĐ chốt 08/2026: mỗi khách chỉ xuất hiện ở ĐÚNG MỘT chỗ. Đây là
+ *     trạng thái DỰ KIẾN đứng đầu đường ống — hồ sơ cho trước vào để thấy khối
+ *     lượng sắp tới; bắt tay làm thì chuyển sang «Thu thập hồ sơ» và rời cột.
+ *     Nhận diện cố tình KHÁC thẻ hồ sơ thật (nền tím nhạt, viền đứt, dòng đầu
+ *     là hạn mức chứ không phải số tiền) — nó là việc dự kiến, không phải hồ
+ *     sơ đang chạy, và không được đọc nhầm thành một.
+ *
+ *  4. CẢNH BÁO «Hạn mức sắp hết» giữ nguyên: bấm ra tên khách sắp hết hạn mà
+ *     chưa vào Thu thập hoặc hồ sơ chưa xong.
  */
 
 interface Props {
@@ -110,8 +114,13 @@ export function Ct2CreditBoard({
     return m;
   }, [daLoc]);
 
-  const tong = useMemo(() => tongTheoBuoc(dsHoSo.filter((h) =>
-    h.trang_thai !== 'HOAN_THANH' && h.trang_thai !== 'TU_CHOI')), [dsHoSo]);
+  // Chỉ hồ sơ ĐANG CHẠY vào tổng dư nợ. Thẻ ở cột dự kiến chưa có số tiền —
+  // đếm chúng vào «thiếu N hồ sơ chưa có số» là biến một cột kế hoạch thành
+  // một đống dữ liệu khuyết, trong khi ở đó trống mới là đúng.
+  const tong = useMemo(
+    () => tongTheoBuoc(dsHoSo.filter((h) => HS_DANG_CHAY.includes(h.trang_thai))),
+    [dsHoSo],
+  );
 
   const tongTien = useMemo(
     () => [...tong.values()].reduce((s, v) => s + v.tien, 0),
@@ -140,9 +149,10 @@ export function Ct2CreditBoard({
     const chuaXong: HoSoSapDenHan[] = [];
     for (const s of sapDenHan) {
       if (s.da_xong_ho_so_moi) continue;
-      const dongNayConChay = dsHoSo.some((h) => h.id === s.id
-        && h.trang_thai !== 'HOAN_THANH' && h.trang_thai !== 'TU_CHOI');
-      if (dongNayConChay || s.da_co_ho_so_moi) chuaXong.push(s);
+      // Thẻ còn nằm ở cột dự kiến vẫn là «chưa vào việc» — chưa ai bắt tay làm
+      const dangChay = dsHoSo.some((h) => h.id === s.id
+        && HS_DANG_CHAY.includes(h.trang_thai));
+      if (dangChay || s.da_co_ho_so_moi) chuaXong.push(s);
       else chuaCo.push(s);
     }
     return { chuaCo, chuaXong, tong: chuaCo.length + chuaXong.length };
@@ -157,6 +167,11 @@ export function Ct2CreditBoard({
     if (!h || !den || !HS_COT.some((c) => c.ma === den) || h.trang_thai === den) return;
     if (!laLanhDao && h.can_bo !== profileId) {
       toast.error('Chỉ cán bộ phụ trách hoặc lãnh đạo Phòng chuyển được hồ sơ này.');
+      return;
+    }
+    // Cột dự kiến một chiều — chặn ngay ở cú kéo thay vì để DB ném lỗi
+    if (den === 'DEN_HAN_GHTD') {
+      toast.error('Cột «Đến hạn GHTD» là điểm xuất phát — không kéo hồ sơ đã bắt đầu ngược về đây.');
       return;
     }
     onKeoHoSo(h, den);
@@ -278,27 +293,47 @@ export function Ct2CreditBoard({
             <div className="min-w-max">
               {/* Hàng tiêu đề cột — DÍNH mép trên khung cuộn: kéo xuống băng
                   thứ ba vẫn biết cột nào là cột nào */}
-              <div className="sticky top-0 z-20 flex gap-3 bg-white pb-1">
-                {HS_COT.map((cot) => (
-                  <div key={cot.ma} className="w-64 shrink-0 rounded-xl bg-slate-100 px-2 py-1.5">
-                    <p className="flex items-center justify-between text-xs font-semibold text-brand-navy">
-                      <span>{cot.icon} {cot.ten}</span>
-                      <span className="tabular-nums text-slate-400">{theoCot.get(cot.ma) ?? 0}</span>
-                    </p>
-                    {(tong.get(cot.ma)?.tien ?? 0) > 0 && (
-                      <p className="text-2xs font-medium tabular-nums text-slate-500">
-                        {dinhDangTien(tong.get(cot.ma)!.tien)}
-                        {(tong.get(cot.ma)?.thieu ?? 0) > 0 && ` (+${tong.get(cot.ma)!.thieu} chưa có số)`}
+              {/* Chiều cao CỐ ĐỊNH h-[3.25rem]: băng cán bộ bên dưới dính vào
+                  đúng mép này (top-[3.25rem]) nên hai hàng không đè nhau */}
+              <div className="sticky top-0 z-20 flex h-[3.25rem] gap-3 bg-white">
+                {HS_COT.map((cot) => {
+                  const duKien = cot.ma === 'DEN_HAN_GHTD';
+                  return (
+                    <div key={cot.ma} className={`w-64 shrink-0 rounded-xl px-2 py-1.5 ${
+                      duKien ? 'bg-violet-100' : 'bg-slate-100'
+                    }`}>
+                      <p className={`flex items-center justify-between text-xs font-semibold ${
+                        duKien ? 'text-violet-800' : 'text-brand-navy'
+                      }`}>
+                        <span className="truncate">{cot.icon} {cot.ten}</span>
+                        <span className={`tabular-nums ${duKien ? 'text-violet-400' : 'text-slate-400'}`}>
+                          {theoCot.get(cot.ma) ?? 0}
+                        </span>
                       </p>
-                    )}
-                  </div>
-                ))}
+                      {duKien ? (
+                        <p className="text-2xs leading-snug text-violet-500">Dự kiến — chưa vào việc</p>
+                      ) : (tong.get(cot.ma)?.tien ?? 0) > 0 && (
+                        <p className="text-2xs font-medium tabular-nums text-slate-500">
+                          {dinhDangTien(tong.get(cot.ma)!.tien)}
+                          {(tong.get(cot.ma)?.thieu ?? 0) > 0 && ` (+${tong.get(cot.ma)!.thieu} chưa có số)`}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
 
-              {/* Mỗi cán bộ một băng — tên cán bộ ghim mép trái khi cuộn ngang */}
+              {/* Mỗi cán bộ một băng — tên ghim cả khi cuộn ngang lẫn cuộn dọc */}
               {theoNguoi.map((n) => (
                 <section key={n.canBo} className="mt-3 border-t border-slate-200 pt-2">
-                  <div className="sticky left-0 z-10 inline-flex max-w-[calc(100vw-3rem)] items-center gap-2 rounded-full bg-white/95 py-0.5 pr-3">
+                  {/*
+                    Dính CẢ HAI CHIỀU: `left-0` để cuộn ngang 8 cột vẫn thấy tên
+                    người, `top-[3.25rem]` để cuộn dọc qua thẻ của người đó vẫn
+                    biết đang đọc băng của ai — đúng mép dưới hàng tiêu đề cột.
+                    Sticky bị chặn trong phạm vi <section> nên tới băng kế tiếp
+                    tên cũ tự nhường chỗ, không chồng lên nhau.
+                  */}
+                  <div className="sticky left-0 top-[3.25rem] z-10 inline-flex max-w-[calc(100vw-3rem)] items-center gap-2 rounded-full border border-slate-200 bg-white py-0.5 pl-1 pr-3 shadow-sm">
                     <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand-navy/10 text-2xs font-bold text-brand-navy">
                       {chuDau(n.ten)}
                     </span>
@@ -484,6 +519,14 @@ function TheHoSo({ hoSo, tenNguoi, keoDuoc, onMo }: {
   const canhBao = canhBaoHoSo(hoSo);
   const nang = canhBao.some((c) => c.muc === 'DO');
   const tuoi = hsTuoiCho(hoSo);
+  /**
+   * Thẻ DỰ KIẾN mang nhận diện riêng: nền tím nhạt, viền đứt, dòng đầu là hạn
+   * mức chứ không phải số tiền — vì nó chưa có số tiền và ở đó trống là đúng.
+   * Trông giống hệt thẻ hồ sơ thật thì người đọc bảng sẽ cộng nhầm nó vào khối
+   * lượng đang làm; viền đứt là quy ước quen thuộc cho «chưa chắc, chưa bắt đầu».
+   */
+  const duKien = hoSo.trang_thai === 'DEN_HAN_GHTD';
+  const conLai = hsConLaiDenHan(hoSo);
 
   return (
     <div
@@ -491,19 +534,39 @@ function TheHoSo({ hoSo, tenNguoi, keoDuoc, onMo }: {
       {...attributes}
       {...listeners}
       onClick={onMo}
-      className={`rounded-xl border border-l-4 bg-white p-2.5 shadow-sm transition hover:shadow ${
+      className={`rounded-xl border p-2.5 transition hover:shadow ${
         keoDuoc ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
       } ${
-        nang ? 'border-l-red-500' : canhBao.length > 0 ? 'border-l-amber-500' : 'border-l-emerald-500'
+        duKien
+          ? 'border-dashed border-violet-300 bg-violet-50/70'
+          : `border-l-4 bg-white shadow-sm ${
+            nang ? 'border-l-red-500' : canhBao.length > 0 ? 'border-l-amber-500' : 'border-l-emerald-500'
+          }`
       } ${isDragging ? 'opacity-40' : ''}`}
     >
       <p className="flex items-start justify-between gap-1">
-        <span className="font-mono text-2xs text-slate-400">{hoSo.ma_hs}</span>
-        <span className={`shrink-0 text-2xs font-semibold tabular-nums ${
-          hoSo.so_tien === null ? 'text-amber-600' : 'text-brand-navy'
-        }`}>
-          {hoSo.so_tien === null ? 'chưa có số' : dinhDangTien(hoSo.so_tien)}
-        </span>
+        {duKien ? (
+          <>
+            <span className="text-2xs font-semibold uppercase tracking-wide text-violet-600">
+              Dự kiến
+            </span>
+            <span className={`shrink-0 text-2xs font-semibold tabular-nums ${
+              conLai !== null && conLai < 0 ? 'text-red-700' : 'text-violet-700'
+            }`}>
+              {conLai === null ? 'chưa có ngày'
+                : conLai < 0 ? `hết hạn ${-conLai} ngày` : `còn ${conLai} ngày`}
+            </span>
+          </>
+        ) : (
+          <>
+            <span className="font-mono text-2xs text-slate-400">{hoSo.ma_hs}</span>
+            <span className={`shrink-0 text-2xs font-semibold tabular-nums ${
+              hoSo.so_tien === null ? 'text-amber-600' : 'text-brand-navy'
+            }`}>
+              {hoSo.so_tien === null ? 'chưa có số' : dinhDangTien(hoSo.so_tien)}
+            </span>
+          </>
+        )}
       </p>
       <p className="mt-0.5 line-clamp-2 text-sm font-medium leading-snug text-slate-800">
         {hoSo.khach_hang}
@@ -531,7 +594,9 @@ function TheHoSo({ hoSo, tenNguoi, keoDuoc, onMo }: {
           </span>
         )}
       </p>
-      {canhBao.length > 0 && (
+      {/* Thẻ dự kiến: cảnh báo duy nhất của nó là hạn mức, đã in ở dòng đầu —
+          nhắc lại lần nữa chỉ làm thẻ dài ra mà không thêm thông tin nào */}
+      {!duKien && canhBao.length > 0 && (
         <p className="mt-1.5 flex flex-wrap gap-1">
           {canhBao.slice(0, 2).map((c) => (
             <span

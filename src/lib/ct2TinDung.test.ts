@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  HS_DANG_CHAY,
+  hsThieuDeVaoThuThap,
   hsChuaGhiLanNao,
   hsMucImLang,
   hsNgayImLang,
@@ -97,11 +99,89 @@ describe('Luật chuyển bước theo thẩm quyền', () => {
   });
 
   it('bước kế tiếp bỏ qua đúng cấp không cần trình', () => {
+    expect(buocKeTiep('DEN_HAN_GHTD', 'CHI_NHANH')).toBe('THU_THAP');
     expect(buocKeTiep('TRINH_LDP', 'PHONG')).toBe('HOAN_THIEN_GN');
     expect(buocKeTiep('TRINH_LDP', 'CHI_NHANH')).toBe('TRINH_LDCN');
     expect(buocKeTiep('TRINH_LDCN', 'CHI_NHANH')).toBe('HOAN_THIEN_GN');
     expect(buocKeTiep('TRINH_LDCN', 'TSC')).toBe('TRINH_TSC');
     expect(buocKeTiep('HOAN_THANH', 'TSC')).toBeNull();
+  });
+});
+
+describe('Cột dự kiến «Đến hạn GHTD» — một chiều, và là cổng hỏi lại 3 trường', () => {
+  const bc = { cap_phe_duyet: 'CHI_NHANH' as const, laLanhDao: false, coLyDoTuChoi: false };
+
+  it('không kéo hồ sơ đã bắt đầu ngược về cột dự kiến — kể cả lãnh đạo', () => {
+    expect(lyDoChanChuyenHoSo('THU_THAP', 'DEN_HAN_GHTD', bc)).toContain('điểm xuất phát');
+    expect(lyDoChanChuyenHoSo('TRINH_TSC', 'DEN_HAN_GHTD', { ...bc, laLanhDao: true }))
+      .toContain('điểm xuất phát');
+  });
+
+  it('từ cột dự kiến chỉ đi sang Thu thập hồ sơ — không nhảy cóc lên trình', () => {
+    expect(lyDoChanChuyenHoSo('DEN_HAN_GHTD', 'TRINH_LDP', bc)).toContain('Thu thập hồ sơ');
+    expect(lyDoChanChuyenHoSo('DEN_HAN_GHTD', 'HOAN_THIEN_GN', bc)).toContain('Thu thập hồ sơ');
+  });
+
+  it('vẫn dừng được thẳng từ cột dự kiến — khách không vay nữa là chuyện có thật', () => {
+    expect(lyDoChanChuyenHoSo('DEN_HAN_GHTD', 'TU_CHOI',
+      { ...bc, laLanhDao: true, coLyDoTuChoi: true })).toBeNull();
+  });
+
+  /*
+    Hàng rào của cổng TẠO được dời tới đây, nên phải kiểm cả hai phía: thiếu thì
+    chặn, đủ thì thông. Chỉ kiểm một phía là cách sinh ra một cổng không ai qua nổi.
+  */
+  it('thiếu số tiền / hạn xử lý / kỳ hạn thì chưa vào Thu thập được, và nói rõ thiếu gì', () => {
+    const loi = lyDoChanChuyenHoSo('DEN_HAN_GHTD', 'THU_THAP',
+      { ...bc, thieuDeVaoThuThap: ['số tiền', 'kỳ hạn'] });
+    expect(loi).toContain('số tiền');
+    expect(loi).toContain('kỳ hạn');
+    expect(loi).not.toContain('hạn xử lý');
+  });
+
+  it('điền đủ ba thì đi được', () => {
+    expect(lyDoChanChuyenHoSo('DEN_HAN_GHTD', 'THU_THAP', { ...bc, thieuDeVaoThuThap: [] })).toBeNull();
+  });
+
+  it('hsThieuDeVaoThuThap đọc đúng ô nào còn trống', () => {
+    expect(hsThieuDeVaoThuThap({ so_tien: null, han_xu_ly: null, ky_han: null }))
+      .toEqual(['số tiền', 'hạn xử lý', 'kỳ hạn']);
+    expect(hsThieuDeVaoThuThap({ so_tien: 5000, han_xu_ly: '2026-09-01', ky_han: 'NGAN_HAN' }))
+      .toEqual([]);
+    // 0 triệu không phải "đã điền" — nhưng constraint DB đã cấm số ≤ 0, nên ở
+    // đây chỉ cần phân biệt null với có giá trị
+    expect(hsThieuDeVaoThuThap({ so_tien: 5000, han_xu_ly: null, ky_han: 'NGAN_HAN' }))
+      .toEqual(['hạn xử lý']);
+  });
+});
+
+describe('Thẻ dự kiến không bị đòi những thứ nó chưa thể có', () => {
+  const duKien: HoSoTinDung = {
+    ...hsGoc, trang_thai: 'DEN_HAN_GHTD', loai_ho_so: 'TAI_CAP',
+    so_tien: null, han_xu_ly: null, ky_han: null,
+    ngay_den_han_ghtd: '2026-09-20', ngay_nhan: '2026-08-12', nhip_gan_nhat: null,
+  };
+
+  it('vẫn cảnh báo hạn mức — đó là lý do nó có mặt trên bảng', () => {
+    const ds = canhBaoHoSo(duKien, moc);
+    expect(ds.some((c) => c.noi_dung.includes('Hạn mức còn'))).toBe(true);
+  });
+
+  it('KHÔNG đòi số tiền / hạn xử lý / kỳ hạn — ở cột này trống mới là đúng', () => {
+    const ds = canhBaoHoSo(duKien, moc);
+    expect(ds.some((c) => c.noi_dung.includes('Chưa có số tiền'))).toBe(false);
+    expect(ds.some((c) => c.noi_dung.includes('Chưa có hạn xử lý'))).toBe(false);
+    expect(ds.some((c) => c.noi_dung.includes('Chưa ghi kỳ hạn'))).toBe(false);
+  });
+
+  it('không tính vào hồ sơ đang chạy — tổng dư nợ không được phồng lên vì việc chưa làm', () => {
+    expect(HS_DANG_CHAY.includes('DEN_HAN_GHTD')).toBe(false);
+    // Bàn PDTD lọc theo HS_DANG_CHAY trước khi cộng; thẻ dự kiến rơi ra ngoài
+    // nên không cộng vào cột nào, và không bị đếm là «chưa có số tiền»
+    const dsChay = [duKien, hsGoc].filter((h) => HS_DANG_CHAY.includes(h.trang_thai));
+    const tong = tongTheoBuoc(dsChay);
+    expect(tong.get('DEN_HAN_GHTD')).toBeUndefined();
+    expect([...tong.values()].reduce((s, v) => s + v.thieu, 0)).toBe(0);
   });
 });
 
