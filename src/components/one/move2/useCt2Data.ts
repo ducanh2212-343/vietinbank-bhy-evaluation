@@ -266,6 +266,64 @@ export function useCt2ViecCuaToi() {
   });
 }
 
+/** Số ngày còn giữ thẻ đã xong trên Kanban trang chủ trước khi nó rời tầm mắt */
+const NGAY_GIU_THE_XONG = 14;
+
+/**
+ * Kanban của Phòng, phần việc do CHÍNH TÔI phụ trách — dùng cho khối trên
+ * trang chủ.
+ *
+ * Vì sao không dùng lại RPC `ct2_viec_cua_toi`: RPC đó trả một bản rút gọn và
+ * cắt hẳn thẻ đã xong, nên không dựng được ba cột Kanban (thiếu cột Hoàn
+ * thành) và không biết thẻ thuộc bảng nào — mà Phòng TCTH có tới hai bảng
+ * («Mảng Tổng hợp», «Mảng Hành chính»), gộp chung thì đúng cái Giám đốc muốn
+ * tách lại mất. Đọc thẳng bảng cho ra `Ct2DauViec` đầy đủ, tức là hộp thoại
+ * thẻ dùng chung được luôn, không phải nạp lại thẻ khi bấm mở.
+ *
+ * Thẻ đã Hoàn thành/Đã đóng chỉ giữ 14 ngày: cột Hoàn thành có tác dụng cho
+ * người ta thấy thành quả tuần này, chứ không phải thành kho lưu trữ càng ngày
+ * càng nặng ngay trên trang chủ. Thẻ Dừng/Hủy không lấy — xem ở bảng Phòng.
+ */
+export function useCt2KanbanCuaToi() {
+  const { profileId } = useAuth();
+  return useQuery({
+    queryKey: ['ct2', 'kanban-cua-toi', profileId],
+    enabled: !!profileId,
+    staleTime: NUA_PHUT,
+    refetchInterval: () => (trongKhungNhip() ? NUA_PHUT : false),
+    queryFn: async () => {
+      const moc = new Date(Date.now() - NGAY_GIU_THE_XONG * 86_400_000).toISOString();
+      const { data, error } = await db
+        .from('ct2_dau_viec')
+        .select('*')
+        .eq('nguoi_chiu_trach_nhiem', profileId)
+        .or(`trang_thai.in.(CHUAN_BI,DANG_LAM,CHO_PHOI_HOP,CHO_DUYET),`
+          + `and(trang_thai.in.(HOAN_THANH,DA_DONG),updated_at.gte.${moc})`)
+        .order('han_hoan_thanh', { ascending: true, nullsFirst: false });
+      if (error) throw error;
+      return (data ?? []) as Ct2DauViec[];
+    },
+  });
+}
+
+/** Kỳ đánh giá đang mở — thẻ mới gắn vào kỳ này */
+export function useCt2CycleId() {
+  const { data = [] } = useQuery({
+    queryKey: ['ct2', 'cycles'],
+    staleTime: NAM_PHUT,
+    queryFn: async () => {
+      const { data, error } = await db
+        .from('evaluation_cycles')
+        .select('id, name, status')
+        .order('start_date', { ascending: false })
+        .limit(8);
+      if (error) throw error;
+      return (data ?? []) as Array<{ id: string; name: string; status: string }>;
+    },
+  });
+  return data.find((c) => c.status === 'active')?.id ?? data[0]?.id ?? null;
+}
+
 /** M2 «Bảng nhịp theo người» của phòng hôm nay — 1 RPC */
 export function useCt2NhipPhong(phongId: string | null) {
   return useQuery({
@@ -354,12 +412,16 @@ export function useCt2LamTuoi() {
     if (nhom === 'board') {
       qc.invalidateQueries({ queryKey: ['ct2', 'board'] });
       qc.invalidateQueries({ queryKey: ['ct2', 'viec-cua-toi'] });
+      qc.invalidateQueries({ queryKey: ['ct2', 'kanban-cua-toi'] });
     }
     if (nhom === 'nhip') {
       qc.invalidateQueries({ queryKey: ['ct2', 'nhat-ky'] });
       qc.invalidateQueries({ queryKey: ['ct2', 'nhip-phong'] });
       qc.invalidateQueries({ queryKey: ['ct2', 'viec-cua-toi'] });
       qc.invalidateQueries({ queryKey: ['ct2', 'board'] });
+      // Ghi nhịp ngay trên trang chủ mà khối trang chủ không tự đổi thì cán bộ
+      // tưởng chưa ăn, ghi lại lần nữa — cùng một câu, hai dòng nhật ký.
+      qc.invalidateQueries({ queryKey: ['ct2', 'kanban-cua-toi'] });
     }
   };
 }

@@ -67,7 +67,11 @@ export function useCt2HoSo(phongId: string | null, bat: boolean) {
 
 export interface HoSoSapDenHan {
   id: string; ma_hs: string | null; khach_hang: string; so_tien: number | null;
-  ngay_den_han_ghtd: string; con_lai: number; da_co_ho_so_moi: boolean;
+  ngay_den_han_ghtd: string; con_lai: number;
+  /** Đã có hồ sơ tái cấp/điều chỉnh KHÁC đang chạy cho cùng khách */
+  da_co_ho_so_moi: boolean;
+  /** Đã có hồ sơ tái cấp/điều chỉnh HOÀN THÀNH nối tiếp hạn mức cũ → thôi cảnh báo */
+  da_xong_ho_so_moi: boolean;
 }
 
 /**

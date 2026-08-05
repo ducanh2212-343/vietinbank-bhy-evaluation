@@ -7,6 +7,7 @@ import { CultureTree } from '@/components/one/CultureTree';
 import { PersonalKanbanMini } from '@/components/kanban/PersonalKanbanMini';
 import { Ct2HomeStrip } from '@/components/one/move2/Ct2HomeStrip';
 import { Ct2DieuHanhBgd } from '@/components/one/move2/Ct2DieuHanhBgd';
+import { Ct2KanbanPhongMini } from '@/components/one/move2/Ct2KanbanPhongMini';
 import { NewsRail } from '@/components/one/news/NewsRail';
 import { useOneUploads } from '@/components/one/useOneUploads';
 import { useAuth } from '@/hooks/useAuth';
@@ -92,6 +93,11 @@ function HomeContent() {
         {/* BGĐ: gộp ba tầng điều hành về một chỗ thay vì bắt đi qua bốn nơi —
             việc đang chờ chính mình · nhịp các phòng phụ trách · dấu ấn tuần này. */}
         {!isGuest && profileId && <Ct2DieuHanhBgd />}
+
+        {/* Kanban Phòng của tôi — bày thẻ theo cột và nhập được tại chỗ. Đặt
+            trên Kanban phát triển cá nhân vì đây là việc của ngày hôm nay;
+            hành động phát triển bản thân là nhịp quý. */}
+        {!isGuest && profileId && <Ct2KanbanPhongMini />}
 
         {!isGuest && profileId && (
           <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-3">

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Banknote, CalendarRange, ClipboardList, Info, Inbox, UserRound } from 'lucide-react';
 import { OnePageShell } from '@/components/one/OnePageShell';
@@ -27,7 +26,7 @@ import {
 import type { HoSoTinDung, HsTrangThai } from '@/lib/ct2TinDung';
 import { Ct2MyWork } from '@/components/one/move2/Ct2MyWork';
 import {
-  ct2DoiTheoDoi, ct2XuLyDeXuat, useCt2Board, useCt2DeXuat, useCt2DsBang,
+  ct2DoiTheoDoi, ct2XuLyDeXuat, useCt2Board, useCt2CycleId, useCt2DeXuat, useCt2DsBang,
   useCt2LamTuoi, useCt2NhanSu, useCt2TheoDoi,
   useCt2NhipPhong, useCt2Phong, type Ct2DeXuat,
 } from '@/components/one/move2/useCt2Data';
@@ -36,8 +35,6 @@ import {
 // (01/08/2026). Hai màn hình chính: M1 «Việc của tôi» (mặc định — nơi ghi nhịp
 // sáng 7h00–8h00) và M2 «Kanban của Phòng» (Kanban 4 cột, cả phòng cùng đọc).
 
-
-interface Cycle { id: string; name: string; status: string }
 
 export default function OneMove2Page() {
   return (
@@ -74,19 +71,7 @@ function NoiDung() {
     if (phongDuocChon.length > 0) setPhongId(phongDuocChon[0].id);
   }, [phongId, phongDuocChon, departmentId]);
 
-  const { data: cycles = [] } = useQuery({
-    queryKey: ['ct2', 'cycles'],
-    staleTime: 300_000,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('evaluation_cycles')
-        .select('id, name, status')
-        .order('start_date', { ascending: false })
-        .limit(8);
-      return (data ?? []) as Cycle[];
-    },
-  });
-  const cycleId = cycles.find((c) => c.status === 'active')?.id ?? cycles[0]?.id ?? null;
+  const cycleId = useCt2CycleId();
 
   // Bảng Kanban đang xem trong tab «Kanban của Phòng» — null = Kanban chung
   const [bangId, setBangId] = useState<string | null>(null);

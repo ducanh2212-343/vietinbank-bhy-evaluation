@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  HS_COT, HS_TEN_CAP, HS_TEN_LOAI, canhBaoHoSo, dinhDangTien, hsConLaiDenHan,
-  hsThuocDaiDenHan, hsTuoiCho, sapXepHoSo, tongTheoBuoc,
+  HS_COT, HS_TEN_CAP, HS_TEN_LOAI, canhBaoHoSo, dinhDangTien,
+  hsTuoiCho, sapXepHoSo, tongTheoBuoc,
   type HoSoTinDung, type HsTrangThai,
 } from '@/lib/ct2TinDung';
 import type { Ct2NhanSu } from './useCt2Data';
@@ -28,14 +28,18 @@ import { CT2_GIAI_THICH_IM_LANG, Ct2CreditList } from './Ct2CreditList';
  *     khoá tự đóng lại khi đổi cách xem. Chuyển bước qua hộp thoại chi tiết
  *     (nút «Chuyển bước tiếp») thì lúc nào cũng được, không phụ thuộc khoá.
  *
- *  2. THANH TRƯỢT NGANG Ở CẢ MÉP TRÊN. Bảng 8 cột × nhiều băng thì thanh
- *     trượt dưới cùng nằm ngoài tầm mắt — muốn cuộn phải kéo xuống đáy trang.
+ *  2. THANH TRƯỢT NGANG Ở CẢ MÉP TRÊN, và hàng tiêu đề cột DÍNH khi cuộn dọc.
+ *     Bảng 8 cột × nhiều băng thì thanh trượt dưới cùng lẫn hàng tiêu đề đều
+ *     trôi khỏi tầm mắt — kéo xuống băng thứ ba là không còn biết cột nào là
+ *     cột nào. Bảng có khung cuộn dọc riêng để sticky top hoạt động (sticky
+ *     theo trang không ăn được bên trong một khung overflow).
  *
- *  3. Cột «Đến hạn GHTD 2 tháng tới» GIỮ LẠI theo yêu cầu của Phòng — nhưng
- *     là CỘT DẪN XUẤT từ trường ngày: hồ sơ hiện ở đây vẫn giữ nguyên bước
- *     thật, không kéo vào/ra được. Miro không làm được thế (một thẻ chỉ nằm
- *     được một cột, vào cột đến hạn là mất dấu bước) — đây là chỗ dữ liệu có
- *     cấu trúc hơn hẳn nhãn dán.
+ *  3. KHÔNG còn cột «Đến hạn GHTD 2 tháng tới». GĐ chốt 08/2026: các hồ sơ
+ *     đến hạn được cho trước vào bảng chính là để đi tiếp sang «Thu thập hồ
+ *     sơ» — thẻ nằm ở bước thật, không hiện trùng hai nơi như một cột giả.
+ *     Thứ giữ lại là CẢNH BÁO «Hạn mức sắp hết»: bấm vào ra tên khách sắp hết
+ *     hạn mà chưa có hồ sơ hoặc hồ sơ chưa xong (cờ tính ở RPC, đối chiếu
+ *     đường ống hồ sơ đang chạy — việc bản Miro không làm được).
  */
 
 interface Props {
@@ -106,11 +110,6 @@ export function Ct2CreditBoard({
     return m;
   }, [daLoc]);
 
-  const soTrongDaiDenHan = useMemo(
-    () => daLoc.filter((h) => hsThuocDaiDenHan(h)).length,
-    [daLoc],
-  );
-
   const tong = useMemo(() => tongTheoBuoc(dsHoSo.filter((h) =>
     h.trang_thai !== 'HOAN_THANH' && h.trang_thai !== 'TU_CHOI')), [dsHoSo]);
 
@@ -128,8 +127,27 @@ export function Ct2CreditBoard({
     () => dsHoSo.filter((h) => canhBaoHoSo(h).some((c) => c.muc === 'DO')).length,
     [dsHoSo],
   );
-  // Hạn mức sắp hết mà CHƯA có hồ sơ tái cấp nào đang chạy — nguy hiểm nhất
-  const hoTrong = useMemo(() => sapDenHan.filter((s) => !s.da_co_ho_so_moi), [sapDenHan]);
+  /**
+   * «Hạn mức sắp hết» — chỉ tính khách CHƯA xử lý xong, chia hai nhóm:
+   *  · CHƯA CÓ HỒ SƠ: hạn mức cũ sắp hết mà chưa ai mở hồ sơ tái cấp — nguy
+   *    hiểm nhất, vì không nằm trên bảng của ai cả.
+   *  · CHƯA XONG: hồ sơ tái cấp có rồi (chính dòng này còn chạy, hoặc một hồ
+   *    sơ khác đang chạy) nhưng chưa về đích — nhìn thấy được trên bảng.
+   * Khách đã có hồ sơ tái cấp HOÀN THÀNH nối tiếp thì thôi, không nhắc nữa.
+   */
+  const denHan = useMemo(() => {
+    const chuaCo: HoSoSapDenHan[] = [];
+    const chuaXong: HoSoSapDenHan[] = [];
+    for (const s of sapDenHan) {
+      if (s.da_xong_ho_so_moi) continue;
+      const dongNayConChay = dsHoSo.some((h) => h.id === s.id
+        && h.trang_thai !== 'HOAN_THANH' && h.trang_thai !== 'TU_CHOI');
+      if (dongNayConChay || s.da_co_ho_so_moi) chuaXong.push(s);
+      else chuaCo.push(s);
+    }
+    return { chuaCo, chuaXong, tong: chuaCo.length + chuaXong.length };
+  }, [sapDenHan, dsHoSo]);
+  const [moDenHan, setMoDenHan] = useState(false);
 
   const handleDrag = (e: DragEndEvent) => {
     const h = dsHoSo.find((x) => x.id === e.active.id);
@@ -159,32 +177,43 @@ export function Ct2CreditBoard({
             : 'Tổng dư nợ đang trình'}
           giaTri={dinhDangTien(tongTien)} nhanManh />
         <OSo nhan="Hồ sơ cảnh báo đỏ" giaTri={String(soRuiRo)} xau={soRuiRo > 0} />
-        <OSo nhan="Hạn mức sắp hết, chưa có hồ sơ" giaTri={String(hoTrong.length)} xau={hoTrong.length > 0} />
+        {/* Ô duy nhất bấm được — bấm ra tên khách, đúng đặt hàng của GĐ */}
+        <button
+          type="button"
+          onClick={() => setMoDenHan((v) => !v)}
+          aria-expanded={moDenHan}
+          className={`rounded-2xl border p-3 text-left transition ${
+            denHan.tong > 0
+              ? 'border-red-200 bg-red-50/60 hover:border-red-300'
+              : 'border-slate-200 bg-white'
+          }`}
+        >
+          <p className={`text-2xl font-bold tabular-nums ${denHan.tong > 0 ? 'text-red-600' : 'text-brand-navy'}`}>
+            {denHan.tong}
+          </p>
+          <p className="mt-0.5 text-xs leading-snug text-slate-500">
+            Hạn mức sắp hết {denHan.tong > 0 && <span className="font-medium text-red-600">— bấm xem tên KH</span>}
+          </p>
+        </button>
       </div>
 
-      {/* Cảnh báo đường ống: hạn mức sắp hết mà chưa mở hồ sơ tái cấp */}
-      {hoTrong.length > 0 && (
+      {/* Bấm «Hạn mức sắp hết» → tên khách theo hai nhóm, bấm tên mở hồ sơ */}
+      {moDenHan && (
         <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-3">
           <p className="flex items-center gap-2 text-sm font-semibold text-red-800">
             <AlertTriangle className="h-4 w-4" />
-            {hoTrong.length} khách hàng có hạn mức sắp hết mà chưa có hồ sơ tái cấp nào đang chạy
+            {denHan.tong === 0
+              ? 'Không còn khách nào sắp hết hạn mức mà chưa xử lý — sạch đường ống.'
+              : `${denHan.tong} khách hàng sắp hết hạn mức GHTD chưa xử lý xong`}
           </p>
-          <div className="mt-2 space-y-1.5">
-            {hoTrong.slice(0, 6).map((s) => (
-              <p key={s.id} className="flex flex-wrap items-center gap-x-2 text-sm text-slate-700">
-                <span className="font-medium">{s.khach_hang}</span>
-                <span className="text-slate-500">
-                  {s.so_tien === null ? 'chưa có số tiền' : dinhDangTien(Number(s.so_tien))}
-                </span>
-                <span className={s.con_lai < 0 ? 'font-semibold text-red-700' : 'text-red-600'}>
-                  {s.con_lai < 0 ? `đã hết hạn ${-s.con_lai} ngày` : `còn ${s.con_lai} ngày`}
-                </span>
-              </p>
-            ))}
-            {hoTrong.length > 6 && (
-              <p className="text-xs text-slate-500">…và {hoTrong.length - 6} khách hàng khác</p>
-            )}
-          </div>
+          <NhomDenHan
+            ten={`Chưa có hồ sơ (${denHan.chuaCo.length})`}
+            ds={denHan.chuaCo} dsHoSo={dsHoSo} onMoHoSo={onMoHoSo}
+          />
+          <NhomDenHan
+            ten={`Hồ sơ đang chạy, chưa xong (${denHan.chuaXong.length})`}
+            ds={denHan.chuaXong} dsHoSo={dsHoSo} onMoHoSo={onMoHoSo}
+          />
         </div>
       )}
 
@@ -247,17 +276,9 @@ export function Ct2CreditBoard({
         <DndContext sensors={sensors} onDragEnd={handleDrag}>
           <CuonNgangHaiThanh>
             <div className="min-w-max">
-              {/* Hàng tiêu đề cột — dùng chung cho mọi băng bên dưới */}
-              <div className="flex gap-3">
-                <div className="w-64 shrink-0 rounded-xl bg-violet-50 px-2 py-1.5">
-                  <p className="flex items-center justify-between text-xs font-semibold text-violet-800">
-                    <span>⏰ Đến hạn GHTD 2 tháng tới</span>
-                    <span className="tabular-nums text-violet-400">{soTrongDaiDenHan}</span>
-                  </p>
-                  <p className="text-2xs leading-snug text-violet-500">
-                    Cột theo dõi — hồ sơ vẫn giữ bước thật, không kéo vào đây được
-                  </p>
-                </div>
+              {/* Hàng tiêu đề cột — DÍNH mép trên khung cuộn: kéo xuống băng
+                  thứ ba vẫn biết cột nào là cột nào */}
+              <div className="sticky top-0 z-20 flex gap-3 bg-white pb-1">
                 {HS_COT.map((cot) => (
                   <div key={cot.ma} className="w-64 shrink-0 rounded-xl bg-slate-100 px-2 py-1.5">
                     <p className="flex items-center justify-between text-xs font-semibold text-brand-navy">
@@ -294,12 +315,6 @@ export function Ct2CreditBoard({
                   </div>
 
                   <div className="mt-2 flex items-start gap-3">
-                    {/* Cột dẫn xuất: đến hạn GHTD — chỉ đọc */}
-                    <div className="w-64 shrink-0 space-y-2">
-                      {n.ds.filter((h) => hsThuocDaiDenHan(h)).map((h) => (
-                        <TheDenHan key={h.id} hoSo={h} onMo={() => onMoHoSo(h)} />
-                      ))}
-                    </div>
                     {HS_COT.map((cot) => (
                       <ODropCua key={cot.ma} cotMa={cot.ma} canBo={n.canBo}>
                         {sapXepHoSo(n.ds.filter((h) => h.trang_thai === cot.ma)).map((h) => (
@@ -323,7 +338,6 @@ export function Ct2CreditBoard({
           <p className="mt-2 text-2xs leading-relaxed text-slate-400">
             Kéo thả mặc định khoá để cuộn bảng không chạm nhầm vào hồ sơ — bấm «Kéo thả đang khoá»
             khi cần kéo thẻ đổi bước. Chuyển bước trong hộp thoại chi tiết thì lúc nào cũng được.
-            Cột «Đến hạn GHTD» tính tự động từ ngày hạn mức: hồ sơ hiện ở đó vẫn giữ nguyên bước thật.
           </p>
         </DndContext>
       )}
@@ -334,6 +348,10 @@ export function Ct2CreditBoard({
 /**
  * Vùng cuộn ngang có thanh trượt Ở CẢ MÉP TRÊN, đồng bộ hai chiều với thanh
  * dưới — bảng nhiều băng thì thanh dưới cùng nằm ngoài tầm mắt.
+ *
+ * Khung dưới cuộn được CẢ HAI CHIỀU và tự giới hạn chiều cao: hàng tiêu đề cột
+ * `sticky top-0` chỉ dính được với mép của chính khung cuộn chứa nó — sticky
+ * theo trang không ăn bên trong một phần tử overflow.
  */
 function CuonNgangHaiThanh({ children }: { children: ReactNode }) {
   const tren = useRef<HTMLDivElement>(null);
@@ -365,7 +383,8 @@ function CuonNgangHaiThanh({ children }: { children: ReactNode }) {
           <div style={{ width: kt.rong }} className="h-2" />
         </div>
       )}
-      <div ref={duoi} onScroll={dongBo(duoi, tren)} className="overflow-x-auto pb-2">
+      <div ref={duoi} onScroll={dongBo(duoi, tren)}
+        className="max-h-[75vh] overflow-auto overscroll-x-contain pb-2">
         {children}
       </div>
     </div>
@@ -409,41 +428,49 @@ function ODropCua({ cotMa, canBo, children }: {
 }
 
 /**
- * Thẻ trong cột dẫn xuất «Đến hạn GHTD» — chỉ đọc, bấm mở chi tiết.
- * Nói rõ còn bao nhiêu ngày và hồ sơ đang thật sự ở bước nào.
+ * Một nhóm trong bảng «Hạn mức sắp hết» — tên khách bấm được: hồ sơ gốc nằm
+ * trong danh sách phòng thì mở thẳng hộp thoại chi tiết, ngay tại chỗ.
  */
-function TheDenHan({ hoSo, onMo }: { hoSo: HoSoTinDung; onMo: () => void }) {
-  const conLai = hsConLaiDenHan(hoSo);
-  const buoc = HS_COT.find((c) => c.ma === hoSo.trang_thai);
-  const qua = conLai !== null && conLai < 0;
+function NhomDenHan({ ten, ds, dsHoSo, onMoHoSo }: {
+  ten: string;
+  ds: HoSoSapDenHan[];
+  dsHoSo: HoSoTinDung[];
+  onMoHoSo: (h: HoSoTinDung) => void;
+}) {
+  if (ds.length === 0) return null;
   return (
-    <button
-      onClick={onMo}
-      className={`w-full rounded-xl border border-l-4 bg-white p-2.5 text-left shadow-sm transition hover:shadow ${
-        qua ? 'border-l-red-500' : 'border-l-violet-400'
-      }`}
-    >
-      <p className="flex items-start justify-between gap-1">
-        <span className="line-clamp-2 text-sm font-medium leading-snug text-slate-800">
-          {hoSo.khach_hang}
-        </span>
-        <span className={`shrink-0 text-2xs font-semibold tabular-nums ${
-          hoSo.so_tien === null ? 'text-amber-600' : 'text-brand-navy'
-        }`}>
-          {hoSo.so_tien === null ? 'chưa có số' : dinhDangTien(hoSo.so_tien)}
-        </span>
-      </p>
-      <p className={`mt-1 text-2xs font-semibold ${
-        conLai === null ? 'text-amber-700' : qua ? 'text-red-700' : 'text-violet-700'
-      }`}>
-        {conLai === null
-          ? 'Chưa có ngày đến hạn — cần bổ sung'
-          : qua ? `Đã hết hạn mức ${-conLai} ngày` : `Hạn mức còn ${conLai} ngày`}
-      </p>
-      <p className="mt-0.5 text-2xs text-slate-500">
-        Đang ở: {buoc?.icon} {buoc?.ten ?? hoSo.trang_thai}
-      </p>
-    </button>
+    <div className="mt-2">
+      <p className="text-xs font-semibold uppercase tracking-wide text-red-700/80">{ten}</p>
+      <div className="mt-1 space-y-1">
+        {ds.map((s) => {
+          const goc = dsHoSo.find((h) => h.id === s.id);
+          const dong = (
+            <>
+              <span className="font-medium text-slate-800">{s.khach_hang}</span>
+              <span className="text-slate-500">
+                {s.so_tien === null ? 'chưa có số tiền' : dinhDangTien(Number(s.so_tien))}
+              </span>
+              <span className={s.con_lai < 0 ? 'font-semibold text-red-700' : 'text-red-600'}>
+                {s.con_lai < 0 ? `đã hết hạn ${-s.con_lai} ngày` : `còn ${s.con_lai} ngày`}
+              </span>
+              {goc && goc.trang_thai !== 'HOAN_THANH' && (
+                <span className="text-slate-500">
+                  · đang ở {HS_COT.find((c) => c.ma === goc.trang_thai)?.ten ?? goc.trang_thai}
+                </span>
+              )}
+            </>
+          );
+          return goc ? (
+            <button key={s.id} type="button" onClick={() => onMoHoSo(goc)}
+              className="flex w-full flex-wrap items-center gap-x-2 rounded-lg px-1.5 py-0.5 text-left text-sm hover:bg-white">
+              {dong}
+            </button>
+          ) : (
+            <p key={s.id} className="flex flex-wrap items-center gap-x-2 px-1.5 py-0.5 text-sm">{dong}</p>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
