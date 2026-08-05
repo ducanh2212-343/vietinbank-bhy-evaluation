@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import {
   HS_COT, HS_DANG_CHAY, HS_TEN_CAP, HS_TEN_LOAI, canhBaoHoSo, dinhDangTien,
-  hsConLaiDenHan, hsTuoiCho, sapXepHoSo, tongTheoBuoc,
+  hsConLaiDenHan, hsTuoiCho, locTrungKhachHang, sapXepHoSo, tongTheoBuoc,
   type HoSoTinDung, type HsTrangThai,
 } from '@/lib/ct2TinDung';
 import type { Ct2NhanSu } from './useCt2Data';
@@ -80,7 +80,10 @@ export function Ct2CreditBoard({
 
   const tenNguoi = useMemo(() => new Map(nhanSu.map((n) => [n.id, n.full_name])), [nhanSu]);
 
-  const daLoc = useMemo(() => dsHoSo.filter((h) =>
+  // locTrungKhachHang TRƯỚC bộ lọc người dùng: «một khách một chỗ» là luật của
+  // bàn, không phải một tuỳ chọn xem — lọc theo cán bộ xong mới khử trùng thì
+  // hồ sơ đã đóng lại hiện ra khi lọc một người, mâu thuẫn với lúc xem cả phòng.
+  const daLoc = useMemo(() => locTrungKhachHang(dsHoSo).filter((h) =>
     (!locCanBo || h.can_bo === locCanBo)
     && (!chiRuiRo || canhBaoHoSo(h).length > 0),
   ), [dsHoSo, locCanBo, chiRuiRo]);

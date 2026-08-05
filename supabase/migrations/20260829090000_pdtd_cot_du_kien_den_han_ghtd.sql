@@ -228,3 +228,43 @@ AS $function$
 $function$;
 
 REVOKE EXECUTE ON FUNCTION public.ct2_pdtd_sap_den_han(uuid, integer) FROM PUBLIC, anon;
+
+-- ---------------------------------------------------------------------------
+-- 5. Gieo thẻ dự kiến cho khách chưa có ai bắt tay làm
+-- ---------------------------------------------------------------------------
+-- Mỗi thẻ chép lại từ hồ sơ cũ ĐÃ HOÀN THÀNH của chính khách đó và chỉ chép
+-- những gì hồ sơ cũ đã ghi: tên khách, cán bộ phụ trách, cấp phê duyệt, ngày
+-- hạn mức đến hạn. Số tiền / kỳ hạn / hạn xử lý ĐỂ TRỐNG — hạn mức mới bao
+-- nhiêu, kỳ hạn nào, hẹn xong ngày nào thì chưa ai quyết; điền bừa là đặt một
+-- con số không có thật lên bàn điều hành. Cổng vào «Thu thập hồ sơ» sẽ hỏi.
+--
+-- Điều kiện loại trừ là «khách này ĐÃ CÓ AI BẮT TAY LÀM CHƯA», xét MỌI loại hồ
+-- sơ. Lần chạy đầu tôi chỉ dò TAI_CAP/DIEU_CHINH nên Công ty Hưng Phát — đang
+-- có hồ sơ CAP_MOI ở bước Thu thập — vẫn bị gieo thêm một thẻ thừa, thành ba
+-- thẻ một khách. Loại hồ sơ là chuyện khác; có người đang làm mới là chuyện
+-- quyết định.
+INSERT INTO public.ct2_ho_so_tin_dung
+  (phong, ma_hs, khach_hang, loai_ho_so, cap_phe_duyet, trang_thai, can_bo,
+   lanh_dao_theo_doi, pho_phong, truong_phong, pgd_phu_trach,
+   ngay_den_han_ghtd, ngay_nhan, ghi_chu, nguoi_tao)
+SELECT h.phong,
+       COALESCE(d.code, 'CN') || '-TD-'
+         || to_char(now() AT TIME ZONE 'Asia/Ho_Chi_Minh', 'YYMM') || '-'
+         || lpad(nextval('public.ct2_ma_hs_seq')::text, 3, '0'),
+       h.khach_hang, 'TAI_CAP', h.cap_phe_duyet, 'DEN_HAN_GHTD', h.can_bo,
+       h.lanh_dao_theo_doi, h.pho_phong, h.truong_phong, h.pgd_phu_trach,
+       h.ngay_den_han_ghtd,
+       (now() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date,
+       'Thẻ dự kiến sinh từ hồ sơ ' || COALESCE(h.ma_hs, '(không mã)')
+         || ' — hạn mức đến hạn ' || to_char(h.ngay_den_han_ghtd, 'DD/MM/YYYY')
+         || '. Số tiền / kỳ hạn / hạn xử lý điền khi vào Thu thập hồ sơ.',
+       h.nguoi_tao
+  FROM public.ct2_ho_so_tin_dung h
+  JOIN public.departments d ON d.id = h.phong
+ WHERE h.ngay_den_han_ghtd IS NOT NULL
+   AND h.ngay_den_han_ghtd <= (now() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date + 60
+   AND h.trang_thai = 'HOAN_THANH'
+   AND NOT EXISTS (
+         SELECT 1 FROM public.ct2_ho_so_tin_dung m
+          WHERE m.phong = h.phong AND m.khach_hang = h.khach_hang AND m.id <> h.id
+            AND m.trang_thai NOT IN ('HOAN_THANH','TU_CHOI'));

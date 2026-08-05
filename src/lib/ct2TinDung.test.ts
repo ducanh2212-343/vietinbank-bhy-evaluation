@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   HS_DANG_CHAY,
   hsThieuDeVaoThuThap,
+  locTrungKhachHang,
   hsChuaGhiLanNao,
   hsMucImLang,
   hsNgayImLang,
@@ -152,6 +153,47 @@ describe('Cột dự kiến «Đến hạn GHTD» — một chiều, và là c�
     // đây chỉ cần phân biệt null với có giá trị
     expect(hsThieuDeVaoThuThap({ so_tien: 5000, han_xu_ly: null, ky_han: 'NGAN_HAN' }))
       .toEqual(['hạn xử lý']);
+  });
+});
+
+describe('Một khách — một chỗ trên bàn', () => {
+  const the = (p: Partial<HoSoTinDung> & { id: string }): HoSoTinDung => ({ ...hsGoc, ...p });
+
+  it('hồ sơ đã hoàn thành lui khỏi bảng khi khách còn thẻ dự kiến đang mở', () => {
+    const ds = [
+      the({ id: 'cu', khach_hang: 'Công ty CP Nhựa Tuệ Minh', trang_thai: 'HOAN_THANH' }),
+      the({ id: 'moi', khach_hang: 'Công ty CP Nhựa Tuệ Minh', trang_thai: 'DEN_HAN_GHTD' }),
+    ];
+    expect(locTrungKhachHang(ds).map((h) => h.id)).toEqual(['moi']);
+  });
+
+  it('cũng lui khi khách đang có hồ sơ chạy — 4 cặp kiểu này đã trùng từ trước', () => {
+    const ds = [
+      the({ id: 'cu', khach_hang: 'Công ty Mỹ Hương', trang_thai: 'HOAN_THANH' }),
+      the({ id: 'chay', khach_hang: 'Công ty Mỹ Hương', trang_thai: 'THU_THAP' }),
+    ];
+    expect(locTrungKhachHang(ds).map((h) => h.id)).toEqual(['chay']);
+  });
+
+  it('khách KHÔNG còn việc nào mở thì hồ sơ hoàn thành ở lại — đó là thành quả', () => {
+    const ds = [the({ id: 'xong', khach_hang: 'Công ty Xong Hẳn', trang_thai: 'HOAN_THANH' })];
+    expect(locTrungKhachHang(ds).map((h) => h.id)).toEqual(['xong']);
+  });
+
+  it('hai hồ sơ CÙNG MỞ của một khách đều ở lại — đó là hai việc thật, không phải trùng', () => {
+    const ds = [
+      the({ id: 'a', khach_hang: 'Công ty Hai Việc', trang_thai: 'THU_THAP' }),
+      the({ id: 'b', khach_hang: 'Công ty Hai Việc', trang_thai: 'TRINH_TSC' }),
+    ];
+    expect(locTrungKhachHang(ds).map((h) => h.id)).toEqual(['a', 'b']);
+  });
+
+  it('trùng tên nhưng KHÁC PHÒNG thì không đụng nhau — hai khách khác nhau', () => {
+    const ds = [
+      the({ id: 'p1', phong: 'd1', khach_hang: 'Công ty A', trang_thai: 'HOAN_THANH' }),
+      the({ id: 'p2', phong: 'd2', khach_hang: 'Công ty A', trang_thai: 'THU_THAP' }),
+    ];
+    expect(locTrungKhachHang(ds).map((h) => h.id)).toEqual(['p1', 'p2']);
   });
 });
 

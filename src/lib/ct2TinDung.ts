@@ -500,6 +500,36 @@ export function tongTheoBuoc(
 }
 
 /**
+ * MỘT KHÁCH — MỘT CHỖ trên bàn: giấu hồ sơ ĐÃ ĐÓNG của khách hàng đang còn
+ * một hồ sơ/thẻ khác mở.
+ *
+ * Giám đốc chỉ ra Công ty CP Nhựa Tuệ Minh vừa nằm ở «Hoàn thành» vừa nằm ở
+ * «Đến hạn GHTD». Hai bản ghi này KHÔNG trùng nhau — một là hạn mức cũ đã cấp
+ * xong, một là việc tái cấp sắp phải làm — nhưng trên bảng thì người đọc thấy
+ * cùng một cái tên hai chỗ, và đó đúng là điều phải hết.
+ *
+ * Đây không phải hậu quả của đợt gieo thẻ dự kiến: 4 cặp đã trùng từ trước
+ * (Phú Thái, Thaicom, Mỹ Hương, Hưng Phát — hoàn thành + hồ sơ mới đang chạy).
+ * Gốc là bàn giữ hồ sơ hoàn thành trên bảng mãi mãi, nên khách nào có lịch sử
+ * cộng với việc đang làm đều hiện hai lần.
+ *
+ * Luật giấu: hồ sơ đã đóng (Hoàn thành / Từ chối) lui khỏi bảng KHI VÀ CHỈ KHI
+ * khách đó còn một thẻ chưa đóng. Không xoá gì — bản ghi vẫn nguyên trong
+ * database và vẫn tra được; chỉ là bàn điều hành nói về việc đang sống. Khách
+ * không còn việc gì mở thì hồ sơ hoàn thành vẫn nằm đó làm thành quả của Phòng.
+ */
+export function locTrungKhachHang(ds: HoSoTinDung[]): HoSoTinDung[] {
+  const coTheMo = new Set(
+    ds.filter((h) => h.trang_thai !== 'HOAN_THANH' && h.trang_thai !== 'TU_CHOI')
+      .map((h) => `${h.phong}|${h.khach_hang.trim().toLowerCase()}`),
+  );
+  return ds.filter((h) => {
+    if (h.trang_thai !== 'HOAN_THANH' && h.trang_thai !== 'TU_CHOI') return true;
+    return !coTheMo.has(`${h.phong}|${h.khach_hang.trim().toLowerCase()}`);
+  });
+}
+
+/**
  * Xếp hồ sơ trong một cột: hồ sơ rủi ro nhất lên trước.
  * Cùng mức rủi ro thì hồ sơ TO hơn lên trước — tiền lớn hỏng thì đau hơn.
  */
