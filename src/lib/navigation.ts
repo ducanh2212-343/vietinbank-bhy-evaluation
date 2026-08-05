@@ -480,6 +480,16 @@ export const NAV_SECTIONS: NavSection[] = [
           // Mẹo hiện ở banner Trang chủ, hộp nhắc một lần và trang Mẹo hay —
           // áp dụng cho mọi vai trò, mọi phân hệ
           { label: 'Mẹo tính năng', icon: Lightbulb, path: '/quan-ly-meo-tinh-nang', minRole: 'admin', keywords: ['tips', 'huong dan'] },
+          // Hòm tiếp nhận góp ý cải thiện BHY One (cán bộ gửi qua nút «Góp ý»
+          // trên thanh điều hướng). minRole 'admin' = bgd/tcth_admin/system_admin
+          // — đúng nhóm tiếp nhận: Phòng TCTH và Giám đốc Chi nhánh.
+          {
+            label: 'Góp ý hệ thống ONE',
+            icon: MessagesSquare,
+            path: '/gop-y-he-thong',
+            minRole: 'admin',
+            keywords: ['gop y', 'phan hoi', 'cai thien', 'feedback', 'y kien'],
+          },
         ],
       },
       {

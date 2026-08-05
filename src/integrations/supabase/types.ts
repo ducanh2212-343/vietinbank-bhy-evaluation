@@ -2472,6 +2472,51 @@ export type Database = {
         }
         Relationships: []
       }
+      portal_gop_y: {
+        Row: {
+          created_at: string
+          created_by: string
+          danh_dau_boi: string | null
+          danh_dau_luc: string | null
+          id: string
+          muc_lien_quan: Json
+          nguoi_gui: string
+          noi_dung: string
+          phong_ban: string | null
+          trang_gui: string | null
+          trang_thai: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          danh_dau_boi?: string | null
+          danh_dau_luc?: string | null
+          id?: string
+          muc_lien_quan?: Json
+          nguoi_gui: string
+          noi_dung: string
+          phong_ban?: string | null
+          trang_gui?: string | null
+          trang_thai?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          danh_dau_boi?: string | null
+          danh_dau_luc?: string | null
+          id?: string
+          muc_lien_quan?: Json
+          nguoi_gui?: string
+          noi_dung?: string
+          phong_ban?: string | null
+          trang_gui?: string | null
+          trang_thai?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       portal_idea_comments: {
         Row: {
           body: string
@@ -4659,6 +4704,10 @@ export type Database = {
         }[]
       }
       get_my_pgd_scope_dept_ids: { Args: never; Returns: string[] }
+      gop_y_cap_nhat_trang_thai: {
+        Args: { _id: string; _trang_thai: string }
+        Returns: undefined
+      }
       get_my_profile_id: { Args: never; Returns: string }
       get_my_supervisor_ids: { Args: never; Returns: string[] }
       hard_delete_staff: { Args: { p_profile_id: string }; Returns: string }
@@ -4671,6 +4720,7 @@ export type Database = {
       }
       is_council_member: { Args: never; Returns: boolean }
       is_tcth_leader: { Args: { _user_id: string }; Returns: boolean }
+      la_nguoi_duyet_gop_y: { Args: { _user_id: string }; Returns: boolean }
       kanban_upsert_card: {
         Args: {
           _attitude_dimension_id: number

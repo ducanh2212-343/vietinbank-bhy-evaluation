@@ -119,6 +119,7 @@ const OneIdeasPage = lazyWithRetry(() => import("./pages/one/OneIdeasPage"));
 const OneCreditPage = lazyWithRetry(() => import("./pages/one/OneCreditPage"));
 const OneRecognitionPage = lazyWithRetry(() => import("./pages/one/OneRecognitionPage"));
 const GuestAccessAdminPage = lazyWithRetry(() => import("./pages/GuestAccessAdminPage"));
+const GopYAdminPage = lazyWithRetry(() => import("./pages/GopYAdminPage"));
 const ChangePassword = lazyWithRetry(() => import("./pages/ChangePassword"));
 const ForgotPassword = lazyWithRetry(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
@@ -287,6 +288,9 @@ const App = () => (
                 <Route path="/lich-nghi-le" element={<LichNghiAdminPage />} />
                 <Route path="/quan-tri-tin-tuc" element={<NewsAdminPage />} />
                 <Route path="/quan-tri-khach" element={<GuestAccessAdminPage />} />
+                {/* Tiếp nhận góp ý cải thiện BHY One — Phòng TCTH + Ban Giám đốc
+                    (AdminRoute đã bao gồm bgd/tcth_admin/system_admin) */}
+                <Route path="/gop-y-he-thong" element={<GopYAdminPage />} />
               </Route>
 
               </Route>
