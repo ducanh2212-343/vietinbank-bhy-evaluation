@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import {
   CT2_COT, CT2_MAU_CAU, CT2_TEN_CO, CT2_TEN_NHAN, CT2_TEN_UU_TIEN,
-  daDuKeHoach, goiYNhan, kiemTraCauNhip, lyDoChanChuyen, soNgayQuaHan,
+  daDuKeHoach, goiYNhan, kiemTraCauNhip, lyDoChanChuyen, mucChuY, soNgayQuaHan,
   thieuTruongBatBuoc,
   type Ct2Co, type Ct2DauViec, type Ct2NhanPdca, type Ct2TrangThai,
 } from '@/lib/ct2';
@@ -21,6 +21,7 @@ import {
   useCt2NhatKy, useCt2TheoDoi, type Ct2NhanSu,
 } from './useCt2Data';
 import { Ct2CapPhuTrach } from './Ct2CapPhuTrach';
+import { Ct2SuaThongTin } from './Ct2SuaThongTin';
 import { Ct2DongThoiGian, type NguoiTraoDoi } from './Ct2DongThoiGian';
 
 /**
@@ -95,7 +96,15 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
             <span className="w-full text-base leading-snug">{the.tieu_de}</span>
           </DialogTitle>
           <DialogDescription className="text-left">
-            {CT2_TEN_CO[the.co_tinh_trang]} · {the.phan_tram}% ·{' '}
+            {/*
+              Đọc mucChuY chứ KHÔNG in thẳng cờ cán bộ tự đặt. Thẻ «Triển khai
+              Chiêu thức số 3» hiện «Đúng hẹn» ngay cạnh «quá hạn 145 ngày» —
+              cờ co_tinh_trang là tự đánh giá, không có gì tự tính lại nó, nên
+              in trần là để màn hình nói dối.
+            */}
+            {mucChuY(the) === 'DO' ? <span className="font-semibold text-red-700">Cần xử lý</span>
+              : mucChuY(the) === 'VANG' ? <span className="font-medium text-amber-700">Có rủi ro</span>
+              : CT2_TEN_CO[the.co_tinh_trang]} · {the.phan_tram}% ·{' '}
             {the.han_hoan_thanh
               ? <>hạn {new Date(`${the.han_hoan_thanh}T00:00:00`).toLocaleDateString('vi-VN')}</>
               : <span className="font-medium text-amber-700">chưa có hạn</span>}
@@ -189,6 +198,10 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
               Sửa kế hoạch làm
             </button>
           )}
+          <Ct2SuaThongTin
+            the={the} nhanSu={nhanSu} laLanhDao={laLanhDao}
+            onXong={() => { lamTuoi('board'); onXong(); }}
+          />
         </div>
 
         {/*
