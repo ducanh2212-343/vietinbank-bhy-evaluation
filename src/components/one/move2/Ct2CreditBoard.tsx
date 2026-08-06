@@ -140,12 +140,13 @@ export function Ct2CreditBoard({
     [dsHoSo],
   );
   /**
-   * «Hạn mức sắp hết» — chỉ tính khách CHƯA xử lý xong, chia hai nhóm:
-   *  · CHƯA CÓ HỒ SƠ: hạn mức cũ sắp hết mà chưa ai mở hồ sơ tái cấp — nguy
-   *    hiểm nhất, vì không nằm trên bảng của ai cả.
-   *  · CHƯA XONG: hồ sơ tái cấp có rồi (chính dòng này còn chạy, hoặc một hồ
-   *    sơ khác đang chạy) nhưng chưa về đích — nhìn thấy được trên bảng.
-   * Khách đã có hồ sơ tái cấp HOÀN THÀNH nối tiếp thì thôi, không nhắc nữa.
+   * «Hạn mức sắp hết» — chỉ tính việc THẬT đang dở, chia hai nhóm:
+   *  · CHƯA VÀO VIỆC: thẻ dự kiến ở cột «Đến hạn GHTD» chưa ai bắt tay làm.
+   *  · CHƯA XONG: hồ sơ đang chạy mà hạn mức của khách cận/quá.
+   * Hồ sơ HOÀN THÀNH không vào đây nữa — đối chiếu board Miro gốc của Phòng
+   * (GĐ gửi 06/08): thẻ ở cột Hoàn thành là chương đã khép, tag ngày trên đó
+   * là NGÀY HẾT HẠN của hạn mức đã cấp — thông tin lịch sử, không phải việc
+   * chưa làm. Máy từng suy ngược lại và gieo 6 thẻ dự kiến sai — đã gỡ.
    */
   const denHan = useMemo(() => {
     const chuaCo: HoSoSapDenHan[] = [];
@@ -225,7 +226,7 @@ export function Ct2CreditBoard({
               : `${denHan.tong} khách hàng sắp hết hạn mức GHTD chưa xử lý xong`}
           </p>
           <NhomDenHan
-            ten={`Chưa có hồ sơ (${denHan.chuaCo.length})`}
+            ten={`Chưa vào việc — thẻ dự kiến (${denHan.chuaCo.length})`}
             ds={denHan.chuaCo} dsHoSo={dsHoSo} onMoHoSo={onMoHoSo}
           />
           <NhomDenHan
