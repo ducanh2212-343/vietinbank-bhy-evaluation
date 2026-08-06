@@ -1,9 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Columns3, Plus, Zap } from 'lucide-react';
+import { ArrowRight, ChevronDown, Columns3, Plus, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -34,8 +33,8 @@ import {
  *  · CHIA THEO BẢNG, không gộp. Phòng TCTH có hai bảng («Mảng Tổng hợp»,
  *    «Mảng Hành chính») — gộp lại là xoá đúng ranh giới mà phòng đã tự vạch.
  *  · CỘT LÀ MẶC ĐỊNH ở mọi khổ màn hình, đúng yêu cầu «giống giao diện Miro».
- *    Trên điện thoại đổi thành tab từng cột thay vì cuộn ngang — cuộn ngang
- *    trên máy 5 inch là cách chắc chắn nhất để cán bộ bỏ dở.
+ *    Trên điện thoại xếp CHỒNG các cột (không cuộn ngang, không tab) — xem ghi
+ *    chú tại chỗ dựng: tab từng giấu mất cột «Đang làm» và sinh ra cập nhật sót.
  *  · KHÔNG kéo-thả. Chuyển cột ở Chiêu thức 2 có cổng chặn (chưa có dòng Plan,
  *    chưa đủ 100%…) nên phải đi qua hộp thoại có chỗ giải thích; kéo-thả ở đây
  *    chỉ tạo ra một cú kéo bị từ chối không rõ lý do.
@@ -58,7 +57,8 @@ export function Ct2KanbanPhongMini() {
   const cycleId = useCt2CycleId();
 
   const [bangDangXem, setBangDangXem] = useState<string>(KANBAN_CHUNG);
-  const [cotDienThoai, setCotDienThoai] = useState<Ct2TrangThai>('DANG_LAM');
+  // Cột «Hoàn thành» trên điện thoại gấp lại mặc định — xem mục ghi chú ở phần dựng
+  const [moXong, setMoXong] = useState(false);
   const [theMo, setTheMo] = useState<Ct2DauViec | null>(null);
   const [theLapKeHoach, setTheLapKeHoach] = useState<Ct2DauViec | null>(null);
   const [khoiDongLuon, setKhoiDongLuon] = useState(true);
@@ -192,23 +192,53 @@ export function Ct2KanbanPhongMini() {
 
           <div className="mt-3">
             {isMobile ? (
-              <Tabs value={cotDienThoai} onValueChange={(v) => setCotDienThoai(v as Ct2TrangThai)}>
-                <TabsList className="grid w-full grid-cols-3">
-                  {COT_MINI.map((ma) => {
-                    const cot = CT2_COT.find((c) => c.ma === ma)!;
-                    return (
-                      <TabsTrigger key={ma} value={ma} className="text-xs">
-                        {cot.ten} ({theoCot.get(ma)?.length ?? 0})
-                      </TabsTrigger>
-                    );
-                  })}
-                </TabsList>
-                {COT_MINI.map((ma) => (
-                  <TabsContent key={ma} value={ma} className="mt-3 space-y-2">
-                    <DanhSachThe ds={theoCot.get(ma) ?? []} onMo={setTheMo} />
-                  </TabsContent>
-                ))}
-              </Tabs>
+              /*
+                ĐIỆN THOẠI: xếp chồng, KHÔNG dùng tab.
+
+                Bản tab cũ chỉ hiện một cột, hai cột kia biến mất sau nhãn —
+                GĐ phản ánh 06/08: cán bộ chưa quen mở ra thấy mỗi «Chuẩn bị»,
+                tưởng đó là tất cả việc của mình, nên cập nhật thiếu hẳn phần
+                «Đang làm». Trên web ba cột nằm cạnh nhau nên không ai sót; đưa
+                nguyên ý đó xuống điện thoại bằng tab là đánh mất chính cái làm
+                Kanban có tác dụng — NHÌN THẤY TẤT CẢ CÙNG LÚC.
+
+                Việc đang chạy (Chuẩn bị + Đang làm) bày hết, không gấp. Riêng
+                «Hoàn thành» gấp lại sau một nút: nó là thành quả để xem, không
+                phải việc phải làm — bày cả 14 ngày thẻ xong ra thì đẩy phần
+                cần làm xuống dưới màn hình, lại thành giấu kiểu khác.
+              */
+              <div className="space-y-3">
+                {COT_MINI.map((ma) => {
+                  const cot = CT2_COT.find((c) => c.ma === ma)!;
+                  const ds = theoCot.get(ma) ?? [];
+                  const gapDuoc = ma === 'HOAN_THANH';
+                  const dangMo = !gapDuoc || moXong;
+                  return (
+                    <div key={ma}>
+                      {gapDuoc ? (
+                        <button
+                          type="button"
+                          onClick={() => setMoXong((v) => !v)}
+                          className="flex w-full items-center gap-1.5 rounded-lg bg-slate-100 px-2 py-1.5 text-xs font-semibold text-slate-600"
+                        >
+                          {cot.icon} {cot.ten}
+                          <span className="text-slate-400">({ds.length})</span>
+                          <ChevronDown className={`ml-auto h-3.5 w-3.5 transition-transform ${dangMo ? 'rotate-180' : ''}`} />
+                        </button>
+                      ) : (
+                        <p className="rounded-lg bg-slate-100 px-2 py-1.5 text-xs font-semibold text-slate-600">
+                          {cot.icon} {cot.ten} <span className="text-slate-400">({ds.length})</span>
+                        </p>
+                      )}
+                      {dangMo && (
+                        <div className="mt-2 space-y-2">
+                          <DanhSachThe ds={ds} onMo={setTheMo} />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             ) : (
               <div className="grid grid-cols-3 gap-3">
                 {COT_MINI.map((ma) => {

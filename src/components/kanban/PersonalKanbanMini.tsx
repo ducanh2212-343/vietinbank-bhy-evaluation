@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Kanban as KanbanIcon, AlertTriangle } from 'lucide-react';
+import { Kanban as KanbanIcon, AlertTriangle, ChevronDown } from 'lucide-react';
 import { KanbanColumn } from './KanbanColumn';
 import { KanbanCardItem } from './KanbanCard';
 import { UpdateProgressDialog } from './UpdateProgressDialog';
@@ -37,7 +36,8 @@ export function PersonalKanbanMini({ profileId, limit = 5 }: Props) {
   const [updateCard, setUpdateCard] = useState<KanbanCard | null>(null);
   const [completeCard, setCompleteCard] = useState<KanbanCard | null>(null);
   const [detailCard, setDetailCard] = useState<KanbanCard | null>(null);
-  const [mobileTab, setMobileTab] = useState<KanbanStatus>('todo');
+  // «Hoàn thành» trên điện thoại gấp lại mặc định — xem ghi chú ở phần dựng
+  const [moXong, setMoXong] = useState(false);
   const doingColRef = useRef<HTMLDivElement>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -73,10 +73,10 @@ export function PersonalKanbanMini({ profileId, limit = 5 }: Props) {
   const notUpdatedCount = notUpdated.length;
   const overdueCount = cards.filter(c => computeBadges(c).overdue).length;
 
+  // Xếp chồng nên mọi cột đều đang hiện — «Cập nhật ngay» chỉ cần cuộn tới
+  // cột Đang làm, cùng một cử chỉ trên điện thoại lẫn web
   const focusRed = () => {
-    const target: KanbanStatus = notUpdated.some(c => c.kanban_status === 'doing') ? 'doing' : 'todo';
-    if (isMobile) setMobileTab(target);
-    else doingColRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    doingColRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const handleDrag = async (e: DragEndEvent) => {
@@ -155,17 +155,51 @@ export function PersonalKanbanMini({ profileId, limit = 5 }: Props) {
         {loading ? <p className="text-sm text-muted-foreground">Đang tải...</p> : cards.length === 0 ? (
           <p className="text-sm text-muted-foreground">Chưa có hành động nào. Hãy tạo hành động trong bản tự đánh giá / lộ trình phát triển.</p>
         ) : isMobile ? (
-          <Tabs value={mobileTab} onValueChange={(v) => setMobileTab(v as KanbanStatus)}>
-            <TabsList className="grid grid-cols-3 w-full">
-              {COLS.map(c => <TabsTrigger key={c.id} value={c.id}>{c.label} ({byStatus[c.id].length})</TabsTrigger>)}
-            </TabsList>
-            {COLS.map(col => (
-              <TabsContent key={col.id} value={col.id} className="space-y-2 mt-3">
-                {byStatus[col.id].slice(0, limit).map(renderCard)}
-                {byStatus[col.id].length === 0 && <p className="text-xs text-muted-foreground">Không có card.</p>}
-              </TabsContent>
-            ))}
-          </Tabs>
+          /*
+            ĐIỆN THOẠI: xếp chồng, KHÔNG dùng tab — cùng lý lẽ với Kanban Phòng
+            trên trang chủ. Tab chỉ hiện một cột, hai cột kia biến mất sau nhãn;
+            cán bộ chưa quen tưởng cột đang mở là tất cả việc của mình rồi cập
+            nhật thiếu. Trên web ba cột nằm cạnh nhau nên không ai sót.
+
+            «Hoàn thành» gấp lại sau một nút: thành quả để xem, không phải việc
+            phải làm — bày hết ra thì đẩy phần cần làm xuống dưới màn hình.
+          */
+          <div className="space-y-3">
+            {COLS.map(col => {
+              const ds = byStatus[col.id];
+              const gapDuoc = col.id === 'done';
+              const dangMo = !gapDuoc || moXong;
+              return (
+                <div key={col.id} ref={col.id === 'doing' ? doingColRef : undefined}>
+                  {gapDuoc ? (
+                    <button
+                      type="button"
+                      onClick={() => setMoXong(v => !v)}
+                      className="flex w-full items-center gap-1.5 rounded-lg bg-muted px-2 py-1.5 text-xs font-semibold text-muted-foreground"
+                    >
+                      {col.label} <span className="opacity-60">({ds.length})</span>
+                      <ChevronDown className={`ml-auto w-3.5 h-3.5 transition-transform ${dangMo ? 'rotate-180' : ''}`} />
+                    </button>
+                  ) : (
+                    <p className="rounded-lg bg-muted px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                      {col.label} <span className="opacity-60">({ds.length})</span>
+                    </p>
+                  )}
+                  {dangMo && (
+                    <div className="mt-2 space-y-2">
+                      {ds.slice(0, limit).map(renderCard)}
+                      {ds.length === 0 && <p className="px-1 text-xs text-muted-foreground">Không có card.</p>}
+                      {ds.length > limit && (
+                        <button onClick={() => navigate('/hanh-dong-phat-trien')} className="w-full px-1 text-left text-xs text-primary hover:underline">
+                          Còn {ds.length - limit} card khác...
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         ) : (
           <DndContext sensors={sensors} onDragEnd={handleDrag}>
             <div className="grid grid-cols-3 gap-3">
