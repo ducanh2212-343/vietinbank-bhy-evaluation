@@ -63,6 +63,30 @@ Vai là toàn cục, không riêng Kanban. Phó phòng giờ cũng:
 Đó chính là nghĩa của «lãnh đạo phòng» — nhưng nếu Giám đốc muốn Phó phòng
 hẹp hơn Trưởng phòng ở mảng nào, cần nói rõ để tách vai riêng.
 
+## Bổ sung cùng ngày: lãnh đạo phòng thấy MỌI bảng của phòng mình
+
+Giám đốc chốt tiếp: «Tôi muốn Phó Phòng thấy toàn bộ task kanban của Phòng mình.»
+
+Đo trên production: thẻ ở Kanban chung và bảng chế độ PHÒNG thì cả phòng thấy
+sẵn (Phó phòng KHDN thấy đủ 34/34 — con số 31 đo trước đó chỉ là 3 thẻ mới
+tạo giữa hai phép đo, ngày ra mắt phòng đang nhập liên tục). Lỗ hổng cấu trúc
+duy nhất: bảng chế độ **HẠN CHẾ** chỉ mở cho thành viên + BGĐ — Trưởng/Phó
+phòng của chính phòng đó mà không là thành viên thì mù cả bảng lẫn thẻ
+(TCTH «Mảng tổ chức» là ca thật).
+
+Migration `20260906090000_lanh_dao_phong_thay_moi_bang_cua_phong.sql` thêm
+nhánh `ct2_la_lanh_dao_phong(b.phong)` vào `ct2_xem_duoc_bang()` — một cửa
+sửa, policy SELECT của cả `ct2_bang` lẫn `ct2_dau_viec` đều hưởng. Cố ý không
+dùng `ct2_sua_duoc_phong` (rộng hơn cần: sẽ mở bảng riêng «Việc của …» của
+Ban Giám đốc cho tcth_admin).
+
+Kiểm chứng sau vá (đóng vai, rollback):
+
+- Phó phòng TCTH Vũ Thị Năm: thấy đủ 3 bảng kể cả «Mảng tổ chức» hạn chế,
+  68 thẻ toàn phòng; bảng riêng của Ban Giám đốc vẫn kín (0 bảng)
+- Cán bộ Chu Thị Thủy (không lãnh đạo): vẫn chỉ 2 bảng chế độ PHÒNG — bảng
+  hạn chế không hở ra cán bộ thường
+
 ## Lưu ý vận hành
 
 Đây là **backfill**, không phải luật tự động. Khi thêm Phó phòng mới trên màn
