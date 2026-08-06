@@ -75,17 +75,30 @@ phòng của chính phòng đó mà không là thành viên thì mù cả bảng
 (TCTH «Mảng tổ chức» là ca thật).
 
 Migration `20260906090000_lanh_dao_phong_thay_moi_bang_cua_phong.sql` thêm
-nhánh `ct2_la_lanh_dao_phong(b.phong)` vào `ct2_xem_duoc_bang()` — một cửa
-sửa, policy SELECT của cả `ct2_bang` lẫn `ct2_dau_viec` đều hưởng. Cố ý không
-dùng `ct2_sua_duoc_phong` (rộng hơn cần: sẽ mở bảng riêng «Việc của …» của
-Ban Giám đốc cho tcth_admin).
+nhánh `ct2_la_lanh_dao_phong(b.phong)` vào `ct2_xem_duoc_bang()` để lãnh đạo
+phòng thấy cả bảng hạn chế.
 
-Kiểm chứng sau vá (đóng vai, rollback):
+**Nhưng Giám đốc chỉnh lại ngay trong ngày**: «Mảng tổ chức» chính là việc
+riêng cần bảo mật giữa Trưởng phòng Vũ Thị Thu Hà và Giám đốc — Phó phòng
+không được thấy. Nhánh vừa thêm làm hở đúng ca bảo mật đầu tiên, nên
+`20260907090000_bang_han_che_bao_mat_theo_thanh_vien.sql` gỡ nó đi, hàm quay
+về định nghĩa cũ. Luật chốt:
 
-- Phó phòng TCTH Vũ Thị Năm: thấy đủ 3 bảng kể cả «Mảng tổ chức» hạn chế,
-  68 thẻ toàn phòng; bảng riêng của Ban Giám đốc vẫn kín (0 bảng)
-- Cán bộ Chu Thị Thủy (không lãnh đạo): vẫn chỉ 2 bảng chế độ PHÒNG — bảng
-  hạn chế không hở ra cán bộ thường
+- Việc CHUNG của phòng nằm ở Kanban chung + bảng chế độ PHÒNG — cả phòng
+  (dĩ nhiên gồm Trưởng/Phó phòng) thấy đủ, đo thực tế PP KHDN 34/34 thẻ.
+- Bảng **HẠN CHẾ nghĩa là bảo mật theo thành viên**: chỉ người được thêm
+  đích danh + Ban Giám đốc + system_admin. Muốn Phó phòng nào thấy một bảng
+  hạn chế cụ thể thì thêm họ làm thành viên bảng đó — van chỉnh từng bảng,
+  không phải luật chung.
+
+Kiểm chứng sau hai lượt (đóng vai, rollback):
+
+- Phó phòng TCTH Vũ Thị Năm: 2 bảng chế độ PHÒNG + 68 thẻ toàn phòng;
+  «Mảng tổ chức» đã khép lại đúng yêu cầu bảo mật
+- Trưởng phòng Vũ Thị Thu Hà: vẫn đủ 3 bảng (thấy «Mảng tổ chức» nhờ là
+  thành viên); Giám đốc vào bằng vai bgd
+- Cán bộ Chu Thị Thủy (không lãnh đạo): vẫn chỉ 2 bảng chế độ PHÒNG
+- Bảng riêng «Việc của …» của Ban Giám đốc: kín như cũ
 
 ## Lưu ý vận hành
 
