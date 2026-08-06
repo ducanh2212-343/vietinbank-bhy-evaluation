@@ -14,7 +14,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { hanGoiY } from '@/lib/ct2';
 import {
   HS_COT, HS_TEN_CAP, HS_TEN_KY_HAN, HS_TEN_LOAI, buocKeTiep, canhBaoHoSo,
-  dinhDangTien, docSoTien, hsSuaDuocSoTien, hsThieuDeVaoThuThap, hsTuoiCho, kiemTraHoSo,
+  dinhDangTien, docSoTien, hsCanGhiNhipNgay, hsSuaDuocSoTien, hsThieuDeVaoThuThap,
+  hsTuoiCho, kiemTraHoSo,
   lyDoChanChuyenHoSo,
   type HoSoTinDung, type HsCap, type HsFormTao, type HsKyHan, type HsLoai,
   type HsTrangThai,
@@ -623,7 +624,7 @@ export function Ct2CreditCardDialog({ hoSo, nhanSu, laLanhDao, chuyenDen, onClos
         )}
 
         {/* Cửa viết BÁO CÁO — tách khỏi ô trao đổi trong Dòng thời gian bên dưới */}
-        {suaDuoc && (
+        {suaDuoc && hsCanGhiNhipNgay(hoSo) && (
           <div className="rounded-xl border-2 border-brand-navy/20 bg-blue-50/40 p-3">
             <p className="mb-2 flex flex-wrap items-baseline gap-2 text-sm font-semibold text-brand-navy">
               Ghi nhịp hồ sơ
@@ -637,6 +638,21 @@ export function Ct2CreditCardDialog({ hoSo, nhanSu, laLanhDao, chuyenDen, onClos
               </Button>
             </div>
           </div>
+        )}
+
+        {/*
+          Thẻ ở cột dự kiến: GỠ hẳn cửa ghi nhịp thay vì để đó cho có. Ô nhập
+          hỏi «hôm nay hồ sơ đi tới đâu» trên một việc còn cách hai tháng chỉ
+          mời người ta gõ một câu vô nghĩa mỗi sáng. Nói rõ vì sao gỡ, và chỉ
+          sang ô Trao đổi — vẫn ghi được nếu thật sự có tin.
+        */}
+        {suaDuoc && !hsCanGhiNhipNgay(hoSo) && (
+          <p className="rounded-xl border border-violet-200 bg-violet-50/60 px-3 py-2 text-xs text-violet-800">
+            Thẻ dự kiến không phải ghi nhịp hằng ngày — mốc còn xa, ghi mỗi sáng
+            thành câu vô nghĩa. Có tin cần lưu (khách dời nhu cầu, đổi số tiền…)
+            thì ghi ở ô <b>Trao đổi</b> phía dưới; nhịp ngày bắt đầu khi thẻ sang
+            «Thu thập hồ sơ».
+          </p>
         )}
 
         <Ct2DongThoiGian

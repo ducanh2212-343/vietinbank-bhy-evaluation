@@ -423,6 +423,26 @@ export function hsChuaGhiLanNao(h: Pick<HoSoTinDung, 'nhip_gan_nhat'>): boolean 
 }
 
 /**
+ * Hồ sơ này có thuộc diện GHI NHỊP HẰNG NGÀY không.
+ *
+ * Giám đốc chốt 06/08: thẻ ở cột dự kiến («Đến hạn GHTD hoặc cần sử dụng trong
+ * 2 tháng tới») KHÔNG phải ghi nhịp ngày — mốc còn quá xa, bắt ghi mỗi sáng
+ * chỉ đẻ ra những câu vô nghĩa lặp lại, và một sổ nhịp đầy câu vô nghĩa thì
+ * chính những dòng có nội dung thật cũng mất giá trị.
+ *
+ * Nhịp ngày là để trả lời «hôm nay việc đi tới đâu» — câu đó chỉ có nghĩa khi
+ * đã có người bắt tay làm. Thẻ dự kiến chưa ai làm gì; thứ nó cần là được nhìn
+ * thấy đúng lúc, không phải được tường thuật hằng ngày.
+ *
+ * KHÔNG cấm ghi — cấm là chuyện khác hẳn. Ai có tin cần lưu lại trên thẻ dự
+ * kiến (VD «gọi khách, tháng 9 mới cần vốn») thì dùng ô Trao đổi ở Dòng thời
+ * gian: nó vẫn vào đúng mạch của thẻ và vẫn báo đủ tuyến phụ trách.
+ */
+export function hsCanGhiNhipNgay(h: Pick<HoSoTinDung, 'trang_thai'>): boolean {
+  return HS_DANG_CHAY.includes(h.trang_thai);
+}
+
+/**
  * Ai được sửa SỐ TIỀN của hồ sơ — luật này phải khớp trigger DB
  * `f_ct2_hs_truoc_sua` (hàng rào thật nằm ở đó, đây chỉ là bản chiếu cho
  * giao diện khỏi mời người dùng làm việc sẽ bị chặn):

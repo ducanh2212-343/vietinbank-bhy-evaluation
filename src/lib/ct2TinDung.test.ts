@@ -11,6 +11,7 @@ import {
   dinhDangTien,
   docSoTien,
   hsConLaiDenHan,
+  hsCanGhiNhipNgay,
   hsConLaiDuKien,
   hsMocDuKien,
   hsNghenCho,
@@ -234,6 +235,32 @@ describe('Cột dự kiến nhận hai loại việc — đến hạn GHTD HOẶ
     const canDung = canhBaoHoSo(
       { ...goc, ngay_den_han_ghtd: null, han_xu_ly: '2026-08-20' } as HoSoTinDung, moc);
     expect(canDung[0].noi_dung).toContain('Khách cần dùng vốn còn 8 ngày');
+  });
+});
+
+describe('Thẻ dự kiến không phải ghi nhịp hằng ngày — GĐ chốt 06/08', () => {
+  it('cột dự kiến đứng ngoài nhịp ngày; mọi bước ĐANG CHẠY thì có', () => {
+    expect(hsCanGhiNhipNgay({ trang_thai: 'DEN_HAN_GHTD' })).toBe(false);
+    for (const b of HS_DANG_CHAY) {
+      expect(hsCanGhiNhipNgay({ trang_thai: b })).toBe(true);
+    }
+  });
+
+  it('hồ sơ đã khép cũng thôi đòi nhịp — không còn gì để tường thuật', () => {
+    expect(hsCanGhiNhipNgay({ trang_thai: 'HOAN_THANH' })).toBe(false);
+    expect(hsCanGhiNhipNgay({ trang_thai: 'TU_CHOI' })).toBe(false);
+  });
+
+  it('và KHÔNG bị đếm là «chưa cập nhật» dù để lâu bao nhiêu ngày', () => {
+    // Thẻ dự kiến tạo từ 01/07, tới 12/08 là hơn 40 ngày lịch — nếu vẫn đo
+    // bằng thước im lặng thì sáng nào nó cũng đỏ vì một kỷ luật không áp cho nó
+    const cu = {
+      ...hsGoc, trang_thai: 'DEN_HAN_GHTD' as const, nhip_gan_nhat: null,
+      ngay_nhan: '2026-07-01', created_at: '2026-07-01T01:00:00Z',
+    };
+    expect(hsNgayImLang(cu, moc)).toBe(0);
+    expect(hsMucImLang(cu, moc)).toBe('MOI');
+    expect(canhBaoHoSo(cu, moc).some((c) => c.noi_dung.includes('Chưa cập nhật'))).toBe(false);
   });
 });
 
