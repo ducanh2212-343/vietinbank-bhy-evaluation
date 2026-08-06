@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { CalendarClock, Rocket, Star } from 'lucide-react';
+import { CalendarClock, NotebookPen, Rocket, Star } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -190,12 +190,19 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
           {(the.trang_thai === 'CHO_DUYET' || the.trang_thai === 'CHO_PHOI_HOP') && the.nguoi_dang_giu && (
             <O ten="Đang giữ việc" gia={`${tenNguoi.get(the.nguoi_dang_giu) ?? '—'} (đồng hồ trách nhiệm đã đổi chủ)`} />
           )}
-          {/* Thẻ Chuẩn bị chưa có kế hoạch đã có nút «Bắt đầu làm» ở trên */}
+          {/*
+            Thẻ Chuẩn bị chưa có kế hoạch đã có nút «Bắt đầu làm» ở trên.
+
+            NÚT chứ không phải dòng gạch chân: Giám đốc mở thẻ trên điện thoại
+            hỏi «nút sửa đâu?» trong khi nó nằm ngay giữa màn hình — chữ nhỏ
+            gạch chân lẫn vào khối thông tin, không ai đọc ra là chỗ bấm được.
+          */}
           {(laChuThe || laLanhDao) && (daDuKeHoach(the) || the.trang_thai !== 'CHUAN_BI') && (
             <button
-              className="text-left text-xs font-medium text-brand-navy underline underline-offset-2 sm:col-span-2"
+              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-brand-navy/40 bg-white px-3 text-sm font-semibold text-brand-navy shadow-sm sm:col-span-2"
               onClick={() => onLapKeHoach(false)}
             >
+              <NotebookPen className="h-4 w-4 shrink-0" />
               {daDuKeHoach(the) ? 'Sửa kế hoạch làm' : 'Ghi kế hoạch làm (kết quả · mục tiêu · cách làm)'}
             </button>
           )}

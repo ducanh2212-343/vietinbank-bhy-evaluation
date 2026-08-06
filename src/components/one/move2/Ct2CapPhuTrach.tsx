@@ -129,11 +129,13 @@ export function Ct2CapPhuTrach({ phongId, nguoiLam, gia, nhanSu, suaDuoc, onLuu,
         )}
         {trong && <span className="font-medium text-amber-700">— chưa gán cấp phụ trách</span>}
         {suaDuoc && !moSua && (
+          // Viên nhỏ có viền thay cho chữ gạch chân — cùng đợt «nút phải ra
+          // nút» với Sửa thông tin thẻ / Sửa kế hoạch làm
           <button
-            className="text-xs font-medium text-brand-navy underline underline-offset-2"
+            className="inline-flex items-center gap-1 rounded-full border border-brand-navy/40 bg-white px-2.5 py-1 text-xs font-semibold text-brand-navy shadow-sm"
             onClick={() => setMoSua(true)}
           >
-            {trong ? 'Gán cấp phụ trách' : 'Sửa'}
+            ✏️ {trong ? 'Gán cấp phụ trách' : 'Sửa'}
           </button>
         )}
       </span>

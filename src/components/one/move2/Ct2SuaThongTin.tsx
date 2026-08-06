@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -55,11 +56,15 @@ export function Ct2SuaThongTin({ the, nhanSu, laLanhDao, onXong }: Props) {
   if (!laLanhDao) return null;
 
   if (!mo) {
+    // NÚT chứ không phải dòng gạch chân — Giám đốc mở thẻ trên điện thoại
+    // không tìm ra «nút sửa» dù nó ở ngay giữa màn hình (cùng lý do với nút
+    // «Sửa kế hoạch làm» bên Ct2CardDialog)
     return (
       <button
-        className="text-left text-xs font-medium text-brand-navy underline underline-offset-2 sm:col-span-2"
+        className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-brand-navy/40 bg-white px-3 text-sm font-semibold text-brand-navy shadow-sm sm:col-span-2"
         onClick={() => setMo(true)}
       >
+        <Pencil className="h-4 w-4 shrink-0" />
         Sửa thông tin thẻ (tiêu đề · người làm · ngày · ưu tiên)
       </button>
     );
