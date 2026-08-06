@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { CalendarClock, NotebookPen, Rocket, Star } from 'lucide-react';
+import { CalendarClock, Eye, Hourglass, NotebookPen, Rocket, Star } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -131,7 +131,8 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
                   docLaiTheoDoi();
                 }
               }}>
-              {dangTheoDoiThe ? '👁 Đang theo dõi thẻ' : '👁 Theo dõi thẻ'}
+              <Eye className="mr-1 h-3.5 w-3.5" />
+              {dangTheoDoiThe ? 'Đang theo dõi thẻ' : 'Theo dõi thẻ'}
             </Button>
           </div>
         )}
@@ -190,27 +191,34 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
           {(the.trang_thai === 'CHO_DUYET' || the.trang_thai === 'CHO_PHOI_HOP') && the.nguoi_dang_giu && (
             <O ten="Đang giữ việc" gia={`${tenNguoi.get(the.nguoi_dang_giu) ?? '—'} (đồng hồ trách nhiệm đã đổi chủ)`} />
           )}
-          {/*
-            Thẻ Chuẩn bị chưa có kế hoạch đã có nút «Bắt đầu làm» ở trên.
-
-            NÚT chứ không phải dòng gạch chân: Giám đốc mở thẻ trên điện thoại
-            hỏi «nút sửa đâu?» trong khi nó nằm ngay giữa màn hình — chữ nhỏ
-            gạch chân lẫn vào khối thông tin, không ai đọc ra là chỗ bấm được.
-          */}
-          {(laChuThe || laLanhDao) && (daDuKeHoach(the) || the.trang_thai !== 'CHUAN_BI') && (
-            <button
-              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-brand-navy/40 bg-white px-3 text-sm font-semibold text-brand-navy shadow-sm sm:col-span-2"
-              onClick={() => onLapKeHoach(false)}
-            >
-              <NotebookPen className="h-4 w-4 shrink-0" />
-              {daDuKeHoach(the) ? 'Sửa kế hoạch làm' : 'Ghi kế hoạch làm (kết quả · mục tiêu · cách làm)'}
-            </button>
-          )}
-          <Ct2SuaThongTin
-            the={the} nhanSu={nhanSu} laLanhDao={laLanhDao}
-            onXong={() => { lamTuoi('board'); onXong(); }}
-          />
         </div>
+
+        {/*
+          HÀNG NÚT SỬA — tách hẳn khỏi khối thông tin, theo góp ý của Giám đốc
+          («giao diện chỗ bày hơi rối… chữ màu ghi gạch chân rất dễ gây nhầm»):
+          khối xám ở trên chỉ CHỨA DỮ LIỆU, mọi cửa sửa gom về một hàng nút
+          thật — cao 44px đủ chạm ngón tay, viền rõ, icon vector. Chữ gạch chân
+          trong khối thông tin bị mắt đọc thành ghi chú, không phải chỗ bấm.
+          Nút Chuyển/Ghi nhịp bên dưới vẫn là hành động chính (nút màu đặc);
+          hàng này là hành động phụ nên chỉ viền.
+        */}
+        {(laChuThe || laLanhDao) && (
+          <div className="grid gap-2 sm:grid-cols-2">
+            {(laChuThe || laLanhDao) && (daDuKeHoach(the) || the.trang_thai !== 'CHUAN_BI') && (
+              <button
+                className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-brand-navy shadow-sm active:bg-slate-50"
+                onClick={() => onLapKeHoach(false)}
+              >
+                <NotebookPen className="h-4 w-4 shrink-0" />
+                {daDuKeHoach(the) ? 'Sửa kế hoạch làm' : 'Ghi kế hoạch làm'}
+              </button>
+            )}
+            <Ct2SuaThongTin
+              the={the} nhanSu={nhanSu} laLanhDao={laLanhDao}
+              onXong={() => { lamTuoi('board'); onXong(); }}
+            />
+          </div>
+        )}
 
         {/*
           Gỡ thẻ nhập nhầm — KHÁC Dừng/Hủy và cố ý nhỏ, nằm cuối, không phải nút
@@ -478,10 +486,12 @@ function ChuyenTrangThai({ the, laLanhDao, laChuThe, vong, nhanSu, chuyenDen, on
       ) : the.trang_thai === 'DANG_LAM' && the.loai_dau_viec === 'TIEN_TRINH' && (
         <div className="mt-2">
           {!moGiao ? (
+            // Viên có viền thay chữ gạch chân — cùng đợt «nút phải ra nút»
             <button type="button"
-              className="text-xs font-medium text-brand-navy underline underline-offset-2"
+              className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-brand-navy shadow-sm active:bg-slate-50"
               onClick={() => setMoGiao(true)}>
-              ⏳ Việc đang nằm ở người khác? Giao đồng hồ chờ
+              <Hourglass className="h-3 w-3 shrink-0" />
+              Việc đang nằm ở người khác? Giao đồng hồ chờ
             </button>
           ) : (
             <div className="flex flex-wrap items-end gap-2 rounded-lg bg-slate-50 p-2">

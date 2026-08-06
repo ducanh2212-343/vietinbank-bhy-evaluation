@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -135,7 +136,7 @@ export function Ct2CapPhuTrach({ phongId, nguoiLam, gia, nhanSu, suaDuoc, onLuu,
             className="inline-flex items-center gap-1 rounded-full border border-brand-navy/40 bg-white px-2.5 py-1 text-xs font-semibold text-brand-navy shadow-sm"
             onClick={() => setMoSua(true)}
           >
-            ✏️ {trong ? 'Gán cấp phụ trách' : 'Sửa'}
+            <Pencil className="h-3 w-3 shrink-0" /> {trong ? 'Gán cấp phụ trách' : 'Sửa'}
           </button>
         )}
       </span>
