@@ -47,11 +47,30 @@ export function Ct2CaiDatMocGio() {
     if (coLoi) { toast.error('Còn mốc giờ chưa hợp lệ — kiểm tra lại các ô báo đỏ.'); return; }
     setDangLuu(true);
     const db = supabase as unknown as {
-      from(t: string): { update(v: unknown): { eq(c: string, v: unknown): PromiseLike<{ error: { message?: string } | null }> } };
+      from(t: string): {
+        update(v: unknown): {
+          eq(c: string, v: unknown): {
+            select(c: string): PromiseLike<{ data: unknown[] | null; error: { message?: string } | null }>;
+          };
+        };
+      };
     };
-    const { error } = await db.from('ct2_cau_hinh_thoi_gian').update(f).eq('id', true);
+    /*
+      `.select()` không phải để lấy dữ liệu — nó để ĐẾM SỐ DÒNG THỰC SỰ ĐỔI.
+      RLS chặn một UPDATE thì PostgREST trả 0 dòng và KHÔNG kèm lỗi, nên bản cũ
+      báo «Đã lưu mốc giờ» trong khi không lưu gì: Giám đốc bấm lưu, thấy báo
+      thành công, mở lại thấy số cũ, không có manh mối nào để đoán vì sao.
+      Một màn hình nói dối còn tệ hơn một màn hình báo lỗi.
+    */
+    const { data: doi, error } = await db
+      .from('ct2_cau_hinh_thoi_gian').update(f).eq('id', true).select('id');
     setDangLuu(false);
     if (error) { toast.error(error.message ?? 'Không lưu được.'); return; }
+    if (!doi || doi.length === 0) {
+      toast.error('Không lưu được: tài khoản của anh/chị không có quyền đổi mốc giờ '
+        + 'của Chi nhánh. Cần vai Giám đốc, Tổ chức Tổng hợp hoặc quản trị hệ thống.');
+      return;
+    }
     toast.success('Đã lưu mốc giờ. Các bảng sẽ tính lại theo mốc mới.');
     lamTuoi();
   };
