@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import {
   HS_COT, HS_DANG_CHAY, HS_TEN_CAP, HS_TEN_LOAI, canhBaoHoSo, dinhDangTien,
-  hsConLaiDenHan, hsTuoiCho, locTrungKhachHang, sapXepHoSo, tongTheoBuoc,
+  hsConLaiDuKien, hsMocDuKien, hsTuoiCho, locTrungKhachHang, sapXepHoSo, tongTheoBuoc,
   type HoSoTinDung, type HsTrangThai,
 } from '@/lib/ct2TinDung';
 import type { Ct2NhanSu } from './useCt2Data';
@@ -140,12 +140,13 @@ export function Ct2CreditBoard({
     [dsHoSo],
   );
   /**
-   * «Hạn mức sắp hết» — chỉ tính khách CHƯA xử lý xong, chia hai nhóm:
-   *  · CHƯA CÓ HỒ SƠ: hạn mức cũ sắp hết mà chưa ai mở hồ sơ tái cấp — nguy
-   *    hiểm nhất, vì không nằm trên bảng của ai cả.
-   *  · CHƯA XONG: hồ sơ tái cấp có rồi (chính dòng này còn chạy, hoặc một hồ
-   *    sơ khác đang chạy) nhưng chưa về đích — nhìn thấy được trên bảng.
-   * Khách đã có hồ sơ tái cấp HOÀN THÀNH nối tiếp thì thôi, không nhắc nữa.
+   * «Hạn mức sắp hết» — chỉ tính việc THẬT đang dở, chia hai nhóm:
+   *  · CHƯA VÀO VIỆC: thẻ dự kiến ở cột «Đến hạn GHTD» chưa ai bắt tay làm.
+   *  · CHƯA XONG: hồ sơ đang chạy mà hạn mức của khách cận/quá.
+   * Hồ sơ HOÀN THÀNH không vào đây nữa — đối chiếu board Miro gốc của Phòng
+   * (GĐ gửi 06/08): thẻ ở cột Hoàn thành là chương đã khép, tag ngày trên đó
+   * là NGÀY HẾT HẠN của hạn mức đã cấp — thông tin lịch sử, không phải việc
+   * chưa làm. Máy từng suy ngược lại và gieo 6 thẻ dự kiến sai — đã gỡ.
    */
   const denHan = useMemo(() => {
     const chuaCo: HoSoSapDenHan[] = [];
@@ -225,7 +226,7 @@ export function Ct2CreditBoard({
               : `${denHan.tong} khách hàng sắp hết hạn mức GHTD chưa xử lý xong`}
           </p>
           <NhomDenHan
-            ten={`Chưa có hồ sơ (${denHan.chuaCo.length})`}
+            ten={`Chưa vào việc — thẻ dự kiến (${denHan.chuaCo.length})`}
             ds={denHan.chuaCo} dsHoSo={dsHoSo} onMoHoSo={onMoHoSo}
           />
           <NhomDenHan
@@ -305,17 +306,19 @@ export function Ct2CreditBoard({
                     <div key={cot.ma} className={`w-64 shrink-0 rounded-xl px-2 py-1.5 ${
                       duKien ? 'bg-violet-100' : 'bg-slate-100'
                     }`}>
-                      <p className={`flex items-center justify-between text-xs font-semibold ${
+                      <p className={`flex items-start justify-between gap-1 text-xs font-semibold ${
                         duKien ? 'text-violet-800' : 'text-brand-navy'
                       }`}>
-                        <span className="truncate">{cot.icon} {cot.ten}</span>
-                        <span className={`tabular-nums ${duKien ? 'text-violet-400' : 'text-slate-400'}`}>
+                        {/* Tên cột dự kiến dài hai dòng — cắt cụt thì mất đúng vế
+                            «hoặc cần sử dụng», tức mất một nửa nghĩa của cột */}
+                        <span className={duKien ? 'leading-snug' : 'truncate'}>
+                          {cot.icon} {cot.ten}
+                        </span>
+                        <span className={`shrink-0 tabular-nums ${duKien ? 'text-violet-400' : 'text-slate-400'}`}>
                           {theoCot.get(cot.ma) ?? 0}
                         </span>
                       </p>
-                      {duKien ? (
-                        <p className="text-2xs leading-snug text-violet-500">Dự kiến — chưa vào việc</p>
-                      ) : (tong.get(cot.ma)?.tien ?? 0) > 0 && (
+                      {!duKien && (tong.get(cot.ma)?.tien ?? 0) > 0 && (
                         <p className="text-2xs font-medium tabular-nums text-slate-500">
                           {dinhDangTien(tong.get(cot.ma)!.tien)}
                           {(tong.get(cot.ma)?.thieu ?? 0) > 0 && ` (+${tong.get(cot.ma)!.thieu} chưa có số)`}
@@ -529,7 +532,8 @@ function TheHoSo({ hoSo, tenNguoi, keoDuoc, onMo }: {
    * lượng đang làm; viền đứt là quy ước quen thuộc cho «chưa chắc, chưa bắt đầu».
    */
   const duKien = hoSo.trang_thai === 'DEN_HAN_GHTD';
-  const conLai = hsConLaiDenHan(hoSo);
+  const mocDuKien = hsMocDuKien(hoSo);
+  const conLai = hsConLaiDuKien(hoSo);
 
   return (
     <div
@@ -550,14 +554,16 @@ function TheHoSo({ hoSo, tenNguoi, keoDuoc, onMo }: {
       <p className="flex items-start justify-between gap-1">
         {duKien ? (
           <>
+            {/* Nói rõ thẻ này dự kiến VÌ LÝ DO GÌ — mất hạn mức đang dùng khác
+                hẳn lỡ một nhu cầu mới, hai việc cần hai cách xử lý */}
             <span className="text-2xs font-semibold uppercase tracking-wide text-violet-600">
-              Dự kiến
+              {mocDuKien?.loai === 'CAN_DUNG' ? 'Cần dùng' : 'Đến hạn'}
             </span>
             <span className={`shrink-0 text-2xs font-semibold tabular-nums ${
-              conLai !== null && conLai < 0 ? 'text-red-700' : 'text-violet-700'
+              conLai === null ? 'text-amber-600' : conLai < 0 ? 'text-red-700' : 'text-violet-700'
             }`}>
               {conLai === null ? 'chưa có ngày'
-                : conLai < 0 ? `hết hạn ${-conLai} ngày` : `còn ${conLai} ngày`}
+                : conLai < 0 ? `quá ${-conLai} ngày` : `còn ${conLai} ngày`}
             </span>
           </>
         ) : (

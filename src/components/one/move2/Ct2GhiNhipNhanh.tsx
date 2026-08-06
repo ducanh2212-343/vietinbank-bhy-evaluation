@@ -39,6 +39,9 @@ export function Ct2GhiNhipNhanh({ dsThe, onDong }: Props) {
   const the = dsThe[buoc];
   // Câu nhịp gần nhất của thẻ đang mở — để chặn copy-paste ngay tại client
   const { data: nhatKy = [] } = useCt2NhatKy(the?.id ?? null);
+  // Nạp TRƯỚC nhật ký của thẻ kế tiếp: lúc bấm «Lưu» xong là thẻ kế hiện ngay,
+  // không có một giây trắng chờ mạng giữa hai thẻ — 6 thẻ là 6 giây tiết kiệm
+  useCt2NhatKy(dsThe[buoc + 1]?.id ?? null);
 
   if (!the) return null;
 
@@ -70,6 +73,7 @@ export function Ct2GhiNhipNhanh({ dsThe, onDong }: Props) {
             co_tinh_trang: the.co_tinh_trang as Ct2Co,
           }}
           cauGanNhat={nhatKy[0]?.noi_dung ?? null}
+          tuTap
           onXong={() => { lamTuoi('nhip'); sangKe(); }}
         />
         <div className="mt-3 flex justify-between">

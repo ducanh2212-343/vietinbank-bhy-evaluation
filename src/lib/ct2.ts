@@ -6,7 +6,7 @@
  * client chặn để trải nghiệm tốt, server chặn để dữ liệu không thể sai.
  */
 
-import { cauHinhNhip, gioSangPhut } from './cauHinhNhip';
+import { NGAY_TRIEN_KHAI, cauHinhNhip, gioSangPhut } from './cauHinhNhip';
 import { ngayLamViecTheoLich, ngayVnChuoi } from './lichNghi';
 
 export type Ct2TrangThai =
@@ -96,7 +96,10 @@ export interface Ct2Nhip {
  * Chiêu thức 2, Phê duyệt tín dụng và Kanban 38 skill/Dấu ấn — để cán bộ chỉ
  * phải học một cách trao đổi, và để @nhắc tên chỉ phải viết một lần.
  */
-export type Ct2PhamVi = 'DAU_VIEC' | 'PHONG' | 'CHIEN_DICH' | 'HO_SO_TIN_DUNG' | 'THE_KANBAN';
+export type Ct2PhamVi =
+  | 'DAU_VIEC' | 'PHONG' | 'CHIEN_DICH' | 'HO_SO_TIN_DUNG' | 'THE_KANBAN'
+  /** Thẻ dấu ấn BHY Mark — trao đổi bổ sung 08/2026, cùng mạch với ba bàn kia */
+  | 'DAU_AN';
 
 export interface Ct2BinhLuan {
   id: string;
@@ -246,6 +249,23 @@ export function cotHienThi(t: Ct2TrangThai): Ct2TrangThai {
   if (t === 'DA_DONG') return 'HOAN_THANH';
   return t;
 }
+
+/*
+ * Ghi chú hai lần chỉnh liên tiếp của mục «Chuyển trạng thái» (06/08, ngày
+ * triển khai) — để người sau không lặp lại vòng này:
+ *
+ *  1. Rà soát phát hiện CHO_PHOI_HOP / CHO_DUYET / DA_DONG có luật ở cả client
+ *     lẫn trigger nhưng KHÔNG CÓ CỬA vào → mở ô chọn đủ 7 đích.
+ *  2. GĐ chỉnh ngay trong sáng: bảng có 4 cột mà ô chuyển bày 7 — hai nơi nói
+ *     hai thứ. ĐỒNG BỘ VỀ 4: ô chọn chỉ còn đúng CT2_COT. Ba trạng thái con
+ *     đổi vai chứ không mất cửa: CHỜ là nút «Giao đồng hồ chờ» bên trong
+ *     «Đang làm» (thẻ vẫn nằm cột Đang làm), ĐÃ ĐÓNG là nút «Chốt» của lãnh
+ *     đạo trên thẻ Hoàn thành. Database giữ nguyên bảy trạng thái và mọi luật.
+ *
+ * Bài học: cửa phải mở ĐÚNG HÌNH của bảng — thêm đích vào ô chọn thì dễ,
+ * nhưng người dùng đọc bảng bằng cột, và một đích không phải cột là một trạng
+ * thái họ không biết xếp vào đâu.
+ */
 
 export const CT2_TEN_CO: Record<Ct2Co, string> = {
   XANH: '🟢 Đúng hẹn', VANG: '🟡 Có rủi ro', DO: '🔴 Đang vướng',
@@ -543,7 +563,10 @@ export function lyDoChanChuyen(tu: Ct2TrangThai, den: Ct2TrangThai, bc: BoiCanhC
   if (den === 'DUNG_HUY' && !bc.laLanhDao) {
     return 'Chỉ Trưởng/Phó phòng được Dừng/Hủy đầu việc.';
   }
-  if ((den === 'CHO_PHOI_HOP' || den === 'CHO_DUYET') === false && (tu === 'DA_DONG' || tu === 'DUNG_HUY') && !bc.laLanhDao) {
+  // Mở lại thẻ đã đóng/hủy là việc của lãnh đạo — KHÔNG có ngoại lệ nào theo
+  // đích đến. (Bản cũ vô tình miễn cho đích «chờ», tức cán bộ kéo được thẻ đã
+  // hủy vào cột chờ duyệt — một đường lách không ai chủ đích mở.)
+  if ((tu === 'DA_DONG' || tu === 'DUNG_HUY') && !bc.laLanhDao) {
     return 'Thẻ đã đóng/hủy — chỉ lãnh đạo Phòng mở lại được.';
   }
   return null;
@@ -637,7 +660,12 @@ export function soNgayImLang(
   const tu = dv.nhip_gan_nhat
     ?? (dv.ngay_bat_dau ? `${dv.ngay_bat_dau}T00:00:00+07:00` : dv.created_at);
   if (!tu) return 0;
-  return soNgayLamViec(tu, moc);
+  // Kỷ luật nhịp tính từ NGÀY TRIỂN KHAI: mốc nào sớm hơn thì kẹp lên ngày
+  // triển khai — sáng khai trương không ai bị «im lặng 3 ngày» vì một kỷ luật
+  // hôm qua chưa tồn tại. Thẻ sinh sau ngày triển khai không bị phép kẹp đụng tới.
+  const tuKep = ngayVnChuoi(new Date(tu)) < NGAY_TRIEN_KHAI
+    ? `${NGAY_TRIEN_KHAI}T00:00:00+07:00` : tu;
+  return soNgayLamViec(tuKep, moc);
 }
 
 /**

@@ -176,6 +176,35 @@ describe('Luật chuyển trạng thái — Kanban là vòng lặp, không có b
   it('việc THƯỜNG TRỰC không vào cột tiến trình', () => {
     expect(lyDoChanChuyen('DANG_LAM', 'CHO_DUYET', { ...bc, loai: 'THUONG_TRUC' })).toContain('THƯỜNG TRỰC');
   });
+
+  it('mở lại thẻ đã đóng/hủy LUÔN cần lãnh đạo — kể cả khi đích là cột chờ', () => {
+    // Bản cũ vô tình miễn cho đích «chờ»: cán bộ kéo được thẻ đã hủy vào
+    // «Chờ duyệt». Rà soát trước triển khai 06/08 bịt đường lách này.
+    expect(lyDoChanChuyen('DUNG_HUY', 'CHO_DUYET', bc)).toContain('lãnh đạo');
+    expect(lyDoChanChuyen('DA_DONG', 'CHO_PHOI_HOP', bc)).toContain('lãnh đạo');
+    expect(lyDoChanChuyen('DA_DONG', 'DANG_LAM', { ...bc, laLanhDao: true })).toBeNull();
+  });
+});
+
+describe('Ô «Chuyển trạng thái» đồng bộ với bảng — GĐ chỉnh sáng 06/08', () => {
+  it('đích chuyển = đúng 4 cột của bảng, không hơn — hai nơi phải nói cùng một thứ', () => {
+    // Chờ phối hợp/duyệt là nút «Giao đồng hồ chờ» trong Đang làm; Đã đóng là
+    // nút «Chốt» của lãnh đạo trên thẻ Hoàn thành — không phải đích để chọn.
+    expect(CT2_COT.map((c) => c.ma)).toEqual(['CHUAN_BI', 'DANG_LAM', 'HOAN_THANH', 'DUNG_HUY']);
+  });
+
+  it('thẻ đang chờ / đã đóng vẫn quy về đúng cột của nó trên ô chọn', () => {
+    expect(cotHienThi('CHO_DUYET')).toBe('DANG_LAM');
+    expect(cotHienThi('CHO_PHOI_HOP')).toBe('DANG_LAM');
+    expect(cotHienThi('DA_DONG')).toBe('HOAN_THANH');
+  });
+
+  it('luật của bảy trạng thái thật vẫn nguyên ở lyDoChanChuyen — chỉ cách bày đổi', () => {
+    const bc: BoiCanhChuyen = { coDongP: true, phanTram: 50, laLanhDao: false, loai: 'TIEN_TRINH' };
+    expect(lyDoChanChuyen('DANG_LAM', 'CHO_DUYET', { ...bc, loai: 'THUONG_TRUC' })).toContain('THƯỜNG TRỰC');
+    expect(lyDoChanChuyen('HOAN_THANH', 'DA_DONG', bc)).toContain('Trưởng/Phó');
+    expect(lyDoChanChuyen('DANG_LAM', 'CHO_DUYET', bc)).toBeNull();
+  });
 });
 
 describe('Bốn cột theo chỉ đạo GĐ — thẻ trạng thái cũ không được biến mất', () => {
@@ -211,10 +240,10 @@ describe('Cảnh báo ngoại lệ', () => {
   it('tính đúng số ngày quá hạn và im lặng', () => {
     // Quá hạn đếm NGÀY LỊCH: hạn 10/08 → 12/08 là trễ 2 ngày với BGĐ và khách
     expect(soNgayQuaHan(goc, moc)).toBe(2);
-    // Im lặng đếm NGÀY LÀM VIỆC: nhịp gần nhất 05/08 (thứ 4) → 12/08 (thứ 4) là
-    // 7 ngày lịch nhưng chỉ 5 ngày làm việc (6, 7, 10, 11, 12) — hai ngày nghỉ
-    // không phải lỗi của ai
-    expect(soNgayImLang(goc, moc)).toBe(5);
+    // Im lặng đếm NGÀY LÀM VIỆC và KẸP TỪ NGÀY TRIỂN KHAI 06/08: nhịp gần nhất
+    // 05/08 rơi trước mốc → đếm từ 06/08 (thứ 5) tới 12/08 (thứ 4) = 4 ngày
+    // làm việc (7, 10, 11, 12) — kỷ luật nhịp không tính lùi về trước khai trương
+    expect(soNgayImLang(goc, moc)).toBe(4);
     expect(soNgayQuaHan({ ...goc, trang_thai: 'HOAN_THANH' }, moc)).toBe(0);
   });
 
@@ -226,10 +255,10 @@ describe('Cảnh báo ngoại lệ', () => {
   });
 
   it('điểm rủi ro theo đúng công thức M4', () => {
-    // 2 ngày quá hạn (lịch) × 3 + 5 ngày im lặng (làm việc) × 2 = 16;
+    // 2 ngày quá hạn (lịch) × 3 + 4 ngày im lặng (kẹp từ ngày triển khai) × 2 = 14;
     // +5 trọng điểm; +3 liên phòng
-    expect(diemRuiRo(goc, moc)).toBe(16);
-    expect(diemRuiRo({ ...goc, muc_uu_tien: 'TRONG_DIEM_BGD', lien_phong: true }, moc)).toBe(24);
+    expect(diemRuiRo(goc, moc)).toBe(14);
+    expect(diemRuiRo({ ...goc, muc_uu_tien: 'TRONG_DIEM_BGD', lien_phong: true }, moc)).toBe(22);
   });
 
   it('chuẩn bị quá lâu khi còn ≤ 25% quỹ thời gian', () => {
@@ -412,6 +441,18 @@ describe('Nhịp chỉ chạy thứ 2 → thứ 6', () => {
     };
     expect(soNgayImLang(the, T2)).toBe(1);
     expect(soNgayImLang(the, CN)).toBe(0);
+  });
+
+  it('sáng khai trương 06/08 không thẻ nhập cũ nào bị «im lặng» — nhịp tính từ ngày triển khai', () => {
+    // 97 thẻ nhập từ Miro ngày 03/08, chưa ai ghi nhịp. Không kẹp mốc thì sáng
+    // 06/08 cả bảng đã «im lặng 3 ngày» — khiển trách về một kỷ luật hôm qua
+    // chưa tồn tại. Sang 07/08 chưa ghi thì im lặng 1 ngày: từ đây là lỗi thật.
+    const nhapCu = {
+      trang_thai: 'DANG_LAM' as const, nhip_gan_nhat: null,
+      ngay_bat_dau: null, created_at: '2026-08-03T02:00:00Z',
+    };
+    expect(soNgayImLang(nhapCu, new Date('2026-08-06T02:00:00Z'))).toBe(0);
+    expect(soNgayImLang(nhapCu, new Date('2026-08-07T02:00:00Z'))).toBe(1);
   });
 
   it('nhưng QUÁ HẠN vẫn đếm ngày lịch — hạn là lời hứa theo tờ lịch', () => {

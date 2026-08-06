@@ -61,9 +61,18 @@ describe('Toàn cảnh hồ sơ — dữ liệu nhập từ Miro còn thiếu', 
   });
 
   it('nhưng để lâu không ghi thì phải hiện «chưa cập nhật lần nào»', () => {
-    const cu = new Date(Date.now() - 30 * 86_400_000).toISOString();
-    render(<Ct2CreditList dsHoSo={[{ ...hsTuMiro, created_at: cu }]}
-      tenNguoi={tenNguoi} onMoHoSo={vi.fn()} />);
-    expect(screen.getAllByText(/chưa cập nhật lần nào/i).length).toBeGreaterThan(0);
+    // Ghim đồng hồ về một ngày SAU triển khai hẳn: im lặng nay kẹp từ ngày
+    // triển khai 06/08, nên «để lâu» phải đo so với mốc đó chứ không phải so
+    // với ngày nhập. Để đồng hồ thật thì test này đúng/sai tùy hôm chạy.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-09-15T02:00:00Z'));
+    try {
+      const cu = new Date(Date.now() - 30 * 86_400_000).toISOString();
+      render(<Ct2CreditList dsHoSo={[{ ...hsTuMiro, created_at: cu }]}
+        tenNguoi={tenNguoi} onMoHoSo={vi.fn()} />);
+      expect(screen.getAllByText(/chưa cập nhật lần nào/i).length).toBeGreaterThan(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
