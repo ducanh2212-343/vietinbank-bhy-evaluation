@@ -76,7 +76,13 @@ export interface NhipHoSo {
 export const HS_COT: Array<{ ma: HsTrangThai; ten: string; icon: string }> = [
   // Cột DỰ KIẾN, đứng đầu đường ống. Không phải hồ sơ đang làm — là công việc
   // sắp phải làm, cho trước vào bảng để Phòng thấy khối lượng đang tới.
-  { ma: 'DEN_HAN_GHTD', ten: 'Đến hạn GHTD 2 tháng tới', icon: '⏰' },
+  //
+  // Tên mở rộng theo GĐ 06/08: cột chứa HAI loại việc sắp tới, không chỉ một.
+  // Năm thẻ Miro chưa xếp cột (Ngành Ong 290 tỷ, Đài Loan, Minh Anh Đô Lương,
+  // Ngân Hà, Mặt Trời Việt) đều là nhu cầu CẦN DÙNG hạn mức — không thẻ nào có
+  // ngày hạn mức đến hạn. Giữ tên cũ thì hoặc chúng đứng ngoài bảng, hoặc cột
+  // nói sai về chính nội dung của nó.
+  { ma: 'DEN_HAN_GHTD', ten: 'Đến hạn GHTD hoặc cần sử dụng trong 2 tháng tới', icon: '⏰' },
   { ma: 'THU_THAP', ten: 'Thu thập hồ sơ', icon: '📂' },
   { ma: 'TRINH_LDP', ten: 'Trình Lãnh đạo Phòng', icon: '📤' },
   { ma: 'TRINH_LDCN', ten: 'Trình LĐ Chi nhánh', icon: '🏢' },
@@ -251,7 +257,7 @@ export function lyDoChanChuyenHoSo(tu: HsTrangThai, den: HsTrangThai, bc: BoiCan
   // ngược về «dự kiến» xoá mất sự thật đó và làm đồng hồ xử lý chạy lại từ đầu.
   // Muốn dừng thì có Từ chối/Dừng — cửa đó ghi lý do và giữ vết.
   if (den === 'DEN_HAN_GHTD') {
-    return 'Cột «Đến hạn GHTD» là điểm xuất phát — hồ sơ đã bắt đầu không quay lại được. Cần dừng thì dùng Từ chối/Dừng.';
+    return 'Cột dự kiến là điểm xuất phát — hồ sơ đã bắt đầu không quay lại được. Cần dừng thì dùng Từ chối/Dừng.';
   }
   if (tu === 'DEN_HAN_GHTD') {
     if (den !== 'THU_THAP' && den !== 'TU_CHOI') {
@@ -340,6 +346,34 @@ export function hsConLaiDenHan(h: Pick<HoSoTinDung, 'ngay_den_han_ghtd'>, moc: D
 }
 
 /**
+ * Mốc neo một thẻ DỰ KIẾN vào cửa sổ 2 tháng — và nó thuộc loại nào.
+ *
+ * Cột dự kiến chứa hai loại việc sắp tới, cần phân biệt vì chúng đọc khác nhau:
+ *  · HAN_MUC  — hạn mức cũ sắp hết: quá ngày là khách MẤT hạn mức đang dùng.
+ *  · CAN_DUNG — khách cần vốn trước một ngày: quá ngày là mình LỠ cơ hội.
+ *
+ * Thứ tự ưu tiên có chủ ý: có ngày hạn mức thì lấy ngày đó, vì mất hạn mức
+ * đang chạy nặng hơn lỡ một nhu cầu mới. Không có mốc nào thì trả null — thẻ
+ * trôi nổi, và ô trống đó phải hiện thành cảnh báo chứ không được im lặng.
+ */
+export function hsMocDuKien(
+  h: Pick<HoSoTinDung, 'ngay_den_han_ghtd' | 'han_xu_ly'>,
+): { ngay: string; loai: 'HAN_MUC' | 'CAN_DUNG' } | null {
+  if (h.ngay_den_han_ghtd) return { ngay: h.ngay_den_han_ghtd, loai: 'HAN_MUC' };
+  if (h.han_xu_ly) return { ngay: h.han_xu_ly, loai: 'CAN_DUNG' };
+  return null;
+}
+
+/** Số ngày còn lại tới mốc dự kiến (âm = đã quá); null nếu thẻ chưa có mốc nào */
+export function hsConLaiDuKien(
+  h: Pick<HoSoTinDung, 'ngay_den_han_ghtd' | 'han_xu_ly'>, moc: Date = new Date(),
+): number | null {
+  const m = hsMocDuKien(h);
+  if (!m) return null;
+  return ngayVn(`${m.ngay}T00:00:00+07:00`) - ngayVn(moc);
+}
+
+/**
  * Số NGÀY LÀM VIỆC hồ sơ không có nhịp mới. Chưa từng ghi nhịp thì tính từ ngày
  * nhận hồ sơ — hồ sơ mở ra rồi bỏ đó là trường hợp cần thấy nhất.
  *
@@ -419,11 +453,31 @@ export function canhBaoHoSo(h: HoSoTinDung, moc: Date = new Date()): CanhBaoHoSo
   const ds: CanhBaoHoSo[] = [];
   const conLai = hsConLaiDenHan(h, moc);
 
+  // Thẻ ở CỘT DỰ KIẾN có bộ cảnh báo riêng: nó chưa phải hồ sơ nên không đo
+  // bằng thước của hồ sơ, nhưng mốc thời gian của nó thì phải nói ra — đó là
+  // lý do duy nhất nó nằm trên bảng.
+  if (h.trang_thai === 'DEN_HAN_GHTD') {
+    const m = hsMocDuKien(h);
+    if (!m) {
+      // Không có mốc nào thì thẻ trôi nổi: không ai biết «2 tháng tới» là tới
+      // bao giờ. Ô trống phải hiện thành cảnh báo, không được im lặng.
+      ds.push({ muc: 'VANG', noi_dung: 'Chưa có ngày hạn mức hoặc ngày cần dùng — không đo được còn bao lâu' });
+      return ds;
+    }
+    const con = hsConLaiDuKien(h, moc)!;
+    const viec = m.loai === 'HAN_MUC' ? 'Hạn mức' : 'Khách cần dùng vốn';
+    if (con < 0) {
+      ds.push({ muc: 'DO', noi_dung: `${viec} đã quá ${-con} ngày mà chưa vào việc` });
+    } else if (con <= 30) {
+      ds.push({ muc: 'DO', noi_dung: `${viec} còn ${con} ngày` });
+    } else if (con <= HS_NGUONG_DEN_HAN) {
+      ds.push({ muc: 'VANG', noi_dung: `${viec} còn ${con} ngày` });
+    }
+    return ds;
+  }
+
   // Nặng nhất: hạn mức của khách hàng sắp hết mà hồ sơ vẫn chưa xong.
-  // Thẻ ở cột dự kiến cũng tính — nó SINH RA từ đúng cái hạn này, im lặng ở
-  // đây là bỏ trống chỗ duy nhất cảnh báo có nghĩa.
-  if (conLai !== null
-      && (HS_DANG_CHAY.includes(h.trang_thai) || h.trang_thai === 'DEN_HAN_GHTD')) {
+  if (conLai !== null && HS_DANG_CHAY.includes(h.trang_thai)) {
     if (conLai < 0) {
       ds.push({ muc: 'DO', noi_dung: `Hạn mức đã hết ${-conLai} ngày, hồ sơ chưa xong` });
     } else if (conLai <= 30) {

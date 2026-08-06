@@ -11,6 +11,8 @@ import {
   dinhDangTien,
   docSoTien,
   hsConLaiDenHan,
+  hsConLaiDuKien,
+  hsMocDuKien,
   hsNghenCho,
   hsQuaHan,
   hsSuaDuocSoTien,
@@ -194,6 +196,44 @@ describe('Một khách — một chỗ trên bàn', () => {
       the({ id: 'p2', phong: 'd2', khach_hang: 'Công ty A', trang_thai: 'THU_THAP' }),
     ];
     expect(locTrungKhachHang(ds).map((h) => h.id)).toEqual(['p1', 'p2']);
+  });
+});
+
+describe('Cột dự kiến nhận hai loại việc — đến hạn GHTD HOẶC cần sử dụng', () => {
+  const goc = { ...hsGoc, trang_thai: 'DEN_HAN_GHTD' as const, so_tien: null, ky_han: null };
+
+  it('có ngày hạn mức thì đọc là ĐẾN HẠN', () => {
+    const h = { ...goc, ngay_den_han_ghtd: '2026-09-20', han_xu_ly: null };
+    expect(hsMocDuKien(h)).toEqual({ ngay: '2026-09-20', loai: 'HAN_MUC' });
+    expect(hsConLaiDuKien(h, moc)).toBe(39);
+  });
+
+  it('chỉ có hạn xử lý thì đọc là CẦN DÙNG — 5 thẻ Miro chưa xếp đều thuộc loại này', () => {
+    const h = { ...goc, ngay_den_han_ghtd: null, han_xu_ly: '2026-08-31' };
+    expect(hsMocDuKien(h)).toEqual({ ngay: '2026-08-31', loai: 'CAN_DUNG' });
+    expect(hsConLaiDuKien(h, moc)).toBe(19);
+  });
+
+  it('có cả hai thì hạn mức thắng — mất hạn mức đang chạy nặng hơn lỡ nhu cầu mới', () => {
+    const h = { ...goc, ngay_den_han_ghtd: '2026-09-20', han_xu_ly: '2026-08-31' };
+    expect(hsMocDuKien(h)?.loai).toBe('HAN_MUC');
+  });
+
+  it('không mốc nào thì trả null — thẻ trôi nổi, phải nói ra chứ không im lặng', () => {
+    const h = { ...goc, ngay_den_han_ghtd: null, han_xu_ly: null };
+    expect(hsMocDuKien(h)).toBeNull();
+    expect(hsConLaiDuKien(h, moc)).toBeNull();
+    const ds = canhBaoHoSo(h as HoSoTinDung, moc);
+    expect(ds.some((c) => c.noi_dung.includes('Chưa có ngày hạn mức hoặc ngày cần dùng'))).toBe(true);
+  });
+
+  it('cảnh báo gọi đúng tên việc theo loại mốc', () => {
+    const denHan = canhBaoHoSo(
+      { ...goc, ngay_den_han_ghtd: '2026-08-20', han_xu_ly: null } as HoSoTinDung, moc);
+    expect(denHan[0].noi_dung).toContain('Hạn mức còn 8 ngày');
+    const canDung = canhBaoHoSo(
+      { ...goc, ngay_den_han_ghtd: null, han_xu_ly: '2026-08-20' } as HoSoTinDung, moc);
+    expect(canDung[0].noi_dung).toContain('Khách cần dùng vốn còn 8 ngày');
   });
 });
 
