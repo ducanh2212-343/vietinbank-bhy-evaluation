@@ -6,6 +6,7 @@ import { OnePageShell } from '@/components/one/OnePageShell';
 import { CultureTree } from '@/components/one/CultureTree';
 import { PersonalKanbanMini } from '@/components/kanban/PersonalKanbanMini';
 import { Ct2HomeStrip } from '@/components/one/move2/Ct2HomeStrip';
+import { EnablePushBanner } from '@/components/EnablePushBanner';
 import { Ct2DieuHanhBgd } from '@/components/one/move2/Ct2DieuHanhBgd';
 import { Ct2KanbanPhongMini } from '@/components/one/move2/Ct2KanbanPhongMini';
 import { NewsRail } from '@/components/one/news/NewsRail';
@@ -84,6 +85,16 @@ function HomeContent() {
               : 'Nguồn cội → Học hỏi → Hành động → Thói quen → Năng lực và văn hóa → Thành quả.'}
           </p>
         </div>
+
+        {/*
+          Dải «Bật thông báo» từng chỉ nằm ở trang Tổng quan cũ — từ khi cả chi
+          nhánh sống ở cổng ONE thì không ai gặp nó nữa: đăng ký thiết bị ôi đi
+          (trình duyệt thu hồi endpoint) mà không có chỗ nào bật lại, chuông
+          trong web vẫn reo còn điện thoại im lặng. Giám đốc là ca đầu tiên:
+          2/3 thiết bị chết từ 31/07. Đặt ở đây, dải này tự ẩn khi thiết bị đã
+          bật và lặng lẽ làm mới đăng ký cũ mỗi lần mở cổng.
+        */}
+        {!isGuest && profileId && <EnablePushBanner profileId={profileId} />}
 
         {/* Nhịp sáng của Chiêu thức 2 đứng trên cùng: đây là thứ đổi mỗi ngày
             và có khung giờ cố định, nên phải thấy ngay khi mở cổng, không bắt

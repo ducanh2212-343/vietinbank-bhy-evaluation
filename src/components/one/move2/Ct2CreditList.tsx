@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { AlertTriangle, CalendarClock, CircleAlert, CircleCheck, CircleDot } from 'lucide-react';
 import {
   HS_COT, HS_NGUONG_IM_LANG, HS_TEN_LOAI, canhBaoHoSo, dinhDangTien,
-  hsChuaGhiLanNao, hsMucImLang, hsNgayImLang, hsQuaHan, hsTuoiCho,
+  hsCacLoai, hsChuaGhiLanNao, hsMucImLang, hsNgayImLang, hsQuaHan, hsTuoiCho,
   type HoSoTinDung, type MucImLang,
 } from '@/lib/ct2TinDung';
 
@@ -187,7 +187,7 @@ function DongHoSo({ hoSo, tenNguoi, onMo }: {
             <span className="rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600">
               {buoc?.icon} {buoc?.ten ?? hoSo.trang_thai}
             </span>
-            <span>{HS_TEN_LOAI[hoSo.loai_ho_so]}</span>
+            <span>{hsCacLoai(hoSo).map((l) => HS_TEN_LOAI[l]).join(' + ')}</span>
             {hoSo.cap_phe_duyet === 'TSC' && <span className="font-semibold text-red-600">TSC</span>}
             {tuoi > 0 && (
               <span className="inline-flex items-center gap-0.5">

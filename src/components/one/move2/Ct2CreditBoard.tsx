@@ -8,7 +8,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import {
   HS_COT, HS_DANG_CHAY, HS_TEN_CAP, HS_TEN_LOAI, canhBaoHoSo, dinhDangTien,
-  hsConLaiDuKien, hsMocDuKien, hsTuoiCho, locTrungKhachHang, sapXepHoSo, tongTheoBuoc,
+  hsCacLoai, hsConLaiDuKien, hsMocDuKien, hsTuoiCho, locTrungKhachHang, sapXepHoSo,
+  tongTheoBuoc,
   type HoSoTinDung, type HsTrangThai,
 } from '@/lib/ct2TinDung';
 import type { Ct2NhanSu } from './useCt2Data';
@@ -582,9 +583,11 @@ function TheHoSo({ hoSo, tenNguoi, keoDuoc, onMo }: {
       </p>
       {/* div chứ không phải p: Badge kết xuất thành div, div trong p là HTML sai */}
       <div className="mt-1 flex flex-wrap items-center gap-1">
-        <Badge variant="outline" className="px-1 py-0 text-2xs font-normal">
-          {HS_TEN_LOAI[hoSo.loai_ho_so]}
-        </Badge>
+        {hsCacLoai(hoSo).map((l) => (
+          <Badge key={l} variant="outline" className="px-1 py-0 text-2xs font-normal">
+            {HS_TEN_LOAI[l]}
+          </Badge>
+        ))}
         {hoSo.cap_phe_duyet === 'TSC' && (
           <Badge variant="outline" className="border-red-300 px-1 py-0 text-2xs font-normal text-red-700">
             TSC

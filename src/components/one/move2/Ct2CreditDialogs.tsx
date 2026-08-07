@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { ArrowRight, Banknote, Send } from 'lucide-react';
+import { ArrowRight, Banknote, Check, Send } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -14,8 +14,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { hanGoiY } from '@/lib/ct2';
 import {
   HS_COT, HS_TEN_CAP, HS_TEN_KY_HAN, HS_TEN_LOAI, buocKeTiep, canhBaoHoSo,
-  dinhDangTien, docSoTien, hsCanGhiNhipNgay, hsSuaDuocSoTien, hsThieuDeVaoThuThap,
-  hsTuoiCho, kiemTraHoSo,
+  dinhDangTien, docSoTien, hsCacLoai, hsCanGhiNhipNgay, hsSuaDuocSoTien,
+  hsThieuDeVaoThuThap, hsTuoiCho, kiemTraHoSo,
   lyDoChanChuyenHoSo,
   type HoSoTinDung, type HsCap, type HsFormTao, type HsKyHan, type HsLoai,
   type HsTrangThai,
@@ -43,9 +43,43 @@ import {
 // ---------------------------------------------------------------------------
 
 const FORM_TRONG: HsFormTao = {
-  khach_hang: '', loai_ho_so: 'TAI_CAP', so_tien: '', ky_han: 'NGAN_HAN',
+  khach_hang: '', cac_loai: ['TAI_CAP'], so_tien: '', ky_han: 'NGAN_HAN',
   cap_phe_duyet: 'CHI_NHANH', can_bo: '', han_xu_ly: '', ngay_den_han_ghtd: '',
 };
+
+/**
+ * Tích chọn đặc tính hồ sơ — dùng chung cho cả cửa mở mới lẫn cửa sửa.
+ *
+ * Ô vuông tích chứ không phải danh sách xổ: một hồ sơ ngoài đời có thể vừa tái
+ * cấp vừa điều chỉnh giới hạn (GĐ chốt 07/08/2026). Bày hết ra thành hàng ô
+ * thay vì giấu sau một cú bấm — chỉ có năm mục, và người dùng cần THẤY mình
+ * đang tích mấy cái.
+ */
+function OTichLoaiHoSo({ chon, onDoi }: { chon: HsLoai[]; onDoi: (v: HsLoai[]) => void }) {
+  const bat = (k: HsLoai) => {
+    onDoi(chon.includes(k) ? chon.filter((x) => x !== k) : [...chon, k]);
+  };
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {(Object.keys(HS_TEN_LOAI) as HsLoai[]).map((k) => {
+        const dangChon = chon.includes(k);
+        return (
+          <button
+            key={k} type="button" onClick={() => bat(k)}
+            aria-pressed={dangChon}
+            className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium ${
+              dangChon
+                ? 'border-brand-navy bg-brand-navy text-white'
+                : 'border-slate-300 bg-white text-slate-700 active:bg-slate-50'}`}
+          >
+            {dangChon ? <Check className="h-3.5 w-3.5 shrink-0" /> : null}
+            {HS_TEN_LOAI[k]}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export function Ct2CreditCreateDialog({ open, phongId, nhanSu, onClose, onXong }: {
   open: boolean;
@@ -72,8 +106,9 @@ export function Ct2CreditCreateDialog({ open, phongId, nhanSu, onClose, onXong }
   );
   const soTien = docSoTien(f.so_tien);
   const dat = <K extends keyof HsFormTao>(k: K, v: HsFormTao[K]) => setF((c) => ({ ...c, [k]: v }));
-  // Tái cấp/điều chỉnh thì hạn mức cũ đến hạn ngày nào là thông tin cốt lõi
-  const canNgayDenHan = f.loai_ho_so === 'TAI_CAP' || f.loai_ho_so === 'DIEU_CHINH';
+  // Tái cấp/điều chỉnh thì hạn mức cũ đến hạn ngày nào là thông tin cốt lõi —
+  // xét trên CẢ BỘ đặc tính, hồ sơ tích thêm «Điều chỉnh» cũng phải hỏi
+  const canNgayDenHan = f.cac_loai.some((l) => l === 'TAI_CAP' || l === 'DIEU_CHINH');
 
   const luu = async () => {
     if (!profileId || !phongId || thieu.length > 0) return;
@@ -81,7 +116,9 @@ export function Ct2CreditCreateDialog({ open, phongId, nhanSu, onClose, onXong }
     const { error } = await ct2TaoHoSo({
       phong: phongId,
       khach_hang: f.khach_hang.trim(),
-      loai_ho_so: f.loai_ho_so,
+      // Đặc tính chính đi kèm cho tương thích; database tự đồng bộ hai chiều
+      loai_ho_so: f.cac_loai[0],
+      cac_loai: f.cac_loai,
       so_tien: soTien,
       ky_han: f.ky_han,
       cap_phe_duyet: f.cap_phe_duyet,
@@ -120,18 +157,14 @@ export function Ct2CreditCreateDialog({ open, phongId, nhanSu, onClose, onXong }
             </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <Label htmlFor="hs-loai">Loại hồ sơ</Label>
-              <Select value={f.loai_ho_so} onValueChange={(v) => dat('loai_ho_so', v)}>
-                <SelectTrigger id="hs-loai"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {(Object.keys(HS_TEN_LOAI) as HsLoai[]).map((k) => (
-                    <SelectItem key={k} value={k}>{HS_TEN_LOAI[k]}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div>
+            <Label>Loại hồ sơ <span className="font-normal text-slate-500">— tích được nhiều</span></Label>
+            <div className="mt-1.5">
+              <OTichLoaiHoSo chon={f.cac_loai} onDoi={(v) => dat('cac_loai', v)} />
             </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label htmlFor="hs-ky_han">Kỳ hạn</Label>
               <Select value={f.ky_han} onValueChange={(v) => dat('ky_han', v)}>
@@ -277,7 +310,7 @@ export function Ct2CreditCardDialog({ hoSo, nhanSu, laLanhDao, chuyenDen, onClos
   // không phải bổ sung, để trống không có nghĩa gì với chúng.
   const [bs, setBs] = useState({
     so_tien: '', ky_han: '' as HsKyHan | '', han_xu_ly: '', ngay_nhan: '', ngay_den_han_ghtd: '',
-    khach_hang: '', can_bo: '', loai_ho_so: '' as HsLoai | '',
+    khach_hang: '', can_bo: '', cac_loai: [] as HsLoai[], cap_phe_duyet: '' as HsCap | '',
   });
 
   useEffect(() => {
@@ -294,7 +327,8 @@ export function Ct2CreditCardDialog({ hoSo, nhanSu, laLanhDao, chuyenDen, onClos
       ngay_den_han_ghtd: hoSo.ngay_den_han_ghtd ?? '',
       khach_hang: hoSo.khach_hang,
       can_bo: hoSo.can_bo,
-      loai_ho_so: hoSo.loai_ho_so,
+      cac_loai: hsCacLoai(hoSo),
+      cap_phe_duyet: hoSo.cap_phe_duyet,
     });
   }, [hoSo, chuyenDen]);
 
@@ -387,7 +421,19 @@ export function Ct2CreditCardDialog({ hoSo, nhanSu, laLanhDao, chuyenDen, onClos
       }
       if (bs.khach_hang.trim() !== hoSo.khach_hang) doi.khach_hang = bs.khach_hang.trim();
       if (bs.can_bo && bs.can_bo !== hoSo.can_bo) doi.can_bo = bs.can_bo;
-      if (bs.loai_ho_so && bs.loai_ho_so !== hoSo.loai_ho_so) doi.loai_ho_so = bs.loai_ho_so;
+      if (bs.cac_loai.length === 0) {
+        toast.error('Hồ sơ phải mang ít nhất một loại — tích lại rồi lưu.');
+        return;
+      }
+      if (bs.cac_loai.join('|') !== hsCacLoai(hoSo).join('|')) {
+        doi.cac_loai = bs.cac_loai;
+        // Đặc tính chính đi kèm để bản ghi nhất quán ngay cả trước khi trigger
+        // đồng bộ chạy — và để nhật ký đọc được ngay ở dòng loai_ho_so
+        doi.loai_ho_so = bs.cac_loai[0];
+      }
+      if (bs.cap_phe_duyet && bs.cap_phe_duyet !== hoSo.cap_phe_duyet) {
+        doi.cap_phe_duyet = bs.cap_phe_duyet;
+      }
     }
 
     if (bs.so_tien.trim() === '') {
@@ -455,7 +501,9 @@ export function Ct2CreditCardDialog({ hoSo, nhanSu, laLanhDao, chuyenDen, onClos
         <DialogHeader>
           <DialogTitle className="flex flex-wrap items-center gap-2 pr-6 text-left">
             <span className="font-mono text-xs text-slate-400">{hoSo.ma_hs}</span>
-            <Badge variant="outline">{HS_TEN_LOAI[hoSo.loai_ho_so]}</Badge>
+            {hsCacLoai(hoSo).map((l) => (
+              <Badge key={l} variant="outline">{HS_TEN_LOAI[l]}</Badge>
+            ))}
             {hoSo.cap_phe_duyet === 'TSC' && (
               <Badge variant="outline" className="border-red-300 text-red-700">Trình TSC</Badge>
             )}
@@ -554,17 +602,32 @@ export function Ct2CreditCardDialog({ hoSo, nhanSu, laLanhDao, chuyenDen, onClos
                       </p>
                     )}
                   </div>
-                  <div>
-                    <Label htmlFor="bs-loai" className="text-xs">Loại hồ sơ</Label>
-                    <Select value={bs.loai_ho_so}
-                      onValueChange={(v) => setBs((c) => ({ ...c, loai_ho_so: v as HsLoai }))}>
-                      <SelectTrigger id="bs-loai"><SelectValue /></SelectTrigger>
+                  <div className="sm:col-span-2">
+                    <Label className="text-xs">
+                      Loại hồ sơ <span className="font-normal text-slate-500">— tích được nhiều</span>
+                    </Label>
+                    <div className="mt-1.5">
+                      <OTichLoaiHoSo chon={bs.cac_loai}
+                        onDoi={(v) => setBs((c) => ({ ...c, cac_loai: v }))} />
+                    </div>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Label htmlFor="bs-cap" className="text-xs">Thẩm quyền phê duyệt GHTD</Label>
+                    <Select value={bs.cap_phe_duyet}
+                      onValueChange={(v) => setBs((c) => ({ ...c, cap_phe_duyet: v as HsCap }))}>
+                      <SelectTrigger id="bs-cap"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {(Object.keys(HS_TEN_LOAI) as HsLoai[]).map((k) => (
-                          <SelectItem key={k} value={k}>{HS_TEN_LOAI[k]}</SelectItem>
+                        {(Object.keys(HS_TEN_CAP) as HsCap[]).map((k) => (
+                          <SelectItem key={k} value={k}>{HS_TEN_CAP[k]}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    {bs.cap_phe_duyet !== hoSo.cap_phe_duyet && (
+                      <p className="mt-1 text-2xs text-amber-700">
+                        Đổi thẩm quyền là đổi đường luân chuyển: các bước trình tiếp theo
+                        sẽ tính lại theo cấp mới, lần đổi được lưu vết.
+                      </p>
+                    )}
                   </div>
                 </>
               )}
