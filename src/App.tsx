@@ -118,6 +118,8 @@ const OneNewsPage = lazyWithRetry(() => import("./pages/one/OneNewsPage"));
 const OneIdeasPage = lazyWithRetry(() => import("./pages/one/OneIdeasPage"));
 const OneCreditPage = lazyWithRetry(() => import("./pages/one/OneCreditPage"));
 const OneRecognitionPage = lazyWithRetry(() => import("./pages/one/OneRecognitionPage"));
+const OneKyYeuPage = lazyWithRetry(() => import("./pages/one/OneKyYeuPage"));
+const KyYeuAdminPage = lazyWithRetry(() => import("./pages/KyYeuAdminPage"));
 const GuestAccessAdminPage = lazyWithRetry(() => import("./pages/GuestAccessAdminPage"));
 const GopYAdminPage = lazyWithRetry(() => import("./pages/GopYAdminPage"));
 const ChangePassword = lazyWithRetry(() => import("./pages/ChangePassword"));
@@ -226,6 +228,8 @@ const App = () => (
               <Route path="/one/y-tuong" element={<OneIdeasPage />} />
               <Route path="/one/credit-360" element={<OneCreditPage />} />
               <Route path="/one/ghi-nhan" element={<OneRecognitionPage />} />
+              {/* Kỷ yếu số — flipbook kỷ niệm 20 năm, đọc PDF từ bucket ky-yeu */}
+              <Route path="/one/ky-yeu-so" element={<OneKyYeuPage />} />
               {/* Link cũ trước tái cấu trúc — chuyển hướng để không gãy bookmark.
                   "Nguồn cội & Bản sắc" đã gộp vào trang chủ; "Sáng kiến & Nghiệp vụ"
                   nay là một phần của hệ sinh thái Bắc Hưng Yên Ways. */}
@@ -287,6 +291,7 @@ const App = () => (
                 <Route path="/quan-ly-meo-tinh-nang" element={<FeatureTipsAdminPage />} />
                 <Route path="/lich-nghi-le" element={<LichNghiAdminPage />} />
                 <Route path="/quan-tri-tin-tuc" element={<NewsAdminPage />} />
+                <Route path="/quan-tri-ky-yeu" element={<KyYeuAdminPage />} />
                 <Route path="/quan-tri-khach" element={<GuestAccessAdminPage />} />
                 {/* Tiếp nhận góp ý cải thiện BHY One — Phòng TCTH + Ban Giám đốc
                     (AdminRoute đã bao gồm bgd/tcth_admin/system_admin) */}

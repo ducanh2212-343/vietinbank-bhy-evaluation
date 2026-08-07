@@ -5,7 +5,7 @@ import {
   UserCheck, Sparkles, GraduationCap, ClipboardList, KeyRound, ListPlus,
   CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag, GitBranch,
   ListChecks, Building2, Gavel, TrendingUp, Zap, Lightbulb,
-  Home, BookOpen, Compass, Layers, Share2, CalendarDays, NotebookPen, Sprout,
+  Home, BookOpen, BookMarked, Compass, Layers, Share2, CalendarDays, NotebookPen, Sprout,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -146,6 +146,15 @@ export const NAV_SECTIONS: NavSection[] = [
         guestVisible: true,
         bleed: true,
         keywords: ['tin tuc', 'ban tin', 'dong chia se', 'thong bao', 'news'],
+      },
+      {
+        // Ấn phẩm kỷ niệm 20 năm dạng flipbook lật trang. Nội bộ cán bộ
+        // (ảnh tập thể, lưu bút) — không mở cho khách đối tác.
+        label: 'Kỷ yếu số',
+        icon: BookMarked,
+        path: '/one/ky-yeu-so',
+        bleed: true,
+        keywords: ['ky yeu', 'so luu but', '20 nam', 'flipbook', 'cay ky uc', 'sach lat'],
       },
     ],
   },
@@ -476,6 +485,15 @@ export const NAV_SECTIONS: NavSection[] = [
             path: '/quan-tri-tin-tuc',
             minRole: 'admin',
             keywords: ['tin tuc', 'ghim tin', 'bien tap', 'dong chia se'],
+          },
+          // Ấn phẩm Kỷ yếu số của tab cùng tên trên cổng ONE: thay PDF/nhạc nền,
+          // xuất bản — RLS chỉ cho TCTH admin / System admin ghi
+          {
+            label: 'Quản trị Kỷ yếu số',
+            icon: BookMarked,
+            path: '/quan-tri-ky-yeu',
+            minRole: 'admin',
+            keywords: ['ky yeu', 'flipbook', 'an pham', '20 nam', 'nhac nen'],
           },
           // Mẹo hiện ở banner Trang chủ, hộp nhắc một lần và trang Mẹo hay —
           // áp dụng cho mọi vai trò, mọi phân hệ
