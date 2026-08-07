@@ -277,7 +277,7 @@ export function Ct2CreditCardDialog({ hoSo, nhanSu, laLanhDao, chuyenDen, onClos
   // không phải bổ sung, để trống không có nghĩa gì với chúng.
   const [bs, setBs] = useState({
     so_tien: '', ky_han: '' as HsKyHan | '', han_xu_ly: '', ngay_nhan: '', ngay_den_han_ghtd: '',
-    khach_hang: '', can_bo: '', loai_ho_so: '' as HsLoai | '',
+    khach_hang: '', can_bo: '', loai_ho_so: '' as HsLoai | '', cap_phe_duyet: '' as HsCap | '',
   });
 
   useEffect(() => {
@@ -295,6 +295,7 @@ export function Ct2CreditCardDialog({ hoSo, nhanSu, laLanhDao, chuyenDen, onClos
       khach_hang: hoSo.khach_hang,
       can_bo: hoSo.can_bo,
       loai_ho_so: hoSo.loai_ho_so,
+      cap_phe_duyet: hoSo.cap_phe_duyet,
     });
   }, [hoSo, chuyenDen]);
 
@@ -388,6 +389,9 @@ export function Ct2CreditCardDialog({ hoSo, nhanSu, laLanhDao, chuyenDen, onClos
       if (bs.khach_hang.trim() !== hoSo.khach_hang) doi.khach_hang = bs.khach_hang.trim();
       if (bs.can_bo && bs.can_bo !== hoSo.can_bo) doi.can_bo = bs.can_bo;
       if (bs.loai_ho_so && bs.loai_ho_so !== hoSo.loai_ho_so) doi.loai_ho_so = bs.loai_ho_so;
+      if (bs.cap_phe_duyet && bs.cap_phe_duyet !== hoSo.cap_phe_duyet) {
+        doi.cap_phe_duyet = bs.cap_phe_duyet;
+      }
     }
 
     if (bs.so_tien.trim() === '') {
@@ -565,6 +569,24 @@ export function Ct2CreditCardDialog({ hoSo, nhanSu, laLanhDao, chuyenDen, onClos
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Label htmlFor="bs-cap" className="text-xs">Thẩm quyền phê duyệt GHTD</Label>
+                    <Select value={bs.cap_phe_duyet}
+                      onValueChange={(v) => setBs((c) => ({ ...c, cap_phe_duyet: v as HsCap }))}>
+                      <SelectTrigger id="bs-cap"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {(Object.keys(HS_TEN_CAP) as HsCap[]).map((k) => (
+                          <SelectItem key={k} value={k}>{HS_TEN_CAP[k]}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {bs.cap_phe_duyet !== hoSo.cap_phe_duyet && (
+                      <p className="mt-1 text-2xs text-amber-700">
+                        Đổi thẩm quyền là đổi đường luân chuyển: các bước trình tiếp theo
+                        sẽ tính lại theo cấp mới, lần đổi được lưu vết.
+                      </p>
+                    )}
                   </div>
                 </>
               )}
