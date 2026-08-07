@@ -120,11 +120,14 @@ Deno.serve(async (req) => {
 
     let sent = 0;
     const daXuLy: string[] = [];
+    // Thống kê lỗi trả về ngay trong phản hồi — người gọi tay (kiểm thử) thấy
+    // được kết quả mà không phải đi đọc log
+    const loiGui: Array<{ sub: string; status: number | string; body?: string }> = [];
 
     if (vapidPrivateKey && nguoiNhan.length) {
       const { data: subs } = await admin
         .from('push_subscriptions')
-        .select('id, profile_id, endpoint, p256dh, auth')
+        .select('id, profile_id, endpoint, p256dh, auth, loi_cuoi')
         .eq('is_active', true)
         .in('profile_id', nguoiNhan);
 
@@ -156,9 +159,43 @@ Deno.serve(async (req) => {
             );
             const res = await fetch(s.endpoint, init);
             if (res.status === 404 || res.status === 410) {
-              await admin.from('push_subscriptions').update({ is_active: false }).eq('id', s.id);
-            } else if (res.ok) sent++;
-          } catch (e) { console.error('Push CT2 lỗi', { tb: tb.id, error: String(e) }); }
+              await admin.from('push_subscriptions')
+                .update({ is_active: false, loi_cuoi: `${res.status} endpoint đã hết hiệu lực`, loi_luc: bayGio })
+                .eq('id', s.id);
+              loiGui.push({ sub: s.id, status: res.status });
+            } else if (res.ok) {
+              sent++;
+              // Xoá vết lỗi cũ khi máy này nhận lại được — nếu không thì một lần
+              // trục trặc sẽ đeo bám mãi và ta đọc nhầm là máy vẫn đang hỏng
+              if (s.loi_cuoi) {
+                await admin.from('push_subscriptions')
+                  .update({ loi_cuoi: null, loi_luc: null }).eq('id', s.id);
+              }
+            } else {
+              /*
+                ĐIỂM MÙ CŨ: mọi mã lỗi ngoài 404/410 từng bị nuốt lặng lẽ — đăng
+                ký vẫn is_active nên bảng điều khiển báo «máy còn sống», trong
+                khi Apple/Google từ chối từng tin một và người dùng không bao giờ
+                nhận được gì. Đúng cảnh iPhone của Giám đốc: đăng ký sống từ
+                19/07, tin nào cũng «gửi xong», màn hình khóa im lặng.
+                Nay ghi lại nguyên văn để còn truy được.
+              */
+              const chiTiet = (await res.text().catch(() => '')).slice(0, 300);
+              console.error('Push CT2 bị từ chối', {
+                tb: tb.id, sub: s.id, status: res.status,
+                endpoint: s.endpoint.slice(0, 60), body: chiTiet,
+              });
+              await admin.from('push_subscriptions')
+                .update({ loi_cuoi: `${res.status} ${chiTiet}`.slice(0, 400), loi_luc: bayGio })
+                .eq('id', s.id);
+              loiGui.push({ sub: s.id, status: res.status, body: chiTiet });
+            }
+          } catch (e) {
+            console.error('Push CT2 lỗi', { tb: tb.id, sub: s.id, error: String(e) });
+            await admin.from('push_subscriptions')
+              .update({ loi_cuoi: String(e).slice(0, 400), loi_luc: bayGio }).eq('id', s.id);
+            loiGui.push({ sub: s.id, status: 'ngoại lệ', body: String(e).slice(0, 300) });
+          }
         }
         daXuLy.push(tb.id);
       }
@@ -172,9 +209,10 @@ Deno.serve(async (req) => {
     await admin.from('ct2_thong_bao').update({ gui_luc: bayGio })
       .is('gui_luc', null).lt('phat_luc', qua);
 
-    return new Response(JSON.stringify({ hang_doi: dsTb.length, da_day: daXuLy.length, push_sent: sent }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({ hang_doi: dsTb.length, da_day: daXuLy.length, push_sent: sent, loi: loiGui }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
   } catch (e) {
     return new Response(JSON.stringify({ error: String((e as Error)?.message || e) }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
