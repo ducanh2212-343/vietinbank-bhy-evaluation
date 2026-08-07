@@ -5,7 +5,7 @@ import {
   UserCheck, Sparkles, GraduationCap, ClipboardList, KeyRound, ListPlus,
   CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag, GitBranch,
   ListChecks, Building2, Gavel, TrendingUp, Zap, Lightbulb,
-  Home, BookOpen, BookMarked, Compass, Layers, Share2, CalendarDays, NotebookPen, Sprout,
+  Home, BookOpen, Compass, Layers, Share2, CalendarDays, NotebookPen, Sprout, TreeDeciduous,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -157,7 +157,8 @@ export const NAV_SECTIONS: NavSection[] = [
     id: 'cay-ky-uc',
     label: 'Cây Ký Ức',
     shortLabel: 'Cây Ký Ức',
-    icon: BookMarked,
+    // Biểu tượng cây tán lá — đúng hình tượng "Cây ký ức" của ấn phẩm 20 năm
+    icon: TreeDeciduous,
     accent: '#C79A5B',
     zone: 'portal',
     path: '/one/cay-ky-uc',
@@ -166,7 +167,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       {
         label: 'Cây Ký Ức',
-        icon: BookMarked,
+        icon: TreeDeciduous,
         path: '/one/cay-ky-uc',
         bleed: true,
         keywords: ['cay ky uc', 'ky yeu', 'ky yeu so', 'so luu but', '20 nam', 'flipbook', 'sach lat'],
@@ -507,7 +508,7 @@ export const NAV_SECTIONS: NavSection[] = [
           // xuất bản — RLS chỉ cho TCTH admin / System admin ghi
           {
             label: 'Quản trị Cây Ký Ức',
-            icon: BookMarked,
+            icon: TreeDeciduous,
             path: '/quan-tri-ky-yeu',
             minRole: 'admin',
             keywords: ['cay ky uc', 'ky yeu', 'flipbook', 'an pham', '20 nam', 'nhac nen'],

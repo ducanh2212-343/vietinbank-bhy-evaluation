@@ -96,13 +96,17 @@ export function FlipbookKyYeu({ nguon, ten, nhacUrl, pdfTaiVeUrl, trangBanDau, o
 
   const luaChonDau = useMemo(docLuaChonAmThanh, []);
   const [tiengGiay, setTiengGiay] = useState(luaChonDau.tiengGiay);
+  // nhacBat = ĐANG phát (trạng thái nút); uuTienNhac = sở thích được ghi nhớ.
+  // Tách đôi vì lúc mới vào tab nhạc chưa kịp phát — đem nhacBat đi lưu sẽ
+  // ghi đè sở thích "bật" thành "tắt" trước khi tự phát kịp chạy.
   const [nhacBat, setNhacBat] = useState(false);
+  const [uuTienNhac, setUuTienNhac] = useState(luaChonDau.nhac);
   const [mucNhac, setMucNhac] = useState(luaChonDau.mucNhac);
   useEffect(() => {
     amThanh.current!.batTiengGiay = tiengGiay;
     amThanh.current!.mucNhac = mucNhac;
-    luuLuaChonAmThanh({ tiengGiay, nhac: nhacBat, mucNhac });
-  }, [tiengGiay, nhacBat, mucNhac]);
+    luuLuaChonAmThanh({ tiengGiay, nhac: uuTienNhac, mucNhac });
+  }, [tiengGiay, uuTienNhac, mucNhac]);
 
   // ---- Kích thước sách ----
   useEffect(() => {
@@ -344,6 +348,37 @@ export function FlipbookKyYeu({ nguon, ten, nhacUrl, pdfTaiVeUrl, trangBanDau, o
     [N, ketThucPhien],
   );
 
+  // ---- Nhạc nền: tự phát ----
+  // Chi nhánh chốt: nhạc TỰ PHÁT khi mở tab, nút chỉ để tắt. Trình duyệt chỉ
+  // cho phát khi phiên đã có thao tác người dùng — bấm vào tab từ menu là đủ,
+  // nên thường nhạc vào ngay khi mở. Mở bằng link trực tiếp/F5 thì chưa có
+  // thao tác: cú chạm/phím ĐẦU TIÊN vào trang sách sẽ tự khởi động nhạc,
+  // người xem không phải tìm nút. Ai đã chủ động tắt thì thôi, không bật lại.
+  const daPhatTuDong = useRef(false);
+  const thuBatNhacTuDong = useCallback(async () => {
+    if (daPhatTuDong.current || !uuTienNhac || !nhacUrl) return;
+    const at = amThanh.current!;
+    at.moKhoa();
+    if (nhacRef.current) at.ganNhac(nhacRef.current);
+    if (at.dangPhatNhac()) {
+      daPhatTuDong.current = true;
+      return;
+    }
+    const ok = await at.batNhac();
+    if (ok && at.ctxDangChay()) {
+      daPhatTuDong.current = true;
+      setNhacBat(true);
+    } else if (ok) {
+      // play() được nhận nhưng AudioContext còn treo = "phát câm" — dừng lại,
+      // chờ thao tác thật rồi thử lại (qua onPointerDown/onKeyDown)
+      at.tatNhac();
+    }
+  }, [uuTienNhac, nhacUrl]);
+
+  useEffect(() => {
+    void thuBatNhacTuDong();
+  }, [thuBatNhacTuDong]);
+
   // ---- Kéo mép giấy ----
   const keo = useRef<{ x0: number; y0: number; dangCho: boolean; tien: boolean; xLocal0: number; xTruoc: number; tTruoc: number } | null>(null);
 
@@ -361,6 +396,7 @@ export function FlipbookKyYeu({ nguon, ten, nhacUrl, pdfTaiVeUrl, trangBanDau, o
     (e: React.PointerEvent) => {
       amThanh.current!.moKhoa();
       if (nhacRef.current) amThanh.current!.ganNhac(nhacRef.current);
+      void thuBatNhacTuDong(); // mở bằng link trực tiếp: chạm đầu tiên là nhạc vào
       if (giamChuyenDong || cheDoDonGian || phien.current) return;
       const { xLocal } = toaDoLocal(e.clientX);
       // Xác định chiều: bên phải gáy → ứng viên lật tiến, bên trái → lùi.
@@ -372,7 +408,7 @@ export function FlipbookKyYeu({ nguon, ten, nhacUrl, pdfTaiVeUrl, trangBanDau, o
         xTruoc: e.clientX, tTruoc: performance.now(),
       };
     },
-    [giamChuyenDong, cheDoDonGian, toaDoLocal, motTrang, W],
+    [giamChuyenDong, cheDoDonGian, toaDoLocal, motTrang, W, thuBatNhacTuDong],
   );
 
   const onPointerMove = useCallback(
@@ -445,6 +481,7 @@ export function FlipbookKyYeu({ nguon, ten, nhacUrl, pdfTaiVeUrl, trangBanDau, o
     (e: React.KeyboardEvent) => {
       amThanh.current!.moKhoa();
       if (nhacRef.current) amThanh.current!.ganNhac(nhacRef.current);
+      void thuBatNhacTuDong();
       switch (e.key) {
         case 'ArrowRight': case ' ': e.preventDefault(); sangTrang(true); break;
         case 'ArrowLeft': e.preventDefault(); sangTrang(false); break;
@@ -458,7 +495,7 @@ export function FlipbookKyYeu({ nguon, ten, nhacUrl, pdfTaiVeUrl, trangBanDau, o
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sangTrang, nhayToi, N, trangPhongTo, moLuoi],
+    [sangTrang, nhayToi, N, trangPhongTo, moLuoi, thuBatNhacTuDong],
   );
 
   // ---- Toàn màn hình ----
@@ -478,7 +515,7 @@ export function FlipbookKyYeu({ nguon, ten, nhacUrl, pdfTaiVeUrl, trangBanDau, o
     return () => document.removeEventListener('fullscreenchange', fn);
   }, []);
 
-  // ---- Nhạc nền ----
+  // ---- Nhạc nền: nút tắt/bật ----
   const doiNhac = useCallback(async () => {
     const at = amThanh.current!;
     at.moKhoa();
@@ -486,19 +523,33 @@ export function FlipbookKyYeu({ nguon, ten, nhacUrl, pdfTaiVeUrl, trangBanDau, o
     if (at.dangPhatNhac()) {
       at.tatNhac();
       setNhacBat(false);
+      setUuTienNhac(false);
+      daPhatTuDong.current = true; // người dùng đã quyết — không tự bật lại nữa
     } else {
       const ok = await at.batNhac();
       if (!ok) toast.error('Trình duyệt chặn phát nhạc — bấm lại lần nữa để bật');
       setNhacBat(ok);
+      if (ok) {
+        setUuTienNhac(true);
+        daPhatTuDong.current = true;
+      }
     }
   }, []);
 
-  // Rời tab / chuyển module → dừng nhạc
+  // Rời tab → tạm dừng; quay lại tab → phát tiếp (trừ khi người dùng đã tắt)
+  const tamDungViAnTab = useRef(false);
   useEffect(() => {
     const fn = () => {
-      if (document.hidden && amThanh.current?.dangPhatNhac()) {
-        nhacRef.current?.pause();
-        setNhacBat(false);
+      const at = amThanh.current;
+      if (document.hidden) {
+        if (at?.dangPhatNhac()) {
+          nhacRef.current?.pause();
+          setNhacBat(false);
+          tamDungViAnTab.current = true;
+        }
+      } else if (tamDungViAnTab.current) {
+        tamDungViAnTab.current = false;
+        void at?.batNhac().then((ok) => setNhacBat(ok));
       }
     };
     document.addEventListener('visibilitychange', fn);

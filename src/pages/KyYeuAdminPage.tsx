@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { BookMarked, Upload, Music, ExternalLink } from 'lucide-react';
+import { TreeDeciduous, Upload, Music, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -204,7 +204,7 @@ export default function KyYeuAdminPage() {
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 p-4 sm:p-6">
       <div className="flex items-center gap-3">
-        <BookMarked className="h-6 w-6 text-primary" />
+        <TreeDeciduous className="h-6 w-6 text-primary" />
         <div>
           <h1 className="text-xl font-semibold">Quản trị Cây Ký Ức</h1>
           <p className="text-sm text-muted-foreground">

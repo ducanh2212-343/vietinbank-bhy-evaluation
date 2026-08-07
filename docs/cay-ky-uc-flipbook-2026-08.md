@@ -89,7 +89,7 @@ trang khi chạm vào. URL vẫn nhận `?trang=12` để mở đúng trang khi 
 | Lưới trang | Nút «Lưới» — toàn bộ trang thu nhỏ, đánh dấu trang đang xem |
 | Phóng to | Nút «Phóng to» — bản nét cao với thang mức 100–400% (chữ 11pt của khổ A4 đạt ≥16px trên màn 360px ở mức 300%), chạm đúp đảo 100↔300%, `Esc` đóng |
 | Toàn màn hình | Nút hoặc phím `F` |
-| Nhạc nền | «Bật nhạc nền» (không bao giờ tự phát), thanh âm lượng riêng, tự hạ 45% khi lật trang, tự dừng khi rời tab |
+| Nhạc nền | TỰ PHÁT khi mở tab (chốt 08/2026); nếu trình duyệt chưa cho (mở bằng link trực tiếp/F5) thì cú chạm đầu tiên vào trang sách sẽ khởi động nhạc. Nút chỉ để tắt/bật lại; ai đã tắt thì được ghi nhớ, không bật lại. Tự hạ 45% khi lật trang; tạm dừng khi rời tab và phát tiếp khi quay lại |
 | Tải PDF gốc | Chỉ vai trò quản trị thấy nút |
 
 Khả năng tiếp cận: đi hết sách bằng bàn phím, focus vàng nhìn rõ trên nền navy,

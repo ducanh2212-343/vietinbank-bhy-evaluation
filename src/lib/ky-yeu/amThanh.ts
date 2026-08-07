@@ -25,14 +25,16 @@ export function docLuaChonAmThanh(): LuaChonAmThanh {
       const o = JSON.parse(raw) as Partial<LuaChonAmThanh>;
       return {
         tiengGiay: o.tiengGiay !== false,
-        nhac: false, // nhạc KHÔNG bao giờ tự phát khi vào tab — chỉ nhớ mức âm lượng
+        // Chi nhánh chốt (08/2026): nhạc TỰ PHÁT khi mở tab, nút chỉ để tắt.
+        // Ai đã chủ động tắt thì lần sau tôn trọng, không bật lại.
+        nhac: o.nhac !== false,
         mucNhac: typeof o.mucNhac === 'number' ? Math.min(1, Math.max(0, o.mucNhac)) : 0.35,
       };
     }
   } catch {
     /* localStorage bị chặn → dùng mặc định */
   }
-  return { tiengGiay: true, nhac: false, mucNhac: 0.35 };
+  return { tiengGiay: true, nhac: true, mucNhac: 0.35 };
 }
 
 export function luuLuaChonAmThanh(lc: LuaChonAmThanh): void {
@@ -213,6 +215,11 @@ export class AmThanhKyYeu {
 
   dangPhatNhac(): boolean {
     return !!this.nutNhac && !this.nutNhac.el.paused;
+  }
+
+  /** AudioContext có đang chạy thật không — phát khi context treo là "phát câm". */
+  ctxDangChay(): boolean {
+    return this.ctx?.state === 'running';
   }
 
   /** Dừng tất cả khi rời tab / chuyển module. */
