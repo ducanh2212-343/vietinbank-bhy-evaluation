@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, LayoutGrid, ZoomIn,
-  Music, Volume2, VolumeX, Maximize, Minimize, Link2, Download, X,
+  ZoomOut, Music, Volume2, VolumeX, Maximize, Minimize, Download, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { NguonTrang } from '@/lib/ky-yeu/nguonTrang';
@@ -509,18 +509,6 @@ export function FlipbookKyYeu({ nguon, ten, nhacUrl, pdfTaiVeUrl, trangBanDau, o
     };
   }, []);
 
-  // ---- Chép liên kết ----
-  const chepLienKet = useCallback(async () => {
-    const trang1 = Math.min(motTrang ? p + 1 : s === 0 ? 1 : 2 * s, N);
-    const url = `${location.origin}/one/cay-ky-uc?trang=${trang1}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success(`Đã chép liên kết tới trang ${trang1}`);
-    } catch {
-      toast.error('Không chép được liên kết. Sao chép thủ công từ thanh địa chỉ.');
-    }
-  }, [motTrang, p, s, N]);
-
   // ---- Ô nhập số trang ----
   const [oTrang, setOTrang] = useState('');
   const nhanNhapTrang = useCallback(
@@ -545,8 +533,9 @@ export function FlipbookKyYeu({ nguon, ten, nhacUrl, pdfTaiVeUrl, trangBanDau, o
         ? `${N}`
         : `${2 * s}–${2 * s + 1}`;
 
+  // Vùng chạm 44px trên điện thoại (chuẩn ngón tay), thu về 36px khi có chuột
   const nutCss =
-    'inline-flex h-9 min-w-9 items-center justify-center gap-1 rounded px-2 text-[13px] ' +
+    'inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded px-2 text-sm sm:h-9 sm:min-w-9 sm:text-[13px] ' +
     'text-white/80 transition-colors hover:bg-white/10 hover:text-white ' +
     'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ' +
     'disabled:opacity-35 disabled:hover:bg-transparent';
@@ -558,18 +547,25 @@ export function FlipbookKyYeu({ nguon, ten, nhacUrl, pdfTaiVeUrl, trangBanDau, o
   return (
     <div
       ref={boRef}
-      className="flex flex-col"
-      style={{ background: MAU.navyDeep, height: toanManHinh ? '100vh' : 'calc(100dvh - 3.5rem)' }}
+      className={
+        toanManHinh
+          ? 'flex h-[100vh] flex-col'
+          // Dưới md phải trừ thêm thanh tab dưới đáy của điện thoại (3.5rem +
+          // vùng an toàn) — thiếu phép trừ này là thanh công cụ sách (kèm nút
+          // nhạc nền) bị thanh tab fixed đè lên, nhìn như "không có nút nhạc"
+          : 'flex h-[calc(100dvh-7rem-env(safe-area-inset-bottom))] flex-col md:h-[calc(100dvh-3.5rem)]'
+      }
+      style={{ background: MAU.navyDeep }}
       onKeyDown={onKeyDown}
     >
-      {/* Thanh nhận diện */}
+      {/* Thanh nhận diện — điện thoại thu còn 40px để nhường chỗ cho sách */}
       <div
-        className="flex h-12 shrink-0 items-center gap-3 border-b px-4"
+        className="flex h-10 shrink-0 items-center gap-2 border-b px-3 sm:h-12 sm:gap-3 sm:px-4"
         style={{ background: MAU.navy, borderColor: MAU.line }}
       >
-        <span className="h-2 w-2 rounded-full" style={{ background: '#C8102E' }} aria-hidden />
+        <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: '#C8102E' }} aria-hidden />
         <span className="truncate text-[13px] font-semibold tracking-wide text-white/90">{ten}</span>
-        <span className="ml-auto text-[12px] tabular-nums" style={{ color: MAU.gold }}>
+        <span className="ml-auto shrink-0 text-[12px] tabular-nums" style={{ color: MAU.gold }}>
           2006 — 2026
         </span>
       </div>
@@ -631,21 +627,31 @@ export function FlipbookKyYeu({ nguon, ten, nhacUrl, pdfTaiVeUrl, trangBanDau, o
         )}
       </div>
 
-      {/* Thanh công cụ */}
+      {/* Thanh công cụ.
+          Trên điện thoại chỉ giữ những nút dùng thật và đủ chỗ trong MỘT hàng
+          không cuộn (◀ trang ▶ · nhạc · lưới · phóng · toàn màn hình) — bản
+          đầu nhét đủ 12 nút rồi cho cuộn ngang, nút nhạc rơi ra ngoài màn,
+          người dùng tưởng không có. ⏮ ⏭, chỉnh âm lượng, tắt tiếng giấy và
+          tải PDF chỉ hiện từ sm trở lên (điện thoại chỉnh âm lượng bằng phím
+          máy; Home/End đã có lưới trang thay thế). */}
+      {/* KHÔNG justify-center ở đây: căn giữa + overflow-x-auto làm mép trái
+          tràn ra ngoài vùng cuộn, không kéo tới được (lỗi kinh điển của flex) */}
       <div
-        className="flex h-12 shrink-0 items-center gap-1 overflow-x-auto border-t px-2"
+        className="flex h-14 shrink-0 items-center gap-0.5 overflow-x-auto border-t px-1 sm:h-12 sm:gap-1 sm:px-2"
         style={{ background: MAU.navy, borderColor: MAU.line }}
       >
-        <button type="button" className={nutCss} style={nutStyle} title="Về trang đầu (Home)" aria-label="Về trang đầu" disabled={dauSach} onClick={() => nhayToi(0)}>
+        <button type="button" className={`${nutCss} hidden sm:inline-flex`} style={nutStyle} title="Về trang đầu (Home)" aria-label="Về trang đầu" disabled={dauSach} onClick={() => nhayToi(0)}>
           <ChevronsLeft className="h-4 w-4" />
         </button>
         <button type="button" className={nutCss} style={nutStyle} title="Trang trước (←)" aria-label="Trang trước" disabled={dauSach} onClick={() => sangTrang(false)}>
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="h-5 w-5 sm:h-4 sm:w-4" />
         </button>
-        <span className="flex items-center gap-1 px-1 text-[13px] tabular-nums" style={{ color: MAU.gold }}>
+        <span className="flex shrink-0 items-center gap-1 px-1 text-sm tabular-nums sm:text-[13px]" style={{ color: MAU.gold }}>
           <input
             aria-label="Nhập số trang rồi nhấn Enter"
-            className="h-7 w-12 rounded border bg-transparent text-center text-white/90 placeholder:text-white/35 focus-visible:outline focus-visible:outline-2"
+            // 16px trên điện thoại là BẮT BUỘC: dưới ngưỡng đó iOS Safari tự
+            // phóng to cả trang khi chạm vào ô nhập, người dùng mất khung sách
+            className="h-9 w-12 rounded border bg-transparent text-center text-base text-white/90 placeholder:text-white/35 focus-visible:outline focus-visible:outline-2 sm:h-7 sm:text-[13px]"
             style={{ borderColor: MAU.line, outlineColor: MAU.gold }}
             placeholder={nhanTrang}
             value={oTrang}
@@ -656,16 +662,43 @@ export function FlipbookKyYeu({ nguon, ten, nhacUrl, pdfTaiVeUrl, trangBanDau, o
           <span className="text-white/50">/ {N}</span>
         </span>
         <button type="button" className={nutCss} style={nutStyle} title="Trang sau (→)" aria-label="Trang sau" disabled={cuoiSach} onClick={() => sangTrang(true)}>
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-5 w-5 sm:h-4 sm:w-4" />
         </button>
-        <button type="button" className={nutCss} style={nutStyle} title="Tới trang cuối (End)" aria-label="Tới trang cuối" disabled={cuoiSach} onClick={() => nhayToi(N - 1)}>
+        <button type="button" className={`${nutCss} hidden sm:inline-flex`} style={nutStyle} title="Tới trang cuối (End)" aria-label="Tới trang cuối" disabled={cuoiSach} onClick={() => nhayToi(N - 1)}>
           <ChevronsRight className="h-4 w-4" />
         </button>
 
-        <span className="mx-1 h-5 w-px shrink-0" style={{ background: MAU.line }} aria-hidden />
+        <span className="mx-0.5 hidden h-5 w-px shrink-0 sm:mx-1 sm:block" style={{ background: MAU.line }} aria-hidden />
 
+        {/* Nhạc nền đứng NGAY SAU cụm lật trang — điểm nhấn của dịp kỷ niệm,
+            phải thấy được không cần cuộn trên mọi khổ màn hình */}
+        {nhacUrl && (
+          <>
+            <button
+              type="button" className={nutCss}
+              style={nhacBat ? { ...nutStyle, color: MAU.gold } : nutStyle}
+              title={nhacBat ? 'Tắt nhạc nền' : 'Bật nhạc nền'}
+              aria-label={nhacBat ? 'Tắt nhạc nền' : 'Bật nhạc nền'}
+              aria-pressed={nhacBat}
+              onClick={() => void doiNhac()}
+            >
+              <Music className="h-5 w-5 sm:h-4 sm:w-4" />
+              <span className="hidden min-[420px]:inline">{nhacBat ? 'Tắt nhạc' : 'Nhạc nền'}</span>
+            </button>
+            <input
+              type="range" min={0} max={100} value={Math.round(mucNhac * 100)}
+              aria-label="Âm lượng nhạc nền"
+              className="hidden h-1 w-16 shrink-0 accent-[#C79A5B] sm:block"
+              onChange={(e) => {
+                const m = Number(e.target.value) / 100;
+                setMucNhac(m);
+                amThanh.current!.datMucNhac(m);
+              }}
+            />
+          </>
+        )}
         <button type="button" className={nutCss} style={nutStyle} title="Lưới trang" aria-label="Mở lưới trang" aria-expanded={moLuoi} onClick={() => setMoLuoi(true)}>
-          <LayoutGrid className="h-4 w-4" />
+          <LayoutGrid className="h-5 w-5 sm:h-4 sm:w-4" />
           <span className="hidden lg:inline">Lưới</span>
         </button>
         <button
@@ -675,38 +708,11 @@ export function FlipbookKyYeu({ nguon, ten, nhacUrl, pdfTaiVeUrl, trangBanDau, o
             setTrangPhongTo(Math.min(Math.max(uuTien, 0), N - 1));
           }}
         >
-          <ZoomIn className="h-4 w-4" />
+          <ZoomIn className="h-5 w-5 sm:h-4 sm:w-4" />
           <span className="hidden lg:inline">Phóng to</span>
         </button>
-
-        {nhacUrl && (
-          <>
-            <span className="mx-1 h-5 w-px shrink-0" style={{ background: MAU.line }} aria-hidden />
-            <button
-              type="button" className={nutCss}
-              style={nhacBat ? { ...nutStyle, color: MAU.gold } : nutStyle}
-              title={nhacBat ? 'Tắt nhạc nền' : 'Bật nhạc nền'}
-              aria-label={nhacBat ? 'Tắt nhạc nền' : 'Bật nhạc nền'}
-              aria-pressed={nhacBat}
-              onClick={() => void doiNhac()}
-            >
-              <Music className="h-4 w-4" />
-              <span className="hidden lg:inline">{nhacBat ? 'Tắt nhạc' : 'Bật nhạc nền'}</span>
-            </button>
-            <input
-              type="range" min={0} max={100} value={Math.round(mucNhac * 100)}
-              aria-label="Âm lượng nhạc nền"
-              className="h-1 w-16 shrink-0 accent-[#C79A5B]"
-              onChange={(e) => {
-                const m = Number(e.target.value) / 100;
-                setMucNhac(m);
-                amThanh.current!.datMucNhac(m);
-              }}
-            />
-          </>
-        )}
         <button
-          type="button" className={nutCss} style={nutStyle}
+          type="button" className={`${nutCss} hidden sm:inline-flex`} style={nutStyle}
           title={tiengGiay ? 'Tắt tiếng lật giấy' : 'Bật tiếng lật giấy'}
           aria-label={tiengGiay ? 'Tắt tiếng lật giấy' : 'Bật tiếng lật giấy'}
           aria-pressed={tiengGiay}
@@ -715,20 +721,16 @@ export function FlipbookKyYeu({ nguon, ten, nhacUrl, pdfTaiVeUrl, trangBanDau, o
           {tiengGiay ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
         </button>
 
-        <span className="mx-1 h-5 w-px shrink-0" style={{ background: MAU.line }} aria-hidden />
+        <span className="mx-0.5 hidden h-5 w-px shrink-0 sm:mx-1 sm:block" style={{ background: MAU.line }} aria-hidden />
 
-        <button type="button" className={nutCss} style={nutStyle} title="Chép liên kết trang này" aria-label="Chép liên kết" onClick={() => void chepLienKet()}>
-          <Link2 className="h-4 w-4" />
-          <span className="hidden xl:inline">Chép liên kết</span>
-        </button>
         {pdfTaiVeUrl && (
-          <a className={nutCss} style={nutStyle} href={pdfTaiVeUrl} download title="Tải bản PDF gốc" aria-label="Tải bản PDF gốc">
+          <a className={`${nutCss} hidden sm:inline-flex`} style={nutStyle} href={pdfTaiVeUrl} download title="Tải bản PDF gốc" aria-label="Tải bản PDF gốc">
             <Download className="h-4 w-4" />
             <span className="hidden xl:inline">Tải PDF</span>
           </a>
         )}
         <button type="button" className={nutCss} style={nutStyle} title="Toàn màn hình (F)" aria-label="Toàn màn hình" onClick={() => void doiToanManHinh()}>
-          {toanManHinh ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+          {toanManHinh ? <Minimize className="h-5 w-5 sm:h-4 sm:w-4" /> : <Maximize className="h-5 w-5 sm:h-4 sm:w-4" />}
         </button>
       </div>
 
@@ -813,21 +815,21 @@ function LuoiTrang({ nguon, trangHienTai, onChon, onDong }: {
     <div
       role="dialog" aria-modal="true" aria-label="Lưới trang"
       className="fixed inset-0 z-50 flex flex-col"
-      style={{ background: 'rgba(8,17,27,.96)' }}
+      style={{ background: MAU.navyDeep }}
       onKeyDown={(e) => { if (e.key === 'Escape') onDong(); }}
     >
-      <div className="flex h-12 items-center justify-between border-b px-4" style={{ borderColor: MAU.line }}>
-        <span className="text-[13px] font-semibold text-white/90">Lưới trang</span>
+      <div className="flex h-14 items-center justify-between border-b px-3 sm:h-12 sm:px-4" style={{ borderColor: MAU.line }}>
+        <span className="text-sm font-semibold text-white/90 sm:text-[13px]">Lưới trang</span>
         <button
           ref={dongRef} type="button" aria-label="Đóng lưới trang"
-          className="inline-flex h-9 w-9 items-center justify-center rounded text-white/80 hover:bg-white/10 focus-visible:outline focus-visible:outline-2"
+          className="inline-flex h-11 w-11 items-center justify-center rounded text-white/80 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 sm:h-9 sm:w-9"
           style={{ outlineColor: MAU.gold }}
           onClick={onDong}
         >
-          <X className="h-4 w-4" />
+          <X className="h-5 w-5 sm:h-4 sm:w-4" />
         </button>
       </div>
-      <div className="grid flex-1 auto-rows-min grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3 overflow-y-auto p-4">
+      <div className="grid flex-1 auto-rows-min grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-3 overflow-y-auto p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:grid-cols-[repeat(auto-fill,minmax(120px,1fr))] sm:p-4">
         {Array.from({ length: nguon.soTrang }, (_, i) => (
           <ThuNhoTrang
             key={i} nguon={nguon} trang={i}
@@ -877,14 +879,24 @@ function ThuNhoTrang({ nguon, trang, dangXem, onChon }: {
           border: dangXem ? `2px solid ${MAU.gold}` : '1px solid rgba(255,255,255,.14)',
         }}
       />
-      <span className="text-[11px] tabular-nums" style={{ color: dangXem ? MAU.gold : 'rgba(255,255,255,.55)' }}>
+      <span className="text-xs tabular-nums" style={{ color: dangXem ? MAU.gold : 'rgba(255,255,255,.6)' }}>
         {trang + 1}
       </span>
     </button>
   );
 }
 
-/** Phóng to: render lại trang ở độ phân giải cao, cuộn/kéo xem, Esc đóng. */
+/**
+ * Phóng to: render lại trang ở độ phân giải cao, chọn mức phóng, Esc đóng.
+ *
+ * Toán cỡ chữ để chọn thang mức phóng: thân bài kỷ yếu khổ A4 (595pt ngang)
+ * in chữ ~11pt. Vừa-bề-ngang (100%) trên màn 360px, chữ chỉ ≈ 11·360/595 ≈ 6.7px
+ * — không thể đọc. Chuẩn đọc trên màn hình là ≥ 16px ⇒ cần ≈ 300%; thang dừng
+ * ở 400% (≈ 27px, cỡ đọc thoải mái cho người lớn tuổi). Điện thoại mở sẵn 200%
+ * để đỡ một lần bấm; máy tính mở 100% vì bề ngang đã đủ lớn.
+ */
+const MUC_PHONG = [100, 150, 200, 300, 400];
+
 function PhongToTrang({ nguon, trang, onDong }: {
   nguon: NguonTrang;
   trang: number;
@@ -892,6 +904,7 @@ function PhongToTrang({ nguon, trang, onDong }: {
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const [dangTai, setDangTai] = useState(true);
+  const [muc, setMuc] = useState(() => (window.innerWidth < 640 ? 200 : 100));
   const dongRef = useRef<HTMLButtonElement>(null);
   useEffect(() => { dongRef.current?.focus(); }, []);
   useEffect(() => {
@@ -907,28 +920,61 @@ function PhongToTrang({ nguon, trang, onDong }: {
     }).catch(() => setDangTai(false));
     return () => { dangSong = false; };
   }, [nguon, trang]);
+
+  const doiMuc = (chieu: 1 | -1) => {
+    setMuc((m) => {
+      const i = MUC_PHONG.indexOf(m);
+      return MUC_PHONG[Math.min(MUC_PHONG.length - 1, Math.max(0, i + chieu))];
+    });
+  };
+
+  const nutDau =
+    'inline-flex h-11 min-w-11 items-center justify-center rounded text-white/80 transition-colors ' +
+    'hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 ' +
+    'disabled:opacity-35 sm:h-9 sm:min-w-9';
+
   return (
     <div
       role="dialog" aria-modal="true" aria-label={`Trang ${trang + 1} phóng to`}
       className="fixed inset-0 z-50 flex flex-col"
-      style={{ background: 'rgba(8,17,27,.97)' }}
-      onKeyDown={(e) => { if (e.key === 'Escape') onDong(); }}
+      style={{ background: MAU.navyDeep }}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') onDong();
+        if (e.key === '+' || e.key === '=') doiMuc(1);
+        if (e.key === '-') doiMuc(-1);
+      }}
     >
-      <div className="flex h-12 items-center justify-between border-b px-4" style={{ borderColor: MAU.line }}>
-        <span className="text-[13px] font-semibold text-white/90">
+      <div className="flex h-14 items-center gap-1 border-b px-2 sm:h-12 sm:px-4" style={{ borderColor: MAU.line }}>
+        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white/90 sm:text-[13px]">
           Trang {trang + 1}{dangTai ? ' — đang dựng bản nét cao…' : ''}
         </span>
+        <button type="button" className={nutDau} style={{ outlineColor: MAU.gold }} aria-label="Thu nhỏ" disabled={muc === MUC_PHONG[0]} onClick={() => doiMuc(-1)}>
+          <ZoomOut className="h-5 w-5 sm:h-4 sm:w-4" />
+        </button>
+        <span className="w-12 text-center text-sm tabular-nums sm:text-[13px]" style={{ color: MAU.gold }} aria-live="polite">
+          {muc}%
+        </span>
+        <button type="button" className={nutDau} style={{ outlineColor: MAU.gold }} aria-label="Phóng to thêm" disabled={muc === MUC_PHONG[MUC_PHONG.length - 1]} onClick={() => doiMuc(1)}>
+          <ZoomIn className="h-5 w-5 sm:h-4 sm:w-4" />
+        </button>
+        <span className="mx-1 h-5 w-px shrink-0" style={{ background: MAU.line }} aria-hidden />
         <button
           ref={dongRef} type="button" aria-label="Đóng phóng to (Esc)"
-          className="inline-flex h-9 w-9 items-center justify-center rounded text-white/80 hover:bg-white/10 focus-visible:outline focus-visible:outline-2"
+          className={nutDau}
           style={{ outlineColor: MAU.gold }}
           onClick={onDong}
         >
-          <X className="h-4 w-4" />
+          <X className="h-5 w-5 sm:h-4 sm:w-4" />
         </button>
       </div>
-      <div className="flex-1 overflow-auto p-4" style={{ touchAction: 'pan-x pan-y' }}>
-        <canvas ref={ref} className="mx-auto block" style={{ background: MAU.giay }} />
+      <div className="flex-1 overflow-auto p-2 sm:p-4" style={{ touchAction: 'pan-x pan-y' }}>
+        {/* Bề ngang canvas = mức phóng × bề ngang khung; chạm đúp đảo 100 ↔ 300 */}
+        <canvas
+          ref={ref}
+          className="mx-auto block"
+          style={{ background: MAU.giay, width: `${muc}%`, height: 'auto' }}
+          onDoubleClick={() => setMuc((m) => (m >= 300 ? 100 : 300))}
+        />
       </div>
     </div>
   );

@@ -183,10 +183,14 @@ class NguonTrangPdf implements NguonTrang {
       if (this.daHuy) return;
 
       if (yc.doPhanGiai === 'cao') {
-        // Bản phóng to KHÔNG vào cache chính (nặng RAM) — dùng xong bỏ
+        // Bản phóng to KHÔNG vào cache chính (nặng RAM) — dùng xong bỏ.
+        // Sàn 1600px: trên điện thoại bề rộng hiển thị chỉ ~360px nên 2.5× mới
+        // được 900px — chữ thân bài 11pt của khổ A4 khi phóng 300–400% sẽ vỡ.
+        // 1600px đủ cho mức phóng 400% trên màn 360px mà vẫn nhẹ RAM (trần 2400).
+        const rongMuon = Math.min(2400, Math.max(this.beRongHienThi * HE_SO_PHONG_TO, 1600));
         const canvas = await this.renderTrang(
           yc.trang,
-          (this.beRongHienThi * HE_SO_PHONG_TO) / Math.max(1, this.beRongTrangGoc),
+          rongMuon / Math.max(1, this.beRongTrangGoc),
         );
         yc.resolve(canvas);
       } else {

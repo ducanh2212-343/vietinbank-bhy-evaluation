@@ -178,8 +178,13 @@ export default function OneKyYeuPage() {
 
   return (
     <div
-      className="relative"
-      style={nguon ? undefined : { minHeight: 'calc(100dvh - 3.5rem)' }}
+      className={
+        nguon
+          ? 'relative'
+          // Chưa dựng sách: giữ chiều cao đúng vùng nhìn thấy (điện thoại phải
+          // trừ cả thanh tab dưới đáy) để màn hình chờ phủ kín, không xẹp về 0
+          : 'relative min-h-[calc(100dvh-7rem-env(safe-area-inset-bottom))] md:min-h-[calc(100dvh-3.5rem)]'
+      }
     >
       {nguon && (
         <FlipbookKyYeu
@@ -221,15 +226,15 @@ export default function OneKyYeuPage() {
 function KhungChoBaoLoi({ children, nutThuLai }: { children: React.ReactNode; nutThuLai?: () => void }) {
   return (
     <div
-      className="flex flex-col items-center justify-center gap-4 px-6 text-center"
-      style={{ background: '#12202E', height: 'calc(100dvh - 3.5rem)' }}
+      className="flex h-[calc(100dvh-7rem-env(safe-area-inset-bottom))] flex-col items-center justify-center gap-4 px-6 text-center md:h-[calc(100dvh-3.5rem)]"
+      style={{ background: '#12202E' }}
     >
-      <p className="max-w-md text-[14px] leading-relaxed text-white/80">{children}</p>
+      <p className="max-w-md text-[15px] leading-relaxed text-white/80 sm:text-[14px]">{children}</p>
       {nutThuLai && (
         <button
           type="button"
           onClick={nutThuLai}
-          className="inline-flex h-9 items-center gap-2 rounded border px-3 text-[13px] text-white/90 transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+          className="inline-flex h-11 items-center gap-2 rounded border px-4 text-sm text-white/90 transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 sm:h-9 sm:px-3 sm:text-[13px]"
           style={{ borderColor: 'rgba(255,255,255,.2)', outlineColor: '#C79A5B' }}
         >
           <RefreshCw className="h-4 w-4" />

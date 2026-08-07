@@ -74,8 +74,11 @@ Việc nên làm thêm trước «giờ G» (sự kiện 150 người mở cùng
   hóa sẵn cho việc này, engine không phải đổi.
 
 Giao diện đã tối ưu cho cả hai kênh sự kiện: **1366×768** máy văn phòng (hai trang
-mở), **điện thoại < 820px** tự chuyển một trang + vuốt lật; thanh công cụ cuộn ngang
-khi hẹp, không che nội dung.
+mở), **điện thoại < 820px** tự chuyển một trang + vuốt lật. Trên điện thoại, chiều
+cao sách trừ sẵn thanh tab dưới đáy của cổng nên thanh công cụ không bị che; hàng
+nút rút còn đúng những gì dùng thật (lật trang · nhạc nền · lưới · phóng to · toàn
+màn hình), vùng chạm ≥ 44px, ô nhập số trang cỡ chữ 16px để iOS không tự phóng to
+trang khi chạm vào. URL vẫn nhận `?trang=12` để mở đúng trang khi được gửi link.
 
 ## Điều khiển
 
@@ -84,9 +87,8 @@ khi hẹp, không che nội dung.
 | Lật trang | Kéo mép giấy; bấm nửa trái/phải; nút ◀ ▶ ⏮ ⏭; phím `←` `→` `Space` `Home` `End`; vuốt trên điện thoại |
 | Nhảy trang | Ô nhập số trang + Enter (không lật hàng loạt) |
 | Lưới trang | Nút «Lưới» — toàn bộ trang thu nhỏ, đánh dấu trang đang xem |
-| Phóng to | Nút «Phóng to» — render lại bản nét cao, cuộn xem, `Esc` đóng |
+| Phóng to | Nút «Phóng to» — bản nét cao với thang mức 100–400% (chữ 11pt của khổ A4 đạt ≥16px trên màn 360px ở mức 300%), chạm đúp đảo 100↔300%, `Esc` đóng |
 | Toàn màn hình | Nút hoặc phím `F` |
-| Chia sẻ | «Chép liên kết» → `/one/cay-ky-uc?trang=12`, mở đúng trang |
 | Nhạc nền | «Bật nhạc nền» (không bao giờ tự phát), thanh âm lượng riêng, tự hạ 45% khi lật trang, tự dừng khi rời tab |
 | Tải PDF gốc | Chỉ vai trò quản trị thấy nút |
 
