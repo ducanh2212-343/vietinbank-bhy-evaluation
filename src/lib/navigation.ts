@@ -5,7 +5,7 @@ import {
   UserCheck, Sparkles, GraduationCap, ClipboardList, KeyRound, ListPlus,
   CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag, GitBranch,
   ListChecks, Building2, Gavel, TrendingUp, Zap, Lightbulb,
-  Home, BookOpen, Compass, Layers, Share2, CalendarDays, NotebookPen, Sprout,
+  Home, BookOpen, Compass, Layers, Share2, CalendarDays, NotebookPen, Sprout, TreeDeciduous,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -146,6 +146,33 @@ export const NAV_SECTIONS: NavSection[] = [
         guestVisible: true,
         bleed: true,
         keywords: ['tin tuc', 'ban tin', 'dong chia se', 'thong bao', 'news'],
+      },
+    ],
+  },
+  {
+    // Cây Ký Ức — kỷ yếu số 20 năm, là TAB RIÊNG chứ không phải mục con của
+    // Trang chủ: đây là ấn phẩm cả Chi nhánh cùng xem trong dịp kỷ niệm, nằm
+    // trong menu xổ xuống thì nhìn vào thanh điều hướng không ai thấy.
+    // Nội bộ cán bộ (ảnh tập thể, lưu bút) — không mở cho khách đối tác.
+    id: 'cay-ky-uc',
+    label: 'Cây Ký Ức',
+    shortLabel: 'Cây Ký Ức',
+    // Biểu tượng cây tán lá — đúng hình tượng "Cây ký ức" của ấn phẩm 20 năm
+    icon: TreeDeciduous,
+    accent: '#C79A5B',
+    zone: 'portal',
+    path: '/one/cay-ky-uc',
+    bleed: true,
+    desc: 'Kỷ yếu số 20 năm — lật từng trang như sách giấy, kèm nhạc nền kỷ niệm',
+    items: [
+      {
+        label: 'Cây Ký Ức',
+        icon: TreeDeciduous,
+        path: '/one/cay-ky-uc',
+        bleed: true,
+        keywords: ['cay ky uc', 'ky yeu', 'ky yeu so', 'so luu but', '20 nam', 'flipbook', 'sach lat'],
+        // Đường dẫn thời còn tên "Kỷ yếu số" — giữ để không gãy link đã gửi
+        extraPaths: ['/one/ky-yeu-so'],
       },
     ],
   },
@@ -476,6 +503,15 @@ export const NAV_SECTIONS: NavSection[] = [
             path: '/quan-tri-tin-tuc',
             minRole: 'admin',
             keywords: ['tin tuc', 'ghim tin', 'bien tap', 'dong chia se'],
+          },
+          // Ấn phẩm của tab Cây Ký Ức trên cổng ONE: thay PDF/nhạc nền,
+          // xuất bản — RLS chỉ cho TCTH admin / System admin ghi
+          {
+            label: 'Quản trị Cây Ký Ức',
+            icon: TreeDeciduous,
+            path: '/quan-tri-ky-yeu',
+            minRole: 'admin',
+            keywords: ['cay ky uc', 'ky yeu', 'flipbook', 'an pham', '20 nam', 'nhac nen'],
           },
           // Mẹo hiện ở banner Trang chủ, hộp nhắc một lần và trang Mẹo hay —
           // áp dụng cho mọi vai trò, mọi phân hệ

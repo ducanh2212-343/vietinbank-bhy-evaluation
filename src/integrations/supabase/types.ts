@@ -2060,6 +2060,48 @@ export type Database = {
           },
         ]
       }
+      ky_yeu_an_pham: {
+        Row: {
+          id: string
+          ten: string
+          mo_ta: string | null
+          pdf_path: string
+          nhac_path: string | null
+          so_trang: number | null
+          phien_ban: number
+          trang_thai: string
+          nguoi_tao: string | null
+          ngay_tao: string | null
+          ngay_cap_nhat: string | null
+        }
+        Insert: {
+          id?: string
+          ten: string
+          mo_ta?: string | null
+          pdf_path: string
+          nhac_path?: string | null
+          so_trang?: number | null
+          phien_ban?: number
+          trang_thai?: string
+          nguoi_tao?: string | null
+          ngay_tao?: string | null
+          ngay_cap_nhat?: string | null
+        }
+        Update: {
+          id?: string
+          ten?: string
+          mo_ta?: string | null
+          pdf_path?: string
+          nhac_path?: string | null
+          so_trang?: number | null
+          phien_ban?: number
+          trang_thai?: string
+          nguoi_tao?: string | null
+          ngay_tao?: string | null
+          ngay_cap_nhat?: string | null
+        }
+        Relationships: []
+      }
       learning_campaigns: {
         Row: {
           created_at: string
