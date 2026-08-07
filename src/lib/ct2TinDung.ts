@@ -18,7 +18,12 @@ export type HsTrangThai =
   | 'THU_THAP' | 'TRINH_LDP' | 'TRINH_LDCN' | 'TRINH_TSC'
   | 'HOAN_THIEN_GN' | 'HOAN_THANH' | 'TU_CHOI';
 
-export type HsLoai = 'CAP_MOI' | 'TAI_CAP' | 'DIEU_CHINH' | 'CO_CAU_NO' | 'DU_AN' | 'GIAI_NGAN';
+/**
+ * «Hồ sơ giải ngân» đã bỏ khỏi danh sách (GĐ chốt 07/08/2026): giải ngân không
+ * phải đặc tính của giới hạn tín dụng mà là một BƯỚC — đã có cột «Hoàn thiện
+ * HS giải ngân» trên bảng. Để trong danh sách loại là mời chọn nhầm.
+ */
+export type HsLoai = 'CAP_MOI' | 'TAI_CAP' | 'DIEU_CHINH' | 'CO_CAU_NO' | 'DU_AN';
 export type HsCap = 'PHONG' | 'CHI_NHANH' | 'TSC';
 export type HsKyHan = 'NGAN_HAN' | 'TRUNG_DAI_HAN';
 
@@ -27,7 +32,18 @@ export interface HoSoTinDung {
   phong: string;
   ma_hs: string | null;
   khach_hang: string;
+  /**
+   * Đặc tính CHÍNH của hồ sơ = `cac_loai[0]`, database tự đồng bộ.
+   * Nơi cần xét đầy đủ phải dùng `hsCoLoai()` chứ không so sánh cột này.
+   */
   loai_ho_so: HsLoai;
+  /**
+   * Các đặc tính đã tích. Một hồ sơ ngoài đời có thể vừa tái cấp vừa điều
+   * chỉnh giới hạn, hoặc cấp mới cho một dự án trung dài hạn — ép chọn một là
+   * ép cán bộ bỏ mất nửa sự thật, mà nửa bị bỏ chính là cái quyết định hồ sơ
+   * có bị cảnh báo hạn mức hay không.
+   */
+  cac_loai: HsLoai[];
   /**
    * Đơn vị: TRIỆU ĐỒNG.
    *
@@ -98,8 +114,35 @@ export const HS_TEN_LOAI: Record<HsLoai, string> = {
   DIEU_CHINH: 'Điều chỉnh giới hạn',
   CO_CAU_NO: 'Cơ cấu nợ',
   DU_AN: 'Cho vay dự án / TDH',
-  GIAI_NGAN: 'Hồ sơ giải ngân',
 };
+
+/**
+ * Bộ đặc tính của một hồ sơ, an toàn với dữ liệu cũ.
+ *
+ * Bản ghi tải về từ trước khi có cột `cac_loai`, hoặc từ bộ nhớ đệm của trình
+ * duyệt, vẫn chỉ có `loai_ho_so` — lấy tạm nó làm bộ một phần tử, thay vì trả
+ * mảng rỗng rồi để mọi cảnh báo tắt câm.
+ */
+export function hsCacLoai(h: Pick<HoSoTinDung, 'loai_ho_so' | 'cac_loai'>): HsLoai[] {
+  return h.cac_loai?.length ? h.cac_loai : [h.loai_ho_so];
+}
+
+/** Hồ sơ có mang đặc tính nào trong số này không */
+export function hsCoLoai(
+  h: Pick<HoSoTinDung, 'loai_ho_so' | 'cac_loai'>,
+  cac: HsLoai[],
+): boolean {
+  return hsCacLoai(h).some((l) => cac.includes(l));
+}
+
+/**
+ * Hồ sơ tái cấp / điều chỉnh phải biết hạn mức cũ hết ngày nào — đó là gốc của
+ * cảnh báo sớm 60 ngày. Xét trên CẢ BỘ đặc tính: hồ sơ tích [Cấp mới, Điều
+ * chỉnh] mà chỉ soi đặc tính chính thì tuột khỏi lưới cảnh báo.
+ */
+export function hsCanNgayDenHan(h: Pick<HoSoTinDung, 'loai_ho_so' | 'cac_loai'>): boolean {
+  return hsCoLoai(h, ['TAI_CAP', 'DIEU_CHINH']);
+}
 
 export const HS_TEN_CAP: Record<HsCap, string> = {
   PHONG: 'Thẩm quyền Phòng',
@@ -178,7 +221,8 @@ export function hsNguongImLang(): number {
 
 export interface HsFormTao {
   khach_hang: string;
-  loai_ho_so: string;
+  /** Tích chọn nhiều — tối thiểu một đặc tính */
+  cac_loai: HsLoai[];
   /** Chuỗi nhập tay, đơn vị triệu đồng */
   so_tien: string;
   ky_han: string;
@@ -195,7 +239,9 @@ export function kiemTraHoSo(f: HsFormTao): HsThieuTruong[] {
   if (f.khach_hang.trim().length < 3) {
     thieu.push({ truong: 'khach_hang', ten: 'Khách hàng', ly_do: 'ghi tên đầy đủ' });
   }
-  if (!f.loai_ho_so) thieu.push({ truong: 'loai_ho_so', ten: 'Loại hồ sơ' });
+  if (f.cac_loai.length === 0) {
+    thieu.push({ truong: 'cac_loai', ten: 'Loại hồ sơ', ly_do: 'tích ít nhất một' });
+  }
   const tien = docSoTien(f.so_tien);
   if (tien === null || tien <= 0) {
     thieu.push({ truong: 'so_tien', ten: 'Số tiền', ly_do: 'nhập số, đơn vị triệu đồng' });
@@ -548,8 +594,7 @@ export function canhBaoHoSo(h: HoSoTinDung, moc: Date = new Date()): CanhBaoHoSo
     if (!h.ky_han) {
       ds.push({ muc: 'VANG', noi_dung: 'Chưa ghi kỳ hạn (ngắn hạn / trung dài hạn)' });
     }
-    if (!h.ngay_den_han_ghtd
-        && (h.loai_ho_so === 'TAI_CAP' || h.loai_ho_so === 'DIEU_CHINH')) {
+    if (!h.ngay_den_han_ghtd && hsCanNgayDenHan(h)) {
       ds.push({ muc: 'VANG', noi_dung: 'Hồ sơ tái cấp/điều chỉnh nhưng chưa ghi ngày hạn mức đến hạn' });
     }
   }

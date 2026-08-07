@@ -8,6 +8,8 @@ import {
   hsNgayImLang,
   buocKeTiep,
   canhBaoHoSo,
+  hsCacLoai,
+  hsCoLoai,
   dinhDangTien,
   docSoTien,
   hsConLaiDenHan,
@@ -28,7 +30,7 @@ import {
 
 const formDu: HsFormTao = {
   khach_hang: 'Công ty CP Tập đoàn Thaicom',
-  loai_ho_so: 'TAI_CAP',
+  cac_loai: ['TAI_CAP'],
   so_tien: '160000',
   ky_han: 'NGAN_HAN',
   cap_phe_duyet: 'TSC',
@@ -39,7 +41,7 @@ const formDu: HsFormTao = {
 
 const hsGoc: HoSoTinDung = {
   id: 'h1', phong: 'd1', ma_hs: 'KHDN-TD-2608-001',
-  khach_hang: 'Công ty CP Tập đoàn Thaicom', loai_ho_so: 'TAI_CAP',
+  khach_hang: 'Công ty CP Tập đoàn Thaicom', loai_ho_so: 'TAI_CAP', cac_loai: ['TAI_CAP'],
   so_tien: 160_000, ky_han: 'NGAN_HAN', cap_phe_duyet: 'TSC',
   trang_thai: 'TRINH_LDCN', can_bo: 'p1', lanh_dao_theo_doi: 'p2', pho_phong: null, truong_phong: null, pgd_phu_trach: null,
   ngay_nhan: '2026-08-01', han_xu_ly: '2026-08-20', ngay_den_han_ghtd: '2026-09-30',
@@ -54,6 +56,21 @@ const moc = new Date('2026-08-12T02:00:00Z');
 describe('Cổng nhập hồ sơ tín dụng', () => {
   it('đủ trường thì tạo được', () => {
     expect(kiemTraHoSo(formDu)).toEqual([]);
+  });
+
+  it('phải tích ít nhất một loại hồ sơ', () => {
+    expect(kiemTraHoSo({ ...formDu, cac_loai: [] }).some((t) => t.truong === 'cac_loai')).toBe(true);
+  });
+
+  it('tích nhiều đặc tính cùng lúc là hợp lệ', () => {
+    expect(kiemTraHoSo({ ...formDu, cac_loai: ['TAI_CAP', 'DIEU_CHINH'] })).toEqual([]);
+  });
+
+  it('bản ghi cũ chưa có cac_loai vẫn đọc ra được đặc tính chính', () => {
+    const cu = { loai_ho_so: 'DU_AN', cac_loai: [] } as Pick<HoSoTinDung, 'loai_ho_so' | 'cac_loai'>;
+    expect(hsCacLoai(cu)).toEqual(['DU_AN']);
+    expect(hsCoLoai(cu, ['DU_AN'])).toBe(true);
+    expect(hsCoLoai(cu, ['TAI_CAP'])).toBe(false);
   });
 
   it('số tiền phải là SỐ — không nhận "160 tỷ" kiểu nhãn chữ trên Miro', () => {
@@ -337,10 +354,22 @@ describe('Cảnh báo hồ sơ — bộ kiểm cho board có rủi ro tài chín
 
   it('hồ sơ cấp mới không bị đòi ngày hạn mức', () => {
     const cb = canhBaoHoSo({
-      ...hsGoc, loai_ho_so: 'CAP_MOI', ngay_den_han_ghtd: null, giu_tu: null,
+      ...hsGoc, loai_ho_so: 'CAP_MOI', cac_loai: ['CAP_MOI'],
+      ngay_den_han_ghtd: null, giu_tu: null,
       han_xu_ly: '2026-08-31', nhip_gan_nhat: '2026-08-11T02:00:00Z',
     }, moc);
     expect(cb).toEqual([]);
+  });
+
+  // Đây là lý do phải xét CẢ BỘ đặc tính chứ không chỉ đặc tính chính: hồ sơ
+  // vừa cấp mới vừa điều chỉnh giới hạn vẫn phải khai hạn mức cũ hết ngày nào
+  it('cấp mới KIÊM điều chỉnh vẫn bị đòi ngày hạn mức', () => {
+    const cb = canhBaoHoSo({
+      ...hsGoc, loai_ho_so: 'CAP_MOI', cac_loai: ['CAP_MOI', 'DIEU_CHINH'],
+      ngay_den_han_ghtd: null, giu_tu: null,
+      han_xu_ly: '2026-08-31', nhip_gan_nhat: '2026-08-11T02:00:00Z',
+    }, moc);
+    expect(cb.some((c) => c.noi_dung.includes('chưa ghi ngày hạn mức đến hạn'))).toBe(true);
   });
 
   it('tính đúng số ngày còn lại tới hạn mức', () => {
