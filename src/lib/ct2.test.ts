@@ -373,7 +373,18 @@ describe('Thông báo — bấm vào phải mở đúng thứ nó nói tới', (
       .toBe('/one/chieu-thuc-2?the=x1');
   });
 
-  it('tin hồ sơ tín dụng mở đúng tab tín dụng, không phải tab mặc định', () => {
+  it('tin gắn hồ sơ tín dụng thì mở THẲNG hồ sơ đó — không bắt tự tìm giữa 48 hồ sơ', () => {
+    expect(duongDanThongBao({ ma_su_kien: 'HS_TRINH', dau_viec_id: null, ho_so_id: 'hs-9' }))
+      .toBe('/one/chieu-thuc-2?ho_so=hs-9');
+    // Nhịp và trao đổi trên hồ sơ cũng mang mã hồ sơ dù mã sự kiện không phải HS_*
+    expect(duongDanThongBao({ ma_su_kien: 'NHIP', dau_viec_id: null, ho_so_id: 'hs-9' }))
+      .toBe('/one/chieu-thuc-2?ho_so=hs-9');
+    // Đầu việc vẫn thắng nếu tin gắn cả hai
+    expect(duongDanThongBao({ ma_su_kien: 'N12', dau_viec_id: 'dv-1', ho_so_id: 'hs-9' }))
+      .toBe('/one/chieu-thuc-2?the=dv-1');
+  });
+
+  it('tin hồ sơ CŨ (trước khi có mã) vẫn về tab tín dụng, không phải tab mặc định', () => {
     expect(duongDanThongBao({ ma_su_kien: 'HS_TRINH', dau_viec_id: null }))
       .toBe('/one/chieu-thuc-2?tab=tin-dung');
     expect(duongDanThongBao({ ma_su_kien: 'HS_TU_CHOI', dau_viec_id: null }))

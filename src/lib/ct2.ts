@@ -865,6 +865,8 @@ export interface Ct2ThongBao {
   id: string;
   ma_su_kien: string;
   dau_viec_id: string | null;
+  /** Hồ sơ PDTD mà tin nói tới — bấm thông báo mở thẳng hồ sơ đó */
+  ho_so_id: string | null;
   tieu_de: string;
   noi_dung: string;
   muc: 'NHE' | 'DO' | 'CHAN' | string;
@@ -881,8 +883,14 @@ export const CT2_DAU_MUC: Record<string, string> = { CHAN: '⛔', DO: '🔴', NH
  * thẻ giữa bảy cột, và lần sau họ sẽ bỏ qua chuông. Quy tắc này dùng chung với
  * edge function notify-ct2 để push và chuông trong ứng dụng không lệch nhau.
  */
-export function duongDanThongBao(tb: Pick<Ct2ThongBao, 'ma_su_kien' | 'dau_viec_id'>): string {
+export function duongDanThongBao(
+  tb: Pick<Ct2ThongBao, 'ma_su_kien' | 'dau_viec_id'> & { ho_so_id?: string | null },
+): string {
   if (tb.dau_viec_id) return `/one/chieu-thuc-2?the=${tb.dau_viec_id}`;
+  // Tin hồ sơ mang mã hồ sơ mở THẲNG hồ sơ đó — nơi có sẵn ô Trao đổi.
+  // «Có hồ sơ chờ anh/chị» mà chỉ mở chung tab là bắt người duyệt tự tìm
+  // giữa 48 hồ sơ. Tin cũ trước 08/2026 chưa có mã thì vẫn về tab tín dụng.
+  if (tb.ho_so_id) return `/one/chieu-thuc-2?ho_so=${tb.ho_so_id}`;
   if (tb.ma_su_kien.startsWith('HS_')) return '/one/chieu-thuc-2?tab=tin-dung';
   return '/one/chieu-thuc-2';
 }

@@ -50,7 +50,7 @@ export function Ct2ChuongThongBao() {
         };
       };
       const { data } = await db.from('ct2_thong_bao')
-        .select('id, ma_su_kien, dau_viec_id, tieu_de, noi_dung, muc, created_at, doc_luc')
+        .select('id, ma_su_kien, dau_viec_id, ho_so_id, tieu_de, noi_dung, muc, created_at, doc_luc')
         .eq('nguoi_nhan', profileId)
         .order('created_at', { ascending: false })
         .limit(20);
