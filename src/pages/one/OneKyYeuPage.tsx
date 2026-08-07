@@ -9,7 +9,7 @@ import type { NguonTrang, NguonTrangPdf } from '@/lib/ky-yeu/nguonTrang';
 import { layPdfDaCache, luuPdfVaoCache } from '@/lib/ky-yeu/pdfCache';
 
 /**
- * Tab "Kỷ yếu số" — ấn phẩm kỷ niệm 20 năm dạng flipbook.
+ * Tab "Cây Ký Ức" — kỷ yếu số kỷ niệm 20 năm dạng flipbook.
  *
  * Nguồn là file PDF trong bucket private `ky-yeu` (Supabase Storage): Phòng TCTH
  * thay PDF mới ở trang quản trị → phien_ban tăng → cache IndexedDB tự đổi khóa,
@@ -148,7 +148,7 @@ export default function OneKyYeuPage() {
   );
 
   // ---- Các trạng thái chưa có sách ----
-  if (isLoading) return <KhungChoBaoLoi>Đang mở Kỷ yếu số…</KhungChoBaoLoi>;
+  if (isLoading) return <KhungChoBaoLoi>Đang mở Cây Ký Ức…</KhungChoBaoLoi>;
 
   if (isError) {
     return (

@@ -8,6 +8,7 @@ import {
   flattenLeaves,
   resolveLocation,
   leavesOf,
+  matchesLeaf,
   isFolder,
   type NavPermissions,
 } from '../navigation';
@@ -54,11 +55,14 @@ function moiDuongDan(p: NavPermissions): string[] {
 }
 
 describe('Cấu trúc cây điều hướng', () => {
-  it('giữ đúng 5 khu theo cấu trúc chốt 08/2026, đúng thứ tự', () => {
+  it('giữ đúng 6 khu theo cấu trúc chốt 08/2026, đúng thứ tự', () => {
     // Trang chủ đã gộp "Nguồn cội & Bản sắc"; các thương hiệu gom vào Bắc Hưng
     // Yên Ways; Chiêu thức 2 và Chiêu thức 3 (Phát triển nhân sự) có tab riêng.
+    // Cây Ký Ức (kỷ yếu số 20 năm) đứng thứ hai — ấn phẩm cả Chi nhánh cùng xem
+    // trong dịp kỷ niệm nên phải thấy ngay trên thanh, không giấu trong menu xổ.
     expect(nhanCuaKhu(quanTri)).toEqual([
       'Trang chủ',
+      'Cây Ký Ức',
       'Bắc Hưng Yên Ways',
       'Chiêu thức 2',
       'Chiêu thức 3 - Phát triển nhân sự',
@@ -104,7 +108,7 @@ describe('Cấu trúc cây điều hướng', () => {
   it('chia đúng hai khu bố cục: cổng ONE không có menu dọc, phân hệ thì có', () => {
     const portal = NAV_SECTIONS.filter((s) => s.zone === 'portal').map((s) => s.id);
     const workspace = NAV_SECTIONS.filter((s) => s.zone === 'workspace').map((s) => s.id);
-    expect(portal).toEqual(['one-home', 'bhy-ways', 'chieu-thuc-2']);
+    expect(portal).toEqual(['one-home', 'cay-ky-uc', 'bhy-ways', 'chieu-thuc-2']);
     expect(workspace).toEqual(['hr-343', 'user-admin']);
   });
 
@@ -377,6 +381,23 @@ describe('Trợ giúp dựng giao diện', () => {
     const tinTuc = leavesOf(trangChu).find((l) => l.path === '/one/tin-tuc');
     expect(tinTuc).toBeDefined();
     expect(tinTuc!.guestVisible).toBe(true);
+  });
+
+  it('Cây Ký Ức là KHU riêng — một tab thấy ngay trên thanh, không nằm trong menu xổ', () => {
+    // Bản đầu đặt ấn phẩm làm mục con của Trang chủ: thanh điều hướng không hiện
+    // chữ nào, phải bung menu mới thấy — Chi nhánh báo "không thấy tab ở đâu".
+    const khu = NAV_SECTIONS.find((s) => s.id === 'cay-ky-uc');
+    expect(khu).toBeDefined();
+    expect(khu!.zone).toBe('portal');
+    expect(khu!.path).toBe('/one/cay-ky-uc');
+    // Đúng một mục lá TRÙNG đường dẫn khu → TopNav dựng liên kết đơn, không bảng xổ
+    const la = leavesOf(khu!);
+    expect(la).toHaveLength(1);
+    expect(la[0].path).toBe(khu!.path);
+    // Link đã gửi theo tên cũ vẫn tô sáng đúng tab
+    expect(matchesLeaf('/one/ky-yeu-so', la[0])).toBe(true);
+    // Khách đối tác không được xem ấn phẩm nội bộ
+    expect(khu!.guestVisible).toBeUndefined();
   });
 
   it('mỗi khu cổng đều có nhãn ngắn đủ gọn cho thanh tab điện thoại', () => {

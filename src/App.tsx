@@ -228,8 +228,10 @@ const App = () => (
               <Route path="/one/y-tuong" element={<OneIdeasPage />} />
               <Route path="/one/credit-360" element={<OneCreditPage />} />
               <Route path="/one/ghi-nhan" element={<OneRecognitionPage />} />
-              {/* Kỷ yếu số — flipbook kỷ niệm 20 năm, đọc PDF từ bucket ky-yeu */}
-              <Route path="/one/ky-yeu-so" element={<OneKyYeuPage />} />
+              {/* Cây Ký Ức — kỷ yếu số 20 năm dạng flipbook, đọc PDF từ bucket ky-yeu */}
+              <Route path="/one/cay-ky-uc" element={<OneKyYeuPage />} />
+              {/* Tên cũ "Kỷ yếu số" — giữ để không gãy link đã gửi cho cán bộ */}
+              <Route path="/one/ky-yeu-so" element={<Navigate to="/one/cay-ky-uc" replace />} />
               {/* Link cũ trước tái cấu trúc — chuyển hướng để không gãy bookmark.
                   "Nguồn cội & Bản sắc" đã gộp vào trang chủ; "Sáng kiến & Nghiệp vụ"
                   nay là một phần của hệ sinh thái Bắc Hưng Yên Ways. */}

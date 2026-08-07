@@ -147,14 +147,31 @@ export const NAV_SECTIONS: NavSection[] = [
         bleed: true,
         keywords: ['tin tuc', 'ban tin', 'dong chia se', 'thong bao', 'news'],
       },
+    ],
+  },
+  {
+    // Cây Ký Ức — kỷ yếu số 20 năm, là TAB RIÊNG chứ không phải mục con của
+    // Trang chủ: đây là ấn phẩm cả Chi nhánh cùng xem trong dịp kỷ niệm, nằm
+    // trong menu xổ xuống thì nhìn vào thanh điều hướng không ai thấy.
+    // Nội bộ cán bộ (ảnh tập thể, lưu bút) — không mở cho khách đối tác.
+    id: 'cay-ky-uc',
+    label: 'Cây Ký Ức',
+    shortLabel: 'Cây Ký Ức',
+    icon: BookMarked,
+    accent: '#C79A5B',
+    zone: 'portal',
+    path: '/one/cay-ky-uc',
+    bleed: true,
+    desc: 'Kỷ yếu số 20 năm — lật từng trang như sách giấy, kèm nhạc nền kỷ niệm',
+    items: [
       {
-        // Ấn phẩm kỷ niệm 20 năm dạng flipbook lật trang. Nội bộ cán bộ
-        // (ảnh tập thể, lưu bút) — không mở cho khách đối tác.
-        label: 'Kỷ yếu số',
+        label: 'Cây Ký Ức',
         icon: BookMarked,
-        path: '/one/ky-yeu-so',
+        path: '/one/cay-ky-uc',
         bleed: true,
-        keywords: ['ky yeu', 'so luu but', '20 nam', 'flipbook', 'cay ky uc', 'sach lat'],
+        keywords: ['cay ky uc', 'ky yeu', 'ky yeu so', 'so luu but', '20 nam', 'flipbook', 'sach lat'],
+        // Đường dẫn thời còn tên "Kỷ yếu số" — giữ để không gãy link đã gửi
+        extraPaths: ['/one/ky-yeu-so'],
       },
     ],
   },
@@ -486,14 +503,14 @@ export const NAV_SECTIONS: NavSection[] = [
             minRole: 'admin',
             keywords: ['tin tuc', 'ghim tin', 'bien tap', 'dong chia se'],
           },
-          // Ấn phẩm Kỷ yếu số của tab cùng tên trên cổng ONE: thay PDF/nhạc nền,
+          // Ấn phẩm của tab Cây Ký Ức trên cổng ONE: thay PDF/nhạc nền,
           // xuất bản — RLS chỉ cho TCTH admin / System admin ghi
           {
-            label: 'Quản trị Kỷ yếu số',
+            label: 'Quản trị Cây Ký Ức',
             icon: BookMarked,
             path: '/quan-tri-ky-yeu',
             minRole: 'admin',
-            keywords: ['ky yeu', 'flipbook', 'an pham', '20 nam', 'nhac nen'],
+            keywords: ['cay ky uc', 'ky yeu', 'flipbook', 'an pham', '20 nam', 'nhac nen'],
           },
           // Mẹo hiện ở banner Trang chủ, hộp nhắc một lần và trang Mẹo hay —
           // áp dụng cho mọi vai trò, mọi phân hệ

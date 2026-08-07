@@ -1,6 +1,6 @@
-# Kỷ yếu số — flipbook kỷ niệm 20 năm trên BHY ONE (08/2026)
+# Cây Ký Ức — kỷ yếu số 20 năm dạng flipbook trên BHY ONE (08/2026)
 
-Tab **«Kỷ yếu số»** (menu Trang chủ → Kỷ yếu số, đường dẫn `/one/ky-yeu-so`) hiển thị
+Tab **«Cây Ký Ức»** (tab riêng trên thanh điều hướng ONE, đường dẫn `/one/cay-ky-uc`) hiển thị
 ấn phẩm kỷ niệm 20 năm dưới dạng **sách lật trang như giấy thật**, kèm **nhạc nền kỷ
 niệm**, thay cho việc phát hành file PDF rời hoặc dùng dịch vụ ngoài (Heyzine).
 
@@ -27,7 +27,7 @@ Trình duyệt cán bộ
 
 ## Thay ấn phẩm / nhạc nền (Phòng TCTH)
 
-1. Vào **Quản trị chung → Nội dung cổng → Quản trị Kỷ yếu số** (`/quan-tri-ky-yeu`).
+1. Vào **Quản trị chung → Nội dung cổng → Quản trị Cây Ký Ức** (`/quan-tri-ky-yeu`).
 2. Bấm **Thay PDF**, chọn file mới → hệ thống tự tăng `phien_ban`, đọc số trang,
    đẩy file vào bucket rồi cập nhật bản ghi. Cán bộ mở tab là thấy bản mới
    (khóa cache IndexedDB đổi theo phiên bản) — **không cần build lại code**.
@@ -62,7 +62,7 @@ Việc nên làm thêm trước «giờ G» (sự kiện 150 người mở cùng
   hình): giảm 60–70% băng thông và thời gian chờ. Lệnh gợi ý:
   `gs -sDEVICE=pdfwrite -dPDFSETTINGS=/ebook -o kyyeu-nen.pdf kyyeu-goc.pdf`
   rồi thay qua trang quản trị.
-- **Khởi động sớm**: gửi link `/one/ky-yeu-so` cho cán bộ mở TRƯỚC sự kiện (ví dụ
+- **Khởi động sớm**: gửi link `/one/cay-ky-uc` cho cán bộ mở TRƯỚC sự kiện (ví dụ
   gửi email trưa hôm trước). Ai đã mở một lần thì hôm sự kiện đọc từ IndexedDB,
   gần như không chạm mạng — đây là lớp giảm tải hiệu quả nhất.
 - **Theo dõi hạn mức egress Supabase** (Dashboard → Usage): mỗi lượt tải đầu tốn
@@ -86,7 +86,7 @@ khi hẹp, không che nội dung.
 | Lưới trang | Nút «Lưới» — toàn bộ trang thu nhỏ, đánh dấu trang đang xem |
 | Phóng to | Nút «Phóng to» — render lại bản nét cao, cuộn xem, `Esc` đóng |
 | Toàn màn hình | Nút hoặc phím `F` |
-| Chia sẻ | «Chép liên kết» → `/one/ky-yeu-so?trang=12`, mở đúng trang |
+| Chia sẻ | «Chép liên kết» → `/one/cay-ky-uc?trang=12`, mở đúng trang |
 | Nhạc nền | «Bật nhạc nền» (không bao giờ tự phát), thanh âm lượng riêng, tự hạ 45% khi lật trang, tự dừng khi rời tab |
 | Tải PDF gốc | Chỉ vai trò quản trị thấy nút |
 

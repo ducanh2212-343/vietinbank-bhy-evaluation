@@ -9,7 +9,7 @@ import { veCuonGiay, lamGuong, taoTrangGay, easeInOutQuad } from '@/lib/ky-yeu/e
 import { AmThanhKyYeu, docLuaChonAmThanh, luuLuaChonAmThanh } from '@/lib/ky-yeu/amThanh';
 
 /**
- * Flipbook "Kỷ yếu số" — sách lật trang như giấy thật.
+ * Flipbook "Cây Ký Ức" — sách lật trang như giấy thật.
  *
  * Tờ đang lật vẽ bằng canvas phủ (engine cuộn giấy, xem engineCuonGiay.ts);
  * các trang tĩnh là canvas thường để trình duyệt tự lo hiển thị sắc nét.
@@ -512,7 +512,7 @@ export function FlipbookKyYeu({ nguon, ten, nhacUrl, pdfTaiVeUrl, trangBanDau, o
   // ---- Chép liên kết ----
   const chepLienKet = useCallback(async () => {
     const trang1 = Math.min(motTrang ? p + 1 : s === 0 ? 1 : 2 * s, N);
-    const url = `${location.origin}/one/ky-yeu-so?trang=${trang1}`;
+    const url = `${location.origin}/one/cay-ky-uc?trang=${trang1}`;
     try {
       await navigator.clipboard.writeText(url);
       toast.success(`Đã chép liên kết tới trang ${trang1}`);

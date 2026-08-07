@@ -1,5 +1,5 @@
 /**
- * Âm thanh của Kỷ yếu số.
+ * Âm thanh của Cây Ký Ức (kỷ yếu số 20 năm).
  *
  * Tiếng giấy TỔNG HỢP bằng Web Audio (không dùng file): nhẹ, không phụ thuộc
  * tài nguyên, không lệch nhịp với chuyển động. Nhạc nền kỷ niệm phát qua

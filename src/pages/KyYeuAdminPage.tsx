@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 
 /**
- * Quản trị Kỷ yếu số (Phòng TCTH / quản trị hệ thống).
+ * Quản trị Cây Ký Ức — kỷ yếu số 20 năm (Phòng TCTH / quản trị hệ thống).
  *
  * Thay PDF là tăng phien_ban → khóa cache IndexedDB của cán bộ đổi theo,
  * flipbook tự đọc bản mới, KHÔNG cần build lại code. File nằm trong bucket
@@ -206,9 +206,9 @@ export default function KyYeuAdminPage() {
       <div className="flex items-center gap-3">
         <BookMarked className="h-6 w-6 text-primary" />
         <div>
-          <h1 className="text-xl font-semibold">Quản trị Kỷ yếu số</h1>
+          <h1 className="text-xl font-semibold">Quản trị Cây Ký Ức</h1>
           <p className="text-sm text-muted-foreground">
-            Ấn phẩm hiển thị tại tab «Kỷ yếu số» của cổng BHY ONE. Thay PDF là cán bộ thấy bản mới ngay,
+            Ấn phẩm hiển thị tại tab «Cây Ký Ức» của cổng BHY ONE. Thay PDF là cán bộ thấy bản mới ngay,
             không cần phát hành lại hệ thống.
           </p>
         </div>
@@ -313,9 +313,9 @@ export default function KyYeuAdminPage() {
                 {dong.trang_thai === 'xuat_ban' ? 'Gỡ xuất bản' : 'Xuất bản'}
               </Button>
               <Button variant="ghost" size="sm" asChild>
-                <Link to="/one/ky-yeu-so">
+                <Link to="/one/cay-ky-uc">
                   <ExternalLink className="mr-1 h-4 w-4" />
-                  Xem tab Kỷ yếu số
+                  Xem tab Cây Ký Ức
                 </Link>
               </Button>
             </CardContent>
