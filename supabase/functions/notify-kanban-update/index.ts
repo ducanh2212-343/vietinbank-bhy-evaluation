@@ -14,7 +14,11 @@
 // bị thiếu manager_id" → mọi cán bộ chưa gắn TP đều leo thẳng lên GĐ. Nay quyết định dựa
 // vào chức danh: cán bộ thiếu TP thì chỉ báo PGĐ và ghi log cảnh báo, KHÔNG leo lên GĐ.
 //
-// Nội dung push: tên cán bộ · tên hành động · trạng thái · tiến độ % · nội dung cập nhật.
+// Hình thức tin (chuẩn 09/08 — thống nhất với các hàm f_ct2_thong_bao_* trong DB):
+//   Tiêu đề: 📝 <Tên cán bộ> — tiến độ <N>%   (đậm, một dòng, không gãy)
+//   Thân:    Việc: <tên hành động, cắt 70>
+//            Nội dung: <ghi chú cập nhật, cắt 140>
+//            ⚠️ Có vướng mắc, cần hỗ trợ      (chỉ khi có)
 // Quyền: chỉ service_role (trigger). Body: {log_id, dry_run?} — dry_run trả danh sách
 // người nhận, không gửi (để kiểm thử).
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -43,8 +47,6 @@ function short(s: string | null | undefined, max = 160): string {
   const t = (s || '').replace(/\s+/g, ' ').trim();
   return t.length > max ? t.slice(0, max - 1) + '…' : t;
 }
-
-const STATUS_LABEL: Record<string, string> = { todo: 'Phải làm', doing: 'Đang làm', done: 'Hoàn thành' };
 
 // Nhận diện cấp theo chức danh — giữ khớp với src/lib/reportingLine.ts (edge function
 // chạy Deno nên không import được từ src/, buộc phải chép logic; sửa 1 nơi thì sửa cả 2).
@@ -149,17 +151,35 @@ Deno.serve(async (req) => {
     }
     const finalRecipients = recipients.slice(0, 2);
 
-    // ---- Soạn nội dung ----
+    // ---- Soạn nội dung (chuẩn 09/08: mỗi dòng một thứ, không nối bằng «·») ----
+    // Ảnh màn hình khóa GĐ gửi 09/08 chỉ đúng chỗ rối của format cũ: tiêu đề dài gãy
+    // hai dòng, thân tin nối «tên việc · trạng thái · 25%» thành một chuỗi — tên việc
+    // dài nuốt sạch chỗ, ba thứ dính nhau. Chuẩn mới: TIÊU ĐỀ = người + tiến độ
+    // (ngắn để không gãy dòng, phần trăm nằm ở chỗ đậm nhất); THÂN = mỗi dòng một
+    // nhãn. Chữ trạng thái (Phải làm/Đang làm) bỏ hẳn — con số tiến độ và động từ đã
+    // nói đủ, chữ đó chính là thứ chen giữa gây rối.
     const isDone = log.log_type === 'completion_requested';
-    const status = isDone ? 'Gửi hoàn thành — chờ xác nhận' : (STATUS_LABEL[card.kanban_status] || card.kanban_status);
     const percent = log.progress_percent ?? card.progress_percent;
-    const note = short(log.progress_note || log.current_result);
+    const note = short(log.progress_note || log.current_result, 140);
     const flags: string[] = [];
     if (log.blocker_note && String(log.blocker_note).trim()) flags.push('có vướng mắc');
     if (log.support_needed && String(log.support_needed).trim()) flags.push('cần hỗ trợ');
+
+    const dong: string[] = [`Việc: ${short(card.title, 70)}`];
+    if (note) dong.push(`Nội dung: ${note}`);
+    if (flags.length) {
+      const canhBao = flags.join(', ');
+      dong.push(`⚠️ ${canhBao.charAt(0).toUpperCase()}${canhBao.slice(1)}`);
+    }
+    if (isDone) dong.push('Chờ anh/chị xác nhận để đóng thẻ.');
+
     const msg = {
-      title: `${isDone ? '🏁' : '📝'} ${owner.full_name} vừa cập nhật hành động`,
-      body: `${card.title} · ${status} · ${percent}%${flags.length ? ` · ${flags.join(', ')}` : ''}${note ? `\n↳ ${note}` : ''}`,
+      title: isDone
+        ? `🏁 ${owner.full_name} — báo hoàn thành`
+        : percent != null
+          ? `📝 ${owner.full_name} — tiến độ ${percent}%`
+          : `📝 ${owner.full_name} — cập nhật hành động`,
+      body: dong.join('\n'),
       url: '/hanh-dong-phat-trien?view=team',
       tag: `kanban-update-${log.id}`, // tag riêng từng lần để không đè thông báo trước
     };
