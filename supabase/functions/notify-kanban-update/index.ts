@@ -182,9 +182,10 @@ Deno.serve(async (req) => {
     }
     let sent = 0;
     if (vapidPrivateKey && finalRecipients.length) {
+      const bayGio = new Date().toISOString();
       const { data: subs } = await admin
         .from('push_subscriptions')
-        .select('id, profile_id, endpoint, p256dh, auth')
+        .select('id, profile_id, endpoint, p256dh, auth, loi_cuoi')
         .eq('is_active', true)
         .in('profile_id', finalRecipients);
       for (const s of (subs || []) as any[]) {
@@ -196,9 +197,38 @@ Deno.serve(async (req) => {
           );
           const res = await fetch(s.endpoint, init);
           if (res.status === 404 || res.status === 410) {
-            await admin.from('push_subscriptions').update({ is_active: false }).eq('id', s.id);
-          } else if (res.ok) sent++;
-        } catch (e) { console.error('Push lỗi', { error: String(e) }); }
+            await admin.from('push_subscriptions')
+              .update({ is_active: false, loi_cuoi: `${res.status} endpoint đã hết hiệu lực`, loi_luc: bayGio })
+              .eq('id', s.id);
+          } else if (res.ok) {
+            sent++;
+            // Xoá vết lỗi cũ khi máy này nhận lại được — nếu không thì một lần trục
+            // trặc sẽ đeo bám mãi và ta đọc nhầm là máy vẫn đang hỏng
+            if (s.loi_cuoi) {
+              await admin.from('push_subscriptions')
+                .update({ loi_cuoi: null, loi_luc: null }).eq('id', s.id);
+            }
+          } else {
+            /*
+              ĐIỂM MÙ CŨ (vá 09/08, cùng cách notify-ct2 đã làm 11/09): mọi mã lỗi
+              ngoài 404/410 từng bị nuốt lặng lẽ — đăng ký vẫn is_active nên bảng
+              điều khiển báo «máy còn sống», trong khi Apple/Google từ chối từng tin
+              và người nhận không bao giờ thấy gì. Chính là cảnh iPhone của Giám đốc
+              đăng ký sống từ 19/07 mà màn hình khóa im lặng. Nay ghi lại nguyên văn.
+            */
+            const chiTiet = (await res.text().catch(() => '')).slice(0, 300);
+            console.error('Push Kanban bị từ chối', {
+              sub: s.id, status: res.status, endpoint: s.endpoint.slice(0, 60), body: chiTiet,
+            });
+            await admin.from('push_subscriptions')
+              .update({ loi_cuoi: `${res.status} ${chiTiet}`.slice(0, 400), loi_luc: bayGio })
+              .eq('id', s.id);
+          }
+        } catch (e) {
+          console.error('Push Kanban lỗi', { sub: s.id, error: String(e) });
+          await admin.from('push_subscriptions')
+            .update({ loi_cuoi: String(e).slice(0, 400), loi_luc: bayGio }).eq('id', s.id);
+        }
       }
     }
     return new Response(JSON.stringify({

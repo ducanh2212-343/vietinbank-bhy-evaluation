@@ -72,13 +72,14 @@ function short(s: string | null | undefined, max = 140): string {
   return t.length > max ? t.slice(0, max - 1) + '…' : t;
 }
 
-interface PushSub { id: string; profile_id: string; endpoint: string; p256dh: string; auth: string }
+interface PushSub { id: string; profile_id: string; endpoint: string; p256dh: string; auth: string; loi_cuoi?: string | null }
 async function sendPush(
   admin: any, subsByProfile: Map<string, PushSub[]>, vapidPrivateKey: string | null,
   profileId: string, msg: { title: string; body: string; url: string; tag: string },
 ): Promise<number> {
   if (!vapidPrivateKey) return 0;
   let sent = 0;
+  const bayGio = new Date().toISOString();
   for (const s of subsByProfile.get(profileId) || []) {
     try {
       const init = await buildPushPayload(
@@ -88,9 +89,33 @@ async function sendPush(
       );
       const res = await fetch(s.endpoint, init);
       if (res.status === 404 || res.status === 410) {
-        await admin.from('push_subscriptions').update({ is_active: false }).eq('id', s.id);
-      } else if (res.ok) sent++;
-    } catch (e) { console.error('Push lỗi', { error: String(e) }); }
+        await admin.from('push_subscriptions')
+          .update({ is_active: false, loi_cuoi: `${res.status} endpoint đã hết hiệu lực`, loi_luc: bayGio })
+          .eq('id', s.id);
+      } else if (res.ok) {
+        sent++;
+        // Xoá vết lỗi cũ khi máy nhận lại được, để một lần trục trặc không đeo bám mãi
+        if (s.loi_cuoi) {
+          await admin.from('push_subscriptions')
+            .update({ loi_cuoi: null, loi_luc: null }).eq('id', s.id);
+        }
+      } else {
+        // Mã lỗi ngoài 404/410 từng bị nuốt lặng lẽ: đăng ký vẫn is_active nên nhìn
+        // vào bảng thì tưởng máy còn sống, trong khi thực tế mọi tin đều bị từ chối.
+        // Vá 09/08, cùng cách notify-ct2 đã làm 11/09.
+        const chiTiet = (await res.text().catch(() => '')).slice(0, 300);
+        console.error('Push tuần bị từ chối', {
+          sub: s.id, status: res.status, endpoint: s.endpoint.slice(0, 60), body: chiTiet,
+        });
+        await admin.from('push_subscriptions')
+          .update({ loi_cuoi: `${res.status} ${chiTiet}`.slice(0, 400), loi_luc: bayGio })
+          .eq('id', s.id);
+      }
+    } catch (e) {
+      console.error('Push tuần lỗi', { sub: s.id, error: String(e) });
+      await admin.from('push_subscriptions')
+        .update({ loi_cuoi: String(e).slice(0, 400), loi_luc: bayGio }).eq('id', s.id);
+    }
   }
   return sent;
 }
@@ -256,7 +281,7 @@ Deno.serve(async (req) => {
       if (!ids.length) return map;
       const { data } = await admin
         .from('push_subscriptions')
-        .select('id, profile_id, endpoint, p256dh, auth')
+        .select('id, profile_id, endpoint, p256dh, auth, loi_cuoi')
         .eq('is_active', true)
         .in('profile_id', ids);
       for (const r of (data || []) as PushSub[]) {
