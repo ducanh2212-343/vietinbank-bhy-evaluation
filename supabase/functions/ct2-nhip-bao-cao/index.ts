@@ -117,9 +117,14 @@ Deno.serve(async (req) => {
     const mode: 'nhip_ngay' | 'bao_cao_tuan' = body?.mode === 'bao_cao_tuan' ? 'bao_cao_tuan' : 'nhip_ngay';
 
     // Khoảng ngày: digest ngày soi đúng 1 ngày; báo cáo tuần soi T2 → hôm nay.
+    // Thứ Hai phải tính từ TUẦN CHỨA homNay chứ không phải tuần hiện tại — trước đây
+    // lấy thuHaiTuanVN() của bây giờ, nên kiểm thử với body.ngay thuộc tuần trước sẽ
+    // ra khoảng ngày ngược (từ > đến) và trả rỗng. Cron thật không truyền ngay nên
+    // không lộ, nhưng đường kiểm thử sai thì sớm muộn cũng có người tin nhầm kết quả.
     const homNay = typeof body?.ngay === 'string' ? body.ngay : ngayVN();
+    const thuHai = thuHaiTuanVN(new Date(`${homNay}T12:00:00+07:00`));
     const tuNgay = mode === 'bao_cao_tuan'
-      ? (thuHaiTuanVN() < NGAY_BAT_DAU ? NGAY_BAT_DAU : thuHaiTuanVN())
+      ? (thuHai < NGAY_BAT_DAU ? NGAY_BAT_DAU : thuHai)
       : homNay;
     const denNgay = homNay;
     if (denNgay < NGAY_BAT_DAU) {
@@ -188,16 +193,19 @@ Deno.serve(async (req) => {
         }
         // Cả phòng đúng giờ vẫn báo — lời khen cũng là một cách giữ nhịp, và im lặng
         // khi tốt thì TP không phân biệt được "phòng ổn" với "hệ thống hỏng".
+        // Hình thức theo chuẩn 09/08: tiêu đề mang CON SỐ CẦN HÀNH ĐỘNG, thân tin
+        // mỗi dòng một nhãn — không nối các vế bằng «·» nữa.
         const canNhac = [...new Set([...t.muon, ...t.matNhip])];
         const tieuDe = canNhac.length === 0
-          ? `✅ Nhịp sáng nay: cả phòng đúng giờ (${tong})`
-          : `📊 Nhịp sáng nay: ${t.matNhip.length} mất nhịp · ${t.muon.length} muộn`;
-        const noiDung = canNhac.length === 0
-          ? `${t.ten} — cả ${tong} cán bộ có việc đều ghi đúng giờ.`
-          : `${t.ten} — ${t.dungGio.length}/${tong} đúng giờ.` +
-            (t.matNhip.length ? ` Mất nhịp: ${keTen([...new Set(t.matNhip)])}.` : '') +
-            (t.muon.length ? ` Muộn: ${keTen([...new Set(t.muon)])}.` : '') +
-            ' Nhắc ngay trong ngày để giữ nhịp.';
+          ? '✅ Nhịp sáng nay — cả phòng đúng giờ'
+          : `📊 Nhịp sáng nay — ${canNhac.length} cán bộ cần nhắc`;
+        const dongTin: string[] = [`Phòng: ${t.ten}`, `Đúng giờ: ${t.dungGio.length}/${tong}`];
+        if (t.matNhip.length) dongTin.push(`Mất nhịp: ${keTen([...new Set(t.matNhip)])}`);
+        if (t.muon.length) dongTin.push(`Muộn: ${keTen([...new Set(t.muon)])}`);
+        dongTin.push(canNhac.length === 0
+          ? `Cả ${tong} cán bộ có việc đều ghi đúng giờ.`
+          : 'Nhắc ngay trong ngày để giữ nhịp.');
+        const noiDung = dongTin.join('\n');
 
         ketQua.push({
           phong: t.ten, gui_toi: tp.full_name,
@@ -290,10 +298,11 @@ Deno.serve(async (req) => {
       const giu = bangPhong.reduce((n, p) => n + p.dungGio + p.muon, 0);
       const tiLe = luot === 0 ? 100 : Math.round((100 * giu) / luot);
 
-      const tieuDePush = `📈 Nhịp tuần ${nhan}: giữ nhịp ${tiLe}%`;
+      const phamViText = phamViPhong ? bangPhong[0].ten : 'Toàn chi nhánh';
+      const tieuDePush = `📈 Nhịp tuần ${nhan} — giữ nhịp ${tiLe}%`;
       const noiDungPush = dsNhac.length === 0
-        ? `${phamViPhong ? bangPhong[0].ten : 'Toàn chi nhánh'} — không ai lỡ nhịp tuần này.`
-        : `${phamViPhong ? bangPhong[0].ten : 'Toàn chi nhánh'} — ${dsNhac.length} cán bộ cần nhắc. Đứng đầu: ${keTen(dsNhac.slice(0, 3).map((v) => `${v.ten} (${v.mat} ngày)`), 3)}.`;
+        ? `Phạm vi: ${phamViText}\nKhông ai lỡ nhịp tuần này.`
+        : `Phạm vi: ${phamViText}\nCần nhắc: ${dsNhac.length} cán bộ\nĐứng đầu: ${keTen(dsNhac.slice(0, 3).map((v) => `${v.ten} (${v.mat} ngày)`), 3)}`;
 
       xemTra.push({
         gui_toi: nn.hoSo.full_name, pham_vi: nn.pham_vi,

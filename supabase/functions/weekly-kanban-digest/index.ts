@@ -338,7 +338,7 @@ Deno.serve(async (req) => {
         const them = ds.length > 4 ? ` và ${ds.length - 4} người nữa` : '';
         leaderPush += await sendPush(admin, subsByProfile, vapidPrivateKey, ldId, {
           title: `⏰ ${ds.length} cán bộ chưa cập nhật Kanban tuần này`,
-          body: `${ten}${them}. Còn thứ Sáu tới hết Chủ nhật để kịp — nhắc ngay thì tuần này không phải báo đỏ.`,
+          body: `Chưa cập nhật: ${ten}${them}.\nCòn thứ Sáu tới hết Chủ nhật để kịp — nhắc ngay thì tuần này không phải báo đỏ.`,
           url: '/hanh-dong-phat-trien?view=team',
           tag: 'kanban-tuan-lanh-dao',
         });
@@ -496,8 +496,8 @@ ${updHtml}
       });
       if (!error) enqueued++;
       pushSent += await sendPush(admin, subsByProfile, vapidPrivateKey, r.profile.id, {
-        title: `📋 Kanban tuần ${weekLabel}: hoàn thành ${tiLeXong}%`,
-        body: `${imPV} thẻ chưa khởi động · ${trePV} quá hạn · ${myMisses.length} cán bộ chưa cập nhật. Bấm để mở màn Đội ngũ.`,
+        title: `📋 Kanban tuần ${weekLabel} — hoàn thành ${tiLeXong}%`,
+        body: `Chưa khởi động: ${imPV} thẻ\nQuá hạn: ${trePV}\nChưa cập nhật tuần: ${myMisses.length} cán bộ`,
         url: '/hanh-dong-phat-trien?view=team',
         tag: 'kanban-tuan-digest',
       });
@@ -538,8 +538,8 @@ ${updHtml}
           : `📋 ${g.ten} tuần ${weekLabel}: ${g.chuaNhap.length}/${tong} chưa cập nhật`,
         body: g.chuaNhap.length === 0
           ? `Cả ${tong} cán bộ có kế hoạch đang chạy đều đã cập nhật. Giữ nhịp này sang tuần mới.`
-          : `Chưa cập nhật: ${g.chuaNhap.join(', ')}.` +
-            (g.daNhap.length ? ` Đã cập nhật: ${g.daNhap.join(', ')}.` : ''),
+          : `Chưa cập nhật: ${g.chuaNhap.join(', ')}` +
+            (g.daNhap.length ? `\nĐã cập nhật: ${g.daNhap.join(', ')}` : ''),
         url: '/hanh-dong-phat-trien',
         tag: 'kanban-tuan-phong',
       };

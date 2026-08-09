@@ -122,7 +122,9 @@ function renderHtml(d: Digest): { subject: string; html: string; text: string; s
 <p style="color:#6b7280;font-size:12px">Email nhắc việc tự động. Vui lòng không trả lời email này.</p>
 </body></html>`;
   const text = `Kính gửi ${d.name},\nBạn đang có: ${lines.join('; ')}.\nĐăng nhập: ${APP_URL}`;
-  return { subject, html, text, summary: lines.join('; ') };
+  // summary dùng cho THÂN PUSH: mỗi việc một dòng (chuẩn hình thức 09/08) — email text
+  // ở trên vẫn nối bằng «;» vì là câu văn trong thư.
+  return { subject, html, text, summary: lines.join('\n') };
 }
 
 Deno.serve(async (req) => {
@@ -492,7 +494,7 @@ Deno.serve(async (req) => {
       for (const p of notSubmitted) {
         staffPushSent += await sendPushToProfile(admin, subsByProfile, vapidPrivateKey, p.id, {
           title: `⏰ Nhắc nộp phiếu đánh giá ${cycle.name}`,
-          body: `Phiếu tự đánh giá của bạn CHƯA nộp — hạn ${deadlineText}. Nộp muộn bị trừ điểm KPI. Bấm để mở phiếu.`,
+          body: `Hạn nộp: ${deadlineText}\nPhiếu của bạn CHƯA nộp — nộp muộn bị trừ điểm KPI. Bấm để mở phiếu.`,
           url: '/tu-danh-gia',
           tag: 'nop-phieu',
         });
@@ -552,7 +554,9 @@ ${bodyHtml}
         if (!error) leadershipEnqueued++;
         leadershipPushSent += await sendPushToProfile(admin, subsByProfile, vapidPrivateKey, l.id, {
           title: `📊 Toàn cảnh xử lý đánh giá${cycle ? ` — kỳ ${cycle.name}` : ''}`,
-          body: text,
+          // Bỏ đầu dòng «• » khi vào push: mỗi dòng một việc đã đủ tách, chấm tròn
+          // chỉ ăn bớt chiều ngang màn hình khóa (chuẩn hình thức 09/08).
+          body: text.replace(/^• /gm, ''),
           url: '/tong-quan',
           tag: 'toan-canh',
         });
