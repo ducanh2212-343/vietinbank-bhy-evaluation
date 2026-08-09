@@ -19,6 +19,8 @@ interface TeamProfile {
   department_id: string | null;
   position: string | null;
   avatar_url: string | null;
+  /** Quản lý trực tiếp — người sẽ xác nhận các thẻ báo xong của cán bộ này */
+  manager_id: string | null;
 }
 
 const STATUS_LABEL: Record<string, string> = { todo: 'Phải làm', doing: 'Đang làm', done: 'Hoàn thành' };
@@ -33,6 +35,7 @@ export function TeamReviewPanel() {
   const [profiles, setProfiles] = useState<TeamProfile[]>([]);
   const [deptMap, setDeptMap] = useState<Record<string, string>>({});
   const [cards, setCards] = useState<KanbanCard[]>([]);
+  const [tenQl, setTenQl] = useState<Record<string, string>>({});
   const [weeklyMap, setWeeklyMap] = useState<WeeklyUpdateMap>({});
   const [loading, setLoading] = useState(true);
   const [detailCard, setDetailCard] = useState<KanbanCard | null>(null);
@@ -43,7 +46,7 @@ export function TeamReviewPanel() {
       // 1) Danh sách cán bộ trong phạm vi
       let pq = supabase
         .from('profiles')
-        .select('id, full_name, department_id, position, avatar_url')
+        .select('id, full_name, department_id, position, avatar_url, manager_id')
         .eq('status', 'active');
       if (scope === 'department') {
         if (!departmentId) { setProfiles([]); setCards([]); return; }
@@ -57,6 +60,27 @@ export function TeamReviewPanel() {
       if (pErr) { toast.error('Lỗi tải danh sách cán bộ'); return; }
       const list = ((pData as TeamProfile[]) || []).filter(p => p.id !== profileId);
       setProfiles(list);
+
+      /*
+        Tên quản lý trực tiếp của TỪNG cán bộ — để nhãn «chờ xác nhận» gọi
+        đúng tên người phải duyệt. Giám đốc mở tab này thấy thẻ của cả trăm
+        người; nhãn «Chờ QL xác nhận» chung chung làm anh ấy đọc thành «chờ
+        TÔI» (phản ánh 08/2026: «sao hành động của Vũ Đức Mạnh, Đoàn Khuê…
+        lại sang tôi»). Trong khi sự thật là mỗi thẻ chờ đúng một người —
+        quản lý trực tiếp của chủ thẻ.
+
+        Tải riêng theo id thay vì dựa vào danh sách trên: người xem phạm vi
+        hẹp vẫn cần tên quản lý, mà quản lý có thể nằm ngoài phạm vi đó.
+      */
+      const idsQl = [...new Set(list.map(p => p.manager_id).filter(Boolean))] as string[];
+      const tenQlMoi: Record<string, string> = {};
+      if (idsQl.length) {
+        const { data: qlData } = await supabase
+          .from('profiles').select('id, full_name').in('id', idsQl);
+        ((qlData || []) as { id: string; full_name: string }[])
+          .forEach(q => { tenQlMoi[q.id] = q.full_name; });
+      }
+      setTenQl(tenQlMoi);
 
       // 2) Tên phòng để hiển thị
       const { data: dData, error: dErr } = await supabase.from('departments').select('id, name');
@@ -137,6 +161,16 @@ export function TeamReviewPanel() {
 
   const detailOwnerName = detailCard ? profiles.find(p => p.id === detailCard.profile_id)?.full_name : undefined;
 
+  /**
+   * «Chờ ai xác nhận?» — gọi đúng tên thay vì «QL» chung chung.
+   * Nếu người phải duyệt là chính người đang xem thì nói thẳng «anh/chị».
+   */
+  const nhanChoXacNhan = (p: TeamProfile): string => {
+    if (p.manager_id && p.manager_id === profileId) return 'Chờ anh/chị xác nhận';
+    const ten = p.manager_id ? tenQl[p.manager_id] : null;
+    return ten ? `Chờ ${ten} xác nhận` : 'Chờ quản lý trực tiếp xác nhận';
+  };
+
   if (loading) return <p className="text-muted-foreground">Đang tải...</p>;
 
   if (!profiles.length) {
@@ -164,6 +198,7 @@ export function TeamReviewPanel() {
                   <span className="font-medium text-foreground">{profile.full_name}</span>
                   <Badge variant="secondary" className="text-[10px] py-0">{getSourceLabel(card)}</Badge>
                   <span className="flex items-center gap-1"><Clock className="w-3 h-3" />Gửi: {fmtDate(card.last_progress_at)}</span>
+                  <Badge className="text-[10px] py-0 bg-blue-500 hover:bg-blue-500">{nhanChoXacNhan(profile)}</Badge>
                 </div>
               </div>
               <Button size="sm" className="shrink-0" onClick={() => setDetailCard(card)}>Xem &amp; duyệt</Button>
@@ -214,7 +249,7 @@ export function TeamReviewPanel() {
                                 <Badge variant="outline" className="text-[10px] py-0">{c.progress_percent}%</Badge>
                                 {b.overdue && <Badge variant="destructive" className="text-[10px] py-0 flex items-center gap-1"><AlertTriangle className="w-3 h-3" />Quá hạn</Badge>}
                                 {b.notUpdatedThisWeek && <Badge className="text-[10px] py-0 bg-amber-500 hover:bg-amber-500">Chưa cập nhật tuần này</Badge>}
-                                {b.waitingConfirm && <Badge className="text-[10px] py-0 bg-blue-500 hover:bg-blue-500">Chờ QL xác nhận</Badge>}
+                                {b.waitingConfirm && <Badge className="text-[10px] py-0 bg-blue-500 hover:bg-blue-500">{nhanChoXacNhan(row.profile)}</Badge>}
                                 {b.confirmed && <Badge className="text-[10px] py-0 bg-emerald-600 hover:bg-emerald-600">Đã xác nhận</Badge>}
                                 {b.returned && <Badge variant="destructive" className="text-[10px] py-0">Cần làm tiếp</Badge>}
                                 {c.deadline && <span className="text-[11px] text-muted-foreground">Hạn: {fmtDate(c.deadline)}</span>}
