@@ -8,6 +8,10 @@
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
+# Worker pdf.js self-host (tên tệp không mang hash — cache 1 ngày là đủ an toàn)
+/pdfjs/*
+  Cache-Control: public, max-age=86400
+
 # Vỏ HTML phải luôn tươi, nếu không cán bộ kẹt ở bản build cũ sau khi phát hành.
 /index.html
   Cache-Control: public, max-age=0, must-revalidate
@@ -31,7 +35,7 @@
 # và cây văn hoá (CultureTree) đang hiển thị ảnh từ hai nguồn này — bỏ ra là vỡ ảnh.
 /*
   X-Robots-Tag: noindex, nofollow
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co https://images.unsplash.com https://i.ibb.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self'; manifest-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co https://images.unsplash.com https://i.ibb.co; media-src 'self' https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self'; manifest-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'none'
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff

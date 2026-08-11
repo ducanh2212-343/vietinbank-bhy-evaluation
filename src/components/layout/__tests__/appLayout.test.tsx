@@ -152,6 +152,36 @@ describe('Khung ứng dụng', () => {
     expect(within(tam).getByText('Quản trị chung')).toBeInTheDocument();
   });
 
+  it('Cây Ký Ức hiện thành LIÊN KẾT ngay trên thanh chính, không phải nút xổ menu', () => {
+    // Bản đầu đặt ấn phẩm làm mục con của Trang chủ: nhìn vào thanh không thấy
+    // chữ nào, phải bung menu mới ra — Chi nhánh báo "không thấy tab ở đâu".
+    // Cán bộ thường cũng phải thấy: đây là ấn phẩm cho toàn Chi nhánh.
+    dungKhung('/one');
+    const thanhNav = screen.getByLabelText('Điều hướng chính cổng BHY ONE');
+    const tab = within(thanhNav).getByRole('link', { name: 'Cây Ký Ức' });
+    expect(tab).toHaveAttribute('href', '/one/cay-ky-uc');
+    expect(within(thanhNav).queryByRole('button', { name: 'Cây Ký Ức' })).not.toBeInTheDocument();
+  });
+
+  it('khách đối tác KHÔNG thấy Cây Ký Ức — ấn phẩm nội bộ', () => {
+    mockAuth.isGuest = true;
+    dungKhung('/one');
+    const thanhNav = screen.getByLabelText('Điều hướng chính cổng BHY ONE');
+    expect(within(thanhNav).queryByRole('link', { name: 'Cây Ký Ức' })).not.toBeInTheDocument();
+  });
+
+  it('trên điện thoại, Cây Ký Ức nằm trong tấm «Thêm» — không chiếm chỗ công cụ làm việc', async () => {
+    // Thanh tab dưới đáy chỉ đủ 4 chỗ và đang dành cho công cụ dùng hằng ngày;
+    // ấn phẩm kỷ niệm vào «Thêm», còn kênh chính vẫn là link gửi cho cán bộ.
+    dungKhung('/one');
+    const thanhTab = screen.getByLabelText('Điều hướng nhanh');
+    expect(within(thanhTab).queryByText('Cây Ký Ức')).not.toBeInTheDocument();
+
+    fireEvent.click(within(thanhTab).getByRole('button', { name: 'Mở toàn bộ menu' }));
+    const tam = await screen.findByRole('dialog');
+    expect(within(tam).getByText('Cây Ký Ức')).toBeInTheDocument();
+  });
+
   it('ô tìm kiếm là nút mở bảng lệnh, không còn là ô nhập trang trí', () => {
     dungKhung('/one');
     const nut = screen.getByLabelText('Tìm kiếm và đi nhanh tới trang');

@@ -122,7 +122,9 @@ function renderHtml(d: Digest): { subject: string; html: string; text: string; s
 <p style="color:#6b7280;font-size:12px">Email nhắc việc tự động. Vui lòng không trả lời email này.</p>
 </body></html>`;
   const text = `Kính gửi ${d.name},\nBạn đang có: ${lines.join('; ')}.\nĐăng nhập: ${APP_URL}`;
-  return { subject, html, text, summary: lines.join('; ') };
+  // summary dùng cho THÂN PUSH: mỗi việc một dòng (chuẩn hình thức 09/08) — email text
+  // ở trên vẫn nối bằng «;» vì là câu văn trong thư.
+  return { subject, html, text, summary: lines.join('\n') };
 }
 
 Deno.serve(async (req) => {
@@ -157,13 +159,25 @@ Deno.serve(async (req) => {
     const dryRun = body?.dry_run !== false; // MẶC ĐỊNH an toàn: true
 
     // ---- Thu thập việc cần xử lý ----
-    const [profRes, subRes, kanRes] = await Promise.all([
+    const [profRes, subRes, kanRes, cycRes] = await Promise.all([
       admin.from('profiles').select('id, user_id, full_name, email, manager_id, pgd_id').eq('status', 'active'),
-      admin.from('form_submissions').select('employee_id, reviewer_id, status').in('status', ['submitted', 'reviewed']),
+      admin.from('form_submissions').select('employee_id, reviewer_id, status, cycle_id').in('status', ['submitted', 'reviewed']),
       admin.from('kanban_cards').select('profile_id').eq('is_active', true).eq('completion_status', 'waiting_manager_confirmation'),
+      admin.from('evaluation_cycles').select('id, name, start_date, end_date, status, submission_deadline'),
     ]);
     const profiles = (profRes.data || []) as any[];
     const byId = new Map(profiles.map((p) => [p.id, p]));
+
+    // KỲ ĐÃ ĐÓNG THÌ IM LẶNG HOÀN TOÀN VỀ KỲ ĐÓ (chốt với GĐ 09/08).
+    // Trước đây bộ đếm phiếu không lọc kỳ: chú thích ghi ý định "kể cả kỳ cũ CHƯA ĐÓNG"
+    // nhưng điều kiện đó chưa bao giờ được viết thành mã. Hệ quả tiềm tàng: một phiếu
+    // kẹt ở trạng thái submitted/reviewed thuộc kỳ đã đóng sẽ nhắc TP/PGĐ mỗi sáng vô
+    // thời hạn — mà KHÔNG AI xử lý được, vì kỳ đóng thì thao tác rà soát/phê duyệt
+    // không còn mở. Nhắc một việc không thể làm xong là cách nhanh nhất khiến người
+    // nhận bỏ qua mọi thư nhắc sau đó.
+    const cycleRows = (cycRes.data || []) as any[];
+    const kyDangMo = new Set(cycleRows.filter((c) => c.status === 'in_progress').map((c) => c.id));
+    const phieuKyMo = ((subRes.data || []) as any[]).filter((f) => kyDangMo.has(f.cycle_id));
 
     const digests = new Map<string, Digest>();
     const ensure = (pid: string | null | undefined): Digest | null => {
@@ -175,7 +189,7 @@ Deno.serve(async (req) => {
       return d;
     };
 
-    for (const f of (subRes.data || []) as any[]) {
+    for (const f of phieuKyMo) {
       if (f.status === 'submitted') {
         const d = ensure(f.reviewer_id); if (d) d.reviews++;
       } else if (f.status === 'reviewed') {
@@ -198,9 +212,7 @@ Deno.serve(async (req) => {
     const REMIND_BEFORE_DAYS = 15;
     const nowTs = Date.now();
     const todayStr = new Date().toISOString().slice(0, 10);
-    const { data: cycleRows } = await admin
-      .from('evaluation_cycles')
-      .select('id, name, start_date, end_date, status, submission_deadline');
+    // cycleRows đã lấy ở Promise.all phía trên (dùng chung với bộ lọc kỳ đang mở).
     const pickCycle = (rows: any[]): any | null => {
       const inProg = (rows || []).filter((c) => c.status === 'in_progress');
       if (!inProg.length) return null;
@@ -324,10 +336,11 @@ Deno.serve(async (req) => {
       .eq('is_active', true)
       .neq('kanban_status', 'done')
       .lt('deadline', todayStr);
-    // Số tồn TOÀN CỤC (mọi kỳ) — phiếu đã nộp chờ TP / đã rà soát chờ PGĐ, kể cả kỳ cũ
-    // chưa đóng, để BGĐ không mất dấu tồn đọng kỳ trước.
-    const globalWaitTP = ((subRes.data || []) as any[]).filter((s) => s.status === 'submitted').length;
-    const globalWaitPGD = ((subRes.data || []) as any[]).filter((s) => s.status === 'reviewed').length;
+    // Số tồn của MỌI KỲ ĐANG MỞ — phiếu đã nộp chờ TP / đã rà soát chờ PGĐ, để BGĐ
+    // không mất dấu tồn đọng kỳ trước VẪN CÒN MỞ. Kỳ đã đóng không tính: xem ghi chú
+    // ở chỗ dựng phieuKyMo.
+    const globalWaitTP = phieuKyMo.filter((s) => s.status === 'submitted').length;
+    const globalWaitPGD = phieuKyMo.filter((s) => s.status === 'reviewed').length;
     const leadershipNeeded =
       globalWaitTP + globalWaitPGD + kanbanWaitingTotal > 0 || (dueWindow && notSubmitted.length > 0);
 
@@ -481,7 +494,7 @@ Deno.serve(async (req) => {
       for (const p of notSubmitted) {
         staffPushSent += await sendPushToProfile(admin, subsByProfile, vapidPrivateKey, p.id, {
           title: `⏰ Nhắc nộp phiếu đánh giá ${cycle.name}`,
-          body: `Phiếu tự đánh giá của bạn CHƯA nộp — hạn ${deadlineText}. Nộp muộn bị trừ điểm KPI. Bấm để mở phiếu.`,
+          body: `Hạn nộp: ${deadlineText}\nPhiếu của bạn CHƯA nộp — nộp muộn bị trừ điểm KPI. Bấm để mở phiếu.`,
           url: '/tu-danh-gia',
           tag: 'nop-phieu',
         });
@@ -541,7 +554,9 @@ ${bodyHtml}
         if (!error) leadershipEnqueued++;
         leadershipPushSent += await sendPushToProfile(admin, subsByProfile, vapidPrivateKey, l.id, {
           title: `📊 Toàn cảnh xử lý đánh giá${cycle ? ` — kỳ ${cycle.name}` : ''}`,
-          body: text,
+          // Bỏ đầu dòng «• » khi vào push: mỗi dòng một việc đã đủ tách, chấm tròn
+          // chỉ ăn bớt chiều ngang màn hình khóa (chuẩn hình thức 09/08).
+          body: text.replace(/^• /gm, ''),
           url: '/tong-quan',
           tag: 'toan-canh',
         });

@@ -157,14 +157,23 @@ export function Ct2CaiDatMocGio() {
 
             <div>
               <p className="mb-2 text-sm font-medium">Ngưỡng cảnh báo</p>
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <OSo id="nguong-cho" nhan="Nghẽn cột chờ (ngày làm việc)"
                   gia={f.nguong_tuoi_cho} onDoi={(v) => dat('nguong_tuoi_cho', v)} min={1} max={30} />
                 <OSo id="nguong-im" nhan="Hồ sơ tín dụng chưa cập nhật (ngày làm việc)"
                   gia={f.nguong_im_lang_ho_so} onDoi={(v) => dat('nguong_im_lang_ho_so', v)} min={1} max={30} />
-                <OSo id="tran-tb" nhan="Trần thông báo nhắc nhẹ / người / ngày"
-                  gia={f.tran_thong_bao} onDoi={(v) => dat('tran_thong_bao', v)} min={1} max={20} />
               </div>
+              {/*
+                Ô «Trần thông báo / người / ngày» đã gỡ 09/08/2026 theo yêu cầu Giám đốc.
+                Đối chiếu số liệu: trần chỉ từng chặn mã N15 «Có việc chờ anh/chị chốt» —
+                đúng loại tin cần hành động nhất — trong khi hai loại ồn nhất (nhịp và
+                trao đổi) vốn đã được miễn trừ. Chống phiền nay chỉ còn dựa vào khung giờ
+                yên tĩnh phía trên.
+              */}
+              <p className="mt-1.5 text-2xs text-muted-foreground">
+                Không còn giới hạn số thông báo mỗi người mỗi ngày. Việc chống phiền do
+                khung giờ yên tĩnh phía trên đảm nhiệm.
+              </p>
             </div>
 
             {anHanQuaMuon && (

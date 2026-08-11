@@ -14,7 +14,11 @@
 // bị thiếu manager_id" → mọi cán bộ chưa gắn TP đều leo thẳng lên GĐ. Nay quyết định dựa
 // vào chức danh: cán bộ thiếu TP thì chỉ báo PGĐ và ghi log cảnh báo, KHÔNG leo lên GĐ.
 //
-// Nội dung push: tên cán bộ · tên hành động · trạng thái · tiến độ % · nội dung cập nhật.
+// Hình thức tin (chuẩn 09/08 + nhãn phân hệ 11/08 — thống nhất với f_ct2_thong_bao_*):
+//   Tiêu đề: 📝 [CT3] <Tên cán bộ> — tiến độ <N>%   (đậm, một dòng, không gãy)
+//   Thân:    Hành động: <tên hành động, cắt 70>     («Hành động» = thẻ CT3, «Việc» = CT2)
+//            Nội dung: <ghi chú cập nhật, cắt 140>
+//            ⚠️ Có vướng mắc, cần hỗ trợ      (chỉ khi có)
 // Quyền: chỉ service_role (trigger). Body: {log_id, dry_run?} — dry_run trả danh sách
 // người nhận, không gửi (để kiểm thử).
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -43,8 +47,6 @@ function short(s: string | null | undefined, max = 160): string {
   const t = (s || '').replace(/\s+/g, ' ').trim();
   return t.length > max ? t.slice(0, max - 1) + '…' : t;
 }
-
-const STATUS_LABEL: Record<string, string> = { todo: 'Phải làm', doing: 'Đang làm', done: 'Hoàn thành' };
 
 // Nhận diện cấp theo chức danh — giữ khớp với src/lib/reportingLine.ts (edge function
 // chạy Deno nên không import được từ src/, buộc phải chép logic; sửa 1 nơi thì sửa cả 2).
@@ -149,17 +151,38 @@ Deno.serve(async (req) => {
     }
     const finalRecipients = recipients.slice(0, 2);
 
-    // ---- Soạn nội dung ----
+    // ---- Soạn nội dung (chuẩn 09/08: mỗi dòng một thứ, không nối bằng «·») ----
+    // Ảnh màn hình khóa GĐ gửi 09/08 chỉ đúng chỗ rối của format cũ: tiêu đề dài gãy
+    // hai dòng, thân tin nối «tên việc · trạng thái · 25%» thành một chuỗi — tên việc
+    // dài nuốt sạch chỗ, ba thứ dính nhau. Chuẩn mới: TIÊU ĐỀ = người + tiến độ
+    // (ngắn để không gãy dòng, phần trăm nằm ở chỗ đậm nhất); THÂN = mỗi dòng một
+    // nhãn. Chữ trạng thái (Phải làm/Đang làm) bỏ hẳn — con số tiến độ và động từ đã
+    // nói đủ, chữ đó chính là thứ chen giữa gây rối.
     const isDone = log.log_type === 'completion_requested';
-    const status = isDone ? 'Gửi hoàn thành — chờ xác nhận' : (STATUS_LABEL[card.kanban_status] || card.kanban_status);
     const percent = log.progress_percent ?? card.progress_percent;
-    const note = short(log.progress_note || log.current_result);
+    const note = short(log.progress_note || log.current_result, 140);
     const flags: string[] = [];
     if (log.blocker_note && String(log.blocker_note).trim()) flags.push('có vướng mắc');
     if (log.support_needed && String(log.support_needed).trim()) flags.push('cần hỗ trợ');
+
+    // «Hành động:» chứ không «Việc:» — nhãn phân hệ 11/08: Việc = đầu việc CT2,
+    // Hành động = thẻ Kanban CT3. Chuông/push đọc nhãn dòng đầu để phân biệt.
+    const dong: string[] = [`Hành động: ${short(card.title, 70)}`];
+    if (note) dong.push(`Nội dung: ${note}`);
+    if (flags.length) {
+      const canhBao = flags.join(', ');
+      dong.push(`⚠️ ${canhBao.charAt(0).toUpperCase()}${canhBao.slice(1)}`);
+    }
+    if (isDone) dong.push('Chờ anh/chị xác nhận để đóng thẻ.');
+
     const msg = {
-      title: `${isDone ? '🏁' : '📝'} ${owner.full_name} vừa cập nhật hành động`,
-      body: `${card.title} · ${status} · ${percent}%${flags.length ? ` · ${flags.join(', ')}` : ''}${note ? `\n↳ ${note}` : ''}`,
+      // [CT3] — nhãn phân hệ 11/08, để màn hình khóa phân biệt được với tin CT2/Dấu ấn
+      title: isDone
+        ? `🏁 [CT3] ${owner.full_name} — báo hoàn thành`
+        : percent != null
+          ? `📝 [CT3] ${owner.full_name} — tiến độ ${percent}%`
+          : `📝 [CT3] ${owner.full_name} — cập nhật hành động`,
+      body: dong.join('\n'),
       url: '/hanh-dong-phat-trien?view=team',
       tag: `kanban-update-${log.id}`, // tag riêng từng lần để không đè thông báo trước
     };
@@ -182,9 +205,10 @@ Deno.serve(async (req) => {
     }
     let sent = 0;
     if (vapidPrivateKey && finalRecipients.length) {
+      const bayGio = new Date().toISOString();
       const { data: subs } = await admin
         .from('push_subscriptions')
-        .select('id, profile_id, endpoint, p256dh, auth')
+        .select('id, profile_id, endpoint, p256dh, auth, loi_cuoi')
         .eq('is_active', true)
         .in('profile_id', finalRecipients);
       for (const s of (subs || []) as any[]) {
@@ -196,9 +220,38 @@ Deno.serve(async (req) => {
           );
           const res = await fetch(s.endpoint, init);
           if (res.status === 404 || res.status === 410) {
-            await admin.from('push_subscriptions').update({ is_active: false }).eq('id', s.id);
-          } else if (res.ok) sent++;
-        } catch (e) { console.error('Push lỗi', { error: String(e) }); }
+            await admin.from('push_subscriptions')
+              .update({ is_active: false, loi_cuoi: `${res.status} endpoint đã hết hiệu lực`, loi_luc: bayGio })
+              .eq('id', s.id);
+          } else if (res.ok) {
+            sent++;
+            // Xoá vết lỗi cũ khi máy này nhận lại được — nếu không thì một lần trục
+            // trặc sẽ đeo bám mãi và ta đọc nhầm là máy vẫn đang hỏng
+            if (s.loi_cuoi) {
+              await admin.from('push_subscriptions')
+                .update({ loi_cuoi: null, loi_luc: null }).eq('id', s.id);
+            }
+          } else {
+            /*
+              ĐIỂM MÙ CŨ (vá 09/08, cùng cách notify-ct2 đã làm 11/09): mọi mã lỗi
+              ngoài 404/410 từng bị nuốt lặng lẽ — đăng ký vẫn is_active nên bảng
+              điều khiển báo «máy còn sống», trong khi Apple/Google từ chối từng tin
+              và người nhận không bao giờ thấy gì. Chính là cảnh iPhone của Giám đốc
+              đăng ký sống từ 19/07 mà màn hình khóa im lặng. Nay ghi lại nguyên văn.
+            */
+            const chiTiet = (await res.text().catch(() => '')).slice(0, 300);
+            console.error('Push Kanban bị từ chối', {
+              sub: s.id, status: res.status, endpoint: s.endpoint.slice(0, 60), body: chiTiet,
+            });
+            await admin.from('push_subscriptions')
+              .update({ loi_cuoi: `${res.status} ${chiTiet}`.slice(0, 400), loi_luc: bayGio })
+              .eq('id', s.id);
+          }
+        } catch (e) {
+          console.error('Push Kanban lỗi', { sub: s.id, error: String(e) });
+          await admin.from('push_subscriptions')
+            .update({ loi_cuoi: String(e).slice(0, 400), loi_luc: bayGio }).eq('id', s.id);
+        }
       }
     }
     return new Response(JSON.stringify({

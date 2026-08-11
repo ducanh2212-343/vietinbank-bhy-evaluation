@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,6 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -24,7 +23,10 @@ export default function Login() {
       toast({ title: 'Đăng nhập thất bại', description: error.message, variant: 'destructive' });
     } else {
       markActivity(); // đăng nhập mới = mốc hoạt động mới (tránh guard idle đăng xuất oan vì mốc cũ)
-      navigate('/');
+      // KHÔNG tự điều hướng ở đây: LoginRoute (App.tsx) là nơi duy nhất quyết định đi
+      // đâu, vì chỉ nó đọc được ?tiep= — chỗ người dùng đang muốn tới khi bị chặn ở cửa.
+      // Trước 12/08 chỗ này navigate('/') nên mọi lần bấm push lúc hết phiên đều đổ về
+      // cổng chung, mất dấu việc.
     }
   };
 

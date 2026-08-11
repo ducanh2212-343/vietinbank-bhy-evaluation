@@ -52,6 +52,19 @@ function parseJwtClaims(token: string): Record<string, unknown> | null {
 // «phải xử lý ngay» với «biết để đấy».
 const DAU_MUC: Record<string, string> = { CHAN: '⛔', DO: '🔴', NHE: '🟡' };
 
+// Nhãn phân hệ trong tiêu đề push — GĐ yêu cầu 11/08: nhìn màn hình khóa phải biết
+// ngay tin thuộc Chiêu thức 2, Chiêu thức 3 (upskill) hay Dấu ấn BHY Mark.
+// Đọc từ NHÃN DÒNG ĐẦU thân tin (chuẩn 09/08), không đọc ma_su_kien: bình luận dùng
+// chung N12, bằng chứng dùng chung NHIP cho mọi loại đối tượng — chỉ dòng đầu biết
+// tin nói về thứ gì. Trùng luật với moduleThongBao (src/lib/ct2.ts) để chuông và
+// push không lệch nhau.
+function nhanPhanHe(tb: ThongBao): string {
+  if (tb.ma_su_kien === 'LICH_NGHI') return ''; // tin hạ tầng cho quản trị — không thuộc phân hệ nào
+  if (tb.noi_dung.startsWith('Dấu ấn:')) return '[Dấu ấn] ';
+  if (tb.noi_dung.startsWith('Hành động:')) return '[CT3] ';
+  return '[CT2] ';
+}
+
 /**
  * Bấm vào thông báo phải mở đúng chỗ, nếu không cán bộ phải tự đi tìm thẻ.
  * Quy tắc PHẢI trùng với duongDanThongBao() ở client (src/lib/ct2.ts) —
@@ -147,7 +160,7 @@ Deno.serve(async (req) => {
 
       for (const tb of canPush) {
         const msg = {
-          title: `${DAU_MUC[tb.muc] || '🔔'} ${tb.tieu_de}`,
+          title: `${DAU_MUC[tb.muc] || '🔔'} ${nhanPhanHe(tb)}${tb.tieu_de}`,
           body: tb.noi_dung,
           url: duongDan(tb),
           // tag riêng từng tin: hai việc khác nhau không được đè lên nhau

@@ -246,7 +246,9 @@ Deno.serve(async (req) => {
           _ma_su_kien: 'LICH_NGHI',
           _nguoi_nhan: nguoi,
           _tieu_de: `Còn ${conLai} ngày tới ${m.ten}`,
-          _noi_dung: `${m.ghiChu}\n↳ Mở «Lịch nghỉ lễ» để nhập kỳ nghỉ và ngày đi làm bù. `
+          // Chuẩn hình thức 09/08: mỗi dòng một ý, bỏ ký hiệu «↳» — trên màn hình
+          // khóa nó chỉ là một glyph lạ chen trước chữ.
+          _noi_dung: `${m.ghiChu}\nMở «Lịch nghỉ lễ» để nhập kỳ nghỉ và ngày đi làm bù. `
             + 'Chưa nhập thì hệ thống vẫn tính những ngày đó là ngày làm việc.',
           _muc: 'DO',
           _dau_viec_id: null,

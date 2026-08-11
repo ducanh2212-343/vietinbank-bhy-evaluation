@@ -895,6 +895,43 @@ export function duongDanThongBao(
   return '/one/chieu-thuc-2';
 }
 
+/**
+ * Tin thuộc phân hệ nào — để chuông và push phân biệt CT2 / CT3 / Dấu ấn BHY Mark.
+ *
+ * Nguồn sự thật là NHÃN DÒNG ĐẦU thân tin (chuẩn hình thức 09/08: mỗi dòng một
+ * nhãn), không phải ma_su_kien: bình luận dùng chung N12 và bằng chứng dùng chung
+ * NHIP cho mọi loại đối tượng, chỉ nhãn dòng đầu biết tin nói về thứ gì.
+ * Trả null cho họ CT2 (Việc/Hồ sơ/nhịp): chuông vốn là chuông CT2, dán nhãn cho
+ * số đông chỉ thêm rối — chỉ tin «lạc dòng» (CT3, Dấu ấn) mới cần nhãn.
+ */
+export function moduleThongBao(tb: Pick<Ct2ThongBao, 'noi_dung'>): 'CT3' | 'DAU_AN' | null {
+  if (tb.noi_dung.startsWith('Dấu ấn:')) return 'DAU_AN';
+  if (tb.noi_dung.startsWith('Hành động:')) return 'CT3';
+  return null;
+}
+
+/**
+ * Tách nhãn đầu dòng («Việc:», «Nội dung:», «⚠️ Vướng:») khỏi phần chữ theo sau,
+ * để chuông in đậm riêng phần nhãn — mắt bắt được cấu trúc tin mà không phải đọc hết.
+ *
+ * Màn hình khóa KHÔNG làm được việc này: Notification API chỉ nhận `body` là chuỗi
+ * thuần, hệ điều hành cho đúng hai mức (tiêu đề đậm, thân thường). Vì vậy nhãn dòng
+ * đầu vẫn phải tự đứng vững bằng vị trí và dấu hai chấm — đậm chỉ là phần thưởng
+ * thêm ở nơi dựng được HTML.
+ *
+ * Nhận diện theo HÌNH DẠNG chứ không theo danh sách nhãn cố định: nhãn nằm đầu dòng,
+ * chỉ gồm chữ/số/khoảng trắng, tối đa 28 ký tự. Nhờ vậy nhãn mới sinh sau này
+ * («Hạn nộp:», «Phần S3:») tự khớp, còn câu văn có dấu hai chấm ở giữa thì không.
+ */
+export function tachNhanDong(dong: string): { nhan: string; con: string } | null {
+  const i = dong.indexOf(':');
+  if (i < 1 || i > 28) return null;
+  // Cho phép một dấu cảnh báo đứng trước nhãn (⚠️ Vướng:), nhưng không cho dấu câu
+  // lọt vào giữa — «xong việc. Hạn chót:» phải trượt, vì đó là câu văn chứ không phải nhãn.
+  if (!/^(?:[^\p{L}\p{N}]{1,3})?[\p{L}\p{N}][\p{L}\p{N} ]*$/u.test(dong.slice(0, i))) return null;
+  return { nhan: dong.slice(0, i + 1), con: dong.slice(i + 1) };
+}
+
 /** «12 phút trước» dễ đọc hơn dấu thời gian đầy đủ trong danh sách chuông */
 export function khiNaoThongBao(iso: string, moc: Date = new Date()): string {
   const phut = Math.round((moc.getTime() - new Date(iso).getTime()) / 60000);
