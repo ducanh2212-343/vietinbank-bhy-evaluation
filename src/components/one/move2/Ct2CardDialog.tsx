@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { CalendarClock, Eye, Hourglass, Rocket, Star } from 'lucide-react';
+import { CalendarClock, ChevronDown, Eye, Hourglass, Rocket, Star } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -12,8 +12,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import {
   CT2_CONG_THUC_NHIP, CT2_COT, CT2_MAU_CAU, CT2_TEN_CO, CT2_TEN_UU_TIEN,
-  cotHienThi, daDuKeHoach, goiYNhan, kiemTraCauNhip, lyDoChanChuyen, mucChuY,
-  soNgayQuaHan, thieuTruongBatBuoc, tuoiCho,
+  cotHienThi, daDuKeHoach, daGhiNhipHomNay, goiYNhan, kiemTraCauNhip,
+  lyDoChanChuyen, mucChuY, soNgayQuaHan, thieuTruongBatBuoc, tuoiCho,
   type Ct2Co, type Ct2DauViec, type Ct2TrangThai,
 } from '@/lib/ct2';
 import {
@@ -69,6 +69,9 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
     return ds;
   }, [the, tenNguoi]);
   const laChuThe = the?.nguoi_chiu_trach_nhiem === profileId;
+  // Đã ghi nhịp hôm nay → khối nhịp thu thành dòng xanh; bấm «Ghi thêm» mở lại
+  const [moLaiNhip, setMoLaiNhip] = useState(false);
+  useEffect(() => { setMoLaiNhip(false); }, [the?.id]);
   // Cửa 24 giờ áp cho CÁN BỘ tự gỡ thẻ mình vừa gõ nhầm. Lãnh đạo Phòng không
   // vướng mốc này — 22 thẻ nhập từ Miro đều quá 24h từ lâu, mà dọn thẻ trùng
   // trong đợt nhập chính là việc của lãnh đạo. Rào thật vẫn ở DB, cùng luật.
@@ -167,69 +170,39 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
         )}
 
         {/*
-          5W2H tóm tắt — chỉ bày trường CÓ nội dung. Ba dòng «— chưa ghi» xếp
-          hàng chỉ làm hộp thoại dài ra; đường điền chúng là «Bắt đầu làm» /
-          «Sửa kế hoạch làm», và cái thiếu bắt buộc đã có dải cảnh báo vàng nêu.
+          BỐ CỤC XẾP THEO TẦN SUẤT DÙNG, không theo logic dữ liệu — Giám đốc
+          duyệt 08/2026 sau góp ý «cán bộ đọc bị rối, khó thao tác»:
+            ① Ghi nhịp (việc MỖI SÁNG) đứng đầu — đã ghi thì tự thu thành một
+              dòng xanh, màn hình nhường chỗ cho việc kế tiếp;
+            ② Dòng thời gian (đọc vài lần một tuần) ngay sau;
+            ③ «Chi tiết thẻ» (đọc một lần lúc nhận việc) gấp lại;
+            ④ «Quản lý thẻ» (vài lần trong đời thẻ: chuyển, giao chờ, sửa, gỡ)
+              gấp lại cuối cùng.
+          Trước đây thứ tự ngược hẳn: thông tin nền → sửa → chuyển → nhịp —
+          cán bộ nào cũng phải cuộn qua đồ đạc của lãnh đạo để làm việc sáng.
         */}
-        <div className="grid gap-1.5 rounded-xl bg-slate-50 p-2.5 text-sm sm:grid-cols-2">
-          {the.ket_qua_dau_ra && <O ten="Kết quả đầu ra" gia={the.ket_qua_dau_ra} />}
-          {the.muc_tieu_lien_ket && <O ten="Gắn mục tiêu" gia={the.muc_tieu_lien_ket} />}
-          <O ten="Người chịu trách nhiệm"
-            gia={the.nguoi_chiu_trach_nhiem
-              ? (tenNguoi.get(the.nguoi_chiu_trach_nhiem) ?? '—')
-              : '— thẻ đang vô chủ'} />
-          {/* Chỉ HIỂN THỊ — sửa cấp phụ trách đã gộp vào nút «Sửa thẻ» bên dưới */}
-          <Ct2CapPhuTrach
-            phongId={the.phong} nguoiLam={the.nguoi_chiu_trach_nhiem}
-            gia={the} nhanSu={nhanSu} suaDuoc={false}
-            onLuu={(v) => ct2SuaDauViec(the.id, v)}
-            onXong={() => { lamTuoi('board'); onXong(); }}
-          />
-          {the.cach_lam && <div className="sm:col-span-2"><O ten="Cách làm" gia={the.cach_lam} /></div>}
-          {the.chi_tieu_dinh_luong !== null && (
-            <O ten="Chỉ tiêu" gia={`${the.chi_tieu_dinh_luong} ${the.don_vi ?? ''}`} />
-          )}
-          {(the.trang_thai === 'CHO_DUYET' || the.trang_thai === 'CHO_PHOI_HOP') && the.nguoi_dang_giu && (
-            <O ten="Đang giữ việc" gia={`${tenNguoi.get(the.nguoi_dang_giu) ?? '—'} (đồng hồ trách nhiệm đã đổi chủ)`} />
-          )}
-        </div>
-
-        {/*
-          MỘT nút «Sửa thẻ» duy nhất — Giám đốc xem trên điện thoại chê hộp
-          thoại «phân mảnh ra nhiều mục»: ba cửa sửa rời nhau (thông tin thẻ /
-          kế hoạch làm / cấp phụ trách) là ba lần người dùng phải đoán mình cần
-          cửa nào. Gộp về một form một nút Lưu trong Ct2SuaThongTin; quyền từng
-          ô vẫn đúng luật DB. «Bắt đầu làm» ở trên vẫn là cổng khởi động riêng.
-        */}
-        <Ct2SuaThongTin
-          the={the} nhanSu={nhanSu} laLanhDao={laLanhDao} laChuThe={laChuThe}
-          onXong={() => { lamTuoi('board'); onXong(); }}
-        />
-
-        {/*
-          Gỡ thẻ nhập nhầm — KHÁC Dừng/Hủy và cố ý nhỏ, nằm cuối, không phải nút
-          đỏ to. Chỉ hiện khi thẻ CÒN SẠCH: ở cột Chuẩn bị, chưa có nhịp nào,
-          tạo trong vòng 24 giờ. Bốn điều kiện đầy đủ do database gác — đây chỉ
-          là tấm gương để người dùng không bấm vào rồi ăn lỗi.
-        */}
-        {(laChuThe || laLanhDao) && the.trang_thai === 'CHUAN_BI'
-          && nhatKy.length === 0 && conGoDuoc && (
-          <GoThe the={the} onXong={() => { lamTuoi('board'); onXong(); onClose(); }} />
-        )}
-
-        <ChuyenTrangThai
-          the={the} laLanhDao={laLanhDao} laChuThe={laChuThe} vong={vong}
-          nhanSu={nhanSu} chuyenDen={chuyenDen}
-          onKhoiDong={() => onLapKeHoach(true)}
-          onXong={() => { lamTuoi('board'); onXong(); }}
-        />
-
         {(laChuThe || laLanhDao || the.nguoi_phoi_hop.includes(profileId ?? '')) && (
-          <FormGhiNhip
-            the={the}
-            cauGanNhat={nhatKy[0]?.noi_dung ?? null}
-            onXong={() => { lamTuoi('nhip'); onXong(); }}
-          />
+          daGhiNhipHomNay(the.nhip_gan_nhat) && !moLaiNhip ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-2">
+              <p className="text-sm font-medium text-emerald-800">
+                ✅ Hôm nay đã ghi nhịp
+                {nhatKy[0]?.ghi_luc && daGhiNhipHomNay(nhatKy[0].ghi_luc) && (
+                  <span className="tabular-nums"> lúc {new Date(nhatKy[0].ghi_luc).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' })}</span>
+                )}
+              </p>
+              <button type="button"
+                className="text-xs font-semibold text-emerald-700 underline underline-offset-2"
+                onClick={() => setMoLaiNhip(true)}>
+                Ghi thêm nhịp
+              </button>
+            </div>
+          ) : (
+            <FormGhiNhip
+              the={the}
+              cauGanNhat={nhatKy[0]?.noi_dung ?? null}
+              onXong={() => { setMoLaiNhip(false); lamTuoi('nhip'); onXong(); }}
+            />
+          )
         )}
 
         {/*
@@ -260,8 +233,75 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
           goiY="Trao đổi về thẻ này…"
           onXong={() => lamTuoi()}
         />
+
+        {/* ③ Thông tin nền — đọc một lần lúc nhận việc là thuộc, gấp lại để
+            không chiếm nửa màn hình của mỗi buổi sáng */}
+        <NepGap ten="Chi tiết thẻ">
+          <div className="grid gap-1.5 text-sm sm:grid-cols-2">
+            {the.ket_qua_dau_ra && <O ten="Kết quả đầu ra" gia={the.ket_qua_dau_ra} />}
+            {the.muc_tieu_lien_ket && <O ten="Gắn mục tiêu" gia={the.muc_tieu_lien_ket} />}
+            <O ten="Người chịu trách nhiệm"
+              gia={the.nguoi_chiu_trach_nhiem
+                ? (tenNguoi.get(the.nguoi_chiu_trach_nhiem) ?? '—')
+                : '— thẻ đang vô chủ'} />
+            {/* Chỉ HIỂN THỊ — sửa cấp phụ trách nằm trong «Sửa thẻ» ở mục Quản lý */}
+            <Ct2CapPhuTrach
+              phongId={the.phong} nguoiLam={the.nguoi_chiu_trach_nhiem}
+              gia={the} nhanSu={nhanSu} suaDuoc={false}
+              onLuu={(v) => ct2SuaDauViec(the.id, v)}
+              onXong={() => { lamTuoi('board'); onXong(); }}
+            />
+            {the.cach_lam && <div className="sm:col-span-2"><O ten="Cách làm" gia={the.cach_lam} /></div>}
+            {the.chi_tieu_dinh_luong !== null && (
+              <O ten="Chỉ tiêu" gia={`${the.chi_tieu_dinh_luong} ${the.don_vi ?? ''}`} />
+            )}
+            {(the.trang_thai === 'CHO_DUYET' || the.trang_thai === 'CHO_PHOI_HOP') && the.nguoi_dang_giu && (
+              <O ten="Đang giữ việc" gia={`${tenNguoi.get(the.nguoi_dang_giu) ?? '—'} (đồng hồ trách nhiệm đã đổi chủ)`} />
+            )}
+          </div>
+        </NepGap>
+
+        {/* ④ Việc vòng đời — vài lần trong cả đời thẻ, gấp lại cuối cùng.
+            Kéo thẻ sang cột Dừng/Hủy thì mở sẵn để điền lý do. */}
+        {(laChuThe || laLanhDao) && (
+          <NepGap ten="Quản lý thẻ" macDinhMo={!!chuyenDen}>
+            <ChuyenTrangThai
+              the={the} laLanhDao={laLanhDao} laChuThe={laChuThe} vong={vong}
+              nhanSu={nhanSu} chuyenDen={chuyenDen}
+              onKhoiDong={() => onLapKeHoach(true)}
+              onXong={() => { lamTuoi('board'); onXong(); }}
+            />
+            <Ct2SuaThongTin
+              the={the} nhanSu={nhanSu} laLanhDao={laLanhDao} laChuThe={laChuThe}
+              onXong={() => { lamTuoi('board'); onXong(); }}
+            />
+            {the.trang_thai === 'CHUAN_BI' && nhatKy.length === 0 && conGoDuoc && (
+              <GoThe the={the} onXong={() => { lamTuoi('board'); onXong(); onClose(); }} />
+            )}
+          </NepGap>
+        )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** Nếp gấp — khối ít dùng thu về một dòng tiêu đề, bấm mới mở */
+function NepGap({ ten, macDinhMo = false, children }: {
+  ten: string; macDinhMo?: boolean; children: React.ReactNode;
+}) {
+  const [mo, setMo] = useState(macDinhMo);
+  return (
+    <div className="rounded-xl border border-slate-200">
+      <button
+        type="button"
+        onClick={() => setMo((v) => !v)}
+        className="flex min-h-10 w-full items-center justify-between px-3 py-2 text-sm font-semibold text-slate-700"
+      >
+        {ten}
+        <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${mo ? 'rotate-180' : ''}`} />
+      </button>
+      {mo && <div className="space-y-3 border-t border-slate-100 p-3">{children}</div>}
+    </div>
   );
 }
 
@@ -355,8 +395,9 @@ function ChuyenTrangThai({ the, laLanhDao, laChuThe, vong, nhanSu, chuyenDen, on
     Database giữ nguyên bảy trạng thái và mọi luật — chỉ cách BÀY đổi.
   */
   const cotHienTai = cotHienThi(the.trang_thai);
-  const [den, setDen] = useState<Ct2TrangThai>(cotHienTai);
   const [lyDoHuy, setLyDoHuy] = useState('');
+  // Dừng/Hủy cần lý do ≥30 ký tự — bấm nút thì mở ô lý do, xác nhận mới chuyển
+  const [moHuy, setMoHuy] = useState(false);
   const [dangGui, setDangGui] = useState(false);
   // Giao đồng hồ chờ — mở gọn khi cần, không chiếm chỗ của người không dùng
   const [moGiao, setMoGiao] = useState(false);
@@ -364,21 +405,30 @@ function ChuyenTrangThai({ the, laLanhDao, laChuThe, vong, nhanSu, chuyenDen, on
   const [nguoiGiu, setNguoiGiu] = useState('');
 
   useEffect(() => {
-    setDen(cotHienThi(chuyenDen ?? the.trang_thai));
     setLyDoHuy(the.ly_do_dung_huy ?? '');
+    // Kéo thẻ vào cột Dừng/Hủy → mở sẵn ô lý do
+    setMoHuy(cotHienThi(chuyenDen ?? the.trang_thai) === 'DUNG_HUY' && cotHienTai !== 'DUNG_HUY');
     setMoGiao(false);
     setNguoiGiu('');
-  }, [the, chuyenDen]);
+  }, [the, chuyenDen, cotHienTai]);
 
   if (!laLanhDao && !laChuThe) return null;
 
   const dangCho = the.trang_thai === 'CHO_DUYET' || the.trang_thai === 'CHO_PHOI_HOP';
+  /*
+    NÚT BẤM THẲNG thay cho chọn-trong-bốn-rồi-bấm-Chuyển (GĐ duyệt 08/2026):
+    từ mỗi cột chỉ có 1–3 đích hợp lệ, bày đúng chúng thành nút là một chạm
+    xong. Đích «tự nhiên» (Chuẩn bị→Đang làm, Đang làm→Hoàn thành) tô đặc;
+    các đích còn lại viền nhạt. Cổng chặn (chưa đủ kế hoạch, chưa 100%…) vẫn
+    nguyên — bấm thì nói lý do bằng tiếng Việt, và DB vẫn là hàng rào cuối.
+  */
   const dsDich = CT2_COT
+    .filter((c) => c.ma !== cotHienTai)
     .filter((c) => c.ma !== 'DUNG_HUY' || laLanhDao)
     .filter((c) => the.loai_dau_viec !== 'THUONG_TRUC' || c.ma !== 'HOAN_THANH');
-  const lyDoChan = lyDoChanChuyen(the.trang_thai, den, {
-    ...vong, phanTram: the.phan_tram, laLanhDao, loai: the.loai_dau_viec,
-  });
+  const dichTuNhien: Partial<Record<Ct2TrangThai, Ct2TrangThai>> = {
+    CHUAN_BI: 'DANG_LAM', DANG_LAM: 'HOAN_THANH',
+  };
 
   const doi = async (
     thay: Partial<Ct2DauViec> & { trang_thai: Ct2TrangThai }, loiNhan: string,
@@ -391,17 +441,22 @@ function ChuyenTrangThai({ the, laLanhDao, laChuThe, vong, nhanSu, chuyenDen, on
     onXong();
   };
 
-  const chuyen = async () => {
-    if (den === cotHienTai) return;
+  const chuyenToi = async (den: Ct2TrangThai) => {
     // Khởi động việc đi qua Cổng 2 — hỏi nốt 5W2H rồi tự chuyển cột
     if (den === 'DANG_LAM' && the.trang_thai === 'CHUAN_BI' && the.loai_dau_viec === 'TIEN_TRINH') {
       onKhoiDong();
       return;
     }
+    const lyDoChan = lyDoChanChuyen(the.trang_thai, den, {
+      ...vong, phanTram: the.phan_tram, laLanhDao, loai: the.loai_dau_viec,
+    });
     if (lyDoChan) { toast.error(lyDoChan); return; }
-    if (den === 'DUNG_HUY' && lyDoHuy.trim().length < 30) {
-      toast.error('Dừng/Hủy phải ghi rõ lý do, tối thiểu 30 ký tự.');
-      return;
+    if (den === 'DUNG_HUY') {
+      if (!moHuy) { setMoHuy(true); return; }
+      if (lyDoHuy.trim().length < 30) {
+        toast.error('Dừng/Hủy phải ghi rõ lý do, tối thiểu 30 ký tự.');
+        return;
+      }
     }
     await doi(
       { trang_thai: den, ...(den === 'DUNG_HUY' ? { ly_do_dung_huy: lyDoHuy.trim() } : {}) },
@@ -413,22 +468,23 @@ function ChuyenTrangThai({ the, laLanhDao, laChuThe, vong, nhanSu, chuyenDen, on
     ? nhanSu.find((n) => n.id === the.nguoi_dang_giu)?.full_name ?? '—' : '—';
 
   return (
-    <div className="rounded-xl border border-slate-200 p-2.5">
-      <div className="flex flex-wrap items-end gap-2">
-        <div className="min-w-44">
-          <Label>Chuyển trạng thái</Label>
-          <Select value={den} onValueChange={(v) => setDen(v as Ct2TrangThai)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {dsDich.map((c) => (
-                <SelectItem key={c.ma} value={c.ma}>{c.icon} {c.ten}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <Button onClick={chuyen} disabled={dangGui || den === cotHienTai}>
-          {dangGui ? 'Đang chuyển…' : 'Chuyển'}
-        </Button>
+    <div>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
+          Chuyển trạng thái
+        </span>
+        {dsDich.map((c) => (
+          <Button
+            key={c.ma}
+            size="sm"
+            variant={dichTuNhien[cotHienTai] === c.ma ? 'default' : 'outline'}
+            className="h-9"
+            disabled={dangGui}
+            onClick={() => chuyenToi(c.ma)}
+          >
+            {c.icon} {c.ten}
+          </Button>
+        ))}
         {/* Chữ ký của lãnh đạo — thẻ vẫn ở cột Hoàn thành, chỉ thêm dấu chốt.
             Việc thường trực không có «xong» nên lãnh đạo đóng thẳng khi hết vai. */}
         {laLanhDao && !dangGui && the.trang_thai === 'HOAN_THANH' && (
@@ -450,7 +506,7 @@ function ChuyenTrangThai({ the, laLanhDao, laChuThe, vong, nhanSu, chuyenDen, on
       {the.trang_thai === 'DA_DONG' && (
         <p className="mt-2 text-xs text-slate-500">
           🔒 Thẻ đã được lãnh đạo chốt «Đã đóng»
-          {laLanhDao && ' — chọn cột khác ở trên nếu cần mở lại.'}
+          {laLanhDao && ' — bấm «Đang làm» ở trên nếu cần mở lại.'}
         </p>
       )}
 
@@ -513,14 +569,18 @@ function ChuyenTrangThai({ the, laLanhDao, laChuThe, vong, nhanSu, chuyenDen, on
         </div>
       )}
 
-      {den === 'DUNG_HUY' && (
-        <div className="mt-2">
+      {moHuy && cotHienTai !== 'DUNG_HUY' && (
+        <div className="mt-2 rounded-lg bg-red-50/60 p-2.5">
           <Label>Lý do dừng/hủy (≥ 30 ký tự, lưu vết)</Label>
-          <Textarea value={lyDoHuy} onChange={(e) => setLyDoHuy(e.target.value)} rows={2} />
+          <Textarea value={lyDoHuy} onChange={(e) => setLyDoHuy(e.target.value)} rows={2} className="mt-1 bg-white" />
+          <div className="mt-2 flex gap-2">
+            <Button size="sm" variant="destructive" className="h-8" disabled={dangGui}
+              onClick={() => chuyenToi('DUNG_HUY')}>
+              Xác nhận Dừng/Hủy
+            </Button>
+            <Button size="sm" variant="ghost" className="h-8" onClick={() => setMoHuy(false)}>Thôi</Button>
+          </div>
         </div>
-      )}
-      {den !== cotHienTai && lyDoChan && (
-        <p className="mt-2 rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800">{lyDoChan}</p>
       )}
     </div>
   );
