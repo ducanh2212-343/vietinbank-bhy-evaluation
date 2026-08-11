@@ -13,42 +13,21 @@ export interface ObservableProfile {
 
 /**
  * Quyền Nhật ký hành vi của người dùng hiện tại.
- * - canRecord: được Ghi nhanh (TP/PP qua role manager, PGĐ, Giám đốc/BGĐ).
- *   tcth_admin/system_admin thuần không ghi nhận nghiệp vụ — khớp RLS.
- * - staff: danh sách cán bộ trong phạm vi ghi nhận (RPC get_observable_profiles,
- *   server tự lọc theo can_observe_profile — UI không tự suy phạm vi).
+ *
+ * canRecord KHÔNG suy từ role đăng nhập. Hệ thống chỉ cho mỗi tài khoản MỘT
+ * role, nên lãnh đạo kiêm quản trị (Trưởng/Phó phòng TCTH mang 'tcth_admin',
+ * Giám đốc mang 'system_admin') từng bị chặn ghi nhận chính cán bộ mình quản.
+ * Nay UI hỏi thẳng server: RPC get_observable_profiles trả về những cán bộ
+ * mình được ghi (server lọc bằng can_record_profile) — có ít nhất một người
+ * thì hiện nút Ghi nhanh. Nhờ vậy UI luôn khớp RLS, không phải đoán lại luật.
+ *
+ * - staff: danh sách cán bộ trong phạm vi ghi nhận
+ * - canViewJournal: người ghi được, hoặc admin chi nhánh (đọc bản đã xác nhận
+ *   loại 'quan_ly' — RLS quyết định), nhưng admin thuần không ghi nghiệp vụ
  */
 export function useBehaviorAccess() {
-  const { roles, profileId, loading: authLoading } = useAuth();
-  const roleCanRecord = roles.some((r) => r === 'manager' || r === 'pgd' || r === 'bgd');
+  const { roles, profileId, isGuest, loading: authLoading } = useAuth();
   const isBranchAdmin = roles.some((r) => r === 'tcth_admin' || r === 'system_admin');
-
-  // Giám đốc chi nhánh dùng tài khoản admin (hệ thống chỉ cho 1 role/user nên
-  // không gán thêm được 'bgd'): nhận diện theo CHỨC DANH hồ sơ — khớp hàm
-  // is_branch_director() phía RLS (migration 20260803090000)
-  const [isDirectorByPosition, setIsDirectorByPosition] = useState(false);
-  useEffect(() => {
-    if (roleCanRecord || !isBranchAdmin || !profileId) return;
-    let cancelled = false;
-    void supabase
-      .from('profiles')
-      .select('position')
-      .eq('id', profileId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!cancelled) {
-          setIsDirectorByPosition(
-            (data?.position ?? '').toLowerCase().startsWith('giám đốc'),
-          );
-        }
-      });
-    return () => { cancelled = true; };
-  }, [roleCanRecord, isBranchAdmin, profileId]);
-
-  const canRecord = roleCanRecord || isDirectorByPosition;
-  // Admin chi nhánh (TCTH/System) thuần đọc được nhật ký (bản đã xác nhận,
-  // loại 'quan_ly' — RLS quyết định), nhưng không ghi nhận nghiệp vụ
-  const canViewJournal = canRecord || isBranchAdmin;
 
   const [staff, setStaff] = useState<ObservableProfile[]>([]);
   const [staffLoading, setStaffLoading] = useState(false);
@@ -58,7 +37,6 @@ export function useBehaviorAccess() {
   const [staffError, setStaffError] = useState<string | null>(null);
 
   const loadStaff = useCallback(async () => {
-    if (!canRecord || staffLoading) return;
     setStaffLoading(true);
     setStaffError(null);
     try {
@@ -72,13 +50,22 @@ export function useBehaviorAccess() {
     } finally {
       setStaffLoading(false);
     }
-  }, [canRecord, staffLoading]);
+  }, []);
 
-  // Nạp sẵn khi có quyền — danh sách nhỏ (trong phạm vi quản lý), dùng cho FAB
+  // Nạp một lần cho mọi người đã đăng nhập (trừ khách đối tác): danh sách nhỏ,
+  // cán bộ không quản ai nhận về mảng rỗng và không thấy nút Ghi nhanh.
   useEffect(() => {
-    if (!authLoading && canRecord && !staffLoaded && !staffLoading) void loadStaff();
+    if (!authLoading && profileId && !isGuest && !staffLoaded && !staffLoading) void loadStaff();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, canRecord, staffLoaded]);
+  }, [authLoading, profileId, isGuest, staffLoaded]);
 
-  return { canRecord, canViewJournal, profileId, staff, staffLoading, staffLoaded, staffError, reloadStaff: loadStaff };
+  const canRecord = staff.length > 0;
+  const canViewJournal = canRecord || isBranchAdmin;
+  // Còn đang tra quyền — trang gác quyền phải chờ, tránh chớp màn "không có quyền"
+  const accessLoading = authLoading || (!isGuest && !!profileId && !staffLoaded && !staffError);
+
+  return {
+    canRecord, canViewJournal, accessLoading, profileId,
+    staff, staffLoading, staffLoaded, staffError, reloadStaff: loadStaff,
+  };
 }

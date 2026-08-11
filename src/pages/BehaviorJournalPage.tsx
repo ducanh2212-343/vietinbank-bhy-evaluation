@@ -39,7 +39,7 @@ function fmtDateTime(iso: string) {
  * AI, xác nhận, chia sẻ cho cán bộ, lưu trữ. Không có xếp hạng/đếm công khai.
  */
 export default function BehaviorJournalPage() {
-  const { canRecord, canViewJournal, profileId, staff } = useBehaviorAccess();
+  const { canRecord, canViewJournal, accessLoading, staffError, profileId, staff } = useBehaviorAccess();
 
   const [notes, setNotes] = useState<BehaviorNote[]>([]);
   const [loading, setLoading] = useState(true);
@@ -290,11 +290,31 @@ export default function BehaviorJournalPage() {
     }
   };
 
+  // Chờ tra xong phạm vi rồi mới kết luận — nếu không, lãnh đạo sẽ thấy chớp
+  // màn "không có quyền" trong lúc danh sách cán bộ đang về
+  if (accessLoading) {
+    return <div className="text-center text-muted-foreground py-16">Đang kiểm tra quyền truy cập...</div>;
+  }
+
+  // RPC tra phạm vi lỗi (mạng, database chưa áp migration): nói đúng là chưa
+  // kiểm được quyền, KHÔNG kết luận nhầm thành "bạn không có quyền"
+  if (staffError && !canViewJournal) {
+    return (
+      <div className="max-w-2xl mx-auto mt-10 text-center text-muted-foreground">
+        <NotebookPen className="w-10 h-10 mx-auto mb-3 opacity-40" />
+        Chưa kiểm tra được phạm vi ghi nhận của bạn: {staffError}
+        <br />Tải lại trang; nếu vẫn lỗi, báo quản trị hệ thống.
+      </div>
+    );
+  }
+
   if (!canViewJournal) {
     return (
       <div className="max-w-2xl mx-auto mt-10 text-center text-muted-foreground">
         <NotebookPen className="w-10 h-10 mx-auto mb-3 opacity-40" />
-        Nhật ký hành vi dành cho lãnh đạo có phạm vi ghi nhận (Trưởng/Phó phòng, PGĐ, Giám đốc) và quản trị chi nhánh.
+        Nhật ký hành vi dành cho lãnh đạo đang quản lý cán bộ (Trưởng/Phó phòng, PGĐ, Giám đốc)
+        và quản trị chi nhánh. Nếu bạn phụ trách cán bộ mà vẫn thấy màn này, báo Phòng Tổ chức
+        Tổng hợp kiểm tra lại hồ sơ phân công.
       </div>
     );
   }
