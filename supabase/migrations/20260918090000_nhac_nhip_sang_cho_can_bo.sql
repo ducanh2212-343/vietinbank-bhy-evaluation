@@ -102,7 +102,10 @@ BEGIN
     -- Hình thức theo chuẩn 09/08: tiêu đề mang CON SỐ CẦN HÀNH ĐỘNG và đủ ngắn để không
     -- gãy dòng; thân tin mỗi dòng một nhãn. Nhãn «Việc:» cũng là thứ để notify-ct2 nhận
     -- ra tin thuộc Chiêu thức 2 mà gắn [CT2] vào tiêu đề (nhãn phân hệ 11/08).
-    v_tieu_de := 'Sáng nay còn ' || r.dem || ' việc chưa ghi nhịp';
+    -- «phải ghi» chứ không «chưa ghi» (GĐ chỉnh 12/08): cùng một sự thật, nhưng một
+    -- đằng bảo người ta việc cần làm, một đằng nhắc họ đã thiếu. Tin đầu ngày nên mở
+    -- bằng việc phải làm.
+    v_tieu_de := 'Sáng nay còn ' || r.dem || ' việc phải ghi nhịp';
     v_noi_dung := r.ds_viec
       || CASE WHEN r.dem > 3 THEN E'\n… và ' || (r.dem - 3) || ' việc nữa' ELSE '' END
       || E'\nGhi trước ' || to_char(ch.gio_dung_gio, 'HH24:MI') || ' là đúng giờ — sau '

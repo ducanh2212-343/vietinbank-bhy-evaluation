@@ -62,7 +62,7 @@ cho câu một ý.
 | Nhắc nộp phiếu | như trên | giữ | `Hạn nộp:` + câu hệ quả |
 | Nhắc lịch nghỉ | `nhac-lich-nghi` | giữ | bỏ ký hiệu `↳` |
 | Quiz / mẹo tính năng | `quiz-reminders`, `send-feature-tip-push` | giữ | câu một ý — không cần nhãn (quiz chưa chạy) |
-| **Nhắc nhịp sáng cho cán bộ** (12/08) | `ct2_nhac_nhip_sang` | `Sáng nay còn N việc chưa ghi nhịp` | `Việc:` mỗi dòng (tối đa 3) + mốc giờ |
+| **Nhắc nhịp sáng cho cán bộ** (12/08) | `ct2_nhac_nhip_sang` | `Sáng nay còn N việc phải ghi nhịp` | `Việc:` mỗi dòng (tối đa 3) + mốc giờ |
 
 Tin qua hàng đợi CT2 được `notify-ct2` tự thêm dấu mức ở đầu tiêu đề: 🟡 nhẹ · 🔴 đỏ ·
 ⛔ chặn — vì vậy các hàm soạn KHÔNG tự thêm emoji vào `tieu_de`.
@@ -260,7 +260,7 @@ người: lãnh đạo bị nhắc sớm 14 phút thì vô hại, báo "vẫn k�
 
 Mẫu tin (dry-run dữ liệu thật, sau khi `notify-ct2` gắn dấu mức + nhãn phân hệ):
 
-> **🟡 [CT2] Sáng nay còn 2 việc chưa ghi nhịp**
+> **🟡 [CT2] Sáng nay còn 2 việc phải ghi nhịp**
 > Việc: Hoàn thiện hs bảo lãnh và Hs PL cho cty mới: công ty tiến phát
 > Việc: hoàn thiện cấp GHTD cho cty sơn tùng
 > Ghi trước 08:31 là đúng giờ — sau 08:45 tính mất nhịp.
