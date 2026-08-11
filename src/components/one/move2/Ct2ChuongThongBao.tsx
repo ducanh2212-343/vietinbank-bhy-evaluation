@@ -8,7 +8,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { CT2_DAU_MUC, duongDanThongBao, khiNaoThongBao, type Ct2ThongBao } from '@/lib/ct2';
+import {
+  CT2_DAU_MUC, duongDanThongBao, khiNaoThongBao, moduleThongBao, type Ct2ThongBao,
+} from '@/lib/ct2';
 import { cn } from '@/lib/utils';
 
 /**
@@ -103,7 +105,10 @@ export function Ct2ChuongThongBao() {
           </p>
         ) : (
           <div className="max-h-[26rem] overflow-y-auto">
-            {dsTb.map((t) => (
+            {dsTb.map((t) => {
+              // Chuông vốn là chuông CT2 — chỉ tin «lạc dòng» mới đeo nhãn phân hệ
+              const nhanPhanHe = moduleThongBao(t);
+              return (
               <button
                 key={t.id}
                 className={cn(
@@ -116,14 +121,29 @@ export function Ct2ChuongThongBao() {
                   navigate(duongDanThongBao(t));
                 }}
               >
-                <p className="flex items-start gap-1.5 text-sm font-medium">
+                <p className="flex items-start gap-1.5 text-sm font-semibold">
                   <span aria-hidden>{CT2_DAU_MUC[t.muc] ?? '🔔'}</span>
-                  <span className="flex-1">{t.tieu_de}</span>
+                  <span className="flex-1">
+                    {nhanPhanHe && (
+                      <span
+                        className={cn(
+                          'mr-1.5 inline-block rounded px-1 py-px align-[0.08em] text-2xs font-bold',
+                          nhanPhanHe === 'CT3'
+                            ? 'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300'
+                            : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
+                        )}
+                      >
+                        {nhanPhanHe === 'CT3' ? 'CT3' : 'Dấu ấn'}
+                      </span>
+                    )}
+                    {t.tieu_de}
+                  </span>
                 </p>
                 <p className="mt-0.5 line-clamp-2 whitespace-pre-wrap text-xs text-muted-foreground">{t.noi_dung}</p>
                 <p className="mt-1 text-2xs text-muted-foreground">{khiNaoThongBao(t.created_at)}</p>
               </button>
-            ))}
+              );
+            })}
           </div>
         )}
       </DropdownMenuContent>

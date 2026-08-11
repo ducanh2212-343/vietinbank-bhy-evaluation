@@ -16,6 +16,7 @@ import {
   kiemTraGhiViec,
   khiNaoThongBao,
   kiemTraKeHoach,
+  moduleThongBao,
   soNgayLamViec,
   locEmojiTieuDe,
   lyDoChanChuyen,
@@ -342,6 +343,17 @@ describe('Tiện ích', () => {
 
   it('lọc emoji khỏi tên đầu việc', () => {
     expect(locEmojiTieuDe('Tăng CASA 🔥🔥 quý IV')).toBe('Tăng CASA quý IV');
+  });
+});
+
+describe('Nhãn phân hệ của thông báo — đọc từ nhãn dòng đầu thân tin', () => {
+  it('tin về dấu ấn và hành động CT3 được nhận ra, họ CT2 thì không đeo nhãn', () => {
+    expect(moduleThongBao({ noi_dung: 'Dấu ấn: Chuyển đổi số toàn phòng\nPhần S2: ảnh biên bản' })).toBe('DAU_AN');
+    expect(moduleThongBao({ noi_dung: 'Hành động: Học Excel nâng cao\nTrao đổi: đã xong bài 3' })).toBe('CT3');
+    expect(moduleThongBao({ noi_dung: 'Việc: Thu hồi nợ nhóm 2\nTrao đổi: đã gặp khách' })).toBeNull();
+    expect(moduleThongBao({ noi_dung: 'Hồ sơ: Công ty Hải Nam (2,5 tỷ)\nNội dung: bổ sung BCTC' })).toBeNull();
+    // Tin không theo chuẩn nhãn (câu văn) — mặc định họ CT2, không nhãn
+    expect(moduleThongBao({ noi_dung: 'Phòng: KHDN\nĐúng giờ: 3/4' })).toBeNull();
   });
 });
 

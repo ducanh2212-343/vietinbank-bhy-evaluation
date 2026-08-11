@@ -326,7 +326,7 @@ Deno.serve(async (req) => {
       let pushSent = 0;
       for (const m of misses) {
         pushSent += await sendPush(admin, subsByProfile, vapidPrivateKey, m.staffId, {
-          title: '⏰ Tuần này bạn chưa cập nhật Kanban',
+          title: '⏰ [CT3] Tuần này bạn chưa cập nhật Kanban',
           body: `Còn ${m.cards} hành động chưa cập nhật tuần này. Hạn chót: hết Chủ nhật — quá tuần sẽ báo đỏ tới lãnh đạo.`,
           url: '/hanh-dong-phat-trien',
           tag: 'kanban-tuan',
@@ -337,7 +337,7 @@ Deno.serve(async (req) => {
         const ten = ds.slice(0, 4).map((m) => m.staffName).join(', ');
         const them = ds.length > 4 ? ` và ${ds.length - 4} người nữa` : '';
         leaderPush += await sendPush(admin, subsByProfile, vapidPrivateKey, ldId, {
-          title: `⏰ ${ds.length} cán bộ chưa cập nhật Kanban tuần này`,
+          title: `⏰ [CT3] ${ds.length} cán bộ chưa cập nhật Kanban tuần này`,
           body: `Chưa cập nhật: ${ten}${them}.\nCòn thứ Sáu tới hết Chủ nhật để kịp — nhắc ngay thì tuần này không phải báo đỏ.`,
           url: '/hanh-dong-phat-trien?view=team',
           tag: 'kanban-tuan-lanh-dao',
@@ -496,7 +496,7 @@ ${updHtml}
       });
       if (!error) enqueued++;
       pushSent += await sendPush(admin, subsByProfile, vapidPrivateKey, r.profile.id, {
-        title: `📋 Kanban tuần ${weekLabel} — hoàn thành ${tiLeXong}%`,
+        title: `📋 [CT3] Kanban tuần ${weekLabel} — hoàn thành ${tiLeXong}%`,
         body: `Chưa khởi động: ${imPV} thẻ\nQuá hạn: ${trePV}\nChưa cập nhật tuần: ${myMisses.length} cán bộ`,
         url: '/hanh-dong-phat-trien?view=team',
         tag: 'kanban-tuan-digest',
@@ -533,9 +533,10 @@ ${updHtml}
     const soanTinPhong = (g: { ten: string; daNhap: string[]; chuaNhap: string[] }) => {
       const tong = g.daNhap.length + g.chuaNhap.length;
       return {
+        // [CT3] — nhãn phân hệ 11/08 (đồng bộ notify-kanban-update và notify-ct2)
         title: g.chuaNhap.length === 0
-          ? `✅ ${g.ten}: cả phòng đã cập nhật tuần ${weekLabel}`
-          : `📋 ${g.ten} tuần ${weekLabel}: ${g.chuaNhap.length}/${tong} chưa cập nhật`,
+          ? `✅ [CT3] ${g.ten}: cả phòng đã cập nhật tuần ${weekLabel}`
+          : `📋 [CT3] ${g.ten} tuần ${weekLabel}: ${g.chuaNhap.length}/${tong} chưa cập nhật`,
         body: g.chuaNhap.length === 0
           ? `Cả ${tong} cán bộ có kế hoạch đang chạy đều đã cập nhật. Giữ nhịp này sang tuần mới.`
           : `Chưa cập nhật: ${g.chuaNhap.join(', ')}` +

@@ -887,6 +887,21 @@ export function duongDanThongBao(tb: Pick<Ct2ThongBao, 'ma_su_kien' | 'dau_viec_
   return '/one/chieu-thuc-2';
 }
 
+/**
+ * Tin thuộc phân hệ nào — để chuông và push phân biệt CT2 / CT3 / Dấu ấn BHY Mark.
+ *
+ * Nguồn sự thật là NHÃN DÒNG ĐẦU thân tin (chuẩn hình thức 09/08: mỗi dòng một
+ * nhãn), không phải ma_su_kien: bình luận dùng chung N12 và bằng chứng dùng chung
+ * NHIP cho mọi loại đối tượng, chỉ nhãn dòng đầu biết tin nói về thứ gì.
+ * Trả null cho họ CT2 (Việc/Hồ sơ/nhịp): chuông vốn là chuông CT2, dán nhãn cho
+ * số đông chỉ thêm rối — chỉ tin «lạc dòng» (CT3, Dấu ấn) mới cần nhãn.
+ */
+export function moduleThongBao(tb: Pick<Ct2ThongBao, 'noi_dung'>): 'CT3' | 'DAU_AN' | null {
+  if (tb.noi_dung.startsWith('Dấu ấn:')) return 'DAU_AN';
+  if (tb.noi_dung.startsWith('Hành động:')) return 'CT3';
+  return null;
+}
+
 /** «12 phút trước» dễ đọc hơn dấu thời gian đầy đủ trong danh sách chuông */
 export function khiNaoThongBao(iso: string, moc: Date = new Date()): string {
   const phut = Math.round((moc.getTime() - new Date(iso).getTime()) / 60000);
