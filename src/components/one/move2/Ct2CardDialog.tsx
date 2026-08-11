@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { CalendarClock, Eye, Hourglass, NotebookPen, Rocket, Star } from 'lucide-react';
+import { CalendarClock, Eye, Hourglass, Rocket, Star } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -178,9 +178,10 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
             gia={the.nguoi_chiu_trach_nhiem
               ? (tenNguoi.get(the.nguoi_chiu_trach_nhiem) ?? '—')
               : '— thẻ đang vô chủ'} />
+          {/* Chỉ HIỂN THỊ — sửa cấp phụ trách đã gộp vào nút «Sửa thẻ» bên dưới */}
           <Ct2CapPhuTrach
             phongId={the.phong} nguoiLam={the.nguoi_chiu_trach_nhiem}
-            gia={the} nhanSu={nhanSu} suaDuoc={laLanhDao}
+            gia={the} nhanSu={nhanSu} suaDuoc={false}
             onLuu={(v) => ct2SuaDauViec(the.id, v)}
             onXong={() => { lamTuoi('board'); onXong(); }}
           />
@@ -194,31 +195,16 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
         </div>
 
         {/*
-          HÀNG NÚT SỬA — tách hẳn khỏi khối thông tin, theo góp ý của Giám đốc
-          («giao diện chỗ bày hơi rối… chữ màu ghi gạch chân rất dễ gây nhầm»):
-          khối xám ở trên chỉ CHỨA DỮ LIỆU, mọi cửa sửa gom về một hàng nút
-          thật — cao 44px đủ chạm ngón tay, viền rõ, icon vector. Chữ gạch chân
-          trong khối thông tin bị mắt đọc thành ghi chú, không phải chỗ bấm.
-          Nút Chuyển/Ghi nhịp bên dưới vẫn là hành động chính (nút màu đặc);
-          hàng này là hành động phụ nên chỉ viền.
+          MỘT nút «Sửa thẻ» duy nhất — Giám đốc xem trên điện thoại chê hộp
+          thoại «phân mảnh ra nhiều mục»: ba cửa sửa rời nhau (thông tin thẻ /
+          kế hoạch làm / cấp phụ trách) là ba lần người dùng phải đoán mình cần
+          cửa nào. Gộp về một form một nút Lưu trong Ct2SuaThongTin; quyền từng
+          ô vẫn đúng luật DB. «Bắt đầu làm» ở trên vẫn là cổng khởi động riêng.
         */}
-        {(laChuThe || laLanhDao) && (
-          <div className="grid gap-2 sm:grid-cols-2">
-            {(laChuThe || laLanhDao) && (daDuKeHoach(the) || the.trang_thai !== 'CHUAN_BI') && (
-              <button
-                className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-brand-navy shadow-sm active:bg-slate-50"
-                onClick={() => onLapKeHoach(false)}
-              >
-                <NotebookPen className="h-4 w-4 shrink-0" />
-                {daDuKeHoach(the) ? 'Sửa kế hoạch làm' : 'Ghi kế hoạch làm'}
-              </button>
-            )}
-            <Ct2SuaThongTin
-              the={the} nhanSu={nhanSu} laLanhDao={laLanhDao}
-              onXong={() => { lamTuoi('board'); onXong(); }}
-            />
-          </div>
-        )}
+        <Ct2SuaThongTin
+          the={the} nhanSu={nhanSu} laLanhDao={laLanhDao} laChuThe={laChuThe}
+          onXong={() => { lamTuoi('board'); onXong(); }}
+        />
 
         {/*
           Gỡ thẻ nhập nhầm — KHÁC Dừng/Hủy và cố ý nhỏ, nằm cuối, không phải nút
