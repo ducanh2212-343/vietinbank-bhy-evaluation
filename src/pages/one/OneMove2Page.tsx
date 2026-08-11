@@ -147,6 +147,37 @@ function NoiDung() {
     // moTheTuId phụ thuộc dsThe (đổi mỗi lần làm tươi) — cố ý chỉ chạy theo tham số
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [thamSo]);
+  // Đường ?ho_so= — đối xứng với ?the= nhưng cho hồ sơ PDTD: «Có hồ sơ chờ
+  // anh/chị» bấm vào phải MỞ hồ sơ đó (nơi có sẵn ô Trao đổi), không phải mở
+  // chung tab rồi bắt người duyệt tự tìm giữa 48 hồ sơ. Tải riêng một hồ sơ
+  // thay vì tìm trong dsHoSo: người nhận có thể đang xem phòng khác, và board
+  // phòng đó có khi còn chưa tải xong lúc effect chạy.
+  const daMoHoSoTheoLien = useRef<string | null>(null);
+  useEffect(() => {
+    const id = thamSo.get('ho_so');
+    if (!id || daMoHoSoTheoLien.current === id) return;
+    daMoHoSoTheoLien.current = id;
+    (async () => {
+      const db = supabase as unknown as {
+        from(t: string): { select(c: string): { eq(c: string, v: string): { maybeSingle(): PromiseLike<{ data: unknown }> } } };
+      };
+      const { data } = await db.from('ct2_ho_so_tin_dung').select('*').eq('id', id).maybeSingle();
+      if (data) {
+        const hs = data as HoSoTinDung;
+        // Chuyển bảng về đúng phòng của hồ sơ — lãnh đạo tuyến trên có thể
+        // đang đứng ở phòng khác lúc bấm thông báo
+        setPhongId(hs.phong);
+        setTab('tin-dung');
+        setHoSoChuyenDen(null);
+        setHoSoMo(hs);
+      }
+    })();
+    const con = new URLSearchParams(thamSo);
+    con.delete('ho_so');
+    datThamSo(con, { replace: true });
+    // Cùng lý do với ?the= — cố ý chỉ chạy theo tham số
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [thamSo]);
   // Tab tín dụng chỉ tồn tại với phòng có cấp tín dụng — về mặc định nếu không có
   useEffect(() => {
     if (tab === 'tin-dung' && phongCoPdtd.length > 0 && !coPdtd) setTab('cua-toi');

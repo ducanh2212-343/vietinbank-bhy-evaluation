@@ -30,6 +30,7 @@ interface ThongBao {
   ma_su_kien: string;
   nguoi_nhan: string;
   dau_viec_id: string | null;
+  ho_so_id: string | null;
   tieu_de: string;
   noi_dung: string;
   muc: string;
@@ -64,9 +65,14 @@ function nhanPhanHe(tb: ThongBao): string {
   return '[CT2] ';
 }
 
-/** Bấm vào thông báo phải mở đúng chỗ, nếu không cán bộ phải tự đi tìm thẻ. */
+/**
+ * Bấm vào thông báo phải mở đúng chỗ, nếu không cán bộ phải tự đi tìm thẻ.
+ * Quy tắc PHẢI trùng với duongDanThongBao() ở client (src/lib/ct2.ts) —
+ * push và chuông trong ứng dụng không được lệch nhau.
+ */
 function duongDan(tb: ThongBao): string {
   if (tb.dau_viec_id) return `/one/chieu-thuc-2?the=${tb.dau_viec_id}`;
+  if (tb.ho_so_id) return `/one/chieu-thuc-2?ho_so=${tb.ho_so_id}`;
   if (tb.ma_su_kien.startsWith('HS_')) return '/one/chieu-thuc-2?tab=tin-dung';
   return '/one/chieu-thuc-2';
 }
@@ -96,7 +102,7 @@ Deno.serve(async (req) => {
     const qua = new Date(Date.now() - 12 * 3600 * 1000).toISOString();
     const { data: rows, error: loiDoc } = await admin
       .from('ct2_thong_bao')
-      .select('id, ma_su_kien, nguoi_nhan, dau_viec_id, tieu_de, noi_dung, muc, kenh, phat_luc')
+      .select('id, ma_su_kien, nguoi_nhan, dau_viec_id, ho_so_id, tieu_de, noi_dung, muc, kenh, phat_luc')
       .is('gui_luc', null)
       .lte('phat_luc', bayGio)
       .gte('phat_luc', qua)

@@ -163,10 +163,17 @@ export function Ct2DongThoiGian({
   };
 
   const soBaoCao = baoCao.length;
-  const soTraoDoi = binhLuans.filter((b) => !b.thu_hoi).length;
+  // Dòng đã thu hồi BIẾN HẲN khỏi mạch — Giám đốc chê tấm bia «(Đã thu hồi —
+  // vẫn lưu vết trong hệ thống)» chỉ gây nhiễu. Vết vẫn nguyên trong database
+  // (thu hồi là cờ, không phải xoá); màn hình không cần nhắc điều đó.
+  const traoDoiHien = useMemo(
+    () => (binhLuans as Ct2BinhLuan[]).filter((b) => !b.thu_hoi),
+    [binhLuans],
+  );
+  const soTraoDoi = traoDoiHien.length;
   const nhomNgay = useMemo(
-    () => gopDongThoiGian(baoCao, binhLuans as Ct2BinhLuan[], loc),
-    [baoCao, binhLuans, loc],
+    () => gopDongThoiGian(baoCao, traoDoiHien, loc),
+    [baoCao, traoDoiHien, loc],
   );
 
   return (
@@ -191,52 +198,15 @@ export function Ct2DongThoiGian({
           ))}
         </div>
       </div>
-      {nhomNgay.length === 0 && (
-        <p className="rounded-xl border border-dashed border-slate-200 p-3 text-xs text-slate-500">
-          {loc === 'BAO_CAO'
-            ? 'Chưa có báo cáo nào.'
-            : loc === 'TRAO_DOI'
-              ? 'Chưa có trao đổi nào.'
-              : (loiMoiDau ?? 'Chưa có dòng nào.')}
-        </p>
-      )}
-
-      <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
-        {nhomNgay.map((nhom) => (
-          <div key={nhom.nhan}>
-            {/* Vạch ngày: bỏ phần lặp «4/8/2026» ở từng dòng, trong ngày chỉ còn giờ */}
-            <p className="sticky top-0 z-[1] mb-1.5 flex items-center gap-2 bg-white/95 py-0.5 text-2xs font-semibold text-slate-400">
-              <span className="h-px flex-1 bg-slate-100" />
-              {nhom.nhan}
-              <span className="h-px flex-1 bg-slate-100" />
-            </p>
-            <div className="space-y-2">
-              {nhom.items.map((d) => d.kieu === 'BAO_CAO'
-                ? <DongBaoCaoRow key={`bc-${d.bc.id}`} bc={d.bc} ten={tenDayDu} />
-                : (
-                  <DongTraoDoiRow
-                    key={`td-${d.bl.id}`} b={d.bl} ten={tenDayDu} profileId={profileId}
-                    camXucs={camXucs} onThaCamXuc={thaCamXuc}
-                    onThuHoi={async () => {
-                      const { error } = await ct2ThuHoiBinhLuan(d.bl.id);
-                      if (error) toast.error(error);
-                      else lamTuoi();
-                    }}
-                  />
-                ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Ô soạn CHỈ gửi trao đổi — báo cáo đi qua form ghi nhịp có cấu trúc ở trên */}
-      <div className="mt-2 space-y-2 rounded-xl bg-slate-50/70 p-2">
-        <p className="flex items-center gap-1 text-xs font-medium text-slate-600">
-          <MessageSquare className="h-3 w-3" /> Trao đổi
-          <span className="font-normal text-slate-400">— báo cáo tiến độ dùng ô «Ghi nhịp» phía trên</span>
-        </p>
+      {/*
+        Ô soạn nằm TRÊN mạch, không phải dưới đáy — Giám đốc yêu cầu «trao đổi
+        mới sẽ gần báo cáo, trao đổi gần nhất»: mạch xếp mới-nhất-trước, nên
+        chỗ gõ phải đứng cạnh những dòng mới nhất. Để dưới đáy thì viết xong
+        câu trả lời hiện ra tít trên đầu, ngoài tầm mắt người vừa gõ.
+      */}
+      <div className="mb-2 space-y-2 rounded-xl bg-slate-50/70 p-2">
         <Textarea rows={2} className="bg-white" value={noiDung} onChange={(e) => setNoiDung(e.target.value)}
-          placeholder={goiY ?? 'Hỏi–đáp đúng ngữ cảnh. Sau khi gửi chỉ thu hồi được, không sửa.'} />
+          placeholder={goiY ?? 'Trao đổi về thẻ này… (báo cáo tiến độ dùng ô «Ghi nhịp» phía trên)'} />
 
         {dsCoTheNhac.length > 0 && (
           <div>
@@ -279,6 +249,45 @@ export function Ct2DongThoiGian({
           </Button>
         </div>
       </div>
+
+      {nhomNgay.length === 0 && (
+        <p className="rounded-xl border border-dashed border-slate-200 p-3 text-xs text-slate-500">
+          {loc === 'BAO_CAO'
+            ? 'Chưa có báo cáo nào.'
+            : loc === 'TRAO_DOI'
+              ? 'Chưa có trao đổi nào.'
+              : (loiMoiDau ?? 'Chưa có dòng nào.')}
+        </p>
+      )}
+
+      <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
+        {nhomNgay.map((nhom) => (
+          <div key={nhom.nhan}>
+            {/* Vạch ngày: bỏ phần lặp «4/8/2026» ở từng dòng, trong ngày chỉ còn giờ */}
+            <p className="sticky top-0 z-[1] mb-1.5 flex items-center gap-2 bg-white/95 py-0.5 text-2xs font-semibold text-slate-400">
+              <span className="h-px flex-1 bg-slate-100" />
+              {nhom.nhan}
+              <span className="h-px flex-1 bg-slate-100" />
+            </p>
+            <div className="space-y-2">
+              {nhom.items.map((d) => d.kieu === 'BAO_CAO'
+                ? <DongBaoCaoRow key={`bc-${d.bc.id}`} bc={d.bc} ten={tenDayDu} />
+                : (
+                  <DongTraoDoiRow
+                    key={`td-${d.bl.id}`} b={d.bl} ten={tenDayDu} profileId={profileId}
+                    camXucs={camXucs} onThaCamXuc={thaCamXuc}
+                    onThuHoi={async () => {
+                      const { error } = await ct2ThuHoiBinhLuan(d.bl.id);
+                      if (error) toast.error(error);
+                      else lamTuoi();
+                    }}
+                  />
+                ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
     </div>
   );
 }
@@ -361,45 +370,42 @@ function DongTraoDoiRow({ b, ten, profileId, camXucs, onThaCamXuc, onThuHoi }: {
     <div className={`ml-4 rounded-2xl border p-2.5 text-sm ${
       b.ghim ? 'border-amber-300 bg-amber-50' : 'border-slate-100 bg-slate-50'
     }`}>
+      {/* Dòng đã thu hồi không vào tới đây — mạch đã lọc chúng từ gốc */}
       <p className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
         <MessageSquare className="h-3 w-3 text-slate-400" />
         <span className="font-medium text-slate-700">{ten.get(b.nguoi_gui) ?? '—'}</span>
         <span className="tabular-nums">{gioVn(b.created_at)}</span>
         {b.ghim && <span>📌 Ghim</span>}
-        {b.can_tra_loi && !b.thu_hoi && (
+        {b.can_tra_loi && (
           <Badge variant="outline" className="border-red-300 text-red-700">Cần trả lời</Badge>
         )}
-        {(b.nhac_ten ?? []).includes(profileId ?? '') && !b.thu_hoi && (
+        {(b.nhac_ten ?? []).includes(profileId ?? '') && (
           <Badge variant="outline" className="border-blue-300 text-blue-700">Nhắc anh/chị</Badge>
         )}
-        {b.nguoi_gui === profileId && !b.thu_hoi && (
+        {b.nguoi_gui === profileId && (
           <button className="inline-flex items-center gap-0.5 text-slate-400 hover:text-red-600" onClick={onThuHoi}>
             <Undo2 className="h-3 w-3" /> Thu hồi
           </button>
         )}
       </p>
-      <p className={`mt-1 whitespace-pre-wrap ${b.thu_hoi ? 'italic text-slate-400' : 'text-slate-800'}`}>
-        {b.thu_hoi ? '(Đã thu hồi — vẫn lưu vết trong hệ thống)' : b.noi_dung}
-      </p>
-      {!b.thu_hoi && (b.nhac_ten ?? []).length > 0 && (
+      <p className="mt-1 whitespace-pre-wrap text-slate-800">{b.noi_dung}</p>
+      {(b.nhac_ten ?? []).length > 0 && (
         <p className="mt-1 text-xs text-blue-700">
           @ {(b.nhac_ten ?? []).map((id) => ten.get(id) ?? '—').join(', ')}
         </p>
       )}
-      {!b.thu_hoi && (
-        <p className="mt-1.5 flex flex-wrap gap-1">
-          {CT2_CAM_XUC.map((e) => {
-            const so = camXucs.filter((c) => c.binh_luan_id === b.id && c.bieu_tuong === e).length;
-            const cuaToi = camXucs.some((c) => c.binh_luan_id === b.id && c.bieu_tuong === e && c.nguoi === profileId);
-            return (
-              <button key={e} onClick={() => onThaCamXuc(b.id, e)}
-                className={`rounded-full px-1.5 py-0.5 text-xs ${cuaToi ? 'bg-blue-100' : so > 0 ? 'bg-white' : 'opacity-40 hover:opacity-100'}`}>
-                {e}{so > 0 && <span className="ml-0.5 tabular-nums">{so}</span>}
-              </button>
-            );
-          })}
-        </p>
-      )}
+      <p className="mt-1.5 flex flex-wrap gap-1">
+        {CT2_CAM_XUC.map((e) => {
+          const so = camXucs.filter((c) => c.binh_luan_id === b.id && c.bieu_tuong === e).length;
+          const cuaToi = camXucs.some((c) => c.binh_luan_id === b.id && c.bieu_tuong === e && c.nguoi === profileId);
+          return (
+            <button key={e} onClick={() => onThaCamXuc(b.id, e)}
+              className={`rounded-full px-1.5 py-0.5 text-xs ${cuaToi ? 'bg-blue-100' : so > 0 ? 'bg-white' : 'opacity-40 hover:opacity-100'}`}>
+              {e}{so > 0 && <span className="ml-0.5 tabular-nums">{so}</span>}
+            </button>
+          );
+        })}
+      </p>
     </div>
   );
 }
