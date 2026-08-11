@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { lienDangNhap } from '@/lib/dieuHuongDangNhap';
 
 // Các đường dẫn khách đối tác (guest) được phép vào — allowlist để fail-closed:
 // route mới thêm sau này mặc định KHÔNG mở cho guest.
@@ -26,10 +27,13 @@ export function GuestGate() {
 
 export function AdminRoute() {
   const { isAdmin, loading, user } = useAuth();
+  const location = useLocation();
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Đang tải...</div>;
   }
-  if (!user) return <Navigate to="/dang-nhap" replace />;
+  // Giữ đích đến như ProtectedRoutes — link sâu vào trang quản trị gửi qua chat/email
+  // cũng phải sống sót qua cửa đăng nhập.
+  if (!user) return <Navigate to={lienDangNhap(location)} replace />;
   if (!isAdmin) return <Navigate to="/tong-quan" replace />;
   return <Outlet />;
 }
@@ -40,10 +44,11 @@ export function AdminRoute() {
  */
 export function ManagerOrAboveRoute() {
   const { isAdmin, isManager, isPgd, loading, user } = useAuth();
+  const location = useLocation();
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Đang tải...</div>;
   }
-  if (!user) return <Navigate to="/dang-nhap" replace />;
+  if (!user) return <Navigate to={lienDangNhap(location)} replace />;
   if (!isAdmin && !isManager && !isPgd) return <Navigate to="/tong-quan" replace />;
   return <Outlet />;
 }

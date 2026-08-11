@@ -5,6 +5,10 @@ notifications để phân biệt rõ tên task, tên người báo cáo ghi nh�
 ghi nhịp/trao đổi — hiện nay đang hơi rối, có tỷ lệ % và các dấu rất khó nhìn"*, và yêu
 cầu tiếp theo: *"tính toán cho tất cả các loại push"*.
 
+Bổ sung 11/08/2026 (mục 7): nhãn phân hệ `[CT2]`/`[CT3]`/`[Dấu ấn]` trong tiêu đề push
++ chuông trong app đậm tiêu đề và treo chip — trả lời yêu cầu GĐ: *"bôi đậm các tiêu đề
+để dễ nhìn hơn, phân biệt Task chiêu thức 2, chiêu thức 3 upskill và BHY Mark"*.
+
 ## 1. Chỗ rối của format cũ
 
 Ảnh màn hình khóa cho thấy ba lỗi cùng lúc:
@@ -100,3 +104,118 @@ chính là thứ chen giữa gây rối.
 | `ct2-nhip-bao-cao` v3 | ĐÃ deploy — nhịp ngày 09:15 sáng thứ Hai chạy format mới |
 | `weekly-kanban-digest`, `send-reminders` | Sửa trong repo, deploy theo lịch sáng thứ Hai (sau digest 06:30) |
 | `nhac-lich-nghi` | Sửa trong repo — deploy cùng đợt kế tiếp, lần nhắc tới ~23/08 |
+
+Sáng 11/08: digest 06:30 kiểm tra 15/15 thư gửi đủ → `weekly-kanban-digest` v5,
+`send-reminders` v16, `nhac-lich-nghi` v2 đã deploy — toàn bộ 21 loại chạy chuẩn 09/08.
+
+## 7. Nhãn phân hệ (bổ sung 11/08/2026)
+
+Ba phân hệ cùng bắn push về một điện thoại: **Chiêu thức 2** (đầu việc + hồ sơ tín
+dụng + nhịp), **Chiêu thức 3** (Kanban hành động phát triển — upskill), **Dấu ấn BHY
+Mark**. GĐ yêu cầu nhìn tiêu đề phải biết ngay tin thuộc phân hệ nào.
+
+### Nguồn sự thật: nhãn dòng đầu thân tin, không phải mã sự kiện
+
+`ma_su_kien` không phân biệt được phân hệ — bình luận dùng chung `N12` và bằng chứng
+dùng chung `NHIP` cho mọi loại đối tượng. Nhưng chuẩn 09/08 đã bắt thân tin mở đầu bằng
+nhãn đối tượng, nên nhãn đó chính là mã phân hệ:
+
+| Nhãn dòng đầu | Phân hệ | Tag tiêu đề |
+|---|---|---|
+| `Việc:` / `Hồ sơ:` / khác | Chiêu thức 2 | `[CT2]` |
+| `Hành động:` | Chiêu thức 3 | `[CT3]` |
+| `Dấu ấn:` | BHY Mark | `[Dấu ấn]` |
+
+Hệ quả phải vá để nhãn đủ nghĩa (migration `20260917090000`):
+- `f_ct2_thong_bao_binh_luan`: bình luận trên **thẻ Kanban** trước rơi vào nhãn mặc
+  định `Việc:` — không tách được CT3 khỏi CT2. Nay nhánh `THE_KANBAN` dùng `Hành động:`.
+- `f_ct2_thong_bao_bang_chung`: tiêu đề rút còn «… — bồi bằng chứng» (tag `[Dấu ấn]`
+  đã nói phân hệ, khỏi lặp chữ).
+- `notify-kanban-update`: thân tin đổi `Việc:` → `Hành động:` cho khớp quy ước.
+
+### Nơi gắn tag
+
+- **Tin qua hàng đợi CT2** → `notify-ct2` gắn TẬP TRUNG khi phát:
+  `<dấu mức> [<phân hệ>] <tiêu đề>` (hàm `nhanPhanHe`, trùng luật `moduleThongBao`
+  phía app). `LICH_NGHI` không tag — tin hạ tầng cho quản trị. Vì vậy các hàm soạn
+  tiếp tục KHÔNG tự thêm emoji lẫn tag vào `tieu_de`; `ct2-nhip-bao-cao` v4 đã bỏ
+  📊/📈 tự gắn (trước đó màn hình khóa hiện hai emoji chồng nhau: «🟡 📊 Nhịp…»).
+- **Tin CT3 push thẳng** (`notify-kanban-update`, `weekly-kanban-digest`) → tự gắn
+  `[CT3]` ngay sau emoji đầu tiêu đề, ở cả 8 mẫu tin.
+- `send-reminders` giữ nguyên: digest việc tồn gộp nhiều phân hệ trong một tin, tin
+  nhắc nộp phiếu thuộc hệ đánh giá 343 — không thuộc ba phân hệ trên.
+
+### Bôi đậm nhãn: được ở chuông, KHÔNG được ở màn hình khóa
+
+Câu hỏi GĐ 11/08: in đậm riêng «Việc:», «Nội dung:»… còn chữ sau để thường?
+
+- **Màn hình khóa: không có đường làm.** Web Push chỉ nhận `body` là chuỗi chữ thuần
+  (`showNotification(title, { body })`) — chuẩn không có trường định dạng, hệ điều hành
+  cho đúng hai mức: tiêu đề đậm, thân thường. Đúng trên cả iOS lẫn Android.
+  Mẹo ký tự Unicode đậm (𝗩𝗶ệ𝗰) **không dùng**: bảng ký tự đó thiếu nguyên âm tiếng
+  Việt nên chữ hiện nửa đậm nửa thường, máy cũ ra ô vuông, trình đọc màn hình đọc
+  thành «ký tự toán học in đậm V». Vì vậy nhãn phải tự đứng vững bằng CẤU TRÚC —
+  đầu dòng, dấu hai chấm, mỗi dòng một nhãn. Đó là lý do luật 2 mục 2 tồn tại.
+- **Chuông thì được** (HTML): nhãn `font-semibold` + đậm màu hơn một nấc
+  (`text-foreground/75`), phần chữ theo sau giữ `text-muted-foreground`.
+
+Nhãn nhận diện theo **hình dạng**, không theo danh sách cố định (`tachNhanDong`,
+`src/lib/ct2.ts`): đầu dòng, chỉ chữ/số/khoảng trắng, tối đa 28 ký tự, cho phép một
+dấu cảnh báo đứng trước (`⚠️ Vướng:`). Nhờ vậy nhãn mới sinh sau này (`Hạn nộp:`,
+`Phần S3:`) tự khớp mà không phải sửa mã, còn câu văn có dấu hai chấm ở giữa
+(«…chưa cập nhật. Hạn chót: hết Chủ nhật») thì không bị bôi nhầm — dấu chấm chặn lại.
+Có test cho cả hai chiều.
+
+### Chuông trong ứng dụng (`Ct2ChuongThongBao`)
+
+- Tiêu đề đổi `font-medium` → `font-semibold` — chữ đậm, quét danh sách nhanh hơn
+  (màn hình khóa thì OS vốn tự đậm tiêu đề, không cần làm gì).
+- Chuông vốn là chuông CT2 nên KHÔNG dán nhãn cho số đông; chỉ tin «lạc dòng» đeo
+  chip màu: `CT3` (tím), `Dấu ấn` (hổ phách) — đọc từ `moduleThongBao(noi_dung)`
+  (`src/lib/ct2.ts`, có test). Tin cũ trước 11/08 mang nhãn `Việc:` cho thẻ Kanban
+  sẽ hiện như CT2 — chấp nhận, danh sách 20 tin xoay vòng nhanh.
+
+Ví dụ sau khi gắn (dry-run 11/08 trên dữ liệu thật):
+
+> **📝 [CT3] Trần Văn Khái — tiến độ 0%**
+> Hành động: Cần ứng dụng AI vào công việc cụ thể
+> Nội dung: AI được dùng vào việc tra cứu, tạo thiệp chúc mừng sinh nhật…
+
+> **🟡 [CT2] Nhịp sáng nay — 2 cán bộ cần nhắc**
+> Phòng: Phòng KHDN
+> Đúng giờ: 5/7
+> Mất nhịp: Đỗ Việt Anh, Hàn Thị Thùy Linh
+
+Triển khai 11/08: migration `20260917090000` đã áp; `notify-ct2` v5,
+`notify-kanban-update` v5, `weekly-kanban-digest` v6, `ct2-nhip-bao-cao` v4 đã deploy;
+phần chuông theo bản build frontend kế tiếp.
+
+## 8. Bấm push phải tới đúng việc, kể cả khi phiên đã hết (12/08/2026)
+
+GĐ báo: bấm thông báo lúc chưa đăng nhập (hoặc đã bị đăng xuất sau 1 tiếng) thì đăng
+nhập xong **mất luôn** việc đang muốn xem. Tin đúng, và hỏng ở hai chỗ nối tiếp nhau
+trên cùng một cú bấm:
+
+**a) Cửa đăng nhập không nhớ đích đến.** Ba chỗ cùng vứt địa chỉ đang muốn tới:
+`ProtectedRoutes` và hai chốt trong `AdminRoute` đẩy về `/dang-nhap` trống, `LoginRoute`
+thì cứng `/one`, còn `Login.tsx` gọi thêm `navigate('/')`. Nay đích đến đi kèm qua
+`?tiep=` trên thanh địa chỉ (`src/lib/dieuHuongDangNhap.ts`), và `LoginRoute` là **nơi
+duy nhất** quyết định đi đâu sau đăng nhập — `Login.tsx` thôi tự điều hướng để hai lệnh
+không đá nhau.
+
+Vì sao dùng URL chứ không phải bộ nhớ của router: push mở cửa sổ mới hoàn toàn, và
+người dùng có thể tải lại trang đăng nhập giữa chừng — trạng thái trong bộ nhớ mất theo.
+
+`?tiep=` **chỉ nhận đường dẫn nội bộ**. Tham số chuyển hướng không kiểm tra là lỗ hổng
+kinh điển: gửi link `/dang-nhap?tiep=https://trang-gia-mao…` để cán bộ đăng nhập thật
+rồi bị ném sang trang giả mạo. Chặn cả `//tên-miền`, `/\tên-miền`, ký tự điều khiển
+chèn giữa, và vòng lặp về chính cửa đăng nhập. Có test cho từng đường.
+
+**b) Service worker nuốt lỗi mở trang.** `client.navigate(url)` **từ chối** khi cửa sổ
+không do service worker điều khiển (tab mở trước khi SW kịp nắm quyền), nhưng lỗi đó bị
+bỏ qua và cửa sổ vẫn được `focus()` — người dùng bấm thông báo mà cửa sổ đứng nguyên
+trang cũ, y hệt triệu chứng «mất luôn». Nay có nhánh dự phòng mở cửa sổ mới.
+
+Đã kiểm chứng bằng trình duyệt thật trên bản build: 4 đường push (thẻ việc CT2, hồ sơ
+tín dụng, Kanban CT3, link sâu trang quản trị) đều giữ nguyên đích qua cửa đăng nhập;
+2 đường chuyển hướng độc đều bị chặn ở lại trong hệ thống.

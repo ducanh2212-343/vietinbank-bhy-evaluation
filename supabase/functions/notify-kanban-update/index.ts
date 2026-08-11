@@ -14,9 +14,9 @@
 // bị thiếu manager_id" → mọi cán bộ chưa gắn TP đều leo thẳng lên GĐ. Nay quyết định dựa
 // vào chức danh: cán bộ thiếu TP thì chỉ báo PGĐ và ghi log cảnh báo, KHÔNG leo lên GĐ.
 //
-// Hình thức tin (chuẩn 09/08 — thống nhất với các hàm f_ct2_thong_bao_* trong DB):
-//   Tiêu đề: 📝 <Tên cán bộ> — tiến độ <N>%   (đậm, một dòng, không gãy)
-//   Thân:    Việc: <tên hành động, cắt 70>
+// Hình thức tin (chuẩn 09/08 + nhãn phân hệ 11/08 — thống nhất với f_ct2_thong_bao_*):
+//   Tiêu đề: 📝 [CT3] <Tên cán bộ> — tiến độ <N>%   (đậm, một dòng, không gãy)
+//   Thân:    Hành động: <tên hành động, cắt 70>     («Hành động» = thẻ CT3, «Việc» = CT2)
 //            Nội dung: <ghi chú cập nhật, cắt 140>
 //            ⚠️ Có vướng mắc, cần hỗ trợ      (chỉ khi có)
 // Quyền: chỉ service_role (trigger). Body: {log_id, dry_run?} — dry_run trả danh sách
@@ -165,7 +165,9 @@ Deno.serve(async (req) => {
     if (log.blocker_note && String(log.blocker_note).trim()) flags.push('có vướng mắc');
     if (log.support_needed && String(log.support_needed).trim()) flags.push('cần hỗ trợ');
 
-    const dong: string[] = [`Việc: ${short(card.title, 70)}`];
+    // «Hành động:» chứ không «Việc:» — nhãn phân hệ 11/08: Việc = đầu việc CT2,
+    // Hành động = thẻ Kanban CT3. Chuông/push đọc nhãn dòng đầu để phân biệt.
+    const dong: string[] = [`Hành động: ${short(card.title, 70)}`];
     if (note) dong.push(`Nội dung: ${note}`);
     if (flags.length) {
       const canhBao = flags.join(', ');
@@ -174,11 +176,12 @@ Deno.serve(async (req) => {
     if (isDone) dong.push('Chờ anh/chị xác nhận để đóng thẻ.');
 
     const msg = {
+      // [CT3] — nhãn phân hệ 11/08, để màn hình khóa phân biệt được với tin CT2/Dấu ấn
       title: isDone
-        ? `🏁 ${owner.full_name} — báo hoàn thành`
+        ? `🏁 [CT3] ${owner.full_name} — báo hoàn thành`
         : percent != null
-          ? `📝 ${owner.full_name} — tiến độ ${percent}%`
-          : `📝 ${owner.full_name} — cập nhật hành động`,
+          ? `📝 [CT3] ${owner.full_name} — tiến độ ${percent}%`
+          : `📝 [CT3] ${owner.full_name} — cập nhật hành động`,
       body: dong.join('\n'),
       url: '/hanh-dong-phat-trien?view=team',
       tag: `kanban-update-${log.id}`, // tag riêng từng lần để không đè thông báo trước

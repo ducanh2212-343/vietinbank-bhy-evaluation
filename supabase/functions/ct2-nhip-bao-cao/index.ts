@@ -196,9 +196,11 @@ Deno.serve(async (req) => {
         // Hình thức theo chuẩn 09/08: tiêu đề mang CON SỐ CẦN HÀNH ĐỘNG, thân tin
         // mỗi dòng một nhãn — không nối các vế bằng «·» nữa.
         const canNhac = [...new Set([...t.muon, ...t.matNhip])];
+        // Không tự gắn emoji vào tiêu đề (luật 09/08): notify-ct2 đã thêm dấu mức
+        // và nhãn [CT2] khi phát — tự gắn nữa là màn hình khóa hiện hai emoji chồng nhau.
         const tieuDe = canNhac.length === 0
-          ? '✅ Nhịp sáng nay — cả phòng đúng giờ'
-          : `📊 Nhịp sáng nay — ${canNhac.length} cán bộ cần nhắc`;
+          ? 'Nhịp sáng nay — cả phòng đúng giờ'
+          : `Nhịp sáng nay — ${canNhac.length} cán bộ cần nhắc`;
         const dongTin: string[] = [`Phòng: ${t.ten}`, `Đúng giờ: ${t.dungGio.length}/${tong}`];
         if (t.matNhip.length) dongTin.push(`Mất nhịp: ${keTen([...new Set(t.matNhip)])}`);
         if (t.muon.length) dongTin.push(`Muộn: ${keTen([...new Set(t.muon)])}`);
@@ -299,7 +301,8 @@ Deno.serve(async (req) => {
       const tiLe = luot === 0 ? 100 : Math.round((100 * giu) / luot);
 
       const phamViText = phamViPhong ? bangPhong[0].ten : 'Toàn chi nhánh';
-      const tieuDePush = `📈 Nhịp tuần ${nhan} — giữ nhịp ${tiLe}%`;
+      // Không emoji trong tiêu đề hàng đợi — notify-ct2 gắn dấu mức + [CT2] khi phát
+      const tieuDePush = `Nhịp tuần ${nhan} — giữ nhịp ${tiLe}%`;
       const noiDungPush = dsNhac.length === 0
         ? `Phạm vi: ${phamViText}\nKhông ai lỡ nhịp tuần này.`
         : `Phạm vi: ${phamViText}\nCần nhắc: ${dsNhac.length} cán bộ\nĐứng đầu: ${keTen(dsNhac.slice(0, 3).map((v) => `${v.ten} (${v.mat} ngày)`), 3)}`;
