@@ -17,6 +17,7 @@ import {
   khiNaoThongBao,
   kiemTraKeHoach,
   moduleThongBao,
+  tachNhanDong,
   soNgayLamViec,
   locEmojiTieuDe,
   lyDoChanChuyen,
@@ -354,6 +355,31 @@ describe('Nhãn phân hệ của thông báo — đọc từ nhãn dòng đầu 
     expect(moduleThongBao({ noi_dung: 'Hồ sơ: Công ty Hải Nam (2,5 tỷ)\nNội dung: bổ sung BCTC' })).toBeNull();
     // Tin không theo chuẩn nhãn (câu văn) — mặc định họ CT2, không nhãn
     expect(moduleThongBao({ noi_dung: 'Phòng: KHDN\nĐúng giờ: 3/4' })).toBeNull();
+  });
+});
+
+describe('Tách nhãn đầu dòng để chuông in đậm', () => {
+  it('bắt mọi nhãn đang dùng, kể cả nhãn có dấu cảnh báo hoặc số', () => {
+    expect(tachNhanDong('Việc: Bàn giao báo cáo TF cho hậu kiểm'))
+      .toEqual({ nhan: 'Việc:', con: ' Bàn giao báo cáo TF cho hậu kiểm' });
+    expect(tachNhanDong('Hồ sơ: Công ty Hải Nam (2,5 tỷ)')?.nhan).toBe('Hồ sơ:');
+    expect(tachNhanDong('Hành động: Học Excel nâng cao')?.nhan).toBe('Hành động:');
+    expect(tachNhanDong('⚠️ Vướng: chưa có phương thức họp')?.nhan).toBe('⚠️ Vướng:');
+    expect(tachNhanDong('Phần S2: Biên bản làm việc')?.nhan).toBe('Phần S2:');
+    expect(tachNhanDong('Đúng giờ: 3/4')?.nhan).toBe('Đúng giờ:');
+    expect(tachNhanDong('Hạn: 07/08/2026 → 16/08/2026')?.nhan).toBe('Hạn:');
+  });
+
+  it('không bôi đậm nhầm câu văn có dấu hai chấm ở giữa', () => {
+    expect(tachNhanDong('Đã báo hoàn thành — mời anh/chị rà và đóng thẻ.')).toBeNull();
+    expect(tachNhanDong('❗ Cần trả lời')).toBeNull();
+    // Dấu hai chấm nằm sau một câu trọn vẹn: dấu chấm chặn lại
+    expect(tachNhanDong('Còn 2 hành động chưa cập nhật. Hạn chót: hết Chủ nhật')).toBeNull();
+    // Nhãn quá dài thì coi như câu văn, tránh bôi đen nửa dòng
+    expect(tachNhanDong('Tổ chức Hội đồng BHY ideas phiên đầu tiên: đã tổng hợp')).toBeNull();
+    // Chỉ tách ở dấu hai chấm ĐẦU TIÊN — phần nội dung giữ nguyên dấu của nó
+    expect(tachNhanDong('Trao đổi: anh Nam: em gửi rồi ạ'))
+      .toEqual({ nhan: 'Trao đổi:', con: ' anh Nam: em gửi rồi ạ' });
   });
 });
 

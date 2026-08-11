@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  CT2_DAU_MUC, duongDanThongBao, khiNaoThongBao, moduleThongBao, type Ct2ThongBao,
+  CT2_DAU_MUC, duongDanThongBao, khiNaoThongBao, moduleThongBao, tachNhanDong,
+  type Ct2ThongBao,
 } from '@/lib/ct2';
 import { cn } from '@/lib/utils';
 
@@ -139,7 +140,22 @@ export function Ct2ChuongThongBao() {
                     {t.tieu_de}
                   </span>
                 </p>
-                <p className="mt-0.5 line-clamp-2 whitespace-pre-wrap text-xs text-muted-foreground">{t.noi_dung}</p>
+                {/* Nhãn đầu dòng in đậm, phần chữ theo sau để thường — mắt bắt được
+                    cấu trúc tin trước khi đọc. Màn hình khóa không làm được (thân push
+                    là chuỗi thuần), nên đây là chỗ duy nhất tận dụng được. */}
+                <p className="mt-0.5 line-clamp-2 whitespace-pre-wrap text-xs text-muted-foreground">
+                  {t.noi_dung.split('\n').map((dong, i) => {
+                    const tach = tachNhanDong(dong);
+                    return (
+                      <span key={i}>
+                        {i > 0 && '\n'}
+                        {tach
+                          ? <><span className="font-semibold text-foreground/75">{tach.nhan}</span>{tach.con}</>
+                          : dong}
+                      </span>
+                    );
+                  })}
+                </p>
                 <p className="mt-1 text-2xs text-muted-foreground">{khiNaoThongBao(t.created_at)}</p>
               </button>
               );

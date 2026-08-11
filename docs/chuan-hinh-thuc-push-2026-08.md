@@ -145,6 +145,27 @@ Hệ quả phải vá để nhãn đủ nghĩa (migration `20260917090000`):
 - `send-reminders` giữ nguyên: digest việc tồn gộp nhiều phân hệ trong một tin, tin
   nhắc nộp phiếu thuộc hệ đánh giá 343 — không thuộc ba phân hệ trên.
 
+### Bôi đậm nhãn: được ở chuông, KHÔNG được ở màn hình khóa
+
+Câu hỏi GĐ 11/08: in đậm riêng «Việc:», «Nội dung:»… còn chữ sau để thường?
+
+- **Màn hình khóa: không có đường làm.** Web Push chỉ nhận `body` là chuỗi chữ thuần
+  (`showNotification(title, { body })`) — chuẩn không có trường định dạng, hệ điều hành
+  cho đúng hai mức: tiêu đề đậm, thân thường. Đúng trên cả iOS lẫn Android.
+  Mẹo ký tự Unicode đậm (𝗩𝗶ệ𝗰) **không dùng**: bảng ký tự đó thiếu nguyên âm tiếng
+  Việt nên chữ hiện nửa đậm nửa thường, máy cũ ra ô vuông, trình đọc màn hình đọc
+  thành «ký tự toán học in đậm V». Vì vậy nhãn phải tự đứng vững bằng CẤU TRÚC —
+  đầu dòng, dấu hai chấm, mỗi dòng một nhãn. Đó là lý do luật 2 mục 2 tồn tại.
+- **Chuông thì được** (HTML): nhãn `font-semibold` + đậm màu hơn một nấc
+  (`text-foreground/75`), phần chữ theo sau giữ `text-muted-foreground`.
+
+Nhãn nhận diện theo **hình dạng**, không theo danh sách cố định (`tachNhanDong`,
+`src/lib/ct2.ts`): đầu dòng, chỉ chữ/số/khoảng trắng, tối đa 28 ký tự, cho phép một
+dấu cảnh báo đứng trước (`⚠️ Vướng:`). Nhờ vậy nhãn mới sinh sau này (`Hạn nộp:`,
+`Phần S3:`) tự khớp mà không phải sửa mã, còn câu văn có dấu hai chấm ở giữa
+(«…chưa cập nhật. Hạn chót: hết Chủ nhật») thì không bị bôi nhầm — dấu chấm chặn lại.
+Có test cho cả hai chiều.
+
 ### Chuông trong ứng dụng (`Ct2ChuongThongBao`)
 
 - Tiêu đề đổi `font-medium` → `font-semibold` — chữ đậm, quét danh sách nhanh hơn
