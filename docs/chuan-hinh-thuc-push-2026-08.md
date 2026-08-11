@@ -189,3 +189,33 @@ Ví dụ sau khi gắn (dry-run 11/08 trên dữ liệu thật):
 Triển khai 11/08: migration `20260917090000` đã áp; `notify-ct2` v5,
 `notify-kanban-update` v5, `weekly-kanban-digest` v6, `ct2-nhip-bao-cao` v4 đã deploy;
 phần chuông theo bản build frontend kế tiếp.
+
+## 8. Bấm push phải tới đúng việc, kể cả khi phiên đã hết (12/08/2026)
+
+GĐ báo: bấm thông báo lúc chưa đăng nhập (hoặc đã bị đăng xuất sau 1 tiếng) thì đăng
+nhập xong **mất luôn** việc đang muốn xem. Tin đúng, và hỏng ở hai chỗ nối tiếp nhau
+trên cùng một cú bấm:
+
+**a) Cửa đăng nhập không nhớ đích đến.** Ba chỗ cùng vứt địa chỉ đang muốn tới:
+`ProtectedRoutes` và hai chốt trong `AdminRoute` đẩy về `/dang-nhap` trống, `LoginRoute`
+thì cứng `/one`, còn `Login.tsx` gọi thêm `navigate('/')`. Nay đích đến đi kèm qua
+`?tiep=` trên thanh địa chỉ (`src/lib/dieuHuongDangNhap.ts`), và `LoginRoute` là **nơi
+duy nhất** quyết định đi đâu sau đăng nhập — `Login.tsx` thôi tự điều hướng để hai lệnh
+không đá nhau.
+
+Vì sao dùng URL chứ không phải bộ nhớ của router: push mở cửa sổ mới hoàn toàn, và
+người dùng có thể tải lại trang đăng nhập giữa chừng — trạng thái trong bộ nhớ mất theo.
+
+`?tiep=` **chỉ nhận đường dẫn nội bộ**. Tham số chuyển hướng không kiểm tra là lỗ hổng
+kinh điển: gửi link `/dang-nhap?tiep=https://trang-gia-mao…` để cán bộ đăng nhập thật
+rồi bị ném sang trang giả mạo. Chặn cả `//tên-miền`, `/\tên-miền`, ký tự điều khiển
+chèn giữa, và vòng lặp về chính cửa đăng nhập. Có test cho từng đường.
+
+**b) Service worker nuốt lỗi mở trang.** `client.navigate(url)` **từ chối** khi cửa sổ
+không do service worker điều khiển (tab mở trước khi SW kịp nắm quyền), nhưng lỗi đó bị
+bỏ qua và cửa sổ vẫn được `focus()` — người dùng bấm thông báo mà cửa sổ đứng nguyên
+trang cũ, y hệt triệu chứng «mất luôn». Nay có nhánh dự phòng mở cửa sổ mới.
+
+Đã kiểm chứng bằng trình duyệt thật trên bản build: 4 đường push (thẻ việc CT2, hồ sơ
+tín dụng, Kanban CT3, link sâu trang quản trị) đều giữ nguyên đích qua cửa đăng nhập;
+2 đường chuyển hướng độc đều bị chặn ở lại trong hệ thống.

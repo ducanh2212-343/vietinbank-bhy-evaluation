@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/hooks/useTheme";
+import { dichSauDangNhap, lienDangNhap } from "@/lib/dieuHuongDangNhap";
 import { IdleLogoutGuard } from "@/components/IdleLogoutGuard";
 import { AdminRoute, ManagerOrAboveRoute, GuestGate } from "@/components/AdminRoute";
 import { RouteFallback } from "@/components/RouteFallback";
@@ -134,7 +135,9 @@ function ProtectedRoutes() {
   const { user, loading, mustChangePassword } = useAuth();
   const location = useLocation();
   if (loading) return <RouteFallback />;
-  if (!user) return <Navigate to="/dang-nhap" replace />;
+  // Mang theo chỗ đang muốn tới: bấm thông báo lúc phiên đã hết (tự đăng xuất sau
+  // 60 phút) thì đăng nhập xong phải vào thẳng việc đó, không đổ về cổng chung.
+  if (!user) return <Navigate to={lienDangNhap(location)} replace />;
   // Đang dùng mật khẩu tạm: chặn mọi trang, ép về trang đổi mật khẩu trước.
   if (mustChangePassword && location.pathname !== '/doi-mat-khau') {
     return <Navigate to="/doi-mat-khau" replace />;
@@ -144,10 +147,13 @@ function ProtectedRoutes() {
 
 function LoginRoute() {
   const { user, loading } = useAuth();
+  const location = useLocation();
   if (loading) return <RouteFallback />;
-  // Cổng BHY ONE là cửa vào chung của mọi vai trò (sơ đồ site đã duyệt);
-  // phân hệ nhân sự 343 vào từ menu "Nhân sự 343" của cổng.
-  if (user) return <Navigate to="/one" replace />;
+  // Đây là NƠI DUY NHẤT quyết định đi đâu sau khi đăng nhập (Login.tsx không tự
+  // điều hướng nữa, tránh hai lệnh đá nhau). Mặc định là cổng BHY ONE — cửa vào
+  // chung của mọi vai trò (sơ đồ site đã duyệt); phân hệ nhân sự 343 vào từ menu
+  // "Nhân sự 343" của cổng. Có ?tiep= thì trả về đúng chỗ người dùng đang muốn tới.
+  if (user) return <Navigate to={dichSauDangNhap(location.search)} replace />;
   return (
     <Suspense fallback={<RouteFallback />}>
       <Login />
