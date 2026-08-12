@@ -62,7 +62,7 @@ cho câu một ý.
 | Nhắc nộp phiếu | như trên | giữ | `Hạn nộp:` + câu hệ quả |
 | Nhắc lịch nghỉ | `nhac-lich-nghi` | giữ | bỏ ký hiệu `↳` |
 | Quiz / mẹo tính năng | `quiz-reminders`, `send-feature-tip-push` | giữ | câu một ý — không cần nhãn (quiz chưa chạy) |
-| **Nhắc nhịp sáng cho cán bộ** (12/08) | `ct2_nhac_nhip_sang` | `Sáng nay còn N việc phải ghi nhịp` | câu mở ngày (kho 67 câu, xoay vòng) + `Việc 1:`/`Việc 2:` (tối đa 2) + mốc giờ |
+| **Nhắc nhịp sáng cho cán bộ** (12/08) | `ct2_nhac_nhip_sang` | `Sáng nay còn N việc phải ghi nhịp` | câu mở ngày (kho 78 câu, xoay vòng) + `Việc 1:`/`Việc 2:` (tối đa 2) + mốc giờ |
 
 Tin qua hàng đợi CT2 được `notify-ct2` tự thêm dấu mức ở đầu tiêu đề: 🟡 nhẹ · 🔴 đỏ ·
 ⛔ chặn — vì vậy các hàm soạn KHÔNG tự thêm emoji vào `tieu_de`.
@@ -266,7 +266,7 @@ Mẫu tin (dry-run dữ liệu thật, sau khi `notify-ct2` gắn dấu mức + 
 > Việc 2: hoàn thiện cấp GHTD cho cty sơn tùng
 > Ghi trước 08:31 là đúng giờ — sau 08:45 tính mất nhịp.
 
-Từ 13/08, tin mở bằng MỘT CÂU MỞ NGÀY xoay vòng (kho 67 câu, 10 nhóm động cơ, không lặp
+Từ 13/08, tin mở bằng MỘT CÂU MỞ NGÀY xoay vòng (kho 78 câu, 11 nhóm động cơ, không lặp
 trong 63 ngày, có chế độ an_toan/tat cho ngày nhạy cảm) — «mở bằng người, đóng bằng
 luật». Thiết kế, kho câu và quy tắc vận hành: docs/cau-mo-ngay-nhac-nhip-sang-2026-08.md.
 
