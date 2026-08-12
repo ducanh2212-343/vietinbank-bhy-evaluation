@@ -63,9 +63,11 @@ cho câu một ý.
 | Nhắc lịch nghỉ | `nhac-lich-nghi` | giữ | bỏ ký hiệu `↳` |
 | Quiz / mẹo tính năng | `quiz-reminders`, `send-feature-tip-push` | giữ | câu một ý — không cần nhãn (quiz chưa chạy) |
 | **Nhắc nhịp sáng cho cán bộ** (12/08) | `ct2_nhac_nhip_sang` | `Sáng nay còn N việc phải ghi nhịp` | câu mở ngày (kho 78 câu, xoay vòng) + `Việc 1:`/`Việc 2:` (tối đa 2) + `Chuỗi đúng giờ:` khi ≥3 ngày + mốc giờ |
+| **Khen mốc chuỗi đúng giờ** (13/08) | `ct2_khen_chuoi_moc` | `Chuỗi đúng giờ: N ngày liền` | câu dịch mốc ra nghĩa đời thường + `Mốc kế tiếp: N ngày.` |
 
 Tin qua hàng đợi CT2 được `notify-ct2` tự thêm dấu mức ở đầu tiêu đề: 🟡 nhẹ · 🔴 đỏ ·
-⛔ chặn — vì vậy các hàm soạn KHÔNG tự thêm emoji vào `tieu_de`.
+⛔ chặn · 🔥 khen (mức `KHEN`, 13/08 — tin vui không đội mũ cảnh báo) — vì vậy các hàm
+soạn KHÔNG tự thêm emoji vào `tieu_de`.
 
 ## 4. Ví dụ trước / sau — đúng tin trong ảnh GĐ gửi
 
@@ -298,8 +300,8 @@ chốt làm cả hai hướng KHÔNG phá nguyên tắc «im lặng là đúng»
   nào; người đã ghi xong vẫn im lặng. Đây là loss-aversion kiểu Duolingo bằng số thật
   của chính người nhận.
 
-Hướng thứ ba — push chúc mừng khi đạt mốc — **cố ý không làm**: người làm tốt bắt đầu
-nhận tin là phá nguyên tắc số một; muốn thì GĐ chốt riêng.
+Hướng thứ ba — push chúc mừng khi đạt mốc — ban đầu cố ý để lại chờ GĐ chốt riêng,
+và **GĐ đã chốt làm ngay trong ngày** (xem phần «Khen mốc chuỗi» bên dưới).
 
 Luật công bằng: **ngày nghỉ phép / không có việc không phá chuỗi** (ngày đó không có
 ảnh chụp). Chuỗi tính đến lần chốt sổ 09:00 gần nhất, sàn 06/08 trùng Bảng nhịp.
@@ -313,3 +315,43 @@ Luật công bằng: **ngày nghỉ phép / không có việc không phá chuỗ
 Kiểm chứng 13/08: hàm khớp tính tay 100% trên toàn bộ ảnh chụp; 8 cán bộ đang giữ chuỗi
 ≥3 (dài nhất 5); dry-run tin sáng 13/08 có 7 người nhận dòng chuỗi. Nhân tiện sửa dòng
 mốc giờ chôn cứng «8h00/8h30» ở tab «Của tôi» — nay đọc từ cấu hình, khớp với tin push.
+
+### Khen mốc chuỗi — hướng C, GĐ chốt làm (13/08/2026)
+
+`ct2_khen_chuoi_moc` + cron `ct2-khen-chuoi-moc` **09:05** thứ 2–6 (sau chốt sổ 09:00,
+trước digest TP 09:15; cron riêng — không đụng đường chốt sổ). Đây là chỗ **nới có chủ
+đích** nguyên tắc «im lặng là đúng»: người làm tốt được nhận tin, nhưng chỉ tại mốc hiếm.
+
+- **Mốc: 5 / 10 / 20 / 50 / 100** ngày làm việc liên tiếp đúng giờ — người hoàn hảo tuyệt
+  đối cũng chỉ nhận tối đa 5 tin một năm. Đứt chuỗi gây dựng lại thì được khen lại khi
+  chạm mốc lần nữa. Đổi mốc = sửa mảng `cac_moc` trong hàm (cố ý không cho vào bảng cấu
+  hình — mốc đổi xoành xoạch thì chuỗi mất thiêng).
+- **Chỉ gửi cho chính người đạt mốc** — không bắn cho TP/GĐ: lời khen là chuyện riêng,
+  không phải công cụ giám sát.
+- **Mức tin mới `KHEN` (🔥)**: tin vui không đội mũ 🟡; urgency `normal`; vẫn theo khung
+  giờ yên tĩnh 07:00–18:00 (không phải CHAN). CHECK cột `muc` đã thêm giá trị; emoji map
+  ở cả `notify-ct2` lẫn `CT2_DAU_MUC` client.
+- **Chỉ khen khi hôm nay có ảnh chụp `DUNG_GIO`** — mốc vừa vượt sáng nay; chốt sổ chưa
+  chạy (lễ/hỏng) thì im lặng, không khen nhầm mốc hôm qua. Chống trùng theo
+  (`CHUOI_MOC`, người, ngày VN).
+
+Mẫu tin (đã bắn thử thật vào 5 thiết bị của GĐ qua notify-ct2 v7, 0 lỗi):
+
+> **🔥 [CT2] Chuỗi đúng giờ: 5 ngày liền**
+> Tròn một tuần làm việc không sót nhịp nào.
+> Mốc kế tiếp: 10 ngày.
+
+Câu theo mốc: 5 = «Tròn một tuần làm việc không sót nhịp nào.» · 10 = «Hai tuần liền
+mạch — nhịp đã thành thói quen.» · 20 = «Tròn một tháng làm việc, không sót một ngày.»
+· 50 = «Mười tuần liền mạch — kỷ luật thành bản năng.» · 100 = «Một trăm ngày làm việc
+không sót nhịp nào.» + «Từ đây, mỗi ngày là một kỷ lục mới.» (hết mốc thì không treo
+mốc kế tiếp nữa).
+
+Kiểm chứng trên dữ liệu thật: dry-run hôm nay ra đúng 4 người ở mốc 5 · kịch bản ngày
+mai (ảnh chụp giả, xóa ngay) khen đúng người chạm 5 và bỏ qua người sang 6 · thứ Bảy im
+lặng · chạy lại lần hai 0 tin (chống trùng) · 4 tin nằm hàng đợi `phat_luc` 07:00 sáng
+13/08 đúng khung giờ yên tĩnh.
+
+**Chạy bù một lần 12/08:** 4 người chạm mốc 5 đúng hôm tính năng ra đời (Phạm Minh Huế,
+Vũ Đức Nam, Vũ Nhật Linh, Vũ Thị Thu Hà) — mốc của họ rơi vào 09:00 sáng nay, trước khi
+cron tồn tại, nên đặt tay 4 tin khen; tin về máy lúc 07:00 sáng 13/08. Từ 13/08 cron tự lo.
