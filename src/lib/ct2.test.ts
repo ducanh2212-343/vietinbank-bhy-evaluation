@@ -366,6 +366,9 @@ describe('Tách nhãn đầu dòng để chuông in đậm', () => {
     expect(tachNhanDong('Hành động: Học Excel nâng cao')?.nhan).toBe('Hành động:');
     expect(tachNhanDong('⚠️ Vướng: chưa có phương thức họp')?.nhan).toBe('⚠️ Vướng:');
     expect(tachNhanDong('Phần S2: Biên bản làm việc')?.nhan).toBe('Phần S2:');
+    // Nhãn đánh số của tin nhắc nhịp sáng (12/08) — chuông phải in đậm được cả số
+    expect(tachNhanDong('Việc 1: Hoàn thiện hs bảo lãnh cho cty tiến phát')?.nhan).toBe('Việc 1:');
+    expect(tachNhanDong('Việc 2: hoàn thiện cấp GHTD cho cty sơn tùng')?.nhan).toBe('Việc 2:');
     expect(tachNhanDong('Đúng giờ: 3/4')?.nhan).toBe('Đúng giờ:');
     expect(tachNhanDong('Hạn: 07/08/2026 → 16/08/2026')?.nhan).toBe('Hạn:');
   });

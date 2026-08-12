@@ -71,7 +71,8 @@ BEGIN
              public.ct2_cat(d.tieu_de, 70) AS ten_viec,
              -- Gần hạn lên trước: cắt còn 3 dòng thì giữ lại việc gấp nhất
              row_number() OVER (PARTITION BY d.nguoi_chiu_trach_nhiem
-                                ORDER BY d.han_hoan_thanh NULLS LAST, d.created_at) AS thu_tu
+                                ORDER BY d.han_hoan_thanh NULLS LAST, d.created_at) AS thu_tu,
+             count(*) OVER (PARTITION BY d.nguoi_chiu_trach_nhiem) AS tong_cua_nguoi
         FROM public.ct2_dau_viec d
        WHERE d.loai_dau_viec = 'TIEN_TRINH'
          AND d.trang_thai = 'DANG_LAM'
@@ -85,7 +86,13 @@ BEGIN
            p.full_name AS ten_nguoi,
            count(*)::int AS dem,
            (array_agg(c.viec_id ORDER BY c.thu_tu))[1] AS viec_dau,
-           string_agg('Việc: ' || c.ten_viec, E'\n' ORDER BY c.thu_tu)
+           -- Đánh số «Việc 1/2/3» khi có nhiều việc (GĐ chỉnh 12/08): danh sách dễ quét
+           -- và khớp với con số ở tiêu đề. Còn đúng một việc thì để «Việc:» trơn — số
+           -- thứ tự lúc đó không nói thêm gì, mà lại gợi người đọc đi tìm «Việc 2».
+           string_agg(
+             CASE WHEN c.tong_cua_nguoi = 1 THEN 'Việc: '
+                  ELSE 'Việc ' || c.thu_tu || ': ' END || c.ten_viec,
+             E'\n' ORDER BY c.thu_tu)
              FILTER (WHERE c.thu_tu <= 3) AS ds_viec
       FROM con_no c
       JOIN public.profiles p ON p.id = c.ai AND p.status = 'active'
