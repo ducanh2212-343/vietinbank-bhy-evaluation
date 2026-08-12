@@ -870,12 +870,14 @@ export interface Ct2ThongBao {
   ho_so_id: string | null;
   tieu_de: string;
   noi_dung: string;
-  muc: 'NHE' | 'DO' | 'CHAN' | string;
+  muc: 'NHE' | 'DO' | 'CHAN' | 'KHEN' | string;
   created_at: string;
   doc_luc: string | null;
 }
 
-export const CT2_DAU_MUC: Record<string, string> = { CHAN: '⛔', DO: '🔴', NHE: '🟡' };
+// KHEN (13/08): tin vui — khen mốc chuỗi đúng giờ — mang 🔥 trùng huy hiệu ở tab
+// «Của tôi», không đội mũ cảnh báo 🟡. Trùng bảng DAU_MUC trong notify-ct2.
+export const CT2_DAU_MUC: Record<string, string> = { CHAN: '⛔', DO: '🔴', NHE: '🟡', KHEN: '🔥' };
 
 /**
  * Bấm vào thông báo phải mở đúng thứ nó nói tới.

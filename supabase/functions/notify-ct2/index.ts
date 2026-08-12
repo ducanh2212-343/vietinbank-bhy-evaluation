@@ -1,7 +1,7 @@
 // notify-ct2 — phát Web Push cho hàng đợi thông báo Chiêu thức 2 + Phê duyệt tín dụng.
 //
 // Khác notify-kanban-update ở chỗ: hàm này KHÔNG tự quyết ai được nhận. Mọi luật
-// (ai liên quan, trần 3 tin/người/ngày, im lặng ngoài giờ) đã nằm trong DB ở
+// (ai liên quan, im lặng ngoài giờ) đã nằm trong DB ở
 // public.ct2_dat_thong_bao — nơi duy nhất, để giao diện hay trigger mới sau này
 // cũng không lách được. Hàm này chỉ làm đúng một việc: đọc các dòng chưa gửi
 // trong ct2_thong_bao, đẩy đi, rồi đóng dấu gui_luc.
@@ -49,8 +49,10 @@ function parseJwtClaims(token: string): Record<string, unknown> | null {
 }
 
 // Biểu tượng theo mức, không theo mã sự kiện — cán bộ chỉ cần phân biệt
-// «phải xử lý ngay» với «biết để đấy».
-const DAU_MUC: Record<string, string> = { CHAN: '⛔', DO: '🔴', NHE: '🟡' };
+// «phải xử lý ngay» với «biết để đấy». KHEN (13/08) là tin vui — khen mốc chuỗi
+// đúng giờ — nên mang 🔥 trùng huy hiệu trong app, không đội mũ cảnh báo 🟡.
+// Trùng bảng CT2_DAU_MUC ở client (src/lib/ct2.ts) — chuông và push không lệch nhau.
+const DAU_MUC: Record<string, string> = { CHAN: '⛔', DO: '🔴', NHE: '🟡', KHEN: '🔥' };
 
 // Nhãn phân hệ trong tiêu đề push — GĐ yêu cầu 11/08: nhìn màn hình khóa phải biết
 // ngay tin thuộc Chiêu thức 2, Chiêu thức 3 (upskill) hay Dấu ấn BHY Mark.
@@ -171,7 +173,7 @@ Deno.serve(async (req) => {
             const init = await buildPushPayload(
               {
                 data: JSON.stringify(msg),
-                options: { ttl: 12 * 3600, urgency: tb.muc === 'NHE' ? 'normal' : 'high' },
+                options: { ttl: 12 * 3600, urgency: tb.muc === 'DO' || tb.muc === 'CHAN' ? 'high' : 'normal' },
               },
               { endpoint: s.endpoint, expirationTime: null, keys: { p256dh: s.p256dh, auth: s.auth } },
               { subject: VAPID_SUBJECT, publicKey: VAPID_PUBLIC_KEY, privateKey: vapidPrivateKey },

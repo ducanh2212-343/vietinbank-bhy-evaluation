@@ -274,6 +274,26 @@ export function useCt2ViecCuaToi() {
   });
 }
 
+/**
+ * Chuỗi ngày làm việc liên tiếp ghi nhịp đúng giờ của CHÍNH MÌNH — nguồn cho
+ * huy hiệu 🔥 ở tab «Của tôi». RPC phía DB chỉ trả chuỗi của người đang đăng
+ * nhập: cán bộ không tra được chuỗi của đồng nghiệp (nguyên tắc «nhịp là gương
+ * soi», không phải bảng so sánh). Số tính đến lần chốt sổ 09:00 gần nhất; ngày
+ * nghỉ phép hoặc không có việc không phá chuỗi.
+ */
+export function useCt2ChuoiCuaToi() {
+  const { profileId, isGuest } = useAuth();
+  return useQuery({
+    queryKey: ['ct2', 'chuoi-cua-toi', profileId],
+    enabled: !!profileId && !isGuest,
+    staleTime: NAM_PHUT,
+    queryFn: async () => {
+      const { data } = await db.rpc('ct2_chuoi_dung_gio_cua_toi');
+      return (data as number | null) ?? 0;
+    },
+  });
+}
+
 /** Số ngày còn giữ thẻ đã xong trên Kanban trang chủ trước khi nó rời tầm mắt */
 const NGAY_GIU_THE_XONG = 14;
 

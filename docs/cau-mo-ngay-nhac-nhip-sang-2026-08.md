@@ -488,3 +488,35 @@ Tài liệu trên được áp nguyên thiết kế; sáu chỗ dưới đây l�
 
 Ghi chú vận hành: hai câu nhóm F («Còn 61 phút…», «07:30 rồi…») gắn cứng khoảng cách
 07:30 → 08:31. TCTH dời giờ đúng-giờ trong Cài đặt ngày giờ thì phải rà lại nhóm F.
+
+---
+
+## Phụ lục C — Nhóm J «Mượn lời bài hát» (13/08/2026, GĐ cung cấp chất liệu)
+
+GĐ đưa lời 4 bài hay hát («Ai Chung Tình Được Mãi», «Diêu Bông», «Trọn Đời Có Nhau»,
+«Phép Màu») để đưa vào kho. Nguyên tắc chuyển thể: **không chép nguyên văn** — chỉ mượn
+cái móc ai cũng nhận ra rồi bẻ cái kết về ghi nhịp, đúng kỹ thuật «mượn tục ngữ bẻ lái»
+ở mục 4.6. Hai lẽ: lời gốc phần lớn là tình buồn, đứng trơ trên tin nhắc việc thì lạc
+điệu; và chép nguyên câu nhạc vào sản phẩm chạy hằng ngày là điều nên tránh — nhại vài
+chữ kiểu nhạc chế thì là văn hóa văn phòng lành mạnh.
+
+Nhóm J tách riêng để đo được cả cụm qua `ct2_hieu_qua_theo_nhom`, và nếu kiểu đùa này
+không hợp thì một lệnh tắt cả nhóm: `UPDATE ct2_cau_mo_ngay SET dang_dung=false WHERE nhom='J'`.
+
+| # | Câu | Móc gốc | Ngày căng |
+|---|---|---|---|
+| 1 | Bình minh ơi dậy chưa, ghi nhịp sáng với tôi. | «cà phê sáng với tôi được không» | — |
+| 2 | Cà phê thì cứ say, việc thì đừng bỏ đi. | «say thì cứ say, yêu thì bỏ đi» | — |
+| 3 | Ai chung tình được mãi? Nhịp thì được. | tên bài hát | — |
+| 4 | Bình minh chưa hé, nhịp phải ghi xong. | «bình minh chưa hé tôi phải tìm xong» | — |
+| 5 | Lâu không ghi, việc thành người lạ. | «ai đặt tên chúng ta là người lạ» | — |
+| 6 | Chuyện năm mươi năm sau bắt đầu từ dòng hôm nay. | «nguyện cầu đến năm mươi năm về sau» | dùng được |
+| 7 | Việc với bạn, sáng nào cũng có nhau. | «trọn đời có nhau» | dùng được |
+| 8 | Việc của bạn sợ cô đơn, ghé ghi một dòng. | «muốn một mình nhưng sợ cô đơn» | — |
+| 9 | Không cần phép màu, chỉ cần một dòng mỗi sáng. | «chẳng phải phép màu vậy sao» | dùng được |
+| 10 | Căng buồm ra khơi, mở ngày bằng một dòng mới. | «vẫn căng buồm ra khơi theo làn gió mới» | dùng được |
+| 11 | Tin này chỉ để gọi bạn thức giấc cơn ngủ mê. | «gọi tôi thức giấc cơn ngủ mê» | — |
+
+Kho sau bổ sung: **78 câu, 38 dùng được ngày căng**. thu_tu nhóm J = hạng×100+11 → đứng
+cuối mỗi vòng xen kẽ; mô phỏng xác nhận câu đầu nhóm lên sóng ngày làm việc thứ 11
+(27/08). Cả 11 câu qua CHECK trần 48 ký tự và ký tự cấm ngay khi nạp.
