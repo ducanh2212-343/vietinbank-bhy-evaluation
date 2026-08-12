@@ -62,6 +62,7 @@ cho câu một ý.
 | Nhắc nộp phiếu | như trên | giữ | `Hạn nộp:` + câu hệ quả |
 | Nhắc lịch nghỉ | `nhac-lich-nghi` | giữ | bỏ ký hiệu `↳` |
 | Quiz / mẹo tính năng | `quiz-reminders`, `send-feature-tip-push` | giữ | câu một ý — không cần nhãn (quiz chưa chạy) |
+| **Nhắc nhịp sáng cho cán bộ** (12/08) | `ct2_nhac_nhip_sang` | `Sáng nay còn N việc phải ghi nhịp` | `Việc 1:`/`Việc 2:`… mỗi dòng (tối đa 3) + mốc giờ |
 
 Tin qua hàng đợi CT2 được `notify-ct2` tự thêm dấu mức ở đầu tiêu đề: 🟡 nhẹ · 🔴 đỏ ·
 ⛔ chặn — vì vậy các hàm soạn KHÔNG tự thêm emoji vào `tieu_de`.
@@ -219,3 +220,61 @@ trang cũ, y hệt triệu chứng «mất luôn». Nay có nhánh dự phòng m
 Đã kiểm chứng bằng trình duyệt thật trên bản build: 4 đường push (thẻ việc CT2, hồ sơ
 tín dụng, Kanban CT3, link sâu trang quản trị) đều giữ nguyên đích qua cửa đăng nhập;
 2 đường chuyển hướng độc đều bị chặn ở lại trong hệ thống.
+
+## 9. Nhắc nhịp sáng cho cán bộ — 07:30 ngày làm việc (12/08/2026)
+
+Yêu cầu GĐ: *"xây dựng push cho cán bộ về các task cần cập nhật đầu giờ sáng, việc này
+gửi lúc 7h30 sáng ngày làm việc."*
+
+**Chỗ trống nó bổ.** Luồng nhịp trước đây chỉ báo SAU KHI ĐÃ LỠ: chốt sổ 09:00 → digest
+cho Trưởng phòng 09:15 («sáng nay ai chưa ghi»). Người duy nhất còn kịp làm gì đó trước
+mốc — chính cán bộ — lại không được nhắc. Nay khép vòng: nhắc người làm trước, báo người
+quản trước khi hết giờ, tổng kết cho lãnh đạo sau.
+
+| Mốc | Việc | Ai nhận |
+|---|---|---|
+| 06:45 | Mở nhịp | — |
+| **07:30** | **Nhắc việc chưa ghi** | **Từng cán bộ còn nợ** |
+| 08:31 | Hết đúng giờ | — |
+| 08:45 | Hết ân hạn | — |
+| 09:00 | Chốt sổ | — |
+| 09:15 | Digest ai chưa ghi | Trưởng phòng |
+
+**Ai nhận:** chỉ người còn nợ thật. Ghi hết trước 07:30 thì không nhận gì; không có việc
+đang chạy cũng vậy. Im lặng là trạng thái đúng, không phải hệ thống hỏng.
+
+**Đếm việc gì:** lấy nguyên định nghĩa của `ct2_chot_so_nhip` — đầu việc TIẾN TRÌNH đang
+làm, có người chịu trách nhiệm. Cố ý KHÔNG mở sang hồ sơ tín dụng hay Kanban CT3: nhắc
+thứ không nằm trong bảng chấm thì cán bộ làm xong vẫn bị trừ, còn thứ bị trừ thì không ai
+nhắc — sai một lần là lần sau không ai đọc.
+
+**Bấm vào mở thẳng thẻ:** còn đúng 1 việc thì tin gắn `dau_viec_id`, chuông và push đưa
+tới đúng thẻ đó. Thực tế cán bộ giữ trung bình 1,3 việc đang chạy nên đa số tin mở đúng
+một chạm. Nhiều việc thì để trống — về danh sách.
+
+**Mốc giờ trong tin đọc từ `ct2_cau_hinh()`**, không chôn số: TCTH dời giờ ân hạn thì lời
+nhắc tự đổi theo. Lãnh đạo phòng thực ra được tính đúng giờ tới 08:45, nhưng
+`ct2_la_lanh_dao_phong()` trả lời *"TÔI có phải lãnh đạo phòng này không"* (dựa `auth.uid()`)
+nên tác vụ nền không hỏi hộ người khác được — dùng chung mốc chặt hơn 08:31 cho mọi
+người: lãnh đạo bị nhắc sớm 14 phút thì vô hại, báo "vẫn kịp" cho người đã muộn thì có hại.
+
+Mẫu tin (dry-run dữ liệu thật, sau khi `notify-ct2` gắn dấu mức + nhãn phân hệ):
+
+> **🟡 [CT2] Sáng nay còn 2 việc phải ghi nhịp**
+> Việc 1: Hoàn thiện hs bảo lãnh và Hs PL cho cty mới: công ty tiến phát
+> Việc 2: hoàn thiện cấp GHTD cho cty sơn tùng
+> Ghi trước 08:31 là đúng giờ — sau 08:45 tính mất nhịp.
+
+**Chống nhắc trùng** khóa theo (loại tin, người, ngày giờ VN): cron chạy lại hay TCTH bấm
+tay đều không sinh tin thứ hai trong ngày. **Ngày nghỉ im lặng** qua `ct2_la_ngay_lam_viec`
+(cron chỉ biết thứ Hai–Sáu, không biết lễ).
+
+`_that = false` là mặc định — gọi tay chỉ xem trước, không gửi. Cron gọi `(true)`.
+
+Đã kiểm chứng trên database thật (giao dịch có rollback): ngày nghỉ im lặng ✓ · gửi thật
+đặt đúng 1 tin ✓ · chạy lại không trùng ✓ · `phat_luc` ngay không bị hoãn ✓ · gắn thẻ để
+bấm thẳng ✓ · mức NHE, kênh push+bell ✓.
+
+**Lưu ý vận hành:** bảng `lich_nghi_le` hiện đang RỖNG, nên mọi thứ Hai–Sáu đều bị coi là
+ngày làm việc — kể cả 02/09. TCTH cần nhập lịch nghỉ trước mỗi kỳ (tác vụ `nhac-lich-nghi`
+nhắc trước 10 ngày), nếu không cán bộ sẽ bị nhắc ghi nhịp vào đúng ngày lễ.
