@@ -264,39 +264,75 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, phongId, onMoThe
         </div>
       )}
 
-      {/* Bảng nhịp theo người (đặc tả §7.2) */}
-      {nhipNguoi.length > 0 && (
+      {/* Bảng nhịp theo người (đặc tả §7.2) — MỘT bảng chung cho cả hai Kanban,
+          số liệu tách cột «Việc phòng» / «PDTD» để lãnh đạo nhắc đúng người
+          đúng bảng (GĐ 12/08). Phòng không có hồ sơ tín dụng thì cột PDTD tự ẩn. */}
+      {nhipNguoi.length > 0 && (() => {
+        const coPdtd = nhipNguoi.some((n) => n.hs_dang_chay > 0);
+        return (
         <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200">
-          <table className="w-full min-w-[480px] text-sm">
+          <table className={`w-full text-sm ${coPdtd ? 'min-w-[560px]' : 'min-w-[480px]'}`}>
             <thead>
               <tr className="border-b bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                 <th className="px-3 py-2">Cán bộ</th>
-                <th className="px-3 py-2 text-center">Thẻ đang chạy</th>
-                <th className="px-3 py-2 text-center">Đã ghi hôm nay</th>
+                <th className="px-3 py-2 text-center">
+                  Việc phòng
+                  <span className="block text-2xs font-normal normal-case tracking-normal text-slate-400">đã ghi / đang chạy</span>
+                </th>
+                {coPdtd && (
+                  <th className="px-3 py-2 text-center">
+                    PDTD
+                    <span className="block text-2xs font-normal normal-case tracking-normal text-slate-400">đã ghi / đang chạy</span>
+                  </th>
+                )}
                 <th className="px-3 py-2">Nhịp</th>
               </tr>
             </thead>
             <tbody>
-              {nhipNguoi.map((n) => (
+              {nhipNguoi.map((n) => {
+                const thieu: string[] = [];
+                if (n.cv_da_ghi < n.cv_dang_chay) thieu.push(`${n.cv_dang_chay - n.cv_da_ghi} việc phòng`);
+                if (n.hs_da_ghi < n.hs_dang_chay) thieu.push(`${n.hs_dang_chay - n.hs_da_ghi} hồ sơ PDTD`);
+                return (
                 <tr key={n.profile_id} className="border-b last:border-0">
                   <td className="px-3 py-2 font-medium text-slate-800">{n.full_name}</td>
-                  <td className="px-3 py-2 text-center tabular-nums">{n.so_viec_dang_chay}</td>
-                  <td className="px-3 py-2 text-center tabular-nums">{n.so_viec_da_ghi}</td>
+                  <td className="px-3 py-2 text-center"><OTiSo daGhi={n.cv_da_ghi} dangChay={n.cv_dang_chay} /></td>
+                  {coPdtd && (
+                    <td className="px-3 py-2 text-center"><OTiSo daGhi={n.hs_da_ghi} dangChay={n.hs_dang_chay} /></td>
+                  )}
                   <td className="px-3 py-2">
                     {n.ket_qua === 'DUNG_GIO' && <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">✅ Đúng nhịp</Badge>}
                     {n.ket_qua === 'MUON' && <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">🟡 Nhịp muộn</Badge>}
                     {n.ket_qua === 'CHUA_DU' && <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">🟠 Mới ghi một phần</Badge>}
                     {n.ket_qua === 'CHUA_GHI' && <Badge className="bg-red-100 text-red-800 hover:bg-red-100">🔴 Chưa ghi nhịp</Badge>}
                     {n.ket_qua === 'KHONG_CO_VIEC' && <span className="text-xs text-slate-400">Không có việc cần ghi</span>}
+                    {/* Câu nhắc soạn sẵn: lãnh đạo đọc là biết nhắc về bảng nào */}
+                    {thieu.length > 0 && n.ket_qua !== 'NGAY_NGHI' && (
+                      <span className="mt-0.5 block text-2xs text-slate-500">còn thiếu {thieu.join(' · ')}</span>
+                    )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
+}
+
+/**
+ * Ô tỉ số «đã ghi / đang chạy» của một bảng Kanban trong bảng nhịp.
+ * Màu nói thay lời: xanh = đủ, vàng = một phần, đỏ = chưa ghi gì,
+ * gạch ngang = người này không có việc ở bảng đó (không phải lỗi).
+ */
+function OTiSo({ daGhi, dangChay }: { daGhi: number; dangChay: number }) {
+  if (dangChay === 0) return <span className="text-slate-300">—</span>;
+  const mau = daGhi === dangChay ? 'text-emerald-700'
+    : daGhi > 0 ? 'text-amber-700' : 'text-red-700';
+  return <span className={`font-semibold tabular-nums ${mau}`}>{daGhi}/{dangChay}</span>;
 }
 
 function OSo({ nhan, giaTri, tot }: { nhan: string; giaTri: string; tot: boolean }) {

@@ -39,12 +39,15 @@ interface Props {
 }
 
 export function Ct2BangDialog({ open, bang, phongId, nhanSu, phongs, onClose, onXong }: Props) {
-  const { profileId } = useAuth();
+  const { profileId, roles } = useAuth();
   const { data: thanhVienCu = [] } = useCt2ThanhVienBang(bang?.id ?? null);
+  // Đặt/gỡ chế độ toàn chi nhánh là quyết định cấp chi nhánh — trigger DB là
+  // hàng rào thật, đây chỉ để không mời lãnh đạo phòng bấm vào việc sẽ bị chặn
+  const laBgd = roles.includes('bgd') || roles.includes('system_admin');
 
   const [ten, setTen] = useState('');
   const [moTa, setMoTa] = useState('');
-  const [loai, setLoai] = useState<'MANG' | 'LIEN_PHONG'>('MANG');
+  const [loai, setLoai] = useState<'MANG' | 'LIEN_PHONG' | 'TOAN_CN'>('MANG');
   const [cheDoXem, setCheDoXem] = useState<'PHONG' | 'HAN_CHE'>('PHONG');
   const [thanhVien, setThanhVien] = useState<string[]>([]);
   const [timTen, setTimTen] = useState('');
@@ -64,9 +67,9 @@ export function Ct2BangDialog({ open, bang, phongId, nhanSu, phongs, onClose, on
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, thanhVienCu.join(',')]);
 
-  // Mảng trong phòng: chọn người trong phòng. Liên phòng: mở toàn Chi nhánh.
+  // Mảng trong phòng: chọn người trong phòng. Liên phòng / toàn CN: mở toàn Chi nhánh.
   const danhBa = useMemo(() => {
-    const nguon = loai === 'LIEN_PHONG' ? nhanSu : nhanSu.filter((n) => n.department_id === phongId);
+    const nguon = loai === 'MANG' ? nhanSu.filter((n) => n.department_id === phongId) : nhanSu;
     const tu = timTen.trim().toLowerCase();
     return tu ? nguon.filter((n) => n.full_name.toLowerCase().includes(tu)) : nguon;
   }, [nhanSu, loai, phongId, timTen]);
@@ -78,7 +81,9 @@ export function Ct2BangDialog({ open, bang, phongId, nhanSu, phongs, onClose, on
       toast.error('Tên bảng cần tối thiểu 3 ký tự.');
       return;
     }
-    if (cheDoXem === 'HAN_CHE' && thanhVien.length === 0) {
+    // Toàn chi nhánh buộc chế độ mở — ràng buộc DB cũng chặn, ép ở đây cho chắc
+    const cheDo = loai === 'TOAN_CN' ? 'PHONG' : cheDoXem;
+    if (cheDo === 'HAN_CHE' && thanhVien.length === 0) {
       toast.error('Bảng hạn chế phải có ít nhất một thành viên — nếu không thì ngoài BGĐ không ai mở được.');
       return;
     }
@@ -86,14 +91,14 @@ export function Ct2BangDialog({ open, bang, phongId, nhanSu, phongs, onClose, on
     let bangId = bang?.id ?? null;
     if (bang) {
       const { error } = await ct2SuaBang(bang.id, {
-        ten: ten.trim(), mo_ta: moTa.trim() || null, loai, che_do_xem: cheDoXem,
+        ten: ten.trim(), mo_ta: moTa.trim() || null, loai, che_do_xem: cheDo,
         updated_at: new Date().toISOString(),
       });
       if (error) { setDangGui(false); toast.error(error); return; }
     } else {
       const { error, id } = await ct2TaoBang({
         phong: phongId, ten: ten.trim(), mo_ta: moTa.trim() || null,
-        loai, che_do_xem: cheDoXem, nguoi_tao: profileId,
+        loai, che_do_xem: cheDo, nguoi_tao: profileId,
       });
       if (error || !id) { setDangGui(false); toast.error(error ?? 'Không tạo được bảng.'); return; }
       bangId = id;
@@ -145,9 +150,28 @@ export function Ct2BangDialog({ open, bang, phongId, nhanSu, phongs, onClose, on
                 }`}>
                 🤝 Liên phòng (phòng này đầu mối)
               </button>
+              {(laBgd || loai === 'TOAN_CN') && (
+                <button type="button"
+                  onClick={() => { setLoai('TOAN_CN'); setCheDoXem('PHONG'); }}
+                  disabled={!laBgd}
+                  className={`rounded-full border px-3 py-1.5 text-xs transition disabled:opacity-60 ${
+                    loai === 'TOAN_CN' ? 'border-brand-navy bg-brand-navy text-white' : 'border-slate-200 text-slate-700'
+                  }`}>
+                  🏦 Toàn chi nhánh
+                </button>
+              )}
             </div>
+            {loai === 'TOAN_CN' && (
+              <p className="mt-1 text-2xs text-slate-500">
+                Hiện ở màn hình của TẤT CẢ các Phòng, ai cũng xem được — không cần thêm thành viên.
+                Phòng này vẫn là đầu mối chịu trách nhiệm. Chỉ Ban Giám đốc đặt/gỡ được chế độ này.
+              </p>
+            )}
           </div>
 
+          {/* Toàn chi nhánh buộc chế độ xem mở — ràng buộc DB sẽ chặn HAN_CHE,
+              nên không bày lựa chọn sẽ bị từ chối */}
+          {loai !== 'TOAN_CN' && (
           <div>
             <Label>Ai xem được bảng?</Label>
             <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -171,11 +195,12 @@ export function Ct2BangDialog({ open, bang, phongId, nhanSu, phongs, onClose, on
               </p>
             )}
           </div>
+          )}
 
           <div>
             <Label>
               Thành viên ({thanhVien.length})
-              {loai === 'LIEN_PHONG' && <span className="ml-1 font-normal text-slate-500">— chọn được người phòng khác</span>}
+              {loai !== 'MANG' && <span className="ml-1 font-normal text-slate-500">— chọn được người phòng khác</span>}
             </Label>
             {thanhVien.length > 0 && (
               <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -187,7 +212,7 @@ export function Ct2BangDialog({ open, bang, phongId, nhanSu, phongs, onClose, on
                       className="inline-flex items-center gap-1 rounded-full border border-blue-400 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-800">
                       <X className="h-3 w-3" />
                       {n?.full_name ?? '—'}
-                      {loai === 'LIEN_PHONG' && n?.department_id !== phongId && (
+                      {loai !== 'MANG' && n?.department_id !== phongId && (
                         <span className="font-normal text-blue-500">· {tenPhong(n?.department_id ?? null)}</span>
                       )}
                     </button>
@@ -203,7 +228,7 @@ export function Ct2BangDialog({ open, bang, phongId, nhanSu, phongs, onClose, on
                   onClick={() => setThanhVien((cu) => [...cu, n.id])}
                   className="rounded-full border border-slate-200 px-2.5 py-1 text-xs text-slate-600 hover:border-slate-300">
                   {n.full_name}
-                  {loai === 'LIEN_PHONG' && n.department_id !== phongId && (
+                  {loai !== 'MANG' && n.department_id !== phongId && (
                     <span className="text-slate-400"> · {tenPhong(n.department_id)}</span>
                   )}
                 </button>
