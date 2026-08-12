@@ -55,12 +55,18 @@ export interface Ct2NhipNguoi {
   profile_id: string;
   full_name: string;
   avatar_url: string | null;
+  /** GỘP cả hai bảng: thẻ công việc phòng + hồ sơ PDTD (GĐ 12/08) */
   so_viec_dang_chay: number;
   so_viec_da_ghi: number;
   so_the_do: number;
   so_qua_han: number;
   /** NGAY_NGHI = thứ Bảy/Chủ nhật — nhịp chỉ chạy thứ 2 đến thứ 6 */
   ket_qua: 'DUNG_GIO' | 'MUON' | 'CHUA_DU' | 'CHUA_GHI' | 'KHONG_CO_VIEC' | 'NGAY_NGHI';
+  /** Tách nguồn để nhắc đúng bảng: cv_* = việc phòng, hs_* = hồ sơ PDTD */
+  cv_dang_chay: number;
+  cv_da_ghi: number;
+  hs_dang_chay: number;
+  hs_da_ghi: number;
 }
 
 export interface Ct2DeXuat {
