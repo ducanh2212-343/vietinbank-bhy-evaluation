@@ -188,8 +188,8 @@ export function useCt2Board(phongId: string | null, bangId: string | null = null
 
 /**
  * Các bảng Kanban người này thấy được: bảng của phòng đang xem + bảng liên
- * phòng của phòng khác mà mình là thành viên (RLS đã lọc — client chỉ chia
- * nhóm để bày).
+ * phòng của phòng khác mà mình là thành viên + bảng TOÀN CHI NHÁNH (hiện ở
+ * mọi phòng, không cần là thành viên). RLS đã lọc — client chỉ chia nhóm để bày.
  */
 export function useCt2DsBang(phongId: string | null) {
   return useQuery({
@@ -201,8 +201,10 @@ export function useCt2DsBang(phongId: string | null) {
       if (error) throw error;
       const tatCa = (data ?? []) as Ct2Bang[];
       return {
+        tatCa,
         cuaPhong: tatCa.filter((b) => b.phong === phongId),
         lienPhongKhac: tatCa.filter((b) => b.phong !== phongId && b.loai === 'LIEN_PHONG'),
+        toanCnKhac: tatCa.filter((b) => b.phong !== phongId && b.loai === 'TOAN_CN'),
       };
     },
   });
@@ -445,7 +447,7 @@ function thongDiep(error: { message?: string } | null): string | null {
 /** Cổng 1 — ghi việc: chỉ 3 trường bắt buộc, phần 5W2H còn lại do Cổng 2 điền */
 export async function ct2TaoBang(v: {
   phong: string; ten: string; mo_ta: string | null;
-  loai: 'MANG' | 'LIEN_PHONG'; che_do_xem: 'PHONG' | 'HAN_CHE'; nguoi_tao: string;
+  loai: 'MANG' | 'LIEN_PHONG' | 'TOAN_CN'; che_do_xem: 'PHONG' | 'HAN_CHE'; nguoi_tao: string;
 }): Promise<{ error: string | null; id: string | null }> {
   const { data, error } = await db.from('ct2_bang').insert(v).select('id').single();
   return { error: thongDiep(error), id: (data as { id: string } | null)?.id ?? null };

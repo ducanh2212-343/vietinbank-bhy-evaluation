@@ -310,7 +310,18 @@ function NoiDung() {
                     className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs transition ${
                       bangId === b.id ? 'border-brand-navy bg-brand-navy font-medium text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-brand-navy/40'
                     }`}>
-                    {b.che_do_xem === 'HAN_CHE' && '🔒 '}{b.loai === 'LIEN_PHONG' && '🤝 '}{b.ten}
+                    {b.che_do_xem === 'HAN_CHE' && '🔒 '}{b.loai === 'LIEN_PHONG' && '🤝 '}{b.loai === 'TOAN_CN' && '🏦 '}{b.ten}
+                  </button>
+                ))}
+                {/* Bảng toàn chi nhánh của phòng khác — hiện ở MỌI phòng, không cần
+                    là thành viên. Đứng trước bảng liên phòng vì phạm vi rộng hơn. */}
+                {(dsBang?.toanCnKhac ?? []).map((b) => (
+                  <button key={b.id} type="button" onClick={() => setBangId(b.id)}
+                    className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs transition ${
+                      bangId === b.id ? 'border-brand-navy bg-brand-navy font-medium text-white' : 'border-dashed border-slate-300 bg-white text-slate-600 hover:border-brand-navy/40'
+                    }`}
+                    title={`Bảng toàn chi nhánh — đầu mối: ${phongs.find((p) => p.id === b.phong)?.name ?? ''}`}>
+                    🏦 {b.ten} <span className="text-slate-400">· {phongs.find((p) => p.id === b.phong)?.code ?? ''}</span>
                   </button>
                 ))}
                 {(dsBang?.lienPhongKhac ?? []).map((b) => (

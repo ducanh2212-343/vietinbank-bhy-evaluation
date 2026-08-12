@@ -68,8 +68,10 @@ export function Ct2KanbanPhongMini() {
   // Lãnh đạo với chính phòng mình — client chỉ để bố trí nút, RLS mới là rào
   const laLanhDao = isAdmin || isPgd || isManager;
 
+  // Tra từ TẤT CẢ bảng thấy được — thẻ của tôi có thể nằm trên bảng toàn chi
+  // nhánh hoặc bảng liên phòng của phòng khác, không chỉ bảng phòng mình
   const tenBang = useMemo(
-    () => new Map((dsBang?.cuaPhong ?? []).map((b) => [b.id, b.ten])),
+    () => new Map((dsBang?.tatCa ?? []).map((b) => [b.id, b.ten])),
     [dsBang],
   );
 

@@ -137,7 +137,8 @@ export interface Ct2Bang {
   phong: string;
   ten: string;
   mo_ta: string | null;
-  loai: 'MANG' | 'LIEN_PHONG';
+  /** TOAN_CN = hiện ở màn hình mọi phòng, chỉ BGĐ đặt/gỡ được chế độ này */
+  loai: 'MANG' | 'LIEN_PHONG' | 'TOAN_CN';
   che_do_xem: 'PHONG' | 'HAN_CHE';
   nguoi_tao: string | null;
   created_at: string;
