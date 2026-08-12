@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { soNgayQuaHan, type Ct2TrangThai } from '@/lib/ct2';
+import { cauHinhNhip, gioNgan } from '@/lib/cauHinhNhip';
 import { Ct2GhiNhipNhanh } from './Ct2GhiNhipNhanh';
-import { useCt2ViecCuaToi } from './useCt2Data';
+import { useCt2ChuoiCuaToi, useCt2ViecCuaToi } from './useCt2Data';
 
 /**
  * M1 — «Việc của tôi» (đặc tả §7.1): khối "cần ghi nhịp cho [n] việc" + 4 ô số
@@ -17,7 +18,9 @@ interface Props { onMoThe: (id: string) => void }
 
 export function Ct2MyWork({ onMoThe }: Props) {
   const { data: dsViec, isLoading } = useCt2ViecCuaToi();
+  const { data: chuoi = 0 } = useCt2ChuoiCuaToi();
   const [ghiNhanh, setGhiNhanh] = useState(false);
+  const gio = cauHinhNhip();
 
   const viec = useMemo(() => dsViec ?? [], [dsViec]);
   const canNhip = useMemo(
@@ -49,9 +52,23 @@ export function Ct2MyWork({ onMoThe }: Props) {
               ? 'Anh/chị đã ghi đủ nhịp hôm nay — cảm ơn đã giữ nhịp! 🔥'
               : 'Anh/chị chưa có đầu việc nào đang chạy.'}
         </p>
+        {/* Mốc giờ đọc từ cấu hình — bản cũ chôn cứng «8h00/8h30» đã lệch với mốc
+            thật 08:31/08:45 mà tin push đang nói, hai nơi phải cùng một con số */}
         <p className="mt-1 text-sm text-slate-600">
-          Khung nhịp cán bộ: 7h00–8h00 · ân hạn tới 8h30 tính «nhịp muộn». Mỗi thẻ chỉ cần 1 câu.
+          Ghi trước {gioNgan(gio.gio_dung_gio)} là đúng giờ · ân hạn tới {gioNgan(gio.gio_an_han)} tính «nhịp muộn». Mỗi thẻ chỉ cần 1 câu.
         </p>
+        {/* Huy hiệu chuỗi — CHỈ MÌNH THẤY (RPC phía DB chỉ trả chuỗi của chính mình).
+            Hiện từ 2 ngày: chuỗi 1 ngày chưa phải thứ đáng khoe. Người mất chuỗi thì
+            không hiện gì — im lặng, không phê phán. */}
+        {chuoi >= 2 && (
+          <p
+            className="mt-2 inline-flex items-center gap-1 rounded-full bg-orange-100 px-2.5 py-1 text-xs font-semibold text-orange-700 dark:bg-orange-950 dark:text-orange-300"
+            title="Số ngày làm việc liên tiếp ghi nhịp đúng giờ, tính đến lần chốt sổ gần nhất. Ngày nghỉ phép hoặc không có việc không phá chuỗi."
+          >
+            <Flame className="h-3.5 w-3.5" aria-hidden />
+            Chuỗi đúng giờ: {chuoi} ngày
+          </p>
+        )}
         {canNhip.length > 0 && (
           <Button className="mt-3" onClick={() => setGhiNhanh(true)}>
             <Zap className="mr-1 h-4 w-4" /> Ghi nhịp nhanh ({canNhip.length} thẻ)

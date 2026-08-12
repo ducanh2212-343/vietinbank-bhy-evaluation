@@ -62,7 +62,7 @@ cho câu một ý.
 | Nhắc nộp phiếu | như trên | giữ | `Hạn nộp:` + câu hệ quả |
 | Nhắc lịch nghỉ | `nhac-lich-nghi` | giữ | bỏ ký hiệu `↳` |
 | Quiz / mẹo tính năng | `quiz-reminders`, `send-feature-tip-push` | giữ | câu một ý — không cần nhãn (quiz chưa chạy) |
-| **Nhắc nhịp sáng cho cán bộ** (12/08) | `ct2_nhac_nhip_sang` | `Sáng nay còn N việc phải ghi nhịp` | câu mở ngày (kho 78 câu, xoay vòng) + `Việc 1:`/`Việc 2:` (tối đa 2) + mốc giờ |
+| **Nhắc nhịp sáng cho cán bộ** (12/08) | `ct2_nhac_nhip_sang` | `Sáng nay còn N việc phải ghi nhịp` | câu mở ngày (kho 78 câu, xoay vòng) + `Việc 1:`/`Việc 2:` (tối đa 2) + `Chuỗi đúng giờ:` khi ≥3 ngày + mốc giờ |
 
 Tin qua hàng đợi CT2 được `notify-ct2` tự thêm dấu mức ở đầu tiêu đề: 🟡 nhẹ · 🔴 đỏ ·
 ⛔ chặn — vì vậy các hàm soạn KHÔNG tự thêm emoji vào `tieu_de`.
@@ -283,3 +283,33 @@ bấm thẳng ✓ · mức NHE, kênh push+bell ✓.
 **Lưu ý vận hành:** bảng `lich_nghi_le` hiện đang RỖNG, nên mọi thứ Hai–Sáu đều bị coi là
 ngày làm việc — kể cả 02/09. TCTH cần nhập lịch nghỉ trước mỗi kỳ (tác vụ `nhac-lich-nghi`
 nhắc trước 10 ngày), nếu không cán bộ sẽ bị nhắc ghi nhịp vào đúng ngày lễ.
+
+## 10. Chuỗi đúng giờ (13/08/2026)
+
+GĐ hỏi *"đã có tính năng cho những người duy trì chuỗi streak ghi nhịp đúng giờ chưa"* —
+chốt làm cả hai hướng KHÔNG phá nguyên tắc «im lặng là đúng»:
+
+- **Huy hiệu trong app** (tab «Của tôi»): `🔥 Chuỗi đúng giờ: N ngày`, hiện từ 2 ngày,
+  **chỉ mình thấy** — RPC `ct2_chuoi_dung_gio_cua_toi` chỉ trả chuỗi của người đăng
+  nhập, cán bộ không tra được chuỗi đồng nghiệp (nhịp là gương soi, không phải bảng
+  so sánh). Mất chuỗi thì không hiện gì — im lặng, không phê phán.
+- **Dệt vào tin 07:30 sẵn có**: người còn nợ mà đang giữ chuỗi ≥3 ngày nhận thêm dòng
+  `Chuỗi đúng giờ: N ngày — giữ tiếp hôm nay.` ngay trước dòng luật. Không thêm tin
+  nào; người đã ghi xong vẫn im lặng. Đây là loss-aversion kiểu Duolingo bằng số thật
+  của chính người nhận.
+
+Hướng thứ ba — push chúc mừng khi đạt mốc — **cố ý không làm**: người làm tốt bắt đầu
+nhận tin là phá nguyên tắc số một; muốn thì GĐ chốt riêng.
+
+Luật công bằng: **ngày nghỉ phép / không có việc không phá chuỗi** (ngày đó không có
+ảnh chụp). Chuỗi tính đến lần chốt sổ 09:00 gần nhất, sàn 06/08 trùng Bảng nhịp.
+
+> **🟡 [CT2] Sáng nay còn 1 việc phải ghi nhịp**
+> Cà phê chưa kịp nguội, nhịp đã kịp ghi.
+> Việc: Theo dõi tiến độ đền bù bảo hiểm công ty Mỹ Hương
+> Chuỗi đúng giờ: 4 ngày — giữ tiếp hôm nay.
+> Ghi trước 08:31 là đúng giờ — sau 08:45 tính mất nhịp.
+
+Kiểm chứng 13/08: hàm khớp tính tay 100% trên toàn bộ ảnh chụp; 8 cán bộ đang giữ chuỗi
+≥3 (dài nhất 5); dry-run tin sáng 13/08 có 7 người nhận dòng chuỗi. Nhân tiện sửa dòng
+mốc giờ chôn cứng «8h00/8h30» ở tab «Của tôi» — nay đọc từ cấu hình, khớp với tin push.
