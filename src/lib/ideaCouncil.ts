@@ -5,7 +5,16 @@
 
 export type XungDotLoiIch = 'khong' | 'cung_phong' | 'phoi_hop';
 export type DeXuatHoiDong = 'khong_xet' | 'can_bo_sung' | 'vuon_canh' | 'lan_toa';
-export type TangDeXuat = 'Vươn cành' | 'Lan tỏa';
+/**
+ * Tầng TCTH trình Hội đồng — mô hình thưởng CỘNG DỒN (chốt vận hành 08/2026,
+ * văn bản chương trình sẽ cập nhật sau):
+ * - 'Vươn cành': xét công nhận Vươn cành ở kỳ quý — thưởng 1M.
+ * - 'Lan tỏa': KỲ XÉT LAN TỎA RIÊNG (đầu/cuối quý IV) cho ý tưởng ĐÃ đạt
+ *   Vươn cành, xem quá trình triển khai — nếu đạt được thưởng THÊM 2-3M.
+ * - 'Lan tỏa trực tiếp': trường hợp đặc biệt xét thẳng Lan tỏa khi chưa qua
+ *   Vươn cành — phải mang dấu hiệu nhận diện riêng; nếu đạt, thưởng GỘP 1M + 2-3M.
+ */
+export type TangDeXuat = 'Vươn cành' | 'Lan tỏa' | 'Lan tỏa trực tiếp';
 export type TrangThaiDot = 'draft' | 'open' | 'closed';
 
 export type TieuChiKey = 'problem' | 'impact' | 'feasible' | 'safety' | 'scale';
@@ -71,10 +80,36 @@ export const TRANG_THAI_DOT_LABELS: Record<TrangThaiDot, string> = {
   closed: 'Đã chốt',
 };
 
-/** Mức thưởng theo tầng (mục VI.3) */
-export const THUONG_THEO_TANG: Record<TangDeXuat, string> = {
-  'Vươn cành': '1.000.000đ/ý tưởng',
-  'Lan tỏa': '2.000.000–3.000.000đ/ý tưởng',
+/** Nhãn, mô tả, mức thưởng và màu nhận diện của từng tầng trình Hội đồng */
+export interface TangDeXuatInfo {
+  nhan: string;
+  moTa: string;
+  thuong: string;
+  badgeClass: string;
+  /** Trường hợp đặc biệt xét thẳng Lan tỏa — cần cảnh báo/dấu hiệu riêng */
+  trucTiep?: boolean;
+}
+
+export const TANG_DE_XUAT_INFO: Record<TangDeXuat, TangDeXuatInfo> = {
+  'Vươn cành': {
+    nhan: 'Xét Vươn cành',
+    moTa: 'Ý tưởng đã pilot/áp dụng có kết quả — xét công nhận Cấp độ Vươn cành tại kỳ quý.',
+    thuong: '1.000.000đ/ý tưởng',
+    badgeClass: 'bg-emerald-100 text-emerald-700',
+  },
+  'Lan tỏa': {
+    nhan: 'Xét nâng lên Lan tỏa',
+    moTa: 'Kỳ xét Lan tỏa riêng (đầu/cuối quý IV) cho ý tưởng ĐÃ đạt Vươn cành — đánh giá quá trình triển khai sau khi được công nhận.',
+    thuong: 'Thưởng thêm 2.000.000–3.000.000đ (ngoài 1.000.000đ Vươn cành đã nhận)',
+    badgeClass: 'bg-rose-100 text-rose-700',
+  },
+  'Lan tỏa trực tiếp': {
+    nhan: '⚡ Xét thẳng Lan tỏa',
+    moTa: 'Trường hợp đặc biệt: ý tưởng chưa qua Vươn cành được xét thẳng Cấp độ Lan tỏa — mang dấu hiệu nhận diện riêng trên phiếu chấm.',
+    thuong: 'Cộng cả hai mức 3.000.000–4.000.000đ (1.000.000đ Vươn cành + 2.000.000–3.000.000đ Lan tỏa)',
+    badgeClass: 'bg-violet-100 text-violet-700 border border-violet-300',
+    trucTiep: true,
+  },
 };
 
 // Ngưỡng xét thưởng (mục VI.3). Tỷ lệ đồng ý so trên số phiếu hợp lệ
@@ -218,10 +253,14 @@ export function xetLanToa(t: TongHopYTuong): KetQuaNguong {
   return { dat: lyDo.length === 0, lyDo };
 }
 
+/** Kết luận gợi ý — phân biệt Lan tỏa "thưởng thêm" và Lan tỏa trực tiếp "thưởng gộp" */
+export type KetLuanTang = 'vuon_canh' | 'lan_toa_them' | 'lan_toa_truc_tiep' | null;
+
 export interface KetLuanDeXuat {
-  /** Tầng đạt ngưỡng cao nhất; null = chưa đạt tầng nào */
-  tang: TangDeXuat | null;
+  ketLuan: KetLuanTang;
   nhan: string;
+  /** Diễn giải mức thưởng tương ứng kết luận; null khi chưa đạt */
+  thuong: string | null;
   vuonCanh: KetQuaNguong;
   lanToa: KetQuaNguong;
 }
@@ -229,24 +268,47 @@ export interface KetLuanDeXuat {
 /**
  * Kết luận HỆ THỐNG GỢI Ý theo ngưỡng — quyết định cuối cùng vẫn thuộc Hội
  * đồng (quy chế cho Hội đồng cân nhắc xung đột lợi ích, ngân sách…).
- * Chỉ xét tối đa đến tầng TCTH đề xuất: ý tưởng trình Vươn cành không được
- * gợi ý vượt lên Lan tỏa.
+ * Theo tầng TCTH trình:
+ * - 'Vươn cành': đạt/không đạt ngưỡng Vươn cành, không gợi ý vượt tầng.
+ * - 'Lan tỏa' (kỳ xét nâng cấp): ý tưởng ĐÃ là Vươn cành — đạt thì thưởng
+ *   THÊM mức Lan tỏa; không đạt thì GIỮ Vươn cành (không thưởng lại 1M).
+ * - 'Lan tỏa trực tiếp': đạt Lan tỏa thì thưởng GỘP hai mức; hụt Lan tỏa
+ *   nhưng đủ ngưỡng Vươn cành thì hạ về công nhận Vươn cành (1M).
  */
 export function ketLuanDeXuat(t: TongHopYTuong, tangDeXuat: TangDeXuat): KetLuanDeXuat {
   const vuonCanh = xetVuonCanh(t);
   const lanToa = xetLanToa(t);
-  if (tangDeXuat === 'Lan tỏa' && lanToa.dat) {
-    return { tang: 'Lan tỏa', nhan: 'Đạt ngưỡng Cấp độ Lan tỏa', vuonCanh, lanToa };
-  }
-  if (vuonCanh.dat) {
-    return { tang: 'Vươn cành', nhan: 'Đạt ngưỡng Cấp độ Vươn cành', vuonCanh, lanToa };
-  }
-  return {
-    tang: null,
-    nhan: t.soPhieuHopLe === 0 ? 'Chưa có phiếu chấm hợp lệ' : 'Chưa đạt ngưỡng xét thưởng',
+  const chuaCoPhieu = t.soPhieuHopLe === 0;
+  const nhanChuaDat = (nhan: string): KetLuanDeXuat => ({
+    ketLuan: null,
+    nhan: chuaCoPhieu ? 'Chưa có phiếu chấm hợp lệ' : nhan,
+    thuong: null,
     vuonCanh,
     lanToa,
-  };
+  });
+
+  if (tangDeXuat === 'Vươn cành') {
+    if (vuonCanh.dat) {
+      return { ketLuan: 'vuon_canh', nhan: 'Đạt Cấp độ Vươn cành', thuong: TANG_DE_XUAT_INFO['Vươn cành'].thuong, vuonCanh, lanToa };
+    }
+    return nhanChuaDat('Chưa đạt ngưỡng Vươn cành');
+  }
+
+  if (tangDeXuat === 'Lan tỏa') {
+    if (lanToa.dat) {
+      return { ketLuan: 'lan_toa_them', nhan: 'Đạt nâng lên Cấp độ Lan tỏa', thuong: TANG_DE_XUAT_INFO['Lan tỏa'].thuong, vuonCanh, lanToa };
+    }
+    return nhanChuaDat('Chưa đạt Lan tỏa — giữ Cấp độ Vươn cành');
+  }
+
+  // Lan tỏa trực tiếp
+  if (lanToa.dat) {
+    return { ketLuan: 'lan_toa_truc_tiep', nhan: 'Đạt xét thẳng Cấp độ Lan tỏa', thuong: TANG_DE_XUAT_INFO['Lan tỏa trực tiếp'].thuong, vuonCanh, lanToa };
+  }
+  if (vuonCanh.dat) {
+    return { ketLuan: 'vuon_canh', nhan: 'Hụt Lan tỏa — đạt Cấp độ Vươn cành', thuong: TANG_DE_XUAT_INFO['Vươn cành'].thuong, vuonCanh, lanToa };
+  }
+  return nhanChuaDat('Chưa đạt ngưỡng xét thưởng');
 }
 
 /** Gợi ý mã kế tiếp TCTH cấp trong đợt: BHYI-<năm>-NNN theo số lớn nhất đã cấp */

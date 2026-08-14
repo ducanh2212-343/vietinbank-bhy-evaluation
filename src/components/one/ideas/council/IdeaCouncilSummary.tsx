@@ -2,11 +2,12 @@ import React from 'react';
 import { BarChart3, Lock, MessageSquareQuote } from 'lucide-react';
 import {
   TIEU_CHI_HOI_DONG,
-  THUONG_THEO_TANG,
+  TANG_DE_XUAT_INFO,
   formatDiem,
   formatTyLe,
   ketLuanDeXuat,
   type DongTongHopRpc,
+  type KetLuanTang,
 } from '@/lib/ideaCouncil';
 import { useCouncilSummary } from './useIdeaCouncil';
 
@@ -14,19 +15,25 @@ import { useCouncilSummary } from './useIdeaCouncil';
 // tổng hợp (điểm TB, tỷ lệ đồng ý, kết luận gợi ý), không lộ điểm cá nhân.
 // RPC phía dưới đã gác quyền: admin xem mọi lúc, thành viên sau khi đợt chốt.
 
+const KET_LUAN_CHIP_CLASS: Record<Exclude<KetLuanTang, null>, string> = {
+  vuon_canh: 'bg-emerald-100 text-emerald-700',
+  lan_toa_them: 'bg-rose-100 text-rose-700',
+  lan_toa_truc_tiep: 'bg-violet-100 text-violet-700 border border-violet-300',
+};
+
 const KetLuanChip: React.FC<{ dong: DongTongHopRpc }> = ({ dong }) => {
   const kq = ketLuanDeXuat(dong.tongHop, dong.proposedTier);
-  if (kq.tang) {
+  if (kq.ketLuan) {
     return (
       <div className="space-y-0.5">
-        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-black ${kq.tang === 'Lan tỏa' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
+        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-black ${KET_LUAN_CHIP_CLASS[kq.ketLuan]}`}>
           {kq.nhan}
         </span>
-        <p className="text-[10px] text-slate-500 font-semibold">{THUONG_THEO_TANG[kq.tang]}</p>
+        {kq.thuong && <p className="text-[10px] text-slate-500 font-semibold">{kq.thuong}</p>}
       </div>
     );
   }
-  const lyDo = dong.proposedTier === 'Lan tỏa' ? kq.lanToa.lyDo : kq.vuonCanh.lyDo;
+  const lyDo = dong.proposedTier === 'Vươn cành' ? kq.vuonCanh.lyDo : kq.lanToa.lyDo;
   return (
     <div className="space-y-0.5">
       <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-100 text-slate-600">
@@ -106,8 +113,11 @@ export const IdeaCouncilSummary: React.FC<{ roundId: string | null }> = ({ round
                   <td className="p-2 text-slate-600 whitespace-nowrap">{dong.departmentName}</td>
                   <td className="p-2 text-slate-600 whitespace-nowrap">{dong.ideaLevel}</td>
                   <td className="p-2 whitespace-nowrap">
-                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${dong.proposedTier === 'Lan tỏa' ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'}`}>
-                      {dong.proposedTier}
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${TANG_DE_XUAT_INFO[dong.proposedTier].badgeClass}`}
+                      title={TANG_DE_XUAT_INFO[dong.proposedTier].moTa}
+                    >
+                      {TANG_DE_XUAT_INFO[dong.proposedTier].nhan}
                     </span>
                   </td>
                   <td className="p-2 text-center font-bold text-slate-700">

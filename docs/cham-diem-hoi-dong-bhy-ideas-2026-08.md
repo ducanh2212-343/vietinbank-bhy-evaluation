@@ -5,9 +5,11 @@ bằng phiếu chấm ngay trong BHY One, tại `/one/y-tuong/hoi-dong`.
 
 ## Nghiệp vụ (bám quy chế mục VI + Phụ lục 06/07)
 
-- Hàng quý Phòng TCTH mở **đợt chấm**, trình các ý tưởng đề xuất Cấp độ
-  **Vươn cành** / **Lan tỏa** (đã bật cờ «Đề xuất Hội đồng» ở bảng theo dõi),
-  cấp mã `BHYI-<năm>-NNN` và tầng đề xuất.
+- Phòng TCTH mở **đợt chấm**, trình các ý tưởng đã bật cờ «Đề xuất Hội đồng»
+  ở bảng theo dõi, cấp mã `BHYI-<năm>-NNN` và **tầng xét** (3 tầng, xem dưới).
+  Kỳ quý xét Vươn cành; **kỳ xét Lan tỏa là đợt riêng** do TCTH mở tại thời
+  điểm phù hợp (đầu hoặc cuối quý IV) để đánh giá quá trình triển khai của
+  các ý tưởng đã đạt Vươn cành.
 - Thành viên Hội đồng (Ban Giám đốc, PGĐ, Trưởng/Phó phòng, lãnh đạo TCTH —
   vai trò `bgd`/`pgd`/`manager`/`tcth_admin`; người được Giám đốc bổ sung thì
   cấp vai trò tương ứng) chấm **một phiếu định danh/ý tưởng**:
@@ -23,12 +25,19 @@ bằng phiếu chấm ngay trong BHY One, tại `/one/y-tuong/hoi-dong`.
   lớn, Hội đồng có thể quyết định phiếu «tính tham khảo» — TCTH gạt cờ, phiếu
   bị loại khỏi điểm TB và tỷ lệ đồng ý (cờ này chỉ admin sửa được, trigger chặn).
 
-## Ngưỡng xét thưởng (mục VI.3) — logic tại `src/lib/ideaCouncil.ts`
+## Ba tầng xét và mô hình thưởng CỘNG DỒN
 
-| Tầng | Điều kiện | Thưởng |
-|---|---|---|
-| Vươn cành | TB chung ≥ 3,5 · An toàn/rủi ro ≥ 3 · ≥ 2/3 thành viên tham gia chấm đồng ý | 1.000.000đ |
-| Lan tỏa | TB chung ≥ 4,0 · Nhân rộng ≥ 4 · An toàn ≥ 3 · ≥ 2/3 đồng ý Lan tỏa | 2.000.000–3.000.000đ |
+Chốt vận hành 08/2026 (văn bản chương trình sẽ cập nhật cụ thể sau):
+
+| Tầng trình Hội đồng | Đối tượng | Ngưỡng (mục VI.3) | Thưởng khi đạt |
+|---|---|---|---|
+| **Xét Vươn cành** (kỳ quý) | Ý tưởng chưa đạt Vươn cành | TB chung ≥ 3,5 · An toàn/rủi ro ≥ 3 · ≥ 2/3 đồng ý | 1.000.000đ |
+| **Xét nâng lên Lan tỏa** (kỳ xét riêng, đầu/cuối quý IV) | Ý tưởng **đã đạt Vươn cành** (đã nhận 1M) | TB chung ≥ 4,0 · Nhân rộng ≥ 4 · An toàn ≥ 3 · ≥ 2/3 đồng ý Lan tỏa | **Thưởng thêm** 2.000.000–3.000.000đ |
+| **⚡ Xét thẳng Lan tỏa** (đặc biệt) | Ý tưởng chưa qua Vươn cành được xét thẳng — mang **dấu hiệu nhận diện riêng** trên phiếu chấm và cảnh báo ở khung quản trị | Như Lan tỏa; hụt Lan tỏa nhưng đủ Vươn cành thì hạ về Vươn cành | **Gộp cả hai mức** 3.000.000–4.000.000đ |
+
+Ở kỳ xét nâng lên Lan tỏa, nếu không đạt thì ý tưởng **giữ Cấp độ Vươn cành**,
+không thưởng lại mức Vươn cành. Khung quản trị lọc ứng viên theo tầng: kỳ xét
+nâng chỉ liệt kê ý tưởng đang ở cấp độ Vươn cành.
 
 Quy ước đã chốt trong code (unit test kèm theo):
 
@@ -38,7 +47,11 @@ Quy ước đã chốt trong code (unit test kèm theo):
   đồng ý **Lan tỏa** chỉ tính phiếu Lan tỏa.
 - Điểm TB chung = trung bình 5 điểm TB tiêu chí (Phụ lục 07).
 - Kết luận hệ thống chỉ là **gợi ý theo ngưỡng**, không vượt quá tầng TCTH trình;
-  quyết định cuối cùng thuộc Hội đồng.
+  quyết định cuối cùng thuộc Hội đồng. Sau khi Hội đồng chốt, TCTH cập nhật cấp
+  độ phát triển của ý tưởng ở bảng theo dõi BHY Ideas như hiện nay.
+- Lưu ý dự toán: bảng thống kê/Excel hiện đếm ý tưởng theo cấp độ HIỆN TẠI với
+  đơn giá một cấp (Lan tỏa = 3M cận trên). Khi văn bản chốt mô hình cộng dồn,
+  cần rà lại cách dự toán (ý tưởng Lan tỏa thực nhận 1M + 2-3M).
 
 ## Kỹ thuật
 

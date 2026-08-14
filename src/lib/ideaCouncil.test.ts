@@ -138,35 +138,51 @@ describe('xetLanToa — thêm điều kiện nhân rộng ≥ 4 và đồng ý L
   });
 });
 
-describe('ketLuanDeXuat — gợi ý theo tầng TCTH trình', () => {
+describe('ketLuanDeXuat — gợi ý theo tầng TCTH trình (mô hình thưởng cộng dồn)', () => {
   const phieuLanToaDat = [
     phieu({ diem: { problem: 5, impact: 4, feasible: 4, safety: 4, scale: 4 }, deXuat: 'lan_toa' }),
     phieu({ diem: { problem: 4, impact: 4, feasible: 5, safety: 4, scale: 5 }, deXuat: 'lan_toa' }),
     phieu({ diem: { problem: 4, impact: 4, feasible: 4, safety: 4, scale: 4 }, deXuat: 'lan_toa' }),
   ];
+  const phieuChiDatVuonCanh = [
+    phieu({ diemChung: 4, deXuat: 'vuon_canh' }),
+    phieu({ diemChung: 3, deXuat: 'vuon_canh' }),
+  ];
 
-  it('trình Lan tỏa và đạt Lan tỏa → kết luận Lan tỏa', () => {
+  it('kỳ xét nâng lên Lan tỏa đạt → lan_toa_them, chỉ THƯỞNG THÊM mức Lan tỏa', () => {
     const kq = ketLuanDeXuat(tongHopPhieu(phieuLanToaDat), 'Lan tỏa');
-    expect(kq.tang).toBe('Lan tỏa');
+    expect(kq.ketLuan).toBe('lan_toa_them');
+    expect(kq.thuong).toContain('Thưởng thêm');
   });
 
   it('trình Vươn cành thì không gợi ý vượt lên Lan tỏa dù điểm đạt', () => {
     const kq = ketLuanDeXuat(tongHopPhieu(phieuLanToaDat), 'Vươn cành');
-    expect(kq.tang).toBe('Vươn cành');
+    expect(kq.ketLuan).toBe('vuon_canh');
+    expect(kq.thuong).toContain('1.000.000');
   });
 
-  it('trình Lan tỏa nhưng chỉ đạt ngưỡng Vươn cành → hạ về Vươn cành', () => {
-    const t = tongHopPhieu([
-      phieu({ diemChung: 4, deXuat: 'vuon_canh' }),
-      phieu({ diemChung: 3, deXuat: 'vuon_canh' }),
-    ]);
-    const kq = ketLuanDeXuat(t, 'Lan tỏa');
-    expect(kq.tang).toBe('Vươn cành');
+  it('kỳ xét nâng Lan tỏa không đạt → GIỮ Vươn cành, không thưởng lại mức Vươn cành', () => {
+    const kq = ketLuanDeXuat(tongHopPhieu(phieuChiDatVuonCanh), 'Lan tỏa');
+    expect(kq.ketLuan).toBeNull();
+    expect(kq.nhan).toContain('giữ Cấp độ Vươn cành');
+    expect(kq.thuong).toBeNull();
+  });
+
+  it('xét thẳng Lan tỏa đạt → lan_toa_truc_tiep, thưởng GỘP cả hai mức', () => {
+    const kq = ketLuanDeXuat(tongHopPhieu(phieuLanToaDat), 'Lan tỏa trực tiếp');
+    expect(kq.ketLuan).toBe('lan_toa_truc_tiep');
+    expect(kq.thuong).toContain('Cộng cả hai mức');
+  });
+
+  it('xét thẳng Lan tỏa hụt ngưỡng nhưng đủ Vươn cành → hạ về Vươn cành (1M)', () => {
+    const kq = ketLuanDeXuat(tongHopPhieu(phieuChiDatVuonCanh), 'Lan tỏa trực tiếp');
+    expect(kq.ketLuan).toBe('vuon_canh');
+    expect(kq.thuong).toContain('1.000.000');
   });
 
   it('không phiếu hợp lệ → chưa kết luận, nêu lý do', () => {
     const kq = ketLuanDeXuat(tongHopPhieu([phieu({ thamKhao: true })]), 'Vươn cành');
-    expect(kq.tang).toBeNull();
+    expect(kq.ketLuan).toBeNull();
     expect(kq.nhan).toContain('Chưa có phiếu');
   });
 });
@@ -261,10 +277,10 @@ describe('docTongHopRpc — đọc payload jsonb của RPC', () => {
     expect(a.tongHop.soPhieuHopLe).toBe(2);
     expect(a.tongHop.diemTieuChi.safety).toBe(3.5);
     expect(a.gopY).toEqual(['Nên chuẩn hóa mẫu biểu']);
-    // Dòng đủ điều kiện Lan tỏa (TB 4.1, nhân rộng 4.5, an toàn 3.5, 2/2 đồng ý)
-    expect(ketLuanDeXuat(a.tongHop, a.proposedTier).tang).toBe('Lan tỏa');
+    // Dòng đủ điều kiện nâng lên Lan tỏa (TB 4.1, nhân rộng 4.5, an toàn 3.5, 2/2 đồng ý)
+    expect(ketLuanDeXuat(a.tongHop, a.proposedTier).ketLuan).toBe('lan_toa_them');
 
     expect(b.tongHop.diemTbChung).toBeNull();
-    expect(ketLuanDeXuat(b.tongHop, b.proposedTier).tang).toBeNull();
+    expect(ketLuanDeXuat(b.tongHop, b.proposedTier).ketLuan).toBeNull();
   });
 });

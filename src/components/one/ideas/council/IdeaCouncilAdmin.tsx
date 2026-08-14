@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { CalendarPlus, ChevronDown, ChevronUp, Gavel, Trash2, UserRound } from 'lucide-react';
 import {
   DE_XUAT_LABELS,
+  TANG_DE_XUAT_INFO,
   TIEU_CHI_HOI_DONG,
   TRANG_THAI_DOT_LABELS,
   XUNG_DOT_LABELS,
@@ -46,11 +47,15 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
   const [tang, setTang] = useState<TangDeXuat>('Vươn cành');
   const [openBallots, setOpenBallots] = useState<Record<string, boolean>>({});
 
-  // Ý tưởng đã bật cờ Hội đồng nhưng chưa nằm trong đợt đang chọn
+  // Ứng viên theo tầng đang chọn (đã bật cờ Hội đồng, chưa nằm trong đợt):
+  // - Xét nâng lên Lan tỏa: CHỈ ý tưởng đã đạt Vươn cành (kỳ xét riêng).
+  // - Xét Vươn cành / xét thẳng Lan tỏa: ý tưởng chưa đạt Vươn cành/Lan tỏa.
   const ungVien = useMemo(() => {
     const daCo = new Set(items.map(it => it.idea.id));
-    return candidates.filter(c => !daCo.has(c.id));
-  }, [candidates, items]);
+    const chuaTrinh = candidates.filter(c => !daCo.has(c.id));
+    if (tang === 'Lan tỏa') return chuaTrinh.filter(c => c.development_level === 'Vươn cành');
+    return chuaTrinh.filter(c => c.development_level !== 'Vươn cành' && c.development_level !== 'Lan tỏa');
+  }, [candidates, items, tang]);
 
   const maGoiY = goiYMaYTuong(items, new Date().getFullYear());
 
@@ -158,8 +163,24 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
             </p>
             <p className="text-[10px] text-slate-500">
               Chỉ liệt kê ý tưởng đã bật cờ «Đề xuất Hội đồng» ở bảng theo dõi BHY Ideas.
+              Chọn tầng xét trước — danh sách ý tưởng lọc theo tầng.
             </p>
             <div className="flex flex-wrap items-end gap-2">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 block">Tầng xét</label>
+                <select
+                  value={tang}
+                  onChange={e => {
+                    setTang(e.target.value as TangDeXuat);
+                    setIdeaId('');
+                  }}
+                  className="p-2 bg-white border border-slate-200 rounded-lg outline-none focus:border-violet-500 font-semibold"
+                >
+                  <option value="Vươn cành">Xét Vươn cành 🌳 (kỳ quý)</option>
+                  <option value="Lan tỏa">Xét nâng lên Lan tỏa ⭐ (kỳ xét riêng)</option>
+                  <option value="Lan tỏa trực tiếp">⚡ Xét thẳng Lan tỏa (đặc biệt)</option>
+                </select>
+              </div>
               <div className="flex-1 min-w-[220px] space-y-1">
                 <label className="font-bold text-slate-700 block">Ý tưởng</label>
                 <select
@@ -185,17 +206,6 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
                   className="w-36 p-2 bg-white border border-slate-200 rounded-lg outline-none focus:border-violet-500 font-semibold"
                 />
               </div>
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700 block">Tầng đề xuất</label>
-                <select
-                  value={tang}
-                  onChange={e => setTang(e.target.value as TangDeXuat)}
-                  className="p-2 bg-white border border-slate-200 rounded-lg outline-none focus:border-violet-500 font-semibold"
-                >
-                  <option value="Vươn cành">Vươn cành 🌳</option>
-                  <option value="Lan tỏa">Lan tỏa ⭐</option>
-                </select>
-              </div>
               <button
                 type="submit"
                 disabled={!ideaId}
@@ -204,6 +214,22 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
                 Trình Hội đồng
               </button>
             </div>
+            <p className="text-[10px] text-slate-500">
+              {TANG_DE_XUAT_INFO[tang].moTa} <b className="text-slate-600">Thưởng: {TANG_DE_XUAT_INFO[tang].thuong}.</b>
+            </p>
+            {tang === 'Lan tỏa' && ungVien.length === 0 && (
+              <p className="text-[10px] text-slate-500 italic">
+                Chưa có ý tưởng nào ở Cấp độ Vươn cành để xét nâng — cập nhật cấp độ phát triển
+                ở bảng theo dõi BHY Ideas trước khi trình kỳ xét Lan tỏa.
+              </p>
+            )}
+            {TANG_DE_XUAT_INFO[tang].trucTiep && (
+              <div className="p-2.5 rounded-lg bg-violet-100 border border-violet-300 text-[11px] text-violet-900 font-semibold">
+                ⚡ Cảnh báo: xét thẳng Lan tỏa khi chưa qua Vươn cành là trường hợp đặc biệt.
+                Ý tưởng sẽ mang dấu hiệu nhận diện riêng trên phiếu chấm của Hội đồng; nếu đạt,
+                thưởng cộng cả hai mức Vươn cành + Lan tỏa.
+              </div>
+            )}
           </form>
 
           {/* Ý tưởng trong đợt + phiếu chi tiết định danh */}
@@ -215,8 +241,11 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
                   <div className="flex flex-wrap items-center gap-2 p-2.5 bg-slate-50">
                     <span className="font-black text-slate-700">{it.ideaCode}</span>
                     <span className="flex-1 min-w-[160px] font-semibold text-slate-600 truncate">{it.idea.title}</span>
-                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${it.proposedTier === 'Lan tỏa' ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'}`}>
-                      {it.proposedTier}
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${TANG_DE_XUAT_INFO[it.proposedTier].badgeClass}`}
+                      title={TANG_DE_XUAT_INFO[it.proposedTier].moTa}
+                    >
+                      {TANG_DE_XUAT_INFO[it.proposedTier].nhan}
                     </span>
                     <span className="text-[10px] text-slate-500 font-bold">{it.votes.length} phiếu</span>
                     <button

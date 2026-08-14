@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, ChevronDown, ChevronUp, Gavel, ShieldCheck } from 'lucide-react';
 import { OnePageShell } from '@/components/one/OnePageShell';
 import { useAuth } from '@/hooks/useAuth';
-import { TRANG_THAI_DOT_LABELS, THUONG_THEO_TANG } from '@/lib/ideaCouncil';
+import { TRANG_THAI_DOT_LABELS, TANG_DE_XUAT_INFO } from '@/lib/ideaCouncil';
 import {
   useCouncilMutations,
   useCouncilRoundItems,
@@ -47,13 +47,25 @@ function ItemCard({ item, readOnly, onSubmit }: {
           <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${item.idea.level === 'Nội bộ CN' ? 'bg-[#005a9c]/10 text-[#005a9c]' : 'bg-[#ed1b24]/10 text-[#ed1b24]'}`}>
             {item.idea.level}
           </span>
-          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${item.proposedTier === 'Lan tỏa' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
-            Xét tầng: {item.proposedTier} — {THUONG_THEO_TANG[item.proposedTier]}
+          <span
+            className={`px-2 py-0.5 rounded-full text-[10px] font-black ${TANG_DE_XUAT_INFO[item.proposedTier].badgeClass}`}
+            title={TANG_DE_XUAT_INFO[item.proposedTier].moTa}
+          >
+            {TANG_DE_XUAT_INFO[item.proposedTier].nhan}
           </span>
           {item.idea.hasDemo && (
             <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200">🧪 Có Demo</span>
           )}
         </div>
+        {/* Dấu hiệu nhận diện riêng cho trường hợp xét thẳng Lan tỏa (yêu cầu vận hành) */}
+        {TANG_DE_XUAT_INFO[item.proposedTier].trucTiep && (
+          <div className="p-2.5 rounded-lg bg-violet-50 border border-violet-300 text-[11px] text-violet-800 font-semibold">
+            ⚡ Trường hợp đặc biệt: ý tưởng được trình <b>xét thẳng Cấp độ Lan tỏa</b> khi chưa qua
+            Vươn cành. Nếu Hội đồng thông qua, ý tưởng được thưởng gộp cả hai mức
+            (1.000.000đ Vươn cành + 2.000.000–3.000.000đ Lan tỏa).
+          </div>
+        )}
+        <p className="text-[10px] text-slate-500 font-semibold">💰 {TANG_DE_XUAT_INFO[item.proposedTier].thuong}</p>
         <h3 className="font-black text-slate-800 text-sm sm:text-base leading-snug">{item.idea.title}</h3>
         <p className="text-[11px] text-slate-500">
           <b className="text-slate-700">{item.idea.departmentName}</b> · Đề xuất bởi <b className="text-slate-700">{item.idea.proposer}</b>

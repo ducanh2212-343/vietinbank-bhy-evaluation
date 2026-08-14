@@ -79,8 +79,17 @@ CREATE TABLE public.portal_idea_council_items (
   idea_id UUID NOT NULL REFERENCES public.portal_ideas(id) ON DELETE RESTRICT,
   -- Mã do TCTH cấp, ví dụ BHYI-2026-001 (Phụ lục 06 câu B1)
   idea_code TEXT NOT NULL,
-  -- Tầng đề xuất xét thưởng (Phụ lục 06 câu B4 — TCTH ấn định khi trình)
-  proposed_tier TEXT NOT NULL CHECK (proposed_tier IN ('Vươn cành', 'Lan tỏa')),
+  -- Tầng đề xuất xét thưởng (Phụ lục 06 câu B4 — TCTH ấn định khi trình).
+  -- Ba tầng theo mô hình thưởng CỘNG DỒN (chốt vận hành 08/2026, văn bản sẽ
+  -- cập nhật sau):
+  --   'Vươn cành'          xét công nhận Vươn cành ở kỳ quý — thưởng 1M.
+  --   'Lan tỏa'            KỲ XÉT LAN TỎA RIÊNG (đầu/cuối quý IV): nâng ý tưởng
+  --                        ĐÃ đạt Vươn cành lên Lan tỏa — thưởng THÊM 2-3M
+  --                        (ngoài 1M Vươn cành đã nhận trước đó).
+  --   'Lan tỏa trực tiếp'  trường hợp đặc biệt xét thẳng Lan tỏa khi chưa qua
+  --                        Vươn cành — mang dấu hiệu nhận diện riêng trên phiếu;
+  --                        nếu đạt, thưởng GỘP cả hai mức (1M + 2-3M).
+  proposed_tier TEXT NOT NULL CHECK (proposed_tier IN ('Vươn cành', 'Lan tỏa', 'Lan tỏa trực tiếp')),
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   UNIQUE (round_id, idea_id),
   UNIQUE (round_id, idea_code)
