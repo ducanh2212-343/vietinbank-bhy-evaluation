@@ -22,8 +22,11 @@ const VAI_TRO_HOI_DONG = ['bgd', 'pgd', 'manager', 'tcth_admin', 'system_admin']
 export function useIdeaCouncilAccess() {
   const { roles, loading } = useAuth();
   const isMember = roles.some(r => (VAI_TRO_HOI_DONG as readonly string[]).includes(r));
+  /** Vận hành đợt chấm + tổng hợp ẩn danh (Admin TCTH / System Admin) */
   const isAdmin = roles.includes('tcth_admin') || roles.includes('system_admin');
-  return { loading, isMember, isAdmin };
+  /** Duy nhất được xem phiếu ĐỊNH DANH (ẩn danh cả với TCTH/BGĐ — chốt 08/2026) */
+  const isSystemAdmin = roles.includes('system_admin');
+  return { loading, isMember, isAdmin, isSystemAdmin };
 }
 
 export interface CouncilRound {
@@ -65,13 +68,28 @@ export interface CouncilItem {
   };
   /** Phiếu của chính người đang đăng nhập (null = chưa chấm) */
   myVote: CouncilVote | null;
-  /** Toàn bộ phiếu RLS cho đọc — thành viên chỉ thấy phiếu mình, admin thấy hết */
+  /**
+   * Phiếu định danh RLS cho đọc — thành viên/TCTH chỉ thấy phiếu MÌNH,
+   * duy nhất System Admin thấy toàn bộ (chốt ẩn danh 08/2026)
+   */
   votes: CouncilVote[];
+}
+
+/** Phiếu ẩn danh cho khung tổng hợp của TCTH — không danh tính, không mốc giờ */
+export interface AnonBallot {
+  voteId: string;
+  itemId: string;
+  xungDot: XungDotLoiIch;
+  diem: Record<TieuChiKey, number>;
+  deXuat: DeXuatHoiDong;
+  gopY: string | null;
+  thamKhao: boolean;
 }
 
 const ROUNDS_KEY = ['idea-council-rounds'];
 const itemsKey = (roundId: string) => ['idea-council-items', roundId];
 const summaryKey = (roundId: string) => ['idea-council-summary', roundId];
+const ballotsKey = (roundId: string) => ['idea-council-anon-ballots', roundId];
 
 type VoteRow = {
   id: string;
@@ -203,6 +221,7 @@ export function useCouncilMutations(roundId: string | null) {
     if (roundId) {
       queryClient.invalidateQueries({ queryKey: itemsKey(roundId) });
       queryClient.invalidateQueries({ queryKey: summaryKey(roundId) });
+      queryClient.invalidateQueries({ queryKey: ballotsKey(roundId) });
     }
   }, [queryClient, roundId]);
 
@@ -280,10 +299,16 @@ export function useCouncilMutations(roundId: string | null) {
     refresh();
   }, [refresh]);
 
-  /** Gạt phiếu sang chỉ-tham-khảo (xung đột lợi ích) — quyết định của Hội đồng, TCTH thao tác */
+  /**
+   * Gạt phiếu sang chỉ-tham-khảo (xung đột lợi ích) — quyết định của Hội đồng,
+   * TCTH thao tác qua RPC chỉ đụng cột is_reference (không đọc/sửa được phiếu
+   * định danh — phiếu ẩn danh với TCTH theo chốt 08/2026).
+   */
   const datThamKhao = useCallback(async (voteId: string, thamKhao: boolean) => {
-    const { error } = await supabase.from('portal_idea_council_votes')
-      .update({ is_reference: thamKhao }).eq('id', voteId);
+    const { error } = await supabase.rpc('bhy_ideas_hd_dat_tham_khao', {
+      _vote_id: voteId,
+      _tham_khao: thamKhao,
+    });
     if (error) {
       toast.error(`Không cập nhật được cờ tham khảo: ${error.message}`);
       return;
@@ -292,6 +317,45 @@ export function useCouncilMutations(roundId: string | null) {
   }, [refresh]);
 
   return { guiPhieu, taoDot, doiTrangThaiDot, themYTuong, goYTuong, datThamKhao };
+}
+
+/** Phiếu ẩn danh của một đợt cho khung quản trị TCTH — nhóm theo ý tưởng */
+export function useAnonBallots(roundId: string | null, enabled: boolean) {
+  const { data, isLoading } = useQuery({
+    queryKey: ballotsKey(roundId ?? 'none'),
+    enabled: enabled && !!roundId,
+    queryFn: async (): Promise<Record<string, AnonBallot[]>> => {
+      const { data: payload, error } = await supabase
+        .rpc('bhy_ideas_hd_phieu_an_danh', { _round_id: roundId! });
+      if (error) throw error;
+      const rows = (payload ?? []) as Array<{
+        vote_id: string; item_id: string; conflict_status: string;
+        score_problem: number; score_impact: number; score_feasible: number;
+        score_safety: number; score_scale: number;
+        recommendation: string; gop_y: string | null; is_reference: boolean;
+      }>;
+      const byItem: Record<string, AnonBallot[]> = {};
+      for (const r of rows) {
+        (byItem[r.item_id] ??= []).push({
+          voteId: r.vote_id,
+          itemId: r.item_id,
+          xungDot: r.conflict_status as XungDotLoiIch,
+          diem: {
+            problem: r.score_problem,
+            impact: r.score_impact,
+            feasible: r.score_feasible,
+            safety: r.score_safety,
+            scale: r.score_scale,
+          },
+          deXuat: r.recommendation as DeXuatHoiDong,
+          gopY: r.gop_y,
+          thamKhao: r.is_reference,
+        });
+      }
+      return byItem;
+    },
+  });
+  return { ballotsByItem: data ?? {}, isLoading };
 }
 
 /** Bản tổng hợp Phụ lục 07 từ RPC — admin xem mọi lúc, thành viên sau khi chốt */

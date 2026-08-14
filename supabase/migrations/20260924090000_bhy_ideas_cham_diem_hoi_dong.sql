@@ -7,10 +7,11 @@
 -- từng ý tưởng: khai xung đột lợi ích (A4), chấm 5 tiêu chí thang 1-5 (C1-C5),
 -- nêu đề xuất (D1) và góp ý (D2 — bắt buộc khi Không xét thưởng/Cần bổ sung).
 --
--- Bảo mật theo quy chế: "Kết quả chấm điểm của từng thành viên Hội đồng không
--- công khai rộng rãi" — thành viên chỉ đọc được phiếu của MÌNH; phiếu chi tiết
--- chỉ Admin TCTH / System Admin đọc; bản tổng hợp (điểm TB, tỷ lệ đồng ý…)
--- công bố cho thành viên qua RPC sau khi đợt chấm đã chốt.
+-- Bảo mật theo quy chế + chốt vận hành 08/2026 (ẩn danh CẢ với TCTH và BGĐ):
+-- thành viên chỉ đọc được phiếu của MÌNH; phiếu ĐỊNH DANH chỉ System Admin
+-- đọc trực tiếp; Admin TCTH tổng hợp/vận hành trên dữ liệu ẨN DANH qua hai
+-- RPC (bhy_ideas_hd_phieu_an_danh, bhy_ideas_hd_dat_tham_khao); bản tổng hợp
+-- (điểm TB, tỷ lệ đồng ý…) công bố cho thành viên qua RPC sau khi đợt chốt.
 --
 -- Mô hình 3 bảng, nối vào portal_ideas sẵn có:
 --   portal_idea_council_rounds  đợt chấm (quý) — draft → open → closed
@@ -141,10 +142,12 @@ CREATE INDEX idx_pic_votes_item ON public.portal_idea_council_votes (item_id);
 
 ALTER TABLE public.portal_idea_council_votes ENABLE ROW LEVEL SECURITY;
 
--- Thành viên chỉ đọc phiếu của mình; phiếu chi tiết toàn Hội đồng chỉ admin đọc
+-- Thành viên chỉ đọc phiếu của mình; phiếu ĐỊNH DANH toàn Hội đồng chỉ
+-- System Admin đọc trực tiếp (ẩn danh cả với TCTH/BGĐ — TCTH tổng hợp qua
+-- RPC bhy_ideas_hd_phieu_an_danh phía dưới)
 CREATE POLICY "Members read own idea council votes"
   ON public.portal_idea_council_votes FOR SELECT TO authenticated
-  USING (user_id = auth.uid() OR public.is_content_admin(auth.uid()));
+  USING (user_id = auth.uid() OR public.has_role(auth.uid(), 'system_admin'::app_role));
 
 CREATE POLICY "Members vote while round open"
   ON public.portal_idea_council_votes FOR INSERT TO authenticated
@@ -180,10 +183,12 @@ CREATE POLICY "Members delete own vote while round open"
     )
   );
 
-CREATE POLICY "Content admins manage idea council votes"
+-- Chỉ System Admin được thao tác trực tiếp trên phiếu người khác; Admin TCTH
+-- gạt cờ tham khảo qua RPC bhy_ideas_hd_dat_tham_khao (không thấy danh tính)
+CREATE POLICY "System admins manage idea council votes"
   ON public.portal_idea_council_votes FOR ALL TO authenticated
-  USING (public.is_content_admin(auth.uid()))
-  WITH CHECK (public.is_content_admin(auth.uid()));
+  USING (public.has_role(auth.uid(), 'system_admin'::app_role))
+  WITH CHECK (public.has_role(auth.uid(), 'system_admin'::app_role));
 
 CREATE TRIGGER update_portal_idea_council_votes_updated_at
   BEFORE UPDATE ON public.portal_idea_council_votes
@@ -306,7 +311,68 @@ REVOKE ALL ON FUNCTION public.bhy_ideas_hd_tong_hop(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.bhy_ideas_hd_tong_hop(uuid) TO authenticated, service_role;
 
 -- ---------------------------------------------------------------------------
--- 5) Vá lỗi phát hiện khi rà soát BHY Ideas: bình luận ý tưởng gửi từ UI
+-- 5) Phiếu ẨN DANH cho Admin TCTH tổng hợp: đủ dữ liệu nghiệp vụ (xung đột,
+--    điểm, đề xuất, góp ý, cờ tham khảo) nhưng KHÔNG danh tính và KHÔNG mốc
+--    thời gian gửi (tránh suy ngược người chấm theo giờ). Sắp theo id (uuid
+--    ngẫu nhiên) để thứ tự không tiết lộ trình tự gửi phiếu.
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.bhy_ideas_hd_phieu_an_danh(_round_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_ballots jsonb;
+BEGIN
+  IF NOT public.is_content_admin(auth.uid()) THEN
+    RAISE EXCEPTION 'Chỉ Admin TCTH / System Admin được xem phiếu ẩn danh';
+  END IF;
+
+  SELECT coalesce(jsonb_agg(jsonb_build_object(
+    'vote_id', v.id,
+    'item_id', v.item_id,
+    'conflict_status', v.conflict_status,
+    'score_problem', v.score_problem,
+    'score_impact', v.score_impact,
+    'score_feasible', v.score_feasible,
+    'score_safety', v.score_safety,
+    'score_scale', v.score_scale,
+    'recommendation', v.recommendation,
+    'gop_y', v.gop_y,
+    'is_reference', v.is_reference
+  ) ORDER BY v.id), '[]'::jsonb) INTO v_ballots
+  FROM public.portal_idea_council_votes v
+  JOIN public.portal_idea_council_items it ON it.id = v.item_id
+  WHERE it.round_id = _round_id;
+
+  RETURN v_ballots;
+END $$;
+
+REVOKE ALL ON FUNCTION public.bhy_ideas_hd_phieu_an_danh(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.bhy_ideas_hd_phieu_an_danh(uuid) TO authenticated, service_role;
+
+-- Gạt cờ "tính tham khảo" theo quyết định Hội đồng — RPC chỉ đụng đúng cột
+-- is_reference nên Admin TCTH thao tác được mà không cần (và không thể) đọc
+-- hay sửa nội dung phiếu định danh.
+CREATE OR REPLACE FUNCTION public.bhy_ideas_hd_dat_tham_khao(_vote_id uuid, _tham_khao boolean)
+RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NOT public.is_content_admin(auth.uid()) THEN
+    RAISE EXCEPTION 'Chỉ Admin TCTH / System Admin được gạt cờ phiếu tham khảo';
+  END IF;
+  UPDATE public.portal_idea_council_votes
+  SET is_reference = _tham_khao
+  WHERE id = _vote_id;
+END $$;
+
+REVOKE ALL ON FUNCTION public.bhy_ideas_hd_dat_tham_khao(uuid, boolean) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.bhy_ideas_hd_dat_tham_khao(uuid, boolean) TO authenticated, service_role;
+
+-- ---------------------------------------------------------------------------
+-- 6) Vá lỗi phát hiện khi rà soát BHY Ideas: bình luận ý tưởng gửi từ UI
 --    (useIdeaComments.addComment) không kèm user_id, cột lại không có DEFAULT
 --    → policy "Staff can comment as themselves" (user_id = auth.uid()) chặn
 --    MỌI bình luận mới. Đặt DEFAULT auth.uid() để insert thiếu user_id vẫn

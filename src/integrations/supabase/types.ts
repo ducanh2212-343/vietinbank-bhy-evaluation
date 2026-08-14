@@ -4825,9 +4825,17 @@ export type Database = {
           user_id: string
         }[]
       }
+      bhy_ideas_hd_dat_tham_khao: {
+        Args: { _tham_khao: boolean; _vote_id: string }
+        Returns: undefined
+      }
       bhy_ideas_hd_la_thanh_vien: {
         Args: { _user_id: string }
         Returns: boolean
+      }
+      bhy_ideas_hd_phieu_an_danh: {
+        Args: { _round_id: string }
+        Returns: Json
       }
       bhy_ideas_hd_tong_hop: {
         Args: { _round_id: string }

@@ -12,15 +12,22 @@ import {
 } from '@/lib/ideaCouncil';
 import { useIdeaOwnerProfiles } from '../useIdeaOwnerProfiles';
 import {
+  useAnonBallots,
   useCouncilCandidates,
   useCouncilMutations,
+  useIdeaCouncilAccess,
   type CouncilItem,
   type CouncilRound,
 } from './useIdeaCouncil';
 
 // Khung quản trị của Phòng TCTH: tạo/mở/chốt đợt chấm, trình ý tưởng lên Hội
-// đồng (cấp mã + tầng đề xuất), xem phiếu chi tiết định danh và gạt cờ
-// "tính tham khảo" cho phiếu có xung đột lợi ích theo quyết định của Hội đồng.
+// đồng (cấp mã + tầng đề xuất), tổng hợp phiếu và gạt cờ "tính tham khảo"
+// theo quyết định của Hội đồng.
+//
+// Chốt ẩn danh 08/2026: phiếu hiển thị ở đây là bản ẨN DANH (RPC
+// bhy_ideas_hd_phieu_an_danh) — TCTH/BGĐ không thấy ai chấm bao nhiêu; danh
+// tính người chấm chỉ System Admin thấy (RLS chỉ mở phiếu định danh cho vai
+// trò này, UI ghép tên từ đó).
 
 interface IdeaCouncilAdminProps {
   rounds: CouncilRound[];
@@ -36,9 +43,12 @@ const CHUYEN_TRANG_THAI: Record<TrangThaiDot, { next: TrangThaiDot; label: strin
 };
 
 export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, selectedRound, items, onSelectRound }) => {
+  const { isSystemAdmin } = useIdeaCouncilAccess();
   const { taoDot, doiTrangThaiDot, themYTuong, goYTuong, datThamKhao } = useCouncilMutations(selectedRound?.id ?? null);
   const { candidates } = useCouncilCandidates(true);
-  const { owners } = useIdeaOwnerProfiles(true);
+  const { ballotsByItem } = useAnonBallots(selectedRound?.id ?? null, !!selectedRound);
+  // Hồ sơ chỉ tải cho System Admin — người duy nhất được ghép tên vào phiếu
+  const { owners } = useIdeaOwnerProfiles(isSystemAdmin);
 
   const [tenDot, setTenDot] = useState('');
   const [ghiChuDot, setGhiChuDot] = useState('');
@@ -46,6 +56,17 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
   const [maYTuong, setMaYTuong] = useState('');
   const [tang, setTang] = useState<TangDeXuat>('Vươn cành');
   const [openBallots, setOpenBallots] = useState<Record<string, boolean>>({});
+
+  // Danh tính người chấm — chỉ System Admin dựng được map này: RLS chỉ trả
+  // phiếu định danh của người khác cho vai trò system_admin
+  const tenTheoVoteId = useMemo(() => {
+    const m = new Map<string, string>();
+    if (!isSystemAdmin) return m;
+    for (const it of items) {
+      for (const v of it.votes) m.set(v.id, owners[v.userId]?.fullName || 'Không rõ tên');
+    }
+    return m;
+  }, [isSystemAdmin, items, owners]);
 
   // Ứng viên theo tầng đang chọn (đã bật cờ Hội đồng, chưa nằm trong đợt):
   // - Xét nâng lên Lan tỏa: CHỈ ý tưởng đã đạt Vươn cành (kỳ xét riêng).
@@ -232,10 +253,11 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
             )}
           </form>
 
-          {/* Ý tưởng trong đợt + phiếu chi tiết định danh */}
+          {/* Ý tưởng trong đợt + phiếu ẩn danh (danh tính chỉ System Admin thấy) */}
           <div className="space-y-2">
             {items.map(it => {
               const moPhieu = openBallots[it.id] ?? false;
+              const phieu = ballotsByItem[it.id] ?? [];
               return (
                 <div key={it.id} className="border border-slate-200 rounded-xl overflow-hidden">
                   <div className="flex flex-wrap items-center gap-2 p-2.5 bg-slate-50">
@@ -247,12 +269,12 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
                     >
                       {TANG_DE_XUAT_INFO[it.proposedTier].nhan}
                     </span>
-                    <span className="text-[10px] text-slate-500 font-bold">{it.votes.length} phiếu</span>
+                    <span className="text-[10px] text-slate-500 font-bold">{phieu.length} phiếu</span>
                     <button
                       type="button"
                       onClick={() => setOpenBallots(prev => ({ ...prev, [it.id]: !moPhieu }))}
                       className="p-1.5 rounded text-slate-500 hover:bg-slate-200 transition-all cursor-pointer"
-                      title="Xem phiếu chi tiết (chỉ TCTH)"
+                      title="Xem phiếu (bản ẩn danh)"
                     >
                       {moPhieu ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                     </button>
@@ -273,17 +295,20 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
                   {moPhieu && (
                     <div className="p-2.5 space-y-1.5 bg-white">
                       <p className="text-[10px] text-slate-400">
-                        Phiếu định danh — chỉ Phòng TCTH xem để tổng hợp, không công khai.
-                        Gạt «Tham khảo» để loại phiếu khỏi điểm trung bình chính thức theo quyết định của Hội đồng.
+                        {isSystemAdmin
+                          ? 'Bạn là Quản trị hệ thống nên thấy danh tính; với Admin TCTH và Ban Giám đốc, phiếu hiển thị ẩn danh.'
+                          : 'Phiếu hiển thị ẨN DANH — không ai ngoài Quản trị hệ thống biết ai chấm bao nhiêu.'}
+                        {' '}Gạt «Tham khảo» để loại phiếu khỏi điểm trung bình chính thức theo quyết định của Hội đồng
+                        (căn cứ cột khai báo xung đột lợi ích).
                       </p>
-                      {it.votes.length === 0 && (
+                      {phieu.length === 0 && (
                         <p className="text-slate-400 italic">Chưa có phiếu nào.</p>
                       )}
-                      {it.votes.map(v => (
-                        <div key={v.id} className={`flex flex-wrap items-center gap-x-3 gap-y-1 p-2 rounded-lg border ${v.thamKhao ? 'bg-slate-50 border-slate-200 opacity-70' : 'border-slate-100'}`}>
+                      {phieu.map((v, i) => (
+                        <div key={v.voteId} className={`flex flex-wrap items-center gap-x-3 gap-y-1 p-2 rounded-lg border ${v.thamKhao ? 'bg-slate-50 border-slate-200 opacity-70' : 'border-slate-100'}`}>
                           <span className="font-bold text-slate-700 flex items-center gap-1">
                             <UserRound className="w-3 h-3 text-slate-400" />
-                            {owners[v.userId]?.fullName || 'Không rõ tên'}
+                            {tenTheoVoteId.get(v.voteId) ?? `Phiếu ẩn danh #${i + 1}`}
                           </span>
                           <span className="text-[10px] text-slate-500">{XUNG_DOT_LABELS[v.xungDot]}</span>
                           <span className="text-[10px] font-semibold text-slate-600">
@@ -295,7 +320,7 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
                             <input
                               type="checkbox"
                               checked={v.thamKhao}
-                              onChange={e => void datThamKhao(v.id, e.target.checked)}
+                              onChange={e => void datThamKhao(v.voteId, e.target.checked)}
                               className="accent-amber-500"
                             />
                             Tham khảo

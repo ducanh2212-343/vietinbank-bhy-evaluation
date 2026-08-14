@@ -18,9 +18,14 @@ bằng phiếu chấm ngay trong BHY One, tại `/one/y-tuong/hoi-dong`.
   - D1 đề xuất; D2 góp ý (bắt buộc khi «Không xét thưởng»/«Cần bổ sung» —
     ràng buộc cả ở CHECK constraint).
   - Phiếu sửa được đến khi đợt **chốt** (RLS chặn theo trạng thái đợt).
-- **Bảo mật điểm cá nhân** đúng quy chế: thành viên chỉ đọc phiếu của mình;
-  phiếu chi tiết chỉ TCTH/System admin đọc; thành viên xem **bản tổng hợp**
-  (Phụ lục 07) qua RPC sau khi đợt chốt, góp ý trả về ẩn danh.
+- **Bảo mật điểm cá nhân** (chốt 08/2026 — chặt hơn quy chế): kết quả chấm của
+  từng thành viên **ẩn danh với cả Phòng TCTH và Ban Giám đốc**, chỉ System
+  Admin đọc được phiếu định danh (RLS chỉ mở cho vai trò `system_admin`).
+  TCTH vẫn vận hành đầy đủ trên dữ liệu ẩn danh: RPC `bhy_ideas_hd_phieu_an_danh`
+  trả phiếu không danh tính, không mốc thời gian gửi (tránh suy ngược người
+  chấm theo giờ), sắp theo uuid ngẫu nhiên; gạt cờ tham khảo qua RPC
+  `bhy_ideas_hd_dat_tham_khao` chỉ đụng đúng cột `is_reference`. Thành viên
+  xem **bản tổng hợp** (Phụ lục 07) qua RPC sau khi đợt chốt, góp ý ẩn danh.
 - **Xung đột lợi ích**: khai báo ghi trên phiếu; với ý tưởng Lan tỏa/ảnh hưởng
   lớn, Hội đồng có thể quyết định phiếu «tính tham khảo» — TCTH gạt cờ, phiếu
   bị loại khỏi điểm TB và tỷ lệ đồng ý (cờ này chỉ admin sửa được, trigger chặn).

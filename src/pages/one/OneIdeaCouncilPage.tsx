@@ -151,8 +151,9 @@ export default function OneIdeaCouncilPage() {
           </h1>
           <p className="text-xs text-slate-500 max-w-3xl leading-relaxed">
             Hội đồng xem xét ý tưởng Cấp độ <b>Vươn cành</b> (có kết quả thực thi) và <b>Lan tỏa</b> (chuẩn
-            hóa/nhân rộng) theo 5 tiêu chí thang 1-5. Phiếu chấm <b>định danh</b> theo tài khoản đăng nhập;
-            điểm của từng thành viên không công khai — chỉ công bố kết quả tổng hợp sau khi đợt chấm chốt.
+            hóa/nhân rộng) theo 5 tiêu chí thang 1-5. Phiếu chấm <b>định danh</b> theo tài khoản đăng nhập
+            nhưng kết quả từng người được <b>ẩn danh với mọi thành viên, kể cả Phòng TCTH và Ban Giám đốc</b> —
+            chỉ Quản trị hệ thống truy cập được phiếu định danh; Hội đồng chỉ nhận bản tổng hợp sau khi đợt chấm chốt.
           </p>
         </div>
 
