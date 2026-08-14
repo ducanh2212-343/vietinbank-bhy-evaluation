@@ -213,8 +213,9 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: Lightbulb,
         path: '/one/y-tuong',
         bleed: true,
-        keywords: ['y tuong', 'sang kien', 'cai tien', 'de xuat', 'ideas'],
-        // Trang "Sáng kiến & Nghiệp vụ" cũ đã gộp về đây
+        keywords: ['y tuong', 'sang kien', 'cai tien', 'de xuat', 'ideas', 'cham diem hoi dong', 'vuon canh', 'lan toa'],
+        // Trang "Sáng kiến & Nghiệp vụ" cũ đã gộp về đây; /one/y-tuong/hoi-dong
+        // (chấm điểm Hội đồng) khớp theo tiền tố nên không cần khai extraPaths
         extraPaths: ['/one/sang-kien', '/one/bhy-ways'],
       },
       // Connect không có màn hình nghiệp vụ nên trang này chính là nhà của nó

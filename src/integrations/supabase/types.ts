@@ -2597,6 +2597,137 @@ export type Database = {
           },
         ]
       }
+      portal_idea_council_items: {
+        Row: {
+          created_at: string
+          id: string
+          idea_code: string
+          idea_id: string
+          proposed_tier: string
+          round_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          idea_code: string
+          idea_id: string
+          proposed_tier: string
+          round_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          idea_code?: string
+          idea_id?: string
+          proposed_tier?: string
+          round_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_idea_council_items_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "portal_ideas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portal_idea_council_items_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "portal_idea_council_rounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_idea_council_rounds: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          note: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          name: string
+          note?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+          note?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      portal_idea_council_votes: {
+        Row: {
+          conflict_status: string
+          created_at: string
+          gop_y: string | null
+          id: string
+          is_reference: boolean
+          item_id: string
+          recommendation: string
+          score_feasible: number
+          score_impact: number
+          score_problem: number
+          score_safety: number
+          score_scale: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          conflict_status: string
+          created_at?: string
+          gop_y?: string | null
+          id?: string
+          is_reference?: boolean
+          item_id: string
+          recommendation: string
+          score_feasible: number
+          score_impact: number
+          score_problem: number
+          score_safety: number
+          score_scale: number
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          conflict_status?: string
+          created_at?: string
+          gop_y?: string | null
+          id?: string
+          is_reference?: boolean
+          item_id?: string
+          recommendation?: string
+          score_feasible?: number
+          score_impact?: number
+          score_problem?: number
+          score_safety?: number
+          score_scale?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_idea_council_votes_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "portal_idea_council_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       portal_idea_votes: {
         Row: {
           created_at: string
@@ -4693,6 +4824,14 @@ export type Database = {
           phong: string
           user_id: string
         }[]
+      }
+      bhy_ideas_hd_la_thanh_vien: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
+      bhy_ideas_hd_tong_hop: {
+        Args: { _round_id: string }
+        Returns: Json
       }
       can_observe_profile: {
         Args: { _target: string }

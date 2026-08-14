@@ -117,6 +117,7 @@ const LichNghiAdminPage = lazyWithRetry(() => import("./pages/LichNghiAdminPage"
 const OneLearnPage = lazyWithRetry(() => import("./pages/one/OneLearnPage"));
 const OneNewsPage = lazyWithRetry(() => import("./pages/one/OneNewsPage"));
 const OneIdeasPage = lazyWithRetry(() => import("./pages/one/OneIdeasPage"));
+const OneIdeaCouncilPage = lazyWithRetry(() => import("./pages/one/OneIdeaCouncilPage"));
 const OneCreditPage = lazyWithRetry(() => import("./pages/one/OneCreditPage"));
 const OneRecognitionPage = lazyWithRetry(() => import("./pages/one/OneRecognitionPage"));
 const OneKyYeuPage = lazyWithRetry(() => import("./pages/one/OneKyYeuPage"));
@@ -232,6 +233,8 @@ const App = () => (
               <Route path="/one/hoc-hoi" element={<OneLearnPage />} />
               <Route path="/one/tin-tuc" element={<OneNewsPage />} />
               <Route path="/one/y-tuong" element={<OneIdeasPage />} />
+              {/* Chấm điểm Hội đồng BHY Ideas (Phụ lục 06) — trang tự gác quyền thành viên HĐ, RLS là lớp chặn chính */}
+              <Route path="/one/y-tuong/hoi-dong" element={<OneIdeaCouncilPage />} />
               <Route path="/one/credit-360" element={<OneCreditPage />} />
               <Route path="/one/ghi-nhan" element={<OneRecognitionPage />} />
               {/* Cây Ký Ức — kỷ yếu số 20 năm dạng flipbook, đọc PDF từ bucket ky-yeu */}

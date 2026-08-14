@@ -60,6 +60,22 @@ export interface IdeaComment {
 
 const IDEAS_KEY = ['one-portal-ideas'];
 
+// Supabase cắt mỗi truy vấn ở 1000 dòng mặc định và KHÔNG báo lỗi — bảng vote/
+// bình luận vượt mức này khi ~100 cán bộ tương tác vài trăm ý tưởng, số thích
+// sẽ đếm thiếu âm thầm. Tải theo trang tới khi hết dữ liệu.
+async function taiHetTrang<T>(
+  taiTrang: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+): Promise<T[]> {
+  const CO_TRANG = 1000;
+  const rows: T[] = [];
+  for (let from = 0; ; from += CO_TRANG) {
+    const { data, error } = await taiTrang(from, from + CO_TRANG - 1);
+    if (error) throw error;
+    rows.push(...(data ?? []));
+    if (!data || data.length < CO_TRANG) return rows;
+  }
+}
+
 export function usePortalIdeas() {
   const { user, roles } = useAuth();
   const queryClient = useQueryClient();
@@ -68,30 +84,32 @@ export function usePortalIdeas() {
   const { data: ideas = [], isLoading } = useQuery({
     queryKey: IDEAS_KEY,
     queryFn: async (): Promise<PortalIdea[]> => {
-      const [{ data: rows, error }, { data: votes, error: vErr }, { data: comments, error: cErr }] =
-        await Promise.all([
-          supabase.from('portal_ideas').select('*').order('created_at', { ascending: false }),
-          supabase.from('portal_idea_votes').select('idea_id, user_id, vote'),
-          supabase.from('portal_idea_comments').select('idea_id'),
-        ]);
-      if (error) throw error;
-      if (vErr) throw vErr;
-      if (cErr) throw cErr;
+      const [rows, votes, comments] = await Promise.all([
+        taiHetTrang((from, to) =>
+          supabase.from('portal_ideas').select('*')
+            .order('created_at', { ascending: false }).range(from, to)),
+        taiHetTrang((from, to) =>
+          supabase.from('portal_idea_votes').select('idea_id, user_id, vote')
+            .order('created_at', { ascending: true }).range(from, to)),
+        taiHetTrang((from, to) =>
+          supabase.from('portal_idea_comments').select('id, idea_id')
+            .order('created_at', { ascending: true }).range(from, to)),
+      ]);
 
       const likeCount = new Map<string, number>();
       const unlikeCount = new Map<string, number>();
       const myVotes = new Map<string, 1 | -1>();
-      for (const v of votes ?? []) {
+      for (const v of votes) {
         const m = v.vote === 1 ? likeCount : unlikeCount;
         m.set(v.idea_id, (m.get(v.idea_id) ?? 0) + 1);
         if (v.user_id === user?.id) myVotes.set(v.idea_id, v.vote as 1 | -1);
       }
       const commentCount = new Map<string, number>();
-      for (const c of comments ?? []) {
+      for (const c of comments) {
         commentCount.set(c.idea_id, (commentCount.get(c.idea_id) ?? 0) + 1);
       }
 
-      return (rows ?? []).map(r => ({
+      return rows.map(r => ({
         id: r.id,
         level: r.level as IdeaLevel,
         applicability: r.applicability as IdeaApplicability,
@@ -251,8 +269,12 @@ export function useIdeaComments(ideaId: string, enabled: boolean) {
 
   const addComment = async (body: string, userName: string) => {
     if (!body.trim()) return;
+    // Gửi kèm user_id tường minh: policy "Staff can comment as themselves" đòi
+    // user_id = auth.uid(), thiếu nó là RLS chặn phiếu (bản trước dựa vào DEFAULT
+    // của cột — vốn không tồn tại cho tới migration 20260924).
     const { error } = await supabase.from('portal_idea_comments').insert({
       idea_id: ideaId,
+      user_id: user?.id,
       user_name: userName,
       body: body.trim(),
     });

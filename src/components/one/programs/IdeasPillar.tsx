@@ -8,6 +8,7 @@ import { PillarAdminUploader } from './PillarGallery';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { usePortalIdeas, type PortalIdea } from '@/components/one/ideas/usePortalIdeas';
+import { useIdeaCouncilAccess } from '@/components/one/ideas/council/useIdeaCouncil';
 import { IdeaForm } from '@/components/one/ideas/IdeaForm';
 import { IdeaList } from '@/components/one/ideas/IdeaList';
 import { IdeaStatsPanel } from '@/components/one/ideas/IdeaStatsPanel';
@@ -88,15 +89,31 @@ const IdeasIntro: React.FC = () => (
       <p className="text-xs text-slate-600">
         <EditableText
           id="programs.ideas.jury_content"
-          defaultVal="5 Tiêu chí trọng tâm: Đúng vấn đề, Hiểu quả, Khả thi, An toàn rủi ro (>=3/5), Nhân rộng. Điểm TB chung từ 3.5 trở lên xét Vươn cành, 4.0 trở lên xét Lan tỏa."
+          defaultVal="5 Tiêu chí trọng tâm: Đúng vấn đề, Hiệu quả, Khả thi, An toàn rủi ro (>=3/5), Nhân rộng. Điểm TB chung từ 3.5 trở lên xét Vươn cành, 4.0 trở lên xét Lan tỏa."
           multiline={true}
           as="span"
           className="text-xs"
         />
       </p>
+      <JuryLink />
     </div>
   </div>
 );
+
+/** Nút vào trang chấm điểm — chỉ thành viên Hội đồng (BGĐ/PGĐ/TP/TCTH) thấy */
+const JuryLink: React.FC = () => {
+  const { isMember } = useIdeaCouncilAccess();
+  if (!isMember) return null;
+  return (
+    <Link
+      to="/one/y-tuong/hoi-dong"
+      className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-black text-[11px] shadow-sm transition-all"
+    >
+      🏛️ Vào phiếu chấm điểm Hội đồng
+      <ArrowRight className="w-3.5 h-3.5" />
+    </Link>
+  );
+};
 
 export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload, introOnly }) => {
   const { isGuest } = useAuth();
