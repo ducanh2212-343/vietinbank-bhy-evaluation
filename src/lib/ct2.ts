@@ -558,6 +558,12 @@ export function lyDoChanChuyen(tu: Ct2TrangThai, den: Ct2TrangThai, bc: BoiCanhC
   if (den === 'HOAN_THANH' && bc.phanTram !== 100) {
     return 'Chưa đạt 100% — cập nhật tiến độ trước khi chuyển Hoàn thành.';
   }
+  // Phương án D (GĐ 15/08): «Hoàn thành» là chữ ký của lãnh đạo Phòng. Trước
+  // đây 31/33 lần chuyển là chủ thẻ tự chuyển và 0/109 thẻ được chốt — tự
+  // hoàn thành đồng nghĩa tự thoát lưới nhịp. Cán bộ đi đường «Trình duyệt».
+  if (den === 'HOAN_THANH' && !bc.laLanhDao) {
+    return 'Hoàn thành cần Trưởng phòng duyệt — dùng nút «Trình duyệt hoàn thành».';
+  }
   if (den === 'DA_DONG' && !bc.laLanhDao) {
     return 'Chỉ Trưởng/Phó phòng được chốt «Đã đóng».';
   }

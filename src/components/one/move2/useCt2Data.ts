@@ -380,6 +380,57 @@ export function useCt2NhipPhong(phongId: string | null) {
   });
 }
 
+/** Một dòng «hôm nay tôi phải làm gì» — nguồn của ô tổng hợp trang chủ */
+export interface Ct2CanLamHomNay {
+  can_ghi_nhip: number;
+  chua_bat_dau: number;
+  cho_toi_duyet: number;
+  cho_toi_y_kien: number;
+  hs_can_nhip: number;
+}
+
+export function useCt2CanLamHomNay(bat = true) {
+  return useQuery({
+    queryKey: ['ct2', 'can-lam-hom-nay'],
+    enabled: bat,
+    staleTime: NUA_PHUT,
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const { data, error } = await db.rpc('ct2_viec_can_lam_hom_nay');
+      if (error) throw error;
+      const dong = (Array.isArray(data) ? data[0] : data) as Ct2CanLamHomNay | undefined;
+      return dong ?? {
+        can_ghi_nhip: 0, chua_bat_dau: 0, cho_toi_duyet: 0, cho_toi_y_kien: 0, hs_can_nhip: 0,
+      };
+    },
+  });
+}
+
+/**
+ * Thẻ trình hoàn thành đang chờ CHÍNH TÔI duyệt (phương án D, GĐ 15/08).
+ * Lấy theo người giữ đồng hồ chứ không theo phòng: Trưởng phòng mở màn duyệt
+ * là thấy đúng hàng đợi của mình, kể cả thẻ liên phòng trình sang.
+ */
+export function useCt2ChoToiDuyet(profileId: string | null) {
+  return useQuery({
+    queryKey: ['ct2', 'cho-toi-duyet', profileId],
+    enabled: !!profileId,
+    staleTime: NUA_PHUT,
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const { data, error } = await db
+        .from('ct2_dau_viec')
+        .select('*')
+        .eq('trang_thai', 'CHO_DUYET')
+        .eq('nguoi_dang_giu', profileId)
+        .eq('phan_tram', 100)
+        .order('giu_tu', { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as Ct2DauViec[];
+    },
+  });
+}
+
 /** Nhật ký PDCA của một thẻ (mở chi tiết mới tải — không tải cả bảng) */
 export function useCt2NhatKy(dauViecId: string | null) {
   return useQuery({

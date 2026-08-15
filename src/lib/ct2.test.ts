@@ -166,9 +166,13 @@ describe('Luật chuyển trạng thái — Kanban là vòng lặp, không có b
     expect(lyDoChanChuyen('CHUAN_BI', 'DANG_LAM', bc)).toBeNull();
   });
 
-  it('Hoàn thành chỉ cần 100% — GĐ bỏ cổng Check 08/2026: check thấy vấn đề thì tạo việc mới', () => {
+  it('Hoàn thành cần 100% VÀ chữ ký lãnh đạo — phương án D của GĐ 15/08', () => {
     expect(lyDoChanChuyen('DANG_LAM', 'HOAN_THANH', bc)).toContain('100%');
-    expect(lyDoChanChuyen('DANG_LAM', 'HOAN_THANH', { ...bc, phanTram: 100 })).toBeNull();
+    // Cán bộ đủ 100% vẫn không tự chuyển được — phải trình Trưởng phòng duyệt
+    expect(lyDoChanChuyen('DANG_LAM', 'HOAN_THANH', { ...bc, phanTram: 100 })).toContain('Trình duyệt');
+    expect(lyDoChanChuyen('DANG_LAM', 'HOAN_THANH', { ...bc, phanTram: 100, laLanhDao: true })).toBeNull();
+    // Lãnh đạo duyệt từ cột chờ: CHO_DUYET → HOAN_THANH thông suốt
+    expect(lyDoChanChuyen('CHO_DUYET', 'HOAN_THANH', { ...bc, phanTram: 100, laLanhDao: true })).toBeNull();
   });
 
   it('Đã đóng chỉ cần lãnh đạo — không đòi dòng Act nữa', () => {

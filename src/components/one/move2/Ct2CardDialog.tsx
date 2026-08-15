@@ -468,6 +468,28 @@ function ChuyenTrangThai({ the, laLanhDao, laChuThe, vong, nhanSu, chuyenDen, on
       onKhoiDong();
       return;
     }
+    /*
+      Phương án D (GĐ 15/08): cán bộ không tự Hoàn thành được — nút của cán
+      bộ là «Trình duyệt»: thẻ vào cột chờ, đồng hồ giao cho Trưởng phòng
+      (thiếu thì lãnh đạo theo dõi của thẻ). Trưởng phòng nhận push N18 và
+      thấy thẻ trong hộp «Chờ anh/chị duyệt».
+    */
+    if (den === 'HOAN_THANH' && !laLanhDao) {
+      if (the.phan_tram !== 100) {
+        toast.error('Chưa đạt 100% — cập nhật tiến độ trước khi trình duyệt.');
+        return;
+      }
+      const nguoiDuyet = the.truong_phong ?? the.lanh_dao_theo_doi;
+      if (!nguoiDuyet) {
+        toast.error('Thẻ chưa gắn Trưởng phòng / lãnh đạo theo dõi — nhờ lãnh đạo Phòng bổ sung trước.');
+        return;
+      }
+      await doi(
+        { trang_thai: 'CHO_DUYET', nguoi_dang_giu: nguoiDuyet },
+        `Đã trình ${nhanSu.find((n) => n.id === nguoiDuyet)?.full_name ?? 'lãnh đạo Phòng'} duyệt hoàn thành.`,
+      );
+      return;
+    }
     const lyDoChan = lyDoChanChuyen(the.trang_thai, den, {
       ...vong, phanTram: the.phan_tram, laLanhDao, loai: the.loai_dau_viec,
     });
@@ -503,7 +525,8 @@ function ChuyenTrangThai({ the, laLanhDao, laChuThe, vong, nhanSu, chuyenDen, on
             disabled={dangGui}
             onClick={() => chuyenToi(c.ma)}
           >
-            {c.icon} {c.ten}
+            {/* Cán bộ không tự Hoàn thành — nút nói thật việc nó làm */}
+            {c.ma === 'HOAN_THANH' && !laLanhDao ? <>📤 Trình duyệt hoàn thành</> : <>{c.icon} {c.ten}</>}
           </Button>
         ))}
         {/* Chữ ký của lãnh đạo — thẻ vẫn ở cột Hoàn thành, chỉ thêm dấu chốt.
