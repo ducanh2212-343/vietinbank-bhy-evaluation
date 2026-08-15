@@ -122,9 +122,12 @@ export const IdeaCouncilSummary: React.FC<{ roundId: string | null }> = ({ round
                   </td>
                   <td className="p-2 text-center font-bold text-slate-700">
                     {dong.tongHop.soPhieuHopLe}
-                    {dong.tongHop.soPhieuThamKhao > 0 && (
-                      <span className="block text-[9px] text-slate-400 font-medium" title="Phiếu chỉ tính tham khảo (xung đột lợi ích)">
-                        +{dong.tongHop.soPhieuThamKhao} tham khảo
+                    {dong.tongHop.soPhieuXungDot > 0 && (
+                      <span
+                        className="block text-[9px] text-amber-600 font-semibold"
+                        title="Số phiếu có khai xung đột lợi ích (A4) — Hội đồng cân nhắc khi kết luận theo mục VI.4"
+                      >
+                        ⚠ {dong.tongHop.soPhieuXungDot} khai XĐLI
                       </span>
                     )}
                   </td>

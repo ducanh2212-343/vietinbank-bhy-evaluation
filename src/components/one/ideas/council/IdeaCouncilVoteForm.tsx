@@ -97,8 +97,9 @@ export const IdeaCouncilVoteForm: React.FC<IdeaCouncilVoteFormProps> = ({ myVote
         </div>
         {xungDot && xungDot !== 'khong' && (
           <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
-            Khai báo của bạn được ghi vào phiếu. Với ý tưởng Cấp độ Lan tỏa hoặc ảnh hưởng lớn,
-            Hội đồng có thể quyết định phiếu này chỉ tính tham khảo, không vào điểm trung bình chính thức.
+            Khai báo của bạn được ghi vào phiếu (ẩn danh) và được đánh dấu trong bản tổng hợp
+            để Hội đồng cân nhắc khi kết luận theo nguyên tắc xử lý xung đột lợi ích (mục VI.4).
+            Phiếu vẫn được tính vào kết quả như các phiếu khác.
           </p>
         )}
       </div>

@@ -23,12 +23,15 @@ bằng phiếu chấm ngay trong BHY One, tại `/one/y-tuong/hoi-dong`.
   Admin đọc được phiếu định danh (RLS chỉ mở cho vai trò `system_admin`).
   TCTH vẫn vận hành đầy đủ trên dữ liệu ẩn danh: RPC `bhy_ideas_hd_phieu_an_danh`
   trả phiếu không danh tính, không mốc thời gian gửi (tránh suy ngược người
-  chấm theo giờ), sắp theo uuid ngẫu nhiên; gạt cờ tham khảo qua RPC
-  `bhy_ideas_hd_dat_tham_khao` chỉ đụng đúng cột `is_reference`. Thành viên
-  xem **bản tổng hợp** (Phụ lục 07) qua RPC sau khi đợt chốt, góp ý ẩn danh.
-- **Xung đột lợi ích**: khai báo ghi trên phiếu; với ý tưởng Lan tỏa/ảnh hưởng
-  lớn, Hội đồng có thể quyết định phiếu «tính tham khảo» — TCTH gạt cờ, phiếu
-  bị loại khỏi điểm TB và tỷ lệ đồng ý (cờ này chỉ admin sửa được, trigger chặn).
+  chấm theo giờ), sắp theo uuid ngẫu nhiên. Thành viên xem **bản tổng hợp**
+  (Phụ lục 07) qua RPC sau khi đợt chốt, góp ý ẩn danh.
+- **Xung đột lợi ích (mục VI.4)**: thành viên khai báo trong phiếu (câu A4);
+  lời khai hiện trên phiếu ẩn danh và được ĐẾM trong bản tổng hợp («⚠ n khai
+  XĐLI») để Hội đồng cân nhắc khi kết luận. **Mọi phiếu đều tính vào điểm** —
+  cơ chế «phiếu tham khảo» (loại phiếu khỏi điểm TB) đã bỏ theo chốt vận hành:
+  khi phiếu ẩn danh với cả TCTH thì việc gạt loại từng phiếu không còn cách
+  thao tác minh bạch; trường hợp cần thiết, Hội đồng đề nghị thành viên có
+  xung đột KHÔNG chấm ý tưởng đó ngay từ đầu.
 
 ## Ba tầng xét và mô hình thưởng CỘNG DỒN
 
@@ -46,8 +49,9 @@ nâng chỉ liệt kê ý tưởng đang ở cấp độ Vươn cành.
 
 Quy ước đã chốt trong code (unit test kèm theo):
 
-- «Số phiếu hợp lệ» = phiếu đã gửi trừ phiếu tham khảo; tỷ lệ 2/3 so trên số
-  này và so **nguyên** (`3×đồng ý ≥ 2×hợp lệ`) để biên 2/3 không trượt số thực.
+- «Số phiếu hợp lệ» = số thành viên đã gửi phiếu (mọi phiếu đều tính); tỷ lệ
+  2/3 so trên số này và so **nguyên** (`3×đồng ý ≥ 2×hợp lệ`) để biên 2/3
+  không trượt số thực.
 - Đồng ý **Vươn cành** tính cả phiếu «Đồng ý Lan tỏa» (tầng cao bao hàm tầng dưới);
   đồng ý **Lan tỏa** chỉ tính phiếu Lan tỏa.
 - Điểm TB chung = trung bình 5 điểm TB tiêu chí (Phụ lục 07).

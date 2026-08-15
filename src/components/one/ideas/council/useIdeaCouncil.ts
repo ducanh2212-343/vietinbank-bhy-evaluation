@@ -45,7 +45,6 @@ export interface CouncilVote {
   diem: Record<TieuChiKey, number>;
   deXuat: DeXuatHoiDong;
   gopY: string | null;
-  thamKhao: boolean;
   updatedAt: string;
 }
 
@@ -83,7 +82,6 @@ export interface AnonBallot {
   diem: Record<TieuChiKey, number>;
   deXuat: DeXuatHoiDong;
   gopY: string | null;
-  thamKhao: boolean;
 }
 
 const ROUNDS_KEY = ['idea-council-rounds'];
@@ -103,7 +101,6 @@ type VoteRow = {
   score_scale: number;
   recommendation: string;
   gop_y: string | null;
-  is_reference: boolean;
   updated_at: string;
 };
 
@@ -121,7 +118,6 @@ const mapVote = (v: VoteRow): CouncilVote => ({
   },
   deXuat: v.recommendation as DeXuatHoiDong,
   gopY: v.gop_y,
-  thamKhao: v.is_reference,
   updatedAt: v.updated_at,
 });
 
@@ -299,24 +295,7 @@ export function useCouncilMutations(roundId: string | null) {
     refresh();
   }, [refresh]);
 
-  /**
-   * Gạt phiếu sang chỉ-tham-khảo (xung đột lợi ích) — quyết định của Hội đồng,
-   * TCTH thao tác qua RPC chỉ đụng cột is_reference (không đọc/sửa được phiếu
-   * định danh — phiếu ẩn danh với TCTH theo chốt 08/2026).
-   */
-  const datThamKhao = useCallback(async (voteId: string, thamKhao: boolean) => {
-    const { error } = await supabase.rpc('bhy_ideas_hd_dat_tham_khao', {
-      _vote_id: voteId,
-      _tham_khao: thamKhao,
-    });
-    if (error) {
-      toast.error(`Không cập nhật được cờ tham khảo: ${error.message}`);
-      return;
-    }
-    refresh();
-  }, [refresh]);
-
-  return { guiPhieu, taoDot, doiTrangThaiDot, themYTuong, goYTuong, datThamKhao };
+  return { guiPhieu, taoDot, doiTrangThaiDot, themYTuong, goYTuong };
 }
 
 /** Phiếu ẩn danh của một đợt cho khung quản trị TCTH — nhóm theo ý tưởng */
@@ -332,7 +311,7 @@ export function useAnonBallots(roundId: string | null, enabled: boolean) {
         vote_id: string; item_id: string; conflict_status: string;
         score_problem: number; score_impact: number; score_feasible: number;
         score_safety: number; score_scale: number;
-        recommendation: string; gop_y: string | null; is_reference: boolean;
+        recommendation: string; gop_y: string | null;
       }>;
       const byItem: Record<string, AnonBallot[]> = {};
       for (const r of rows) {
@@ -349,7 +328,6 @@ export function useAnonBallots(roundId: string | null, enabled: boolean) {
           },
           deXuat: r.recommendation as DeXuatHoiDong,
           gopY: r.gop_y,
-          thamKhao: r.is_reference,
         });
       }
       return byItem;

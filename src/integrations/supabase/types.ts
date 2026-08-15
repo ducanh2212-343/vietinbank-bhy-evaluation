@@ -2675,7 +2675,6 @@ export type Database = {
           created_at: string
           gop_y: string | null
           id: string
-          is_reference: boolean
           item_id: string
           recommendation: string
           score_feasible: number
@@ -2691,7 +2690,6 @@ export type Database = {
           created_at?: string
           gop_y?: string | null
           id?: string
-          is_reference?: boolean
           item_id: string
           recommendation: string
           score_feasible: number
@@ -2707,7 +2705,6 @@ export type Database = {
           created_at?: string
           gop_y?: string | null
           id?: string
-          is_reference?: boolean
           item_id?: string
           recommendation?: string
           score_feasible?: number
@@ -4824,10 +4821,6 @@ export type Database = {
           phong: string
           user_id: string
         }[]
-      }
-      bhy_ideas_hd_dat_tham_khao: {
-        Args: { _tham_khao: boolean; _vote_id: string }
-        Returns: undefined
       }
       bhy_ideas_hd_la_thanh_vien: {
         Args: { _user_id: string }

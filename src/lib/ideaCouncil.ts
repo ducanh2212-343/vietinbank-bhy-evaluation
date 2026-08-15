@@ -113,7 +113,7 @@ export const TANG_DE_XUAT_INFO: Record<TangDeXuat, TangDeXuatInfo> = {
 };
 
 // Ngưỡng xét thưởng (mục VI.3). Tỷ lệ đồng ý so trên số phiếu hợp lệ
-// (thành viên tham gia chấm, không tính phiếu tham khảo).
+// (số thành viên đã tham gia chấm — mọi phiếu đều tính).
 export const NGUONG_VUON_CANH = { diemTbChung: 3.5, diemAnToan: 3 } as const;
 export const NGUONG_LAN_TOA = { diemTbChung: 4.0, diemNhanRong: 4, diemAnToan: 3 } as const;
 
@@ -152,19 +152,22 @@ export function loiPhieu(phieu: PhieuChamInput): string[] {
 
 /** Một phiếu chấm đã lưu — đầu vào của phép tổng hợp phía admin */
 export interface PhieuCham {
+  xungDot: XungDotLoiIch;
   diem: Record<TieuChiKey, number>;
   deXuat: DeXuatHoiDong;
-  /** Phiếu chỉ tính tham khảo (xung đột lợi ích) — loại khỏi điểm TB chính thức */
-  thamKhao: boolean;
 }
 
-/** Kết quả tổng hợp một ý tưởng — đúng các cột Phụ lục 07 */
+/**
+ * Kết quả tổng hợp một ý tưởng — đúng các cột Phụ lục 07. MỌI phiếu đều tính
+ * vào điểm; khai báo xung đột lợi ích (A4) chỉ đếm để Hội đồng tham chiếu khi
+ * kết luận, không tự loại phiếu nào.
+ */
 export interface TongHopYTuong {
-  soPhieu: number;
-  /** Số phiếu hợp lệ = tổng phiếu trừ phiếu tham khảo */
+  /** Số phiếu hợp lệ = số thành viên đã gửi phiếu */
   soPhieuHopLe: number;
-  soPhieuThamKhao: number;
-  /** Điểm TB từng tiêu chí trên phiếu hợp lệ; null khi chưa có phiếu hợp lệ */
+  /** Số phiếu khai A4 ≠ «Không» — Hội đồng cân nhắc theo mục VI.4 */
+  soPhieuXungDot: number;
+  /** Điểm TB từng tiêu chí; null khi chưa có phiếu */
   diemTieuChi: Record<TieuChiKey, number | null>;
   /** Điểm TB chung = TB 5 tiêu chí */
   diemTbChung: number | null;
@@ -175,23 +178,21 @@ export interface TongHopYTuong {
 }
 
 export function tongHopPhieu(phieu: PhieuCham[]): TongHopYTuong {
-  const hopLe = phieu.filter(p => !p.thamKhao);
   const diemTieuChi = {} as Record<TieuChiKey, number | null>;
   for (const tc of TIEU_CHI_HOI_DONG) {
-    diemTieuChi[tc.key] = hopLe.length
-      ? hopLe.reduce((s, p) => s + p.diem[tc.key], 0) / hopLe.length
+    diemTieuChi[tc.key] = phieu.length
+      ? phieu.reduce((s, p) => s + p.diem[tc.key], 0) / phieu.length
       : null;
   }
   const cacDiem = TIEU_CHI_HOI_DONG.map(tc => diemTieuChi[tc.key]);
-  const diemTbChung = hopLe.length
+  const diemTbChung = phieu.length
     ? (cacDiem as number[]).reduce((a, b) => a + b, 0) / cacDiem.length
     : null;
   const deXuatDem: Record<DeXuatHoiDong, number> = { khong_xet: 0, can_bo_sung: 0, vuon_canh: 0, lan_toa: 0 };
-  for (const p of hopLe) deXuatDem[p.deXuat] += 1;
+  for (const p of phieu) deXuatDem[p.deXuat] += 1;
   return {
-    soPhieu: phieu.length,
-    soPhieuHopLe: hopLe.length,
-    soPhieuThamKhao: phieu.length - hopLe.length,
+    soPhieuHopLe: phieu.length,
+    soPhieuXungDot: phieu.filter(p => p.xungDot !== 'khong').length,
     diemTieuChi,
     diemTbChung,
     soDongYVuonCanh: deXuatDem.vuon_canh + deXuatDem.lan_toa,
@@ -372,9 +373,8 @@ export function docTongHopRpc(payload: unknown): { round: { id: string; name: st
         ideaLevel: String(r.idea_level ?? ''),
         proposer: String(r.proposer ?? ''),
         tongHop: {
-          soPhieu: int(r.total_votes),
-          soPhieuHopLe: int(r.counted_votes),
-          soPhieuThamKhao: int(r.reference_votes),
+          soPhieuHopLe: int(r.total_votes),
+          soPhieuXungDot: int(r.conflict_votes),
           diemTieuChi: {
             problem: num(r.avg_problem),
             impact: num(r.avg_impact),

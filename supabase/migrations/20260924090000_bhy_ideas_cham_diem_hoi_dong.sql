@@ -9,9 +9,15 @@
 --
 -- Bảo mật theo quy chế + chốt vận hành 08/2026 (ẩn danh CẢ với TCTH và BGĐ):
 -- thành viên chỉ đọc được phiếu của MÌNH; phiếu ĐỊNH DANH chỉ System Admin
--- đọc trực tiếp; Admin TCTH tổng hợp/vận hành trên dữ liệu ẨN DANH qua hai
--- RPC (bhy_ideas_hd_phieu_an_danh, bhy_ideas_hd_dat_tham_khao); bản tổng hợp
--- (điểm TB, tỷ lệ đồng ý…) công bố cho thành viên qua RPC sau khi đợt chốt.
+-- đọc trực tiếp; Admin TCTH tổng hợp/vận hành trên dữ liệu ẨN DANH qua RPC
+-- bhy_ideas_hd_phieu_an_danh; bản tổng hợp (điểm TB, tỷ lệ đồng ý…) công bố
+-- cho thành viên qua RPC sau khi đợt chốt.
+--
+-- Xung đột lợi ích (mục VI.4): thành viên KHAI BÁO trong phiếu (câu A4);
+-- lời khai hiện trên phiếu ẩn danh để TCTH tổng hợp trình Hội đồng cân nhắc
+-- khi kết luận. MỌI phiếu đều tính vào điểm — không có cơ chế loại phiếu
+-- «tham khảo» (đã bỏ theo chốt vận hành: khi phiếu ẩn danh với cả TCTH thì
+-- việc gạt loại từng phiếu không còn cơ sở thao tác minh bạch).
 --
 -- Mô hình 3 bảng, nối vào portal_ideas sẵn có:
 --   portal_idea_council_rounds  đợt chấm (quý) — draft → open → closed
@@ -128,9 +134,6 @@ CREATE TABLE public.portal_idea_council_votes (
   recommendation TEXT NOT NULL CHECK (recommendation IN ('khong_xet', 'can_bo_sung', 'vuon_canh', 'lan_toa')),
   -- D2: bắt buộc khi Không xét thưởng / Cần bổ sung
   gop_y TEXT,
-  -- Phiếu chỉ tính THAM KHẢO (không vào điểm TB chính thức) — Hội đồng quyết
-  -- với phiếu có xung đột lợi ích ở ý tưởng Lan tỏa/ảnh hưởng lớn; TCTH gạt cờ.
-  is_reference BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   UNIQUE (item_id, user_id),
@@ -183,8 +186,7 @@ CREATE POLICY "Members delete own vote while round open"
     )
   );
 
--- Chỉ System Admin được thao tác trực tiếp trên phiếu người khác; Admin TCTH
--- gạt cờ tham khảo qua RPC bhy_ideas_hd_dat_tham_khao (không thấy danh tính)
+-- Chỉ System Admin được thao tác trực tiếp trên phiếu người khác
 CREATE POLICY "System admins manage idea council votes"
   ON public.portal_idea_council_votes FOR ALL TO authenticated
   USING (public.has_role(auth.uid(), 'system_admin'::app_role))
@@ -194,7 +196,7 @@ CREATE TRIGGER update_portal_idea_council_votes_updated_at
   BEFORE UPDATE ON public.portal_idea_council_votes
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
--- Cột quản trị của phiếu (cờ tham khảo, danh tính) chỉ admin được đụng —
+-- Danh tính và mốc gửi của phiếu là bất biến với người chấm —
 -- cùng nếp trigger chặn cột như portal_ideas (migration 20260811090000)
 CREATE OR REPLACE FUNCTION public.f_pic_votes_chan_cot_quan_tri()
 RETURNS trigger
@@ -208,15 +210,13 @@ BEGIN
 
   IF TG_OP = 'INSERT' THEN
     NEW.user_id := auth.uid();
-    NEW.is_reference := false;
     RETURN NEW;
   END IF;
 
-  IF NEW.is_reference IS DISTINCT FROM OLD.is_reference
-     OR NEW.user_id IS DISTINCT FROM OLD.user_id
+  IF NEW.user_id IS DISTINCT FROM OLD.user_id
      OR NEW.item_id IS DISTINCT FROM OLD.item_id
      OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
-    RAISE EXCEPTION 'Cờ phiếu tham khảo và danh tính phiếu do Phòng TCTH quản lý';
+    RAISE EXCEPTION 'Danh tính và mốc gửi của phiếu không tự sửa được';
   END IF;
   RETURN NEW;
 END $$;
@@ -230,8 +230,7 @@ CREATE TRIGGER trg_pic_votes_chan_cot_quan_tri
 -- ---------------------------------------------------------------------------
 -- 4) RPC tổng hợp kết quả (Phụ lục 07) — KHÔNG lộ điểm từng thành viên.
 --    Admin TCTH/System xem mọi lúc (theo dõi tiến độ); thành viên Hội đồng chỉ
---    xem sau khi đợt đã chốt. Điểm TB tính trên phiếu hợp lệ (không tham khảo);
---    góp ý trả về ẩn danh.
+--    xem sau khi đợt đã chốt. Mọi phiếu đều tính; góp ý trả về ẩn danh.
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.bhy_ideas_hd_tong_hop(_round_id uuid)
 RETURNS jsonb
@@ -266,29 +265,29 @@ BEGIN
       'idea_level', i.level,
       'proposer', i.proposer,
       'total_votes', count(v.id),
-      'counted_votes', count(v.id) FILTER (WHERE NOT v.is_reference),
-      'reference_votes', count(v.id) FILTER (WHERE v.is_reference),
-      'avg_problem',  round(avg(v.score_problem)  FILTER (WHERE NOT v.is_reference), 2),
-      'avg_impact',   round(avg(v.score_impact)   FILTER (WHERE NOT v.is_reference), 2),
-      'avg_feasible', round(avg(v.score_feasible) FILTER (WHERE NOT v.is_reference), 2),
-      'avg_safety',   round(avg(v.score_safety)   FILTER (WHERE NOT v.is_reference), 2),
-      'avg_scale',    round(avg(v.score_scale)    FILTER (WHERE NOT v.is_reference), 2),
+      'avg_problem',  round(avg(v.score_problem), 2),
+      'avg_impact',   round(avg(v.score_impact), 2),
+      'avg_feasible', round(avg(v.score_feasible), 2),
+      'avg_safety',   round(avg(v.score_safety), 2),
+      'avg_scale',    round(avg(v.score_scale), 2),
       -- Điểm TB chung = TB 5 tiêu chí (Phụ lục 07)
       'avg_overall', round((
-          avg(v.score_problem)  FILTER (WHERE NOT v.is_reference)
-        + avg(v.score_impact)   FILTER (WHERE NOT v.is_reference)
-        + avg(v.score_feasible) FILTER (WHERE NOT v.is_reference)
-        + avg(v.score_safety)   FILTER (WHERE NOT v.is_reference)
-        + avg(v.score_scale)    FILTER (WHERE NOT v.is_reference)
+          avg(v.score_problem)
+        + avg(v.score_impact)
+        + avg(v.score_feasible)
+        + avg(v.score_safety)
+        + avg(v.score_scale)
       ) / 5, 2),
+      -- Số phiếu có khai xung đột lợi ích (A4 ≠ Không) — Hội đồng tham chiếu khi kết luận
+      'conflict_votes', count(v.id) FILTER (WHERE v.conflict_status <> 'khong'),
       -- Đồng ý Vươn cành tính cả phiếu đồng ý Lan tỏa (tầng cao hơn)
-      'agree_vuon_canh', count(v.id) FILTER (WHERE NOT v.is_reference AND v.recommendation IN ('vuon_canh', 'lan_toa')),
-      'agree_lan_toa',   count(v.id) FILTER (WHERE NOT v.is_reference AND v.recommendation = 'lan_toa'),
-      'rec_khong_xet',   count(v.id) FILTER (WHERE NOT v.is_reference AND v.recommendation = 'khong_xet'),
-      'rec_can_bo_sung', count(v.id) FILTER (WHERE NOT v.is_reference AND v.recommendation = 'can_bo_sung'),
-      'rec_vuon_canh',   count(v.id) FILTER (WHERE NOT v.is_reference AND v.recommendation = 'vuon_canh'),
-      'rec_lan_toa',     count(v.id) FILTER (WHERE NOT v.is_reference AND v.recommendation = 'lan_toa'),
-      -- Góp ý ẩn danh (kể cả từ phiếu tham khảo) — phục vụ tổng hợp ý kiến
+      'agree_vuon_canh', count(v.id) FILTER (WHERE v.recommendation IN ('vuon_canh', 'lan_toa')),
+      'agree_lan_toa',   count(v.id) FILTER (WHERE v.recommendation = 'lan_toa'),
+      'rec_khong_xet',   count(v.id) FILTER (WHERE v.recommendation = 'khong_xet'),
+      'rec_can_bo_sung', count(v.id) FILTER (WHERE v.recommendation = 'can_bo_sung'),
+      'rec_vuon_canh',   count(v.id) FILTER (WHERE v.recommendation = 'vuon_canh'),
+      'rec_lan_toa',     count(v.id) FILTER (WHERE v.recommendation = 'lan_toa'),
+      -- Góp ý ẩn danh — phục vụ tổng hợp ý kiến
       'gop_y', coalesce(
         jsonb_agg(v.gop_y ORDER BY v.created_at) FILTER (WHERE btrim(coalesce(v.gop_y, '')) <> ''),
         '[]'::jsonb
@@ -312,9 +311,9 @@ GRANT EXECUTE ON FUNCTION public.bhy_ideas_hd_tong_hop(uuid) TO authenticated, s
 
 -- ---------------------------------------------------------------------------
 -- 5) Phiếu ẨN DANH cho Admin TCTH tổng hợp: đủ dữ liệu nghiệp vụ (xung đột,
---    điểm, đề xuất, góp ý, cờ tham khảo) nhưng KHÔNG danh tính và KHÔNG mốc
---    thời gian gửi (tránh suy ngược người chấm theo giờ). Sắp theo id (uuid
---    ngẫu nhiên) để thứ tự không tiết lộ trình tự gửi phiếu.
+--    điểm, đề xuất, góp ý) nhưng KHÔNG danh tính và KHÔNG mốc thời gian gửi
+--    (tránh suy ngược người chấm theo giờ). Sắp theo id (uuid ngẫu nhiên) để
+--    thứ tự không tiết lộ trình tự gửi phiếu.
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.bhy_ideas_hd_phieu_an_danh(_round_id uuid)
 RETURNS jsonb
@@ -338,8 +337,7 @@ BEGIN
     'score_safety', v.score_safety,
     'score_scale', v.score_scale,
     'recommendation', v.recommendation,
-    'gop_y', v.gop_y,
-    'is_reference', v.is_reference
+    'gop_y', v.gop_y
   ) ORDER BY v.id), '[]'::jsonb) INTO v_ballots
   FROM public.portal_idea_council_votes v
   JOIN public.portal_idea_council_items it ON it.id = v.item_id
@@ -350,26 +348,6 @@ END $$;
 
 REVOKE ALL ON FUNCTION public.bhy_ideas_hd_phieu_an_danh(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.bhy_ideas_hd_phieu_an_danh(uuid) TO authenticated, service_role;
-
--- Gạt cờ "tính tham khảo" theo quyết định Hội đồng — RPC chỉ đụng đúng cột
--- is_reference nên Admin TCTH thao tác được mà không cần (và không thể) đọc
--- hay sửa nội dung phiếu định danh.
-CREATE OR REPLACE FUNCTION public.bhy_ideas_hd_dat_tham_khao(_vote_id uuid, _tham_khao boolean)
-RETURNS void
-LANGUAGE plpgsql SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  IF NOT public.is_content_admin(auth.uid()) THEN
-    RAISE EXCEPTION 'Chỉ Admin TCTH / System Admin được gạt cờ phiếu tham khảo';
-  END IF;
-  UPDATE public.portal_idea_council_votes
-  SET is_reference = _tham_khao
-  WHERE id = _vote_id;
-END $$;
-
-REVOKE ALL ON FUNCTION public.bhy_ideas_hd_dat_tham_khao(uuid, boolean) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.bhy_ideas_hd_dat_tham_khao(uuid, boolean) TO authenticated, service_role;
 
 -- ---------------------------------------------------------------------------
 -- 6) Vá lỗi phát hiện khi rà soát BHY Ideas: bình luận ý tưởng gửi từ UI

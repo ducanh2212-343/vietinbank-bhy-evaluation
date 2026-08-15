@@ -21,13 +21,13 @@ import {
 } from './useIdeaCouncil';
 
 // Khung quản trị của Phòng TCTH: tạo/mở/chốt đợt chấm, trình ý tưởng lên Hội
-// đồng (cấp mã + tầng đề xuất), tổng hợp phiếu và gạt cờ "tính tham khảo"
-// theo quyết định của Hội đồng.
+// đồng (cấp mã + tầng đề xuất) và tổng hợp phiếu.
 //
 // Chốt ẩn danh 08/2026: phiếu hiển thị ở đây là bản ẨN DANH (RPC
 // bhy_ideas_hd_phieu_an_danh) — TCTH/BGĐ không thấy ai chấm bao nhiêu; danh
 // tính người chấm chỉ System Admin thấy (RLS chỉ mở phiếu định danh cho vai
-// trò này, UI ghép tên từ đó).
+// trò này, UI ghép tên từ đó). MỌI phiếu đều tính vào điểm — phiếu có khai
+// xung đột lợi ích (A4) chỉ được đánh dấu để Hội đồng cân nhắc (mục VI.4).
 
 interface IdeaCouncilAdminProps {
   rounds: CouncilRound[];
@@ -44,7 +44,7 @@ const CHUYEN_TRANG_THAI: Record<TrangThaiDot, { next: TrangThaiDot; label: strin
 
 export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, selectedRound, items, onSelectRound }) => {
   const { isSystemAdmin } = useIdeaCouncilAccess();
-  const { taoDot, doiTrangThaiDot, themYTuong, goYTuong, datThamKhao } = useCouncilMutations(selectedRound?.id ?? null);
+  const { taoDot, doiTrangThaiDot, themYTuong, goYTuong } = useCouncilMutations(selectedRound?.id ?? null);
   const { candidates } = useCouncilCandidates(true);
   const { ballotsByItem } = useAnonBallots(selectedRound?.id ?? null, !!selectedRound);
   // Hồ sơ chỉ tải cho System Admin — người duy nhất được ghép tên vào phiếu
@@ -298,33 +298,26 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
                         {isSystemAdmin
                           ? 'Bạn là Quản trị hệ thống nên thấy danh tính; với Admin TCTH và Ban Giám đốc, phiếu hiển thị ẩn danh.'
                           : 'Phiếu hiển thị ẨN DANH — không ai ngoài Quản trị hệ thống biết ai chấm bao nhiêu.'}
-                        {' '}Gạt «Tham khảo» để loại phiếu khỏi điểm trung bình chính thức theo quyết định của Hội đồng
-                        (căn cứ cột khai báo xung đột lợi ích).
+                        {' '}Mọi phiếu đều tính vào điểm; phiếu có khai xung đột lợi ích (A4) được đánh dấu
+                        để Hội đồng cân nhắc khi kết luận theo mục VI.4.
                       </p>
                       {phieu.length === 0 && (
                         <p className="text-slate-400 italic">Chưa có phiếu nào.</p>
                       )}
                       {phieu.map((v, i) => (
-                        <div key={v.voteId} className={`flex flex-wrap items-center gap-x-3 gap-y-1 p-2 rounded-lg border ${v.thamKhao ? 'bg-slate-50 border-slate-200 opacity-70' : 'border-slate-100'}`}>
+                        <div key={v.voteId} className={`flex flex-wrap items-center gap-x-3 gap-y-1 p-2 rounded-lg border ${v.xungDot !== 'khong' ? 'bg-amber-50/60 border-amber-200' : 'border-slate-100'}`}>
                           <span className="font-bold text-slate-700 flex items-center gap-1">
                             <UserRound className="w-3 h-3 text-slate-400" />
                             {tenTheoVoteId.get(v.voteId) ?? `Phiếu ẩn danh #${i + 1}`}
                           </span>
-                          <span className="text-[10px] text-slate-500">{XUNG_DOT_LABELS[v.xungDot]}</span>
+                          <span className={`text-[10px] ${v.xungDot !== 'khong' ? 'font-bold text-amber-700' : 'text-slate-500'}`}>
+                            {v.xungDot !== 'khong' && '⚠ '}{XUNG_DOT_LABELS[v.xungDot]}
+                          </span>
                           <span className="text-[10px] font-semibold text-slate-600">
                             {TIEU_CHI_HOI_DONG.map(tc => v.diem[tc.key]).join(' · ')}
                           </span>
                           <span className="text-[10px] font-bold text-amber-700">{DE_XUAT_LABELS[v.deXuat]}</span>
                           {v.gopY && <span className="text-[10px] text-slate-500 italic flex-1 min-w-[140px]">“{v.gopY}”</span>}
-                          <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 cursor-pointer ml-auto">
-                            <input
-                              type="checkbox"
-                              checked={v.thamKhao}
-                              onChange={e => void datThamKhao(v.voteId, e.target.checked)}
-                              className="accent-amber-500"
-                            />
-                            Tham khảo
-                          </label>
                         </div>
                       ))}
                     </div>

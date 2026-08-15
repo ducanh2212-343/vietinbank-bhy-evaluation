@@ -17,9 +17,9 @@ import {
 const phieu = (overrides: Partial<PhieuCham> & { diemChung?: number } = {}): PhieuCham => {
   const d = overrides.diemChung ?? 4;
   return {
+    xungDot: overrides.xungDot ?? 'khong',
     diem: { problem: d, impact: d, feasible: d, safety: d, scale: d, ...(overrides.diem ?? {}) },
     deXuat: overrides.deXuat ?? 'vuon_canh',
-    thamKhao: overrides.thamKhao ?? false,
   };
 };
 
@@ -32,16 +32,15 @@ describe('tongHopPhieu — tổng hợp đúng cột Phụ lục 07', () => {
     expect(t.soDongYVuonCanh).toBe(0);
   });
 
-  it('phiếu tham khảo bị loại khỏi điểm TB và tỷ lệ đồng ý', () => {
+  it('phiếu có khai xung đột lợi ích VẪN tính vào điểm — chỉ đếm để Hội đồng tham chiếu', () => {
     const t = tongHopPhieu([
       phieu({ diemChung: 5, deXuat: 'lan_toa' }),
-      phieu({ diemChung: 1, deXuat: 'lan_toa', thamKhao: true }), // cùng phòng đề xuất
+      phieu({ diemChung: 1, deXuat: 'lan_toa', xungDot: 'cung_phong' }),
     ]);
-    expect(t.soPhieu).toBe(2);
-    expect(t.soPhieuHopLe).toBe(1);
-    expect(t.soPhieuThamKhao).toBe(1);
-    expect(t.diemTbChung).toBe(5);
-    expect(t.soDongYLanToa).toBe(1);
+    expect(t.soPhieuHopLe).toBe(2);
+    expect(t.soPhieuXungDot).toBe(1);
+    expect(t.diemTbChung).toBe(3); // (5+1)/2 — không loại phiếu nào
+    expect(t.soDongYLanToa).toBe(2);
   });
 
   it('điểm TB chung = TB 5 tiêu chí; đồng ý Vươn cành gồm cả phiếu Lan tỏa', () => {
@@ -181,7 +180,7 @@ describe('ketLuanDeXuat — gợi ý theo tầng TCTH trình (mô hình thưởn
   });
 
   it('không phiếu hợp lệ → chưa kết luận, nêu lý do', () => {
-    const kq = ketLuanDeXuat(tongHopPhieu([phieu({ thamKhao: true })]), 'Vươn cành');
+    const kq = ketLuanDeXuat(tongHopPhieu([]), 'Vươn cành');
     expect(kq.ketLuan).toBeNull();
     expect(kq.nhan).toContain('Chưa có phiếu');
   });
@@ -249,7 +248,7 @@ describe('docTongHopRpc — đọc payload jsonb của RPC', () => {
           item_id: 'i1', idea_id: 'y1', idea_code: 'BHYI-2026-001', proposed_tier: 'Lan tỏa',
           idea_title: 'Checklist giảm lỗi', department_name: 'Phòng DVKH', idea_level: 'Nội bộ CN',
           proposer: 'Nguyễn Văn A',
-          total_votes: 3, counted_votes: 2, reference_votes: 1,
+          total_votes: 2, conflict_votes: 1,
           avg_problem: 4.5, avg_impact: 4, avg_feasible: 4, avg_safety: 3.5, avg_scale: 4.5,
           avg_overall: 4.1,
           agree_vuon_canh: 2, agree_lan_toa: 2,
@@ -260,7 +259,7 @@ describe('docTongHopRpc — đọc payload jsonb của RPC', () => {
           item_id: 'i2', idea_id: 'y2', idea_code: 'BHYI-2026-002', proposed_tier: 'Vươn cành',
           idea_title: 'Mẫu tin nhắn KH', department_name: 'Phòng KHBL', idea_level: 'Nội bộ CN',
           proposer: 'Trần B',
-          total_votes: 0, counted_votes: 0, reference_votes: 0,
+          total_votes: 0, conflict_votes: 0,
           avg_problem: null, avg_impact: null, avg_feasible: null, avg_safety: null, avg_scale: null,
           avg_overall: null,
           agree_vuon_canh: 0, agree_lan_toa: 0,
