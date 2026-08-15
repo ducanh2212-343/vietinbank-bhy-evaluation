@@ -269,9 +269,11 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, phongId, onMoThe
           đúng bảng (GĐ 12/08). Phòng không có hồ sơ tín dụng thì cột PDTD tự ẩn. */}
       {nhipNguoi.length > 0 && (() => {
         const coPdtd = nhipNguoi.some((n) => n.hs_dang_chay > 0);
+        const coChuaBatDau = nhipNguoi.some((n) => n.cb_can_bao_cao > 0);
+        const rong = 480 + (coPdtd ? 80 : 0) + (coChuaBatDau ? 110 : 0);
         return (
         <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200">
-          <table className={`w-full text-sm ${coPdtd ? 'min-w-[560px]' : 'min-w-[480px]'}`}>
+          <table className="w-full text-sm" style={{ minWidth: `${rong}px` }}>
             <thead>
               <tr className="border-b bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                 <th className="px-3 py-2">Cán bộ</th>
@@ -285,6 +287,14 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, phongId, onMoThe
                     <span className="block text-2xs font-normal normal-case tracking-normal text-slate-400">đã ghi / đang chạy</span>
                   </th>
                 )}
+                {/* Cột này là câu trả lời cho «để thẻ ở Chuẩn bị để khỏi báo cáo»:
+                    việc đã đến lúc phải chạy thì hiện ở đây, có ghi hay chưa. */}
+                {coChuaBatDau && (
+                  <th className="px-3 py-2 text-center">
+                    Chưa bắt đầu
+                    <span className="block text-2xs font-normal normal-case tracking-normal text-slate-400">quá ngày mở / sắp hạn</span>
+                  </th>
+                )}
                 <th className="px-3 py-2">Nhịp</th>
               </tr>
             </thead>
@@ -293,12 +303,29 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, phongId, onMoThe
                 const thieu: string[] = [];
                 if (n.cv_da_ghi < n.cv_dang_chay) thieu.push(`${n.cv_dang_chay - n.cv_da_ghi} việc phòng`);
                 if (n.hs_da_ghi < n.hs_dang_chay) thieu.push(`${n.hs_dang_chay - n.hs_da_ghi} hồ sơ PDTD`);
+                if (n.cb_da_ghi < n.cb_can_bao_cao) thieu.push(`${n.cb_can_bao_cao - n.cb_da_ghi} việc chưa bắt đầu`);
                 return (
                 <tr key={n.profile_id} className="border-b last:border-0">
                   <td className="px-3 py-2 font-medium text-slate-800">{n.full_name}</td>
                   <td className="px-3 py-2 text-center"><OTiSo daGhi={n.cv_da_ghi} dangChay={n.cv_dang_chay} /></td>
                   {coPdtd && (
                     <td className="px-3 py-2 text-center"><OTiSo daGhi={n.hs_da_ghi} dangChay={n.hs_dang_chay} /></td>
+                  )}
+                  {coChuaBatDau && (
+                    <td className="px-3 py-2 text-center">
+                      {n.cb_can_bao_cao === 0 ? <span className="text-slate-300">—</span> : (
+                        <span title={[
+                          n.cb_qua_han_bd > 0 ? `${n.cb_qua_han_bd} việc quá ngày bắt đầu` : '',
+                          n.cb_sap_den_han > 0 ? `${n.cb_sap_den_han} việc sắp đến hạn mà chưa bắt đầu` : '',
+                        ].filter(Boolean).join(' · ')}>
+                          <OTiSo daGhi={n.cb_da_ghi} dangChay={n.cb_can_bao_cao} />
+                          <span className="ml-1 text-2xs text-slate-500">
+                            {n.cb_qua_han_bd > 0 && `${n.cb_qua_han_bd}⏰`}
+                            {n.cb_sap_den_han > 0 && ` ${n.cb_sap_den_han}🔥`}
+                          </span>
+                        </span>
+                      )}
+                    </td>
                   )}
                   <td className="px-3 py-2">
                     {n.ket_qua === 'DUNG_GIO' && <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">✅ Đúng nhịp</Badge>}
@@ -316,6 +343,12 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, phongId, onMoThe
               })}
             </tbody>
           </table>
+          {coChuaBatDau && (
+            <p className="border-t border-slate-100 bg-slate-50/60 px-3 py-2 text-2xs text-slate-500">
+              ⏰ quá ngày bắt đầu mà chưa mở việc · 🔥 sắp đến hạn hoàn thành mà chưa bắt đầu.
+              Việc đã đến lúc phải chạy vẫn phải ghi nhịp, dù thẻ còn nằm ở cột «Chuẩn bị».
+            </p>
+          )}
         </div>
         );
       })()}

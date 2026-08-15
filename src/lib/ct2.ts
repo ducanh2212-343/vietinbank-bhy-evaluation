@@ -647,6 +647,47 @@ export function soNgayQuaHan(dv: Pick<Ct2DauViec, 'han_hoan_thanh' | 'trang_thai
 }
 
 /**
+ * Vì sao một thẻ CHƯA BẮT ĐẦU vẫn phải ghi nhịp (GĐ 15/08).
+ *
+ * Luật thật nằm ở database (`ct2_vi_sao_phai_bao_cao`) — hàm này chỉ để giao
+ * diện gọi tên cho người đọc hiểu, và PHẢI nói cùng một thứ. Nếu sửa một bên,
+ * sửa cả hai: bảng chấm một đằng mà thẻ hiện một nẻo là cách nhanh nhất khiến
+ * cán bộ mất tin vào con số.
+ *
+ * Trước đây chỉ thẻ «Đang làm» bị đòi nhịp, nên để yên thẻ ở «Chuẩn bị» là
+ * cách né báo cáo hợp lệ — càng chậm càng không ai phải giải trình.
+ */
+export type Ct2LyDoBaoCao = 'QUA_HAN_BAT_DAU' | 'SAP_DEN_HAN' | null;
+
+export const CT2_NHAN_LY_DO_BAO_CAO: Record<'QUA_HAN_BAT_DAU' | 'SAP_DEN_HAN', string> = {
+  QUA_HAN_BAT_DAU: 'Quá ngày bắt đầu mà chưa mở việc',
+  SAP_DEN_HAN: 'Sắp đến hạn hoàn thành mà chưa bắt đầu',
+};
+
+/** Ngưỡng «sắp đến hạn», tính bằng ngày làm việc — khớp cấu hình mặc định DB */
+export const CT2_NGUONG_SAP_DEN_HAN = 3;
+
+/**
+ * Thẻ CHƯA BẮT ĐẦU này có phải ghi nhịp không, vì sao. Bản chiếu của
+ * `ct2_vi_sao_phai_bao_cao` ở database, cho những màn hình đọc thẳng bảng
+ * `ct2_dau_viec` thay vì qua RPC. Xét SAP_DEN_HAN trước vì nguy cấp hơn.
+ */
+export function lyDoPhaiBaoCao(
+  dv: Pick<Ct2DauViec, 'trang_thai' | 'loai_dau_viec' | 'ngay_bat_dau' | 'han_hoan_thanh'>,
+  moc: Date = new Date(),
+): Ct2LyDoBaoCao {
+  if (dv.loai_dau_viec !== 'TIEN_TRINH' || dv.trang_thai !== 'CHUAN_BI') return null;
+  if (dv.han_hoan_thanh
+      && soNgayLamViec(moc, `${dv.han_hoan_thanh}T00:00:00+07:00`) <= CT2_NGUONG_SAP_DEN_HAN) {
+    return 'SAP_DEN_HAN';
+  }
+  if (dv.ngay_bat_dau && ngayVnChuoi(new Date(`${dv.ngay_bat_dau}T00:00:00+07:00`)) < ngayVnChuoi(moc)) {
+    return 'QUA_HAN_BAT_DAU';
+  }
+  return null;
+}
+
+/**
  * Số NGÀY LÀM VIỆC thẻ "im lặng" — không có nhịp mới. Thẻ chưa từng có nhịp
  * tính từ ngày bắt đầu. Cuối tuần không đòi nhịp nên không tính vào đây.
  */

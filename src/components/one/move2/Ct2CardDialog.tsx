@@ -11,9 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  CT2_CONG_THUC_NHIP, CT2_COT, CT2_MAU_CAU, CT2_TEN_CO, CT2_TEN_UU_TIEN,
+  CT2_CONG_THUC_NHIP, CT2_COT, CT2_MAU_CAU, CT2_NHAN_LY_DO_BAO_CAO, CT2_TEN_CO,
+  CT2_TEN_UU_TIEN,
   cotHienThi, daDuKeHoach, daGhiNhipHomNay, goiYNhan, kiemTraCauNhip,
-  lyDoChanChuyen, mucChuY, soNgayQuaHan, thieuTruongBatBuoc, tuoiCho,
+  lyDoChanChuyen, lyDoPhaiBaoCao, mucChuY, soNgayQuaHan, thieuTruongBatBuoc, tuoiCho,
   type Ct2Co, type Ct2DauViec, type Ct2TrangThai,
 } from '@/lib/ct2';
 import {
@@ -69,6 +70,8 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
     return ds;
   }, [the, tenNguoi]);
   const laChuThe = the?.nguoi_chiu_trach_nhiem === profileId;
+  // Thẻ còn ở «Chuẩn bị» nhưng đã đến lúc phải chạy — cùng luật với database
+  const lyDoBaoCao = the ? lyDoPhaiBaoCao(the) : null;
   // Đã ghi nhịp hôm nay → khối nhịp thu thành dòng xanh; bấm «Ghi thêm» mở lại
   const [moLaiNhip, setMoLaiNhip] = useState(false);
   useEffect(() => { setMoLaiNhip(false); }, [the?.id]);
@@ -159,8 +162,26 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
           </p>
         )}
 
+        {/*
+          Việc đã đến lúc phải chạy mà thẻ còn ở «Chuẩn bị» (GĐ 15/08). Nói
+          thẳng ra ở đây vì đây là chỗ cán bộ mở lên mỗi sáng — và nói rõ việc
+          cần làm là MỞ VIỆC, ghi nhịp chỉ là đường lùi khi đang vướng thật.
+        */}
+        {lyDoBaoCao && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-300 bg-red-50 px-3 py-2">
+            <p className="text-sm font-medium text-red-900">
+              {CT2_NHAN_LY_DO_BAO_CAO[lyDoBaoCao]} — việc này vẫn tính nhịp hằng ngày.
+            </p>
+            {(laChuThe || laLanhDao) && (
+              <Button size="sm" className="h-8" onClick={() => onLapKeHoach(true)}>
+                <Rocket className="mr-1 h-4 w-4" /> Bắt đầu làm
+              </Button>
+            )}
+          </div>
+        )}
+
         {/* Chưa lập kế hoạch → mời bắt đầu, không bày ra một loạt ô trống */}
-        {!daDuKeHoach(the) && the.trang_thai === 'CHUAN_BI' && (laChuThe || laLanhDao) && (
+        {!lyDoBaoCao && !daDuKeHoach(the) && the.trang_thai === 'CHUAN_BI' && (laChuThe || laLanhDao) && (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-navy/20 bg-blue-50/50 px-3 py-2">
             <p className="text-sm font-medium text-brand-navy">Sẵn sàng bắt tay vào việc này chưa?</p>
             <Button size="sm" className="h-8" onClick={() => onLapKeHoach(true)}>

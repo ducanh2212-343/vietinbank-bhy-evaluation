@@ -21,6 +21,7 @@ import {
   soNgayLamViec,
   locEmojiTieuDe,
   lyDoChanChuyen,
+  lyDoPhaiBaoCao,
   mucChuY,
   trongKhungNhip,
   sapXepThe,
@@ -637,5 +638,50 @@ describe('Dòng thời gian — trộn báo cáo và trao đổi thành MỘT m�
     );
     const phang = nhom.flatMap((n) => n.items);
     expect(phang[0].kieu).toBe('TRAO_DOI');
+  });
+});
+
+/**
+ * Thẻ ở «Chuẩn bị» đã đến lúc phải chạy thì vẫn phải ghi nhịp (GĐ 15/08).
+ * Luật thật ở database (ct2_vi_sao_phai_bao_cao); bản chiếu client phải nói
+ * đúng cùng một thứ, nếu không bảng chấm một đằng thẻ hiện một nẻo.
+ */
+describe('lyDoPhaiBaoCao — bịt đường né bằng cách nằm ở «Chuẩn bị»', () => {
+  // Thứ Tư 12/08/2026, tránh cuối tuần làm lệch phép đếm ngày làm việc
+  const moc = new Date('2026-08-12T03:00:00Z');
+  const the = (v: Partial<Ct2DauViec>) => ({
+    trang_thai: 'CHUAN_BI', loai_dau_viec: 'TIEN_TRINH',
+    ngay_bat_dau: null, han_hoan_thanh: null, ...v,
+  } as Pick<Ct2DauViec, 'trang_thai' | 'loai_dau_viec' | 'ngay_bat_dau' | 'han_hoan_thanh'>);
+
+  it('quá ngày bắt đầu mà chưa mở việc → phải báo cáo', () => {
+    expect(lyDoPhaiBaoCao(the({ ngay_bat_dau: '2026-08-07' }), moc)).toBe('QUA_HAN_BAT_DAU');
+  });
+
+  it('đúng ngày bắt đầu thì chưa đòi — còn cả ngày hôm nay để mở việc', () => {
+    expect(lyDoPhaiBaoCao(the({ ngay_bat_dau: '2026-08-12' }), moc)).toBeNull();
+  });
+
+  it('sắp đến hạn hoàn thành mà chưa bắt đầu → nguy cấp hơn, thắng nhãn kia', () => {
+    expect(lyDoPhaiBaoCao(the({ ngay_bat_dau: '2026-08-03', han_hoan_thanh: '2026-08-13' }), moc))
+      .toBe('SAP_DEN_HAN');
+  });
+
+  it('đã quá hạn hoàn thành mà chưa bắt đầu vẫn nằm trong lưới', () => {
+    expect(lyDoPhaiBaoCao(the({ han_hoan_thanh: '2026-07-30' }), moc)).toBe('SAP_DEN_HAN');
+  });
+
+  it('chưa tới ngày bắt đầu và còn xa hạn → nằm ở «Chuẩn bị» là hợp lệ', () => {
+    expect(lyDoPhaiBaoCao(the({ ngay_bat_dau: '2026-08-20', han_hoan_thanh: '2026-09-30' }), moc))
+      .toBeNull();
+  });
+
+  it('thẻ trống ngày — không bịa hạn cho ai, không đòi báo cáo', () => {
+    expect(lyDoPhaiBaoCao(the({}), moc)).toBeNull();
+  });
+
+  it('thẻ đang làm / việc thường trực không thuộc luật này', () => {
+    expect(lyDoPhaiBaoCao(the({ trang_thai: 'DANG_LAM', ngay_bat_dau: '2026-08-01' }), moc)).toBeNull();
+    expect(lyDoPhaiBaoCao(the({ loai_dau_viec: 'THUONG_TRUC', ngay_bat_dau: '2026-08-01' }), moc)).toBeNull();
   });
 });

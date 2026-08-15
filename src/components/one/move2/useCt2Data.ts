@@ -3,7 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import {
   trongKhungNhip,
-  type Ct2Bang, type Ct2BinhLuan, type Ct2DauViec, type Ct2Nhip, type Ct2PhamVi,
+  type Ct2Bang, type Ct2BinhLuan, type Ct2DauViec, type Ct2LyDoBaoCao,
+  type Ct2Nhip, type Ct2PhamVi,
 } from '@/lib/ct2';
 
 /**
@@ -49,6 +50,9 @@ export interface Ct2ViecCuaToi {
   phan_tram: number; co_tinh_trang: 'XANH' | 'VANG' | 'DO'; han_hoan_thanh: string | null;
   muc_uu_tien: string; loai_dau_viec: string; lien_phong: boolean; phong: string;
   nhip_gan_nhat: string | null; da_ghi_nhip_hom_nay: boolean;
+  ngay_bat_dau: string | null;
+  /** Thẻ còn ở «Chuẩn bị» nhưng đã đến lúc phải chạy → vẫn phải ghi nhịp */
+  ly_do_bao_cao: Ct2LyDoBaoCao;
 }
 
 export interface Ct2NhipNguoi {
@@ -67,6 +71,15 @@ export interface Ct2NhipNguoi {
   cv_da_ghi: number;
   hs_dang_chay: number;
   hs_da_ghi: number;
+  /**
+   * cb_* = thẻ còn ở «Chuẩn bị» nhưng đã đến lúc phải chạy (quá ngày bắt đầu
+   * hoặc sắp đến hạn hoàn thành). Tách riêng vì cách nhắc khác hẳn: không phải
+   * «ghi thêm một câu» mà «mở việc ra làm, hoặc nói rõ vướng ở đâu».
+   */
+  cb_can_bao_cao: number;
+  cb_da_ghi: number;
+  cb_qua_han_bd: number;
+  cb_sap_den_han: number;
 }
 
 export interface Ct2DeXuat {
