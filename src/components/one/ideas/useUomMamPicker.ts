@@ -12,14 +12,14 @@ import { dauTuan, type LyDoThuong } from '@/lib/ideaRewards';
 //   muc_thuong   → tiền, ý tưởng trước 16/08/2026 vẫn được thưởng khuyến khích
 //                  kể cả khi không được chọn.
 
-export type NguonGhiNhan = 'phong_chon' | 'smp_tsc';
-
 export interface AwardRow {
   ideaId: string;
   capDo: string;
   ghiNhanKpi: boolean;
-  /** 'smp_tsc' = TSC đã ghi nhận trên SMP — không chiếm suất hạn mức tuần */
-  nguonGhiNhan: NguonGhiNhan;
+  /** Chi nhánh duyệt (TP chọn trong hạn mức tuần) — chiếm suất của phòng */
+  duyetCn: boolean;
+  /** TSC duyệt trên SMP — KHÔNG chiếm suất; có thể cùng bật với duyetCn */
+  duyetTsc: boolean;
   tuanChon: string | null;
   mucThuong: number;
   lyDoThuong: LyDoThuong;
@@ -87,13 +87,14 @@ export function useYTuongTheoTuan(phongIdeas: string | null, tuan: string) {
 
       const ids = (rows ?? []).map(r => r.id);
       let awards: Array<{
-        idea_id: string; cap_do: string; ghi_nhan_kpi: boolean; nguon_ghi_nhan: string;
+        idea_id: string; cap_do: string; ghi_nhan_kpi: boolean;
+        duyet_cn: boolean; duyet_tsc: boolean;
         tuan_chon: string | null; muc_thuong: number; ly_do_thuong: string;
       }> = [];
       if (ids.length > 0) {
         const { data: aRows, error: aErr } = await supabase
           .from('portal_idea_awards')
-          .select('idea_id, cap_do, ghi_nhan_kpi, nguon_ghi_nhan, tuan_chon, muc_thuong, ly_do_thuong')
+          .select('idea_id, cap_do, ghi_nhan_kpi, duyet_cn, duyet_tsc, tuan_chon, muc_thuong, ly_do_thuong')
           .eq('cap_do', 'Ươm mầm')
           .in('idea_id', ids);
         if (aErr) throw aErr;
@@ -113,7 +114,8 @@ export function useYTuongTheoTuan(phongIdeas: string | null, tuan: string) {
                 ideaId: a.idea_id,
                 capDo: a.cap_do,
                 ghiNhanKpi: a.ghi_nhan_kpi,
-                nguonGhiNhan: a.nguon_ghi_nhan as NguonGhiNhan,
+                duyetCn: a.duyet_cn,
+                duyetTsc: a.duyet_tsc,
                 tuanChon: a.tuan_chon,
                 mucThuong: a.muc_thuong,
                 lyDoThuong: a.ly_do_thuong as LyDoThuong,

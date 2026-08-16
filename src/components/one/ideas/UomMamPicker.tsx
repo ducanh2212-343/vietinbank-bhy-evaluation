@@ -41,10 +41,8 @@ export const UomMamPicker: React.FC = () => {
   const { items, isLoading } = useYTuongTheoTuan(phongIdeas, tuan);
   const { chon, boChon } = useUomMamActions(phongIdeas, tuan);
 
-  // Chỉ ý tưởng do PHÒNG chọn mới chiếm suất; ý tưởng SMP/TSC ghi nhận thì không
-  const daChiemSuat = items.filter(
-    i => i.award?.ghiNhanKpi && i.award.nguonGhiNhan === 'phong_chon',
-  ).length;
+  // Chỉ suất do CHI NHÁNH duyệt mới chiếm hạn mức; TSC duyệt trên SMP thì không
+  const daChiemSuat = items.filter(i => i.award?.ghiNhanKpi && i.award.duyetCn).length;
   const suat = suatUomMamConLai(daChiemSuat);
 
   if (loadingDept) {
@@ -111,10 +109,12 @@ export const UomMamPicker: React.FC = () => {
         <div className="space-y-1.5">
           {items.map(it => {
             const ghiNhan = !!it.award?.ghiNhanKpi;
-            const quaSmp = it.award?.nguonGhiNhan === 'smp_tsc';
-            // Ý tưởng đã được SMP/TSC ghi nhận thì Trưởng phòng không cần (và
-            // không được) chọn lại — ghi nhận đó đến từ Trụ sở chính
-            const khoa = quaSmp || (!ghiNhan && suat.het);
+            const duyetCn = !!it.award?.duyetCn;
+            const duyetTsc = !!it.award?.duyetTsc;
+            // TSC đã duyệt thì ý tưởng đã được ghi nhận sẵn — phòng không cần
+            // tiêu suất cho nó nữa, nhưng vẫn chọn/bỏ chọn phía Chi nhánh được
+            // (hai cờ độc lập, ghi nhận và tiền vẫn chỉ một lần).
+            const khoa = !duyetCn && suat.het;
             return (
               <div
                 key={it.id}
@@ -125,15 +125,16 @@ export const UomMamPicker: React.FC = () => {
                 <button
                   type="button"
                   disabled={khoa}
-                  onClick={() => void (ghiNhan ? boChon(it.id) : chon(it.id))}
+                  onClick={() => void (duyetCn ? boChon(it.id) : chon(it.id))}
                   title={
-                    quaSmp ? 'SMP (Trụ sở chính) đã ghi nhận — không cần phòng chọn'
-                      : khoa ? 'Hết suất tuần này — bỏ chọn một ý tưởng khác trước'
-                      : ghiNhan ? 'Bỏ ghi nhận' : 'Ghi nhận Ươm mầm'
+                    khoa ? 'Hết suất tuần này — bỏ chọn một ý tưởng khác trước'
+                      : duyetCn ? 'Bỏ chọn (thu lại suất của phòng)'
+                      : duyetTsc ? 'TSC đã duyệt trên SMP — chọn thêm ở Chi nhánh nếu muốn'
+                      : 'Ghi nhận Ươm mầm'
                   }
                   className={`flex-shrink-0 transition-all ${khoa ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:scale-110'}`}
                 >
-                  {ghiNhan
+                  {duyetCn
                     ? <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                     : <Circle className="w-5 h-5 text-slate-300" />}
                 </button>
@@ -147,10 +148,22 @@ export const UomMamPicker: React.FC = () => {
 
                 {ghiNhan && (
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-black ${quaSmp ? 'bg-sky-100 text-sky-700' : 'bg-emerald-100 text-emerald-700'}`}
-                    title={quaSmp ? 'TSC đã phê duyệt trên SMP — ghi nhận theo quy chế, không chiếm suất tuần' : 'Phòng chọn trong hạn mức tuần'}
+                    className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-700"
+                    title="Ý tưởng này được tính vào KPI Đổi mới sáng tạo"
                   >
-                    ✓ Tính KPI{quaSmp ? ' · SMP/TSC' : ''}
+                    ✓ Tính KPI
+                  </span>
+                )}
+                {duyetCn && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600"
+                    title="Chi nhánh duyệt — chiếm 1 suất hạn mức tuần của phòng">
+                    CN duyệt
+                  </span>
+                )}
+                {duyetTsc && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-700"
+                    title="TSC đã duyệt trên SMP — ghi nhận theo quy chế, không chiếm suất tuần của phòng">
+                    TSC duyệt (SMP)
                   </span>
                 )}
                 {it.award && it.award.mucThuong > 0 && (

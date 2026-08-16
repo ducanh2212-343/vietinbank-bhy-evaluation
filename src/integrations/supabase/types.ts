@@ -2653,7 +2653,8 @@ export type Database = {
           muc_thuong: number
           nguoi_duyet: string | null
           nguoi_ghi_nhan: string | null
-          nguon_ghi_nhan: string
+          duyet_cn: boolean
+          duyet_tsc: boolean
           phong: string
           round_id: string | null
           tuan_chon: string | null
@@ -2672,7 +2673,8 @@ export type Database = {
           muc_thuong?: number
           nguoi_duyet?: string | null
           nguoi_ghi_nhan?: string | null
-          nguon_ghi_nhan?: string
+          duyet_cn?: boolean
+          duyet_tsc?: boolean
           phong: string
           round_id?: string | null
           tuan_chon?: string | null
@@ -2691,7 +2693,8 @@ export type Database = {
           muc_thuong?: number
           nguoi_duyet?: string | null
           nguoi_ghi_nhan?: string | null
-          nguon_ghi_nhan?: string
+          duyet_cn?: boolean
+          duyet_tsc?: boolean
           phong?: string
           round_id?: string | null
           tuan_chon?: string | null
