@@ -2639,6 +2639,44 @@ export type Database = {
           },
         ]
       }
+      portal_idea_council_members: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          is_chair: boolean
+          note: string | null
+          profile_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_chair?: boolean
+          note?: string | null
+          profile_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_chair?: boolean
+          note?: string | null
+          profile_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_idea_council_members_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       portal_idea_council_rounds: {
         Row: {
           created_at: string
@@ -2646,8 +2684,10 @@ export type Database = {
           id: string
           name: string
           note: string | null
+          results_published: boolean
           status: string
           updated_at: string
+          voting_deadline: string | null
         }
         Insert: {
           created_at?: string
@@ -2655,8 +2695,10 @@ export type Database = {
           id?: string
           name: string
           note?: string | null
+          results_published?: boolean
           status?: string
           updated_at?: string
+          voting_deadline?: string | null
         }
         Update: {
           created_at?: string
@@ -2664,54 +2706,62 @@ export type Database = {
           id?: string
           name?: string
           note?: string | null
+          results_published?: boolean
           status?: string
           updated_at?: string
+          voting_deadline?: string | null
         }
         Relationships: []
       }
       portal_idea_council_votes: {
         Row: {
-          conflict_status: string
+          conflict_status: string | null
           created_at: string
           gop_y: string | null
           id: string
           item_id: string
-          recommendation: string
-          score_feasible: number
-          score_impact: number
-          score_problem: number
-          score_safety: number
-          score_scale: number
+          recommendation: string | null
+          score_feasible: number | null
+          score_impact: number | null
+          score_problem: number | null
+          score_safety: number | null
+          score_scale: number | null
+          status: string
+          submitted_at: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
-          conflict_status: string
+          conflict_status?: string | null
           created_at?: string
           gop_y?: string | null
           id?: string
           item_id: string
-          recommendation: string
-          score_feasible: number
-          score_impact: number
-          score_problem: number
-          score_safety: number
-          score_scale: number
+          recommendation?: string | null
+          score_feasible?: number | null
+          score_impact?: number | null
+          score_problem?: number | null
+          score_safety?: number | null
+          score_scale?: number | null
+          status?: string
+          submitted_at?: string | null
           updated_at?: string
           user_id?: string
         }
         Update: {
-          conflict_status?: string
+          conflict_status?: string | null
           created_at?: string
           gop_y?: string | null
           id?: string
           item_id?: string
-          recommendation?: string
-          score_feasible?: number
-          score_impact?: number
-          score_problem?: number
-          score_safety?: number
-          score_scale?: number
+          recommendation?: string | null
+          score_feasible?: number | null
+          score_impact?: number | null
+          score_problem?: number | null
+          score_safety?: number | null
+          score_scale?: number | null
+          status?: string
+          submitted_at?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -4822,11 +4872,23 @@ export type Database = {
           user_id: string
         }[]
       }
+      bhy_ideas_hd_cong_bo: {
+        Args: { _published: boolean; _round_id: string }
+        Returns: undefined
+      }
+      bhy_ideas_hd_la_chu_tich: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       bhy_ideas_hd_la_thanh_vien: {
         Args: { _user_id: string }
         Returns: boolean
       }
       bhy_ideas_hd_phieu_an_danh: {
+        Args: { _round_id: string }
+        Returns: Json
+      }
+      bhy_ideas_hd_tien_do: {
         Args: { _round_id: string }
         Returns: Json
       }

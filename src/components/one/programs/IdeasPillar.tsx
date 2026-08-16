@@ -100,10 +100,10 @@ const IdeasIntro: React.FC = () => (
   </div>
 );
 
-/** Nút vào trang chấm điểm — chỉ thành viên Hội đồng (BGĐ/PGĐ/TP/TCTH) thấy */
+/** Nút vào trang chấm điểm — thành viên Hội đồng (theo bảng thành viên) + admin vận hành */
 const JuryLink: React.FC = () => {
-  const { isMember } = useIdeaCouncilAccess();
-  if (!isMember) return null;
+  const { isMember, isAdmin } = useIdeaCouncilAccess();
+  if (!isMember && !isAdmin) return null;
   return (
     <Link
       to="/one/y-tuong/hoi-dong"

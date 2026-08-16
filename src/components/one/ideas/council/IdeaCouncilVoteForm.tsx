@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Send } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, FileEdit, Save, Send } from 'lucide-react';
 import {
   DE_XUAT_LABELS,
   MUC_DIEM,
@@ -16,13 +16,15 @@ import type { CouncilVote, PhieuGui } from './useIdeaCouncil';
 // Phiếu chấm điểm của thành viên Hội đồng — đúng bộ câu hỏi Phụ lục 06:
 // A1-A3 (danh tính) lấy từ tài khoản đăng nhập, B1-B4 (thông tin ý tưởng) hiển
 // thị từ dữ liệu TCTH trình — thành viên chỉ nhập A4, C1-C5, D1, D2.
+// HAI PHA như Hội đồng đầu mối: «Lưu nháp» giữ dở dang (không vào tổng hợp,
+// không cần đủ câu), «Gửi phiếu» mới validate đủ Phụ lục 06.
 
 interface IdeaCouncilVoteFormProps {
-  /** Phiếu đã gửi trước đó (đổ sẵn để sửa) */
+  /** Phiếu đã lưu trước đó (nháp hoặc đã gửi — đổ sẵn để sửa) */
   myVote: CouncilVote | null;
-  /** Đợt còn mở mới cho gửi/sửa */
+  /** Đợt còn mở mới cho lưu/gửi */
   readOnly: boolean;
-  onSubmit: (phieu: PhieuGui) => Promise<boolean>;
+  onSubmit: (phieu: PhieuGui, trangThai: 'draft' | 'submitted') => Promise<boolean>;
 }
 
 const XUNG_DOT_OPTIONS = Object.keys(XUNG_DOT_LABELS) as XungDotLoiIch[];
@@ -34,9 +36,9 @@ export const IdeaCouncilVoteForm: React.FC<IdeaCouncilVoteFormProps> = ({ myVote
   const [deXuat, setDeXuat] = useState<DeXuatHoiDong | null>(null);
   const [gopY, setGopY] = useState('');
   const [loi, setLoi] = useState<string[]>([]);
-  const [dangGui, setDangGui] = useState(false);
+  const [dangGui, setDangGui] = useState<'draft' | 'submitted' | null>(null);
 
-  // Đổ sẵn phiếu đã gửi để thành viên sửa trong thời gian đợt còn mở
+  // Đổ sẵn phiếu đã lưu để thành viên sửa trong thời gian đợt còn mở
   useEffect(() => {
     setXungDot(myVote?.xungDot ?? null);
     setDiem(myVote ? { ...myVote.diem } : {});
@@ -45,32 +47,39 @@ export const IdeaCouncilVoteForm: React.FC<IdeaCouncilVoteFormProps> = ({ myVote
     setLoi([]);
   }, [myVote]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const errs = loiPhieu({ xungDot, diem, deXuat, gopY });
-    setLoi(errs);
-    if (errs.length > 0) return;
-    setDangGui(true);
+  const handleLuu = async (trangThai: 'draft' | 'submitted') => {
+    if (trangThai === 'submitted') {
+      const errs = loiPhieu({ xungDot, diem, deXuat, gopY });
+      setLoi(errs);
+      if (errs.length > 0) return;
+    } else {
+      setLoi([]);
+    }
+    setDangGui(trangThai);
     try {
-      await onSubmit({
-        xungDot: xungDot!,
-        diem: diem as Record<TieuChiKey, number>,
-        deXuat: deXuat!,
-        gopY,
-      });
+      await onSubmit({ xungDot, diem, deXuat, gopY }, trangThai);
     } finally {
-      setDangGui(false);
+      setDangGui(null);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-      {myVote && (
+    <form onSubmit={e => { e.preventDefault(); void handleLuu('submitted'); }} className="space-y-4 text-xs">
+      {myVote && myVote.status === 'submitted' && (
         <div className="flex items-center gap-2 p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 font-semibold">
           <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
           <span>
-            Bạn đã gửi phiếu ngày {new Date(myVote.updatedAt).toLocaleDateString('vi-VN')}
-            {readOnly ? ' — đợt chấm đã chốt, phiếu không sửa được nữa.' : ' — có thể sửa đến khi đợt chấm chốt.'}
+            Bạn đã GỬI phiếu ngày {new Date(myVote.updatedAt).toLocaleDateString('vi-VN')}
+            {readOnly ? ' — đợt chấm đã chốt, phiếu không sửa được nữa.' : ' — có thể sửa và gửi lại đến khi đợt chấm chốt.'}
+          </span>
+        </div>
+      )}
+      {myVote && myVote.status === 'draft' && (
+        <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-50 border border-amber-300 text-amber-800 font-semibold">
+          <FileEdit className="w-4 h-4 flex-shrink-0" />
+          <span>
+            Phiếu đang ở dạng NHÁP — chưa được tính vào kết quả.
+            {readOnly ? ' Đợt đã chốt nên nháp này không gửi được nữa.' : ' Hãy bấm «Gửi phiếu» khi hoàn tất.'}
           </span>
         </div>
       )}
@@ -190,18 +199,34 @@ export const IdeaCouncilVoteForm: React.FC<IdeaCouncilVoteFormProps> = ({ myVote
       )}
 
       {!readOnly && (
-        <button
-          type="submit"
-          disabled={dangGui}
-          className={`w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold shadow transition-all flex items-center justify-center gap-2 cursor-pointer ${dangGui ? 'opacity-70 cursor-not-allowed' : ''}`}
-        >
-          {dangGui ? (
-            <span className="inline-block animate-spin border-2 border-white border-t-transparent rounded-full w-4 h-4" />
-          ) : (
-            <Send className="w-4 h-4" />
-          )}
-          <span>{myVote ? 'CẬP NHẬT PHIẾU CHẤM' : 'GỬI PHIẾU CHẤM ĐIỂM'}</span>
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <button
+            type="button"
+            disabled={dangGui !== null}
+            onClick={() => void handleLuu('draft')}
+            className={`sm:w-40 py-2.5 rounded-xl bg-white border-2 border-slate-300 hover:border-amber-400 text-slate-700 font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${dangGui ? 'opacity-70 cursor-not-allowed' : ''}`}
+            title="Lưu dở dang — nháp không tính vào kết quả, chỉ mình bạn thấy"
+          >
+            {dangGui === 'draft' ? (
+              <span className="inline-block animate-spin border-2 border-slate-400 border-t-transparent rounded-full w-4 h-4" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            <span>Lưu nháp</span>
+          </button>
+          <button
+            type="submit"
+            disabled={dangGui !== null}
+            className={`flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold shadow transition-all flex items-center justify-center gap-2 cursor-pointer ${dangGui ? 'opacity-70 cursor-not-allowed' : ''}`}
+          >
+            {dangGui === 'submitted' ? (
+              <span className="inline-block animate-spin border-2 border-white border-t-transparent rounded-full w-4 h-4" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
+            <span>{myVote?.status === 'submitted' ? 'CẬP NHẬT PHIẾU ĐÃ GỬI' : 'GỬI PHIẾU CHẤM ĐIỂM'}</span>
+          </button>
+        </div>
       )}
     </form>
   );

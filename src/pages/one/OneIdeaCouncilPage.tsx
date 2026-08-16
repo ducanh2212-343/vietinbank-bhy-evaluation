@@ -10,7 +10,9 @@ import {
   useCouncilRounds,
   useIdeaCouncilAccess,
   type CouncilItem,
+  type PhieuGui,
 } from '@/components/one/ideas/council/useIdeaCouncil';
+import { useStaffDirectory } from '@/components/one/ideas/useStaffDirectory';
 import { IdeaCouncilVoteForm } from '@/components/one/ideas/council/IdeaCouncilVoteForm';
 import { IdeaCouncilSummary } from '@/components/one/ideas/council/IdeaCouncilSummary';
 import { IdeaCouncilAdmin } from '@/components/one/ideas/council/IdeaCouncilAdmin';
@@ -23,10 +25,12 @@ import { IdeaCouncilAdmin } from '@/components/one/ideas/council/IdeaCouncilAdmi
 type Tab = 'cham-diem' | 'tong-hop' | 'quan-tri';
 
 /** Thẻ một ý tưởng trong danh sách chấm: thông tin B1-B4 + nội dung + phiếu */
-function ItemCard({ item, readOnly, onSubmit }: {
+function ItemCard({ item, readOnly, biChanTuCham, onSubmit }: {
   item: CouncilItem;
   readOnly: boolean;
-  onSubmit: (itemId: string, phieu: Parameters<ReturnType<typeof useCouncilMutations>['guiPhieu']>[1]) => Promise<boolean>;
+  /** Người xem là chủ/đồng đề xuất ý tưởng — RLS chặn chấm, UI báo trước */
+  biChanTuCham: boolean;
+  onSubmit: (itemId: string, phieu: PhieuGui, trangThai: 'draft' | 'submitted') => Promise<boolean>;
 }) {
   const [moNoiDung, setMoNoiDung] = useState(false);
 
@@ -94,11 +98,19 @@ function ItemCard({ item, readOnly, onSubmit }: {
       </div>
 
       <div className="p-4 sm:p-5">
-        <IdeaCouncilVoteForm
-          myVote={item.myVote}
-          readOnly={readOnly}
-          onSubmit={phieu => onSubmit(item.id, phieu)}
-        />
+        {biChanTuCham ? (
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 font-semibold">
+            ⚖️ Bạn là người đề xuất/đồng đề xuất ý tưởng này nên <b>không chấm điểm</b> ý tưởng
+            của chính mình (nguyên tắc xử lý xung đột lợi ích — hệ thống chặn tự động, phiếu của
+            bạn không tính vào mẫu số quorum của ý tưởng này).
+          </div>
+        ) : (
+          <IdeaCouncilVoteForm
+            myVote={item.myVote}
+            readOnly={readOnly}
+            onSubmit={(phieu, trangThai) => onSubmit(item.id, phieu, trangThai)}
+          />
+        )}
       </div>
     </div>
   );
@@ -106,8 +118,9 @@ function ItemCard({ item, readOnly, onSubmit }: {
 
 export default function OneIdeaCouncilPage() {
   const { user } = useAuth();
-  const { loading, isMember, isAdmin } = useIdeaCouncilAccess();
-  const { rounds, isLoading: loadingRounds } = useCouncilRounds(isMember);
+  const { loading, isMember, isChair, isAdmin, isSystemAdmin } = useIdeaCouncilAccess();
+  const { me } = useStaffDirectory();
+  const { rounds, isLoading: loadingRounds } = useCouncilRounds(isMember || isAdmin);
   const [roundId, setRoundId] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('cham-diem');
 
@@ -126,7 +139,15 @@ export default function OneIdeaCouncilPage() {
   const { items, isLoading: loadingItems } = useCouncilRoundItems(roundId);
   const { guiPhieu } = useCouncilMutations(roundId);
 
-  const daCham = items.filter(i => i.myVote).length;
+  // Chặn tự chấm — cùng logic với policy INSERT (tài khoản + họ tên trong nhóm đề xuất)
+  const tenChuan = (me?.fullName ?? '').toLowerCase().trim();
+  const biChan = (item: CouncilItem): boolean =>
+    item.idea.createdBy === user?.id
+    || (!!tenChuan && item.idea.proposer.split(',').map(x => x.toLowerCase().trim()).includes(tenChuan));
+
+  const duocCham = items.filter(i => !biChan(i));
+  const daGui = duocCham.filter(i => i.myVote?.status === 'submitted').length;
+  const soNhap = duocCham.filter(i => i.myVote?.status === 'draft').length;
 
   const tabs: { id: Tab; label: string; visible: boolean }[] = [
     { id: 'cham-diem', label: '🗳️ Chấm điểm', visible: true },
@@ -161,13 +182,14 @@ export default function OneIdeaCouncilPage() {
           <div className="text-center py-16">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500 mx-auto" />
           </div>
-        ) : !user || !isMember ? (
+        ) : !user || (!isMember && !isAdmin) ? (
           <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300">
             <ShieldCheck className="w-12 h-12 text-slate-300 mx-auto mb-3" />
             <p className="text-slate-600 text-sm font-bold">Trang này dành cho thành viên Hội đồng Bac Hung Yen Ideas.</p>
             <p className="text-slate-400 text-xs mt-1 max-w-md mx-auto">
               Hội đồng gồm Ban Giám đốc, Trưởng/Phó phụ trách phòng và lãnh đạo Phòng TCTH.
-              Nếu bạn được Giám đốc bổ sung vào Hội đồng, liên hệ Phòng TCTH để được phân quyền.
+              Nếu bạn được Giám đốc bổ sung vào Hội đồng, liên hệ Phòng TCTH để được thêm vào
+              danh sách thành viên tại khung quản trị.
             </p>
           </div>
         ) : (
@@ -205,9 +227,16 @@ export default function OneIdeaCouncilPage() {
 
             {tab === 'cham-diem' && (
               <div className="space-y-4">
-                {selectedRound?.status === 'open' && items.length > 0 && (
+                {selectedRound?.status === 'open' && duocCham.length > 0 && (
                   <p className="text-xs font-bold text-slate-600 bg-amber-50 border border-amber-200 rounded-xl p-3">
-                    Bạn đã chấm <span className="text-amber-700">{daCham}/{items.length}</span> ý tưởng trong đợt này.
+                    Bạn đã gửi <span className="text-amber-700">{daGui}/{duocCham.length}</span> phiếu trong đợt này
+                    {soNhap > 0 && <span className="text-slate-500"> (còn {soNhap} phiếu nháp chưa gửi)</span>}
+                    {selectedRound.votingDeadline && (
+                      <span className="block font-semibold text-slate-500 mt-0.5">
+                        ⏰ Hạn gửi phiếu: {new Date(selectedRound.votingDeadline).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        {' '}— quá hạn hệ thống tự chốt đợt.
+                      </span>
+                    )}
                   </p>
                 )}
                 {selectedRound?.status === 'draft' && (
@@ -234,6 +263,7 @@ export default function OneIdeaCouncilPage() {
                       key={item.id}
                       item={item}
                       readOnly={selectedRound?.status !== 'open'}
+                      biChanTuCham={biChan(item)}
                       onSubmit={guiPhieu}
                     />
                   ))
@@ -243,7 +273,11 @@ export default function OneIdeaCouncilPage() {
 
             {tab === 'tong-hop' && (
               <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm">
-                <IdeaCouncilSummary roundId={roundId} />
+                <IdeaCouncilSummary
+                  roundId={roundId}
+                  round={selectedRound}
+                  canPublish={isChair || isSystemAdmin}
+                />
               </div>
             )}
 

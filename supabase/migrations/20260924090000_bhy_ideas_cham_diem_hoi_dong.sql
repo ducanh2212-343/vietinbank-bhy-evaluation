@@ -10,8 +10,13 @@
 -- Bảo mật theo quy chế + chốt vận hành 08/2026 (ẩn danh CẢ với TCTH và BGĐ):
 -- thành viên chỉ đọc được phiếu của MÌNH; phiếu ĐỊNH DANH chỉ System Admin
 -- đọc trực tiếp; Admin TCTH tổng hợp/vận hành trên dữ liệu ẨN DANH qua RPC
--- bhy_ideas_hd_phieu_an_danh; bản tổng hợp (điểm TB, tỷ lệ đồng ý…) công bố
--- cho thành viên qua RPC sau khi đợt chốt.
+-- bhy_ideas_hd_phieu_an_danh (chỉ sau khi đợt chốt); bản tổng hợp công bố
+-- cho Hội đồng qua nút Công bố của Chủ tịch (embargo — mục 4). Tiến độ «ai
+-- đã nộp» hiển thị TÊN THẬT cho TCTH đôn đốc nhưng không kèm điểm (mục 5c).
+--
+-- Nhiều cơ chế học từ Hội đồng đầu mối (CT3) đã vận hành thực tế: bảng thành
+-- viên, phiếu 2 pha nháp/gửi, hạn bỏ phiếu + cron tự chốt + nhắc PUSH, chặn
+-- tự chấm 2 lớp, phong tỏa kết quả tách khỏi chốt đợt.
 --
 -- Xung đột lợi ích (mục VI.4): thành viên KHAI BÁO trong phiếu (câu A4);
 -- lời khai hiện trên phiếu ẩn danh để TCTH tổng hợp trình Hội đồng cân nhắc
@@ -19,32 +24,87 @@
 -- «tham khảo» (đã bỏ theo chốt vận hành: khi phiếu ẩn danh với cả TCTH thì
 -- việc gạt loại từng phiếu không còn cơ sở thao tác minh bạch).
 --
--- Mô hình 3 bảng, nối vào portal_ideas sẵn có:
---   portal_idea_council_rounds  đợt chấm (quý) — draft → open → closed
+-- Mô hình 4 bảng, nối vào portal_ideas sẵn có:
+--   portal_idea_council_members đội hình Hội đồng (GĐ quyết định từng thời kỳ)
+--   portal_idea_council_rounds  đợt chấm (quý) — draft → open → closed + công bố
 --   portal_idea_council_items   ý tưởng trình Hội đồng trong đợt (mã + tầng đề xuất)
---   portal_idea_council_votes   phiếu chấm của từng thành viên
+--   portal_idea_council_votes   phiếu chấm của từng thành viên (nháp → gửi)
 -- ============================================================================
 
 -- ---------------------------------------------------------------------------
--- 0) Thành viên Hội đồng theo quy chế: Ban Giám đốc; Trưởng/Phó phụ trách
---    phòng; lãnh đạo phụ trách Tổng hợp của Phòng TCTH. Ánh xạ sang vai trò
---    hiện có: bgd, pgd, manager, tcth_admin (+ system_admin để vận hành).
---    "Thành phần khác do Giám đốc quyết định" → cấp vai trò manager cho người đó.
+-- 0) Thành viên Hội đồng là BẢNG DỮ LIỆU (học từ council_members của Hội đồng
+--    đầu mối đã vận hành thực tế) thay vì suy từ vai trò: quy chế cho Giám đốc
+--    quyết định thành phần từng thời kỳ, người nghỉ dài hạn tắt is_active,
+--    và có mẫu số chính danh để tính quorum 2/3.
+--    is_chair = Chủ tịch Hội đồng (Giám đốc CN) — được vượt khóa xem tổng hợp
+--    ẩn danh khi đợt đang chấm và được bấm công bố kết quả.
 -- ---------------------------------------------------------------------------
+CREATE TABLE public.portal_idea_council_members (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  profile_id UUID NOT NULL UNIQUE REFERENCES public.profiles(id) ON DELETE CASCADE,
+  is_chair BOOLEAN NOT NULL DEFAULT false,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  note TEXT,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.portal_idea_council_members ENABLE ROW LEVEL SECURITY;
+
+-- Thành viên đọc được DÒNG CỦA MÌNH (để client biết mình thuộc Hội đồng/là
+-- Chủ tịch); danh sách đầy đủ chỉ Admin TCTH/System đọc (phục vụ đôn đốc).
+CREATE POLICY "Members read own idea council membership"
+  ON public.portal_idea_council_members FOR SELECT TO authenticated
+  USING (profile_id = public.get_my_profile_id() OR public.is_content_admin(auth.uid()));
+
+CREATE POLICY "Content admins manage idea council members"
+  ON public.portal_idea_council_members FOR ALL TO authenticated
+  USING (public.is_content_admin(auth.uid()))
+  WITH CHECK (public.is_content_admin(auth.uid()));
+
+CREATE TRIGGER update_portal_idea_council_members_updated_at
+  BEFORE UPDATE ON public.portal_idea_council_members
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+-- Seed từ Hội đồng đầu mối đang vận hành (thành phần gần trùng quy chế Ideas:
+-- BGĐ + Trưởng/Phó phụ trách phòng + đầu mối TCTH); Giám đốc → Chủ tịch.
+-- TCTH điều chỉnh tiếp ở khung quản trị.
+INSERT INTO public.portal_idea_council_members (profile_id, is_chair, note)
+SELECT cm.profile_id, cm.member_group = 'giam_doc', cm.note
+FROM public.council_members cm
+WHERE cm.is_active
+ON CONFLICT (profile_id) DO NOTHING;
+
+-- Thành viên Hội đồng đang hoạt động (tra theo auth user id)
 CREATE OR REPLACE FUNCTION public.bhy_ideas_hd_la_thanh_vien(_user_id uuid)
 RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT public.has_role(_user_id, 'bgd'::app_role)
-      OR public.has_role(_user_id, 'pgd'::app_role)
-      OR public.has_role(_user_id, 'manager'::app_role)
-      OR public.has_role(_user_id, 'tcth_admin'::app_role)
-      OR public.has_role(_user_id, 'system_admin'::app_role)
+  SELECT EXISTS (
+    SELECT 1 FROM public.portal_idea_council_members m
+    JOIN public.profiles p ON p.id = m.profile_id
+    WHERE p.user_id = _user_id AND m.is_active
+  )
+$$;
+
+-- Chủ tịch Hội đồng (Giám đốc CN)
+CREATE OR REPLACE FUNCTION public.bhy_ideas_hd_la_chu_tich(_user_id uuid)
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.portal_idea_council_members m
+    JOIN public.profiles p ON p.id = m.profile_id
+    WHERE p.user_id = _user_id AND m.is_active AND m.is_chair
+  )
 $$;
 
 REVOKE ALL ON FUNCTION public.bhy_ideas_hd_la_thanh_vien(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.bhy_ideas_hd_la_thanh_vien(uuid) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.bhy_ideas_hd_la_chu_tich(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.bhy_ideas_hd_la_chu_tich(uuid) TO authenticated, service_role;
 
 -- ---------------------------------------------------------------------------
 -- 1) Đợt chấm
@@ -54,6 +114,14 @@ CREATE TABLE public.portal_idea_council_rounds (
   name TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'open', 'closed')),
   note TEXT,
+  -- Hạn gửi phiếu: cron notify-idea-council nhắc PUSH khi còn <=3 ngày và tự
+  -- chuyển 'open' -> 'closed' khi quá hạn (bài học voting_deadline của Hội
+  -- đồng đầu mối). NULL = không đặt hạn, TCTH chốt tay.
+  voting_deadline TIMESTAMP WITH TIME ZONE,
+  -- Công bố kết quả TÁCH RIÊNG khỏi chốt đợt (bài học results_embargo):
+  -- chưa công bố thì chỉ Chủ tịch + Quản trị hệ thống xem được tổng hợp;
+  -- nút công bố qua RPC bhy_ideas_hd_cong_bo (TCTH không tự công bố).
+  results_published BOOLEAN NOT NULL DEFAULT false,
   created_by UUID NOT NULL DEFAULT auth.uid(),
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
@@ -116,29 +184,41 @@ CREATE POLICY "Content admins manage idea council items"
   WITH CHECK (public.is_content_admin(auth.uid()));
 
 -- ---------------------------------------------------------------------------
--- 3) Phiếu chấm — mỗi thành viên 1 phiếu/ý tưởng, sửa được khi đợt còn mở
+-- 3) Phiếu chấm — mỗi thành viên 1 phiếu/ý tưởng, HAI PHA nháp -> gửi (như
+--    Hội đồng đầu mối): nháp lưu dở được (cột nghiệp vụ nullable), chỉ phiếu
+--    'submitted' mới vào tổng hợp; sửa được đến khi đợt chốt.
 -- ---------------------------------------------------------------------------
 CREATE TABLE public.portal_idea_council_votes (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   item_id UUID NOT NULL REFERENCES public.portal_idea_council_items(id) ON DELETE CASCADE,
   user_id UUID NOT NULL DEFAULT auth.uid(),
+  status TEXT NOT NULL DEFAULT 'submitted' CHECK (status IN ('draft', 'submitted')),
+  submitted_at TIMESTAMP WITH TIME ZONE,
   -- A4: khai báo xung đột lợi ích
-  conflict_status TEXT NOT NULL CHECK (conflict_status IN ('khong', 'cung_phong', 'phoi_hop')),
+  conflict_status TEXT CHECK (conflict_status IN ('khong', 'cung_phong', 'phoi_hop')),
   -- C1-C5: 5 tiêu chí thang 1-5
-  score_problem  SMALLINT NOT NULL CHECK (score_problem  BETWEEN 1 AND 5), -- Đúng vấn đề
-  score_impact   SMALLINT NOT NULL CHECK (score_impact   BETWEEN 1 AND 5), -- Hiệu quả/kết quả
-  score_feasible SMALLINT NOT NULL CHECK (score_feasible BETWEEN 1 AND 5), -- Khả thi
-  score_safety   SMALLINT NOT NULL CHECK (score_safety   BETWEEN 1 AND 5), -- An toàn/rủi ro
-  score_scale    SMALLINT NOT NULL CHECK (score_scale    BETWEEN 1 AND 5), -- Nhân rộng/chuẩn hóa
+  score_problem  SMALLINT CHECK (score_problem  BETWEEN 1 AND 5), -- Đúng vấn đề
+  score_impact   SMALLINT CHECK (score_impact   BETWEEN 1 AND 5), -- Hiệu quả/kết quả
+  score_feasible SMALLINT CHECK (score_feasible BETWEEN 1 AND 5), -- Khả thi
+  score_safety   SMALLINT CHECK (score_safety   BETWEEN 1 AND 5), -- An toàn/rủi ro
+  score_scale    SMALLINT CHECK (score_scale    BETWEEN 1 AND 5), -- Nhân rộng/chuẩn hóa
   -- D1: đề xuất của thành viên
-  recommendation TEXT NOT NULL CHECK (recommendation IN ('khong_xet', 'can_bo_sung', 'vuon_canh', 'lan_toa')),
+  recommendation TEXT CHECK (recommendation IN ('khong_xet', 'can_bo_sung', 'vuon_canh', 'lan_toa')),
   -- D2: bắt buộc khi Không xét thưởng / Cần bổ sung
   gop_y TEXT,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   UNIQUE (item_id, user_id),
-  CONSTRAINT gop_y_bat_buoc_khi_tu_choi
-    CHECK (recommendation NOT IN ('khong_xet', 'can_bo_sung') OR btrim(coalesce(gop_y, '')) <> '')
+  -- Phiếu GỬI phải đủ toàn bộ câu trả lời + góp ý khi từ chối/yêu cầu bổ sung
+  CONSTRAINT phieu_gui_du_du_lieu CHECK (
+    status = 'draft' OR (
+      conflict_status IS NOT NULL
+      AND score_problem IS NOT NULL AND score_impact IS NOT NULL AND score_feasible IS NOT NULL
+      AND score_safety IS NOT NULL AND score_scale IS NOT NULL
+      AND recommendation IS NOT NULL
+      AND (recommendation NOT IN ('khong_xet', 'can_bo_sung') OR btrim(coalesce(gop_y, '')) <> '')
+    )
+  )
 );
 
 CREATE INDEX idx_pic_votes_item ON public.portal_idea_council_votes (item_id);
@@ -152,15 +232,29 @@ CREATE POLICY "Members read own idea council votes"
   ON public.portal_idea_council_votes FOR SELECT TO authenticated
   USING (user_id = auth.uid() OR public.has_role(auth.uid(), 'system_admin'::app_role));
 
+-- Chặn tự chấm ý tưởng của mình HAI LỚP (bài học 20260707180000 của Hội đồng
+-- đầu mối — từng bị lách 1 lần): theo tài khoản gửi phiếu (created_by) VÀ theo
+-- họ tên trong nhóm đề xuất (so khớp danh sách tách dấu phẩy, chuẩn hóa
+-- lowercase/trim). Cùng PHÒNG đề xuất thì vẫn chấm + khai A4.
 CREATE POLICY "Members vote while round open"
   ON public.portal_idea_council_votes FOR INSERT TO authenticated
   WITH CHECK (
     user_id = auth.uid()
     AND public.bhy_ideas_hd_la_thanh_vien(auth.uid())
     AND EXISTS (
-      SELECT 1 FROM public.portal_idea_council_items it
+      SELECT 1
+      FROM public.portal_idea_council_items it
       JOIN public.portal_idea_council_rounds r ON r.id = it.round_id
+      JOIN public.portal_ideas i ON i.id = it.idea_id
       WHERE it.id = item_id AND r.status = 'open'
+        AND i.created_by <> auth.uid()
+        AND NOT (
+          lower(btrim(coalesce(
+            (SELECT p.full_name FROM public.profiles p WHERE p.user_id = auth.uid() LIMIT 1), ''
+          ))) = ANY (
+            SELECT lower(btrim(x)) FROM unnest(string_to_array(i.proposer, ',')) AS x
+          )
+        )
     )
   );
 
@@ -175,10 +269,13 @@ CREATE POLICY "Members update own vote while round open"
     )
   );
 
-CREATE POLICY "Members delete own vote while round open"
+-- Chỉ NHÁP của mình mới tự xóa được khi đợt mở (như tờ giấy nháp cá nhân —
+-- bài học 20260707110000); phiếu đã gửi chỉ System Admin xóa.
+CREATE POLICY "Members delete own draft while round open"
   ON public.portal_idea_council_votes FOR DELETE TO authenticated
   USING (
     user_id = auth.uid()
+    AND status = 'draft'
     AND EXISTS (
       SELECT 1 FROM public.portal_idea_council_items it
       JOIN public.portal_idea_council_rounds r ON r.id = it.round_id
@@ -195,6 +292,32 @@ CREATE POLICY "System admins manage idea council votes"
 CREATE TRIGGER update_portal_idea_council_votes_updated_at
   BEFORE UPDATE ON public.portal_idea_council_votes
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+-- Mốc gửi phiếu do DB đóng dấu: đặt khi chuyển sang 'submitted', xóa khi lùi
+-- về nháp — client không tự khai được.
+CREATE OR REPLACE FUNCTION public.f_pic_votes_dau_moc_gui()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+BEGIN
+  IF NEW.status = 'submitted' THEN
+    IF TG_OP = 'INSERT' OR OLD.status IS DISTINCT FROM 'submitted' THEN
+      NEW.submitted_at := now();
+    ELSE
+      NEW.submitted_at := OLD.submitted_at;
+    END IF;
+  ELSE
+    NEW.submitted_at := NULL;
+  END IF;
+  RETURN NEW;
+END $$;
+
+REVOKE ALL ON FUNCTION public.f_pic_votes_dau_moc_gui() FROM PUBLIC, anon, authenticated;
+
+CREATE TRIGGER trg_pic_votes_dau_moc_gui
+  BEFORE INSERT OR UPDATE ON public.portal_idea_council_votes
+  FOR EACH ROW EXECUTE FUNCTION public.f_pic_votes_dau_moc_gui();
 
 -- Danh tính và mốc gửi của phiếu là bất biến với người chấm —
 -- cùng nếp trigger chặn cột như portal_ideas (migration 20260811090000)
@@ -228,9 +351,11 @@ CREATE TRIGGER trg_pic_votes_chan_cot_quan_tri
   FOR EACH ROW EXECUTE FUNCTION public.f_pic_votes_chan_cot_quan_tri();
 
 -- ---------------------------------------------------------------------------
--- 4) RPC tổng hợp kết quả (Phụ lục 07) — KHÔNG lộ điểm từng thành viên.
---    Admin TCTH/System xem mọi lúc (theo dõi tiến độ); thành viên Hội đồng chỉ
---    xem sau khi đợt đã chốt. Mọi phiếu đều tính; góp ý trả về ẩn danh.
+-- 4) RPC tổng hợp kết quả (Phụ lục 07) — KHÔNG lộ điểm từng thành viên, chỉ
+--    tính phiếu ĐÃ GỬI. Phong tỏa kết quả kiểu Hội đồng đầu mối
+--    (results_embargo): chưa công bố thì CHỈ Chủ tịch Hội đồng + Quản trị hệ
+--    thống xem được — Admin TCTH cũng phải chờ công bố vì chính họ là người
+--    chấm (nhìn điểm giữa chừng ảnh hưởng khách quan).
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.bhy_ideas_hd_tong_hop(_round_id uuid)
 RETURNS jsonb
@@ -241,7 +366,7 @@ DECLARE
   v_round public.portal_idea_council_rounds%ROWTYPE;
   v_items jsonb;
 BEGIN
-  IF NOT public.bhy_ideas_hd_la_thanh_vien(auth.uid()) THEN
+  IF NOT (public.bhy_ideas_hd_la_thanh_vien(auth.uid()) OR public.is_content_admin(auth.uid())) THEN
     RAISE EXCEPTION 'Chỉ thành viên Hội đồng Bac Hung Yen Ideas được xem tổng hợp';
   END IF;
 
@@ -249,8 +374,10 @@ BEGIN
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Không tìm thấy đợt chấm';
   END IF;
-  IF v_round.status <> 'closed' AND NOT public.is_content_admin(auth.uid()) THEN
-    RAISE EXCEPTION 'Kết quả tổng hợp chỉ công bố sau khi đợt chấm được chốt';
+  IF NOT v_round.results_published
+     AND NOT public.has_role(auth.uid(), 'system_admin'::app_role)
+     AND NOT public.bhy_ideas_hd_la_chu_tich(auth.uid()) THEN
+    RAISE EXCEPTION 'Kết quả đợt này chưa được công bố — Chủ tịch Hội đồng sẽ mở kết quả sau khi đợt chấm hoàn tất';
   END IF;
 
   SELECT coalesce(jsonb_agg(x ORDER BY x->>'idea_code'), '[]'::jsonb) INTO v_items
@@ -265,6 +392,18 @@ BEGIN
       'idea_level', i.level,
       'proposer', i.proposer,
       'total_votes', count(v.id),
+      -- Mẫu số quorum: thành viên đang hoạt động đủ điều kiện chấm ý tưởng này
+      -- (trừ người bị chặn tự chấm — cùng logic với policy INSERT phiếu)
+      'eligible_members', (
+        SELECT count(*)
+        FROM public.portal_idea_council_members m
+        JOIN public.profiles p ON p.id = m.profile_id
+        WHERE m.is_active
+          AND p.user_id IS DISTINCT FROM i.created_by
+          AND NOT (lower(btrim(coalesce(p.full_name, ''))) = ANY (
+            SELECT lower(btrim(x)) FROM unnest(string_to_array(i.proposer, ',')) AS x
+          ))
+      ),
       'avg_problem',  round(avg(v.score_problem), 2),
       'avg_impact',   round(avg(v.score_impact), 2),
       'avg_feasible', round(avg(v.score_feasible), 2),
@@ -295,13 +434,17 @@ BEGIN
     ) AS x
     FROM public.portal_idea_council_items it
     JOIN public.portal_ideas i ON i.id = it.idea_id
-    LEFT JOIN public.portal_idea_council_votes v ON v.item_id = it.id
+    LEFT JOIN public.portal_idea_council_votes v
+      ON v.item_id = it.id AND v.status = 'submitted'
     WHERE it.round_id = _round_id
     GROUP BY it.id, i.id
   ) t;
 
   RETURN jsonb_build_object(
-    'round', jsonb_build_object('id', v_round.id, 'name', v_round.name, 'status', v_round.status),
+    'round', jsonb_build_object(
+      'id', v_round.id, 'name', v_round.name, 'status', v_round.status,
+      'results_published', v_round.results_published
+    ),
     'items', v_items
   );
 END $$;
@@ -321,10 +464,21 @@ LANGUAGE plpgsql STABLE SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
+  v_status text;
   v_ballots jsonb;
 BEGIN
   IF NOT public.is_content_admin(auth.uid()) THEN
     RAISE EXCEPTION 'Chỉ Admin TCTH / System Admin được xem phiếu ẩn danh';
+  END IF;
+
+  SELECT r.status INTO v_status FROM public.portal_idea_council_rounds r WHERE r.id = _round_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Không tìm thấy đợt chấm';
+  END IF;
+  -- TCTH chỉ xem phiếu (ẩn danh) SAU khi đợt chốt — đang chấm mà nhìn điểm
+  -- giữa chừng thì mất khách quan (chính TCTH cũng chấm). System Admin xem mọi lúc.
+  IF v_status <> 'closed' AND NOT public.has_role(auth.uid(), 'system_admin'::app_role) THEN
+    RAISE EXCEPTION 'Phiếu ẩn danh chỉ xem được sau khi đợt chấm đã chốt';
   END IF;
 
   SELECT coalesce(jsonb_agg(jsonb_build_object(
@@ -341,13 +495,153 @@ BEGIN
   ) ORDER BY v.id), '[]'::jsonb) INTO v_ballots
   FROM public.portal_idea_council_votes v
   JOIN public.portal_idea_council_items it ON it.id = v.item_id
-  WHERE it.round_id = _round_id;
+  WHERE it.round_id = _round_id AND v.status = 'submitted';
 
   RETURN v_ballots;
 END $$;
 
 REVOKE ALL ON FUNCTION public.bhy_ideas_hd_phieu_an_danh(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.bhy_ideas_hd_phieu_an_danh(uuid) TO authenticated, service_role;
+
+-- ---------------------------------------------------------------------------
+-- 5b) Công bố / khóa kết quả — quyền của Chủ tịch Hội đồng + Quản trị hệ thống
+--     (đúng nếp set_council_results_published của Hội đồng đầu mối: TCTH
+--     không tự công bố).
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.bhy_ideas_hd_cong_bo(_round_id uuid, _published boolean)
+RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NOT (public.has_role(auth.uid(), 'system_admin'::app_role)
+          OR public.bhy_ideas_hd_la_chu_tich(auth.uid())) THEN
+    RAISE EXCEPTION 'Chỉ Chủ tịch Hội đồng hoặc Quản trị hệ thống được công bố/khóa kết quả';
+  END IF;
+  UPDATE public.portal_idea_council_rounds
+  SET results_published = _published
+  WHERE id = _round_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Không tìm thấy đợt chấm';
+  END IF;
+END $$;
+
+REVOKE ALL ON FUNCTION public.bhy_ideas_hd_cong_bo(uuid, boolean) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.bhy_ideas_hd_cong_bo(uuid, boolean) TO authenticated, service_role;
+
+-- ---------------------------------------------------------------------------
+-- 5c) Tiến độ chấm cho việc ĐÔN ĐỐC (Admin TCTH + Chủ tịch): hiển thị TÊN
+--     THẬT kèm trạng thái đã gửi/nháp/còn thiếu — nhưng TUYỆT ĐỐI không kèm
+--     điểm (tách «ai đã nộp» khỏi «ai chấm bao nhiêu» — bài học
+--     CouncilProgressTab của Hội đồng đầu mối). Đây đúng mục đích quy chế:
+--     "kiểm soát số lượt chấm, đánh giá mức độ tham gia".
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.bhy_ideas_hd_tien_do(_round_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_round public.portal_idea_council_rounds%ROWTYPE;
+  v_members jsonb;
+  v_total_items integer;
+BEGIN
+  IF NOT (public.is_content_admin(auth.uid()) OR public.bhy_ideas_hd_la_chu_tich(auth.uid())) THEN
+    RAISE EXCEPTION 'Chỉ Admin TCTH / Chủ tịch Hội đồng được xem tiến độ chấm';
+  END IF;
+
+  SELECT * INTO v_round FROM public.portal_idea_council_rounds WHERE id = _round_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Không tìm thấy đợt chấm';
+  END IF;
+
+  SELECT count(*) INTO v_total_items
+  FROM public.portal_idea_council_items it WHERE it.round_id = _round_id;
+
+  SELECT coalesce(jsonb_agg(jsonb_build_object(
+    'profile_id', m.profile_id,
+    'full_name', p.full_name,
+    'is_chair', m.is_chair,
+    -- Số ý tưởng thành viên này ĐƯỢC chấm (trừ ý tưởng bị chặn tự chấm)
+    'expected', (
+      SELECT count(*)
+      FROM public.portal_idea_council_items it
+      JOIN public.portal_ideas i ON i.id = it.idea_id
+      WHERE it.round_id = _round_id
+        AND i.created_by IS DISTINCT FROM p.user_id
+        AND NOT (lower(btrim(coalesce(p.full_name, ''))) = ANY (
+          SELECT lower(btrim(x)) FROM unnest(string_to_array(i.proposer, ',')) AS x
+        ))
+    ),
+    'submitted', (
+      SELECT count(*)
+      FROM public.portal_idea_council_votes v
+      JOIN public.portal_idea_council_items it ON it.id = v.item_id
+      WHERE it.round_id = _round_id AND v.user_id = p.user_id AND v.status = 'submitted'
+    ),
+    'draft', (
+      SELECT count(*)
+      FROM public.portal_idea_council_votes v
+      JOIN public.portal_idea_council_items it ON it.id = v.item_id
+      WHERE it.round_id = _round_id AND v.user_id = p.user_id AND v.status = 'draft'
+    ),
+    -- Mã các ý tưởng còn thiếu phiếu gửi — để lời nhắc push nói đúng việc
+    'pending_codes', (
+      SELECT coalesce(jsonb_agg(it.idea_code ORDER BY it.idea_code), '[]'::jsonb)
+      FROM public.portal_idea_council_items it
+      JOIN public.portal_ideas i ON i.id = it.idea_id
+      WHERE it.round_id = _round_id
+        AND i.created_by IS DISTINCT FROM p.user_id
+        AND NOT (lower(btrim(coalesce(p.full_name, ''))) = ANY (
+          SELECT lower(btrim(x)) FROM unnest(string_to_array(i.proposer, ',')) AS x
+        ))
+        AND NOT EXISTS (
+          SELECT 1 FROM public.portal_idea_council_votes v
+          WHERE v.item_id = it.id AND v.user_id = p.user_id AND v.status = 'submitted'
+        )
+    )
+  ) ORDER BY p.full_name), '[]'::jsonb) INTO v_members
+  FROM public.portal_idea_council_members m
+  JOIN public.profiles p ON p.id = m.profile_id
+  WHERE m.is_active;
+
+  RETURN jsonb_build_object(
+    'round', jsonb_build_object(
+      'id', v_round.id, 'name', v_round.name, 'status', v_round.status,
+      'voting_deadline', v_round.voting_deadline,
+      'results_published', v_round.results_published
+    ),
+    'total_items', v_total_items,
+    'members', v_members
+  );
+END $$;
+
+REVOKE ALL ON FUNCTION public.bhy_ideas_hd_tien_do(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.bhy_ideas_hd_tien_do(uuid) TO authenticated, service_role;
+
+-- ---------------------------------------------------------------------------
+-- 5d) Cron nhắc PUSH + tự chốt đợt quá hạn (đúng nếp ct2-nhip: pg_cron gọi
+--     edge function notify-idea-council bằng service key trong Vault).
+--     '0 2 * * 1-5' = 09:00 giờ VN, thứ Hai–thứ Sáu. Chi tiết nghiệp vụ nằm
+--     trong function: quá voting_deadline → chuyển closed; còn <=3 ngày →
+--     push nhắc thành viên chưa gửi đủ phiếu. KHÔNG gửi email (chốt 08/2026).
+-- ---------------------------------------------------------------------------
+SELECT cron.schedule(
+  'bhy-ideas-hoi-dong-nhac',
+  '0 2 * * 1-5',
+  $$
+    select net.http_post(
+      url := 'https://whlysprzsguehxmrjwha.supabase.co/functions/v1/notify-idea-council',
+      headers := jsonb_build_object(
+        'Authorization',
+        'Bearer ' || (select decrypted_secret from vault.decrypted_secrets
+                      where name = 'email_queue_service_role_key'),
+        'Content-Type', 'application/json'
+      ),
+      body := '{"mode": "cron", "dry_run": false}'::jsonb
+    );
+  $$
+);
 
 -- ---------------------------------------------------------------------------
 -- 6) Vá lỗi phát hiện khi rà soát BHY Ideas: bình luận ý tưởng gửi từ UI

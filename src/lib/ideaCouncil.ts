@@ -163,8 +163,13 @@ export interface PhieuCham {
  * kết luận, không tự loại phiếu nào.
  */
 export interface TongHopYTuong {
-  /** Số phiếu hợp lệ = số thành viên đã gửi phiếu */
+  /** Số phiếu hợp lệ = số thành viên đã GỬI phiếu (nháp không tính) */
   soPhieuHopLe: number;
+  /**
+   * Tổng thành viên Hội đồng đủ điều kiện chấm ý tưởng này (đang hoạt động,
+   * trừ người bị chặn tự chấm) — mẫu số của quorum
+   */
+  tongThanhVien: number;
   /** Số phiếu khai A4 ≠ «Không» — Hội đồng cân nhắc theo mục VI.4 */
   soPhieuXungDot: number;
   /** Điểm TB từng tiêu chí; null khi chưa có phiếu */
@@ -177,7 +182,7 @@ export interface TongHopYTuong {
   deXuatDem: Record<DeXuatHoiDong, number>;
 }
 
-export function tongHopPhieu(phieu: PhieuCham[]): TongHopYTuong {
+export function tongHopPhieu(phieu: PhieuCham[], tongThanhVien: number): TongHopYTuong {
   const diemTieuChi = {} as Record<TieuChiKey, number | null>;
   for (const tc of TIEU_CHI_HOI_DONG) {
     diemTieuChi[tc.key] = phieu.length
@@ -192,6 +197,7 @@ export function tongHopPhieu(phieu: PhieuCham[]): TongHopYTuong {
   for (const p of phieu) deXuatDem[p.deXuat] += 1;
   return {
     soPhieuHopLe: phieu.length,
+    tongThanhVien,
     soPhieuXungDot: phieu.filter(p => p.xungDot !== 'khong').length,
     diemTieuChi,
     diemTbChung,
@@ -209,17 +215,30 @@ export function datTyLe2Phan3(soDongY: number, soPhieuHopLe: number): boolean {
   return soPhieuHopLe > 0 && soDongY * 3 >= soPhieuHopLe * 2;
 }
 
+/**
+ * QUORUM KÉP (chốt 08/2026 — câu «2/3 thành viên Hội đồng tham gia chấm đồng
+ * ý» của quy chế đọc được hai cách, ghép cả hai cho an toàn): điều kiện nền
+ * trước khi xét đồng ý là số phiếu ĐÃ GỬI đạt ít nhất 2/3 tổng thành viên đủ
+ * điều kiện chấm ý tưởng đó. So sánh nguyên như datTyLe2Phan3.
+ */
+export function datQuorum(t: Pick<TongHopYTuong, 'soPhieuHopLe' | 'tongThanhVien'>): boolean {
+  return t.tongThanhVien > 0 && t.soPhieuHopLe * 3 >= t.tongThanhVien * 2;
+}
+
 export interface KetQuaNguong {
   dat: boolean;
   /** Các điều kiện chưa đạt — để TCTH trình Hội đồng có căn cứ */
   lyDo: string[];
 }
 
-/** Ngưỡng Cấp độ Vươn cành: TB chung ≥ 3,5 · An toàn/rủi ro ≥ 3 · ≥ 2/3 đồng ý */
+/** Ngưỡng Cấp độ Vươn cành: quorum ≥ 2/3 · TB chung ≥ 3,5 · An toàn/rủi ro ≥ 3 · ≥ 2/3 đồng ý */
 export function xetVuonCanh(t: TongHopYTuong): KetQuaNguong {
   const lyDo: string[] = [];
   if (t.soPhieuHopLe === 0) lyDo.push('Chưa có phiếu chấm hợp lệ');
   else {
+    if (!datQuorum(t)) {
+      lyDo.push(`Mới ${t.soPhieuHopLe}/${t.tongThanhVien} thành viên tham gia chấm (chưa đủ quorum 2/3)`);
+    }
     if ((t.diemTbChung ?? 0) < NGUONG_VUON_CANH.diemTbChung - EPS) {
       lyDo.push(`Điểm TB chung ${formatDiem(t.diemTbChung)} < ${formatDiem(NGUONG_VUON_CANH.diemTbChung)}`);
     }
@@ -227,17 +246,20 @@ export function xetVuonCanh(t: TongHopYTuong): KetQuaNguong {
       lyDo.push(`Điểm An toàn/rủi ro ${formatDiem(t.diemTieuChi.safety)} < ${formatDiem(NGUONG_VUON_CANH.diemAnToan)}`);
     }
     if (!datTyLe2Phan3(t.soDongYVuonCanh, t.soPhieuHopLe)) {
-      lyDo.push(`Mới ${t.soDongYVuonCanh}/${t.soPhieuHopLe} thành viên đồng ý (< 2/3)`);
+      lyDo.push(`Mới ${t.soDongYVuonCanh}/${t.soPhieuHopLe} phiếu đồng ý (< 2/3)`);
     }
   }
   return { dat: lyDo.length === 0, lyDo };
 }
 
-/** Ngưỡng Cấp độ Lan tỏa: TB chung ≥ 4,0 · Nhân rộng ≥ 4 · An toàn ≥ 3 · ≥ 2/3 đồng ý */
+/** Ngưỡng Cấp độ Lan tỏa: quorum ≥ 2/3 · TB chung ≥ 4,0 · Nhân rộng ≥ 4 · An toàn ≥ 3 · ≥ 2/3 đồng ý */
 export function xetLanToa(t: TongHopYTuong): KetQuaNguong {
   const lyDo: string[] = [];
   if (t.soPhieuHopLe === 0) lyDo.push('Chưa có phiếu chấm hợp lệ');
   else {
+    if (!datQuorum(t)) {
+      lyDo.push(`Mới ${t.soPhieuHopLe}/${t.tongThanhVien} thành viên tham gia chấm (chưa đủ quorum 2/3)`);
+    }
     if ((t.diemTbChung ?? 0) < NGUONG_LAN_TOA.diemTbChung - EPS) {
       lyDo.push(`Điểm TB chung ${formatDiem(t.diemTbChung)} < ${formatDiem(NGUONG_LAN_TOA.diemTbChung)}`);
     }
@@ -248,7 +270,7 @@ export function xetLanToa(t: TongHopYTuong): KetQuaNguong {
       lyDo.push(`Điểm An toàn/rủi ro ${formatDiem(t.diemTieuChi.safety)} < ${formatDiem(NGUONG_LAN_TOA.diemAnToan)}`);
     }
     if (!datTyLe2Phan3(t.soDongYLanToa, t.soPhieuHopLe)) {
-      lyDo.push(`Mới ${t.soDongYLanToa}/${t.soPhieuHopLe} thành viên đồng ý Lan tỏa (< 2/3)`);
+      lyDo.push(`Mới ${t.soDongYLanToa}/${t.soPhieuHopLe} phiếu đồng ý Lan tỏa (< 2/3)`);
     }
   }
   return { dat: lyDo.length === 0, lyDo };
@@ -346,16 +368,24 @@ export interface DongTongHopRpc {
 }
 
 /** Đọc payload jsonb của RPC về cấu trúc TongHopYTuong dùng chung với client */
-export function docTongHopRpc(payload: unknown): { round: { id: string; name: string; status: TrangThaiDot }; items: DongTongHopRpc[] } {
+export function docTongHopRpc(payload: unknown): {
+  round: { id: string; name: string; status: TrangThaiDot; resultsPublished: boolean };
+  items: DongTongHopRpc[];
+} {
   const raw = payload as {
-    round: { id: string; name: string; status: TrangThaiDot };
+    round: { id: string; name: string; status: TrangThaiDot; results_published?: boolean };
     items: Array<Record<string, unknown>>;
   };
   const num = (v: unknown): number | null =>
     typeof v === 'number' && Number.isFinite(v) ? v : null;
   const int = (v: unknown): number => (typeof v === 'number' ? v : 0);
   return {
-    round: raw.round,
+    round: {
+      id: raw.round.id,
+      name: raw.round.name,
+      status: raw.round.status,
+      resultsPublished: raw.round.results_published ?? false,
+    },
     items: (raw.items ?? []).map((r): DongTongHopRpc => {
       const deXuatDem: Record<DeXuatHoiDong, number> = {
         khong_xet: int(r.rec_khong_xet),
@@ -374,6 +404,7 @@ export function docTongHopRpc(payload: unknown): { round: { id: string; name: st
         proposer: String(r.proposer ?? ''),
         tongHop: {
           soPhieuHopLe: int(r.total_votes),
+          tongThanhVien: int(r.eligible_members),
           soPhieuXungDot: int(r.conflict_votes),
           diemTieuChi: {
             problem: num(r.avg_problem),

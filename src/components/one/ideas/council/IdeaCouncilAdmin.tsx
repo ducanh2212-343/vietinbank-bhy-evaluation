@@ -19,6 +19,8 @@ import {
   type CouncilItem,
   type CouncilRound,
 } from './useIdeaCouncil';
+import { IdeaCouncilMembers } from './IdeaCouncilMembers';
+import { IdeaCouncilProgress } from './IdeaCouncilProgress';
 
 // Khung quản trị của Phòng TCTH: tạo/mở/chốt đợt chấm, trình ý tưởng lên Hội
 // đồng (cấp mã + tầng đề xuất) và tổng hợp phiếu.
@@ -44,14 +46,21 @@ const CHUYEN_TRANG_THAI: Record<TrangThaiDot, { next: TrangThaiDot; label: strin
 
 export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, selectedRound, items, onSelectRound }) => {
   const { isSystemAdmin } = useIdeaCouncilAccess();
-  const { taoDot, doiTrangThaiDot, themYTuong, goYTuong } = useCouncilMutations(selectedRound?.id ?? null);
+  const { taoDot, doiTrangThaiDot, datHanChot, themYTuong, goYTuong } = useCouncilMutations(selectedRound?.id ?? null);
   const { candidates } = useCouncilCandidates(true);
-  const { ballotsByItem } = useAnonBallots(selectedRound?.id ?? null, !!selectedRound);
+  // Phiếu ẩn danh chỉ mở sau khi đợt CHỐT (System Admin xem mọi lúc) — RPC gác;
+  // đang mở thì không gọi, hiển thị ghi chú khóa thay vì "chưa có phiếu"
+  const phieuBiKhoa = !!selectedRound && !isSystemAdmin && selectedRound.status !== 'closed';
+  const { ballotsByItem, error: loiPhieuAnDanh } = useAnonBallots(
+    selectedRound?.id ?? null,
+    !!selectedRound && !phieuBiKhoa,
+  );
   // Hồ sơ chỉ tải cho System Admin — người duy nhất được ghép tên vào phiếu
   const { owners } = useIdeaOwnerProfiles(isSystemAdmin);
 
   const [tenDot, setTenDot] = useState('');
   const [ghiChuDot, setGhiChuDot] = useState('');
+  const [hanChot, setHanChot] = useState('');
   const [ideaId, setIdeaId] = useState('');
   const [maYTuong, setMaYTuong] = useState('');
   const [tang, setTang] = useState<TangDeXuat>('Vươn cành');
@@ -83,9 +92,10 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
   const handleTaoDot = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!tenDot.trim()) return;
-    if (await taoDot(tenDot, ghiChuDot)) {
+    if (await taoDot(tenDot, ghiChuDot, hanChot ? new Date(hanChot).toISOString() : null)) {
       setTenDot('');
       setGhiChuDot('');
+      setHanChot('');
     }
   };
 
@@ -122,6 +132,17 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
             className="w-full p-2 bg-white border border-slate-200 rounded-lg outline-none focus:border-amber-500 font-medium"
           />
         </div>
+        <div className="space-y-1">
+          <label className="font-bold text-slate-700 block" title="Quá hạn hệ thống tự chốt đợt; còn ≤3 ngày sẽ tự nhắc push thành viên chưa gửi phiếu">
+            Hạn gửi phiếu
+          </label>
+          <input
+            type="datetime-local"
+            value={hanChot}
+            onChange={e => setHanChot(e.target.value)}
+            className="p-2 bg-white border border-slate-200 rounded-lg outline-none focus:border-amber-500 font-medium"
+          />
+        </div>
         <button
           type="submit"
           className="flex items-center gap-1.5 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold shadow-sm transition-all cursor-pointer"
@@ -147,17 +168,49 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
                 className="flex-1 min-w-[140px] text-left font-black text-slate-700 cursor-pointer hover:text-amber-600"
               >
                 {r.name}
-                {r.note && <span className="block text-[10px] text-slate-400 font-medium">{r.note}</span>}
+                <span className="block text-[10px] text-slate-400 font-medium">
+                  {r.note && <>{r.note} · </>}
+                  {r.votingDeadline
+                    ? `⏰ Hạn ${new Date(r.votingDeadline).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
+                    : 'Chưa đặt hạn gửi phiếu'}
+                </span>
               </button>
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${r.status === 'open' ? 'bg-emerald-100 text-emerald-700' : r.status === 'closed' ? 'bg-slate-200 text-slate-600' : 'bg-amber-100 text-amber-700'}`}>
                 {TRANG_THAI_DOT_LABELS[r.status]}
               </span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${r.resultsPublished ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-500'}`}
+                title="Công bố/khóa kết quả do Chủ tịch Hội đồng hoặc Quản trị hệ thống bấm ở tab Kết quả tổng hợp">
+                {r.resultsPublished ? '🔓 Đã công bố' : '🔒 Chưa công bố'}
+              </span>
+              {r.status !== 'closed' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nhap = window.prompt(
+                      'Hạn gửi phiếu (dd/mm/yyyy hh:mm — bỏ trống để xóa hạn):',
+                      r.votingDeadline
+                        ? new Date(r.votingDeadline).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                        : '',
+                    );
+                    if (nhap === null) return;
+                    if (!nhap.trim()) { void datHanChot(r.id, null); return; }
+                    const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})$/.exec(nhap.trim());
+                    if (!m) { window.alert('Định dạng chưa đúng — ví dụ: 25/09/2026 17:00'); return; }
+                    const d = new Date(+m[3], +m[2] - 1, +m[1], +m[4], +m[5]);
+                    void datHanChot(r.id, d.toISOString());
+                  }}
+                  className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-[10px] transition-all cursor-pointer"
+                  title="Đặt/sửa hạn gửi phiếu — quá hạn hệ thống tự chốt, còn ≤3 ngày tự nhắc push"
+                >
+                  ⏰ Hạn
+                </button>
+              )}
               {chuyen && (
                 <button
                   type="button"
                   onClick={() => {
                     const canhBao = chuyen.next === 'closed'
-                      ? 'Chốt đợt chấm? Thành viên sẽ không gửi/sửa phiếu được nữa và bản tổng hợp được công bố cho Hội đồng.'
+                      ? 'Chốt đợt chấm? Thành viên sẽ không gửi/sửa phiếu được nữa. Kết quả chỉ hiện với Hội đồng sau khi Chủ tịch bấm Công bố.'
                       : 'Mở đợt chấm cho thành viên Hội đồng gửi phiếu?';
                     if (window.confirm(canhBao)) void doiTrangThaiDot(r.id, chuyen.next);
                   }}
@@ -269,7 +322,9 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
                     >
                       {TANG_DE_XUAT_INFO[it.proposedTier].nhan}
                     </span>
-                    <span className="text-[10px] text-slate-500 font-bold">{phieu.length} phiếu</span>
+                    <span className="text-[10px] text-slate-500 font-bold">
+                      {phieuBiKhoa ? '🔒' : `${phieu.length} phiếu`}
+                    </span>
                     <button
                       type="button"
                       onClick={() => setOpenBallots(prev => ({ ...prev, [it.id]: !moPhieu }))}
@@ -301,7 +356,14 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
                         {' '}Mọi phiếu đều tính vào điểm; phiếu có khai xung đột lợi ích (A4) được đánh dấu
                         để Hội đồng cân nhắc khi kết luận theo mục VI.4.
                       </p>
-                      {phieu.length === 0 && (
+                      {phieuBiKhoa ? (
+                        <p className="text-slate-500 italic">
+                          🔒 Phiếu ẩn danh chỉ xem được sau khi đợt chấm đã chốt — trong lúc chấm hãy dùng
+                          mục «Tiến độ chấm» bên dưới để đôn đốc.
+                        </p>
+                      ) : loiPhieuAnDanh ? (
+                        <p className="text-slate-500 italic">{loiPhieuAnDanh.message}</p>
+                      ) : phieu.length === 0 && (
                         <p className="text-slate-400 italic">Chưa có phiếu nào.</p>
                       )}
                       {phieu.map((v, i) => (
@@ -329,8 +391,18 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
               <p className="text-slate-400 italic text-center py-3">Đợt này chưa có ý tưởng nào.</p>
             )}
           </div>
+
+          {/* Tiến độ chấm + nhắc push — tên thật, không điểm */}
+          <div className="p-3 bg-slate-50/60 border border-slate-200 rounded-xl">
+            <IdeaCouncilProgress round={selectedRound} />
+          </div>
         </>
       )}
+
+      {/* Đội hình Hội đồng — mẫu số quorum, dùng chung mọi đợt */}
+      <div className="p-3 bg-slate-50/60 border border-slate-200 rounded-xl">
+        <IdeaCouncilMembers />
+      </div>
     </div>
   );
 };
