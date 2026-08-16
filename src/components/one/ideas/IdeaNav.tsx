@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { ClipboardList, Gavel, Lightbulb } from 'lucide-react';
+import { ClipboardList, Compass, Gavel, Lightbulb } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useIdeaCouncilAccess } from './council/useIdeaCouncil';
 
@@ -53,7 +53,8 @@ export const IdeaTabs: React.FC = () => {
   const { isMember } = useIdeaCouncilAccess();
 
   const tabs: MucTab[] = [
-    { to: '/one/y-tuong', label: 'Gửi & tra cứu ý tưởng', icon: Lightbulb, end: true, hien: true },
+    { to: '/one/y-tuong', label: 'Giới thiệu & tổng quan', icon: Compass, end: true, hien: true },
+    { to: '/one/y-tuong/gui', label: 'Gửi & tra cứu ý tưởng', icon: Lightbulb, hien: true },
     { to: '/one/y-tuong/hoi-dong', label: 'Chấm điểm Hội đồng', icon: Gavel, hien: isMember || isAdmin },
     { to: '/one/y-tuong/van-hanh', label: 'Vận hành & phê duyệt', icon: ClipboardList, hien: isAdmin || isManager || isPgd },
   ];

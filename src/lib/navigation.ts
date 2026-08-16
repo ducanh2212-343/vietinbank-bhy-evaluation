@@ -242,14 +242,26 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: Lightbulb,
         items: [
           {
-            label: 'Gửi & tra cứu ý tưởng',
-            icon: Lightbulb,
+            // Trang đầu của thương hiệu: giới thiệu chương trình rồi dẫn sang
+            // từng mục việc — không nhúng form/dữ liệu (một chức năng một cửa)
+            label: 'Giới thiệu & tổng quan',
+            icon: Compass,
             path: '/one/y-tuong',
             end: true,
             bleed: true,
-            keywords: ['y tuong', 'sang kien', 'cai tien', 'de xuat', 'ideas', 'uom mam', 'ben re'],
+            // KHÔNG mở cho khách đối tác dù chỉ là trang giới thiệu: Ideas là
+            // nghiệp vụ nội bộ, phần giới thiệu hệ sinh thái cho khách đã nằm ở
+            // Trang chủ ONE (quy ước khóa bằng test phân quyền menu).
+            keywords: ['ideas', 'gioi thieu', 'tong quan', 'cap do', 'uom mam', 'ben re', 'vuon canh', 'lan toa', 'ngan sach'],
             // Trang "Sáng kiến & Nghiệp vụ" cũ đã gộp về đây
             extraPaths: ['/one/sang-kien', '/one/bhy-ways'],
+          },
+          {
+            label: 'Gửi & tra cứu ý tưởng',
+            icon: Lightbulb,
+            path: '/one/y-tuong/gui',
+            bleed: true,
+            keywords: ['gui y tuong', 'sang kien', 'cai tien', 'de xuat', 'bang theo doi', 'tra cuu'],
           },
           {
             label: 'Chấm điểm Hội đồng',

@@ -30,7 +30,8 @@ const THAO_TAC_NHANH = [
   { to: '/one/chieu-thuc-2', icon: ClipboardList, label: 'Bảng việc & ghi nhịp', color: 'from-brand-navy to-blue-700' },
   { to: '/one/tin-tuc?action=chia-se', icon: Upload, label: 'Chia sẻ kinh nghiệm', color: 'from-blue-500 to-brand-royal' },
   { to: '/quizzi', icon: Zap, label: 'Làm BHY Quizzi', color: 'from-red-500 to-amber-500' },
-  { to: '/one/y-tuong', icon: Lightbulb, label: 'Gửi BHY Ideas', color: 'from-amber-500 to-orange-500' },
+  // Thao tác nhanh phải rơi thẳng vào ô nhập, không qua trang giới thiệu
+  { to: '/one/y-tuong/gui', icon: Lightbulb, label: 'Gửi BHY Ideas', color: 'from-amber-500 to-orange-500' },
   { to: '/one/credit-360', icon: ShieldAlert, label: 'Đăng ký Credit 360', color: 'from-emerald-500 to-teal-600' },
   { to: '/one/ghi-nhan', icon: Star, label: 'Gửi Sao Xứng Đáng', color: 'from-amber-400 to-yellow-600' },
 ];

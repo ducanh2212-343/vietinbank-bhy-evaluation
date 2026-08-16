@@ -140,8 +140,8 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
 
   return (
     <div className="animate-fade-in space-y-6">
-      <DaiCapDo />
-
+      {/* Bốn cấp độ và ngân sách đã nằm ở trang giới thiệu /one/y-tuong — màn
+          này mở ra là thấy ngay ô nhập, không phải cuộn qua phần giới thiệu. */}
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
         {/* Trái: thống kê thời gian thực */}
         <div className="lg:col-span-5">

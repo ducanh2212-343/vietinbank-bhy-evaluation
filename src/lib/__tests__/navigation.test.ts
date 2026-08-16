@@ -103,6 +103,7 @@ describe('Cấu trúc cây điều hướng', () => {
 
     expect(trongThuMuc('Bắc Hưng Yên Ideas')).toEqual([
       '/one/y-tuong',
+      '/one/y-tuong/gui',
       '/one/y-tuong/hoi-dong',
       '/one/y-tuong/van-hanh',
     ]);
@@ -122,6 +123,7 @@ describe('Cấu trúc cây điều hướng', () => {
       '/one/ghi-nhan',
       '/one/credit-360',
       '/one/y-tuong',
+      '/one/y-tuong/gui',
       '/one/y-tuong/hoi-dong',
       '/one/y-tuong/van-hanh',
       '/quizzi',
@@ -136,7 +138,7 @@ describe('Cấu trúc cây điều hướng', () => {
     expect(moiDuongDan(quanTri)).toContain('/one/y-tuong/van-hanh');
     expect(moiDuongDan(quanTri)).toContain('/quan-tri-quizzi');
     // Cán bộ thường vẫn vào được hai màn dùng chung của cùng thương hiệu
-    expect(moiDuongDan(canBoThuong)).toContain('/one/y-tuong');
+    expect(moiDuongDan(canBoThuong)).toContain('/one/y-tuong/gui');
     expect(moiDuongDan(canBoThuong)).toContain('/one/y-tuong/hoi-dong');
   });
 
@@ -382,6 +384,7 @@ describe('Không trang nào thành mồ côi', () => {
     expect(resolveLocation('/quan-tri-quizzi').leaf?.path).toBe('/quan-tri-quizzi');
     // Ba màn cùng nằm dưới /one/y-tuong: mục gốc khai end nên không nuốt hai màn kia
     expect(resolveLocation('/one/y-tuong').leaf?.path).toBe('/one/y-tuong');
+    expect(resolveLocation('/one/y-tuong/gui').leaf?.path).toBe('/one/y-tuong/gui');
     expect(resolveLocation('/one/y-tuong/hoi-dong').leaf?.path).toBe('/one/y-tuong/hoi-dong');
     expect(resolveLocation('/one/y-tuong/van-hanh').leaf?.path).toBe('/one/y-tuong/van-hanh');
   });
@@ -390,8 +393,8 @@ describe('Không trang nào thành mồ côi', () => {
 describe('Cờ tràn viền quyết định khoảng đệm của khung', () => {
   // Trang bọc trong OnePageShell tự dựng nền + dải hero nên khung không thêm
   // khoảng đệm; MỌI trang còn lại phải nhận khoảng đệm, kể cả route lạ.
-  const traVien = ['/one', '/one/bhy-connect', '/one/hoc-hoi', '/one/y-tuong', '/one/y-tuong/hoi-dong',
-    '/one/y-tuong/van-hanh', '/one/credit-360', '/one/ghi-nhan', '/one/chieu-thuc-2', '/one/bhy-3806'];
+  const traVien = ['/one', '/one/bhy-connect', '/one/hoc-hoi', '/one/y-tuong', '/one/y-tuong/gui',
+    '/one/y-tuong/hoi-dong', '/one/y-tuong/van-hanh', '/one/credit-360', '/one/ghi-nhan', '/one/chieu-thuc-2', '/one/bhy-3806'];
 
   it.each(traVien)('%s là trang tràn viền', (path) => {
     expect(resolveLocation(path).leaf?.bleed).toBe(true);
