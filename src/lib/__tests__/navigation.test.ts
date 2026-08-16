@@ -71,17 +71,46 @@ describe('Cấu trúc cây điều hướng', () => {
   });
 
   it('Bắc Hưng Yên Ways là NHÓM MENU thuần, không phải một trang', () => {
-    // Bấm vào là bung ngay 6 thương hiệu; không có trang giới thiệu riêng vì
+    // Bấm vào là bung ngay các thương hiệu; không có trang giới thiệu riêng vì
     // Trang chủ đã giới thiệu đủ.
     const ways = NAV_SECTIONS.find((s) => s.id === 'bhy-ways')!;
     expect(ways.path).toBeUndefined();
-    expect(leavesOf(ways).map((l) => l.label)).toEqual([
+  });
+
+  it('thương hiệu nhiều màn hình thành thư mục, thương hiệu một màn giữ mục lẻ', () => {
+    // Trước đây mỗi thương hiệu đúng một mục nên các màn con không có mục menu
+    // nào — vô hình với người chưa biết chúng tồn tại.
+    const ways = NAV_SECTIONS.find((s) => s.id === 'bhy-ways')!;
+    const mucLe = (ways.items ?? []).filter((e) => !isFolder(e));
+    const thuMuc = (ways.items ?? []).filter(isFolder);
+
+    expect(mucLe.map((e) => (e as { label: string }).label)).toEqual([
       'Bắc Hưng Yên Sharing',
-      'Bắc Hưng Yên Quizzi',
-      'Bắc Hưng Yên Ideas',
       'Bắc Hưng Yên Connect',
       'Sao Xứng Đáng',
       'Bắc Hưng Yên Credit 360',
+    ]);
+    expect(thuMuc.map((f) => f.folder)).toEqual([
+      'Bắc Hưng Yên Ideas',
+      'Bắc Hưng Yên Quizzi',
+    ]);
+  });
+
+  it('mọi màn hình của Ideas và Quizzi đều có mục menu riêng', () => {
+    const ways = NAV_SECTIONS.find((s) => s.id === 'bhy-ways')!;
+    const trongThuMuc = (ten: string) =>
+      (ways.items ?? []).filter(isFolder).find((f) => f.folder === ten)!.items.map((l) => l.path);
+
+    expect(trongThuMuc('Bắc Hưng Yên Ideas')).toEqual([
+      '/one/y-tuong',
+      '/one/y-tuong/gui',
+      '/one/y-tuong/hoi-dong',
+      '/one/y-tuong/van-hanh',
+    ]);
+    expect(trongThuMuc('Bắc Hưng Yên Quizzi')).toEqual([
+      '/quizzi',
+      '/quizzi/chien-dich',
+      '/quan-tri-quizzi',
     ]);
   });
 
@@ -89,13 +118,28 @@ describe('Cấu trúc cây điều hướng', () => {
     const ways = NAV_SECTIONS.find((s) => s.id === 'bhy-ways')!;
     expect(leavesOf(ways).map((l) => l.path)).toEqual([
       '/one/hoc-hoi',
-      '/quizzi',
-      '/one/y-tuong',
       // Connect không có màn hình nghiệp vụ nên có trang riêng của nó
       '/one/bhy-connect',
       '/one/ghi-nhan',
       '/one/credit-360',
+      '/one/y-tuong',
+      '/one/y-tuong/gui',
+      '/one/y-tuong/hoi-dong',
+      '/one/y-tuong/van-hanh',
+      '/quizzi',
+      '/quizzi/chien-dich',
+      '/quan-tri-quizzi',
     ]);
+  });
+
+  it('màn vận hành Ideas và quản trị Quizzi chỉ quản trị viên thấy', () => {
+    expect(moiDuongDan(canBoThuong)).not.toContain('/one/y-tuong/van-hanh');
+    expect(moiDuongDan(canBoThuong)).not.toContain('/quan-tri-quizzi');
+    expect(moiDuongDan(quanTri)).toContain('/one/y-tuong/van-hanh');
+    expect(moiDuongDan(quanTri)).toContain('/quan-tri-quizzi');
+    // Cán bộ thường vẫn vào được hai màn dùng chung của cùng thương hiệu
+    expect(moiDuongDan(canBoThuong)).toContain('/one/y-tuong/gui');
+    expect(moiDuongDan(canBoThuong)).toContain('/one/y-tuong/hoi-dong');
   });
 
   it('khung năng lực 3806 nằm trong Chiêu thức 3 (phân hệ Phát triển nhân sự)', () => {
@@ -256,7 +300,10 @@ describe('Tra vị trí trang trên cây', () => {
     expect(resolveLocation('/chi-tiet-can-bo/abc-123').leaf?.path).toBe('/danh-gia-can-bo');
     expect(resolveLocation('/sua-can-bo/abc-123').leaf?.path).toBe('/danh-sach-can-bo');
     expect(resolveLocation('/ho-so-ca-nhan/abc-123').leaf?.path).toBe('/ho-so-ca-nhan');
-    expect(resolveLocation('/quizzi/chien-dich').leaf?.path).toBe('/quizzi');
+    // Bài thi bất kỳ về mục «Chơi & luyện tập»; chiến dịch nay có mục riêng nên
+    // thắng nhờ luật khớp dài nhất
+    expect(resolveLocation('/quizzi/abc-123').leaf?.path).toBe('/quizzi');
+    expect(resolveLocation('/quizzi/chien-dich').leaf?.path).toBe('/quizzi/chien-dich');
     expect(resolveLocation('/bieu-mau-02').leaf?.path).toBe('/tu-danh-gia');
   });
 
@@ -334,14 +381,20 @@ describe('Không trang nào thành mồ côi', () => {
     expect(resolveLocation('/bao-cao-dau-moi').leaf?.path).toBe('/bao-cao-dau-moi');
     expect(resolveLocation('/bao-cao-nop-bieu-mau').leaf?.path).toBe('/bao-cao-nop-bieu-mau');
     expect(resolveLocation('/bao-cao').leaf?.path).toBe('/bao-cao');
-    expect(resolveLocation('/quan-tri-quizzi').leaf?.path).toBe('/quizzi');
+    expect(resolveLocation('/quan-tri-quizzi').leaf?.path).toBe('/quan-tri-quizzi');
+    // Ba màn cùng nằm dưới /one/y-tuong: mục gốc khai end nên không nuốt hai màn kia
+    expect(resolveLocation('/one/y-tuong').leaf?.path).toBe('/one/y-tuong');
+    expect(resolveLocation('/one/y-tuong/gui').leaf?.path).toBe('/one/y-tuong/gui');
+    expect(resolveLocation('/one/y-tuong/hoi-dong').leaf?.path).toBe('/one/y-tuong/hoi-dong');
+    expect(resolveLocation('/one/y-tuong/van-hanh').leaf?.path).toBe('/one/y-tuong/van-hanh');
   });
 });
 
 describe('Cờ tràn viền quyết định khoảng đệm của khung', () => {
   // Trang bọc trong OnePageShell tự dựng nền + dải hero nên khung không thêm
   // khoảng đệm; MỌI trang còn lại phải nhận khoảng đệm, kể cả route lạ.
-  const traVien = ['/one', '/one/bhy-connect', '/one/hoc-hoi', '/one/y-tuong', '/one/credit-360', '/one/ghi-nhan', '/one/chieu-thuc-2', '/one/bhy-3806'];
+  const traVien = ['/one', '/one/bhy-connect', '/one/hoc-hoi', '/one/y-tuong', '/one/y-tuong/gui',
+    '/one/y-tuong/hoi-dong', '/one/y-tuong/van-hanh', '/one/credit-360', '/one/ghi-nhan', '/one/chieu-thuc-2', '/one/bhy-3806'];
 
   it.each(traVien)('%s là trang tràn viền', (path) => {
     expect(resolveLocation(path).leaf?.bleed).toBe(true);

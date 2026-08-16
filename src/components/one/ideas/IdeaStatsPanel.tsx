@@ -63,15 +63,15 @@ export const IdeaStatsPanel: React.FC<IdeaStatsPanelProps> = ({ ideas }) => {
       {/* 3 bộ đếm */}
       <div className="grid grid-cols-3 gap-2">
         <div className="bg-white p-3 rounded-xl text-center border shadow-sm">
-          <span className="text-[9px] text-slate-400 block uppercase font-bold tracking-tight">Tổng số</span>
+          <span className="text-2xs text-slate-400 block uppercase font-bold tracking-tight">Tổng số</span>
           <span className="text-xl font-black text-amber-600">{total}</span>
         </div>
         <div className="bg-white p-3 rounded-xl text-center border shadow-sm">
-          <span className="text-[9px] text-slate-400 block uppercase font-bold tracking-tight">Nội bộ CN</span>
+          <span className="text-2xs text-slate-400 block uppercase font-bold tracking-tight">Nội bộ CN</span>
           <span className="text-xl font-black text-[#005a9c]">{internalCount}</span>
         </div>
         <div className="bg-white p-3 rounded-xl text-center border shadow-sm">
-          <span className="text-[9px] text-slate-400 block uppercase font-bold tracking-tight">Đề xuất TSC</span>
+          <span className="text-2xs text-slate-400 block uppercase font-bold tracking-tight">Đề xuất TSC</span>
           <span className="text-xl font-black text-[#ed1b24]">{tscCount}</span>
         </div>
       </div>
@@ -87,7 +87,7 @@ export const IdeaStatsPanel: React.FC<IdeaStatsPanelProps> = ({ ideas }) => {
           const percentage = pct(count);
           return (
             <div key={item.label} className="space-y-1">
-              <div className="flex justify-between text-[11px] font-medium">
+              <div className="flex justify-between text-2xs font-medium">
                 <span className="text-slate-600 font-semibold">{item.label}</span>
                 <span className="text-slate-800 font-extrabold">{count} ý tưởng ({percentage.toFixed(0)}%)</span>
               </div>
@@ -110,7 +110,7 @@ export const IdeaStatsPanel: React.FC<IdeaStatsPanelProps> = ({ ideas }) => {
           const percentage = pct(count);
           return (
             <div key={lv} className="space-y-1">
-              <div className="flex justify-between text-[11px] font-medium">
+              <div className="flex justify-between text-2xs font-medium">
                 <span className="text-slate-600 font-semibold">{lv} {IDEA_DEV_LEVEL_EMOJI[lv]}</span>
                 <span className="text-slate-800 font-extrabold">{count} ý tưởng ({percentage.toFixed(0)}%)</span>
               </div>
@@ -131,7 +131,7 @@ export const IdeaStatsPanel: React.FC<IdeaStatsPanelProps> = ({ ideas }) => {
 
         <div className="bg-amber-50/40 p-2.5 rounded-xl border border-amber-200/50 space-y-1.5 font-medium text-slate-700">
           {IDEA_DEV_LEVELS.map(lv => (
-            <div key={lv} className="flex justify-between text-[11px]">
+            <div key={lv} className="flex justify-between text-2xs">
               <span className="text-slate-600 font-semibold">
                 {lv} {IDEA_DEV_LEVEL_EMOJI[lv]} ({rewardShort(IDEA_TIER_REWARDS[lv])}/ý tưởng):
               </span>

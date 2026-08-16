@@ -370,6 +370,38 @@ export type Database = {
         }
         Relationships: []
       }
+      bhy_ideas_cau_hinh: {
+        Row: {
+          ai_chon_uom_mam: string
+          id: boolean
+          nguoi_sua: string | null
+          tran_uom_mam_moi_tuan: number
+          updated_at: string
+        }
+        Insert: {
+          ai_chon_uom_mam?: string
+          id?: boolean
+          nguoi_sua?: string | null
+          tran_uom_mam_moi_tuan?: number
+          updated_at?: string
+        }
+        Update: {
+          ai_chon_uom_mam?: string
+          id?: boolean
+          nguoi_sua?: string | null
+          tran_uom_mam_moi_tuan?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bhy_ideas_cau_hinh_nguoi_sua_fkey"
+            columns: ["nguoi_sua"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       behavior_notes: {
         Row: {
           ai_draft: Json | null
@@ -2597,6 +2629,267 @@ export type Database = {
           },
         ]
       }
+      portal_idea_council_items: {
+        Row: {
+          created_at: string
+          id: string
+          idea_code: string
+          idea_id: string
+          proposed_tier: string
+          round_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          idea_code: string
+          idea_id: string
+          proposed_tier: string
+          round_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          idea_code?: string
+          idea_id?: string
+          proposed_tier?: string
+          round_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_idea_council_items_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "portal_ideas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portal_idea_council_items_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "portal_idea_council_rounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_idea_awards: {
+        Row: {
+          cap_do: string
+          created_at: string
+          duyet_luc: string | null
+          ghi_chu: string | null
+          ghi_nhan_kpi: boolean
+          ghi_nhan_luc: string
+          id: string
+          idea_id: string
+          ly_do_thuong: string
+          muc_thuong: number
+          nguoi_duyet: string | null
+          nguoi_ghi_nhan: string | null
+          duyet_cn: boolean
+          duyet_tsc: boolean
+          phong: string
+          round_id: string | null
+          trang_thai: string
+          chot_voi_tp: boolean
+          chot_voi_tp_luc: string | null
+          chot_voi_tp_ghi_chu: string | null
+          tuan_chon: string | null
+          updated_at: string
+        }
+        Insert: {
+          cap_do: string
+          created_at?: string
+          duyet_luc?: string | null
+          ghi_chu?: string | null
+          ghi_nhan_kpi?: boolean
+          ghi_nhan_luc?: string
+          id?: string
+          idea_id: string
+          ly_do_thuong?: string
+          muc_thuong?: number
+          nguoi_duyet?: string | null
+          nguoi_ghi_nhan?: string | null
+          duyet_cn?: boolean
+          duyet_tsc?: boolean
+          phong: string
+          round_id?: string | null
+          trang_thai?: string
+          chot_voi_tp?: boolean
+          chot_voi_tp_luc?: string | null
+          chot_voi_tp_ghi_chu?: string | null
+          tuan_chon?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cap_do?: string
+          created_at?: string
+          duyet_luc?: string | null
+          ghi_chu?: string | null
+          ghi_nhan_kpi?: boolean
+          ghi_nhan_luc?: string
+          id?: string
+          idea_id?: string
+          ly_do_thuong?: string
+          muc_thuong?: number
+          nguoi_duyet?: string | null
+          nguoi_ghi_nhan?: string | null
+          duyet_cn?: boolean
+          duyet_tsc?: boolean
+          phong?: string
+          round_id?: string | null
+          trang_thai?: string
+          chot_voi_tp?: boolean
+          chot_voi_tp_luc?: string | null
+          chot_voi_tp_ghi_chu?: string | null
+          tuan_chon?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_idea_awards_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "portal_ideas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_idea_council_members: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          is_chair: boolean
+          note: string | null
+          profile_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_chair?: boolean
+          note?: string | null
+          profile_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_chair?: boolean
+          note?: string | null
+          profile_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_idea_council_members_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_idea_council_rounds: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          note: string | null
+          results_published: boolean
+          status: string
+          updated_at: string
+          voting_deadline: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          name: string
+          note?: string | null
+          results_published?: boolean
+          status?: string
+          updated_at?: string
+          voting_deadline?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+          note?: string | null
+          results_published?: boolean
+          status?: string
+          updated_at?: string
+          voting_deadline?: string | null
+        }
+        Relationships: []
+      }
+      portal_idea_council_votes: {
+        Row: {
+          conflict_status: string | null
+          created_at: string
+          gop_y: string | null
+          id: string
+          item_id: string
+          recommendation: string | null
+          score_feasible: number | null
+          score_impact: number | null
+          score_problem: number | null
+          score_safety: number | null
+          score_scale: number | null
+          status: string
+          submitted_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          conflict_status?: string | null
+          created_at?: string
+          gop_y?: string | null
+          id?: string
+          item_id: string
+          recommendation?: string | null
+          score_feasible?: number | null
+          score_impact?: number | null
+          score_problem?: number | null
+          score_safety?: number | null
+          score_scale?: number | null
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          conflict_status?: string | null
+          created_at?: string
+          gop_y?: string | null
+          id?: string
+          item_id?: string
+          recommendation?: string | null
+          score_feasible?: number | null
+          score_impact?: number | null
+          score_problem?: number | null
+          score_safety?: number | null
+          score_scale?: number | null
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_idea_council_votes_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "portal_idea_council_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       portal_idea_votes: {
         Row: {
           created_at: string
@@ -2645,6 +2938,9 @@ export type Database = {
           proposed_solution: string | null
           proposer: string
           seed_likes: number
+          smp_cap_nhat_luc: string | null
+          smp_ma: string | null
+          smp_trang_thai: string
           seed_unlikes: number
           title: string
           updated_at: string
@@ -2667,6 +2963,9 @@ export type Database = {
           proposed_solution?: string | null
           proposer: string
           seed_likes?: number
+          smp_cap_nhat_luc?: string | null
+          smp_ma?: string | null
+          smp_trang_thai?: string
           seed_unlikes?: number
           title: string
           updated_at?: string
@@ -2689,6 +2988,9 @@ export type Database = {
           proposed_solution?: string | null
           proposer?: string
           seed_likes?: number
+          smp_cap_nhat_luc?: string | null
+          smp_ma?: string | null
+          smp_trang_thai?: string
           seed_unlikes?: number
           title?: string
           updated_at?: string
@@ -2851,6 +3153,7 @@ export type Database = {
           phone: string | null
           position: string | null
           position_id: string | null
+          khoan_gon: boolean
           self_review_only: boolean
           status: string
           updated_at: string
@@ -2875,6 +3178,7 @@ export type Database = {
           phone?: string | null
           position?: string | null
           position_id?: string | null
+          khoan_gon?: boolean
           self_review_only?: boolean
           status?: string
           updated_at?: string
@@ -2899,6 +3203,7 @@ export type Database = {
           phone?: string | null
           position?: string | null
           position_id?: string | null
+          khoan_gon?: boolean
           self_review_only?: boolean
           status?: string
           updated_at?: string
@@ -4693,6 +4998,86 @@ export type Database = {
           phong: string
           user_id: string
         }[]
+      }
+      bhy_ideas_bo_chon_uom_mam: {
+        Args: { _idea_id: string }
+        Returns: Json
+      }
+      bhy_ideas_cap_nhat_smp: {
+        Args: { _idea_id: string; _smp_ma: string; _smp_trang_thai: string }
+        Returns: Json
+      }
+      bhy_ideas_chon_uom_mam: {
+        Args: {
+          _idea_id: string
+          _tuan_chon: string
+          _chot_voi_tp?: boolean
+          _ghi_chu?: string | null
+        }
+        Returns: Json
+      }
+      bhy_ideas_duoc_chon_uom_mam: {
+        Args: { _phong_ideas: string }
+        Returns: boolean
+      }
+      bhy_ideas_gd_duyet_ben_re: {
+        Args: { _idea_id: string; _dong_y: boolean; _ghi_chu?: string | null }
+        Returns: Json
+      }
+      bhy_ideas_la_giam_doc: {
+        Args: never
+        Returns: boolean
+      }
+      bhy_ideas_la_truong_phong: {
+        Args: { _phong_ideas: string }
+        Returns: boolean
+      }
+      bhy_ideas_trinh_ben_re: {
+        Args: { _idea_id: string; _ghi_chu?: string | null }
+        Returns: Json
+      }
+      bhy_ideas_viec_cua_giam_doc: {
+        Args: never
+        Returns: {
+          idea_id: string
+          title: string
+          proposer: string
+          expected_benefits: string | null
+          phong: string
+          created_at: string
+          trinh_luc: string
+          nguoi_trinh: string | null
+          ghi_chu: string | null
+          so_ngay_cho: number
+        }[]
+      }
+      bhy_ideas_so_cb_tinh_kpi: {
+        Args: { _phong_ideas: string }
+        Returns: number
+      }
+      bhy_ideas_hd_cong_bo: {
+        Args: { _published: boolean; _round_id: string }
+        Returns: undefined
+      }
+      bhy_ideas_hd_la_chu_tich: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
+      bhy_ideas_hd_la_thanh_vien: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
+      bhy_ideas_hd_phieu_an_danh: {
+        Args: { _round_id: string }
+        Returns: Json
+      }
+      bhy_ideas_hd_tien_do: {
+        Args: { _round_id: string }
+        Returns: Json
+      }
+      bhy_ideas_hd_tong_hop: {
+        Args: { _round_id: string }
+        Returns: Json
       }
       can_observe_profile: {
         Args: { _target: string }
