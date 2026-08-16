@@ -197,9 +197,16 @@ export interface SuatUomMam {
   het: boolean;
 }
 
-export function suatUomMamConLai(daChonTrongTuan: number): SuatUomMam {
+/**
+ * @param tran Trần của tuần — mặc định lấy theo quy chế, truyền vào khi đọc từ
+ *             bảng cấu hình `bhy_ideas_cau_hinh` (TCTH đổi được không cần sửa mã).
+ */
+export function suatUomMamConLai(
+  daChonTrongTuan: number,
+  tran: number = TRAN_UOM_MAM_MOI_TUAN,
+): SuatUomMam {
   const daDung = Math.max(0, daChonTrongTuan);
-  const conLai = Math.max(0, TRAN_UOM_MAM_MOI_TUAN - daDung);
+  const conLai = Math.max(0, tran - daDung);
   return { daDung, conLai, het: conLai === 0 };
 }
 

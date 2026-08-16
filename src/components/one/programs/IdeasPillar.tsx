@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { usePortalIdeas, type PortalIdea } from '@/components/one/ideas/usePortalIdeas';
 import { useIdeaCouncilAccess } from '@/components/one/ideas/council/useIdeaCouncil';
 import { UomMamPicker } from '@/components/one/ideas/UomMamPicker';
+import { GiamDocDuyetBenRe } from '@/components/one/ideas/GiamDocDuyetBenRe';
 import { IdeaForm } from '@/components/one/ideas/IdeaForm';
 import { IdeaList } from '@/components/one/ideas/IdeaList';
 import { IdeaStatsPanel } from '@/components/one/ideas/IdeaStatsPanel';
@@ -219,8 +220,13 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
         </div>
       </div>
 
-      {/* Trưởng phòng chọn ý tưởng Ươm mầm trong hạn mức tuần (tự ẩn với cán bộ thường) */}
-      <div className="bg-white rounded-2xl border border-emerald-200 p-4 sm:p-6 shadow-sm">
+      {/* Việc chờ Giám đốc phê duyệt cấp Bén rễ (tự ẩn với người không liên quan) */}
+      <div className="bg-white rounded-2xl border border-sky-200 p-4 sm:p-6 shadow-sm empty:hidden">
+        <GiamDocDuyetBenRe />
+      </div>
+
+      {/* Chốt ý tưởng Ươm mầm trong hạn mức tuần (tự ẩn với cán bộ thường) */}
+      <div className="bg-white rounded-2xl border border-emerald-200 p-4 sm:p-6 shadow-sm empty:hidden">
         <UomMamPicker />
       </div>
 

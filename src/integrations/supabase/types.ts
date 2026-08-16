@@ -370,6 +370,38 @@ export type Database = {
         }
         Relationships: []
       }
+      bhy_ideas_cau_hinh: {
+        Row: {
+          ai_chon_uom_mam: string
+          id: boolean
+          nguoi_sua: string | null
+          tran_uom_mam_moi_tuan: number
+          updated_at: string
+        }
+        Insert: {
+          ai_chon_uom_mam?: string
+          id?: boolean
+          nguoi_sua?: string | null
+          tran_uom_mam_moi_tuan?: number
+          updated_at?: string
+        }
+        Update: {
+          ai_chon_uom_mam?: string
+          id?: boolean
+          nguoi_sua?: string | null
+          tran_uom_mam_moi_tuan?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bhy_ideas_cau_hinh_nguoi_sua_fkey"
+            columns: ["nguoi_sua"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       behavior_notes: {
         Row: {
           ai_draft: Json | null
@@ -2657,6 +2689,10 @@ export type Database = {
           duyet_tsc: boolean
           phong: string
           round_id: string | null
+          trang_thai: string
+          chot_voi_tp: boolean
+          chot_voi_tp_luc: string | null
+          chot_voi_tp_ghi_chu: string | null
           tuan_chon: string | null
           updated_at: string
         }
@@ -2677,6 +2713,10 @@ export type Database = {
           duyet_tsc?: boolean
           phong: string
           round_id?: string | null
+          trang_thai?: string
+          chot_voi_tp?: boolean
+          chot_voi_tp_luc?: string | null
+          chot_voi_tp_ghi_chu?: string | null
           tuan_chon?: string | null
           updated_at?: string
         }
@@ -2697,6 +2737,10 @@ export type Database = {
           duyet_tsc?: boolean
           phong?: string
           round_id?: string | null
+          trang_thai?: string
+          chot_voi_tp?: boolean
+          chot_voi_tp_luc?: string | null
+          chot_voi_tp_ghi_chu?: string | null
           tuan_chon?: string | null
           updated_at?: string
         }
@@ -4964,12 +5008,48 @@ export type Database = {
         Returns: Json
       }
       bhy_ideas_chon_uom_mam: {
-        Args: { _idea_id: string; _tuan_chon: string }
+        Args: {
+          _idea_id: string
+          _tuan_chon: string
+          _chot_voi_tp?: boolean
+          _ghi_chu?: string | null
+        }
         Returns: Json
+      }
+      bhy_ideas_duoc_chon_uom_mam: {
+        Args: { _phong_ideas: string }
+        Returns: boolean
+      }
+      bhy_ideas_gd_duyet_ben_re: {
+        Args: { _idea_id: string; _dong_y: boolean; _ghi_chu?: string | null }
+        Returns: Json
+      }
+      bhy_ideas_la_giam_doc: {
+        Args: never
+        Returns: boolean
       }
       bhy_ideas_la_truong_phong: {
         Args: { _phong_ideas: string }
         Returns: boolean
+      }
+      bhy_ideas_trinh_ben_re: {
+        Args: { _idea_id: string; _ghi_chu?: string | null }
+        Returns: Json
+      }
+      bhy_ideas_viec_cua_giam_doc: {
+        Args: never
+        Returns: {
+          idea_id: string
+          title: string
+          proposer: string
+          expected_benefits: string | null
+          phong: string
+          created_at: string
+          trinh_luc: string
+          nguoi_trinh: string | null
+          ghi_chu: string | null
+          so_ngay_cho: number
+        }[]
       }
       bhy_ideas_so_cb_tinh_kpi: {
         Args: { _phong_ideas: string }

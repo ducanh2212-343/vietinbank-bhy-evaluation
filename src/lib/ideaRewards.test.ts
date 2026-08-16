@@ -107,6 +107,13 @@ describe('suatUomMamConLai — trần 2 ý tưởng/tuần/phòng', () => {
   it('trần đúng theo quy chế', () => {
     expect(TRAN_UOM_MAM_MOI_TUAN).toBe(2);
   });
+
+  it('nhận trần truyền từ bảng cấu hình (TCTH đổi không cần sửa mã)', () => {
+    expect(suatUomMamConLai(2, 3)).toMatchObject({ daDung: 2, conLai: 1, het: false });
+    expect(suatUomMamConLai(3, 3)).toMatchObject({ conLai: 0, het: true });
+    // Không truyền thì vẫn là con số của quy chế
+    expect(suatUomMamConLai(2).het).toBe(true);
+  });
 });
 
 describe('thuongUomMam — tiền hồi tố nhưng ghi nhận KPI luôn theo hạn mức', () => {

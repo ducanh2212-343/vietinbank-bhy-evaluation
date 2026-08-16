@@ -12,6 +12,10 @@
 //
 // Nội dung push không nêu ý tưởng cụ thể của ai (chỉ số lượng + hạn) — phiếu
 // và điểm vẫn ẩn danh, lời nhắc chỉ nói «bạn còn N ý tưởng chưa chấm».
+//
+// Chế độ cron còn nhắc GIÁM ĐỐC khi có hồ sơ Bén rễ đang chờ phê duyệt: luồng
+// Bén rễ trình liên tục (chỉ đạo 08/2026) nên không có mốc họp để nhớ — hệ
+// thống phải chủ động nhắc, nếu không hồ sơ nằm chờ vô thời hạn.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { buildPushPayload } from 'npm:@block65/webcrypto-web-push@1.0.2';
 
@@ -32,6 +36,9 @@ const corsHeaders = {
 
 interface PushSub { id: string; profile_id: string; endpoint: string; p256dh: string; auth: string }
 interface PushMsg { title: string; body: string; url: string; tag: string }
+/** Client service_role — đặt tên kiểu để khỏi rải `any` khắp nơi */
+type AdminClient = ReturnType<typeof createClient>;
+interface HoSoNgan { id: string; full_name: string | null }
 
 function parseJwtClaims(token: string): Record<string, unknown> | null {
   const parts = token.split('.');
@@ -135,6 +142,77 @@ async function tinhThanhVienThieu(admin: any, roundId: string): Promise<ThanhVie
   return out;
 }
 
+/**
+ * Nhắc Giám đốc khi còn hồ sơ Bén rễ chờ duyệt.
+ *
+ * Nhận diện Giám đốc theo đúng hai đường của hàm bhy_ideas_la_giam_doc():
+ * role 'bgd', hoặc chức danh hồ sơ bắt đầu bằng 'Giám đốc' (tài khoản Giám đốc
+ * chi nhánh đang mang role system_admin nên không gán thêm 'bgd' được).
+ */
+async function nhacGiamDocBenRe(admin: AdminClient, vapidPrivateKey: string | null, dryRun: boolean) {
+  const { data: cho } = await admin.from('portal_idea_awards')
+    .select('id, ghi_nhan_luc')
+    .eq('trang_thai', 'cho_gd_duyet')
+    .eq('cap_do', 'Bén rễ');
+  const soHoSo = (cho || []).length;
+  if (soHoSo === 0) return { pending: 0, reminded: [] as Array<{ name: string; sent: number }> };
+
+  const nowMs = Date.now();
+  const cuNhat = Math.max(
+    0,
+    ...(cho || []).map((r: { ghi_nhan_luc: string }) =>
+      Math.floor((nowMs - new Date(r.ghi_nhan_luc).getTime()) / 86_400_000)),
+  );
+
+  const [{ data: bgdRoles }, { data: theoChucDanh }] = await Promise.all([
+    admin.from('user_roles').select('user_id').eq('role', 'bgd'),
+    admin.from('profiles').select('id, full_name')
+      .eq('status', 'active').ilike('position', 'Giám đốc%'),
+  ]);
+
+  const profileIds = new Set<string>();
+  const tenTheoProfile = new Map<string, string>();
+  for (const p of (theoChucDanh || []) as HoSoNgan[]) {
+    profileIds.add(p.id);
+    tenTheoProfile.set(p.id, p.full_name || '');
+  }
+  const userIds = ((bgdRoles || []) as Array<{ user_id: string | null }>)
+    .map(r => r.user_id).filter((x): x is string => !!x);
+  if (userIds.length > 0) {
+    const { data: hoSoBgd } = await admin.from('profiles')
+      .select('id, full_name').eq('status', 'active').in('user_id', userIds);
+    for (const p of (hoSoBgd || []) as HoSoNgan[]) {
+      profileIds.add(p.id);
+      tenTheoProfile.set(p.id, p.full_name || '');
+    }
+  }
+  if (profileIds.size === 0) return { pending: soHoSo, reminded: [] };
+
+  const subsByProfile = new Map<string, PushSub[]>();
+  const { data: subRows } = await admin.from('push_subscriptions')
+    .select('id, profile_id, endpoint, p256dh, auth')
+    .eq('is_active', true)
+    .in('profile_id', [...profileIds]);
+  for (const s of (subRows || []) as PushSub[]) {
+    (subsByProfile.get(s.profile_id) ?? subsByProfile.set(s.profile_id, []).get(s.profile_id)!)
+      .push(s);
+  }
+
+  const reminded: Array<{ name: string; sent: number }> = [];
+  for (const pid of profileIds) {
+    const msg: PushMsg = {
+      title: '📋 [Ideas] Việc chờ Giám đốc phê duyệt',
+      body: `Có ${soHoSo} ý tưởng Phòng TCTH trình công nhận cấp Bén rễ`
+        + (cuNhat >= 1 ? ` — hồ sơ cũ nhất đã chờ ${cuNhat} ngày` : ''),
+      url: '/one/y-tuong',
+      tag: 'idea-ben-re-cho-duyet',
+    };
+    const sent = dryRun ? 0 : await sendPushToProfile(admin, subsByProfile, vapidPrivateKey, pid, msg);
+    reminded.push({ name: tenTheoProfile.get(pid) || '', sent });
+  }
+  return { pending: soHoSo, reminded };
+}
+
 function hanText(deadline: string | null): string {
   if (!deadline) return '';
   const d = new Date(deadline);
@@ -214,7 +292,13 @@ Deno.serve(async (req) => {
           reminded.push({ round: r.id, name: t.fullName, pending: t.pending, sent });
         }
       }
-      return new Response(JSON.stringify({ ok: true, mode: 'cron', dry_run: dryRun, rounds_closed: closed, reminded }), {
+      // Nhắc Giám đốc hàng chờ Bén rễ — độc lập với đợt chấm Hội đồng
+      const benRe = await nhacGiamDocBenRe(admin, vapidPrivateKey, dryRun);
+
+      return new Response(JSON.stringify({
+        ok: true, mode: 'cron', dry_run: dryRun,
+        rounds_closed: closed, reminded, ben_re_cho_duyet: benRe,
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
