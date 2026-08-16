@@ -142,6 +142,55 @@ export function kiemTraThoiGian(
  */
 export const TRAN_UOM_MAM_MOI_TUAN = 2;
 
+/**
+ * MỐC HỒI TỐ (chỉ đạo 08/2026): ý tưởng Ươm mầm tự đề xuất gửi TRƯỚC mốc này
+ * đều được thưởng tiền để khuyến khích phong trào, kể cả khi không nằm trong
+ * hạn mức ghi nhận. Từ mốc trở đi, chỉ ý tưởng được Trưởng phòng chọn trong
+ * hạn mức mới có tiền.
+ *
+ * GHI NHẬN cho KPI thì KHÔNG hồi tố — luôn theo đúng hạn mức 02/tuần/phòng,
+ * để KPI đo lường chuẩn.
+ */
+export const MOC_HOI_TO_THUONG = '2026-08-16';
+
+export type LyDoThuong = 'trong_han_muc' | 'hoi_to_khuyen_khich' | 'khong_chi' | 'chuyen_ky_sau';
+
+export const LY_DO_THUONG_LABELS: Record<LyDoThuong, string> = {
+  trong_han_muc: 'Trong hạn mức — thưởng theo quy chế',
+  hoi_to_khuyen_khich: 'Ngoài hạn mức, gửi trước 16/08/2026 — thưởng khuyến khích',
+  khong_chi: 'Ngoài hạn mức — không chi thưởng',
+  chuyen_ky_sau: 'Hết ngân sách kỳ này — chuyển kỳ xét sau',
+};
+
+export interface KetQuaThuongUomMam {
+  muc: number;
+  lyDo: LyDoThuong;
+  /** Có tính vào KPI Đổi mới sáng tạo không — chỉ khi nằm trong hạn mức */
+  ghiNhanKpi: boolean;
+}
+
+/**
+ * Tiền thưởng và tư cách ghi nhận của một ý tưởng ở cấp Ươm mầm.
+ *
+ * @param ngayGui    Ngày gửi ý tưởng
+ * @param trongHanMuc Trưởng phòng có chọn ý tưởng này vào hạn mức tuần không
+ */
+export function thuongUomMam(
+  ngayGui: Date | string,
+  trongHanMuc: boolean,
+): KetQuaThuongUomMam {
+  const donGia = DON_GIA_CAP['Ươm mầm'].min;
+  if (trongHanMuc) {
+    return { muc: donGia, lyDo: 'trong_han_muc', ghiNhanKpi: true };
+  }
+  // Neo mốc theo NỬA ĐÊM GIỜ ĐỊA PHƯƠNG: 'yyyy-mm-dd' trần được JS hiểu là
+  // nửa đêm UTC, lệch 7 tiếng so với giờ Việt Nam và làm sai biên ngày.
+  const truocMoc = new Date(ngayGui).getTime() < new Date(`${MOC_HOI_TO_THUONG}T00:00:00`).getTime();
+  return truocMoc
+    ? { muc: donGia, lyDo: 'hoi_to_khuyen_khich', ghiNhanKpi: false }
+    : { muc: 0, lyDo: 'khong_chi', ghiNhanKpi: false };
+}
+
 export interface SuatUomMam {
   daDung: number;
   conLai: number;

@@ -2639,6 +2639,71 @@ export type Database = {
           },
         ]
       }
+      portal_idea_awards: {
+        Row: {
+          cap_do: string
+          created_at: string
+          duyet_luc: string | null
+          ghi_chu: string | null
+          ghi_nhan_kpi: boolean
+          ghi_nhan_luc: string
+          id: string
+          idea_id: string
+          ly_do_thuong: string
+          muc_thuong: number
+          nguoi_duyet: string | null
+          nguoi_ghi_nhan: string | null
+          phong: string
+          round_id: string | null
+          tuan_chon: string | null
+          updated_at: string
+        }
+        Insert: {
+          cap_do: string
+          created_at?: string
+          duyet_luc?: string | null
+          ghi_chu?: string | null
+          ghi_nhan_kpi?: boolean
+          ghi_nhan_luc?: string
+          id?: string
+          idea_id: string
+          ly_do_thuong?: string
+          muc_thuong?: number
+          nguoi_duyet?: string | null
+          nguoi_ghi_nhan?: string | null
+          phong: string
+          round_id?: string | null
+          tuan_chon?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cap_do?: string
+          created_at?: string
+          duyet_luc?: string | null
+          ghi_chu?: string | null
+          ghi_nhan_kpi?: boolean
+          ghi_nhan_luc?: string
+          id?: string
+          idea_id?: string
+          ly_do_thuong?: string
+          muc_thuong?: number
+          nguoi_duyet?: string | null
+          nguoi_ghi_nhan?: string | null
+          phong?: string
+          round_id?: string | null
+          tuan_chon?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_idea_awards_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "portal_ideas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       portal_idea_council_members: {
         Row: {
           created_at: string
@@ -3029,6 +3094,7 @@ export type Database = {
           phone: string | null
           position: string | null
           position_id: string | null
+          khoan_gon: boolean
           self_review_only: boolean
           status: string
           updated_at: string
@@ -3053,6 +3119,7 @@ export type Database = {
           phone?: string | null
           position?: string | null
           position_id?: string | null
+          khoan_gon?: boolean
           self_review_only?: boolean
           status?: string
           updated_at?: string
@@ -3077,6 +3144,7 @@ export type Database = {
           phone?: string | null
           position?: string | null
           position_id?: string | null
+          khoan_gon?: boolean
           self_review_only?: boolean
           status?: string
           updated_at?: string
@@ -4871,6 +4939,22 @@ export type Database = {
           phong: string
           user_id: string
         }[]
+      }
+      bhy_ideas_bo_chon_uom_mam: {
+        Args: { _idea_id: string }
+        Returns: Json
+      }
+      bhy_ideas_chon_uom_mam: {
+        Args: { _idea_id: string; _tuan_chon: string }
+        Returns: Json
+      }
+      bhy_ideas_la_truong_phong: {
+        Args: { _phong_ideas: string }
+        Returns: boolean
+      }
+      bhy_ideas_so_cb_tinh_kpi: {
+        Args: { _phong_ideas: string }
+        Returns: number
       }
       bhy_ideas_hd_cong_bo: {
         Args: { _published: boolean; _round_id: string }

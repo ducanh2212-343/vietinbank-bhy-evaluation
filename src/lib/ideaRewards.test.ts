@@ -3,8 +3,10 @@ process.env.TZ = 'Asia/Ho_Chi_Minh';
 import { describe, it, expect } from 'vitest';
 import {
   DON_GIA_CAP,
+  MOC_HOI_TO_THUONG,
   NGAN_SACH_CHU_KY,
   TRAN_UOM_MAM_MOI_TUAN,
+  thuongUomMam,
   dauTuan,
   dienGiaiTien,
   kiemTraThoiGian,
@@ -104,6 +106,36 @@ describe('suatUomMamConLai — trần 2 ý tưởng/tuần/phòng', () => {
   });
   it('trần đúng theo quy chế', () => {
     expect(TRAN_UOM_MAM_MOI_TUAN).toBe(2);
+  });
+});
+
+describe('thuongUomMam — tiền hồi tố nhưng ghi nhận KPI luôn theo hạn mức', () => {
+  it('trong hạn mức → có tiền VÀ được ghi nhận KPI', () => {
+    expect(thuongUomMam('2026-09-01', true))
+      .toEqual({ muc: 100_000, lyDo: 'trong_han_muc', ghiNhanKpi: true });
+  });
+
+  it('ngoài hạn mức, gửi TRƯỚC 16/08 → vẫn có tiền khuyến khích, KHÔNG ghi nhận KPI', () => {
+    const kq = thuongUomMam('2026-08-07', false);
+    expect(kq.muc).toBe(100_000);
+    expect(kq.lyDo).toBe('hoi_to_khuyen_khich');
+    expect(kq.ghiNhanKpi).toBe(false);
+  });
+
+  it('ngoài hạn mức, gửi TỪ 16/08 trở đi → không tiền, không ghi nhận', () => {
+    const kq = thuongUomMam('2026-08-16', false);
+    expect(kq.muc).toBe(0);
+    expect(kq.lyDo).toBe('khong_chi');
+    expect(kq.ghiNhanKpi).toBe(false);
+  });
+
+  it('đúng mốc 16/08 là ĐÃ hết hồi tố (biên đóng)', () => {
+    expect(thuongUomMam('2026-08-15T23:59:00', false).lyDo).toBe('hoi_to_khuyen_khich');
+    expect(thuongUomMam('2026-08-16T00:00:00', false).lyDo).toBe('khong_chi');
+  });
+
+  it('mốc hồi tố đúng chỉ đạo 16/08/2026', () => {
+    expect(MOC_HOI_TO_THUONG).toBe('2026-08-16');
   });
 });
 

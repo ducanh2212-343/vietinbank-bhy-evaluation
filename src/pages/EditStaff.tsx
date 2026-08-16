@@ -267,6 +267,7 @@ export default function EditStaff() {
       director_id: form.director_id || null,
       status: form.status,
       note: form.note || null,
+      khoan_gon: !!form.khoan_gon,
     }).eq('id', id!);
     setSaving(false);
     if (error) {
@@ -321,7 +322,7 @@ export default function EditStaff() {
   if (!isAdmin) return <div className="p-6 text-muted-foreground">Bạn không có quyền truy cập.</div>;
   if (loading) return <div className="p-6 text-muted-foreground">Đang tải...</div>;
 
-  const set = (key: string, val: string) => setForm((p: any) => ({ ...p, [key]: val }));
+  const set = (key: string, val: string | boolean) => setForm((p: any) => ({ ...p, [key]: val }));
   const branchDirectorName = branchDirectors.length === 1 ? branchDirectors[0].full_name : '';
 
   return (
@@ -423,6 +424,25 @@ export default function EditStaff() {
                     <AlertDescription>{directorWarning}</AlertDescription>
                   </Alert>
                 )}
+              </div>
+              {/* Nhân viên khoán gọn — KHÔNG tính vào KPI (chỉ đạo 08/2026):
+                  không giao chỉ tiêu cá nhân và không đếm vào mẫu số "số cán bộ
+                  của Phòng" khi tính chỉ tiêu KPI của Trưởng/Phó phòng. */}
+              <div className="sm:col-span-2 flex items-start gap-3 rounded-md border p-3">
+                <Switch
+                  id="khoan-gon"
+                  checked={!!form.khoan_gon}
+                  onCheckedChange={(v) => set('khoan_gon', v)}
+                />
+                <Label htmlFor="khoan-gon" className="text-sm font-normal cursor-pointer">
+                  <span className="font-medium">Nhân viên khoán gọn — không tính KPI</span>
+                  <span className="block text-muted-foreground mt-0.5">
+                    Bật cho nhân viên khoán gọn (VD nhân viên khoán gọn Phòng KHDN, nhân viên dịch vụ
+                    khách hàng). Người được bật sẽ <strong>không được giao chỉ tiêu KPI cá nhân</strong> và
+                    <strong> không tính vào số cán bộ của Phòng</strong> khi xác định chỉ tiêu KPI Đổi mới
+                    sáng tạo của Trưởng/Phó phòng.
+                  </span>
+                </Label>
               </div>
               <div className="space-y-2">
                 <Label>Trạng thái</Label>

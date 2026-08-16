@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { usePortalIdeas, type PortalIdea } from '@/components/one/ideas/usePortalIdeas';
 import { useIdeaCouncilAccess } from '@/components/one/ideas/council/useIdeaCouncil';
+import { UomMamPicker } from '@/components/one/ideas/UomMamPicker';
 import { IdeaForm } from '@/components/one/ideas/IdeaForm';
 import { IdeaList } from '@/components/one/ideas/IdeaList';
 import { IdeaStatsPanel } from '@/components/one/ideas/IdeaStatsPanel';
@@ -216,6 +217,11 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
             onDone={() => setEditing(null)}
           />
         </div>
+      </div>
+
+      {/* Trưởng phòng chọn ý tưởng Ươm mầm trong hạn mức tuần (tự ẩn với cán bộ thường) */}
+      <div className="bg-white rounded-2xl border border-emerald-200 p-4 sm:p-6 shadow-sm">
+        <UomMamPicker />
       </div>
 
       {/* Bảng theo dõi ý tưởng toàn chi nhánh */}
