@@ -26,7 +26,7 @@ export const IdeaCouncilMembers: React.FC = () => {
         <Users className="w-4 h-4 text-amber-500" />
         Thành viên Hội đồng ({soHoatDong} đang hoạt động)
       </p>
-      <p className="text-[10px] text-slate-500">
+      <p className="text-2xs text-slate-500">
         Giám đốc quyết định thành phần từng thời kỳ — TCTH cập nhật tại đây. Danh sách đang hoạt
         động là <b>mẫu số quorum — yêu cầu TẤT CẢ phải chấm</b> (kịch bản họp tại chỗ, Hội đồng
         ít người): người vắng/nghỉ dài hạn hãy tắt «Hoạt động» để rút khỏi mẫu số thay vì xóa
@@ -92,8 +92,8 @@ export const IdeaCouncilMembers: React.FC = () => {
                 {m.isChair && <Crown className="w-3.5 h-3.5 text-amber-500" />}
                 {m.fullName}
               </span>
-              <span className="text-[10px] text-slate-500 flex-1 min-w-[120px]">{m.position}{m.note ? ` · ${m.note}` : ''}</span>
-              <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 cursor-pointer" title="Chủ tịch Hội đồng: vượt khóa xem tổng hợp khi đang chấm + bấm công bố kết quả">
+              <span className="text-2xs text-slate-500 flex-1 min-w-[120px]">{m.position}{m.note ? ` · ${m.note}` : ''}</span>
+              <label className="flex items-center gap-1 text-2xs font-bold text-slate-600 cursor-pointer" title="Chủ tịch Hội đồng: vượt khóa xem tổng hợp khi đang chấm + bấm công bố kết quả">
                 <input
                   type="checkbox"
                   checked={m.isChair}
@@ -102,7 +102,7 @@ export const IdeaCouncilMembers: React.FC = () => {
                 />
                 Chủ tịch
               </label>
-              <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 cursor-pointer" title="Tắt = tạm ngưng (không chấm, không tính vào quorum), phiếu cũ vẫn giữ">
+              <label className="flex items-center gap-1 text-2xs font-bold text-slate-600 cursor-pointer" title="Tắt = tạm ngưng (không chấm, không tính vào quorum), phiếu cũ vẫn giữ">
                 <input
                   type="checkbox"
                   checked={m.isActive}

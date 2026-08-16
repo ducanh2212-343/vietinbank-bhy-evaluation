@@ -168,17 +168,17 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
                 className="flex-1 min-w-[140px] text-left font-black text-slate-700 cursor-pointer hover:text-amber-600"
               >
                 {r.name}
-                <span className="block text-[10px] text-slate-400 font-medium">
+                <span className="block text-2xs text-slate-400 font-medium">
                   {r.note && <>{r.note} · </>}
                   {r.votingDeadline
                     ? `⏰ Hạn ${new Date(r.votingDeadline).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
                     : 'Chưa đặt hạn gửi phiếu'}
                 </span>
               </button>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${r.status === 'open' ? 'bg-emerald-100 text-emerald-700' : r.status === 'closed' ? 'bg-slate-200 text-slate-600' : 'bg-amber-100 text-amber-700'}`}>
+              <span className={`px-2 py-0.5 rounded-full text-2xs font-black ${r.status === 'open' ? 'bg-emerald-100 text-emerald-700' : r.status === 'closed' ? 'bg-slate-200 text-slate-600' : 'bg-amber-100 text-amber-700'}`}>
                 {TRANG_THAI_DOT_LABELS[r.status]}
               </span>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${r.resultsPublished ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-500'}`}
+              <span className={`px-2 py-0.5 rounded-full text-2xs font-black ${r.resultsPublished ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-500'}`}
                 title="Công bố/khóa kết quả do Chủ tịch Hội đồng hoặc Quản trị hệ thống bấm ở tab Kết quả tổng hợp">
                 {r.resultsPublished ? '🔓 Đã công bố' : '🔒 Chưa công bố'}
               </span>
@@ -199,7 +199,7 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
                     const d = new Date(+m[3], +m[2] - 1, +m[1], +m[4], +m[5]);
                     void datHanChot(r.id, d.toISOString());
                   }}
-                  className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-[10px] transition-all cursor-pointer"
+                  className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-2xs transition-all cursor-pointer"
                   title="Đặt/sửa hạn gửi phiếu — quá hạn hệ thống tự chốt, còn ≤3 ngày tự nhắc push"
                 >
                   ⏰ Hạn
@@ -214,7 +214,7 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
                       : 'Mở đợt chấm cho thành viên Hội đồng gửi phiếu?';
                     if (window.confirm(canhBao)) void doiTrangThaiDot(r.id, chuyen.next);
                   }}
-                  className="px-2.5 py-1 rounded-lg bg-slate-700 hover:bg-slate-800 text-white font-bold text-[10px] transition-all cursor-pointer"
+                  className="px-2.5 py-1 rounded-lg bg-slate-700 hover:bg-slate-800 text-white font-bold text-2xs transition-all cursor-pointer"
                 >
                   {chuyen.label}
                 </button>
@@ -235,7 +235,7 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
               <Gavel className="w-4 h-4" />
               Trình ý tưởng vào đợt «{selectedRound.name}»
             </p>
-            <p className="text-[10px] text-slate-500">
+            <p className="text-2xs text-slate-500">
               Chỉ liệt kê ý tưởng đã bật cờ «Đề xuất Hội đồng» ở bảng theo dõi BHY Ideas.
               Chọn tầng xét trước — danh sách ý tưởng lọc theo tầng.
             </p>
@@ -288,17 +288,17 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
                 Trình Hội đồng
               </button>
             </div>
-            <p className="text-[10px] text-slate-500">
+            <p className="text-2xs text-slate-500">
               {TANG_DE_XUAT_INFO[tang].moTa} <b className="text-slate-600">Thưởng: {TANG_DE_XUAT_INFO[tang].thuong}.</b>
             </p>
             {tang === 'Lan tỏa' && ungVien.length === 0 && (
-              <p className="text-[10px] text-slate-500 italic">
+              <p className="text-2xs text-slate-500 italic">
                 Chưa có ý tưởng nào ở Cấp độ Vươn cành để xét nâng — cập nhật cấp độ phát triển
                 ở bảng theo dõi BHY Ideas trước khi trình kỳ xét Lan tỏa.
               </p>
             )}
             {TANG_DE_XUAT_INFO[tang].trucTiep && (
-              <div className="p-2.5 rounded-lg bg-violet-100 border border-violet-300 text-[11px] text-violet-900 font-semibold">
+              <div className="p-2.5 rounded-lg bg-violet-100 border border-violet-300 text-2xs text-violet-900 font-semibold">
                 ⚡ Cảnh báo: xét thẳng Lan tỏa khi chưa qua Vươn cành là trường hợp đặc biệt.
                 Ý tưởng sẽ mang dấu hiệu nhận diện riêng trên phiếu chấm của Hội đồng; nếu đạt,
                 thưởng cộng cả hai mức Vươn cành + Lan tỏa.
@@ -317,12 +317,12 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
                     <span className="font-black text-slate-700">{it.ideaCode}</span>
                     <span className="flex-1 min-w-[160px] font-semibold text-slate-600 truncate">{it.idea.title}</span>
                     <span
-                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${TANG_DE_XUAT_INFO[it.proposedTier].badgeClass}`}
+                      className={`px-1.5 py-0.5 rounded text-2xs font-bold ${TANG_DE_XUAT_INFO[it.proposedTier].badgeClass}`}
                       title={TANG_DE_XUAT_INFO[it.proposedTier].moTa}
                     >
                       {TANG_DE_XUAT_INFO[it.proposedTier].nhan}
                     </span>
-                    <span className="text-[10px] text-slate-500 font-bold">
+                    <span className="text-2xs text-slate-500 font-bold">
                       {phieuBiKhoa ? '🔒' : `${phieu.length} phiếu`}
                     </span>
                     <button
@@ -349,7 +349,7 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
 
                   {moPhieu && (
                     <div className="p-2.5 space-y-1.5 bg-white">
-                      <p className="text-[10px] text-slate-400">
+                      <p className="text-2xs text-slate-400">
                         {isSystemAdmin
                           ? 'Bạn là Quản trị hệ thống nên thấy danh tính; với Admin TCTH và Ban Giám đốc, phiếu hiển thị ẩn danh.'
                           : 'Phiếu hiển thị ẨN DANH — không ai ngoài Quản trị hệ thống biết ai chấm bao nhiêu.'}
@@ -372,14 +372,14 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
                             <UserRound className="w-3 h-3 text-slate-400" />
                             {tenTheoVoteId.get(v.voteId) ?? `Phiếu ẩn danh #${i + 1}`}
                           </span>
-                          <span className={`text-[10px] ${v.xungDot !== 'khong' ? 'font-bold text-amber-700' : 'text-slate-500'}`}>
+                          <span className={`text-2xs ${v.xungDot !== 'khong' ? 'font-bold text-amber-700' : 'text-slate-500'}`}>
                             {v.xungDot !== 'khong' && '⚠ '}{XUNG_DOT_LABELS[v.xungDot]}
                           </span>
-                          <span className="text-[10px] font-semibold text-slate-600">
+                          <span className="text-2xs font-semibold text-slate-600">
                             {TIEU_CHI_HOI_DONG.map(tc => v.diem[tc.key]).join(' · ')}
                           </span>
-                          <span className="text-[10px] font-bold text-amber-700">{DE_XUAT_LABELS[v.deXuat]}</span>
-                          {v.gopY && <span className="text-[10px] text-slate-500 italic flex-1 min-w-[140px]">“{v.gopY}”</span>}
+                          <span className="text-2xs font-bold text-amber-700">{DE_XUAT_LABELS[v.deXuat]}</span>
+                          {v.gopY && <span className="text-2xs text-slate-500 italic flex-1 min-w-[140px]">“{v.gopY}”</span>}
                         </div>
                       ))}
                     </div>

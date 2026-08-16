@@ -100,12 +100,12 @@ export const UomMamPicker: React.FC = () => {
             ))}
           </select>
         )}
-        <span className={`ml-auto px-2.5 py-1 rounded-full text-[11px] font-black ${suat.het ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-700'}`}>
+        <span className={`ml-auto px-2.5 py-1 rounded-full text-2xs font-black ${suat.het ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-700'}`}>
           Đã ghi nhận {suat.daDung}/{cauHinh.tranUomMamMoiTuan} suất tuần này
         </span>
       </div>
 
-      <div className="p-2.5 rounded-lg bg-sky-50 border border-sky-200 text-[11px] text-sky-900 flex gap-2">
+      <div className="p-2.5 rounded-lg bg-sky-50 border border-sky-200 text-2xs text-sky-900 flex gap-2">
         <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
         <span>
           Mỗi tuần phòng được ghi nhận tối đa <b>{cauHinh.tranUomMamMoiTuan} ý tưởng</b> Ươm mầm — đây là
@@ -117,7 +117,7 @@ export const UomMamPicker: React.FC = () => {
       </div>
 
       {tcthGiuQuyen && (
-        <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-900 flex gap-2">
+        <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-2xs text-amber-900 flex gap-2">
           <Handshake className="w-4 h-4 flex-shrink-0 mt-0.5" />
           <span>
             {isAdmin ? (
@@ -201,34 +201,34 @@ export const UomMamPicker: React.FC = () => {
 
                 <div className="flex-1 min-w-[180px]">
                   <p className="font-bold text-slate-700 leading-snug">{it.title}</p>
-                  <p className="text-[10px] text-slate-500">
+                  <p className="text-2xs text-slate-500">
                     {it.proposer} · gửi {new Date(it.createdAt).toLocaleDateString('vi-VN')}
                   </p>
                 </div>
 
                 {ghiNhan && (
                   <span
-                    className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-700"
+                    className="px-2 py-0.5 rounded-full text-2xs font-black bg-emerald-100 text-emerald-700"
                     title="Ý tưởng này được tính vào KPI Đổi mới sáng tạo"
                   >
                     ✓ Tính KPI
                   </span>
                 )}
                 {duyetCn && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600"
+                  <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-slate-100 text-slate-600"
                     title="Chi nhánh duyệt — chiếm 1 suất hạn mức tuần của phòng">
                     CN duyệt
                   </span>
                 )}
                 {duyetTsc && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-700"
+                  <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-sky-100 text-sky-700"
                     title="TSC đã duyệt trên SMP — ghi nhận theo quy chế, không chiếm suất tuần của phòng">
                     TSC duyệt (SMP)
                   </span>
                 )}
                 {it.award?.chotVoiTp && (
                   <span
-                    className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-50 text-violet-700 border border-violet-200"
+                    className="px-2 py-0.5 rounded-full text-2xs font-bold bg-violet-50 text-violet-700 border border-violet-200"
                     title={it.award.chotVoiTpGhiChu || 'TCTH đã chốt với Trưởng phòng trước khi ghi nhận'}
                   >
                     🤝 Đã chốt với TP
@@ -236,14 +236,14 @@ export const UomMamPicker: React.FC = () => {
                 )}
                 {it.award && it.award.mucThuong > 0 && (
                   <span
-                    className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200"
+                    className="px-2 py-0.5 rounded-full text-2xs font-bold bg-amber-50 text-amber-700 border border-amber-200"
                     title={LY_DO_THUONG_LABELS[it.award.lyDoThuong]}
                   >
                     💰 {dienGiaiTien(it.award.mucThuong, it.award.mucThuong)}
                   </span>
                 )}
                 {it.award && it.award.mucThuong === 0 && !ghiNhan && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500">
+                  <span className="px-2 py-0.5 rounded-full text-2xs font-semibold bg-slate-100 text-slate-500">
                     Ghi nhận, chưa chi thưởng
                   </span>
                 )}
@@ -254,7 +254,7 @@ export const UomMamPicker: React.FC = () => {
                     type="button"
                     onClick={() => void trinh(it.id)}
                     title="Trình Giám đốc xem xét công nhận cấp Bén rễ"
-                    className="px-2 py-1 rounded-lg bg-[#005a9c]/10 hover:bg-[#005a9c]/20 text-[#005a9c] font-bold text-[10px] flex items-center gap-1 cursor-pointer transition-all"
+                    className="px-2 py-1 rounded-lg bg-[#005a9c]/10 hover:bg-[#005a9c]/20 text-[#005a9c] font-bold text-2xs flex items-center gap-1 cursor-pointer transition-all"
                   >
                     <Send className="w-3 h-3" /> Trình Bén rễ
                   </button>

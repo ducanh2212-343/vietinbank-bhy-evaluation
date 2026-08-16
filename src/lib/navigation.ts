@@ -178,8 +178,21 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     // Bắc Hưng Yên Ways là NHÓM MENU, không phải một trang: bấm vào là bung ngay
-    // 6 thương hiệu. Không dựng trang giới thiệu riêng vì Trang chủ đã giới thiệu
-    // đủ — thêm một trang nữa là lặp lại chính nó.
+    // các thương hiệu. Không dựng trang giới thiệu riêng vì Trang chủ đã giới
+    // thiệu đủ — thêm một trang nữa là lặp lại chính nó.
+    //
+    // Cấu trúc TRỘN thư mục và mục lẻ (chốt 08/2026): thương hiệu nào đã mọc ra
+    // nhiều màn hình thì thành một THƯ MỤC liệt kê đủ các màn; thương hiệu một
+    // màn giữ nguyên MỤC LẺ.
+    //
+    // Vì sao đổi: trước đây mỗi thương hiệu đúng một mục, nên các màn con
+    // (/one/y-tuong/hoi-dong, /quan-tri-quizzi, /quizzi/chien-dich) không có mục
+    // menu nào — chỉ tới được bằng nút bên trong trang, tức là vô hình với người
+    // chưa biết chúng tồn tại. Bảng menu của TopNav vốn đã dựng được cả hai dạng
+    // nên đây là dùng đúng thứ đã có, không phải cơ chế mới.
+    //
+    // Trong từng trang thương hiệu vẫn có thanh tab để chuyển qua lại giữa các
+    // màn của chính nó — điện thoại không mở bảng menu vẫn đi lại được.
     id: 'bhy-ways',
     label: 'Bắc Hưng Yên Ways',
     shortLabel: 'BHY Ways',
@@ -199,24 +212,6 @@ export const NAV_SECTIONS: NavSection[] = [
         bleed: true,
         keywords: ['chia se', 'kho tri thuc', 'tu lieu', 'thu vien', 'sharing', 'hoc hoi'],
         extraPaths: ['/one/kho-du-lieu'],
-      },
-      // Quizzi có nhà duy nhất tại /quizzi (kể cả khu quản trị bên trong)
-      {
-        label: 'Bắc Hưng Yên Quizzi',
-        icon: Zap,
-        path: '/quizzi',
-        keywords: ['trac nghiem', 'thi', 'cau hoi', 'chien dich quiz', 'quizzi'],
-        extraPaths: ['/quizzi/', '/quan-tri-quizzi'],
-      },
-      {
-        label: 'Bắc Hưng Yên Ideas',
-        icon: Lightbulb,
-        path: '/one/y-tuong',
-        bleed: true,
-        keywords: ['y tuong', 'sang kien', 'cai tien', 'de xuat', 'ideas', 'cham diem hoi dong', 'vuon canh', 'lan toa'],
-        // Trang "Sáng kiến & Nghiệp vụ" cũ đã gộp về đây; /one/y-tuong/hoi-dong
-        // (chấm điểm Hội đồng) khớp theo tiền tố nên không cần khai extraPaths
-        extraPaths: ['/one/sang-kien', '/one/bhy-ways'],
       },
       // Connect không có màn hình nghiệp vụ nên trang này chính là nhà của nó
       {
@@ -240,6 +235,74 @@ export const NAV_SECTIONS: NavSection[] = [
         path: '/one/credit-360',
         bleed: true,
         keywords: ['tin dung', 'tham dinh', 'phien hop', 'credit 360'],
+      },
+      {
+        id: 'ways-ideas',
+        folder: 'Bắc Hưng Yên Ideas',
+        icon: Lightbulb,
+        items: [
+          {
+            label: 'Gửi & tra cứu ý tưởng',
+            icon: Lightbulb,
+            path: '/one/y-tuong',
+            end: true,
+            bleed: true,
+            keywords: ['y tuong', 'sang kien', 'cai tien', 'de xuat', 'ideas', 'uom mam', 'ben re'],
+            // Trang "Sáng kiến & Nghiệp vụ" cũ đã gộp về đây
+            extraPaths: ['/one/sang-kien', '/one/bhy-ways'],
+          },
+          {
+            label: 'Chấm điểm Hội đồng',
+            icon: Gavel,
+            path: '/one/y-tuong/hoi-dong',
+            bleed: true,
+            // Thành viên Hội đồng đọc từ BẢNG thành viên chứ không từ vai trò,
+            // nên không gác được bằng minRole — trang tự chặn và hiện lời giải
+            // thích cho người không thuộc Hội đồng.
+            keywords: ['hoi dong', 'cham diem', 'phieu cham', 'vuon canh', 'lan toa', 'phu luc 06'],
+          },
+          {
+            label: 'Vận hành Ideas (TCTH)',
+            icon: ClipboardList,
+            path: '/one/y-tuong/van-hanh',
+            bleed: true,
+            minRole: 'admin',
+            keywords: ['van hanh', 'chot uom mam', 'han muc', 'trinh ben re', 'smp', 'xuat excel', 'ngan sach'],
+          },
+        ],
+      },
+      // Quizzi có nhà duy nhất tại /quizzi; khu quản trị và chiến dịch là hai
+      // màn riêng, trước nay không có mục menu nào
+      {
+        id: 'ways-quizzi',
+        folder: 'Bắc Hưng Yên Quizzi',
+        icon: Zap,
+        items: [
+          {
+            label: 'Chơi & luyện tập',
+            icon: Zap,
+            path: '/quizzi',
+            end: true,
+            keywords: ['trac nghiem', 'thi', 'cau hoi', 'quizzi', 'choi'],
+            // Mọi route con của /quizzi (bài thi, phòng chờ trực tiếp, soạn đề)
+            // tô sáng mục này; riêng /quizzi/chien-dich có mục riêng và thắng
+            // nhờ luật «khớp dài nhất» của resolveLocation.
+            extraPaths: ['/quizzi/'],
+          },
+          {
+            label: 'Chiến dịch Quizzi',
+            icon: Flag,
+            path: '/quizzi/chien-dich',
+            keywords: ['chien dich quiz', 'thi dua', 'bang xep hang'],
+          },
+          {
+            label: 'Quản trị Quizzi',
+            icon: SettingsIcon,
+            path: '/quan-tri-quizzi',
+            minRole: 'admin',
+            keywords: ['quan tri quiz', 'ngan hang cau hoi'],
+          },
+        ],
       },
     ],
   },

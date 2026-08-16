@@ -46,20 +46,20 @@ export const IdeaCouncilProgress: React.FC<{ round: CouncilRound | null }> = ({ 
                 void nhac();
               }
             }}
-            className={`ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold text-[11px] shadow-sm transition-all cursor-pointer ${dangNhac ? 'opacity-70 cursor-not-allowed' : ''}`}
+            className={`ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold text-2xs shadow-sm transition-all cursor-pointer ${dangNhac ? 'opacity-70 cursor-not-allowed' : ''}`}
           >
             <BellRing className="w-3.5 h-3.5" />
             <span>Nhắc tất cả ({conThieu.length})</span>
           </button>
         )}
       </div>
-      <p className="text-[10px] text-slate-500">
+      <p className="text-2xs text-slate-500">
         Bảng này hiện <b>tên thật và trạng thái nộp</b> để đôn đốc (đúng mục đích quy chế:
         kiểm soát số lượt chấm, đánh giá mức độ tham gia) — <b>không kèm bất kỳ điểm số nào</b>,
         phiếu vẫn ẩn danh. Nhắc gửi qua thông báo đẩy trên thiết bị đã đăng ký.
       </p>
       {round.status === 'open' && (
-        <div className="p-2.5 rounded-lg bg-sky-50 border border-sky-200 text-[11px] text-sky-800">
+        <div className="p-2.5 rounded-lg bg-sky-50 border border-sky-200 text-2xs text-sky-800">
           <b>🏛️ Kịch bản họp tại chỗ:</b> trình chiếu mục này trong cuộc họp Hội đồng
           (tự làm mới mỗi 15 giây) — thành viên chấm ngay trên điện thoại/máy tính,
           chờ <b>đủ 100% thành viên</b> gửi phiếu ({conThieu.length === 0 ? 'ĐÃ ĐỦ ✅' : `còn thiếu ${conThieu.length} người`}),
@@ -85,14 +85,14 @@ export const IdeaCouncilProgress: React.FC<{ round: CouncilRound | null }> = ({ 
                   {m.isChair && <Crown className="w-3.5 h-3.5 text-amber-500" />}
                   {m.fullName}
                 </span>
-                <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${du ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                <span className={`text-2xs font-black px-1.5 py-0.5 rounded ${du ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                   Đã gửi {m.submitted}/{m.expected}
                 </span>
                 {m.draft > 0 && (
-                  <span className="text-[10px] font-bold text-slate-500">✏️ {m.draft} nháp</span>
+                  <span className="text-2xs font-bold text-slate-500">✏️ {m.draft} nháp</span>
                 )}
                 {m.pendingCodes.length > 0 && (
-                  <span className="text-[10px] text-slate-400 flex-1 min-w-[120px]" title="Ý tưởng còn thiếu phiếu">
+                  <span className="text-2xs text-slate-400 flex-1 min-w-[120px]" title="Ý tưởng còn thiếu phiếu">
                     Thiếu: {m.pendingCodes.join(', ')}
                   </span>
                 )}

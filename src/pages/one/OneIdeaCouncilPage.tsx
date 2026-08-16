@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, ChevronDown, ChevronUp, Gavel, ShieldCheck } from 'lucide-react';
+import { ChevronDown, ChevronUp, ShieldCheck } from 'lucide-react';
 import { OnePageShell } from '@/components/one/OnePageShell';
+import { IdeaHero, IdeaTabs } from '@/components/one/ideas/IdeaNav';
 import { useAuth } from '@/hooks/useAuth';
 import { TRANG_THAI_DOT_LABELS, TANG_DE_XUAT_INFO } from '@/lib/ideaCouncil';
 import {
@@ -45,39 +45,39 @@ function ItemCard({ item, readOnly, biChanTuCham, onSubmit }: {
       {/* B1-B4: mã, tên, cấp, tầng đề xuất */}
       <div className="p-4 sm:p-5 border-b border-slate-100 space-y-2">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="px-2 py-0.5 rounded-md bg-slate-800 text-white font-black text-[10px] tracking-wider">
+          <span className="px-2 py-0.5 rounded-md bg-slate-800 text-white font-black text-2xs tracking-wider">
             {item.ideaCode}
           </span>
-          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${item.idea.level === 'Nội bộ CN' ? 'bg-[#005a9c]/10 text-[#005a9c]' : 'bg-[#ed1b24]/10 text-[#ed1b24]'}`}>
+          <span className={`px-2 py-0.5 rounded-full text-2xs font-black ${item.idea.level === 'Nội bộ CN' ? 'bg-[#005a9c]/10 text-[#005a9c]' : 'bg-[#ed1b24]/10 text-[#ed1b24]'}`}>
             {item.idea.level}
           </span>
           <span
-            className={`px-2 py-0.5 rounded-full text-[10px] font-black ${TANG_DE_XUAT_INFO[item.proposedTier].badgeClass}`}
+            className={`px-2 py-0.5 rounded-full text-2xs font-black ${TANG_DE_XUAT_INFO[item.proposedTier].badgeClass}`}
             title={TANG_DE_XUAT_INFO[item.proposedTier].moTa}
           >
             {TANG_DE_XUAT_INFO[item.proposedTier].nhan}
           </span>
           {item.idea.hasDemo && (
-            <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200">🧪 Có Demo</span>
+            <span className="px-2 py-0.5 rounded-md text-2xs font-black bg-emerald-50 text-emerald-700 border border-emerald-200">🧪 Có Demo</span>
           )}
         </div>
         {/* Dấu hiệu nhận diện riêng cho trường hợp xét thẳng Lan tỏa (yêu cầu vận hành) */}
         {TANG_DE_XUAT_INFO[item.proposedTier].trucTiep && (
-          <div className="p-2.5 rounded-lg bg-violet-50 border border-violet-300 text-[11px] text-violet-800 font-semibold">
+          <div className="p-2.5 rounded-lg bg-violet-50 border border-violet-300 text-2xs text-violet-800 font-semibold">
             ⚡ Trường hợp đặc biệt: ý tưởng được trình <b>xét thẳng Cấp độ Lan tỏa</b> khi chưa qua
             Vươn cành. Nếu Hội đồng thông qua, ý tưởng được thưởng gộp cả hai mức
             (1.000.000đ Vươn cành + 2.000.000–3.000.000đ Lan tỏa).
           </div>
         )}
-        <p className="text-[10px] text-slate-500 font-semibold">💰 {TANG_DE_XUAT_INFO[item.proposedTier].thuong}</p>
+        <p className="text-2xs text-slate-500 font-semibold">💰 {TANG_DE_XUAT_INFO[item.proposedTier].thuong}</p>
         <h3 className="font-black text-slate-800 text-sm sm:text-base leading-snug">{item.idea.title}</h3>
-        <p className="text-[11px] text-slate-500">
+        <p className="text-2xs text-slate-500">
           <b className="text-slate-700">{item.idea.departmentName}</b> · Đề xuất bởi <b className="text-slate-700">{item.idea.proposer}</b>
         </p>
         <button
           type="button"
           onClick={() => setMoNoiDung(o => !o)}
-          className="flex items-center gap-1 text-[11px] font-bold text-amber-600 hover:text-amber-700 cursor-pointer"
+          className="flex items-center gap-1 text-2xs font-bold text-amber-600 hover:text-amber-700 cursor-pointer"
         >
           {moNoiDung ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           {moNoiDung ? 'Thu gọn nội dung ý tưởng' : 'Xem nội dung ý tưởng trước khi chấm'}
@@ -86,12 +86,12 @@ function ItemCard({ item, readOnly, biChanTuCham, onSubmit }: {
           <div className="space-y-2 pt-1">
             {khoiNoiDung.map(k => (
               <div key={k.label} className="space-y-0.5">
-                <p className="text-[11px] font-bold text-slate-500">{k.icon} {k.label}:</p>
-                <p className="text-[11px] text-slate-700 bg-slate-50 border border-slate-100 rounded-lg p-2 whitespace-pre-line">{k.value}</p>
+                <p className="text-2xs font-bold text-slate-500">{k.icon} {k.label}:</p>
+                <p className="text-2xs text-slate-700 bg-slate-50 border border-slate-100 rounded-lg p-2 whitespace-pre-line">{k.value}</p>
               </div>
             ))}
             {khoiNoiDung.length === 0 && (
-              <p className="text-[11px] text-slate-400 italic">Phiếu ý tưởng không có mô tả chi tiết.</p>
+              <p className="text-2xs text-slate-400 italic">Phiếu ý tưởng không có mô tả chi tiết.</p>
             )}
           </div>
         )}
@@ -157,26 +157,15 @@ export default function OneIdeaCouncilPage() {
 
   return (
     <OnePageShell>
-      <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-5">
-        <div className="space-y-2">
-          <Link
-            to="/one/y-tuong"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-amber-600 transition-colors"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Về hệ thống BHY Ideas
-          </Link>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-800 flex items-center gap-2">
-            <Gavel className="w-6 h-6 text-amber-500" />
-            Chấm điểm Hội đồng Bac Hung Yen Ideas
-          </h1>
-          <p className="text-xs text-slate-500 max-w-3xl leading-relaxed">
-            Hội đồng xem xét ý tưởng Cấp độ <b>Vươn cành</b> (có kết quả thực thi) và <b>Lan tỏa</b> (chuẩn
-            hóa/nhân rộng) theo 5 tiêu chí thang 1-5. Phiếu chấm <b>định danh</b> theo tài khoản đăng nhập
-            nhưng kết quả từng người được <b>ẩn danh với mọi thành viên, kể cả Phòng TCTH và Ban Giám đốc</b> —
-            chỉ Quản trị hệ thống truy cập được phiếu định danh; Hội đồng chỉ nhận bản tổng hợp sau khi đợt chấm chốt.
-          </p>
-        </div>
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full space-y-6">
+        <IdeaHero title="Chấm điểm Hội đồng">
+          Hội đồng xem xét ý tưởng Cấp độ <b>Vươn cành</b> (có kết quả thực thi) và <b>Lan tỏa</b> (chuẩn
+          hóa, nhân rộng) theo 5 tiêu chí thang 1-5. Phiếu chấm <b>định danh</b> theo tài khoản đăng nhập
+          nhưng kết quả từng người được <b>ẩn danh với mọi thành viên, kể cả Phòng TCTH và Ban Giám đốc</b> —
+          chỉ Quản trị hệ thống truy cập được phiếu định danh.
+        </IdeaHero>
+
+        <IdeaTabs />
 
         {loading || loadingRounds ? (
           <div className="text-center py-16">
@@ -217,7 +206,7 @@ export default function OneIdeaCouncilPage() {
                     key={t.id}
                     type="button"
                     onClick={() => setTab(t.id)}
-                    className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all cursor-pointer ${tab === t.id ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    className={`px-3 py-1.5 rounded-lg font-bold text-2xs transition-all cursor-pointer ${tab === t.id ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                   >
                     {t.label}
                   </button>

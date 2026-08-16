@@ -105,7 +105,7 @@ export const IdeaCouncilVoteForm: React.FC<IdeaCouncilVoteFormProps> = ({ myVote
           ))}
         </div>
         {xungDot && xungDot !== 'khong' && (
-          <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
+          <p className="text-2xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
             Khai báo của bạn được ghi vào phiếu (ẩn danh) và được đánh dấu trong bản tổng hợp
             để Hội đồng cân nhắc khi kết luận theo nguyên tắc xử lý xung đột lợi ích (mục VI.4).
             Phiếu vẫn được tính vào kết quả như các phiếu khác.
@@ -115,7 +115,7 @@ export const IdeaCouncilVoteForm: React.FC<IdeaCouncilVoteFormProps> = ({ myVote
 
       {/* C1-C5 — 5 tiêu chí thang 1-5 */}
       <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-2">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-2xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-2">
           <span className="font-bold text-slate-600">Mức điểm:</span>
           {MUC_DIEM.map(m => (
             <span key={m.diem}><b className="text-slate-700">{m.diem}</b> — {m.yNghia}</span>
@@ -126,7 +126,7 @@ export const IdeaCouncilVoteForm: React.FC<IdeaCouncilVoteFormProps> = ({ myVote
             <p className="font-bold text-slate-700">
               {tc.ma}. {tc.ten} <span className="text-red-500">*</span>
             </p>
-            <p className="text-[11px] text-slate-500">{tc.cauHoi}</p>
+            <p className="text-2xs text-slate-500">{tc.cauHoi}</p>
             <div className="flex gap-1.5">
               {MUC_DIEM.map(m => (
                 <button

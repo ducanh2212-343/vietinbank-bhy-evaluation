@@ -39,12 +39,12 @@ function TheViec({ v, laGiamDoc, onQuyet }: {
       <div className="flex flex-wrap items-start gap-2">
         <div className="flex-1 min-w-[200px]">
           <p className="font-bold text-slate-800 leading-snug">{v.title}</p>
-          <p className="text-[10px] text-slate-500">
+          <p className="text-2xs text-slate-500">
             {v.phong} · {v.proposer} · gửi {ngay(v.createdAt)}
           </p>
         </div>
         <span
-          className={`px-2 py-0.5 rounded-full text-[10px] font-black flex items-center gap-1 ${
+          className={`px-2 py-0.5 rounded-full text-2xs font-black flex items-center gap-1 ${
             choLau ? 'bg-amber-200 text-amber-900' : 'bg-slate-100 text-slate-600'
           }`}
           title={`TCTH trình ngày ${ngay(v.trinhLuc)}${v.nguoiTrinh ? ` — ${v.nguoiTrinh}` : ''}`}
@@ -55,12 +55,12 @@ function TheViec({ v, laGiamDoc, onQuyet }: {
       </div>
 
       {v.expectedBenefits?.trim() && (
-        <p className="text-[11px] text-slate-600 bg-slate-50 border border-slate-100 rounded-lg p-2 whitespace-pre-line">
+        <p className="text-2xs text-slate-600 bg-slate-50 border border-slate-100 rounded-lg p-2 whitespace-pre-line">
           <b className="text-slate-500">📈 Lợi ích dự kiến:</b> {v.expectedBenefits}
         </p>
       )}
       {v.ghiChu?.trim() && (
-        <p className="text-[11px] text-sky-800 bg-sky-50 border border-sky-100 rounded-lg p-2">
+        <p className="text-2xs text-sky-800 bg-sky-50 border border-sky-100 rounded-lg p-2">
           <b>Ý kiến TCTH:</b> {v.ghiChu}
         </p>
       )}
@@ -72,13 +72,13 @@ function TheViec({ v, laGiamDoc, onQuyet }: {
             value={ghiChu}
             onChange={e => setGhiChu(e.target.value)}
             placeholder="Ý kiến chỉ đạo (không bắt buộc)…"
-            className="flex-1 min-w-[160px] p-2 bg-white border border-slate-200 rounded-lg text-[11px] outline-none focus:border-amber-500"
+            className="flex-1 min-w-[160px] p-2 bg-white border border-slate-200 rounded-lg text-2xs outline-none focus:border-amber-500"
           />
           <button
             type="button"
             disabled={dangGui}
             onClick={() => void quyet(true)}
-            className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-black text-[11px] flex items-center gap-1.5 cursor-pointer transition-all"
+            className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-black text-2xs flex items-center gap-1.5 cursor-pointer transition-all"
           >
             <CheckCircle2 className="w-3.5 h-3.5" /> Công nhận Bén rễ
           </button>
@@ -86,7 +86,7 @@ function TheViec({ v, laGiamDoc, onQuyet }: {
             type="button"
             disabled={dangGui}
             onClick={() => void quyet(false)}
-            className="px-3 py-2 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 disabled:opacity-50 text-slate-600 font-bold text-[11px] flex items-center gap-1.5 cursor-pointer transition-all"
+            className="px-3 py-2 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 disabled:opacity-50 text-slate-600 font-bold text-2xs flex items-center gap-1.5 cursor-pointer transition-all"
           >
             <XCircle className="w-3.5 h-3.5" /> Chưa đạt
           </button>
@@ -116,14 +116,14 @@ export const GiamDocDuyetBenRe: React.FC = () => {
           <ClipboardCheck className="w-4 h-4 text-[#005a9c]" />
           {laGiamDoc ? 'Việc của Giám đốc — công nhận cấp Bén rễ' : 'Hồ sơ Bén rễ đang chờ Giám đốc'}
         </p>
-        <span className={`ml-auto px-2.5 py-1 rounded-full text-[11px] font-black ${
+        <span className={`ml-auto px-2.5 py-1 rounded-full text-2xs font-black ${
           viec.length > 0 ? 'bg-[#005a9c]/10 text-[#005a9c]' : 'bg-emerald-100 text-emerald-700'
         }`}>
           {viec.length > 0 ? `${viec.length} việc chờ duyệt` : 'Không còn việc chờ'}
         </span>
       </div>
 
-      <div className="p-2.5 rounded-lg bg-sky-50 border border-sky-200 text-[11px] text-sky-900 flex gap-2">
+      <div className="p-2.5 rounded-lg bg-sky-50 border border-sky-200 text-2xs text-sky-900 flex gap-2">
         <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
         <span>
           Theo quy chế, cấp <b>Bén rễ</b> do <b>Giám đốc chi nhánh</b> quyết định. Phòng TCTH

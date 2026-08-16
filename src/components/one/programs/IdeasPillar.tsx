@@ -1,27 +1,27 @@
 import React, { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ClipboardList, FileText, ArrowRight, Search, X } from 'lucide-react';
+import { ArrowRight, ClipboardList, Search, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { toast } from 'sonner';
 import { EditableText } from '@/components/one/AdminEditableContext';
 import { PillarAdminUploader } from './PillarGallery';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { usePortalIdeas, type PortalIdea } from '@/components/one/ideas/usePortalIdeas';
-import { useIdeaCouncilAccess } from '@/components/one/ideas/council/useIdeaCouncil';
-import { UomMamPicker } from '@/components/one/ideas/UomMamPicker';
-import { GiamDocDuyetBenRe } from '@/components/one/ideas/GiamDocDuyetBenRe';
 import { IdeaForm } from '@/components/one/ideas/IdeaForm';
 import { IdeaList } from '@/components/one/ideas/IdeaList';
 import { IdeaStatsPanel } from '@/components/one/ideas/IdeaStatsPanel';
-import { downloadIdeasExcel, filterIdeasByDate } from '@/components/one/ideas/ideasExcel';
-import { useIdeaOwnerProfiles } from '@/components/one/ideas/useIdeaOwnerProfiles';
 import { khopTimKiem } from '@/lib/vietnamese';
 import type { IdeaLevel } from '@/data/one/ideasConfig';
 
-// Trụ cột 5 — BHY Ideas (Đợt 4): hệ thống ý tưởng sáng kiến thời gian thực
-// port từ bản deploy (Firebase) sang Supabase. Khách đối tác (guest) chỉ xem
-// phần giới thiệu tĩnh — RLS chặn dữ liệu nên không render form/danh sách.
+// Trụ cột 5 — BHY Ideas: thân của màn «Gửi & tra cứu ý tưởng».
+//
+// Trang này từng gánh năm việc trong một mạch cuộn dọc (giới thiệu dài, thống
+// kê, form, việc Giám đốc, chốt Ươm mầm, rồi bảng theo dõi mở sẵn cả trăm thẻ).
+// Nay các việc quản trị đã sang màn «Vận hành & phê duyệt», ở đây giữ đúng hai
+// việc của cán bộ: GỬI ý tưởng và TRA CỨU ý tưởng đã có.
+//
+// Khách đối tác (guest) chỉ xem phần giới thiệu tĩnh — RLS chặn dữ liệu nên
+// không render form/danh sách.
 
 interface IdeasPillarProps {
   images: string[];
@@ -50,72 +50,42 @@ function useMyFullName(): string {
   return data || user?.email?.split('@')[0] || '';
 }
 
-/** Khối giới thiệu tĩnh (giữ nguyên nội dung EditableText của bản cũ) */
-const IdeasIntro: React.FC = () => (
-  <div className="space-y-4">
-    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold">
-      <EditableText id="programs.ideas.budget" defaultVal="Tổng ngân sách khen thưởng: 100.000.000 VNĐ" className="font-bold text-xs" />
-    </div>
-    <h3 className="text-2xl sm:text-3xl font-black text-amber-600">
-      <EditableText id="programs.ideas.title" defaultVal="Bắc Hưng Yên Ideas" className="font-black text-2xl sm:text-3xl text-amber-600" />
-    </h3>
-    <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
+/**
+ * Bốn cấp độ khen thưởng — dải ngang gọn.
+ *
+ * Bản cũ là bốn ô lớn xếp 2×2 chiếm trọn nửa màn hình đầu tiên, đẩy form gửi ý
+ * tưởng (việc chính) xuống dưới nếp gấp. Nội dung sửa tại chỗ giữ NGUYÊN mã ô
+ * (programs.ideas.tier1…4) nên phần quản trị đã sửa không mất.
+ */
+const DaiCapDo: React.FC = () => (
+  <div className="space-y-2">
+    <div className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">
       <EditableText
-        id="programs.ideas.desc"
-        defaultVal="Khuyến khích cán bộ quan sát phát hiện bất cập trong công việc để đề xuất sáng kiến cải tiến. Phân định rõ 2 luồng SMP (cấp Chi nhánh & Trụ sở chính)."
-        multiline={true}
-        as="span"
+        id="programs.ideas.budget"
+        defaultVal="Tổng ngân sách khen thưởng: 100.000.000 VNĐ"
+        className="text-xs font-bold"
       />
-    </p>
-
-    {/* 4 cấp độ khen thưởng */}
-    <div className="grid grid-cols-2 gap-3 text-xs">
-      <div className="p-3 bg-white rounded-xl border border-amber-200 shadow-sm">
-        <EditableText id="programs.ideas.tier1" defaultVal="1. Ươm mầm 🌱&#10;Dám nghĩ dám đề xuất&#10;Thưởng: 100.000đ" className="whitespace-pre-line text-xs leading-relaxed" multiline={true} as="div" />
-      </div>
-      <div className="p-3 bg-white rounded-xl border border-amber-300 shadow-sm">
-        <EditableText id="programs.ideas.tier2" defaultVal="2. Bén rễ 🌿&#10;Được TSC phê duyệt&#10;Thưởng: 300.000đ" className="whitespace-pre-line text-xs leading-relaxed" multiline={true} as="div" />
-      </div>
-      <div className="p-3 bg-white rounded-xl border border-emerald-300 shadow-sm">
-        <EditableText id="programs.ideas.tier3" defaultVal="3. Vươn cành 🌳&#10;Pilot có kết quả rõ&#10;Thưởng: 1.000.000đ" className="whitespace-pre-line text-xs leading-relaxed" multiline={true} as="div" />
-      </div>
-      <div className="p-3 bg-white rounded-xl border border-red-400 shadow-sm">
-        <EditableText id="programs.ideas.tier4" defaultVal="4. Lan tỏa ⭐&#10;Chuẩn hóa nhân rộng&#10;2.000.000 - 3.000.000đ" className="whitespace-pre-line text-xs leading-relaxed" multiline={true} as="div" />
-      </div>
     </div>
-
-    <div className="p-4 bg-white rounded-xl border">
-      <span className="font-bold text-xs text-brand-navy block mb-1">
-        <EditableText id="programs.ideas.jury_title" defaultVal="⚖️ Chấm điểm Hội đồng (A1 - D2)" className="font-bold text-xs block" />
-      </span>
-      <p className="text-xs text-slate-600">
-        <EditableText
-          id="programs.ideas.jury_content"
-          defaultVal="5 Tiêu chí trọng tâm: Đúng vấn đề, Hiệu quả, Khả thi, An toàn rủi ro (>=3/5), Nhân rộng. Điểm TB chung từ 3.5 trở lên xét Vươn cành, 4.0 trở lên xét Lan tỏa."
-          multiline={true}
-          as="span"
-          className="text-xs"
-        />
-      </p>
-      <JuryLink />
+    <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+      {[
+        { id: 'programs.ideas.tier1', def: '1. Ươm mầm 🌱&#10;Dám nghĩ dám đề xuất&#10;Thưởng: 100.000đ', vien: 'border-amber-200' },
+        { id: 'programs.ideas.tier2', def: '2. Bén rễ 🌿&#10;Được TSC phê duyệt&#10;Thưởng: 300.000đ', vien: 'border-teal-200' },
+        { id: 'programs.ideas.tier3', def: '3. Vươn cành 🌳&#10;Pilot có kết quả rõ&#10;Thưởng: 1.000.000đ', vien: 'border-emerald-300' },
+        { id: 'programs.ideas.tier4', def: '4. Lan tỏa ⭐&#10;Chuẩn hóa nhân rộng&#10;2.000.000 - 3.000.000đ', vien: 'border-rose-300' },
+      ].map(o => (
+        <div key={o.id} className={`rounded-xl border bg-white p-2.5 shadow-sm ${o.vien}`}>
+          <EditableText
+            id={o.id}
+            defaultVal={o.def.replace(/&#10;/g, '\n')}
+            className="whitespace-pre-line text-xs leading-relaxed"
+            multiline
+            as="div"
+          />
+        </div>
+      ))}
     </div>
   </div>
 );
-
-/** Nút vào trang chấm điểm — thành viên Hội đồng (theo bảng thành viên) + admin vận hành */
-const JuryLink: React.FC = () => {
-  const { isMember, isAdmin } = useIdeaCouncilAccess();
-  if (!isMember && !isAdmin) return null;
-  return (
-    <Link
-      to="/one/y-tuong/hoi-dong"
-      className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-black text-[11px] shadow-sm transition-all"
-    >
-      🏛️ Vào phiếu chấm điểm Hội đồng
-      <ArrowRight className="w-3.5 h-3.5" />
-    </Link>
-  );
-};
 
 export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload, introOnly }) => {
   const { isGuest } = useAuth();
@@ -125,33 +95,27 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
   const [filterLevel, setFilterLevel] = useState<'all' | IdeaLevel>('all');
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<PortalIdea | null>(null);
-  const [exportStartDate, setExportStartDate] = useState('');
-  const [exportEndDate, setExportEndDate] = useState('');
-  const [isExporting, setIsExporting] = useState(false);
   const formRef = useRef<HTMLDivElement | null>(null);
-  // Hồ sơ chủ sở hữu — chỉ tải khi quản trị mở trang, dùng cho cột KPI của file kết xuất
-  const { owners } = useIdeaOwnerProfiles(isContentAdmin);
 
   // Trang đặc trưng (introOnly) và khách đối tác: chỉ xem giới thiệu tĩnh.
-  // Cán bộ ở chế độ giới thiệu có nút dẫn sang nơi làm việc thật /one/y-tuong.
   if (isGuest || introOnly) {
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-fade-in">
-        <div className="lg:col-span-6 space-y-5">
-          <IdeasIntro />
+      <div className="grid animate-fade-in grid-cols-1 items-start gap-8 lg:grid-cols-12">
+        <div className="space-y-5 lg:col-span-6">
+          <DaiCapDo />
           {introOnly && !isGuest && (
             <Link
               to="/one/y-tuong"
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-sm shadow-md transition-all hover:-translate-y-0.5"
+              className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-3 text-sm font-black text-white shadow-md transition-all hover:-translate-y-0.5 hover:bg-amber-600"
             >
               Vào hệ thống BHY Ideas
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="h-4 w-4" />
             </Link>
           )}
         </div>
-        <div className="lg:col-span-6 bg-white p-6 rounded-2xl border border-amber-300 shadow-md">
-          <div className="relative h-56 rounded-xl overflow-hidden shadow-sm border border-slate-200">
-            <img src={images[0]} alt="BHY Ideas Illustration" className="w-full h-full object-cover" />
+        <div className="rounded-2xl border border-amber-300 bg-white p-6 shadow-md lg:col-span-6">
+          <div className="relative h-56 overflow-hidden rounded-xl border border-slate-200 shadow-sm">
+            <img src={images[0]} alt="BHY Ideas Illustration" className="h-full w-full object-cover" />
           </div>
         </div>
       </div>
@@ -174,40 +138,20 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const handleExportExcel = async () => {
-    if (ideas.length === 0) {
-      toast.error('Không có dữ liệu ý tưởng để kết xuất!');
-      return;
-    }
-    const inRange = filterIdeasByDate(ideas, exportStartDate || undefined, exportEndDate || undefined);
-    if (inRange.length === 0) {
-      toast.error('Không có dữ liệu ý tưởng nào trong khoảng thời gian đã chọn!');
-      return;
-    }
-    setIsExporting(true);
-    try {
-      await downloadIdeasExcel(ideas, owners, exportStartDate || undefined, exportEndDate || undefined);
-      toast.success(`Đã kết xuất ${inRange.length} ý tưởng ra file Excel`);
-    } catch {
-      toast.error('Không dựng được file Excel. Vui lòng thử lại.');
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
   return (
-    <div className="space-y-8 animate-fade-in">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Trái: giới thiệu + thống kê thời gian thực */}
-        <div className="lg:col-span-5 space-y-6">
-          <IdeasIntro />
+    <div className="animate-fade-in space-y-6">
+      <DaiCapDo />
+
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
+        {/* Trái: thống kê thời gian thực */}
+        <div className="lg:col-span-5">
           <IdeaStatsPanel ideas={ideas} />
         </div>
 
-        {/* Phải: form đăng ký / cập nhật ý tưởng */}
-        <div ref={formRef} className="lg:col-span-7 bg-white p-6 sm:p-8 rounded-2xl border border-amber-300 shadow-md space-y-4">
-          <div className="relative h-32 rounded-xl overflow-hidden shadow-sm border border-slate-200 mb-2">
-            <img src={images[0]} alt="BHY Ideas Illustration" className="w-full h-full object-cover" />
+        {/* Phải: form đăng ký / cập nhật ý tưởng — việc chính của trang */}
+        <div ref={formRef} className="space-y-4 rounded-2xl border border-amber-300 bg-white p-5 shadow-md sm:p-6 lg:col-span-7">
+          <div className="relative mb-1 h-28 overflow-hidden rounded-xl border border-slate-200 shadow-sm">
+            <img src={images[0]} alt="BHY Ideas Illustration" className="h-full w-full object-cover" />
             <PillarAdminUploader onUpload={v => onImageUpload(0, v)} />
           </div>
           <IdeaForm
@@ -220,125 +164,66 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
         </div>
       </div>
 
-      {/* Việc chờ Giám đốc phê duyệt cấp Bén rễ (tự ẩn với người không liên quan) */}
-      <div className="bg-white rounded-2xl border border-sky-200 p-4 sm:p-6 shadow-sm empty:hidden">
-        <GiamDocDuyetBenRe />
-      </div>
-
-      {/* Chốt ý tưởng Ươm mầm trong hạn mức tuần (tự ẩn với cán bộ thường) */}
-      <div className="bg-white rounded-2xl border border-emerald-200 p-4 sm:p-6 shadow-sm empty:hidden">
-        <UomMamPicker />
-      </div>
-
       {/* Bảng theo dõi ý tưởng toàn chi nhánh */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b pb-4 border-slate-100">
-          <div>
-            <h4 className="font-black text-slate-800 text-base sm:text-lg flex items-center gap-2">
-              <ClipboardList className="w-5 h-5 text-amber-500" />
-              <span>Bảng Theo Dõi Ý Tưởng Toàn Chi Nhánh</span>
-            </h4>
-            <p className="text-xs text-slate-500">Xem và học hỏi các sáng kiến cải tiến từ đồng nghiệp (Cập nhật thời gian thực)</p>
+      <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="flex flex-col justify-between gap-4 border-b border-slate-100 pb-4 sm:flex-row sm:items-end">
+          <div className="min-w-0">
+            <h2 className="flex items-center gap-2 text-base font-black text-slate-800 sm:text-lg">
+              <ClipboardList className="h-5 w-5 text-amber-500" />
+              Bảng theo dõi ý tưởng toàn Chi nhánh
+            </h2>
+            <p className="text-xs text-slate-500">
+              Tra cứu trước khi gửi để khỏi đề xuất trùng ý tưởng phòng khác đã có.
+            </p>
 
-            {/* Tra cứu trước khi gửi để khỏi đề xuất trùng ý tưởng phòng khác đã có */}
             <div className="relative mt-3 max-w-md">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
               <input
                 type="search"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Tìm ý tưởng toàn chi nhánh (gõ không dấu cũng được)…"
-                className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
+                className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-8 text-xs font-medium outline-none transition-all focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
               />
               {search && (
                 <button
                   type="button"
                   onClick={() => setSearch('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer text-slate-400 hover:text-slate-600"
                   title="Xóa tìm kiếm"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="h-3.5 w-3.5" />
                 </button>
               )}
             </div>
             {search.trim() && (
-              <p className="text-[11px] text-slate-500 mt-1.5 font-semibold">
-                Tìm thấy <span className="text-amber-600 font-black">{filteredIdeas.length}</span> ý tưởng khớp
+              <p className="mt-1.5 text-xs font-semibold text-slate-500">
+                Tìm thấy <span className="font-black text-amber-600">{filteredIdeas.length}</span> ý tưởng khớp
                 {filteredIdeas.length > 0 && ' — đọc kỹ trước khi gửi ý tưởng mới để tránh trùng.'}
               </p>
             )}
           </div>
 
-          {/* Bộ lọc cấp đề xuất + kết xuất (admin) */}
-          <div className="flex flex-wrap items-center gap-3 text-xs">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-slate-500">Lọc theo cấp:</span>
-              <div className="flex bg-slate-100 p-1 rounded-lg gap-1 border">
-                {([
-                  { id: 'all', label: 'Tất cả' },
-                  { id: 'Nội bộ CN', label: 'Nội bộ CN' },
-                  { id: 'Đề xuất TSC', label: 'Đề xuất TSC' },
-                ] as { id: 'all' | IdeaLevel; label: string }[]).map(btn => (
-                  <button
-                    key={btn.id}
-                    type="button"
-                    onClick={() => setFilterLevel(btn.id)}
-                    className={`px-3 py-1 rounded-md font-bold text-center text-[11px] transition-all cursor-pointer ${filterLevel === btn.id ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
-                  >
-                    {btn.label}
-                  </button>
-                ))}
-              </div>
+          {/* Bộ lọc cấp đề xuất. Kết xuất Excel và lọc theo ngày đã sang màn
+              «Vận hành & phê duyệt» — đó là việc của TCTH, không phải của mọi người. */}
+          <div className="flex shrink-0 items-center gap-2 text-xs">
+            <span className="font-bold text-slate-500">Lọc theo cấp:</span>
+            <div className="flex gap-1 rounded-lg border bg-slate-100 p-1">
+              {([
+                { id: 'all', label: 'Tất cả' },
+                { id: 'Nội bộ CN', label: 'Nội bộ CN' },
+                { id: 'Đề xuất TSC', label: 'Đề xuất TSC' },
+              ] as { id: 'all' | IdeaLevel; label: string }[]).map(btn => (
+                <button
+                  key={btn.id}
+                  type="button"
+                  onClick={() => setFilterLevel(btn.id)}
+                  className={`cursor-pointer rounded-md px-3 py-1 text-center text-xs font-bold transition-all ${filterLevel === btn.id ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                >
+                  {btn.label}
+                </button>
+              ))}
             </div>
-
-            {isContentAdmin && (
-              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/60 p-1 px-2 rounded-xl">
-                <span className="font-bold text-slate-500 text-[10px] uppercase tracking-wider">Từ:</span>
-                <input
-                  type="date"
-                  value={exportStartDate}
-                  onChange={e => setExportStartDate(e.target.value)}
-                  className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] focus:border-emerald-500 outline-none font-semibold text-slate-700 cursor-pointer"
-                />
-                <span className="font-bold text-slate-500 text-[10px] uppercase tracking-wider">Đến:</span>
-                <input
-                  type="date"
-                  value={exportEndDate}
-                  onChange={e => setExportEndDate(e.target.value)}
-                  className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] focus:border-emerald-500 outline-none font-semibold text-slate-700 cursor-pointer"
-                />
-                {(exportStartDate || exportEndDate) && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setExportStartDate('');
-                      setExportEndDate('');
-                    }}
-                    className="text-red-500 hover:text-red-700 font-bold text-[10px] bg-red-50 hover:bg-red-100 px-1.5 py-0.5 rounded transition-all cursor-pointer"
-                    title="Xóa bộ lọc thời gian"
-                  >
-                    Xóa lọc ngày
-                  </button>
-                )}
-              </div>
-            )}
-
-            {isContentAdmin && (
-              <button
-                type="button"
-                onClick={handleExportExcel}
-                disabled={isExporting}
-                className={`flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs shadow-sm transition-all cursor-pointer ${isExporting ? 'opacity-70 cursor-not-allowed' : ''}`}
-                title="Kết xuất ý tưởng ra file Excel (.xlsx) — gồm danh sách chi tiết và 3 sheet tổng hợp"
-              >
-                {isExporting ? (
-                  <span className="inline-block animate-spin border-2 border-white border-t-transparent rounded-full w-3.5 h-3.5" />
-                ) : (
-                  <FileText className="w-3.5 h-3.5" />
-                )}
-                <span>{isExporting ? 'Đang dựng file…' : 'Xuất Excel'}</span>
-              </button>
-            )}
           </div>
         </div>
 

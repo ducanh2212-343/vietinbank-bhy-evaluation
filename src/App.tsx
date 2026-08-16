@@ -118,6 +118,7 @@ const OneLearnPage = lazyWithRetry(() => import("./pages/one/OneLearnPage"));
 const OneNewsPage = lazyWithRetry(() => import("./pages/one/OneNewsPage"));
 const OneIdeasPage = lazyWithRetry(() => import("./pages/one/OneIdeasPage"));
 const OneIdeaCouncilPage = lazyWithRetry(() => import("./pages/one/OneIdeaCouncilPage"));
+const OneIdeaOpsPage = lazyWithRetry(() => import("./pages/one/OneIdeaOpsPage"));
 const OneCreditPage = lazyWithRetry(() => import("./pages/one/OneCreditPage"));
 const OneRecognitionPage = lazyWithRetry(() => import("./pages/one/OneRecognitionPage"));
 const OneKyYeuPage = lazyWithRetry(() => import("./pages/one/OneKyYeuPage"));
@@ -235,6 +236,8 @@ const App = () => (
               <Route path="/one/y-tuong" element={<OneIdeasPage />} />
               {/* Chấm điểm Hội đồng BHY Ideas (Phụ lục 06) — trang tự gác quyền thành viên HĐ, RLS là lớp chặn chính */}
               <Route path="/one/y-tuong/hoi-dong" element={<OneIdeaCouncilPage />} />
+              {/* Vận hành & phê duyệt Ideas — BGĐ duyệt Bén rễ, TCTH chốt hạn mức/SMP/ngân sách; trang tự gác quyền */}
+              <Route path="/one/y-tuong/van-hanh" element={<OneIdeaOpsPage />} />
               <Route path="/one/credit-360" element={<OneCreditPage />} />
               <Route path="/one/ghi-nhan" element={<OneRecognitionPage />} />
               {/* Cây Ký Ức — kỷ yếu số 20 năm dạng flipbook, đọc PDF từ bucket ky-yeu */}
