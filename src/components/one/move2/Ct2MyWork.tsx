@@ -3,7 +3,7 @@ import { Flame, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { soNgayQuaHan, type Ct2TrangThai } from '@/lib/ct2';
+import { CT2_NHAN_LY_DO_BAO_CAO, soNgayQuaHan, type Ct2TrangThai } from '@/lib/ct2';
 import { cauHinhNhip, gioNgan } from '@/lib/cauHinhNhip';
 import { Ct2GhiNhipNhanh } from './Ct2GhiNhipNhanh';
 import { useCt2ChuoiCuaToi, useCt2ViecCuaToi } from './useCt2Data';
@@ -23,10 +23,15 @@ export function Ct2MyWork({ onMoThe }: Props) {
   const gio = cauHinhNhip();
 
   const viec = useMemo(() => dsViec ?? [], [dsViec]);
+  // Phải ghi nhịp = việc đang làm, CỘNG việc còn ở «Chuẩn bị» nhưng đã đến lúc
+  // phải chạy (GĐ 15/08). Trước đây chỉ đếm «Đang làm», nên để nguyên thẻ ở
+  // «Chuẩn bị» là cách né báo cáo hợp lệ.
   const canNhip = useMemo(
-    () => viec.filter((v) => v.loai_dau_viec === 'TIEN_TRINH' && v.trang_thai === 'DANG_LAM' && !v.da_ghi_nhip_hom_nay),
+    () => viec.filter((v) => v.loai_dau_viec === 'TIEN_TRINH' && !v.da_ghi_nhip_hom_nay
+      && (v.trang_thai === 'DANG_LAM' || v.ly_do_bao_cao !== null)),
     [viec],
   );
+  const chuaBatDau = useMemo(() => viec.filter((v) => v.ly_do_bao_cao !== null), [viec]);
   const soLieu = useMemo(() => ({
     dangLam: viec.filter((v) => v.trang_thai === 'DANG_LAM').length,
     sapToiHan: viec.filter((v) => {
@@ -69,6 +74,12 @@ export function Ct2MyWork({ onMoThe }: Props) {
             Chuỗi đúng giờ: {chuoi} ngày
           </p>
         )}
+        {chuaBatDau.length > 0 && (
+          <p className="mt-2 rounded-lg bg-amber-50 px-2.5 py-1.5 text-sm text-amber-900">
+            Trong đó <b>{chuaBatDau.length}</b> việc chưa bắt đầu đã đến lúc phải chạy — mở việc
+            ra làm, hoặc ghi nhịp nói rõ đang vướng ở đâu.
+          </p>
+        )}
         {canNhip.length > 0 && (
           <Button className="mt-3" onClick={() => setGhiNhanh(true)}>
             <Zap className="mr-1 h-4 w-4" /> Ghi nhịp nhanh ({canNhip.length} thẻ)
@@ -83,7 +94,8 @@ export function Ct2MyWork({ onMoThe }: Props) {
         <OSo nhan="Quá hạn" giaTri={soLieu.quaHan} canhBao={soLieu.quaHan > 0} />
         <div className="rounded-2xl border border-slate-200 bg-white p-3">
           <p className="flex items-center gap-1 text-2xl font-bold text-amber-500">
-            <Flame className="h-6 w-6" />{viec.filter((v) => v.da_ghi_nhip_hom_nay).length}/{viec.filter((v) => v.trang_thai === 'DANG_LAM' && v.loai_dau_viec === 'TIEN_TRINH').length || 0}
+            <Flame className="h-6 w-6" />{viec.filter((v) => v.da_ghi_nhip_hom_nay).length}/{viec.filter((v) => v.loai_dau_viec === 'TIEN_TRINH'
+              && (v.trang_thai === 'DANG_LAM' || v.ly_do_bao_cao !== null)).length || 0}
           </p>
           <p className="mt-0.5 text-xs text-slate-500">Nhịp hôm nay</p>
         </div>
@@ -107,10 +119,15 @@ export function Ct2MyWork({ onMoThe }: Props) {
                 {v.lien_phong && ' · 🤝'}
               </span>
             </span>
-            {v.trang_thai === 'DANG_LAM' && v.loai_dau_viec === 'TIEN_TRINH' && (
+            {(v.trang_thai === 'DANG_LAM' || v.ly_do_bao_cao !== null) && v.loai_dau_viec === 'TIEN_TRINH' && (
               v.da_ghi_nhip_hom_nay
                 ? <Badge className="shrink-0 bg-emerald-100 text-emerald-800 hover:bg-emerald-100">✅ Đã ghi</Badge>
-                : <Badge className="shrink-0 bg-amber-100 text-amber-800 hover:bg-amber-100">Chờ nhịp</Badge>
+                : v.ly_do_bao_cao
+                  // Nói thẳng việc cần làm là BẮT ĐẦU, không phải chỉ ghi thêm chữ
+                  ? <Badge className="shrink-0 bg-red-100 text-red-800 hover:bg-red-100" title={CT2_NHAN_LY_DO_BAO_CAO[v.ly_do_bao_cao]}>
+                      {v.ly_do_bao_cao === 'SAP_DEN_HAN' ? 'Sắp hạn — chưa mở' : 'Quá ngày mở việc'}
+                    </Badge>
+                  : <Badge className="shrink-0 bg-amber-100 text-amber-800 hover:bg-amber-100">Chờ nhịp</Badge>
             )}
           </button>
         ))}

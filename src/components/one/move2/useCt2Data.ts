@@ -3,7 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import {
   trongKhungNhip,
-  type Ct2Bang, type Ct2BinhLuan, type Ct2DauViec, type Ct2Nhip, type Ct2PhamVi,
+  type Ct2Bang, type Ct2BinhLuan, type Ct2DauViec, type Ct2LyDoBaoCao,
+  type Ct2Nhip, type Ct2PhamVi,
 } from '@/lib/ct2';
 
 /**
@@ -49,6 +50,9 @@ export interface Ct2ViecCuaToi {
   phan_tram: number; co_tinh_trang: 'XANH' | 'VANG' | 'DO'; han_hoan_thanh: string | null;
   muc_uu_tien: string; loai_dau_viec: string; lien_phong: boolean; phong: string;
   nhip_gan_nhat: string | null; da_ghi_nhip_hom_nay: boolean;
+  ngay_bat_dau: string | null;
+  /** Thẻ còn ở «Chuẩn bị» nhưng đã đến lúc phải chạy → vẫn phải ghi nhịp */
+  ly_do_bao_cao: Ct2LyDoBaoCao;
 }
 
 export interface Ct2NhipNguoi {
@@ -67,6 +71,15 @@ export interface Ct2NhipNguoi {
   cv_da_ghi: number;
   hs_dang_chay: number;
   hs_da_ghi: number;
+  /**
+   * cb_* = thẻ còn ở «Chuẩn bị» nhưng đã đến lúc phải chạy (quá ngày bắt đầu
+   * hoặc sắp đến hạn hoàn thành). Tách riêng vì cách nhắc khác hẳn: không phải
+   * «ghi thêm một câu» mà «mở việc ra làm, hoặc nói rõ vướng ở đâu».
+   */
+  cb_can_bao_cao: number;
+  cb_da_ghi: number;
+  cb_qua_han_bd: number;
+  cb_sap_den_han: number;
 }
 
 export interface Ct2DeXuat {
@@ -363,6 +376,57 @@ export function useCt2NhipPhong(phongId: string | null) {
       const { data, error } = await db.rpc('ct2_nhip_phong_hom_nay', { _phong: phongId });
       if (error) throw error;
       return (data ?? []) as Ct2NhipNguoi[];
+    },
+  });
+}
+
+/** Một dòng «hôm nay tôi phải làm gì» — nguồn của ô tổng hợp trang chủ */
+export interface Ct2CanLamHomNay {
+  can_ghi_nhip: number;
+  chua_bat_dau: number;
+  cho_toi_duyet: number;
+  cho_toi_y_kien: number;
+  hs_can_nhip: number;
+}
+
+export function useCt2CanLamHomNay(bat = true) {
+  return useQuery({
+    queryKey: ['ct2', 'can-lam-hom-nay'],
+    enabled: bat,
+    staleTime: NUA_PHUT,
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const { data, error } = await db.rpc('ct2_viec_can_lam_hom_nay');
+      if (error) throw error;
+      const dong = (Array.isArray(data) ? data[0] : data) as Ct2CanLamHomNay | undefined;
+      return dong ?? {
+        can_ghi_nhip: 0, chua_bat_dau: 0, cho_toi_duyet: 0, cho_toi_y_kien: 0, hs_can_nhip: 0,
+      };
+    },
+  });
+}
+
+/**
+ * Thẻ trình hoàn thành đang chờ CHÍNH TÔI duyệt (phương án D, GĐ 15/08).
+ * Lấy theo người giữ đồng hồ chứ không theo phòng: Trưởng phòng mở màn duyệt
+ * là thấy đúng hàng đợi của mình, kể cả thẻ liên phòng trình sang.
+ */
+export function useCt2ChoToiDuyet(profileId: string | null) {
+  return useQuery({
+    queryKey: ['ct2', 'cho-toi-duyet', profileId],
+    enabled: !!profileId,
+    staleTime: NUA_PHUT,
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const { data, error } = await db
+        .from('ct2_dau_viec')
+        .select('*')
+        .eq('trang_thai', 'CHO_DUYET')
+        .eq('nguoi_dang_giu', profileId)
+        .eq('phan_tram', 100)
+        .order('giu_tu', { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as Ct2DauViec[];
     },
   });
 }

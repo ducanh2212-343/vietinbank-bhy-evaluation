@@ -11,9 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  CT2_CONG_THUC_NHIP, CT2_COT, CT2_MAU_CAU, CT2_TEN_CO, CT2_TEN_UU_TIEN,
+  CT2_CONG_THUC_NHIP, CT2_COT, CT2_MAU_CAU, CT2_NHAN_LY_DO_BAO_CAO, CT2_TEN_CO,
+  CT2_TEN_UU_TIEN,
   cotHienThi, daDuKeHoach, daGhiNhipHomNay, goiYNhan, kiemTraCauNhip,
-  lyDoChanChuyen, mucChuY, soNgayQuaHan, thieuTruongBatBuoc, tuoiCho,
+  lyDoChanChuyen, lyDoPhaiBaoCao, mucChuY, soNgayQuaHan, thieuTruongBatBuoc, tuoiCho,
   type Ct2Co, type Ct2DauViec, type Ct2TrangThai,
 } from '@/lib/ct2';
 import {
@@ -69,6 +70,8 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
     return ds;
   }, [the, tenNguoi]);
   const laChuThe = the?.nguoi_chiu_trach_nhiem === profileId;
+  // Thẻ còn ở «Chuẩn bị» nhưng đã đến lúc phải chạy — cùng luật với database
+  const lyDoBaoCao = the ? lyDoPhaiBaoCao(the) : null;
   // Đã ghi nhịp hôm nay → khối nhịp thu thành dòng xanh; bấm «Ghi thêm» mở lại
   const [moLaiNhip, setMoLaiNhip] = useState(false);
   useEffect(() => { setMoLaiNhip(false); }, [the?.id]);
@@ -159,8 +162,26 @@ export function Ct2CardDialog({ the, nhanSu, laLanhDao, chuyenDen, onLapKeHoach,
           </p>
         )}
 
+        {/*
+          Việc đã đến lúc phải chạy mà thẻ còn ở «Chuẩn bị» (GĐ 15/08). Nói
+          thẳng ra ở đây vì đây là chỗ cán bộ mở lên mỗi sáng — và nói rõ việc
+          cần làm là MỞ VIỆC, ghi nhịp chỉ là đường lùi khi đang vướng thật.
+        */}
+        {lyDoBaoCao && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-300 bg-red-50 px-3 py-2">
+            <p className="text-sm font-medium text-red-900">
+              {CT2_NHAN_LY_DO_BAO_CAO[lyDoBaoCao]} — việc này vẫn tính nhịp hằng ngày.
+            </p>
+            {(laChuThe || laLanhDao) && (
+              <Button size="sm" className="h-8" onClick={() => onLapKeHoach(true)}>
+                <Rocket className="mr-1 h-4 w-4" /> Bắt đầu làm
+              </Button>
+            )}
+          </div>
+        )}
+
         {/* Chưa lập kế hoạch → mời bắt đầu, không bày ra một loạt ô trống */}
-        {!daDuKeHoach(the) && the.trang_thai === 'CHUAN_BI' && (laChuThe || laLanhDao) && (
+        {!lyDoBaoCao && !daDuKeHoach(the) && the.trang_thai === 'CHUAN_BI' && (laChuThe || laLanhDao) && (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-navy/20 bg-blue-50/50 px-3 py-2">
             <p className="text-sm font-medium text-brand-navy">Sẵn sàng bắt tay vào việc này chưa?</p>
             <Button size="sm" className="h-8" onClick={() => onLapKeHoach(true)}>
@@ -447,6 +468,28 @@ function ChuyenTrangThai({ the, laLanhDao, laChuThe, vong, nhanSu, chuyenDen, on
       onKhoiDong();
       return;
     }
+    /*
+      Phương án D (GĐ 15/08): cán bộ không tự Hoàn thành được — nút của cán
+      bộ là «Trình duyệt»: thẻ vào cột chờ, đồng hồ giao cho Trưởng phòng
+      (thiếu thì lãnh đạo theo dõi của thẻ). Trưởng phòng nhận push N18 và
+      thấy thẻ trong hộp «Chờ anh/chị duyệt».
+    */
+    if (den === 'HOAN_THANH' && !laLanhDao) {
+      if (the.phan_tram !== 100) {
+        toast.error('Chưa đạt 100% — cập nhật tiến độ trước khi trình duyệt.');
+        return;
+      }
+      const nguoiDuyet = the.truong_phong ?? the.lanh_dao_theo_doi;
+      if (!nguoiDuyet) {
+        toast.error('Thẻ chưa gắn Trưởng phòng / lãnh đạo theo dõi — nhờ lãnh đạo Phòng bổ sung trước.');
+        return;
+      }
+      await doi(
+        { trang_thai: 'CHO_DUYET', nguoi_dang_giu: nguoiDuyet },
+        `Đã trình ${nhanSu.find((n) => n.id === nguoiDuyet)?.full_name ?? 'lãnh đạo Phòng'} duyệt hoàn thành.`,
+      );
+      return;
+    }
     const lyDoChan = lyDoChanChuyen(the.trang_thai, den, {
       ...vong, phanTram: the.phan_tram, laLanhDao, loai: the.loai_dau_viec,
     });
@@ -482,7 +525,8 @@ function ChuyenTrangThai({ the, laLanhDao, laChuThe, vong, nhanSu, chuyenDen, on
             disabled={dangGui}
             onClick={() => chuyenToi(c.ma)}
           >
-            {c.icon} {c.ten}
+            {/* Cán bộ không tự Hoàn thành — nút nói thật việc nó làm */}
+            {c.ma === 'HOAN_THANH' && !laLanhDao ? <>📤 Trình duyệt hoàn thành</> : <>{c.icon} {c.ten}</>}
           </Button>
         ))}
         {/* Chữ ký của lãnh đạo — thẻ vẫn ở cột Hoàn thành, chỉ thêm dấu chốt.

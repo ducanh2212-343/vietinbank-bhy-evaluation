@@ -25,6 +25,7 @@ import {
 } from '@/components/one/move2/useCt2TinDung';
 import type { HoSoTinDung, HsTrangThai } from '@/lib/ct2TinDung';
 import { Ct2MyWork } from '@/components/one/move2/Ct2MyWork';
+import { Ct2HopDuyet } from '@/components/one/move2/Ct2HopDuyet';
 import {
   ct2DoiTheoDoi, ct2XuLyDeXuat, useCt2Board, useCt2CycleId, useCt2DeXuat, useCt2DsBang,
   useCt2LamTuoi, useCt2NhanSu, useCt2TheoDoi,
@@ -349,6 +350,11 @@ function NoiDung() {
                   </>
                 )}
               </div>
+
+              {/* Màn hình duyệt hoàn thành của Trưởng phòng (phương án D 15/08).
+                  Hộp tự ẩn khi hàng đợi rỗng — theo hàng đợi CỦA TÔI, không theo
+                  phòng đang xem, nên thẻ liên phòng trình sang vẫn hiện. */}
+              <Ct2HopDuyet nhanSu={nhanSu} onMoThe={(t) => { setChuyenDen(null); setTheMo(t); }} />
 
               {/* Hộp đề xuất chờ duyệt — chỉ lãnh đạo thấy nút xử lý */}
               {deXuats.length > 0 && (
