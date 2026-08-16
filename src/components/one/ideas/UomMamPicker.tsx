@@ -41,8 +41,11 @@ export const UomMamPicker: React.FC = () => {
   const { items, isLoading } = useYTuongTheoTuan(phongIdeas, tuan);
   const { chon, boChon } = useUomMamActions(phongIdeas, tuan);
 
-  const daGhiNhan = items.filter(i => i.award?.ghiNhanKpi).length;
-  const suat = suatUomMamConLai(daGhiNhan);
+  // Chỉ ý tưởng do PHÒNG chọn mới chiếm suất; ý tưởng SMP/TSC ghi nhận thì không
+  const daChiemSuat = items.filter(
+    i => i.award?.ghiNhanKpi && i.award.nguonGhiNhan === 'phong_chon',
+  ).length;
+  const suat = suatUomMamConLai(daChiemSuat);
 
   if (loadingDept) {
     return <p className="text-xs text-slate-400 italic py-4 text-center">Đang đọc hồ sơ…</p>;
@@ -108,7 +111,10 @@ export const UomMamPicker: React.FC = () => {
         <div className="space-y-1.5">
           {items.map(it => {
             const ghiNhan = !!it.award?.ghiNhanKpi;
-            const khoa = !ghiNhan && suat.het;
+            const quaSmp = it.award?.nguonGhiNhan === 'smp_tsc';
+            // Ý tưởng đã được SMP/TSC ghi nhận thì Trưởng phòng không cần (và
+            // không được) chọn lại — ghi nhận đó đến từ Trụ sở chính
+            const khoa = quaSmp || (!ghiNhan && suat.het);
             return (
               <div
                 key={it.id}
@@ -120,7 +126,11 @@ export const UomMamPicker: React.FC = () => {
                   type="button"
                   disabled={khoa}
                   onClick={() => void (ghiNhan ? boChon(it.id) : chon(it.id))}
-                  title={khoa ? 'Hết suất tuần này — bỏ chọn một ý tưởng khác trước' : ghiNhan ? 'Bỏ ghi nhận' : 'Ghi nhận Ươm mầm'}
+                  title={
+                    quaSmp ? 'SMP (Trụ sở chính) đã ghi nhận — không cần phòng chọn'
+                      : khoa ? 'Hết suất tuần này — bỏ chọn một ý tưởng khác trước'
+                      : ghiNhan ? 'Bỏ ghi nhận' : 'Ghi nhận Ươm mầm'
+                  }
                   className={`flex-shrink-0 transition-all ${khoa ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:scale-110'}`}
                 >
                   {ghiNhan
@@ -136,8 +146,11 @@ export const UomMamPicker: React.FC = () => {
                 </div>
 
                 {ghiNhan && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-700">
-                    ✓ Tính KPI
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-black ${quaSmp ? 'bg-sky-100 text-sky-700' : 'bg-emerald-100 text-emerald-700'}`}
+                    title={quaSmp ? 'TSC đã phê duyệt trên SMP — ghi nhận theo quy chế, không chiếm suất tuần' : 'Phòng chọn trong hạn mức tuần'}
+                  >
+                    ✓ Tính KPI{quaSmp ? ' · SMP/TSC' : ''}
                   </span>
                 )}
                 {it.award && it.award.mucThuong > 0 && (

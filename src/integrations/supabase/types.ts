@@ -2653,6 +2653,7 @@ export type Database = {
           muc_thuong: number
           nguoi_duyet: string | null
           nguoi_ghi_nhan: string | null
+          nguon_ghi_nhan: string
           phong: string
           round_id: string | null
           tuan_chon: string | null
@@ -2671,6 +2672,7 @@ export type Database = {
           muc_thuong?: number
           nguoi_duyet?: string | null
           nguoi_ghi_nhan?: string | null
+          nguon_ghi_nhan?: string
           phong: string
           round_id?: string | null
           tuan_chon?: string | null
@@ -2689,6 +2691,7 @@ export type Database = {
           muc_thuong?: number
           nguoi_duyet?: string | null
           nguoi_ghi_nhan?: string | null
+          nguon_ghi_nhan?: string
           phong?: string
           round_id?: string | null
           tuan_chon?: string | null
@@ -2888,6 +2891,9 @@ export type Database = {
           proposed_solution: string | null
           proposer: string
           seed_likes: number
+          smp_cap_nhat_luc: string | null
+          smp_ma: string | null
+          smp_trang_thai: string
           seed_unlikes: number
           title: string
           updated_at: string
@@ -2910,6 +2916,9 @@ export type Database = {
           proposed_solution?: string | null
           proposer: string
           seed_likes?: number
+          smp_cap_nhat_luc?: string | null
+          smp_ma?: string | null
+          smp_trang_thai?: string
           seed_unlikes?: number
           title: string
           updated_at?: string
@@ -2932,6 +2941,9 @@ export type Database = {
           proposed_solution?: string | null
           proposer?: string
           seed_likes?: number
+          smp_cap_nhat_luc?: string | null
+          smp_ma?: string | null
+          smp_trang_thai?: string
           seed_unlikes?: number
           title?: string
           updated_at?: string
@@ -4942,6 +4954,10 @@ export type Database = {
       }
       bhy_ideas_bo_chon_uom_mam: {
         Args: { _idea_id: string }
+        Returns: Json
+      }
+      bhy_ideas_cap_nhat_smp: {
+        Args: { _idea_id: string; _smp_ma: string; _smp_trang_thai: string }
         Returns: Json
       }
       bhy_ideas_chon_uom_mam: {

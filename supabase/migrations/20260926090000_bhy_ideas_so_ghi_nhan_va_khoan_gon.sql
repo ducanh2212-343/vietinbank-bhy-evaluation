@@ -90,6 +90,15 @@ CREATE TABLE public.portal_idea_awards (
   -- Tuần được phòng chọn (thứ Hai đầu tuần) — khóa đếm hạn mức của Ươm mầm
   tuan_chon DATE,
 
+  -- NGUỒN ghi nhận — quyết định có chiếm suất hạn mức tuần của phòng không:
+  --   'phong_chon' : Trưởng phòng chọn trong hạn mức 02/tuần (mục 5 quy chế)
+  --   'smp_tsc'    : SMP (web Trụ sở chính) đã ghi nhận / TSC phê duyệt
+  --                  "Đồng ý" hoặc "Đồng ý một phần" — theo quy chế đây là
+  --                  điều kiện độc lập của cấp Bén rễ, KHÔNG chiếm suất tuần
+  --                  của Chi nhánh vì không phải Chi nhánh cấp.
+  nguon_ghi_nhan TEXT NOT NULL DEFAULT 'phong_chon'
+    CHECK (nguon_ghi_nhan IN ('phong_chon', 'smp_tsc')),
+
   -- Trục TIỀN: 0 = ghi nhận suông / chưa chi (chuyển kỳ sau)
   muc_thuong INTEGER NOT NULL DEFAULT 0 CHECK (muc_thuong >= 0),
   ly_do_thuong TEXT NOT NULL DEFAULT 'trong_han_muc'
@@ -108,14 +117,14 @@ CREATE TABLE public.portal_idea_awards (
 
   -- Mỗi ý tưởng chỉ ghi nhận MỘT lần cho MỘT cấp — nền của phép thưởng lũy kế
   UNIQUE (idea_id, cap_do),
-  -- Ươm mầm bắt buộc có tuần chọn để đếm hạn mức
+  -- Ươm mầm do PHÒNG chọn bắt buộc có tuần để đếm hạn mức; nguồn SMP thì không
   CONSTRAINT uom_mam_phai_co_tuan
-    CHECK (cap_do <> 'Ươm mầm' OR tuan_chon IS NOT NULL)
+    CHECK (cap_do <> 'Ươm mầm' OR nguon_ghi_nhan <> 'phong_chon' OR tuan_chon IS NOT NULL)
 );
 
 CREATE INDEX idx_pia_idea ON public.portal_idea_awards (idea_id);
 CREATE INDEX idx_pia_han_muc ON public.portal_idea_awards (phong, tuan_chon)
-  WHERE cap_do = 'Ươm mầm' AND ghi_nhan_kpi;
+  WHERE cap_do = 'Ươm mầm' AND ghi_nhan_kpi AND nguon_ghi_nhan = 'phong_chon';
 
 ALTER TABLE public.portal_idea_awards ENABLE ROW LEVEL SECURITY;
 
@@ -150,9 +159,9 @@ CREATE TRIGGER update_portal_idea_awards_updated_at
 
 -- ---------------------------------------------------------------------------
 -- 4) Gác HẠN MỨC ghi nhận Ươm mầm: 02 ý tưởng/tuần/phòng.
---    Chỉ đếm dòng có ghi_nhan_kpi = true — dòng thưởng hồi tố (không ghi nhận)
---    không chiếm suất. Admin cũng bị chặn: hạn mức là để KPI đo lường chuẩn,
---    không phải thứ nới tay được.
+--    Chỉ đếm dòng ghi_nhan_kpi = true VÀ nguồn 'phong_chon' — dòng thưởng hồi
+--    tố (không ghi nhận) và dòng do SMP/TSC ghi nhận đều không chiếm suất.
+--    Admin cũng bị chặn: hạn mức là để KPI đo lường chuẩn, không nới tay được.
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.f_pia_gac_han_muc_uom_mam()
 RETURNS trigger
@@ -162,7 +171,8 @@ AS $$
 DECLARE
   v_dem integer;
 BEGIN
-  IF NEW.cap_do <> 'Ươm mầm' OR NOT NEW.ghi_nhan_kpi THEN
+  IF NEW.cap_do <> 'Ươm mầm' OR NOT NEW.ghi_nhan_kpi
+     OR NEW.nguon_ghi_nhan <> 'phong_chon' THEN
     RETURN NEW;
   END IF;
 
@@ -170,6 +180,7 @@ BEGIN
   FROM public.portal_idea_awards a
   WHERE a.cap_do = 'Ươm mầm'
     AND a.ghi_nhan_kpi
+    AND a.nguon_ghi_nhan = 'phong_chon'
     AND a.phong = NEW.phong
     AND a.tuan_chon = NEW.tuan_chon
     AND a.id <> COALESCE(NEW.id, '00000000-0000-0000-0000-000000000000'::uuid);
@@ -217,12 +228,13 @@ BEGIN
   v_ly_do := 'trong_han_muc';
 
   INSERT INTO public.portal_idea_awards
-    (idea_id, cap_do, ghi_nhan_kpi, phong, tuan_chon, muc_thuong, ly_do_thuong)
+    (idea_id, cap_do, ghi_nhan_kpi, nguon_ghi_nhan, phong, tuan_chon, muc_thuong, ly_do_thuong)
   VALUES
-    (_idea_id, 'Ươm mầm', true, v_idea.department_name,
+    (_idea_id, 'Ươm mầm', true, 'phong_chon', v_idea.department_name,
      date_trunc('week', _tuan_chon)::date, v_thuong, v_ly_do)
   ON CONFLICT (idea_id, cap_do) DO UPDATE
     SET ghi_nhan_kpi = true,
+        nguon_ghi_nhan = 'phong_chon',
         tuan_chon = date_trunc('week', _tuan_chon)::date,
         muc_thuong = GREATEST(public.portal_idea_awards.muc_thuong, v_thuong),
         ly_do_thuong = v_ly_do,
@@ -281,37 +293,100 @@ REVOKE ALL ON FUNCTION public.bhy_ideas_bo_chon_uom_mam(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.bhy_ideas_bo_chon_uom_mam(uuid) TO authenticated, service_role;
 
 -- ---------------------------------------------------------------------------
--- 6) NẠP DỮ LIỆU CŨ — ý tưởng gửi trước 16/08/2026.
+-- 6) THEO DÕI SMP (web Trụ sở chính).
+--
+--    Quy chế mục 4 phân luồng ý tưởng trên SMP; điều kiện cấp Bén rễ ghi rõ:
+--    "Ý tưởng có khả năng thử nghiệm tại Chi nhánh HOẶC những đề xuất/ý tưởng
+--    được TSC phê duyệt 'Đồng ý/Đồng ý một phần'". Nên khi SMP đã ghi nhận thì
+--    theo quy định ý tưởng cũng được ghi nhận — không phụ thuộc hạn mức tuần
+--    của Chi nhánh (chỉ đạo 08/2026).
+-- ---------------------------------------------------------------------------
+ALTER TABLE public.portal_ideas
+  ADD COLUMN IF NOT EXISTS smp_ma TEXT,
+  ADD COLUMN IF NOT EXISTS smp_trang_thai TEXT NOT NULL DEFAULT 'chua_gui'
+    CHECK (smp_trang_thai IN ('chua_gui', 'da_gui', 'dong_y', 'dong_y_mot_phan', 'khong_dong_y')),
+  ADD COLUMN IF NOT EXISTS smp_cap_nhat_luc TIMESTAMP WITH TIME ZONE;
+
+COMMENT ON COLUMN public.portal_ideas.smp_trang_thai IS
+  'Kết quả trên SMP (web TSC). dong_y / dong_y_mot_phan = TSC đã phê duyệt → đủ điều kiện ghi nhận cấp Bén rễ theo quy chế, không chiếm hạn mức tuần của Chi nhánh.';
+
+-- Cột SMP là số liệu quản trị: chỉ Admin TCTH/System được đặt (đi qua trigger
+-- chặn cột quản trị đã có của portal_ideas là chưa đủ vì cột mới) → RPC riêng.
+CREATE OR REPLACE FUNCTION public.bhy_ideas_cap_nhat_smp(
+  _idea_id uuid, _smp_ma text, _smp_trang_thai text
+)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_idea public.portal_ideas%ROWTYPE;
+  v_ghi_nhan boolean := false;
+BEGIN
+  IF NOT public.is_content_admin(auth.uid()) THEN
+    RAISE EXCEPTION 'Chỉ Phòng TCTH / Quản trị hệ thống được cập nhật kết quả SMP';
+  END IF;
+  IF _smp_trang_thai NOT IN ('chua_gui','da_gui','dong_y','dong_y_mot_phan','khong_dong_y') THEN
+    RAISE EXCEPTION 'Trạng thái SMP không hợp lệ: %', _smp_trang_thai;
+  END IF;
+
+  UPDATE public.portal_ideas
+  SET smp_ma = nullif(btrim(coalesce(_smp_ma, '')), ''),
+      smp_trang_thai = _smp_trang_thai,
+      smp_cap_nhat_luc = now()
+  WHERE id = _idea_id
+  RETURNING * INTO v_idea;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Không tìm thấy ý tưởng';
+  END IF;
+
+  -- TSC phê duyệt "Đồng ý"/"Đồng ý một phần" → ghi nhận Bén rễ theo quy chế.
+  -- Nguồn 'smp_tsc' nên KHÔNG chiếm suất hạn mức tuần của phòng.
+  IF _smp_trang_thai IN ('dong_y', 'dong_y_mot_phan') THEN
+    INSERT INTO public.portal_idea_awards
+      (idea_id, cap_do, ghi_nhan_kpi, nguon_ghi_nhan, phong, muc_thuong, ly_do_thuong, ghi_chu)
+    VALUES
+      (_idea_id, 'Bén rễ', true, 'smp_tsc', v_idea.department_name, 300000, 'trong_han_muc',
+       'TSC phê duyệt trên SMP: ' || _smp_trang_thai)
+    ON CONFLICT (idea_id, cap_do) DO UPDATE
+      SET ghi_nhan_kpi = true,
+          nguon_ghi_nhan = 'smp_tsc',
+          ghi_chu = 'TSC phê duyệt trên SMP: ' || _smp_trang_thai;
+    v_ghi_nhan := true;
+  END IF;
+
+  RETURN jsonb_build_object('ok', true, 'ghi_nhan_ben_re', v_ghi_nhan);
+END $$;
+
+REVOKE ALL ON FUNCTION public.bhy_ideas_cap_nhat_smp(uuid, text, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.bhy_ideas_cap_nhat_smp(uuid, text, text) TO authenticated, service_role;
+
+-- ---------------------------------------------------------------------------
+-- 7) NẠP DỮ LIỆU CŨ — ý tưởng gửi trước 16/08/2026.
 --
 --    Tiền: mọi ý tưởng đều được thưởng Ươm mầm để khuyến khích phong trào
 --          (chỉ đạo 08/2026), kể cả phần vượt hạn mức.
---    KPI:  chỉ 02 ý tưởng/tuần/phòng được ghi nhận — chọn theo thứ tự gửi
---          sớm nhất trong tuần làm mặc định; Trưởng phòng đổi lại được ở màn
---          "Chọn ý tưởng Ươm mầm".
+--    KPI:  KHÔNG tự chọn hộ ý tưởng nào (chỉ đạo 08/2026) — mọi dòng nạp vào
+--          đều ghi_nhan_kpi = false. Trưởng phòng vào màn "Chọn ý tưởng Ươm
+--          mầm" tự quyết định ý tưởng nào xứng đáng tính KPI trong hạn mức.
 -- ---------------------------------------------------------------------------
 INSERT INTO public.portal_idea_awards
-  (idea_id, cap_do, ghi_nhan_kpi, phong, tuan_chon, muc_thuong, ly_do_thuong, ghi_chu)
+  (idea_id, cap_do, ghi_nhan_kpi, nguon_ghi_nhan, phong, tuan_chon, muc_thuong, ly_do_thuong, ghi_chu)
 SELECT
-  x.id, 'Ươm mầm', x.thu_tu <= 2, x.department_name, x.tuan, 100000,
-  CASE WHEN x.thu_tu <= 2 THEN 'trong_han_muc' ELSE 'hoi_to_khuyen_khich' END,
-  'Nạp từ dữ liệu trước 16/08/2026 — thưởng khuyến khích toàn bộ, ghi nhận KPI theo hạn mức'
-FROM (
-  SELECT i.id, i.department_name,
-         date_trunc('week', i.created_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AS tuan,
-         row_number() OVER (
-           PARTITION BY i.department_name,
-                        date_trunc('week', i.created_at AT TIME ZONE 'Asia/Ho_Chi_Minh')
-           ORDER BY i.created_at
-         ) AS thu_tu
-  FROM public.portal_ideas i
-  WHERE (i.created_at AT TIME ZONE 'Asia/Ho_Chi_Minh') < '2026-08-16'::timestamp
-) x
+  i.id, 'Ươm mầm', false, 'phong_chon', i.department_name,
+  date_trunc('week', i.created_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date,
+  100000, 'hoi_to_khuyen_khich',
+  'Nạp dữ liệu trước 16/08/2026 — thưởng khuyến khích toàn bộ; ghi nhận KPI chờ Trưởng phòng chọn'
+FROM public.portal_ideas i
+WHERE (i.created_at AT TIME ZONE 'Asia/Ho_Chi_Minh') < '2026-08-16'::timestamp
 ON CONFLICT (idea_id, cap_do) DO NOTHING;
 
--- Ý tưởng đang ở cấp Bén rễ: ghi nhận thêm dòng Bén rễ (không có hạn mức tuần)
+-- Ý tưởng đang ở cấp Bén rễ trở lên: ghi nhận dòng Bén rễ (không có hạn mức
+-- tuần nên ghi nhận KPI được ngay; đây là cấp đã qua sàng lọc của TCTH/Giám đốc)
 INSERT INTO public.portal_idea_awards
-  (idea_id, cap_do, ghi_nhan_kpi, phong, muc_thuong, ly_do_thuong, ghi_chu)
-SELECT i.id, 'Bén rễ', true, i.department_name, 300000, 'trong_han_muc',
+  (idea_id, cap_do, ghi_nhan_kpi, nguon_ghi_nhan, phong, muc_thuong, ly_do_thuong, ghi_chu)
+SELECT i.id, 'Bén rễ', true, 'phong_chon', i.department_name, 300000, 'trong_han_muc',
        'Nạp từ cấp độ phát triển hiện có trước 16/08/2026'
 FROM public.portal_ideas i
 WHERE i.development_level IN ('Bén rễ', 'Vươn cành', 'Lan tỏa')
