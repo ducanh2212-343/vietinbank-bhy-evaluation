@@ -74,34 +74,42 @@ describe('datTyLe2Phan3 — so sánh nguyên, không trượt biên số thực'
   });
 });
 
-describe('datQuorum — quorum kép: phiếu gửi ≥ 2/3 tổng thành viên', () => {
-  it('10/15 thành viên chấm đúng biên → đạt (30 ≥ 30)', () => {
-    expect(datQuorum({ soPhieuHopLe: 10, tongThanhVien: 15 })).toBe(true);
+describe('datQuorum — kịch bản họp tại chỗ: TẤT CẢ thành viên đủ điều kiện phải chấm', () => {
+  it('đủ 100% (12/12) → đạt', () => {
+    expect(datQuorum({ soPhieuHopLe: 12, tongThanhVien: 12 })).toBe(true);
   });
-  it('9/15 thành viên chấm → chưa đạt (27 < 30)', () => {
-    expect(datQuorum({ soPhieuHopLe: 9, tongThanhVien: 15 })).toBe(false);
+  it('thiếu dù chỉ 1 người (11/12) → chưa đạt', () => {
+    expect(datQuorum({ soPhieuHopLe: 11, tongThanhVien: 12 })).toBe(false);
   });
   it('không có thành viên → không đạt', () => {
     expect(datQuorum({ soPhieuHopLe: 0, tongThanhVien: 0 })).toBe(false);
   });
 
-  it('điểm đạt hết nhưng hụt quorum → xetVuonCanh chặn, nêu rõ lý do', () => {
-    // 2 phiếu điểm cao trong Hội đồng 5 người → 2*3=6 < 5*2=10
+  it('điểm đạt hết nhưng còn người chưa chấm → xetVuonCanh chặn, nêu rõ yêu cầu 100%', () => {
     const t = tongHopPhieu([
       phieu({ diemChung: 5, deXuat: 'vuon_canh' }),
       phieu({ diemChung: 5, deXuat: 'vuon_canh' }),
-    ], 5);
+    ], 3);
     const kq = xetVuonCanh(t);
     expect(kq.dat).toBe(false);
-    expect(kq.lyDo.join(' ')).toContain('quorum');
+    expect(kq.lyDo.join(' ')).toContain('đủ 100%');
   });
 
-  it('đủ quorum thì các điều kiện khác quyết định như cũ', () => {
+  it('đủ 100% thì các điều kiện khác quyết định như cũ', () => {
     const t = tongHopPhieu([
       phieu({ diemChung: 5, deXuat: 'lan_toa' }),
       phieu({ diemChung: 4, deXuat: 'lan_toa' }),
-    ], 3); // 2/3 đúng biên quorum
+    ], 2);
     expect(xetLanToa(t).dat).toBe(true);
+  });
+
+  it('tỷ lệ ĐỒNG Ý vẫn 2/3 số phiếu — không bị nâng theo quorum', () => {
+    const t = tongHopPhieu([
+      phieu({ diemChung: 4, deXuat: 'vuon_canh' }),
+      phieu({ diemChung: 4, deXuat: 'vuon_canh' }),
+      phieu({ diemChung: 4, deXuat: 'khong_xet' }),
+    ], 3); // 3/3 chấm, 2/3 đồng ý đúng biên
+    expect(xetVuonCanh(t).dat).toBe(true);
   });
 });
 
@@ -280,7 +288,7 @@ describe('docTongHopRpc — đọc payload jsonb của RPC', () => {
           item_id: 'i1', idea_id: 'y1', idea_code: 'BHYI-2026-001', proposed_tier: 'Lan tỏa',
           idea_title: 'Checklist giảm lỗi', department_name: 'Phòng DVKH', idea_level: 'Nội bộ CN',
           proposer: 'Nguyễn Văn A',
-          total_votes: 2, eligible_members: 3, conflict_votes: 1,
+          total_votes: 2, eligible_members: 2, conflict_votes: 1,
           avg_problem: 4.5, avg_impact: 4, avg_feasible: 4, avg_safety: 3.5, avg_scale: 4.5,
           avg_overall: 4.1,
           agree_vuon_canh: 2, agree_lan_toa: 2,
@@ -307,7 +315,7 @@ describe('docTongHopRpc — đọc payload jsonb của RPC', () => {
     const [a, b] = kq.items;
     expect(a.ideaCode).toBe('BHYI-2026-001');
     expect(a.tongHop.soPhieuHopLe).toBe(2);
-    expect(a.tongHop.tongThanhVien).toBe(3); // 2/3 gửi phiếu — quorum đúng biên
+    expect(a.tongHop.tongThanhVien).toBe(2); // 2/2 đã chấm — đủ 100% theo kịch bản họp
     expect(a.tongHop.diemTieuChi.safety).toBe(3.5);
     expect(a.gopY).toEqual(['Nên chuẩn hóa mẫu biểu']);
     // Dòng đủ điều kiện nâng lên Lan tỏa (TB 4.1, nhân rộng 4.5, an toàn 3.5, 2/2 đồng ý)

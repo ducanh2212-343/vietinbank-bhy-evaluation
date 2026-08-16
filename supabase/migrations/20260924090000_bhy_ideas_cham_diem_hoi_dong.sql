@@ -34,8 +34,10 @@
 -- ---------------------------------------------------------------------------
 -- 0) Thành viên Hội đồng là BẢNG DỮ LIỆU (học từ council_members của Hội đồng
 --    đầu mối đã vận hành thực tế) thay vì suy từ vai trò: quy chế cho Giám đốc
---    quyết định thành phần từng thời kỳ, người nghỉ dài hạn tắt is_active,
---    và có mẫu số chính danh để tính quorum 2/3.
+--    quyết định thành phần từng thời kỳ, người vắng dài hạn tắt is_active,
+--    và có mẫu số chính danh cho quorum — kịch bản HỌP TẠI CHỖ yêu cầu TẤT CẢ
+--    thành viên đủ điều kiện phải chấm (Hội đồng ít người; logic so ngưỡng
+--    nằm ở src/lib/ideaCouncil.ts).
 --    is_chair = Chủ tịch Hội đồng (Giám đốc CN) — được vượt khóa xem tổng hợp
 --    ẩn danh khi đợt đang chấm và được bấm công bố kết quả.
 -- ---------------------------------------------------------------------------

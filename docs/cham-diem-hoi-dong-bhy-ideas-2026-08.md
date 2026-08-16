@@ -78,12 +78,19 @@ Quy ước đã chốt trong code (unit test kèm theo):
 - «Số phiếu hợp lệ» = số thành viên đã GỬI phiếu (nháp không tính; mọi phiếu
   gửi đều tính); tỷ lệ 2/3 so trên số này và so **nguyên**
   (`3×đồng ý ≥ 2×hợp lệ`) để biên 2/3 không trượt số thực.
-- **QUORUM KÉP** (chốt 08/2026 — câu «2/3 thành viên Hội đồng tham gia chấm
-  đồng ý» của quy chế đọc được hai cách nên ghép cả hai): (a) số phiếu đã gửi
-  ≥ 2/3 tổng thành viên đủ điều kiện chấm ý tưởng đó (mẫu số = thành viên
-  đang hoạt động trừ người bị chặn tự chấm — RPC trả `eligible_members`);
-  (b) trong số phiếu đó ≥ 2/3 đồng ý. Hụt quorum thì chưa xét, lý do hiện rõ
-  trong bảng tổng hợp.
+- **QUORUM ĐỦ 100% — kịch bản HỌP TẠI CHỖ** (chốt 08/2026: Hội đồng ít người
+  nên yêu cầu TẤT CẢ thành viên phải chấm): (a) số phiếu đã gửi = tổng thành
+  viên đủ điều kiện chấm ý tưởng đó (mẫu số = thành viên đang hoạt động trừ
+  người bị chặn tự chấm — RPC trả `eligible_members`; người vắng dài hạn tắt
+  «Hoạt động» để rút khỏi mẫu số); (b) trong số phiếu đó **≥ 2/3 đồng ý**
+  theo mục VI.3. Thiếu dù một người thì chưa xét, lý do hiện rõ trong bảng
+  tổng hợp.
+- **Luồng họp tại chỗ**: TCTH mở đợt trước/ngay đầu cuộc họp → trình chiếu
+  mục «Tiến độ chấm» (tự làm mới 15 giây, có dòng «còn thiếu n người») →
+  thành viên chấm ngay trên điện thoại, ai chưa xong bấm nhắc push tại chỗ →
+  đủ 100% thì «Chốt đợt» → Chủ tịch «Công bố» → cả Hội đồng xem bảng tổng
+  hợp Phụ lục 07 và kết luận ngay trong cuộc họp. Hạn gửi phiếu + cron nhắc
+  vẫn hữu ích cho phần chấm TRƯỚC cuộc họp (gửi tài liệu sớm để nghiên cứu).
 - Đồng ý **Vươn cành** tính cả phiếu «Đồng ý Lan tỏa» (tầng cao bao hàm tầng dưới);
   đồng ý **Lan tỏa** chỉ tính phiếu Lan tỏa.
 - Điểm TB chung = trung bình 5 điểm TB tiêu chí (Phụ lục 07).

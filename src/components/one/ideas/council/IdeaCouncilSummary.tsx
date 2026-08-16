@@ -104,8 +104,8 @@ export const IdeaCouncilSummary: React.FC<IdeaCouncilSummaryProps> = ({ roundId,
         <BarChart3 className="w-4 h-4 text-amber-500" />
         <span>
           Kết quả tổng hợp đợt <b className="text-slate-700">{summary.round.name}</b> — điểm trung bình
-          tính trên phiếu đã gửi; kết luận dưới đây là <b>gợi ý theo ngưỡng</b> (gồm quorum kép 2/3),
-          quyết định cuối cùng thuộc Hội đồng.
+          tính trên phiếu đã gửi; kết luận dưới đây là <b>gợi ý theo ngưỡng</b> (yêu cầu đủ 100%
+          thành viên chấm), quyết định cuối cùng thuộc Hội đồng.
         </span>
         <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${summary.round.resultsPublished ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>
           {summary.round.resultsPublished ? '🔓 Đã công bố cho Hội đồng' : '🔒 Chưa công bố — chỉ Chủ tịch & QT hệ thống thấy'}
@@ -125,7 +125,7 @@ export const IdeaCouncilSummary: React.FC<IdeaCouncilSummaryProps> = ({ roundId,
                 <th className="p-2 font-black">Phòng đề xuất</th>
                 <th className="p-2 font-black">Cấp</th>
                 <th className="p-2 font-black">Tầng đề xuất</th>
-                <th className="p-2 font-black text-center" title="Số phiếu đã gửi / tổng thành viên đủ điều kiện chấm — quorum kép đòi ≥ 2/3">Phiếu / TV</th>
+                <th className="p-2 font-black text-center" title="Số phiếu đã gửi / tổng thành viên đủ điều kiện chấm — yêu cầu đủ 100% mới xét (kịch bản họp tại chỗ)">Phiếu / TV</th>
                 {TIEU_CHI_HOI_DONG.map(tc => (
                   <th key={tc.key} className="p-2 font-black text-center" title={tc.cauHoi}>{tc.ten}</th>
                 ))}

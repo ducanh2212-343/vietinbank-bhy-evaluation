@@ -216,13 +216,14 @@ export function datTyLe2Phan3(soDongY: number, soPhieuHopLe: number): boolean {
 }
 
 /**
- * QUORUM KÉP (chốt 08/2026 — câu «2/3 thành viên Hội đồng tham gia chấm đồng
- * ý» của quy chế đọc được hai cách, ghép cả hai cho an toàn): điều kiện nền
- * trước khi xét đồng ý là số phiếu ĐÃ GỬI đạt ít nhất 2/3 tổng thành viên đủ
- * điều kiện chấm ý tưởng đó. So sánh nguyên như datTyLe2Phan3.
+ * QUORUM ĐỦ 100% (chốt 08/2026 — kịch bản HỌP TẠI CHỖ): Hội đồng ít người
+ * nên yêu cầu TẤT CẢ thành viên đủ điều kiện phải chấm mới xét — trong cuộc
+ * họp, TCTH trình chiếu tiến độ, chờ đủ phiếu rồi chốt đợt và công bố ngay.
+ * Người vắng dài hạn: TCTH tắt «Hoạt động» để rút khỏi mẫu số (người bị chặn
+ * tự chấm đã được trừ sẵn). Tỷ lệ ĐỒNG Ý vẫn ≥ 2/3 số phiếu theo mục VI.3.
  */
 export function datQuorum(t: Pick<TongHopYTuong, 'soPhieuHopLe' | 'tongThanhVien'>): boolean {
-  return t.tongThanhVien > 0 && t.soPhieuHopLe * 3 >= t.tongThanhVien * 2;
+  return t.tongThanhVien > 0 && t.soPhieuHopLe >= t.tongThanhVien;
 }
 
 export interface KetQuaNguong {
@@ -231,13 +232,13 @@ export interface KetQuaNguong {
   lyDo: string[];
 }
 
-/** Ngưỡng Cấp độ Vươn cành: quorum ≥ 2/3 · TB chung ≥ 3,5 · An toàn/rủi ro ≥ 3 · ≥ 2/3 đồng ý */
+/** Ngưỡng Cấp độ Vươn cành: đủ 100% thành viên chấm · TB chung ≥ 3,5 · An toàn/rủi ro ≥ 3 · ≥ 2/3 đồng ý */
 export function xetVuonCanh(t: TongHopYTuong): KetQuaNguong {
   const lyDo: string[] = [];
   if (t.soPhieuHopLe === 0) lyDo.push('Chưa có phiếu chấm hợp lệ');
   else {
     if (!datQuorum(t)) {
-      lyDo.push(`Mới ${t.soPhieuHopLe}/${t.tongThanhVien} thành viên tham gia chấm (chưa đủ quorum 2/3)`);
+      lyDo.push(`Mới ${t.soPhieuHopLe}/${t.tongThanhVien} thành viên chấm — yêu cầu đủ 100% (vắng dài hạn thì tắt «Hoạt động»)`);
     }
     if ((t.diemTbChung ?? 0) < NGUONG_VUON_CANH.diemTbChung - EPS) {
       lyDo.push(`Điểm TB chung ${formatDiem(t.diemTbChung)} < ${formatDiem(NGUONG_VUON_CANH.diemTbChung)}`);
@@ -252,13 +253,13 @@ export function xetVuonCanh(t: TongHopYTuong): KetQuaNguong {
   return { dat: lyDo.length === 0, lyDo };
 }
 
-/** Ngưỡng Cấp độ Lan tỏa: quorum ≥ 2/3 · TB chung ≥ 4,0 · Nhân rộng ≥ 4 · An toàn ≥ 3 · ≥ 2/3 đồng ý */
+/** Ngưỡng Cấp độ Lan tỏa: đủ 100% thành viên chấm · TB chung ≥ 4,0 · Nhân rộng ≥ 4 · An toàn ≥ 3 · ≥ 2/3 đồng ý */
 export function xetLanToa(t: TongHopYTuong): KetQuaNguong {
   const lyDo: string[] = [];
   if (t.soPhieuHopLe === 0) lyDo.push('Chưa có phiếu chấm hợp lệ');
   else {
     if (!datQuorum(t)) {
-      lyDo.push(`Mới ${t.soPhieuHopLe}/${t.tongThanhVien} thành viên tham gia chấm (chưa đủ quorum 2/3)`);
+      lyDo.push(`Mới ${t.soPhieuHopLe}/${t.tongThanhVien} thành viên chấm — yêu cầu đủ 100% (vắng dài hạn thì tắt «Hoạt động»)`);
     }
     if ((t.diemTbChung ?? 0) < NGUONG_LAN_TOA.diemTbChung - EPS) {
       lyDo.push(`Điểm TB chung ${formatDiem(t.diemTbChung)} < ${formatDiem(NGUONG_LAN_TOA.diemTbChung)}`);

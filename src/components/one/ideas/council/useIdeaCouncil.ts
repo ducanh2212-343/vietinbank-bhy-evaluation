@@ -513,11 +513,14 @@ export interface TienDoThanhVien {
   pendingCodes: string[];
 }
 
-export function useCouncilProgress(roundId: string | null, enabled: boolean) {
+export function useCouncilProgress(roundId: string | null, enabled: boolean, live = false) {
   const { data, isLoading, error } = useQuery({
     queryKey: progressKey(roundId ?? 'none'),
     enabled: enabled && !!roundId,
     retry: false,
+    // Kịch bản họp tại chỗ: TCTH trình chiếu bảng tiến độ, phiếu đổ về liên
+    // tục — tự làm mới khi đợt đang mở để khỏi bấm tay
+    refetchInterval: live ? 15_000 : false,
     queryFn: async () => {
       const { data: payload, error: rpcError } = await supabase
         .rpc('bhy_ideas_hd_tien_do', { _round_id: roundId! });

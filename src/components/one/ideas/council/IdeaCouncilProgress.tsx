@@ -8,7 +8,11 @@ import { useCouncilMutations, useCouncilProgress, type CouncilRound } from './us
 // email (chốt 08/2026).
 
 export const IdeaCouncilProgress: React.FC<{ round: CouncilRound | null }> = ({ round }) => {
-  const { progress, isLoading, error } = useCouncilProgress(round?.id ?? null, !!round);
+  const { progress, isLoading, error } = useCouncilProgress(
+    round?.id ?? null,
+    !!round,
+    round?.status === 'open',
+  );
   const { nhacPush } = useCouncilMutations(round?.id ?? null);
   const [dangNhac, setDangNhac] = useState<string | null>(null);
 
@@ -54,6 +58,15 @@ export const IdeaCouncilProgress: React.FC<{ round: CouncilRound | null }> = ({ 
         kiểm soát số lượt chấm, đánh giá mức độ tham gia) — <b>không kèm bất kỳ điểm số nào</b>,
         phiếu vẫn ẩn danh. Nhắc gửi qua thông báo đẩy trên thiết bị đã đăng ký.
       </p>
+      {round.status === 'open' && (
+        <div className="p-2.5 rounded-lg bg-sky-50 border border-sky-200 text-[11px] text-sky-800">
+          <b>🏛️ Kịch bản họp tại chỗ:</b> trình chiếu mục này trong cuộc họp Hội đồng
+          (tự làm mới mỗi 15 giây) — thành viên chấm ngay trên điện thoại/máy tính,
+          chờ <b>đủ 100% thành viên</b> gửi phiếu ({conThieu.length === 0 ? 'ĐÃ ĐỦ ✅' : `còn thiếu ${conThieu.length} người`}),
+          rồi bấm «Chốt đợt chấm» và Chủ tịch «Công bố kết quả» để Hội đồng xem tổng hợp
+          và kết luận ngay tại chỗ.
+        </div>
+      )}
 
       {isLoading ? (
         <p className="text-slate-400 italic text-center py-3">Đang tải tiến độ…</p>

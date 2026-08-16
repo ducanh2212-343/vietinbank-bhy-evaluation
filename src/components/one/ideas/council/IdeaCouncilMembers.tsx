@@ -28,8 +28,9 @@ export const IdeaCouncilMembers: React.FC = () => {
       </p>
       <p className="text-[10px] text-slate-500">
         Giám đốc quyết định thành phần từng thời kỳ — TCTH cập nhật tại đây. Danh sách đang hoạt
-        động là <b>mẫu số quorum 2/3</b>: người nghỉ dài hạn hãy tắt «Hoạt động» thay vì xóa
-        (xóa mất luôn lịch sử ai từng thuộc Hội đồng; phiếu đã chấm vẫn được giữ).
+        động là <b>mẫu số quorum — yêu cầu TẤT CẢ phải chấm</b> (kịch bản họp tại chỗ, Hội đồng
+        ít người): người vắng/nghỉ dài hạn hãy tắt «Hoạt động» để rút khỏi mẫu số thay vì xóa
+        (xóa mất lịch sử ai từng thuộc Hội đồng; phiếu đã chấm vẫn được giữ).
       </p>
 
       <form
