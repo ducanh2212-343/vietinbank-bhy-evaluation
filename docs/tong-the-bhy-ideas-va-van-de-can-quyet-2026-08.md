@@ -15,11 +15,11 @@ thực chạy khoảng sáu tuần rưỡi dù chu kỳ tính từ 01/06.
 |---|---|
 | Ý tưởng đã gửi | 134 |
 | Phòng, tổ có ý tưởng | 11 |
-| Đang được tính KPI | 20 (toàn bộ là Bén rễ nạp từ cấp độ sẵn có) |
+| Đang được tính KPI | 20 — toàn bộ là Bén rễ **do TSC đồng ý triển khai** |
 | Tiền thưởng đã cam kết | 19.400.000đ / 100 triệu |
 | Vươn cành · Lan tỏa | 0 · 0 |
 | Đợt chấm Hội đồng | 0 (21 ý tưởng đang chờ) |
-| Ghi trạng thái SMP | 0/134 |
+| Ghi trạng thái SMP | 20/134 (đúng 20 ý tưởng TSC đã đồng ý) |
 | Đánh dấu khoán gọn | 0 người |
 
 ### Theo phòng
@@ -43,6 +43,12 @@ vì hồ sơ chưa ai được đánh dấu.
 
 ## 2. Cơ chế đang chạy
 
+> **Cập nhật 10/2026 — đang TẠM DỪNG ÁP KPI.** Theo chỉ đạo, Chi nhánh tạm dừng
+> áp KPI để tập trung khuyến khích sáng tạo và phân nhóm lĩnh vực. Cụ thể: trần
+> 02 ý tưởng/tuần/phòng **không còn chặn**, màn hình bỏ ngôn ngữ KPI. Cấu trúc
+> giữ nguyên và sổ vẫn ghi đủ, nên bật lại chỉ là đổi một dòng cấu hình
+> (`bhy_ideas_cau_hinh.dang_ap_kpi`). Phần dưới mô tả cơ chế **khi áp KPI trở lại**.
+
 ### Bốn cấp độ
 
 | Cấp độ | Ai quyết | Nhịp | Thưởng | Ràng buộc |
@@ -57,11 +63,25 @@ vì hồ sơ chưa ai được đánh dấu.
 Theo chỉ đạo vận hành 08/2026 — *tiền thưởng có thể khuyến khích nhưng KPI thì
 không* — mỗi ý tưởng mang hai thuộc tính tách rời:
 
-- **Ghi nhận KPI** — chịu hạn mức 02/tuần/phòng, chặn ở tầng CSDL, admin cũng không nới được.
+- **Ghi nhận KPI** — chịu hạn mức 02/tuần/phòng, chặn ở tầng CSDL, admin cũng không nới được *(đang tạm dừng — xem ghi chú đầu mục)*.
 - **Tiền thưởng** — linh hoạt: hồi tố, khuyến khích, hoặc chuyển kỳ sau.
 
 Nguyên tắc **thưởng lũy kế**: công nhận cấp nào thì trả bù các cấp dưới ý tưởng
 chưa từng được thưởng; khóa `UNIQUE(idea_id, cap_do)` chống trả trùng.
+
+### Hai đường lên cấp Bén rễ
+
+Quy chế mục 4 mở hai đường, và **hiện chỉ đường thứ hai đang chạy thật**:
+
+| | Đường 1 — Chi nhánh thử nghiệm | Đường 2 — Trụ sở chính đồng ý |
+|---|---|---|
+| Căn cứ | Ý tưởng có khả năng thử nghiệm tại CN | TSC duyệt "Đồng ý / Đồng ý một phần" trên SMP |
+| Ai quyết | TCTH đánh giá → **Giám đốc duyệt** | TCTH khớp số liệu SMP, hệ thống tự ghi nhận |
+| Cờ trong sổ | `duyet_cn` | `duyet_tsc` |
+| Thực tế | chưa có hồ sơ nào | **20/20 ý tưởng Bén rễ hiện có** |
+
+Hai cờ độc lập và có thể cùng bật — một ý tưởng vừa được TSC duyệt vừa được Chi
+nhánh duyệt thì bật cả hai, nhưng ghi nhận và tiền vẫn chỉ một lần.
 
 ### Phiếu đánh giá tham khảo cấp Bén rễ
 
@@ -94,6 +114,17 @@ hai phép tính không được lẫn vào nhau. Chốt vận hành 16/08/2026: 
 **cả chỉ tiêu Bén rễ của lãnh đạo** (bản trước đếm mỗi ý tưởng cấp cao chỉ
 bằng 1 «đã qua Bén rễ» — đếm thiếu, thiệt cho lãnh đạo có ý tưởng được nhân
 rộng; module `ideaKpi.ts` đã sửa và khóa bằng test).
+
+### Nhóm lĩnh vực — trục phân loại thứ tư
+
+Ba trục cũ không trả lời được câu «sáng tạo về chuyện gì»: cấp đề xuất nói *nơi
+duyệt*, phạm vi áp dụng nói *ảnh hưởng tới đâu*, cấp độ phát triển nói *đi được
+bao xa*. Bảy nhóm: Quy trình nghiệp vụ · Công nghệ số & AI · Trải nghiệm khách
+hàng · Tiết giảm chi phí · An toàn & tuân thủ · Quản trị nội bộ · Khác.
+
+Cán bộ chọn nhóm khi gửi; TCTH phân nhóm hàng loạt cho 134 phiếu cũ ở màn vận
+hành. Dải «Chi nhánh đang sáng tạo về chuyện gì» ở trang giới thiệu hiện **đủ 7
+nhóm kể cả nhóm trống** — mảng trắng là chỗ phát động đợt tới có dư địa nhất.
 
 ### Bốn màn hình
 
@@ -204,7 +235,7 @@ toàn bộ TP/PP ở mức 0 điểm — dưới ngưỡng thì tính 0 chứ kh
 | C3 | Nút "Đề xuất Hội đồng" ≠ Bén rễ | Khẳng định rõ trong văn bản | Đã rà: quy chế **không** quy định tự động Bén rễ; hệ thống giữ hai việc tách rời |
 | C4 | Khai xung đột lợi ích rồi thì sao | Vẫn tính, giảm trọng số, hay loại | Mọi phiếu đều tính; số phiếu có khai hiện trên tổng hợp |
 | C5 | Hai phòng gửi trùng một ý tưởng | Ghi cho phòng gửi trước, chia đôi, hay cả hai | Chưa có quy tắc; chỉ hỗ trợ phòng ngừa bằng ô tra cứu toàn CN |
-| C6 | Quy trình đối chiếu SMP | Giao đầu mối và nhịp đối chiếu | Màn đối chiếu đã có; ghi "Đồng ý" là tự lập dòng Bén rễ, không chiếm hạn mức |
+| C6 | Quy trình đối chiếu SMP | Giao đầu mối và nhịp đối chiếu | Màn đối chiếu đã có; ghi "Đồng ý" là tự lập dòng Bén rễ, không chiếm hạn mức. **Đây là đường công nhận đang dùng thật**: 20/20 ý tưởng Bén rễ hiện có đều lên cấp bằng đường này |
 | C7 | Ý tưởng của người đã chuyển công tác/nghỉ việc | Tính cho phòng nào, còn được thưởng không | Sổ chốt tên phòng tại thời điểm ghi nhận; phần tiền chưa có quy tắc |
 
 ## 7. Nhóm D — Đã có công cụ, chưa khởi động
@@ -212,8 +243,9 @@ toàn bộ TP/PP ở mức 0 điểm — dưới ngưỡng thì tính 0 chứ kh
 | Việc | Hiện trạng | Ảnh hưởng nếu chậm |
 |---|---|---|
 | Mở đợt chấm Hội đồng đầu tiên | 0 đợt, 21 ý tưởng chờ | TP/PP không có điểm ĐMST |
+| Tạm dừng áp KPI | Đã tắt trần theo chỉ đạo | Không — có chủ ý, bật lại bằng một dòng cấu hình |
 | Đánh dấu nhân viên khoán gọn | 0 người | Mẫu số chỉ tiêu lãnh đạo tính thừa |
-| Đối chiếu kết quả SMP | 0/134 | Bỏ sót đường ghi nhận không chiếm hạn mức |
+| Đối chiếu kết quả SMP | 20/134 đã ghi | Bỏ sót đường ghi nhận không chiếm hạn mức |
 | TCTH chốt Ươm mầm với các TP | 20 dòng KPI, đều là Bén rễ nạp sẵn | Không phòng nào có Ươm mầm tính KPI |
 
 ## 8. Đề xuất thứ tự xử lý

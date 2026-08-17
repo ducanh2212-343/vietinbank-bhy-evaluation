@@ -59,7 +59,7 @@ function TheUngVien({ uv, onXong }: { uv: UngVienBenRe; onXong: () => void }) {
             )}
             {daTsc && (
               <span className="rounded-full bg-sky-100 px-2 py-0.5 text-2xs font-bold text-sky-700">
-                TSC đã duyệt trên SMP — đủ điều kiện theo quy chế
+                TSC đã duyệt trên SMP — ghi nhận ở màn Đối chiếu SMP, khỏi qua Giám đốc
               </span>
             )}
             {phieuCoNoiDung(uv.danhGiaTcth) && !uv.daTungTuChoi && (
@@ -153,6 +153,22 @@ export const TrinhBenRePanel: React.FC = () => {
           chứng kết quả. Hệ thống chỉ <b>gợi ý</b> — Phòng TCTH vẫn trình được ý tưởng điểm thấp
           nếu có lý do, và Giám đốc vẫn quyết theo thẩm quyền.
         </span>
+      </div>
+
+      {/* Quy chế mục 4 mở HAI đường lên Bén rễ. Nêu rõ ở đây vì đi nhầm đường
+          thì hoặc làm phiền Giám đốc việc không cần duyệt, hoặc bỏ sót ý tưởng
+          Trụ sở chính đã đồng ý. */}
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div className="rounded-lg border border-slate-200 bg-white p-2.5 text-2xs text-slate-700">
+          <b className="block text-slate-800">Đường 1 — Chi nhánh thử nghiệm</b>
+          Ý tưởng có khả năng làm thử tại Chi nhánh: đánh giá ở màn này rồi
+          <b> trình Giám đốc</b> quyết.
+        </div>
+        <div className="rounded-lg border border-sky-200 bg-sky-50/60 p-2.5 text-2xs text-sky-900">
+          <b className="block text-sky-950">Đường 2 — Trụ sở chính đồng ý</b>
+          Ý tưởng TSC đã duyệt trên SMP: ghi kết quả ở màn <b>Đối chiếu SMP</b>,
+          hệ thống tự ghi nhận Bén rễ — <b>không cần qua Giám đốc</b>.
+        </div>
       </div>
 
       <div className="relative">
