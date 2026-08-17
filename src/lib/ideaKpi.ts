@@ -233,9 +233,10 @@ export function kiemTraDieuKienCan(nhom: NhomViTriKpi, dv: DauVaoLanhDao): strin
  * Nên: thiếu điều kiện cần HOẶC Bén rễ < 90% chỉ tiêu → %HT = 0 (không phải
  * tính theo tỷ lệ đạt được).
  *
- * Số Bén rễ tính theo tổng ý tưởng đạt TỪ Bén rễ trở lên (ý tưởng đã lên Vươn
- * cành/Lan tỏa đương nhiên đã qua Bén rễ) — cùng cách đọc với đường Ươm mầm
- * của cán bộ.
+ * Số Bén rễ tính theo QUY ĐỔI của Phụ lục 1B — hệ số áp cho TOÀN BỘ văn bản
+ * (chốt vận hành 16/08/2026): Bén rễ ×1, Vươn cành ×2, Lan tỏa ×3, Ươm mầm
+ * không quy đổi. Bản trước đếm mỗi ý tưởng cấp cao chỉ bằng 1 «đã qua Bén rễ»
+ * — đếm thiếu, thiệt cho lãnh đạo có ý tưởng được nhân rộng.
  */
 export function kpiLanhDao(nhom: NhomViTriKpi, dv: DauVaoLanhDao): KetQuaKpi {
   if (nhom === 'ban_giam_doc') {
@@ -251,7 +252,7 @@ export function kpiLanhDao(nhom: NhomViTriKpi, dv: DauVaoLanhDao): KetQuaKpi {
   if (nhom === 'can_bo') return kpiCanBo(dv.demPhong);
 
   const chiTieu = chiTieuBenRe(nhom, dv.soCanBo);
-  const soBenRe = dv.demPhong['Bén rễ'] + dv.demPhong['Vươn cành'] + dv.demPhong['Lan tỏa'];
+  const soBenRe = diemQuyDoiBenRe(dv.demPhong);
   const tyLe = chiTieu > 0 ? soBenRe / chiTieu : 0;
   const thieuDieuKien = kiemTraDieuKienCan(nhom, dv);
   const datNguongBenRe = chiTieu > 0 && tyLe >= NGUONG_BEN_RE;
@@ -259,7 +260,7 @@ export function kpiLanhDao(nhom: NhomViTriKpi, dv: DauVaoLanhDao): KetQuaKpi {
   const conThieu = [...thieuDieuKien];
   if (!datNguongBenRe) {
     const canCo = Math.ceil(chiTieu * NGUONG_BEN_RE);
-    conThieu.push(`Bén rễ mới ${soBenRe}/${chiTieu} (${chuanHoaPhanTram(tyLe)}%) — cần tối thiểu ${canCo} ý tưởng để đạt ngưỡng 90%`);
+    conThieu.push(`Bén rễ (đã quy đổi) mới ${soBenRe}/${chiTieu} (${chuanHoaPhanTram(tyLe)}%) — cần tối thiểu ${canCo} điểm để đạt ngưỡng 90%`);
   }
 
   const dat = thieuDieuKien.length === 0 && datNguongBenRe;
@@ -270,7 +271,7 @@ export function kpiLanhDao(nhom: NhomViTriKpi, dv: DauVaoLanhDao): KetQuaKpi {
     // Dưới ngưỡng quy 0 điểm — KHÔNG tính theo tỷ lệ đạt được
     phanTramHoanThanh: dat ? chuanHoaPhanTram(tyLe) : 0,
     dienGiai: [
-      `Chỉ tiêu Bén rễ: ${soBenRe}/${chiTieu}${nhom === 'tp_pgd' ? ` (2 × ${dv.soCanBo} cán bộ)` : ` (theo ${dv.soCanBo} cán bộ)`}`,
+      `Chỉ tiêu Bén rễ (đã quy đổi): ${soBenRe}/${chiTieu}${nhom === 'tp_pgd' ? ` (2 × ${dv.soCanBo} cán bộ)` : ` (theo ${dv.soCanBo} cán bộ)`}`,
       `Điều kiện cần: ${thieuDieuKien.length === 0 ? 'ĐẠT' : 'CHƯA ĐẠT'}`,
     ],
     conThieu,

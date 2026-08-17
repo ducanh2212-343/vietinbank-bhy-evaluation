@@ -168,9 +168,20 @@ describe('kiemTraDieuKienCan — điều kiện cần theo văn bản', () => {
 });
 
 describe('kpiLanhDao — dưới ngưỡng quy 0 điểm (không tính theo tỷ lệ)', () => {
-  it('TP đầu mối 15 CB: đủ điều kiện cần + 14/15 Bén rễ (93%) → đạt', () => {
+  it('TP đầu mối 15 CB: chỉ tiêu Bén rễ tính theo QUY ĐỔI — 12 Bén rễ + 2 Vươn cành = 16 điểm', () => {
     const kq = kpiLanhDao('tp_dau_moi', {
-      demPhong: dem({ 'Bén rễ': 12, 'Vươn cành': 2 }), // 14 ý tưởng từ Bén rễ trở lên
+      demPhong: dem({ 'Bén rễ': 12, 'Vươn cành': 2 }), // 12×1 + 2×2 = 16 điểm quy đổi
+      demBanThan: dem({ 'Vươn cành': 1 }),
+      soCanBo: 15,
+    });
+    expect(kq.dat).toBe(true);
+    expect(kq.phanTramHoanThanh).toBeCloseTo(106.7, 1);
+  });
+
+  it('đủ điều kiện cần + 14/15 điểm quy đổi (93%) → đạt', () => {
+    // 11 Bén rễ + 1 Lan tỏa = 11 + 3 = 14 điểm; Lan tỏa cũng thỏa điều kiện cần của phòng
+    const kq = kpiLanhDao('tp_dau_moi', {
+      demPhong: dem({ 'Bén rễ': 11, 'Lan tỏa': 1 }),
       demBanThan: dem({ 'Vươn cành': 1 }),
       soCanBo: 15,
     });
@@ -178,9 +189,10 @@ describe('kpiLanhDao — dưới ngưỡng quy 0 điểm (không tính theo tỷ
     expect(kq.phanTramHoanThanh).toBeCloseTo(93.3, 1);
   });
 
-  it('Bén rễ 13/15 = 86,7% < 90% → 0 điểm dù điều kiện cần đã đạt', () => {
+  it('quy đổi 13/15 = 86,7% < 90% → 0 điểm dù điều kiện cần đã đạt', () => {
+    // 10 Bén rễ + 1 Lan tỏa = 13 điểm quy đổi
     const kq = kpiLanhDao('tp_dau_moi', {
-      demPhong: dem({ 'Bén rễ': 11, 'Vươn cành': 2 }),
+      demPhong: dem({ 'Bén rễ': 10, 'Lan tỏa': 1 }),
       demBanThan: dem({ 'Vươn cành': 1 }),
       soCanBo: 15,
     });
@@ -199,9 +211,9 @@ describe('kpiLanhDao — dưới ngưỡng quy 0 điểm (không tính theo tỷ
     expect(kq.phanTramHoanThanh).toBe(0);
   });
 
-  it('TP PGD 10 CB → chỉ tiêu 20 Bén rễ, đạt 20 và đủ điều kiện → 100%', () => {
+  it('TP PGD 10 CB → chỉ tiêu 20, đạt 12 Bén rễ + 4 Vươn cành = 20 điểm quy đổi → 100%', () => {
     const kq = kpiLanhDao('tp_pgd', {
-      demPhong: dem({ 'Bén rễ': 16, 'Vươn cành': 4 }),
+      demPhong: dem({ 'Bén rễ': 12, 'Vươn cành': 4 }), // 12×1 + 4×2 = 20
       demBanThan: dem({ 'Vươn cành': 1 }),
       soCanBo: 10,
     });
@@ -220,13 +232,25 @@ describe('kpiLanhDao — dưới ngưỡng quy 0 điểm (không tính theo tỷ
     expect(diemKpiTheoTrongSo(kq)).toBe(39); // trọng số 30 × 130%
   });
 
-  it('ý tưởng đã lên Vươn cành/Lan tỏa được tính là đã qua Bén rễ', () => {
+  it('quy đổi áp cho cả chỉ tiêu lãnh đạo: 1 Lan tỏa + 2 Bén rễ = 5 điểm', () => {
     const kq = kpiLanhDao('pho_phong', {
-      demPhong: dem({ 'Lan tỏa': 5 }),
+      demPhong: dem({ 'Lan tỏa': 1, 'Bén rễ': 2 }), // 3 + 2 = 5 điểm / chỉ tiêu 5
       demBanThan: dem({ 'Lan tỏa': 1 }),
       soCanBo: 5,
     });
     expect(kq.dat).toBe(true);
     expect(kq.phanTramHoanThanh).toBe(100);
+  });
+
+  it('Vươn cành nhân đôi trên đường lãnh đạo — 3 Vươn cành = 6 điểm, vượt chỉ tiêu 5', () => {
+    // Cách đếm cũ (mỗi ý tưởng cấp cao = 1) chỉ ra 3/5 = 60% → 0 điểm; bản
+    // quy đổi ra 6/5 = 120% — khác biệt đủ lớn để khóa bằng test riêng.
+    const kq = kpiLanhDao('pho_phong', {
+      demPhong: dem({ 'Vươn cành': 3 }),
+      demBanThan: dem({ 'Vươn cành': 1 }),
+      soCanBo: 5,
+    });
+    expect(kq.dat).toBe(true);
+    expect(kq.phanTramHoanThanh).toBe(120);
   });
 });

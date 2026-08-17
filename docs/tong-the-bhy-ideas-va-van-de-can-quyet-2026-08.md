@@ -63,6 +63,17 @@ không* — mỗi ý tưởng mang hai thuộc tính tách rời:
 Nguyên tắc **thưởng lũy kế**: công nhận cấp nào thì trả bù các cấp dưới ý tưởng
 chưa từng được thưởng; khóa `UNIQUE(idea_id, cap_do)` chống trả trùng.
 
+### Hệ số quy đổi KPI (Phụ lục 1B — áp cho toàn bộ chỉ tiêu)
+
+**1 Vươn cành = 2 Bén rễ · 1 Lan tỏa = 3 Bén rễ · Ươm mầm không quy đổi.**
+
+Hệ số này là của riêng KPI, khác phép cộng dồn tiền thưởng lũy kế: quy đổi
+*nhân số đếm* cho chỉ tiêu, lũy kế *cộng đơn giá* các cấp chưa từng nhận —
+hai phép tính không được lẫn vào nhau. Chốt vận hành 16/08/2026: hệ số áp cho
+**cả chỉ tiêu Bén rễ của lãnh đạo** (bản trước đếm mỗi ý tưởng cấp cao chỉ
+bằng 1 «đã qua Bén rễ» — đếm thiếu, thiệt cho lãnh đạo có ý tưởng được nhân
+rộng; module `ideaKpi.ts` đã sửa và khóa bằng test).
+
 ### Bốn màn hình
 
 | Đường dẫn | Dành cho | Việc chính |
@@ -98,7 +109,27 @@ KPI** — không phải vì kém mà vì phòng đó tuần ấy gửi nhiều h
 tuần-phòng vượt trần**, **9/11 phòng** từng vượt, tuần cao nhất một phòng gửi 15.
 
 Ngay cả khi mọi phòng dùng hết hạn mức suốt 31 tuần, cả Chi nhánh chỉ đạt 682 —
-**bằng 57% chỉ tiêu**. Với cơ chế hiện tại, chỉ tiêu KPI ĐMST *không thể hoàn thành*.
+**bằng 57% chỉ tiêu**. Với cơ chế hiện tại, **đường Ươm mầm** của chỉ tiêu KPI
+ĐMST *không thể hoàn thành*.
+
+### Quy đổi có cứu được không?
+
+Chỉ tiêu cán bộ có **hai đường độc lập**, và trần tuần chỉ chặn một:
+
+| Đường | Chỉ tiêu | Trần tuần | Hiện trạng toàn CN |
+|---|---|---|---|
+| Ươm mầm | 12 ý tưởng/người → 1.200 | **Bị chặn** (tối đa 682) | 0 điểm KPI Ươm mầm |
+| Bén rễ quy đổi | 6 điểm/người → 600 điểm | **Không chịu trần** | 20/600 điểm (3,3%) |
+
+Đường thứ hai nhờ hệ số quy đổi mà có đòn bẩy thật: 1 Lan tỏa = 3 điểm, nên về
+lý thuyết 200 ý tưởng Lan tỏa (hoặc 300 Vươn cành, hoặc hỗn hợp) là đủ 600 điểm
+toàn Chi nhánh mà không đụng trần nào. Nhưng hiện trạng của đường này: 20 điểm
+đều là Bén rễ nạp sẵn, **chưa có Vươn cành hay Lan tỏa nào để nhân hệ số**, và
+mỗi điểm đều phải qua phê duyệt (Giám đốc, TSC hoặc Hội đồng).
+
+Kết luận chính xác hơn: mâu thuẫn trần–chỉ tiêu (A1) nằm ở đường Ươm mầm; đường
+quy đổi là lối thoát hợp lệ theo đúng văn bản, nhưng chỉ quay khi Hội đồng bắt
+đầu chấm — thêm một lý do để mở đợt chấm đầu tiên (A3) sớm.
 
 ## 4. Nhóm A — Vấn đề chặn, cần quyết trước khi chốt KPI
 
