@@ -35,11 +35,14 @@ export type AiChonUomMam = 'tcth' | 'truong_phong';
 export interface CauHinhIdeas {
   aiChonUomMam: AiChonUomMam;
   tranUomMamMoiTuan: number;
+  /** false = tạm dừng áp KPI: trần tuần không chặn, màn hình bỏ ngôn ngữ KPI */
+  dangApKpi: boolean;
 }
 
 const CAU_HINH_MAC_DINH: CauHinhIdeas = {
   aiChonUomMam: 'tcth',
   tranUomMamMoiTuan: TRAN_UOM_MAM_MOI_TUAN,
+  dangApKpi: false,
 };
 
 /**
@@ -53,13 +56,14 @@ export function useCauHinhIdeas() {
     queryFn: async (): Promise<CauHinhIdeas> => {
       const { data: row, error } = await supabase
         .from('bhy_ideas_cau_hinh')
-        .select('ai_chon_uom_mam, tran_uom_mam_moi_tuan')
+        .select('ai_chon_uom_mam, tran_uom_mam_moi_tuan, dang_ap_kpi')
         .maybeSingle();
       if (error) throw error;
       if (!row) return CAU_HINH_MAC_DINH;
       return {
         aiChonUomMam: (row.ai_chon_uom_mam === 'truong_phong' ? 'truong_phong' : 'tcth'),
         tranUomMamMoiTuan: row.tran_uom_mam_moi_tuan ?? TRAN_UOM_MAM_MOI_TUAN,
+        dangApKpi: !!row.dang_ap_kpi,
       };
     },
   });

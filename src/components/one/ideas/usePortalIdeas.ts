@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import type { IdeaApplicability, IdeaDevLevel, IdeaLevel } from '@/data/one/ideasConfig';
+import type { IdeaApplicability, IdeaDevLevel, IdeaLevel, IdeaLinhVuc } from '@/data/one/ideasConfig';
 
 // BHY Ideas — bảng portal_ideas + portal_idea_votes + portal_idea_comments.
 // Tổng thích/không thích = seed (mang từ Firebase) + đếm bảng votes.
@@ -19,6 +19,8 @@ export interface PortalIdea {
   departmentName: string;
   hasDemo: boolean;
   proposer: string;
+  /** Nhóm lĩnh vực — null khi chưa phân nhóm (134 ý tưởng cũ) */
+  linhVuc: IdeaLinhVuc | null;
   developmentLevel: IdeaDevLevel;
   councilProposal: boolean;
   customValues: Record<string, unknown> | null;
@@ -46,6 +48,7 @@ export interface IdeaInput {
   departmentName: string;
   hasDemo: boolean;
   proposer: string;
+  linhVuc?: IdeaLinhVuc | null;
   /** Chủ sở hữu phiếu — quản trị nhập hộ thì gán về đúng cán bộ đề xuất, mặc định là chính mình */
   createdBy?: string;
 }
@@ -120,6 +123,7 @@ export function usePortalIdeas() {
         departmentName: r.department_name,
         hasDemo: r.has_demo,
         proposer: r.proposer,
+        linhVuc: (r.linh_vuc as IdeaLinhVuc | null) ?? null,
         developmentLevel: r.development_level as IdeaDevLevel,
         councilProposal: r.council_proposal,
         customValues: (r.custom_values as Record<string, unknown> | null) ?? null,
@@ -153,6 +157,7 @@ export function usePortalIdeas() {
       department_name: input.departmentName,
       has_demo: input.hasDemo,
       proposer: input.proposer.trim(),
+      linh_vuc: input.linhVuc ?? null,
       created_by: input.createdBy ?? user?.id,
       creator_email: user?.email ?? null,
     });
@@ -176,6 +181,7 @@ export function usePortalIdeas() {
       department_name: input.departmentName,
       has_demo: input.hasDemo,
       proposer: input.proposer.trim(),
+      linh_vuc: input.linhVuc ?? null,
     }).eq('id', id);
     if (error) {
       toast.error(`Không cập nhật được ý tưởng: ${error.message}`);

@@ -4,7 +4,9 @@ import {
   IDEA_DEPARTMENTS,
   IDEA_DEV_LEVELS,
   IDEA_DEV_LEVEL_EMOJI,
+  IDEA_LINH_VUC_INFO,
   type IdeaDevLevel,
+  type IdeaLinhVuc,
 } from '@/data/one/ideasConfig';
 import { useIdeaComments, type PortalIdea } from './usePortalIdeas';
 
@@ -156,6 +158,14 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, isContentAdmin, myName, onEdi
             <span className="px-2 py-0.5 text-slate-500 font-bold text-2xs bg-slate-100 rounded-md">
               {idea.applicability}
             </span>
+            {idea.linhVuc && (
+              <span
+                className={`px-2 py-0.5 rounded-full text-2xs font-bold border ${IDEA_LINH_VUC_INFO[idea.linhVuc as IdeaLinhVuc]?.mau ?? ''}`}
+                title={`Nhóm lĩnh vực: ${idea.linhVuc}`}
+              >
+                {IDEA_LINH_VUC_INFO[idea.linhVuc as IdeaLinhVuc]?.emoji} {idea.linhVuc}
+              </span>
+            )}
             {idea.councilProposal && (
               <span className="px-2 py-0.5 rounded-full text-2xs font-black uppercase tracking-wider bg-violet-100 text-violet-700 border border-violet-200">
                 🏛️ Đề xuất Hội đồng

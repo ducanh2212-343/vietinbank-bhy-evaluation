@@ -373,6 +373,7 @@ export type Database = {
       bhy_ideas_cau_hinh: {
         Row: {
           ai_chon_uom_mam: string
+          dang_ap_kpi: boolean
           id: boolean
           nguoi_sua: string | null
           tran_uom_mam_moi_tuan: number
@@ -380,6 +381,7 @@ export type Database = {
         }
         Insert: {
           ai_chon_uom_mam?: string
+          dang_ap_kpi?: boolean
           id?: boolean
           nguoi_sua?: string | null
           tran_uom_mam_moi_tuan?: number
@@ -387,6 +389,7 @@ export type Database = {
         }
         Update: {
           ai_chon_uom_mam?: string
+          dang_ap_kpi?: boolean
           id?: boolean
           nguoi_sua?: string | null
           tran_uom_mam_moi_tuan?: number
@@ -2951,6 +2954,7 @@ export type Database = {
           proposer: string
           seed_likes: number
           smp_cap_nhat_luc: string | null
+          linh_vuc: string | null
           smp_ma: string | null
           smp_trang_thai: string
           seed_unlikes: number
@@ -2976,6 +2980,7 @@ export type Database = {
           proposer: string
           seed_likes?: number
           smp_cap_nhat_luc?: string | null
+          linh_vuc?: string | null
           smp_ma?: string | null
           smp_trang_thai?: string
           seed_unlikes?: number
@@ -3001,6 +3006,7 @@ export type Database = {
           proposer?: string
           seed_likes?: number
           smp_cap_nhat_luc?: string | null
+          linh_vuc?: string | null
           smp_ma?: string | null
           smp_trang_thai?: string
           seed_unlikes?: number
@@ -5031,6 +5037,23 @@ export type Database = {
       bhy_ideas_duoc_chon_uom_mam: {
         Args: { _phong_ideas: string }
         Returns: boolean
+      }
+      bhy_ideas_buc_tranh_linh_vuc: {
+        Args: never
+        Returns: {
+          linh_vuc: string
+          so_y_tuong: number
+          so_phong: number
+          uom_mam: number
+          ben_re: number
+          vuon_canh: number
+          lan_toa: number
+          moi_nhat: string | null
+        }[]
+      }
+      bhy_ideas_dat_linh_vuc: {
+        Args: { _idea_id: string; _linh_vuc: string | null }
+        Returns: Json
       }
       bhy_ideas_diem_danh_gia: {
         Args: { _phieu: Json }

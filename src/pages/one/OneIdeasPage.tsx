@@ -4,6 +4,7 @@ import { OnePageShell } from '@/components/one/OnePageShell';
 import { EditableText } from '@/components/one/AdminEditableContext';
 import { IdeaHero, IdeaTabs } from '@/components/one/ideas/IdeaNav';
 import { IdeaStatsPanel } from '@/components/one/ideas/IdeaStatsPanel';
+import { BucTranhLinhVuc } from '@/components/one/ideas/BucTranhLinhVuc';
 import { useViecCuaGiamDoc } from '@/components/one/ideas/useBenRe';
 import { useLaGiamDoc } from '@/components/one/ideas/useUomMamPicker';
 import { useIdeaCouncilAccess } from '@/components/one/ideas/council/useIdeaCouncil';
@@ -100,7 +101,7 @@ function NoiDungIdeas() {
       accent: '#0057B8',
       ten: 'Vận hành & phê duyệt',
       dinhVi: 'Ban Giám đốc · Phòng TCTH',
-      moTa: 'Phê duyệt cấp Bén rễ, chốt ý tưởng vào hạn mức ghi nhận KPI, đối chiếu kết quả Trụ sở chính và theo dõi ngân sách khen thưởng.',
+      moTa: 'Đánh giá và trình Giám đốc công nhận Bén rễ, chốt ghi nhận Ươm mầm, phân nhóm lĩnh vực, đối chiếu kết quả Trụ sở chính và theo dõi ngân sách.',
       nhanNut: 'Vào màn vận hành',
       hien: isAdmin || isManager || isPgd,
     },
@@ -217,7 +218,18 @@ function NoiDungIdeas() {
       )}
 
       {/* ---------------------------------------------------------------- */}
-      {/* 4. CÁCH HỘI ĐỒNG CHẤM — nêu luật chơi để người gửi biết đường viết */}
+      {/* 4. BỨC TRANH SÁNG TẠO — Chi nhánh đang sáng tạo về chuyện gì      */}
+      {/* ---------------------------------------------------------------- */}
+      {!isGuest && (
+        <section className="border-y border-slate-200 bg-gradient-to-r from-[#F0F6FA] via-white to-[#FFF8E7]">
+          <div className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+            <BucTranhLinhVuc chuaPhanNhom={ideas.filter(i => !i.linhVuc).length} />
+          </div>
+        </section>
+      )}
+
+      {/* ---------------------------------------------------------------- */}
+      {/* 5. CÁCH HỘI ĐỒNG CHẤM — nêu luật chơi để người gửi biết đường viết */}
       {/* ---------------------------------------------------------------- */}
       <section className="border-t border-slate-200 bg-slate-50/70">
         <div className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
