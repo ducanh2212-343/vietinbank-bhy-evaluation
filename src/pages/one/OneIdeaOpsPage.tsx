@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { ShieldCheck } from 'lucide-react';
 import { IdeaHero, IdeaTabs } from '@/components/one/ideas/IdeaNav';
 import { GiamDocDuyetBenRe } from '@/components/one/ideas/GiamDocDuyetBenRe';
+import { TrinhBenRePanel } from '@/components/one/ideas/TrinhBenRePanel';
 import { UomMamPicker } from '@/components/one/ideas/UomMamPicker';
 import { SmpTracker } from '@/components/one/ideas/SmpTracker';
 import { IdeaBudgetExport } from '@/components/one/ideas/IdeaBudgetExport';
@@ -18,9 +19,10 @@ import { usePortalIdeas } from '@/components/one/ideas/usePortalIdeas';
  *
  * Gom về đây theo đúng thứ tự công việc thật trong tuần:
  *   1. Giám đốc duyệt hồ sơ Bén rễ đang chờ (việc gấp nhất, để trên cùng)
- *   2. TCTH chốt ý tưởng Ươm mầm trong hạn mức tuần
- *   3. Đối chiếu kết quả TSC trên SMP
- *   4. Nhìn ngân sách và kết xuất số liệu
+ *   2. TCTH đánh giá ý tưởng theo phiếu 5 câu rồi trình Giám đốc
+ *   3. TCTH chốt ý tưởng Ươm mầm trong hạn mức tuần
+ *   4. Đối chiếu kết quả TSC trên SMP
+ *   5. Nhìn ngân sách và kết xuất số liệu
  * Quản trị đợt chấm Hội đồng vẫn ở màn Hội đồng vì gắn liền với phiếu chấm.
  */
 export default function OneIdeaOpsPage() {
@@ -55,6 +57,13 @@ export default function OneIdeaOpsPage() {
             <div className="rounded-2xl border border-sky-200 bg-white p-4 shadow-sm empty:hidden sm:p-6">
               <GiamDocDuyetBenRe />
             </div>
+
+            {/* TCTH đánh giá và trình — nguồn của hàng chờ phía trên */}
+            {isAdmin && (
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+                <TrinhBenRePanel />
+              </div>
+            )}
 
             <div className="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm empty:hidden sm:p-6">
               <UomMamPicker />

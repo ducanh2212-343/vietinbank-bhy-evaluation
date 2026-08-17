@@ -2690,6 +2690,10 @@ export type Database = {
           phong: string
           round_id: string | null
           trang_thai: string
+          danh_gia_tcth: Json | null
+          diem_tcth: number | null
+          danh_gia_gd: Json | null
+          diem_gd: number | null
           chot_voi_tp: boolean
           chot_voi_tp_luc: string | null
           chot_voi_tp_ghi_chu: string | null
@@ -2714,6 +2718,10 @@ export type Database = {
           phong: string
           round_id?: string | null
           trang_thai?: string
+          danh_gia_tcth?: Json | null
+          diem_tcth?: number | null
+          danh_gia_gd?: Json | null
+          diem_gd?: number | null
           chot_voi_tp?: boolean
           chot_voi_tp_luc?: string | null
           chot_voi_tp_ghi_chu?: string | null
@@ -2738,6 +2746,10 @@ export type Database = {
           phong?: string
           round_id?: string | null
           trang_thai?: string
+          danh_gia_tcth?: Json | null
+          diem_tcth?: number | null
+          danh_gia_gd?: Json | null
+          diem_gd?: number | null
           chot_voi_tp?: boolean
           chot_voi_tp_luc?: string | null
           chot_voi_tp_ghi_chu?: string | null
@@ -5020,8 +5032,17 @@ export type Database = {
         Args: { _phong_ideas: string }
         Returns: boolean
       }
+      bhy_ideas_diem_danh_gia: {
+        Args: { _phieu: Json }
+        Returns: number
+      }
       bhy_ideas_gd_duyet_ben_re: {
-        Args: { _idea_id: string; _dong_y: boolean; _ghi_chu?: string | null }
+        Args: {
+          _idea_id: string
+          _dong_y: boolean
+          _ghi_chu?: string | null
+          _danh_gia?: Json | null
+        }
         Returns: Json
       }
       bhy_ideas_la_giam_doc: {
@@ -5033,8 +5054,26 @@ export type Database = {
         Returns: boolean
       }
       bhy_ideas_trinh_ben_re: {
-        Args: { _idea_id: string; _ghi_chu?: string | null }
+        Args: { _idea_id: string; _ghi_chu?: string | null; _danh_gia?: Json | null }
         Returns: Json
+      }
+      bhy_ideas_ung_vien_ben_re: {
+        Args: never
+        Returns: {
+          idea_id: string
+          title: string
+          proposer: string
+          phong: string
+          current_status: string | null
+          proposed_solution: string | null
+          expected_benefits: string | null
+          created_at: string
+          development_level: string
+          smp_trang_thai: string
+          da_tung_tu_choi: boolean
+          danh_gia_tcth: Json | null
+          diem_tcth: number | null
+        }[]
       }
       bhy_ideas_viec_cua_giam_doc: {
         Args: never
@@ -5043,12 +5082,16 @@ export type Database = {
           title: string
           proposer: string
           expected_benefits: string | null
+          current_status: string | null
+          proposed_solution: string | null
           phong: string
           created_at: string
           trinh_luc: string
           nguoi_trinh: string | null
           ghi_chu: string | null
           so_ngay_cho: number
+          danh_gia_tcth: Json | null
+          diem_tcth: number | null
         }[]
       }
       bhy_ideas_so_cb_tinh_kpi: {

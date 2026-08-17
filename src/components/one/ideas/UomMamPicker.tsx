@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { CheckCircle2, Circle, Handshake, Info, Send, Sprout } from 'lucide-react';
+import { CheckCircle2, Circle, Handshake, Info, Sprout } from 'lucide-react';
 import { HO_SO_PHONG_SANG_IDEAS } from '@/data/one/ideasConfig';
 import {
   LY_DO_THUONG_LABELS,
@@ -15,7 +15,6 @@ import {
   useUomMamActions,
   useYTuongTheoTuan,
 } from './useUomMamPicker';
-import { useBenReActions } from './useBenRe';
 
 // Màn "Chốt ý tưởng Ươm mầm" — tính năng theo chỉ đạo 08/2026: phòng nào vượt
 // trần thì phải LỰA CHỌN ý tưởng nào được ghi nhận, để KPI đo lường chuẩn.
@@ -50,7 +49,6 @@ export const UomMamPicker: React.FC = () => {
 
   const { items, isLoading } = useYTuongTheoTuan(phongIdeas, tuan);
   const { chon, boChon } = useUomMamActions(phongIdeas, tuan);
-  const { trinh } = useBenReActions();
 
   // Quyền CHỐT theo công tắc cấu hình — trùng đúng hàm gác của CSDL
   const tcthGiuQuyen = cauHinh.aiChonUomMam === 'tcth';
@@ -248,17 +246,6 @@ export const UomMamPicker: React.FC = () => {
                   </span>
                 )}
 
-                {/* Bén rễ trình liên tục: TCTH trình thẳng từ đây, khỏi đi màn khác */}
-                {isAdmin && (
-                  <button
-                    type="button"
-                    onClick={() => void trinh(it.id)}
-                    title="Trình Giám đốc xem xét công nhận cấp Bén rễ"
-                    className="px-2 py-1 rounded-lg bg-[#005a9c]/10 hover:bg-[#005a9c]/20 text-[#005a9c] font-bold text-2xs flex items-center gap-1 cursor-pointer transition-all"
-                  >
-                    <Send className="w-3 h-3" /> Trình Bén rễ
-                  </button>
-                )}
               </div>
             );
           })}

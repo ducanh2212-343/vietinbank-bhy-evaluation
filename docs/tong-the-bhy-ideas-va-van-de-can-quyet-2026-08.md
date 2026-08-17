@@ -63,6 +63,27 @@ không* — mỗi ý tưởng mang hai thuộc tính tách rời:
 Nguyên tắc **thưởng lũy kế**: công nhận cấp nào thì trả bù các cấp dưới ý tưởng
 chưa từng được thưởng; khóa `UNIQUE(idea_id, cap_do)` chống trả trùng.
 
+### Phiếu đánh giá tham khảo cấp Bén rễ
+
+TCTH trình Giám đốc kèm **phiếu 5 câu, thang 0–2, tối đa 10 điểm** — phiếu này
+chính là báo cáo trình. Giám đốc đọc phiếu của TCTH, có thể chấm phiếu của mình
+theo cùng bộ câu hỏi để hai bên đối chiếu, rồi quyết.
+
+| | Hội đồng (Vươn cành · Lan tỏa) | Bén rễ |
+|---|---|---|
+| Thang | 5 tiêu chí × 1–5 | 5 câu × 0–2 |
+| Ngưỡng | TB ≥ 3,5 · ≥ 4,0 | Tổng ≥ 6/10 (60%) |
+| Điều kiện chặn | An toàn rủi ro ≥ 3/5 | Câu Đ4 «không tạo rủi ro mới» ≥ 1 |
+| Đòi hỏi | **ĐÃ** có kết quả | **CÓ THỂ** làm thử |
+
+Thang đặt thấp hơn có chủ ý: quy chế định nghĩa Bén rễ là *"có khả năng thử
+nghiệm tại Chi nhánh"*, chưa đòi bằng chứng kết quả. Lấy thang Hội đồng áp cho
+Bén rễ thì gần như không ý tưởng nào qua được cửa đầu tiên.
+
+**Đây là phiếu tham khảo, không phải bộ gác:** hệ thống chỉ nêu gợi ý (Nên
+trình · Cân nhắc · Chưa nên trình). TCTH vẫn trình được ý tưởng điểm thấp nếu có
+lý do, Giám đốc vẫn quyết theo thẩm quyền bất kể điểm bao nhiêu.
+
 ### Hệ số quy đổi KPI (Phụ lục 1B — áp cho toàn bộ chỉ tiêu)
 
 **1 Vươn cành = 2 Bén rễ · 1 Lan tỏa = 3 Bén rễ · Ươm mầm không quy đổi.**
