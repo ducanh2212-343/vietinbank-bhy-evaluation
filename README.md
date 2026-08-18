@@ -105,7 +105,8 @@ gộp vào app này thành cổng thông tin thương hiệu sau đăng nhập:
   `20260803100000` + `20260803110000` **đã áp** (29/07/2026). Hết hạn: client
   đăng xuất + RLS chặn (không cần cron).
 - **Cấp tài khoản khách KHÔNG cần email (08/2026):** màn `/quan-tri-khach` chỉ hỏi
-  **tên đăng nhập** + **tên công ty / tên người dùng** + hạn truy cập rồi cấp ngay;
+  **tên công ty / tên người dùng** + hạn truy cập rồi cấp ngay (tên đăng nhập tự suy
+  ra từ tên, sửa tay được);
   Supabase Auth vẫn cần một email nên hệ thống ghép email nội bộ
   `<user>@khach.343skill.com` (`src/lib/taiKhoanKhach.ts`, bản máy chủ
   `supabase/functions/_shared/guestLogin.ts` — hai bản phải giữ y hệt). Ô đăng nhập
@@ -113,7 +114,12 @@ gộp vào app này thành cổng thông tin thương hiệu sau đăng nhập:
   `type="email"`. Địa chỉ nội bộ không có hòm thư thật ⇒ khách **không** tự đặt lại
   mật khẩu qua email: nút «Mật khẩu» ở bảng danh sách gọi `create-guest-user` với
   `reset_password: true` để cấp lại mật khẩu tạm. Tài khoản khách cấp trước đợt này
-  (email thật) vẫn dùng và gia hạn bình thường.
+  (email thật) vẫn dùng và gia hạn bình thường. **Đã áp lên project
+  `whlysprzsguehxmrjwha` ngày 18/08/2026**: migration `man_hinh_mo_cho_khach` +
+  `create-guest-user` phiên bản 3. Bài học vận hành: màn hình lên bản mới mà edge
+  function còn bản cũ thì lỗi trả về là "Email không hợp lệ" trên một màn hình
+  không có ô email nào — `dienGiaiLoiKhach()` (`src/lib/invokeError.ts`) nay dịch
+  lỗi ấy thành đúng việc phải làm.
 - **Màn hình mở cho khách chọn theo từng tài khoản (08/2026):** cột
   `guest_access.allowed_screens` (migration `20260927090000_man_hinh_mo_cho_khach.sql`)
   giữ mã các màn hình đối tác được vào; danh mục 9 màn hình nằm ở

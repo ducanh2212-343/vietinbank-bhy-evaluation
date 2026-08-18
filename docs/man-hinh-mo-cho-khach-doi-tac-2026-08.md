@@ -17,8 +17,13 @@ Nay mỗi tài khoản khách mang danh sách riêng — Phòng TCTH tự tick �
 Đối tác chỉ cần **tên đăng nhập** và **tên công ty / tên người dùng** — cấp ngay
 tại chỗ trong buổi làm việc, không phải chờ xin email.
 
-- Gõ tên đăng nhập kiểu `cong.ty.abc`; gõ có dấu cũng được, hệ thống tự chuyển
-  ("Công ty ABC" → `cong.ty.abc`) và hiện ngay chuỗi khách sẽ gõ ở ô đăng nhập.
+- Chỉ cần gõ ô **tên công ty / tên người dùng** — tên đăng nhập tự suy ra
+  ("Công ty ABC" → `cong.ty.abc`), muốn khác thì gõ đè lên ô tên đăng nhập.
+- Ô tên đăng nhập báo ngay tại chỗ nếu chưa hợp lệ (nút Cấp khóa lại), và cảnh
+  báo nếu tên ấy đã cấp cho khách khác — bấm tiếp là **cập nhật** khách đó chứ
+  không tạo tài khoản thứ hai.
+- Cấp xong hiện **thẻ bàn giao** gồm cả tên đăng nhập lẫn mật khẩu tạm, có nút
+  «Sao chép cả hai» để dán vào tin nhắn gửi đối tác.
 - Bấm «Tạo tài khoản khách» là có mật khẩu tạm — **chỉ hiện một lần**, đọc/gửi
   cho đối tác qua kênh an toàn; họ phải đổi ở lần đăng nhập đầu.
 - Khách đăng nhập bằng đúng tên đăng nhập ấy (không có `@`) ở trang đăng nhập.
@@ -75,6 +80,21 @@ từ giao diện.
    `guest_access_allowed_screens_hop_le` — thêm cùng mã.
 4. Nếu màn đó đọc bảng/bucket đang khóa theo `is_staff()`, mở thêm policy theo
    `guest_screen_allowed(auth.uid(), '<mã>')`.
+
+## Khi màn hình báo lỗi lạ
+
+Màn hình chạy trên Vercel còn cơ sở dữ liệu và edge function nằm trên Supabase —
+**merge code xong chưa phải là xong**. Ngày 18/08 tài khoản `lylyai` không cấp
+được chính vì thế: edge function trên máy chủ còn bản cũ (bản cũ bắt buộc email)
+nên nó chặn ngay, mà màn hình thì đã bỏ ô email từ lâu.
+
+Hai việc phải làm mỗi khi đợt này đổi:
+
+1. Áp migration trong `supabase/migrations/` (thiếu → lỗi có chữ `allowed_screens`).
+2. Deploy lại `create-guest-user` (thiếu → lỗi có chữ `Email không hợp lệ`).
+
+`dienGiaiLoiKhach()` trong `src/lib/invokeError.ts` nhận diện đúng hai lỗi ấy và
+in thẳng việc phải làm ra màn hình, để lần sau không phải đoán.
 
 Test `src/lib/__tests__/manHinhKhach.test.ts` và phần phân quyền của
 `src/lib/__tests__/navigation.test.ts` khóa các quy ước trên — quên bước nào là

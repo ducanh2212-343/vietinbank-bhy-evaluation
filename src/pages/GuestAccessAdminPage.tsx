@@ -15,6 +15,7 @@ import { Copy, UserPlus, Clock, Ban, RefreshCw, MonitorCog, KeyRound } from 'luc
 import {
   MIEN_TAI_KHOAN_KHACH, chuanHoaTenDangNhap, nhanDangNhap, tenDangNhapHopLe,
 } from '@/lib/taiKhoanKhach';
+import { dienGiaiLoiKhach } from '@/lib/invokeError';
 import {
   MAN_HINH_KHACH, MAN_HINH_KHACH_MAC_DINH, chuanHoaManHinhKhach, type MaManHinhKhach,
 } from '@/lib/manHinhKhach';
@@ -107,9 +108,13 @@ export default function GuestAccessAdminPage() {
     note: '',
     expires_at: defaultExpiry(),
   });
+  // Tên đăng nhập tự suy từ tên công ty cho tới khi quản trị viên tự sửa nó —
+  // đa số trường hợp chỉ phải gõ MỘT ô rồi bấm cấp.
+  const [tuDatTen, setTuDatTen] = useState(false);
   const [screens, setScreens] = useState<MaManHinhKhach[]>(MAN_HINH_KHACH_MAC_DINH);
   const [creating, setCreating] = useState(false);
-  const [tempPassword, setTempPassword] = useState<string | null>(null);
+  // Thẻ bàn giao sau khi cấp xong: tên đăng nhập + mật khẩu tạm, đọc cho đối tác
+  const [banGiao, setBanGiao] = useState<{ username: string; password: string } | null>(null);
   // Khách đang sửa quyền xem (null = hộp thoại đóng)
   const [dangSua, setDangSua] = useState<GuestRow | null>(null);
   const [screensSua, setScreensSua] = useState<MaManHinhKhach[]>([]);
@@ -117,7 +122,7 @@ export default function GuestAccessAdminPage() {
   // Khách đang được cấp lại mật khẩu (khóa nút để không bấm hai lần)
   const [dangCapLai, setDangCapLai] = useState<string | null>(null);
 
-  const { data: guests = [], isLoading } = useQuery({
+  const { data: guests = [], isLoading, error: loiDanhSach } = useQuery({
     queryKey: ['guest-access-list'],
     queryFn: async (): Promise<GuestRow[]> => {
       const { data, error } = await supabase
@@ -134,7 +139,18 @@ export default function GuestAccessAdminPage() {
   // Xem trước đúng chuỗi khách sẽ gõ ở ô đăng nhập — quản trị viên gõ "Công ty ABC"
   // thì phải thấy ngay nó thành "cong.ty.abc", không để họ đọc mật khẩu tạm cho
   // đối tác rồi mới phát hiện tên đăng nhập khác thứ mình gõ.
-  const tenDangNhapDaChuan = chuanHoaTenDangNhap(form.username);
+  const tenDangNhapDaChuan = chuanHoaTenDangNhap(tuDatTen ? form.username : form.display_name);
+  const tenHopLe = tenDangNhapHopLe(tenDangNhapDaChuan);
+  // Tên đăng nhập đã cấp cho ai chưa — báo TRƯỚC khi bấm, vì bấm tiếp là ghi đè
+  // hồ sơ của chính khách đó chứ không tạo tài khoản thứ hai
+  const khachTrung = guests.find((g) => nhanDangNhap(g.email) === tenDangNhapDaChuan);
+  const loiTen = !form.username && !form.display_name
+    ? ''
+    : !tenDangNhapDaChuan
+    ? 'Chưa có ký tự nào dùng được — cần chữ không dấu hoặc số'
+    : !tenHopLe
+    ? 'Cần 3–32 ký tự, bắt đầu bằng chữ hoặc số'
+    : '';
 
   // Gọi edge function; bóc message thật từ body vì supabase-js gói lỗi non-2xx
   const goiEdge = async (body: Record<string, unknown>) => {
@@ -151,17 +167,13 @@ export default function GuestAccessAdminPage() {
   };
 
   const handleCreate = async () => {
-    const username = chuanHoaTenDangNhap(form.username);
-    if (!tenDangNhapHopLe(username)) {
-      toast.error('Tên đăng nhập cần 3–32 ký tự: chữ không dấu, số, dấu chấm, gạch ngang hoặc gạch dưới');
-      return;
-    }
-    if (!form.display_name.trim() || !form.expires_at) {
-      toast.error('Cần tên công ty / tên người dùng và hạn truy cập');
+    const username = tenDangNhapDaChuan;
+    if (!tenDangNhapHopLe(username) || !form.display_name.trim() || !form.expires_at) {
+      toast.error('Cần tên công ty / tên người dùng, tên đăng nhập hợp lệ và hạn truy cập');
       return;
     }
     setCreating(true);
-    setTempPassword(null);
+    setBanGiao(null);
     try {
       const data = await goiEdge({
         username,
@@ -172,12 +184,13 @@ export default function GuestAccessAdminPage() {
         expires_at: new Date(`${form.expires_at}T23:59:00`).toISOString(),
       });
       toast.success(data.message);
-      if (data.temp_password) setTempPassword(data.temp_password);
+      if (data.temp_password) setBanGiao({ username, password: data.temp_password });
       setForm({ username: '', display_name: '', note: '', expires_at: defaultExpiry() });
+      setTuDatTen(false);
       setScreens(MAN_HINH_KHACH_MAC_DINH);
       refresh();
     } catch (e) {
-      toast.error(`Không tạo được tài khoản khách: ${e instanceof Error ? e.message : e}`);
+      toast.error(`Không tạo được tài khoản khách: ${dienGiaiLoiKhach(e)}`);
     } finally {
       setCreating(false);
     }
@@ -186,7 +199,7 @@ export default function GuestAccessAdminPage() {
   // Khách không có email thật để tự đặt lại mật khẩu — Phòng TCTH cấp lại tại đây
   const capLaiMatKhau = async (g: GuestRow) => {
     setDangCapLai(g.user_id);
-    setTempPassword(null);
+    setBanGiao(null);
     try {
       const data = await goiEdge({
         // Gọi bằng ĐÚNG email đang lưu (kể cả email thật của khách cấp trước
@@ -200,9 +213,9 @@ export default function GuestAccessAdminPage() {
         reset_password: true,
       });
       toast.success(data.message);
-      if (data.temp_password) setTempPassword(data.temp_password);
+      if (data.temp_password) setBanGiao({ username: nhanDangNhap(g.email), password: data.temp_password });
     } catch (e) {
-      toast.error(`Không cấp lại được mật khẩu: ${e instanceof Error ? e.message : e}`);
+      toast.error(`Không cấp lại được mật khẩu: ${dienGiaiLoiKhach(e)}`);
     } finally {
       setDangCapLai(null);
     }
@@ -257,19 +270,29 @@ export default function GuestAccessAdminPage() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
-              <Label htmlFor="guest-username">Tên đăng nhập *</Label>
-              <Input id="guest-username" placeholder="cong.ty.abc" value={form.username} autoComplete="off"
-                onChange={(e) => setForm({ ...form, username: e.target.value })} />
-              <p className="mt-1 text-xs text-muted-foreground">
-                {tenDangNhapDaChuan
-                  ? <>Khách đăng nhập bằng <code className="font-mono">{tenDangNhapDaChuan}</code></>
-                  : 'Chữ không dấu, số, dấu chấm/gạch — khách gõ đúng chuỗi này ở ô đăng nhập'}
-              </p>
-            </div>
-            <div>
               <Label htmlFor="guest-name">Tên công ty / tên người dùng *</Label>
               <Input id="guest-name" placeholder="Công ty TNHH ABC — Nguyễn Văn A" value={form.display_name}
                 onChange={(e) => setForm({ ...form, display_name: e.target.value })} />
+              <p className="mt-1 text-xs text-muted-foreground">Gõ ô này là đủ — tên đăng nhập tự suy ra.</p>
+            </div>
+            <div>
+              <Label htmlFor="guest-username">Tên đăng nhập *</Label>
+              <Input id="guest-username" placeholder="tu-suy-tu-ten-cong-ty" autoComplete="off"
+                value={tuDatTen ? form.username : tenDangNhapDaChuan}
+                onChange={(e) => { setTuDatTen(true); setForm({ ...form, username: e.target.value }); }} />
+              {loiTen ? (
+                <p className="mt-1 text-xs text-destructive">{loiTen}</p>
+              ) : khachTrung ? (
+                <p className="mt-1 text-xs text-amber-700 dark:text-amber-500">
+                  Đã cấp cho «{khachTrung.display_name}» — bấm Cấp là CẬP NHẬT tài khoản đó, không tạo thêm.
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {tenDangNhapDaChuan
+                    ? <>Khách gõ <code className="font-mono">{tenDangNhapDaChuan}</code> ở ô đăng nhập</>
+                    : 'Chữ không dấu, số, dấu chấm/gạch'}
+                </p>
+              )}
             </div>
             <div>
               <Label htmlFor="guest-expiry">Hạn truy cập (hết ngày) *</Label>
@@ -291,19 +314,33 @@ export default function GuestAccessAdminPage() {
             <ChonManHinh chon={screens} onChange={setScreens} idPrefix="cap-moi" />
           </div>
 
-          <Button onClick={handleCreate} disabled={creating}>
-            {creating ? 'Đang tạo...' : 'Tạo tài khoản khách'}
+          <Button onClick={handleCreate} disabled={creating || !tenHopLe || !form.display_name.trim()}>
+            {creating ? 'Đang tạo...' : khachTrung ? 'Cập nhật tài khoản khách' : 'Tạo tài khoản khách'}
           </Button>
 
-          {tempPassword && (
-            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-500/40 text-sm flex items-center gap-3 flex-wrap">
-              <span className="font-semibold">Mật khẩu tạm (chỉ hiện một lần):</span>
-              <code className="font-mono font-bold">{tempPassword}</code>
-              <Button size="sm" variant="outline" onClick={() => {
-                navigator.clipboard.writeText(tempPassword);
-                toast.success('Đã sao chép mật khẩu tạm');
+          {banGiao && (
+            /* Thẻ bàn giao: đối tác cần CẢ HAI thứ mới đăng nhập được, nên bày
+               cạnh nhau và sao chép một lần — trước đây chỉ hiện mật khẩu, quản
+               trị viên phải tự nhớ tên đăng nhập vừa đặt. */
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-500/40 dark:bg-amber-950/30">
+              <p className="font-semibold">Gửi cho đối tác (chỉ hiện một lần):</p>
+              <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
+                <div>
+                  <span className="text-xs text-muted-foreground">Tên đăng nhập</span>
+                  <div className="font-mono font-bold">{banGiao.username}</div>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground">Mật khẩu tạm</span>
+                  <div className="font-mono font-bold">{banGiao.password}</div>
+                </div>
+              </div>
+              <Button size="sm" variant="outline" className="mt-3" onClick={() => {
+                navigator.clipboard.writeText(
+                  `Tên đăng nhập: ${banGiao.username}\nMật khẩu tạm: ${banGiao.password}`,
+                );
+                toast.success('Đã sao chép tên đăng nhập và mật khẩu tạm');
               }}>
-                <Copy className="w-3.5 h-3.5 mr-1" /> Sao chép
+                <Copy className="w-3.5 h-3.5 mr-1" /> Sao chép cả hai
               </Button>
             </div>
           )}
@@ -317,6 +354,10 @@ export default function GuestAccessAdminPage() {
         <CardContent>
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Đang tải...</p>
+          ) : loiDanhSach ? (
+            /* Không nuốt lỗi thành "chưa có tài khoản nào": danh sách trống vì
+               lỗi và danh sách trống thật là hai chuyện khác hẳn nhau */
+            <p className="text-sm text-destructive">Không đọc được danh sách khách: {dienGiaiLoiKhach(loiDanhSach)}</p>
           ) : guests.length === 0 ? (
             <p className="text-sm text-muted-foreground">Chưa có tài khoản khách nào.</p>
           ) : (

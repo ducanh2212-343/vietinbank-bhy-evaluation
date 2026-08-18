@@ -17,3 +17,24 @@ export function invokeErrorMessage(e: unknown, fallbackPrefix: string): string {
   if (isSessionExpiredError(e)) return SESSION_EXPIRED_MESSAGE;
   return `${fallbackPrefix}: ${e instanceof Error ? e.message : String(e)}`;
 }
+
+/**
+ * Dịch lỗi của màn «Quản trị tài khoản khách» sang câu người quản trị làm được gì.
+ *
+ * Ca thật 18/08: màn hình đã lên bản mới nhưng edge function trên Supabase vẫn
+ * là bản cũ (bắt buộc email) — người dùng chỉ thấy "Email không hợp lệ" trong
+ * khi màn hình còn chẳng có ô email nào, không đoán nổi phải làm gì.
+ */
+export function dienGiaiLoiKhach(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e);
+  if (/email/i.test(msg) && /hợp lệ|invalid/i.test(msg)) {
+    return `${msg} — nhiều khả năng edge function «create-guest-user» trên máy chủ còn là bản cũ (bản cũ bắt buộc email). Cần deploy lại bản mới.`;
+  }
+  if (/allowed_screens/i.test(msg)) {
+    return `${msg} — cơ sở dữ liệu chưa có cột «allowed_screens». Cần áp migration 20260927090000_man_hinh_mo_cho_khach.sql.`;
+  }
+  if (/Failed to send a request|fetch/i.test(msg)) {
+    return `${msg} — không gọi được máy chủ. Kiểm tra kết nối mạng rồi thử lại.`;
+  }
+  return msg;
+}

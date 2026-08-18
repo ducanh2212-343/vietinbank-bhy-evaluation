@@ -85,10 +85,11 @@ describe('Quản trị tài khoản khách — chọn màn hình được xem', 
 
   it('gửi tên đăng nhập đã chuẩn hóa và đúng danh sách màn hình đã tick', async () => {
     dung();
-    fireEvent.change(screen.getByLabelText('Tên đăng nhập *'), { target: { value: 'Công ty ABC' } });
     fireEvent.change(screen.getByLabelText('Tên công ty / tên người dùng *'), {
       target: { value: 'Công ty TNHH ABC' },
     });
+    // Quản trị viên tự sửa tên đăng nhập thì bản tự suy phải nhường chỗ
+    fireEvent.change(screen.getByLabelText('Tên đăng nhập *'), { target: { value: 'Công ty ABC' } });
     fireEvent.click(screen.getByLabelText(/Cây Ký Ức/));
     fireEvent.click(screen.getByLabelText(/Bắc Hưng Yên Connect/));
     fireEvent.click(screen.getByRole('button', { name: 'Tạo tài khoản khách' }));
@@ -99,13 +100,40 @@ describe('Quản trị tài khoản khách — chọn màn hình được xem', 
     expect(daGhi.invoke!.allowed_screens).toEqual(['trang-chu', 'tin-tuc', 'sharing', 'cay-ky-uc']);
   });
 
-  it('chặn tên đăng nhập không hợp lệ ngay trước khi gọi máy chủ', async () => {
+  it('tên đăng nhập không hợp lệ: khóa nút và nói rõ lý do ngay tại ô', () => {
     dung();
-    fireEvent.change(screen.getByLabelText('Tên đăng nhập *'), { target: { value: 'ab' } });
     fireEvent.change(screen.getByLabelText('Tên công ty / tên người dùng *'), { target: { value: 'ABC' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Tạo tài khoản khách' }));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Tạo tài khoản khách' })).toBeEnabled());
+    fireEvent.change(screen.getByLabelText('Tên đăng nhập *'), { target: { value: 'ab' } });
+    expect(screen.getByText('Cần 3–32 ký tự, bắt đầu bằng chữ hoặc số')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Tạo tài khoản khách' })).toBeDisabled();
     expect(daGhi.invoke).toBeNull();
+  });
+
+  it('tên đăng nhập tự suy từ tên công ty — chỉ phải gõ một ô', async () => {
+    dung();
+    fireEvent.change(screen.getByLabelText('Tên công ty / tên người dùng *'), { target: { value: 'Ly Ly' } });
+    expect(screen.getByLabelText('Tên đăng nhập *')).toHaveValue('ly.ly');
+    fireEvent.click(screen.getByRole('button', { name: 'Tạo tài khoản khách' }));
+    await waitFor(() => expect(daGhi.invoke).not.toBeNull());
+    expect(daGhi.invoke!.username).toBe('ly.ly');
+  });
+
+  it('cảnh báo khi tên đăng nhập đã cấp cho khách khác — bấm tiếp là ghi đè', async () => {
+    dung();
+    await screen.findByText('Nguyễn Văn A');
+    fireEvent.change(screen.getByLabelText('Tên đăng nhập *'), { target: { value: 'cong.ty.abc' } });
+    expect(screen.getByText(/Đã cấp cho «Nguyễn Văn A»/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cập nhật tài khoản khách' })).toBeInTheDocument();
+  });
+
+  it('thẻ bàn giao hiện CẢ tên đăng nhập lẫn mật khẩu tạm', async () => {
+    dung();
+    fireEvent.change(screen.getByLabelText('Tên công ty / tên người dùng *'), { target: { value: 'Ly Ly' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Tạo tài khoản khách' }));
+    const the = await screen.findByText('Gửi cho đối tác (chỉ hiện một lần):');
+    const khoi = the.closest('div')!;
+    expect(within(khoi).getByText('ly.ly')).toBeInTheDocument();
+    expect(within(khoi).getByText('abc')).toBeInTheDocument();
   });
 
   it('cấp lại mật khẩu cho khách quên mật khẩu — gọi bằng đúng email đang lưu', async () => {
@@ -118,6 +146,7 @@ describe('Quản trị tài khoản khách — chọn màn hình được xem', 
     expect(daGhi.invoke!.email).toBe('cong.ty.abc@khach.343skill.com');
     // Mật khẩu tạm hiện đúng một lần để quản trị viên đọc cho đối tác
     expect(await screen.findByText('abc')).toBeInTheDocument();
+    expect(screen.getByText('Gửi cho đối tác (chỉ hiện một lần):')).toBeInTheDocument();
   });
 
   it('bảng danh sách bày tên đăng nhập, không bày email nội bộ', async () => {
