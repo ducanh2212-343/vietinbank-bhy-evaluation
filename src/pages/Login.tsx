@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { CORE_VALUES as VALUES } from '@/lib/coreValues';
 import { markActivity } from '@/lib/idleSession';
+import { chuanHoaTenDangNhap, emailTuTenDangNhap } from '@/lib/taiKhoanKhach';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -17,7 +18,12 @@ export default function Login() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    // Khách đối tác được cấp tài khoản KHÔNG cần email: họ gõ đúng tên đăng nhập
+    // (không có @), ở đây ghép về email nội bộ mà Supabase Auth cần. Cán bộ gõ
+    // email thật thì giữ nguyên.
+    const dinhDanh = email.trim();
+    const taiKhoan = dinhDanh.includes('@') ? dinhDanh : emailTuTenDangNhap(chuanHoaTenDangNhap(dinhDanh));
+    const { error } = await supabase.auth.signInWithPassword({ email: taiKhoan, password });
     setLoading(false);
     if (error) {
       toast({ title: 'Đăng nhập thất bại', description: error.message, variant: 'destructive' });
@@ -104,13 +110,16 @@ export default function Login() {
 
             <form onSubmit={handleLogin} className="mt-5 space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Mã đăng nhập / Email</Label>
+                <Label htmlFor="email">Tên đăng nhập / Email</Label>
                 <Input
                   id="email"
-                  type="email"
+                  /* KHÔNG dùng type="email": khách đối tác đăng nhập bằng tên
+                     đăng nhập không có @, trình duyệt sẽ chặn ngay ở ô nhập */
+                  type="text"
+                  inputMode="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="bhy001@343skill.com"
+                  placeholder="bhy001@343skill.com hoặc cong.ty.abc"
                   autoComplete="username"
                   required
                   className="bg-background"
