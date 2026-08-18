@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { nhanDangNhap } from '@/lib/taiKhoanKhach';
 import { KeyRound, ShieldCheck, ShieldAlert } from 'lucide-react';
 
 export default function ChangePassword() {
@@ -141,7 +142,7 @@ export default function ChangePassword() {
             <div className="rounded-lg border bg-muted/40 p-3 text-sm text-muted-foreground flex gap-2">
               <ShieldCheck className="w-4 h-4 mt-0.5 flex-shrink-0" />
               <div>
-                Tài khoản đang đăng nhập: <span className="font-medium text-foreground">{user?.email}</span>
+                Tài khoản đang đăng nhập: <span className="font-medium text-foreground">{nhanDangNhap(user?.email)}</span>
               </div>
             </div>
 

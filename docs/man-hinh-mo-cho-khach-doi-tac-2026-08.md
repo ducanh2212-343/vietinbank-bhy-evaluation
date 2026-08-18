@@ -12,6 +12,22 @@ cứng trong cây điều hướng (`guestVisible` của `src/lib/navigation.ts`
 Nay mỗi tài khoản khách mang danh sách riêng — Phòng TCTH tự tick ở màn
 **Quản trị tài khoản khách** (`/quan-tri-khach`), có hiệu lực ngay.
 
+## Cấp tài khoản: không cần email
+
+Đối tác chỉ cần **tên đăng nhập** và **tên công ty / tên người dùng** — cấp ngay
+tại chỗ trong buổi làm việc, không phải chờ xin email.
+
+- Gõ tên đăng nhập kiểu `cong.ty.abc`; gõ có dấu cũng được, hệ thống tự chuyển
+  ("Công ty ABC" → `cong.ty.abc`) và hiện ngay chuỗi khách sẽ gõ ở ô đăng nhập.
+- Bấm «Tạo tài khoản khách» là có mật khẩu tạm — **chỉ hiện một lần**, đọc/gửi
+  cho đối tác qua kênh an toàn; họ phải đổi ở lần đăng nhập đầu.
+- Khách đăng nhập bằng đúng tên đăng nhập ấy (không có `@`) ở trang đăng nhập.
+- **Khách quên mật khẩu:** họ không có hòm thư thật nên không tự đặt lại được —
+  bấm nút **Mật khẩu** ở bảng danh sách để cấp lại mật khẩu tạm.
+
+Tài khoản khách cấp trước đợt này (bằng email thật) vẫn đăng nhập, gia hạn, sửa
+màn hình và cấp lại mật khẩu bình thường.
+
 ## Cách dùng
 
 **Khi cấp tài khoản mới:** ô «Màn hình khách được xem» nằm ngay dưới phần thông

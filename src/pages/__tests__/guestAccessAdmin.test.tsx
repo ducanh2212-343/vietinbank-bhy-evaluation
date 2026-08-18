@@ -12,7 +12,7 @@ import GuestAccessAdminPage from '../GuestAccessAdminPage';
 
 const khach = {
   user_id: 'g1',
-  email: 'doitac@congty.vn',
+  email: 'cong.ty.abc@khach.343skill.com',
   display_name: 'Nguyễn Văn A',
   organization: 'Công ty TNHH ABC',
   note: null,
@@ -59,6 +59,19 @@ describe('Quản trị tài khoản khách — chọn màn hình được xem', 
     daGhi.invoke = null;
   });
 
+  it('không hỏi email — chỉ tên đăng nhập và tên công ty / tên người dùng', () => {
+    dung();
+    expect(screen.queryByLabelText(/Email/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Tên đăng nhập *')).toBeInTheDocument();
+    expect(screen.getByLabelText('Tên công ty / tên người dùng *')).toBeInTheDocument();
+  });
+
+  it('xem trước đúng chuỗi khách sẽ gõ khi quản trị viên gõ tên có dấu', () => {
+    dung();
+    fireEvent.change(screen.getByLabelText('Tên đăng nhập *'), { target: { value: 'Công ty ABC' } });
+    expect(screen.getByText('cong.ty.abc')).toBeInTheDocument();
+  });
+
   it('ô cấp mới tick sẵn bộ mặc định và không cho tắt Trang chủ', () => {
     dung();
     expect(screen.getByLabelText(/Tin tức nội bộ/)).toBeChecked();
@@ -70,16 +83,48 @@ describe('Quản trị tài khoản khách — chọn màn hình được xem', 
     expect(trangChu).toBeDisabled();
   });
 
-  it('gửi đúng danh sách màn hình đã tick khi cấp tài khoản', async () => {
+  it('gửi tên đăng nhập đã chuẩn hóa và đúng danh sách màn hình đã tick', async () => {
     dung();
-    fireEvent.change(screen.getByLabelText('Email *'), { target: { value: 'doitac@congty.vn' } });
-    fireEvent.change(screen.getByLabelText('Tên hiển thị *'), { target: { value: 'Nguyễn Văn A' } });
+    fireEvent.change(screen.getByLabelText('Tên đăng nhập *'), { target: { value: 'Công ty ABC' } });
+    fireEvent.change(screen.getByLabelText('Tên công ty / tên người dùng *'), {
+      target: { value: 'Công ty TNHH ABC' },
+    });
     fireEvent.click(screen.getByLabelText(/Cây Ký Ức/));
     fireEvent.click(screen.getByLabelText(/Bắc Hưng Yên Connect/));
     fireEvent.click(screen.getByRole('button', { name: 'Tạo tài khoản khách' }));
 
     await waitFor(() => expect(daGhi.invoke).not.toBeNull());
+    expect(daGhi.invoke!.username).toBe('cong.ty.abc');
+    expect(daGhi.invoke!.email).toBeUndefined();
     expect(daGhi.invoke!.allowed_screens).toEqual(['trang-chu', 'tin-tuc', 'sharing', 'cay-ky-uc']);
+  });
+
+  it('chặn tên đăng nhập không hợp lệ ngay trước khi gọi máy chủ', async () => {
+    dung();
+    fireEvent.change(screen.getByLabelText('Tên đăng nhập *'), { target: { value: 'ab' } });
+    fireEvent.change(screen.getByLabelText('Tên công ty / tên người dùng *'), { target: { value: 'ABC' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Tạo tài khoản khách' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Tạo tài khoản khách' })).toBeEnabled());
+    expect(daGhi.invoke).toBeNull();
+  });
+
+  it('cấp lại mật khẩu cho khách quên mật khẩu — gọi bằng đúng email đang lưu', async () => {
+    dung();
+    const hang = (await screen.findByText('Nguyễn Văn A')).closest('tr')!;
+    fireEvent.click(within(hang).getByRole('button', { name: /Mật khẩu/ }));
+
+    await waitFor(() => expect(daGhi.invoke).not.toBeNull());
+    expect(daGhi.invoke!.reset_password).toBe(true);
+    expect(daGhi.invoke!.email).toBe('cong.ty.abc@khach.343skill.com');
+    // Mật khẩu tạm hiện đúng một lần để quản trị viên đọc cho đối tác
+    expect(await screen.findByText('abc')).toBeInTheDocument();
+  });
+
+  it('bảng danh sách bày tên đăng nhập, không bày email nội bộ', async () => {
+    dung();
+    const hang = (await screen.findByText('Nguyễn Văn A')).closest('tr')!;
+    expect(within(hang).getByText('cong.ty.abc')).toBeInTheDocument();
+    expect(within(hang).queryByText(/khach\.343skill\.com/)).not.toBeInTheDocument();
   });
 
   it('bảng danh sách bày đúng màn hình từng khách đang được xem', async () => {

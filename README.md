@@ -104,6 +104,16 @@ gộp vào app này thành cổng thông tin thương hiệu sau đăng nhập:
   bài Kho Dữ Liệu (tự sao chép ảnh sang `shared/…`). Migrations
   `20260803100000` + `20260803110000` **đã áp** (29/07/2026). Hết hạn: client
   đăng xuất + RLS chặn (không cần cron).
+- **Cấp tài khoản khách KHÔNG cần email (08/2026):** màn `/quan-tri-khach` chỉ hỏi
+  **tên đăng nhập** + **tên công ty / tên người dùng** + hạn truy cập rồi cấp ngay;
+  Supabase Auth vẫn cần một email nên hệ thống ghép email nội bộ
+  `<user>@khach.343skill.com` (`src/lib/taiKhoanKhach.ts`, bản máy chủ
+  `supabase/functions/_shared/guestLogin.ts` — hai bản phải giữ y hệt). Ô đăng nhập
+  (`src/pages/Login.tsx`) nhận chuỗi không có `@` và tự ghép miền, nên đã đổi khỏi
+  `type="email"`. Địa chỉ nội bộ không có hòm thư thật ⇒ khách **không** tự đặt lại
+  mật khẩu qua email: nút «Mật khẩu» ở bảng danh sách gọi `create-guest-user` với
+  `reset_password: true` để cấp lại mật khẩu tạm. Tài khoản khách cấp trước đợt này
+  (email thật) vẫn dùng và gia hạn bình thường.
 - **Màn hình mở cho khách chọn theo từng tài khoản (08/2026):** cột
   `guest_access.allowed_screens` (migration `20260927090000_man_hinh_mo_cho_khach.sql`)
   giữ mã các màn hình đối tác được vào; danh mục 9 màn hình nằm ở

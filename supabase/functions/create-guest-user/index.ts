@@ -1,10 +1,16 @@
 // create-guest-user — tạo/gia hạn tài khoản KHÁCH ĐỐI TÁC (role guest, có thời hạn).
 // Guest KHÔNG có dòng profiles (vô hình với dữ liệu nhân sự); quyền xem do RLS
 // (guest_active + is_shared_with_guests) quyết định. Caller: tcth_admin/system_admin.
+//
+// KHÔNG CẦN EMAIL: đối tác chỉ cần một tên đăng nhập, hệ thống ghép email nội bộ
+// `<user>@khach.343skill.com` cho Supabase Auth (không có hòm thư thật phía sau).
+// Vì thế khách không tự đặt lại mật khẩu qua email được — cờ `reset_password`
+// cho Phòng TCTH cấp lại mật khẩu tạm ngay tại màn quản trị.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { HttpError, requireRole } from "../_shared/auth.ts";
 import { STAFF_CREATOR_ROLES } from "../_shared/roles.ts";
 import { type GuestScreen, sanitizeGuestScreens } from "../_shared/guestScreens.ts";
+import { emailFromUsername, isValidUsername, normalizeUsername } from "../_shared/guestLogin.ts";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -18,7 +24,10 @@ function generatePassword(length = 16): string {
 }
 
 interface GuestInput {
-  email: string;
+  /** Tên đăng nhập do quản trị viên đặt — cách cấp tài khoản hiện nay */
+  username?: string;
+  /** Email thật; chỉ còn dùng cho các tài khoản khách cấp trước 08/2026 */
+  email?: string;
   display_name: string;
   organization?: string;
   note?: string;
@@ -26,6 +35,8 @@ interface GuestInput {
   expires_at: string;
   /** Mã các màn hình cổng ONE được mở; bỏ trống → bộ mặc định */
   allowed_screens?: string[];
+  /** Sinh lại mật khẩu tạm cho tài khoản khách đã có (khách quên mật khẩu) */
+  reset_password?: boolean;
 }
 
 Deno.serve(async (req) => {
@@ -37,10 +48,25 @@ Deno.serve(async (req) => {
     const caller = await requireRole(req, STAFF_CREATOR_ROLES);
     const body = (await req.json()) as GuestInput;
 
-    const email = (body.email ?? "").trim().toLowerCase();
+    // Tên đăng nhập là đường chính; email chỉ nhận cho tài khoản cũ đã cấp bằng
+    // email thật (gia hạn/sửa màn hình vẫn phải chạy được cho họ).
+    let email: string;
+    if (body.username !== undefined && body.username !== null && body.username !== "") {
+      const username = normalizeUsername(String(body.username));
+      if (!isValidUsername(username)) {
+        throw new HttpError(
+          "Tên đăng nhập cần 3–32 ký tự, chỉ gồm chữ không dấu, số, dấu chấm, gạch ngang hoặc gạch dưới",
+          400,
+        );
+      }
+      email = emailFromUsername(username);
+    } else {
+      email = (body.email ?? "").trim().toLowerCase();
+      if (!EMAIL_RE.test(email)) throw new HttpError("Cần tên đăng nhập cho tài khoản khách", 400);
+    }
+
     const displayName = (body.display_name ?? "").trim();
     const expiresAt = new Date(body.expires_at ?? "");
-    if (!EMAIL_RE.test(email)) throw new HttpError("Email không hợp lệ", 400);
     if (!displayName) throw new HttpError("Thiếu tên hiển thị", 400);
     if (!(expiresAt instanceof Date) || isNaN(expiresAt.getTime()) || expiresAt <= new Date()) {
       throw new HttpError("Hạn truy cập phải là thời điểm trong tương lai", 400);
@@ -66,7 +92,17 @@ Deno.serve(async (req) => {
         .eq("user_id", userId)
         .maybeSingle();
       if (roleRow && roleRow.role !== "guest") {
-        throw new HttpError("Email này thuộc tài khoản cán bộ — không thể cấp quyền khách", 400);
+        throw new HttpError("Tên đăng nhập này thuộc tài khoản cán bộ — không thể cấp quyền khách", 400);
+      }
+      // Khách không có email thật để tự đặt lại mật khẩu: quản trị viên cấp lại
+      // mật khẩu tạm, khách buộc phải đổi ở lần đăng nhập kế tiếp.
+      if (body.reset_password) {
+        tempPassword = generatePassword();
+        const { error: pwErr } = await admin.auth.admin.updateUserById(userId, {
+          password: tempPassword,
+          user_metadata: { ...existing.user_metadata, must_change_password: true },
+        });
+        if (pwErr) throw new HttpError(`Không cấp lại được mật khẩu: ${pwErr.message}`, 400);
       }
     } else {
       tempPassword = generatePassword();
@@ -112,6 +148,7 @@ Deno.serve(async (req) => {
           expires_at: expiresAt.toISOString(),
           allowed_screens: allowedScreens,
           created_new: createdNew,
+          reset_password: !!body.reset_password,
         },
       });
     } catch (e) {
@@ -124,6 +161,8 @@ Deno.serve(async (req) => {
       temp_password: tempPassword,
       message: createdNew
         ? "Đã tạo tài khoản khách. Gửi mật khẩu tạm cho đối tác qua kênh an toàn — họ sẽ phải đổi khi đăng nhập lần đầu."
+        : body.reset_password
+        ? "Đã cấp lại mật khẩu tạm cho tài khoản khách."
         : "Đã cập nhật hạn truy cập cho tài khoản khách hiện có.",
     });
   } catch (error) {
