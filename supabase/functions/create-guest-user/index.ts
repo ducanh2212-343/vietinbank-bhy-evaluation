@@ -158,6 +158,10 @@ Deno.serve(async (req) => {
     return jsonResponse({
       user_id: userId,
       created_new: createdNew,
+      // Trả lại đúng chuỗi khách sẽ gõ ở ô đăng nhập — màn quản trị đọc cho đối
+      // tác cùng mật khẩu tạm, không phải tự nhớ mình vừa đặt tên gì
+      username: email.split("@")[0],
+      login_email: email,
       temp_password: tempPassword,
       message: createdNew
         ? "Đã tạo tài khoản khách. Gửi mật khẩu tạm cho đối tác qua kênh an toàn — họ sẽ phải đổi khi đăng nhập lần đầu."
