@@ -4,6 +4,7 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { HttpError, requireRole } from "../_shared/auth.ts";
 import { STAFF_CREATOR_ROLES } from "../_shared/roles.ts";
+import { type GuestScreen, sanitizeGuestScreens } from "../_shared/guestScreens.ts";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -23,6 +24,8 @@ interface GuestInput {
   note?: string;
   /** ISO timestamp — hạn truy cập */
   expires_at: string;
+  /** Mã các màn hình cổng ONE được mở; bỏ trống → bộ mặc định */
+  allowed_screens?: string[];
 }
 
 Deno.serve(async (req) => {
@@ -42,6 +45,9 @@ Deno.serve(async (req) => {
     if (!(expiresAt instanceof Date) || isNaN(expiresAt.getTime()) || expiresAt <= new Date()) {
       throw new HttpError("Hạn truy cập phải là thời điểm trong tương lai", 400);
     }
+
+    // Mã lạ bị loại tại đây chứ không để CHECK của bảng ném lỗi khó hiểu
+    const allowedScreens: GuestScreen[] = sanitizeGuestScreens(body.allowed_screens);
 
     const admin = caller.adminClient;
 
@@ -89,6 +95,7 @@ Deno.serve(async (req) => {
       organization: (body.organization ?? "").trim() || null,
       note: (body.note ?? "").trim() || null,
       expires_at: expiresAt.toISOString(),
+      allowed_screens: allowedScreens,
       created_by: caller.userId,
     });
     if (gaErr) throw new HttpError(`Không lưu được hồ sơ khách: ${gaErr.message}`, 400);
@@ -103,6 +110,7 @@ Deno.serve(async (req) => {
           target_email: email,
           display_name: displayName,
           expires_at: expiresAt.toISOString(),
+          allowed_screens: allowedScreens,
           created_new: createdNew,
         },
       });

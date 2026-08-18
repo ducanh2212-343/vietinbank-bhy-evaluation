@@ -1807,6 +1807,7 @@ export type Database = {
       }
       guest_access: {
         Row: {
+          allowed_screens: string[]
           created_at: string
           created_by: string
           display_name: string
@@ -1818,6 +1819,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          allowed_screens?: string[]
           created_at?: string
           created_by: string
           display_name: string
@@ -1829,6 +1831,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          allowed_screens?: string[]
           created_at?: string
           created_by?: string
           display_name?: string

@@ -1,15 +1,17 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { lienDangNhap } from '@/lib/dieuHuongDangNhap';
+import { khachXemDuoc } from '@/lib/manHinhKhach';
 
-// Các đường dẫn khách đối tác (guest) được phép vào — allowlist để fail-closed:
-// route mới thêm sau này mặc định KHÔNG mở cho guest.
-const GUEST_ALLOWED_PREFIXES = ['/one', '/doi-mat-khau'];
-
-export function isGuestAllowedPath(pathname: string): boolean {
-  return GUEST_ALLOWED_PREFIXES.some(
-    (p) => pathname === p || pathname.startsWith(p + '/'),
-  );
+/**
+ * Khách đối tác chỉ vào được các màn hình Phòng TCTH mở cho ĐÚNG tài khoản đó
+ * (guest_access.allowed_screens). Allowlist so khớp chính xác nên vẫn fail-closed:
+ * route mới thêm sau này chưa vào danh mục là chưa ai vào được.
+ */
+export function isGuestAllowedPath(pathname: string, guestScreens: readonly string[]): boolean {
+  // '/one/' và '/one' là một trang; bỏ dấu gạch cuối trước khi so khớp
+  const duongDan = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
+  return khachXemDuoc(duongDan, guestScreens);
 }
 
 /**
@@ -17,9 +19,12 @@ export function isGuestAllowedPath(pathname: string): boolean {
  * bị đưa về /one. RLS phía server vẫn là hàng rào thật — đây là lớp điều hướng.
  */
 export function GuestGate() {
-  const { isGuest } = useAuth();
+  const { isGuest, guestScreens, loading } = useAuth();
   const location = useLocation();
-  if (isGuest && !isGuestAllowedPath(location.pathname)) {
+  // Danh sách màn hình về cùng lúc với vai trò; chặn sớm khi chưa tra xong sẽ
+  // đá khách về /one rồi mới biết họ được vào trang vừa bấm.
+  if (loading) return <Outlet />;
+  if (isGuest && !isGuestAllowedPath(location.pathname, guestScreens)) {
     return <Navigate to="/one" replace />;
   }
   return <Outlet />;

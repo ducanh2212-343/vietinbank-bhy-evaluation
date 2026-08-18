@@ -24,6 +24,7 @@ const makeGopY = (overrides: Partial<GopY> = {}): GopY => ({
 
 const KHONG_QUYEN: NavPermissions = {
   isGuest: false,
+  guestScreens: [] as string[],
   isAdmin: false,
   isManager: false,
   isPgd: false,

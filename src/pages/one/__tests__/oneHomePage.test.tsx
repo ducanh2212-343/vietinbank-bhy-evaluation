@@ -13,6 +13,7 @@ const mockAuth = {
   profileId: 'p1',
   roles: ['employee'],
   isGuest: false,
+  guestScreens: [] as string[],
   guestExpiresAt: null,
   isAdmin: false,
   isManager: false,
@@ -55,6 +56,7 @@ function renderHome() {
 describe('Trang chủ BHY ONE', () => {
   beforeEach(() => {
     mockAuth.isGuest = false;
+    mockAuth.guestScreens = [];
   });
 
   it('dựng được không lỗi và hiện khối "ONE của tôi"', () => {
@@ -94,6 +96,7 @@ describe('Trang chủ BHY ONE', () => {
 
   it('khách đối tác KHÔNG thấy khối việc cá nhân và thao tác nhanh', () => {
     mockAuth.isGuest = true;
+    mockAuth.guestScreens = ['trang-chu', 'sharing'];
     renderHome();
     expect(screen.queryByText('Kanban phát triển cá nhân')).not.toBeInTheDocument();
     expect(screen.queryByText('Tôi được ghi nhận')).not.toBeInTheDocument();
@@ -102,5 +105,17 @@ describe('Trang chủ BHY ONE', () => {
     expect(screen.getAllByText(/Vun Gốc Bền Rễ/).length).toBeGreaterThan(0);
     expect(screen.queryByText('Bắc Hưng Yên 3806')).not.toBeInTheDocument();
     expect(screen.queryByText('Bộ 3 Chiêu thức')).not.toBeInTheDocument();
+  });
+
+  it('dải Bắc Hưng Yên Ways chỉ bày thẻ của màn hình đã mở cho khách đó', () => {
+    // Bấm vào thẻ chưa được mở là bị GuestGate đá về trang chủ — nên thẻ nào
+    // khách không vào được thì không bày ra
+    mockAuth.isGuest = true;
+    mockAuth.guestScreens = ['trang-chu', 'sharing', 'connect'];
+    renderHome();
+    expect(screen.getByText('Bắc Hưng Yên Sharing')).toBeInTheDocument();
+    expect(screen.getByText('Bắc Hưng Yên Connect')).toBeInTheDocument();
+    expect(screen.queryByText('Bắc Hưng Yên Quizzi')).not.toBeInTheDocument();
+    expect(screen.queryByText('Sao Xứng Đáng')).not.toBeInTheDocument();
   });
 });

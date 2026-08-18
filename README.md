@@ -92,8 +92,8 @@ gộp vào app này thành cổng thông tin thương hiệu sau đăng nhập:
   21 mục nội dung, 10 bài tư liệu, 13 ảnh trong bucket (xem
   `scripts/import-bhy-one/README.md`).
 - **Khách đối tác (guest, 07/2026):** role `guest` + bảng `guest_access`
-  (hạn theo ngày). Guest đăng nhập rơi vào `/one`, chỉ thấy nhóm sidebar BHY one,
-  ngoài allowlist `/one`, `/one/*`, `/doi-mat-khau` bị `GuestGate` đưa về `/one`
+  (hạn theo ngày). Guest đăng nhập rơi vào `/one`; ngoài các màn hình được mở cho
+  chính tài khoản đó (và `/doi-mat-khau`) đều bị `GuestGate` đưa về `/one`
   (`src/components/AdminRoute.tsx`). **RLS là hàng rào thật**: helper
   `is_guest()`/`guest_active()`/`is_staff()`; toàn bộ policy `USING (true)`
   cũ (28 bảng danh mục) đã siết về `is_staff()` — guest query PostgREST trả 0
@@ -104,6 +104,18 @@ gộp vào app này thành cổng thông tin thương hiệu sau đăng nhập:
   bài Kho Dữ Liệu (tự sao chép ảnh sang `shared/…`). Migrations
   `20260803100000` + `20260803110000` **đã áp** (29/07/2026). Hết hạn: client
   đăng xuất + RLS chặn (không cần cron).
+- **Màn hình mở cho khách chọn theo từng tài khoản (08/2026):** cột
+  `guest_access.allowed_screens` (migration `20260927090000_man_hinh_mo_cho_khach.sql`)
+  giữ mã các màn hình đối tác được vào; danh mục 9 màn hình nằm ở
+  `src/lib/manHinhKhach.ts` (bản máy chủ: `supabase/functions/_shared/guestScreens.ts`,
+  ràng buộc `CHECK` của bảng). Phòng TCTH tự tick ở `/quan-tri-khach` — cả khi cấp
+  mới lẫn sửa cho khách đang có; trước đây danh sách này đóng cứng trong cây điều
+  hướng nên mở thêm một màn cho một đối tác là mở cho **mọi** khách và phải phát
+  hành bản mới. Mặc định giữ nguyên bộ cũ (Trang chủ · Tin tức · Sharing ·
+  Connect); Trang chủ là cửa vào nên không tắt được. Cùng một danh sách chi phối
+  `GuestGate`, cây menu (`guestScreen` trên mục lá) và dải thẻ BHY Ways ở Trang chủ.
+  Riêng Cây Ký Ức còn cần RLS: helper `guest_screen_allowed()` mở
+  `ky_yeu_an_pham` + bucket `ky-yeu` đúng cho khách được bật màn này.
 
 ## Góp ý cải thiện hệ thống BHY One (08/2026)
 
