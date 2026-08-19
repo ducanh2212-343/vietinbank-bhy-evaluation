@@ -149,6 +149,49 @@ cả; đổi trạng thái qua RPC `gop_y_cap_nhat_trang_thai` (không có polic
 `20260827090000_gop_y_bhy_one.sql` **đã áp** vào project `whlysprzsguehxmrjwha`
 (05/08/2026), kèm cập nhật `types.ts`.
 
+## Lịch sử phiên bản & báo tính năng mới (08/2026)
+
+Trang **«Có gì mới»** (`/co-gi-moi`, mục đầu tiên của Trang chủ) — mở cho **mọi
+cán bộ**, không phải chỉ quản trị như màn Cài đặt trước đây. Nút hình tia sáng
+cạnh chuông thông báo mang chấm đỏ khi có mục chưa đọc; sau đợt cập nhật đáng kể
+có một hộp giới thiệu ngắn hiện đúng một lần.
+
+**Nguồn sự thật là mã nguồn, mỗi lần cập nhật một FILE**:
+`src/data/changelog/<YYYY-MM-DD>-<slug>.ts`. Thêm mục = thêm file, không sửa file
+nào đang có ⇒ hai nhánh `claude/*` chạy song song không bao giờ xung đột ở đây —
+đây chính là thứ đã làm bản cũ đứng yên từ 05/07 tới 18/08/2026 (mảng
+`VERSION_HISTORY` chèn ở đầu file, xung đột thì mục của một bên biến mất im lặng).
+
+```sh
+npm run phien-ban -- ten-ngan-khong-dau --loai=tinh-nang --phan-he=chieu-thuc-2
+```
+
+- **Số phiên bản do hệ thống tự tính** (`src/lib/lichSuPhienBan.ts`) từ trường
+  `loai` của từng mục, xếp theo `(ngày, mã)`: `lon` → X, `tinh-nang` → Y,
+  `sua-loi` → Z. Người viết KHÔNG đặt tay số phiên bản — nếu đặt tay thì hai
+  phiên làm việc song song sẽ cùng chọn một số rồi phải sửa lúc gộp nhánh.
+  Chín mục trước 07/2026 giữ số cũ bằng `phienBanCoDinh` trong file lưu trữ.
+- **PR nào đổi thứ cán bộ nhìn thấy hoặc thao tác thì phải kèm một file
+  changelog** (kể cả PR sửa lỗi — ghi `sua-loi`). Đổi tài liệu / test / cấu hình
+  build thì không cần.
+- `src/lib/__tests__/lichSuPhienBan.test.ts` canh quy ước: mã trùng, mã lệch tên
+  file, thiếu trường, tiêu đề quá 80 ký tự, mục mới đặt tay số phiên bản, số
+  phiên bản trùng… đều làm `npm run test` đỏ.
+- **Báo cho cán bộ là một NÚT BẤM, không tự động**: `/cai-dat` → «Công bố phiên
+  bản cho cán bộ» gộp mọi mục chưa báo thành MỘT tin (tách riêng nhóm chỉ dành
+  quản trị), xem trước tin, chọn có push hay không, hoặc «đánh dấu đã báo, không
+  gửi tin» cho phần tồn đọng. Chỉ `lon`/`tinh-nang` mới báo — `sua-loi` vào lịch
+  sử nhưng im lặng. Tin đi qua đúng hàng đợi `ct2_thong_bao` (mã `PHIEN_BAN`) nên
+  hưởng nguyên luật im lặng ngoài giờ và bấm vào mở thẳng `/co-gi-moi`.
+- Bảng `phien_ban_da_xem` (mốc đã xem theo người) + `phien_ban_cong_bo` (sổ đợt
+  đã báo, khoá chính là mã mục nên bấm hai lần cũng chỉ ra một tin) — migration
+  `20260928090000_lich_su_phien_ban.sql` **chưa áp** vào project
+  `whlysprzsguehxmrjwha`; chưa áp thì trang vẫn chạy, mốc đã xem rơi về trình
+  duyệt từng máy. `notify-ct2` cần deploy lại (nhánh `PHIEN_BAN`).
+
+Nghiên cứu đầy đủ (có nên push mỗi khi lên tính năng mới, ba phương án đã cân,
+chính sách kênh theo mức thay đổi): `docs/lich-su-phien-ban-va-bao-tin-moi-2026-08.md`.
+
 ## Chiêu thức 2 — Kanban 5W2H + PDCA (08/2026)
 
 Trang `/one/chieu-thuc-2` được dựng lại theo đặc tả đầy đủ

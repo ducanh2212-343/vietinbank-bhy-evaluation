@@ -6,6 +6,7 @@ import {
   CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag, GitBranch,
   ListChecks, Building2, Gavel, TrendingUp, Zap, Lightbulb,
   Home, BookOpen, Compass, Layers, Share2, CalendarDays, NotebookPen, Sprout, TreeDeciduous,
+  Sparkles as SparklesIcon,
   type LucideIcon,
 } from 'lucide-react';
 import type { MaManHinhKhach } from './manHinhKhach';
@@ -138,6 +139,17 @@ export const NAV_SECTIONS: NavSection[] = [
         keywords: ['trang chu', 'cay ky uc', 'nguon coi', 'ban sac', 'van hoa', '20 nam', 'viec cua toi'],
         // Nguồn cội & Bản sắc đã gộp vào trang chủ — giữ link cũ khỏi gãy
         extraPaths: ['/one/nguon-coi', '/one/dac-trung', '/one/chieu-thuc'],
+      },
+      {
+        // «Có gì mới» — lịch sử phiên bản viết cho cán bộ. Đặt ở Trang chủ chứ
+        // KHÔNG ở Quản trị: người cần biết hệ thống vừa có gì là 150 cán bộ
+        // dùng hằng ngày, không phải mấy tài khoản quản trị. Không mở cho khách
+        // đối tác — đây là chuyện nội bộ Chi nhánh.
+        label: 'Có gì mới',
+        icon: SparklesIcon,
+        path: '/co-gi-moi',
+        keywords: ['co gi moi', 'phien ban', 'lich su phien ban', 'tinh nang moi',
+          'cap nhat', 'nang cap', 'changelog', 'version'],
       },
       {
         // Dải tin trượt ngang nằm trên Trang chủ; đây là nơi đọc hết dòng tin.

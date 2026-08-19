@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
+    "phien-ban": "node scripts/them-muc-phien-ban.mjs",
     "test:watch": "vitest"
   },
   "dependencies": {
