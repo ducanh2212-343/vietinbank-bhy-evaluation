@@ -1,17 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import {
+  HS_DANG_CHAY,
+  hsThieuDeVaoThuThap,
+  locTrungKhachHang,
   hsChuaGhiLanNao,
   hsMucImLang,
   hsNgayImLang,
   buocKeTiep,
   canhBaoHoSo,
+  hsCacLoai,
+  hsCoLoai,
   dinhDangTien,
   docSoTien,
   hsConLaiDenHan,
+  hsCanGhiNhipNgay,
+  hsConLaiDuKien,
+  hsMocDuKien,
   hsNghenCho,
   hsQuaHan,
   hsSuaDuocSoTien,
-  hsThuocDaiDenHan,
   hsTuoiCho,
   kiemTraHoSo,
   lyDoChanChuyenHoSo,
@@ -23,7 +30,7 @@ import {
 
 const formDu: HsFormTao = {
   khach_hang: 'Công ty CP Tập đoàn Thaicom',
-  loai_ho_so: 'TAI_CAP',
+  cac_loai: ['TAI_CAP'],
   so_tien: '160000',
   ky_han: 'NGAN_HAN',
   cap_phe_duyet: 'TSC',
@@ -34,9 +41,9 @@ const formDu: HsFormTao = {
 
 const hsGoc: HoSoTinDung = {
   id: 'h1', phong: 'd1', ma_hs: 'KHDN-TD-2608-001',
-  khach_hang: 'Công ty CP Tập đoàn Thaicom', loai_ho_so: 'TAI_CAP',
+  khach_hang: 'Công ty CP Tập đoàn Thaicom', loai_ho_so: 'TAI_CAP', cac_loai: ['TAI_CAP'],
   so_tien: 160_000, ky_han: 'NGAN_HAN', cap_phe_duyet: 'TSC',
-  trang_thai: 'TRINH_LDCN', can_bo: 'p1', lanh_dao_theo_doi: 'p2',
+  trang_thai: 'TRINH_LDCN', can_bo: 'p1', lanh_dao_theo_doi: 'p2', pho_phong: null, truong_phong: null, pgd_phu_trach: null,
   ngay_nhan: '2026-08-01', han_xu_ly: '2026-08-20', ngay_den_han_ghtd: '2026-09-30',
   ngay_hoan_thanh: null, nguoi_dang_giu: 'p3', giu_tu: '2026-08-05T02:00:00Z',
   nhip_gan_nhat: null, ly_do_tu_choi: null, ghi_chu: null, nguoi_tao: 'p2',
@@ -49,6 +56,21 @@ const moc = new Date('2026-08-12T02:00:00Z');
 describe('Cổng nhập hồ sơ tín dụng', () => {
   it('đủ trường thì tạo được', () => {
     expect(kiemTraHoSo(formDu)).toEqual([]);
+  });
+
+  it('phải tích ít nhất một loại hồ sơ', () => {
+    expect(kiemTraHoSo({ ...formDu, cac_loai: [] }).some((t) => t.truong === 'cac_loai')).toBe(true);
+  });
+
+  it('tích nhiều đặc tính cùng lúc là hợp lệ', () => {
+    expect(kiemTraHoSo({ ...formDu, cac_loai: ['TAI_CAP', 'DIEU_CHINH'] })).toEqual([]);
+  });
+
+  it('bản ghi cũ chưa có cac_loai vẫn đọc ra được đặc tính chính', () => {
+    const cu = { loai_ho_so: 'DU_AN', cac_loai: [] } as Pick<HoSoTinDung, 'loai_ho_so' | 'cac_loai'>;
+    expect(hsCacLoai(cu)).toEqual(['DU_AN']);
+    expect(hsCoLoai(cu, ['DU_AN'])).toBe(true);
+    expect(hsCoLoai(cu, ['TAI_CAP'])).toBe(false);
   });
 
   it('số tiền phải là SỐ — không nhận "160 tỷ" kiểu nhãn chữ trên Miro', () => {
@@ -98,11 +120,194 @@ describe('Luật chuyển bước theo thẩm quyền', () => {
   });
 
   it('bước kế tiếp bỏ qua đúng cấp không cần trình', () => {
+    expect(buocKeTiep('DEN_HAN_GHTD', 'CHI_NHANH')).toBe('THU_THAP');
     expect(buocKeTiep('TRINH_LDP', 'PHONG')).toBe('HOAN_THIEN_GN');
     expect(buocKeTiep('TRINH_LDP', 'CHI_NHANH')).toBe('TRINH_LDCN');
     expect(buocKeTiep('TRINH_LDCN', 'CHI_NHANH')).toBe('HOAN_THIEN_GN');
     expect(buocKeTiep('TRINH_LDCN', 'TSC')).toBe('TRINH_TSC');
     expect(buocKeTiep('HOAN_THANH', 'TSC')).toBeNull();
+  });
+});
+
+describe('Cột dự kiến «Đến hạn GHTD» — một chiều, và là cổng hỏi lại 3 trường', () => {
+  const bc = { cap_phe_duyet: 'CHI_NHANH' as const, laLanhDao: false, coLyDoTuChoi: false };
+
+  it('không kéo hồ sơ đã bắt đầu ngược về cột dự kiến — kể cả lãnh đạo', () => {
+    expect(lyDoChanChuyenHoSo('THU_THAP', 'DEN_HAN_GHTD', bc)).toContain('điểm xuất phát');
+    expect(lyDoChanChuyenHoSo('TRINH_TSC', 'DEN_HAN_GHTD', { ...bc, laLanhDao: true }))
+      .toContain('điểm xuất phát');
+  });
+
+  it('từ cột dự kiến chỉ đi sang Thu thập hồ sơ — không nhảy cóc lên trình', () => {
+    expect(lyDoChanChuyenHoSo('DEN_HAN_GHTD', 'TRINH_LDP', bc)).toContain('Thu thập hồ sơ');
+    expect(lyDoChanChuyenHoSo('DEN_HAN_GHTD', 'HOAN_THIEN_GN', bc)).toContain('Thu thập hồ sơ');
+  });
+
+  it('vẫn dừng được thẳng từ cột dự kiến — khách không vay nữa là chuyện có thật', () => {
+    expect(lyDoChanChuyenHoSo('DEN_HAN_GHTD', 'TU_CHOI',
+      { ...bc, laLanhDao: true, coLyDoTuChoi: true })).toBeNull();
+  });
+
+  /*
+    Hàng rào của cổng TẠO được dời tới đây, nên phải kiểm cả hai phía: thiếu thì
+    chặn, đủ thì thông. Chỉ kiểm một phía là cách sinh ra một cổng không ai qua nổi.
+  */
+  it('thiếu số tiền / hạn xử lý / kỳ hạn thì chưa vào Thu thập được, và nói rõ thiếu gì', () => {
+    const loi = lyDoChanChuyenHoSo('DEN_HAN_GHTD', 'THU_THAP',
+      { ...bc, thieuDeVaoThuThap: ['số tiền', 'kỳ hạn'] });
+    expect(loi).toContain('số tiền');
+    expect(loi).toContain('kỳ hạn');
+    expect(loi).not.toContain('hạn xử lý');
+  });
+
+  it('điền đủ ba thì đi được', () => {
+    expect(lyDoChanChuyenHoSo('DEN_HAN_GHTD', 'THU_THAP', { ...bc, thieuDeVaoThuThap: [] })).toBeNull();
+  });
+
+  it('hsThieuDeVaoThuThap đọc đúng ô nào còn trống', () => {
+    expect(hsThieuDeVaoThuThap({ so_tien: null, han_xu_ly: null, ky_han: null }))
+      .toEqual(['số tiền', 'hạn xử lý', 'kỳ hạn']);
+    expect(hsThieuDeVaoThuThap({ so_tien: 5000, han_xu_ly: '2026-09-01', ky_han: 'NGAN_HAN' }))
+      .toEqual([]);
+    // 0 triệu không phải "đã điền" — nhưng constraint DB đã cấm số ≤ 0, nên ở
+    // đây chỉ cần phân biệt null với có giá trị
+    expect(hsThieuDeVaoThuThap({ so_tien: 5000, han_xu_ly: null, ky_han: 'NGAN_HAN' }))
+      .toEqual(['hạn xử lý']);
+  });
+});
+
+describe('Một khách — một chỗ trên bàn', () => {
+  const the = (p: Partial<HoSoTinDung> & { id: string }): HoSoTinDung => ({ ...hsGoc, ...p });
+
+  it('hồ sơ đã hoàn thành lui khỏi bảng khi khách còn thẻ dự kiến đang mở', () => {
+    const ds = [
+      the({ id: 'cu', khach_hang: 'Công ty CP Nhựa Tuệ Minh', trang_thai: 'HOAN_THANH' }),
+      the({ id: 'moi', khach_hang: 'Công ty CP Nhựa Tuệ Minh', trang_thai: 'DEN_HAN_GHTD' }),
+    ];
+    expect(locTrungKhachHang(ds).map((h) => h.id)).toEqual(['moi']);
+  });
+
+  it('cũng lui khi khách đang có hồ sơ chạy — 4 cặp kiểu này đã trùng từ trước', () => {
+    const ds = [
+      the({ id: 'cu', khach_hang: 'Công ty Mỹ Hương', trang_thai: 'HOAN_THANH' }),
+      the({ id: 'chay', khach_hang: 'Công ty Mỹ Hương', trang_thai: 'THU_THAP' }),
+    ];
+    expect(locTrungKhachHang(ds).map((h) => h.id)).toEqual(['chay']);
+  });
+
+  it('khách KHÔNG còn việc nào mở thì hồ sơ hoàn thành ở lại — đó là thành quả', () => {
+    const ds = [the({ id: 'xong', khach_hang: 'Công ty Xong Hẳn', trang_thai: 'HOAN_THANH' })];
+    expect(locTrungKhachHang(ds).map((h) => h.id)).toEqual(['xong']);
+  });
+
+  it('hai hồ sơ CÙNG MỞ của một khách đều ở lại — đó là hai việc thật, không phải trùng', () => {
+    const ds = [
+      the({ id: 'a', khach_hang: 'Công ty Hai Việc', trang_thai: 'THU_THAP' }),
+      the({ id: 'b', khach_hang: 'Công ty Hai Việc', trang_thai: 'TRINH_TSC' }),
+    ];
+    expect(locTrungKhachHang(ds).map((h) => h.id)).toEqual(['a', 'b']);
+  });
+
+  it('trùng tên nhưng KHÁC PHÒNG thì không đụng nhau — hai khách khác nhau', () => {
+    const ds = [
+      the({ id: 'p1', phong: 'd1', khach_hang: 'Công ty A', trang_thai: 'HOAN_THANH' }),
+      the({ id: 'p2', phong: 'd2', khach_hang: 'Công ty A', trang_thai: 'THU_THAP' }),
+    ];
+    expect(locTrungKhachHang(ds).map((h) => h.id)).toEqual(['p1', 'p2']);
+  });
+});
+
+describe('Cột dự kiến nhận hai loại việc — đến hạn GHTD HOẶC cần sử dụng', () => {
+  const goc = { ...hsGoc, trang_thai: 'DEN_HAN_GHTD' as const, so_tien: null, ky_han: null };
+
+  it('có ngày hạn mức thì đọc là ĐẾN HẠN', () => {
+    const h = { ...goc, ngay_den_han_ghtd: '2026-09-20', han_xu_ly: null };
+    expect(hsMocDuKien(h)).toEqual({ ngay: '2026-09-20', loai: 'HAN_MUC' });
+    expect(hsConLaiDuKien(h, moc)).toBe(39);
+  });
+
+  it('chỉ có hạn xử lý thì đọc là CẦN DÙNG — 5 thẻ Miro chưa xếp đều thuộc loại này', () => {
+    const h = { ...goc, ngay_den_han_ghtd: null, han_xu_ly: '2026-08-31' };
+    expect(hsMocDuKien(h)).toEqual({ ngay: '2026-08-31', loai: 'CAN_DUNG' });
+    expect(hsConLaiDuKien(h, moc)).toBe(19);
+  });
+
+  it('có cả hai thì hạn mức thắng — mất hạn mức đang chạy nặng hơn lỡ nhu cầu mới', () => {
+    const h = { ...goc, ngay_den_han_ghtd: '2026-09-20', han_xu_ly: '2026-08-31' };
+    expect(hsMocDuKien(h)?.loai).toBe('HAN_MUC');
+  });
+
+  it('không mốc nào thì trả null — thẻ trôi nổi, phải nói ra chứ không im lặng', () => {
+    const h = { ...goc, ngay_den_han_ghtd: null, han_xu_ly: null };
+    expect(hsMocDuKien(h)).toBeNull();
+    expect(hsConLaiDuKien(h, moc)).toBeNull();
+    const ds = canhBaoHoSo(h as HoSoTinDung, moc);
+    expect(ds.some((c) => c.noi_dung.includes('Chưa có ngày hạn mức hoặc ngày cần dùng'))).toBe(true);
+  });
+
+  it('cảnh báo gọi đúng tên việc theo loại mốc', () => {
+    const denHan = canhBaoHoSo(
+      { ...goc, ngay_den_han_ghtd: '2026-08-20', han_xu_ly: null } as HoSoTinDung, moc);
+    expect(denHan[0].noi_dung).toContain('Hạn mức còn 8 ngày');
+    const canDung = canhBaoHoSo(
+      { ...goc, ngay_den_han_ghtd: null, han_xu_ly: '2026-08-20' } as HoSoTinDung, moc);
+    expect(canDung[0].noi_dung).toContain('Khách cần dùng vốn còn 8 ngày');
+  });
+});
+
+describe('Thẻ dự kiến không phải ghi nhịp hằng ngày — GĐ chốt 06/08', () => {
+  it('cột dự kiến đứng ngoài nhịp ngày; mọi bước ĐANG CHẠY thì có', () => {
+    expect(hsCanGhiNhipNgay({ trang_thai: 'DEN_HAN_GHTD' })).toBe(false);
+    for (const b of HS_DANG_CHAY) {
+      expect(hsCanGhiNhipNgay({ trang_thai: b })).toBe(true);
+    }
+  });
+
+  it('hồ sơ đã khép cũng thôi đòi nhịp — không còn gì để tường thuật', () => {
+    expect(hsCanGhiNhipNgay({ trang_thai: 'HOAN_THANH' })).toBe(false);
+    expect(hsCanGhiNhipNgay({ trang_thai: 'TU_CHOI' })).toBe(false);
+  });
+
+  it('và KHÔNG bị đếm là «chưa cập nhật» dù để lâu bao nhiêu ngày', () => {
+    // Thẻ dự kiến tạo từ 01/07, tới 12/08 là hơn 40 ngày lịch — nếu vẫn đo
+    // bằng thước im lặng thì sáng nào nó cũng đỏ vì một kỷ luật không áp cho nó
+    const cu = {
+      ...hsGoc, trang_thai: 'DEN_HAN_GHTD' as const, nhip_gan_nhat: null,
+      ngay_nhan: '2026-07-01', created_at: '2026-07-01T01:00:00Z',
+    };
+    expect(hsNgayImLang(cu, moc)).toBe(0);
+    expect(hsMucImLang(cu, moc)).toBe('MOI');
+    expect(canhBaoHoSo(cu, moc).some((c) => c.noi_dung.includes('Chưa cập nhật'))).toBe(false);
+  });
+});
+
+describe('Thẻ dự kiến không bị đòi những thứ nó chưa thể có', () => {
+  const duKien: HoSoTinDung = {
+    ...hsGoc, trang_thai: 'DEN_HAN_GHTD', loai_ho_so: 'TAI_CAP',
+    so_tien: null, han_xu_ly: null, ky_han: null,
+    ngay_den_han_ghtd: '2026-09-20', ngay_nhan: '2026-08-12', nhip_gan_nhat: null,
+  };
+
+  it('vẫn cảnh báo hạn mức — đó là lý do nó có mặt trên bảng', () => {
+    const ds = canhBaoHoSo(duKien, moc);
+    expect(ds.some((c) => c.noi_dung.includes('Hạn mức còn'))).toBe(true);
+  });
+
+  it('KHÔNG đòi số tiền / hạn xử lý / kỳ hạn — ở cột này trống mới là đúng', () => {
+    const ds = canhBaoHoSo(duKien, moc);
+    expect(ds.some((c) => c.noi_dung.includes('Chưa có số tiền'))).toBe(false);
+    expect(ds.some((c) => c.noi_dung.includes('Chưa có hạn xử lý'))).toBe(false);
+    expect(ds.some((c) => c.noi_dung.includes('Chưa ghi kỳ hạn'))).toBe(false);
+  });
+
+  it('không tính vào hồ sơ đang chạy — tổng dư nợ không được phồng lên vì việc chưa làm', () => {
+    expect(HS_DANG_CHAY.includes('DEN_HAN_GHTD')).toBe(false);
+    // Bàn PDTD lọc theo HS_DANG_CHAY trước khi cộng; thẻ dự kiến rơi ra ngoài
+    // nên không cộng vào cột nào, và không bị đếm là «chưa có số tiền»
+    const dsChay = [duKien, hsGoc].filter((h) => HS_DANG_CHAY.includes(h.trang_thai));
+    const tong = tongTheoBuoc(dsChay);
+    expect(tong.get('DEN_HAN_GHTD')).toBeUndefined();
+    expect([...tong.values()].reduce((s, v) => s + v.thieu, 0)).toBe(0);
   });
 });
 
@@ -149,10 +354,22 @@ describe('Cảnh báo hồ sơ — bộ kiểm cho board có rủi ro tài chín
 
   it('hồ sơ cấp mới không bị đòi ngày hạn mức', () => {
     const cb = canhBaoHoSo({
-      ...hsGoc, loai_ho_so: 'CAP_MOI', ngay_den_han_ghtd: null, giu_tu: null,
+      ...hsGoc, loai_ho_so: 'CAP_MOI', cac_loai: ['CAP_MOI'],
+      ngay_den_han_ghtd: null, giu_tu: null,
       han_xu_ly: '2026-08-31', nhip_gan_nhat: '2026-08-11T02:00:00Z',
     }, moc);
     expect(cb).toEqual([]);
+  });
+
+  // Đây là lý do phải xét CẢ BỘ đặc tính chứ không chỉ đặc tính chính: hồ sơ
+  // vừa cấp mới vừa điều chỉnh giới hạn vẫn phải khai hạn mức cũ hết ngày nào
+  it('cấp mới KIÊM điều chỉnh vẫn bị đòi ngày hạn mức', () => {
+    const cb = canhBaoHoSo({
+      ...hsGoc, loai_ho_so: 'CAP_MOI', cac_loai: ['CAP_MOI', 'DIEU_CHINH'],
+      ngay_den_han_ghtd: null, giu_tu: null,
+      han_xu_ly: '2026-08-31', nhip_gan_nhat: '2026-08-11T02:00:00Z',
+    }, moc);
+    expect(cb.some((c) => c.noi_dung.includes('chưa ghi ngày hạn mức đến hạn'))).toBe(true);
   });
 
   it('tính đúng số ngày còn lại tới hạn mức', () => {
@@ -270,32 +487,9 @@ describe('Ai được sửa số tiền — bản chiếu của trigger f_ct2_hs
   });
 });
 
-describe('Dải «Đến hạn GHTD 2 tháng tới» — cột dẫn xuất, không phải trạng thái', () => {
-  // moc = thứ Tư 12/08/2026
-  const goc = { trang_thai: 'THU_THAP' as const, loai_ho_so: 'CAP_MOI' as const };
-
-  it('trong cửa sổ 60 ngày thì vào dải, xa hơn thì không', () => {
-    expect(hsThuocDaiDenHan({ ...goc, ngay_den_han_ghtd: '2026-09-30' }, moc)).toBe(true);
-    expect(hsThuocDaiDenHan({ ...goc, ngay_den_han_ghtd: '2026-12-01' }, moc)).toBe(false);
-  });
-
-  it('đã quá hạn mức vẫn ở trong dải — đó là hồ sơ cần thấy nhất', () => {
-    expect(hsThuocDaiDenHan({ ...goc, ngay_den_han_ghtd: '2026-07-31' }, moc)).toBe(true);
-  });
-
-  it('tái cấp/điều chỉnh CHƯA có ngày cũng vào dải — như hai thẻ Đông Dương trên Miro', () => {
-    expect(hsThuocDaiDenHan({ ...goc, loai_ho_so: 'TAI_CAP', ngay_den_han_ghtd: null }, moc)).toBe(true);
-    expect(hsThuocDaiDenHan({ ...goc, loai_ho_so: 'DIEU_CHINH', ngay_den_han_ghtd: null }, moc)).toBe(true);
-    // Cấp mới không theo dõi hạn mức cũ — không có ngày là bình thường
-    expect(hsThuocDaiDenHan({ ...goc, ngay_den_han_ghtd: null }, moc)).toBe(false);
-  });
-
-  it('hồ sơ đã xong / bị dừng thì rời dải', () => {
-    expect(hsThuocDaiDenHan({ ...goc, trang_thai: 'HOAN_THANH', ngay_den_han_ghtd: '2026-08-20' }, moc)).toBe(false);
-    expect(hsThuocDaiDenHan({ ...goc, trang_thai: 'TU_CHOI', ngay_den_han_ghtd: '2026-08-20' }, moc)).toBe(false);
-  });
-});
-
+// Dải «Đến hạn GHTD 2 tháng tới» đã bỏ theo quyết định của GĐ 08/2026 — hồ sơ
+// đến hạn nằm ở bước thật, cảnh báo «Hạn mức sắp hết» lấy từ RPC có đối chiếu
+// đường ống (ct2_pdtd_sap_den_han), không còn hàm dải phía client để kiểm.
 
 describe('Hồ sơ chưa cập nhật — cảnh báo bằng hình ảnh trên màn toàn cảnh', () => {
   // moc = 09:00 thứ Tư 12/08/2026
@@ -314,11 +508,12 @@ describe('Hồ sơ chưa cập nhật — cảnh báo bằng hình ảnh trên m
     expect(hsMucImLang({ ...base, nhip_gan_nhat: '2026-08-06T02:00:00Z' }, moc)).toBe('BO_QUEN');
   });
 
-  it('chưa ghi nhịp lần nào thì tính từ ngày nhận hồ sơ', () => {
+  it('chưa ghi nhịp lần nào thì tính từ ngày nhận hồ sơ, kẹp từ ngày triển khai', () => {
     const h = { ...base, nhip_gan_nhat: null };
     expect(hsChuaGhiLanNao(h)).toBe(true);
-    // Nhận 03/08 (thứ Hai) → 12/08 là 7 ngày làm việc
-    expect(hsNgayImLang(h, moc)).toBe(7);
+    // Nhận 03/08 — TRƯỚC ngày triển khai 06/08 → kỷ luật cập nhật đếm từ 06/08:
+    // tới 12/08 là 4 ngày làm việc (7, 10, 11, 12), không phải 7 ngày từ ngày nhận
+    expect(hsNgayImLang(h, moc)).toBe(4);
     expect(hsMucImLang(h, moc)).toBe('BO_QUEN');
   });
 

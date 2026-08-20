@@ -1,0 +1,43 @@
+# Cổng kiểm tra tự động cho mọi PR.
+#
+# Vì sao chỉ có ba bước này:
+#   - `npm run lint` KHÔNG chạy ở đây. Repo đang nợ 544 lỗi lint có sẵn (phần
+#     lớn là `no-explicit-any` ở các chỗ cast supabase cho bảng chưa regenerate
+#     types). Bật lint lên là mọi PR đỏ ngay từ commit đầu, và một cổng lúc nào
+#     cũng đỏ thì chẳng ai nhìn nữa — tức là mất luôn tác dụng của hai cổng kia.
+#     Dọn nợ lint là việc riêng, làm xong mới bật.
+#   - Kiểm tra mục lịch sử phiên bản chỉ chạy trên PR: nhánh main thì đã muộn.
+name: Kiểm tra
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  kiem-tra:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Cần đủ lịch sử để so nhánh với base khi kiểm tra mục lịch sử phiên bản
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Kiểu dữ liệu
+        run: npx tsc --noEmit -p tsconfig.app.json
+
+      - name: Kiểm thử
+        run: npm run test
+
+      - name: Mục lịch sử phiên bản
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin "${{ github.base_ref }}" --depth=200
+          node scripts/kiem-tra-changelog.mjs "origin/${{ github.base_ref }}"

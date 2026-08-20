@@ -26,7 +26,7 @@ import { Award, Download, Pencil, Plus, Sparkles, Archive, CalendarCheck, AlertT
 // (~106 kB gzip), không đáng tải chỉ để mở trang xem danh sách dấu ấn.
 import { fetchWeeklyUpdateMap, isWeeklyTracked, type KanbanCard, type WeeklyUpdateMap } from '@/lib/kanban';
 import { UpdateProgressDialog } from '@/components/kanban/UpdateProgressDialog';
-import { safeHref } from '@/lib/safeUrl';
+import { Ct2DongThoiGian } from '@/components/one/move2/Ct2DongThoiGian';
 
 const sb = supabase as any;
 
@@ -49,7 +49,10 @@ const LOG_LABEL: Record<string, string> = {
 const KANBAN_LABEL: Record<string, string> = { todo: 'Chưa bắt đầu', doing: 'Đang làm', done: 'Hoàn thành' };
 
 interface LogRow {
+  id: string;
   card_id: string;
+  /** Người thao tác — để dòng thời gian ghi đúng ai làm, không phải «Hệ thống» */
+  created_by: string | null;
   log_type: string;
   new_status: string | null;
   progress_percent: number | null;
@@ -60,18 +63,6 @@ interface LogRow {
   evidence_text: string | null;
   evidence_url: string | null;
   created_at: string;
-}
-
-function logNote(l: LogRow): string {
-  const parts: string[] = [];
-  if (l.new_status) parts.push(KANBAN_LABEL[l.new_status] || l.new_status);
-  if (l.progress_percent != null) parts.push(`${l.progress_percent}%`);
-  if (l.progress_note) parts.push(l.progress_note);
-  if (l.current_result) parts.push(`Kết quả: ${l.current_result}`);
-  if (l.blocker_note) parts.push(`Vướng mắc: ${l.blocker_note}`);
-  if (l.support_needed) parts.push(`Cần hỗ trợ: ${l.support_needed}`);
-  if (l.evidence_text) parts.push(`Bằng chứng: ${l.evidence_text}`);
-  return parts.join(' · ');
 }
 
 interface Option { id: string; code?: string | null; name: string }
@@ -136,6 +127,8 @@ export default function LeadershipMarksPage() {
   const [logsByMark, setLogsByMark] = useState<Record<string, LogRow[]>>({});
   const [updateCard, setUpdateCard] = useState<KanbanCard | null>(null);
   const [openTimeline, setOpenTimeline] = useState<Record<string, boolean>>({});
+  // Tra tên cho dòng thời gian trộn: người ghi log, người trao đổi — bất kỳ ai
+  const [tenNguoi, setTenNguoi] = useState<Map<string, string>>(new Map());
   const [competencies, setCompetencies] = useState<Option[]>([]);
   const [coreValues, setCoreValues] = useState<Option[]>([]);
   const [skills, setSkills] = useState<Option[]>([]);
@@ -151,7 +144,7 @@ export default function LeadershipMarksPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [marksRes, compRes, cvRes] = await Promise.all([
+    const [marksRes, compRes, cvRes, profRes] = await Promise.all([
       sb.from('leadership_marks')
         .select(`
           id, profile_id, title, description, role_focus, status, deadline, sort_order,
@@ -165,7 +158,10 @@ export default function LeadershipMarksPage() {
         .order('sort_order'),
       sb.from('leadership_competencies').select('id, code, name').eq('is_active', true).order('sort_order'),
       sb.from('core_values').select('id, code, name').order('sort_order'),
+      sb.from('profiles').select('id, full_name'),
     ]);
+    setTenNguoi(new Map((((profRes.data ?? []) as Array<{ id: string; full_name: string }>)
+      .map((p) => [p.id, p.full_name]))));
     if (marksRes.error) {
       toast.error('Không tải được dấu ấn: ' + marksRes.error.message);
     } else {
@@ -187,7 +183,7 @@ export default function LeadershipMarksPage() {
           const cardToMark: Record<string, string> = {};
           Object.entries(byMark).forEach(([mid, c]) => { cardToMark[c.id] = mid; });
           const { data: logRows } = await sb.from('kanban_card_logs')
-            .select('card_id, log_type, new_status, progress_percent, progress_note, current_result, blocker_note, support_needed, evidence_text, evidence_url, created_at')
+            .select('id, card_id, created_by, log_type, new_status, progress_percent, progress_note, current_result, blocker_note, support_needed, evidence_text, evidence_url, created_at')
             .in('card_id', cardList.map(c => c.id))
             .order('created_at', { ascending: false });
           ((logRows || []) as LogRow[]).forEach(l => {
@@ -489,12 +485,12 @@ export default function LeadershipMarksPage() {
                         <Sparkles className="w-3.5 h-3.5 mr-1" /> Cập nhật STAR
                       </Button>
                     )}
-                    {logs.length > 0 && (
-                      <Button size="sm" variant="ghost"
-                              onClick={() => setOpenTimeline(prev => ({ ...prev, [m.id]: !prev[m.id] }))}>
-                        <History className="w-3.5 h-3.5 mr-1" /> Dòng thời gian ({logs.length})
-                      </Button>
-                    )}
+                    {/* Luôn hiện — thẻ chưa có log vẫn phải mở được để TRAO ĐỔI */}
+                    <Button size="sm" variant="ghost"
+                            onClick={() => setOpenTimeline(prev => ({ ...prev, [m.id]: !prev[m.id] }))}>
+                      <History className="w-3.5 h-3.5 mr-1" />
+                      Dòng thời gian & trao đổi{logs.length > 0 ? ` (${logs.length})` : ''}
+                    </Button>
                     {isAdmin && (
                       <>
                         <Button size="sm" variant="outline" onClick={() => openFrameDialog(m)}>
@@ -513,26 +509,43 @@ export default function LeadershipMarksPage() {
                       </>
                     )}
                   </div>
-                  {openTimeline[m.id] && logs.length > 0 && (
-                    <div className="mt-2 border-l-2 border-muted pl-3 space-y-2">
-                      {logs.map((l, i) => (
-                        <div key={i} className="text-xs">
-                          <p className="text-muted-foreground">
-                            {new Date(l.created_at).toLocaleString('vi-VN')}
-                            <span className="ml-1.5 font-medium text-foreground">{LOG_LABEL[l.log_type] || l.log_type}</span>
-                          </p>
-                          {logNote(l) && <p className="whitespace-pre-wrap">{logNote(l)}</p>}
-                          {l.evidence_url && (
-                            safeHref(l.evidence_url)
-                              ? (
-                                <a href={safeHref(l.evidence_url)} target="_blank" rel="noreferrer" className="underline text-primary">
-                                  Bằng chứng đính kèm
-                                </a>
-                              )
-                              : <span className="text-muted-foreground break-all">Bằng chứng: {l.evidence_url}</span>
-                          )}
-                        </div>
-                      ))}
+                  {/*
+                    Dòng thời gian TRỘN của Kanban dùng nguyên xi cho dấu ấn
+                    (GĐ yêu cầu 06/08 — «tương tự Kanban»): log máy thành dòng
+                    Báo cáo, cộng cửa Trao đổi có nhắc đích danh, «Cần trả lời»,
+                    thu hồi. Không dựng mạch riêng cho Mark — bốn mạch là bốn
+                    chỗ sửa luật mỗi lần đổi, ba tháng sau chúng lệch nhau.
+                    Trao đổi báo đủ tuyến của CHỦ DẤU ẤN qua trigger dùng chung.
+                  */}
+                  {openTimeline[m.id] && (
+                    <div className="mt-2">
+                      <Ct2DongThoiGian
+                        phamVi="DAU_AN"
+                        doiTuongId={m.id}
+                        baoCao={logs.map((l) => ({
+                          id: l.id,
+                          luc: l.created_at,
+                          nguoi: l.created_by,
+                          tieu_de: LOG_LABEL[l.log_type] || l.log_type,
+                          phan_tram: l.progress_percent,
+                          noi_dung: [
+                            l.new_status ? (KANBAN_LABEL[l.new_status] || l.new_status) : null,
+                            l.progress_note,
+                          ].filter(Boolean).join(' · ') || null,
+                          chi_tiet: [
+                            ...(l.current_result ? [{ nhan: 'Kết quả', gia: l.current_result, mau: 'XANH' as const }] : []),
+                            ...(l.blocker_note ? [{ nhan: 'Vướng mắc', gia: l.blocker_note, mau: 'DO' as const }] : []),
+                            ...(l.support_needed ? [{ nhan: 'Cần hỗ trợ', gia: l.support_needed, mau: 'DO' as const }] : []),
+                            ...(l.evidence_text ? [{ nhan: 'Bằng chứng', gia: l.evidence_text }] : []),
+                          ],
+                          url: l.evidence_url,
+                        }))}
+                        nguoiLienQuan={[{ id: m.profile_id, ten: m.profiles?.full_name ?? '—', vaiTro: 'chủ dấu ấn' }]}
+                        tenNguoi={tenNguoi}
+                        loiMoiDau="Chưa có dòng nào — cập nhật tuần và trao đổi sẽ hiện ở đây."
+                        goiY="Trao đổi về dấu ấn này…"
+                        onXong={load}
+                      />
                     </div>
                   )}
                 </div>

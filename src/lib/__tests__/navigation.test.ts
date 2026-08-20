@@ -8,10 +8,12 @@ import {
   flattenLeaves,
   resolveLocation,
   leavesOf,
+  matchesLeaf,
   isFolder,
   type NavPermissions,
 } from '../navigation';
 import { boDau, khopTimKiem } from '../vietnamese';
+import { MAN_HINH_KHACH, MAN_HINH_KHACH_MAC_DINH, MA_MAN_HINH_KHACH } from '../manHinhKhach';
 
 /**
  * Cây điều hướng là nguồn dữ liệu duy nhất cho thanh ngang, menu dọc, thanh tab
@@ -21,6 +23,7 @@ import { boDau, khopTimKiem } from '../vietnamese';
 
 const KHONG_QUYEN: NavPermissions = {
   isGuest: false,
+  guestScreens: [],
   isAdmin: false,
   isManager: false,
   isPgd: false,
@@ -43,7 +46,14 @@ const quanTri: NavPermissions = {
   councilAnalytics: true,
   leadershipMarks: true,
 };
-const khach: NavPermissions = { ...KHONG_QUYEN, isGuest: true };
+// Khách "mặc định": đúng bộ màn hình mọi khách vẫn được xem trước khi có ô chọn
+const khach: NavPermissions = { ...KHONG_QUYEN, isGuest: true, guestScreens: MAN_HINH_KHACH_MAC_DINH };
+// Khách được Phòng TCTH mở thêm Cây Ký Ức và Sao Xứng Đáng
+const khachMoRong: NavPermissions = {
+  ...KHONG_QUYEN,
+  isGuest: true,
+  guestScreens: [...MAN_HINH_KHACH_MAC_DINH, 'cay-ky-uc', 'ghi-nhan'],
+};
 
 function nhanCuaKhu(p: NavPermissions): string[] {
   return filterSections(NAV_SECTIONS, p).map((s) => s.label);
@@ -54,11 +64,14 @@ function moiDuongDan(p: NavPermissions): string[] {
 }
 
 describe('Cấu trúc cây điều hướng', () => {
-  it('giữ đúng 5 khu theo cấu trúc chốt 08/2026, đúng thứ tự', () => {
+  it('giữ đúng 6 khu theo cấu trúc chốt 08/2026, đúng thứ tự', () => {
     // Trang chủ đã gộp "Nguồn cội & Bản sắc"; các thương hiệu gom vào Bắc Hưng
     // Yên Ways; Chiêu thức 2 và Chiêu thức 3 (Phát triển nhân sự) có tab riêng.
+    // Cây Ký Ức (kỷ yếu số 20 năm) đứng thứ hai — ấn phẩm cả Chi nhánh cùng xem
+    // trong dịp kỷ niệm nên phải thấy ngay trên thanh, không giấu trong menu xổ.
     expect(nhanCuaKhu(quanTri)).toEqual([
       'Trang chủ',
+      'Cây Ký Ức',
       'Bắc Hưng Yên Ways',
       'Chiêu thức 2',
       'Chiêu thức 3 - Phát triển nhân sự',
@@ -67,17 +80,46 @@ describe('Cấu trúc cây điều hướng', () => {
   });
 
   it('Bắc Hưng Yên Ways là NHÓM MENU thuần, không phải một trang', () => {
-    // Bấm vào là bung ngay 6 thương hiệu; không có trang giới thiệu riêng vì
+    // Bấm vào là bung ngay các thương hiệu; không có trang giới thiệu riêng vì
     // Trang chủ đã giới thiệu đủ.
     const ways = NAV_SECTIONS.find((s) => s.id === 'bhy-ways')!;
     expect(ways.path).toBeUndefined();
-    expect(leavesOf(ways).map((l) => l.label)).toEqual([
+  });
+
+  it('thương hiệu nhiều màn hình thành thư mục, thương hiệu một màn giữ mục lẻ', () => {
+    // Trước đây mỗi thương hiệu đúng một mục nên các màn con không có mục menu
+    // nào — vô hình với người chưa biết chúng tồn tại.
+    const ways = NAV_SECTIONS.find((s) => s.id === 'bhy-ways')!;
+    const mucLe = (ways.items ?? []).filter((e) => !isFolder(e));
+    const thuMuc = (ways.items ?? []).filter(isFolder);
+
+    expect(mucLe.map((e) => (e as { label: string }).label)).toEqual([
       'Bắc Hưng Yên Sharing',
-      'Bắc Hưng Yên Quizzi',
-      'Bắc Hưng Yên Ideas',
       'Bắc Hưng Yên Connect',
       'Sao Xứng Đáng',
       'Bắc Hưng Yên Credit 360',
+    ]);
+    expect(thuMuc.map((f) => f.folder)).toEqual([
+      'Bắc Hưng Yên Ideas',
+      'Bắc Hưng Yên Quizzi',
+    ]);
+  });
+
+  it('mọi màn hình của Ideas và Quizzi đều có mục menu riêng', () => {
+    const ways = NAV_SECTIONS.find((s) => s.id === 'bhy-ways')!;
+    const trongThuMuc = (ten: string) =>
+      (ways.items ?? []).filter(isFolder).find((f) => f.folder === ten)!.items.map((l) => l.path);
+
+    expect(trongThuMuc('Bắc Hưng Yên Ideas')).toEqual([
+      '/one/y-tuong',
+      '/one/y-tuong/gui',
+      '/one/y-tuong/hoi-dong',
+      '/one/y-tuong/van-hanh',
+    ]);
+    expect(trongThuMuc('Bắc Hưng Yên Quizzi')).toEqual([
+      '/quizzi',
+      '/quizzi/chien-dich',
+      '/quan-tri-quizzi',
     ]);
   });
 
@@ -85,13 +127,28 @@ describe('Cấu trúc cây điều hướng', () => {
     const ways = NAV_SECTIONS.find((s) => s.id === 'bhy-ways')!;
     expect(leavesOf(ways).map((l) => l.path)).toEqual([
       '/one/hoc-hoi',
-      '/quizzi',
-      '/one/y-tuong',
       // Connect không có màn hình nghiệp vụ nên có trang riêng của nó
       '/one/bhy-connect',
       '/one/ghi-nhan',
       '/one/credit-360',
+      '/one/y-tuong',
+      '/one/y-tuong/gui',
+      '/one/y-tuong/hoi-dong',
+      '/one/y-tuong/van-hanh',
+      '/quizzi',
+      '/quizzi/chien-dich',
+      '/quan-tri-quizzi',
     ]);
+  });
+
+  it('màn vận hành Ideas và quản trị Quizzi chỉ quản trị viên thấy', () => {
+    expect(moiDuongDan(canBoThuong)).not.toContain('/one/y-tuong/van-hanh');
+    expect(moiDuongDan(canBoThuong)).not.toContain('/quan-tri-quizzi');
+    expect(moiDuongDan(quanTri)).toContain('/one/y-tuong/van-hanh');
+    expect(moiDuongDan(quanTri)).toContain('/quan-tri-quizzi');
+    // Cán bộ thường vẫn vào được hai màn dùng chung của cùng thương hiệu
+    expect(moiDuongDan(canBoThuong)).toContain('/one/y-tuong/gui');
+    expect(moiDuongDan(canBoThuong)).toContain('/one/y-tuong/hoi-dong');
   });
 
   it('khung năng lực 3806 nằm trong Chiêu thức 3 (phân hệ Phát triển nhân sự)', () => {
@@ -104,7 +161,7 @@ describe('Cấu trúc cây điều hướng', () => {
   it('chia đúng hai khu bố cục: cổng ONE không có menu dọc, phân hệ thì có', () => {
     const portal = NAV_SECTIONS.filter((s) => s.zone === 'portal').map((s) => s.id);
     const workspace = NAV_SECTIONS.filter((s) => s.zone === 'workspace').map((s) => s.id);
-    expect(portal).toEqual(['one-home', 'bhy-ways', 'chieu-thuc-2']);
+    expect(portal).toEqual(['one-home', 'cay-ky-uc', 'bhy-ways', 'chieu-thuc-2']);
     expect(workspace).toEqual(['hr-343', 'user-admin']);
   });
 
@@ -169,8 +226,50 @@ describe('Cấu trúc cây điều hướng', () => {
 });
 
 describe('Phân quyền menu — khóa hành vi của bản cũ', () => {
-  it('khách đối tác fail-closed: chỉ thấy khu được mở tường minh', () => {
+  it('khách đối tác fail-closed: chỉ thấy khu chứa màn hình đã mở cho mình', () => {
     expect(nhanCuaKhu(khach)).toEqual(['Trang chủ', 'Bắc Hưng Yên Ways']);
+  });
+
+  it('khách chưa được mở màn nào ngoài Trang chủ thì chỉ còn khu Trang chủ', () => {
+    const chiTrangChu: NavPermissions = { ...KHONG_QUYEN, isGuest: true, guestScreens: ['trang-chu'] };
+    expect(nhanCuaKhu(chiTrangChu)).toEqual(['Trang chủ']);
+    expect(moiDuongDan(chiTrangChu)).toEqual(['/one']);
+  });
+
+  it('mở thêm màn hình là khách thấy ngay khu và mục tương ứng — không phải sửa code', () => {
+    const duongDan = moiDuongDan(khachMoRong);
+    expect(duongDan).toContain('/one/cay-ky-uc');
+    expect(duongDan).toContain('/one/ghi-nhan');
+    expect(nhanCuaKhu(khachMoRong)).toContain('Cây Ký Ức');
+    // Nhưng những màn ngoài danh mục vẫn đóng
+    expect(duongDan).not.toContain('/one/chieu-thuc-2');
+    expect(duongDan).not.toContain('/quizzi');
+  });
+
+  it('mã màn hình lạ trong hồ sơ khách không mở thêm được gì', () => {
+    const khachMaLa: NavPermissions = {
+      ...KHONG_QUYEN, isGuest: true, guestScreens: ['trang-chu', 'quan-tri-he-thong'],
+    };
+    expect(moiDuongDan(khachMaLa)).toEqual(['/one']);
+  });
+
+  it('mọi mã trong danh mục màn hình khách đều gắn với ít nhất một mục menu', () => {
+    // Danh mục và cây menu là hai file: lệch nhau là ô chọn ở màn quản trị bật
+    // lên nhưng khách không thấy thêm gì.
+    const coTrongMenu = new Set(
+      flattenLeaves(NAV_SECTIONS).map((x) => x.leaf.guestScreen).filter(Boolean),
+    );
+    for (const ma of MA_MAN_HINH_KHACH) {
+      expect(coTrongMenu.has(ma), `mã "${ma}" không gắn mục menu nào`).toBe(true);
+    }
+  });
+
+  it('mục menu mở cho khách phải trỏ đúng đường dẫn của màn hình trong danh mục', () => {
+    for (const { leaf } of flattenLeaves(NAV_SECTIONS)) {
+      if (!leaf.guestScreen) continue;
+      const manHinh = MAN_HINH_KHACH.find((m) => m.id === leaf.guestScreen)!;
+      expect(manHinh.duongDan, `mục ${leaf.path} lệch danh mục`).toContain(leaf.path);
+    }
   });
 
   it('khách đối tác không thấy bất kỳ trang nghiệp vụ nào', () => {
@@ -252,7 +351,10 @@ describe('Tra vị trí trang trên cây', () => {
     expect(resolveLocation('/chi-tiet-can-bo/abc-123').leaf?.path).toBe('/danh-gia-can-bo');
     expect(resolveLocation('/sua-can-bo/abc-123').leaf?.path).toBe('/danh-sach-can-bo');
     expect(resolveLocation('/ho-so-ca-nhan/abc-123').leaf?.path).toBe('/ho-so-ca-nhan');
-    expect(resolveLocation('/quizzi/chien-dich').leaf?.path).toBe('/quizzi');
+    // Bài thi bất kỳ về mục «Chơi & luyện tập»; chiến dịch nay có mục riêng nên
+    // thắng nhờ luật khớp dài nhất
+    expect(resolveLocation('/quizzi/abc-123').leaf?.path).toBe('/quizzi');
+    expect(resolveLocation('/quizzi/chien-dich').leaf?.path).toBe('/quizzi/chien-dich');
     expect(resolveLocation('/bieu-mau-02').leaf?.path).toBe('/tu-danh-gia');
   });
 
@@ -330,14 +432,20 @@ describe('Không trang nào thành mồ côi', () => {
     expect(resolveLocation('/bao-cao-dau-moi').leaf?.path).toBe('/bao-cao-dau-moi');
     expect(resolveLocation('/bao-cao-nop-bieu-mau').leaf?.path).toBe('/bao-cao-nop-bieu-mau');
     expect(resolveLocation('/bao-cao').leaf?.path).toBe('/bao-cao');
-    expect(resolveLocation('/quan-tri-quizzi').leaf?.path).toBe('/quizzi');
+    expect(resolveLocation('/quan-tri-quizzi').leaf?.path).toBe('/quan-tri-quizzi');
+    // Ba màn cùng nằm dưới /one/y-tuong: mục gốc khai end nên không nuốt hai màn kia
+    expect(resolveLocation('/one/y-tuong').leaf?.path).toBe('/one/y-tuong');
+    expect(resolveLocation('/one/y-tuong/gui').leaf?.path).toBe('/one/y-tuong/gui');
+    expect(resolveLocation('/one/y-tuong/hoi-dong').leaf?.path).toBe('/one/y-tuong/hoi-dong');
+    expect(resolveLocation('/one/y-tuong/van-hanh').leaf?.path).toBe('/one/y-tuong/van-hanh');
   });
 });
 
 describe('Cờ tràn viền quyết định khoảng đệm của khung', () => {
   // Trang bọc trong OnePageShell tự dựng nền + dải hero nên khung không thêm
   // khoảng đệm; MỌI trang còn lại phải nhận khoảng đệm, kể cả route lạ.
-  const traVien = ['/one', '/one/bhy-connect', '/one/hoc-hoi', '/one/y-tuong', '/one/credit-360', '/one/ghi-nhan', '/one/chieu-thuc-2', '/one/bhy-3806'];
+  const traVien = ['/one', '/one/bhy-connect', '/one/hoc-hoi', '/one/y-tuong', '/one/y-tuong/gui',
+    '/one/y-tuong/hoi-dong', '/one/y-tuong/van-hanh', '/one/credit-360', '/one/ghi-nhan', '/one/chieu-thuc-2', '/one/bhy-3806'];
 
   it.each(traVien)('%s là trang tràn viền', (path) => {
     expect(resolveLocation(path).leaf?.bleed).toBe(true);
@@ -376,7 +484,26 @@ describe('Trợ giúp dựng giao diện', () => {
     const trangChu = NAV_SECTIONS.find((s) => s.id === 'one-home')!;
     const tinTuc = leavesOf(trangChu).find((l) => l.path === '/one/tin-tuc');
     expect(tinTuc).toBeDefined();
-    expect(tinTuc!.guestVisible).toBe(true);
+    expect(tinTuc!.guestScreen).toBe('tin-tuc');
+  });
+
+  it('Cây Ký Ức là KHU riêng — một tab thấy ngay trên thanh, không nằm trong menu xổ', () => {
+    // Bản đầu đặt ấn phẩm làm mục con của Trang chủ: thanh điều hướng không hiện
+    // chữ nào, phải bung menu mới thấy — Chi nhánh báo "không thấy tab ở đâu".
+    const khu = NAV_SECTIONS.find((s) => s.id === 'cay-ky-uc');
+    expect(khu).toBeDefined();
+    expect(khu!.zone).toBe('portal');
+    expect(khu!.path).toBe('/one/cay-ky-uc');
+    // Đúng một mục lá TRÙNG đường dẫn khu → TopNav dựng liên kết đơn, không bảng xổ
+    const la = leavesOf(khu!);
+    expect(la).toHaveLength(1);
+    expect(la[0].path).toBe(khu!.path);
+    // Link đã gửi theo tên cũ vẫn tô sáng đúng tab
+    expect(matchesLeaf('/one/ky-yeu-so', la[0])).toBe(true);
+    // Ấn phẩm nội bộ: đóng với khách theo mặc định, chỉ mở khi Phòng TCTH bật
+    // riêng cho một tài khoản khách
+    expect(la[0].guestScreen).toBe('cay-ky-uc');
+    expect(MAN_HINH_KHACH_MAC_DINH).not.toContain('cay-ky-uc');
   });
 
   it('mỗi khu cổng đều có nhãn ngắn đủ gọn cho thanh tab điện thoại', () => {

@@ -69,20 +69,20 @@ const IdeaCommentsBlock: React.FC<{ ideaId: string; myName: string }> = ({ ideaI
   return (
     <div className="bg-slate-50/70 border border-slate-100 rounded-xl p-3 space-y-3">
       {isLoading ? (
-        <p className="text-[10px] text-slate-400 italic text-center py-2">Đang tải bình luận...</p>
+        <p className="text-2xs text-slate-400 italic text-center py-2">Đang tải bình luận...</p>
       ) : comments.length === 0 ? (
-        <p className="text-[10px] text-slate-400 italic text-center py-2">
+        <p className="text-2xs text-slate-400 italic text-center py-2">
           Chưa có bình luận nào. Hãy chia sẻ cảm nghĩ của bạn!
         </p>
       ) : (
         <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
           {comments.map(comment => (
             <div key={comment.id} className="bg-white p-2 rounded-lg border border-slate-200 relative group">
-              <div className="flex justify-between items-start mb-1 text-[10px]">
+              <div className="flex justify-between items-start mb-1 text-2xs">
                 <span className="font-extrabold text-slate-700">{comment.userName}</span>
-                <span className="text-slate-400 text-[9px]">{formatCommentDate(comment.createdAt)}</span>
+                <span className="text-slate-400 text-2xs">{formatCommentDate(comment.createdAt)}</span>
               </div>
-              <p className="text-slate-600 text-[11px] leading-relaxed whitespace-pre-line font-medium pr-6 text-left">
+              <p className="text-slate-600 text-2xs leading-relaxed whitespace-pre-line font-medium pr-6 text-left">
                 {comment.body}
               </p>
               {(comment.isMine || isContentAdmin) && (
@@ -108,7 +108,7 @@ const IdeaCommentsBlock: React.FC<{ ideaId: string; myName: string }> = ({ ideaI
           placeholder="Nhập bình luận của bạn..."
           value={input}
           onChange={e => setInput(e.target.value)}
-          className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-lg outline-none text-[11px] font-medium text-slate-700 placeholder-slate-400 focus:border-amber-400 text-left"
+          className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-lg outline-none text-2xs font-medium text-slate-700 placeholder-slate-400 focus:border-amber-400 text-left"
           required
         />
         <button
@@ -150,20 +150,20 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, isContentAdmin, myName, onEdi
         {/* Lớp 1: hàng badge */}
         <div className="flex flex-wrap gap-1.5 items-center justify-between">
           <div className="flex flex-wrap gap-1">
-            <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${idea.level === 'Nội bộ CN' ? 'bg-[#005a9c]/10 text-[#005a9c]' : 'bg-[#ed1b24]/10 text-[#ed1b24]'}`}>
+            <span className={`px-2 py-0.5 rounded-full text-2xs font-black uppercase tracking-wider ${idea.level === 'Nội bộ CN' ? 'bg-[#005a9c]/10 text-[#005a9c]' : 'bg-[#ed1b24]/10 text-[#ed1b24]'}`}>
               {idea.level}
             </span>
-            <span className="px-2 py-0.5 text-slate-500 font-bold text-[9px] bg-slate-100 rounded-md">
+            <span className="px-2 py-0.5 text-slate-500 font-bold text-2xs bg-slate-100 rounded-md">
               {idea.applicability}
             </span>
             {idea.councilProposal && (
-              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-violet-100 text-violet-700 border border-violet-200">
+              <span className="px-2 py-0.5 rounded-full text-2xs font-black uppercase tracking-wider bg-violet-100 text-violet-700 border border-violet-200">
                 🏛️ Đề xuất Hội đồng
               </span>
             )}
           </div>
           {idea.hasDemo && (
-            <span className="px-2 py-0.5 font-black text-[9px] border rounded-md bg-emerald-50 text-emerald-700 border-emerald-200">
+            <span className="px-2 py-0.5 font-black text-2xs border rounded-md bg-emerald-50 text-emerald-700 border-emerald-200">
               🧪 Có Demo
             </span>
           )}
@@ -172,19 +172,19 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, isContentAdmin, myName, onEdi
         {/* Lớp 2: chip cấp độ phát triển (+ điều khiển admin) */}
         <div className="space-y-1.5">
           <div className="flex items-center gap-1.5 py-1 bg-slate-50/50 px-2 rounded-lg border border-slate-100">
-            <span className="text-[10px] text-slate-400 font-bold">Cấp độ phát triển:</span>
+            <span className="text-2xs text-slate-400 font-bold">Cấp độ phát triển:</span>
             {isContentAdmin ? (
               <select
                 value={idea.developmentLevel}
                 onChange={e => onAdminUpdate(idea.id, { developmentLevel: e.target.value as IdeaDevLevel })}
-                className="text-[10px] font-extrabold border border-slate-200 rounded bg-white p-0.5 px-1 outline-none text-slate-700 focus:border-amber-500 cursor-pointer"
+                className="text-2xs font-extrabold border border-slate-200 rounded bg-white p-0.5 px-1 outline-none text-slate-700 focus:border-amber-500 cursor-pointer"
               >
                 {IDEA_DEV_LEVELS.map(lv => (
                   <option key={lv} value={lv}>{lv} {IDEA_DEV_LEVEL_EMOJI[lv]}</option>
                 ))}
               </select>
             ) : (
-              <span className={`px-2 py-0.5 text-[10px] font-bold border rounded-md ${DEV_LEVEL_CHIP[idea.developmentLevel]}`}>
+              <span className={`px-2 py-0.5 text-2xs font-bold border rounded-md ${DEV_LEVEL_CHIP[idea.developmentLevel]}`}>
                 {idea.developmentLevel} {IDEA_DEV_LEVEL_EMOJI[idea.developmentLevel]}
               </span>
             )}
@@ -192,11 +192,11 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, isContentAdmin, myName, onEdi
 
           {isContentAdmin && (
             <div className="flex items-center gap-1.5 py-1 bg-amber-50/30 px-2 rounded-lg border border-amber-100/50">
-              <span className="text-[10px] text-amber-800 font-bold">🏢 Chuyển phòng ban:</span>
+              <span className="text-2xs text-amber-800 font-bold">🏢 Chuyển phòng ban:</span>
               <select
                 value={idea.departmentName}
                 onChange={e => onAdminUpdate(idea.id, { departmentName: e.target.value })}
-                className="text-[10px] font-extrabold border border-amber-200 rounded bg-white p-0.5 px-1 outline-none text-slate-700 focus:border-amber-500 cursor-pointer max-w-[150px] truncate"
+                className="text-2xs font-extrabold border border-amber-200 rounded bg-white p-0.5 px-1 outline-none text-slate-700 focus:border-amber-500 cursor-pointer max-w-[150px] truncate"
               >
                 {IDEA_DEPARTMENTS.map(dept => (
                   <option key={dept} value={dept}>{dept}</option>
@@ -210,11 +210,11 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, isContentAdmin, myName, onEdi
 
           {isContentAdmin && (
             <div className="flex items-center gap-1.5 py-1 bg-violet-50/40 px-2 rounded-lg border border-violet-100">
-              <span className="text-[10px] text-violet-800 font-bold">🏛️ Đề xuất Hội đồng:</span>
+              <span className="text-2xs text-violet-800 font-bold">🏛️ Đề xuất Hội đồng:</span>
               <select
                 value={idea.councilProposal ? 'yes' : 'no'}
                 onChange={e => onAdminUpdate(idea.id, { councilProposal: e.target.value === 'yes' })}
-                className="text-[10px] font-extrabold border border-violet-200 rounded bg-white p-0.5 px-1 outline-none text-slate-700 focus:border-violet-500 cursor-pointer"
+                className="text-2xs font-extrabold border border-violet-200 rounded bg-white p-0.5 px-1 outline-none text-slate-700 focus:border-violet-500 cursor-pointer"
               >
                 <option value="no">Chưa đề xuất ⏳</option>
                 <option value="yes">Đề xuất Hội đồng 🏛️</option>
@@ -239,7 +239,7 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, isContentAdmin, myName, onEdi
 
         {/* Lớp 4: panel chi tiết */}
         {detailOpen && (
-          <div className="space-y-2 text-[11px] border-t pt-2 border-slate-100">
+          <div className="space-y-2 text-2xs border-t pt-2 border-slate-100">
             {DETAIL_BLOCKS.map(block => {
               const val = idea[block.key];
               if (!val || !String(val).trim()) return null;
@@ -249,7 +249,7 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, isContentAdmin, myName, onEdi
                     <span>{block.icon}</span>
                     <span>{block.label}</span>
                   </span>
-                  <p className={`${block.cls} text-slate-700 p-2 rounded-lg leading-relaxed text-[11px] whitespace-pre-line font-medium`}>
+                  <p className={`${block.cls} text-slate-700 p-2 rounded-lg leading-relaxed text-2xs whitespace-pre-line font-medium`}>
                     {String(val)}
                   </p>
                 </div>
@@ -266,13 +266,13 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, isContentAdmin, myName, onEdi
       </div>
 
       {/* Lớp 5: footer — người đề xuất, ngày, sửa/xóa */}
-      <div className="mt-4 pt-2.5 border-t border-slate-100 flex justify-between items-end text-[11px]">
+      <div className="mt-4 pt-2.5 border-t border-slate-100 flex justify-between items-end text-2xs">
         <div>
-          <span className="text-slate-400 text-[10px]">Đề xuất bởi:</span>
+          <span className="text-slate-400 text-2xs">Đề xuất bởi:</span>
           <span className="font-extrabold text-slate-700 block">{idea.proposer}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-slate-400 text-[10px]">
+          <span className="text-slate-400 text-2xs">
             {idea.createdAt ? new Date(idea.createdAt).toLocaleDateString('vi-VN') : 'Gần đây'}
           </span>
           {canManage && (
@@ -357,8 +357,20 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, isContentAdmin, myName, onEdi
 
 const OTHER_DEPT_KEY = 'Bộ phận khác';
 
+/**
+ * Số thẻ hiện sẵn trong một nhóm phòng đã mở; phần dôi ra nằm sau nút «xem thêm».
+ * Ba cột × hai hàng — vừa đúng một màn, đủ để nhận ra phòng đó đang làm gì mà
+ * không phải cuộn.
+ */
+const SO_THE_HIEN_SAN = 6;
+
 export const IdeaList: React.FC<IdeaListProps> = ({ ideas, isFiltered = false, isLoading, isContentAdmin, myName, onEdit, onDelete, onVote, onAdminUpdate }) => {
+  // Mặc định THU GỌN mọi nhóm: bảng có hơn trăm ý tưởng, mở sẵn hết thì trang
+  // dài mấy chục màn và người tra cứu phải cuộn qua phòng khác mới tới phòng
+  // mình. Riêng khi đang lọc/tìm kiếm thì mở sẵn — lúc đó danh sách đã hẹp và
+  // người dùng muốn thấy ngay kết quả.
   const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>({});
+  const [xemHet, setXemHet] = useState<Record<string, boolean>>({});
 
   if (isLoading) {
     return (
@@ -399,7 +411,10 @@ export const IdeaList: React.FC<IdeaListProps> = ({ ideas, isFiltered = false, i
   return (
     <div className="space-y-4">
       {sections.map(section => {
-        const isExpanded = expandedDepts[section.name] ?? true;
+        const isExpanded = expandedDepts[section.name] ?? isFiltered;
+        const hienHet = xemHet[section.name] ?? false;
+        const dsHien = hienHet ? section.ideas : section.ideas.slice(0, SO_THE_HIEN_SAN);
+        const conLai = section.ideas.length - dsHien.length;
         return (
           <div key={section.name} className="border border-slate-200/80 rounded-xl overflow-hidden bg-slate-50/50 shadow-sm">
             <button
@@ -410,7 +425,7 @@ export const IdeaList: React.FC<IdeaListProps> = ({ ideas, isFiltered = false, i
               <div className="flex items-center gap-2">
                 <span className={`w-2 h-2 rounded-full ${section.name === OTHER_DEPT_KEY ? 'bg-slate-400' : 'bg-amber-500 animate-pulse'}`} />
                 <span className="font-extrabold text-slate-800 text-xs sm:text-sm">{section.name}</span>
-                <span className="px-2 py-0.5 text-[10px] font-black rounded-full bg-slate-200 text-slate-600">
+                <span className="px-2 py-0.5 text-xs font-black rounded-full bg-slate-200 text-slate-600">
                   {section.ideas.length} ý tưởng
                 </span>
               </div>
@@ -420,9 +435,9 @@ export const IdeaList: React.FC<IdeaListProps> = ({ ideas, isFiltered = false, i
             </button>
 
             {isExpanded && (
-              <div className="p-4 bg-white">
+              <div className="p-4 bg-white space-y-3">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {section.ideas.map(idea => (
+                  {dsHien.map(idea => (
                     <IdeaCard
                       key={idea.id}
                       idea={idea}
@@ -435,6 +450,15 @@ export const IdeaList: React.FC<IdeaListProps> = ({ ideas, isFiltered = false, i
                     />
                   ))}
                 </div>
+                {conLai > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setXemHet(prev => ({ ...prev, [section.name]: true }))}
+                    className="w-full cursor-pointer rounded-lg border border-dashed border-slate-300 py-2 text-xs font-bold text-slate-500 transition-colors hover:border-amber-400 hover:text-amber-600"
+                  >
+                    Xem thêm {conLai} ý tưởng của {section.name}
+                  </button>
+                )}
               </div>
             )}
           </div>

@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Flame, Zap } from 'lucide-react';
+import { Flame, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { soNgayQuaHan, type Ct2Co, type Ct2DauViec, type Ct2TrangThai } from '@/lib/ct2';
-import { FormGhiNhip } from './Ct2CardDialog';
-import { useCt2LamTuoi, useCt2NhatKy, useCt2ViecCuaToi, type Ct2ViecCuaToi } from './useCt2Data';
+import { CT2_NHAN_LY_DO_BAO_CAO, soNgayQuaHan, type Ct2TrangThai } from '@/lib/ct2';
+import { cauHinhNhip, gioNgan } from '@/lib/cauHinhNhip';
+import { Ct2GhiNhipNhanh } from './Ct2GhiNhipNhanh';
+import { useCt2ChuoiCuaToi, useCt2ViecCuaToi } from './useCt2Data';
 
 /**
  * M1 — «Việc của tôi» (đặc tả §7.1): khối "cần ghi nhịp cho [n] việc" + 4 ô số
@@ -17,13 +18,20 @@ interface Props { onMoThe: (id: string) => void }
 
 export function Ct2MyWork({ onMoThe }: Props) {
   const { data: dsViec, isLoading } = useCt2ViecCuaToi();
+  const { data: chuoi = 0 } = useCt2ChuoiCuaToi();
   const [ghiNhanh, setGhiNhanh] = useState(false);
+  const gio = cauHinhNhip();
 
   const viec = useMemo(() => dsViec ?? [], [dsViec]);
+  // Phải ghi nhịp = việc đang làm, CỘNG việc còn ở «Chuẩn bị» nhưng đã đến lúc
+  // phải chạy (GĐ 15/08). Trước đây chỉ đếm «Đang làm», nên để nguyên thẻ ở
+  // «Chuẩn bị» là cách né báo cáo hợp lệ.
   const canNhip = useMemo(
-    () => viec.filter((v) => v.loai_dau_viec === 'TIEN_TRINH' && v.trang_thai === 'DANG_LAM' && !v.da_ghi_nhip_hom_nay),
+    () => viec.filter((v) => v.loai_dau_viec === 'TIEN_TRINH' && !v.da_ghi_nhip_hom_nay
+      && (v.trang_thai === 'DANG_LAM' || v.ly_do_bao_cao !== null)),
     [viec],
   );
+  const chuaBatDau = useMemo(() => viec.filter((v) => v.ly_do_bao_cao !== null), [viec]);
   const soLieu = useMemo(() => ({
     dangLam: viec.filter((v) => v.trang_thai === 'DANG_LAM').length,
     sapToiHan: viec.filter((v) => {
@@ -49,9 +57,29 @@ export function Ct2MyWork({ onMoThe }: Props) {
               ? 'Anh/chị đã ghi đủ nhịp hôm nay — cảm ơn đã giữ nhịp! 🔥'
               : 'Anh/chị chưa có đầu việc nào đang chạy.'}
         </p>
+        {/* Mốc giờ đọc từ cấu hình — bản cũ chôn cứng «8h00/8h30» đã lệch với mốc
+            thật 08:31/08:45 mà tin push đang nói, hai nơi phải cùng một con số */}
         <p className="mt-1 text-sm text-slate-600">
-          Khung nhịp cán bộ: 7h00–8h00 · ân hạn tới 8h30 tính «nhịp muộn». Mỗi thẻ chỉ cần 1 câu.
+          Ghi trước {gioNgan(gio.gio_dung_gio)} là đúng giờ · ân hạn tới {gioNgan(gio.gio_an_han)} tính «nhịp muộn». Mỗi thẻ chỉ cần 1 câu.
         </p>
+        {/* Huy hiệu chuỗi — CHỈ MÌNH THẤY (RPC phía DB chỉ trả chuỗi của chính mình).
+            Hiện từ 2 ngày: chuỗi 1 ngày chưa phải thứ đáng khoe. Người mất chuỗi thì
+            không hiện gì — im lặng, không phê phán. */}
+        {chuoi >= 2 && (
+          <p
+            className="mt-2 inline-flex items-center gap-1 rounded-full bg-orange-100 px-2.5 py-1 text-xs font-semibold text-orange-700 dark:bg-orange-950 dark:text-orange-300"
+            title="Số ngày làm việc liên tiếp ghi nhịp đúng giờ, tính đến lần chốt sổ gần nhất. Ngày nghỉ phép hoặc không có việc không phá chuỗi."
+          >
+            <Flame className="h-3.5 w-3.5" aria-hidden />
+            Chuỗi đúng giờ: {chuoi} ngày
+          </p>
+        )}
+        {chuaBatDau.length > 0 && (
+          <p className="mt-2 rounded-lg bg-amber-50 px-2.5 py-1.5 text-sm text-amber-900">
+            Trong đó <b>{chuaBatDau.length}</b> việc chưa bắt đầu đã đến lúc phải chạy — mở việc
+            ra làm, hoặc ghi nhịp nói rõ đang vướng ở đâu.
+          </p>
+        )}
         {canNhip.length > 0 && (
           <Button className="mt-3" onClick={() => setGhiNhanh(true)}>
             <Zap className="mr-1 h-4 w-4" /> Ghi nhịp nhanh ({canNhip.length} thẻ)
@@ -66,7 +94,8 @@ export function Ct2MyWork({ onMoThe }: Props) {
         <OSo nhan="Quá hạn" giaTri={soLieu.quaHan} canhBao={soLieu.quaHan > 0} />
         <div className="rounded-2xl border border-slate-200 bg-white p-3">
           <p className="flex items-center gap-1 text-2xl font-bold text-amber-500">
-            <Flame className="h-6 w-6" />{viec.filter((v) => v.da_ghi_nhip_hom_nay).length}/{viec.filter((v) => v.trang_thai === 'DANG_LAM' && v.loai_dau_viec === 'TIEN_TRINH').length || 0}
+            <Flame className="h-6 w-6" />{viec.filter((v) => v.da_ghi_nhip_hom_nay).length}/{viec.filter((v) => v.loai_dau_viec === 'TIEN_TRINH'
+              && (v.trang_thai === 'DANG_LAM' || v.ly_do_bao_cao !== null)).length || 0}
           </p>
           <p className="mt-0.5 text-xs text-slate-500">Nhịp hôm nay</p>
         </div>
@@ -90,17 +119,22 @@ export function Ct2MyWork({ onMoThe }: Props) {
                 {v.lien_phong && ' · 🤝'}
               </span>
             </span>
-            {v.trang_thai === 'DANG_LAM' && v.loai_dau_viec === 'TIEN_TRINH' && (
+            {(v.trang_thai === 'DANG_LAM' || v.ly_do_bao_cao !== null) && v.loai_dau_viec === 'TIEN_TRINH' && (
               v.da_ghi_nhip_hom_nay
                 ? <Badge className="shrink-0 bg-emerald-100 text-emerald-800 hover:bg-emerald-100">✅ Đã ghi</Badge>
-                : <Badge className="shrink-0 bg-amber-100 text-amber-800 hover:bg-amber-100">Chờ nhịp</Badge>
+                : v.ly_do_bao_cao
+                  // Nói thẳng việc cần làm là BẮT ĐẦU, không phải chỉ ghi thêm chữ
+                  ? <Badge className="shrink-0 bg-red-100 text-red-800 hover:bg-red-100" title={CT2_NHAN_LY_DO_BAO_CAO[v.ly_do_bao_cao]}>
+                      {v.ly_do_bao_cao === 'SAP_DEN_HAN' ? 'Sắp hạn — chưa mở' : 'Quá ngày mở việc'}
+                    </Badge>
+                  : <Badge className="shrink-0 bg-amber-100 text-amber-800 hover:bg-amber-100">Chờ nhịp</Badge>
             )}
           </button>
         ))}
       </div>
 
       {ghiNhanh && canNhip.length > 0 && (
-        <GhiNhipNhanh dsThe={canNhip} onDong={() => setGhiNhanh(false)} />
+        <Ct2GhiNhipNhanh dsThe={canNhip} onDong={() => setGhiNhanh(false)} />
       )}
     </div>
   );
@@ -115,56 +149,3 @@ function OSo({ nhan, giaTri, canhBao }: { nhan: string; giaTri: number; canhBao?
   );
 }
 
-/** Chế độ lướt từng thẻ — mỗi thẻ một câu, xong tự sang thẻ kế */
-function GhiNhipNhanh({ dsThe, onDong }: { dsThe: Ct2ViecCuaToi[]; onDong: () => void }) {
-  const lamTuoi = useCt2LamTuoi();
-  const [buoc, setBuoc] = useState(0);
-  const the = dsThe[buoc];
-  // Câu nhịp gần nhất của thẻ đang mở — để chặn copy-paste ngay tại client
-  const { data: nhatKy = [] } = useCt2NhatKy(the?.id ?? null);
-
-  if (!the) return null;
-
-  const sangKe = () => {
-    if (buoc + 1 >= dsThe.length) { onDong(); return; }
-    setBuoc(buoc + 1);
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" role="dialog" aria-modal>
-      <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-4 sm:rounded-2xl">
-        <div className="mb-2 flex items-center justify-between">
-          <p className="text-sm font-semibold text-brand-navy">
-            Ghi nhịp nhanh — thẻ {buoc + 1}/{dsThe.length}
-          </p>
-          <Button variant="ghost" size="sm" onClick={onDong}>Đóng</Button>
-        </div>
-        <p className="mb-1 text-sm font-medium text-slate-800">{the.tieu_de}</p>
-        <p className="mb-3 text-xs text-slate-500">
-          {the.ma_hien_thi} · {the.han_hoan_thanh
-            ? `hạn ${new Date(`${the.han_hoan_thanh}T00:00:00`).toLocaleDateString('vi-VN')}`
-            : 'chưa có hạn'}
-        </p>
-        <FormGhiNhip
-          the={{
-            id: the.id,
-            trang_thai: the.trang_thai as Ct2DauViec['trang_thai'],
-            phan_tram: the.phan_tram,
-            co_tinh_trang: the.co_tinh_trang as Ct2Co,
-          }}
-          cauGanNhat={nhatKy[0]?.noi_dung ?? null}
-          tuDongNhan
-          onXong={() => { lamTuoi('nhip'); sangKe(); }}
-        />
-        <div className="mt-3 flex justify-between">
-          <Button variant="outline" size="sm" disabled={buoc === 0} onClick={() => setBuoc(buoc - 1)}>
-            <ChevronLeft className="h-4 w-4" /> Thẻ trước
-          </Button>
-          <Button variant="outline" size="sm" onClick={sangKe}>
-            Bỏ qua thẻ này <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}

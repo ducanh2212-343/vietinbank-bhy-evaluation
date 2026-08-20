@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CT2_COT,
   cauPlanTuKeHoach,
+  cotHienThi,
   chuanBiQuaLau,
   daDuKeHoach,
   demWip,
   diemRuiRo,
   duongDanThongBao,
   laNgayLamViec,
-  moduleThongBao,
   goiYNhan,
   gopCacBuoc,
   hanGoiY,
@@ -15,13 +16,17 @@ import {
   kiemTraGhiViec,
   khiNaoThongBao,
   kiemTraKeHoach,
+  moduleThongBao,
+  tachNhanDong,
   soNgayLamViec,
   locEmojiTieuDe,
   lyDoChanChuyen,
+  lyDoPhaiBaoCao,
   mucChuY,
   trongKhungNhip,
   sapXepThe,
   soNgayImLang,
+  gopDongThoiGian,
   soNgayQuaHan,
   tachCacBuoc,
   thieuTruongBatBuoc,
@@ -153,28 +158,72 @@ describe('Cổng 2 — lập kế hoạch làm', () => {
   });
 });
 
-describe('Luật chuyển trạng thái — PDCA khép vòng ở cấp thẻ', () => {
-  const bc: BoiCanhChuyen = { coDongP: true, coDongC: false, coDongA: false, phanTram: 50, laLanhDao: false, loai: 'TIEN_TRINH' };
+describe('Luật chuyển trạng thái — Kanban là vòng lặp, không có barie Check/Act', () => {
+  const bc: BoiCanhChuyen = { coDongP: true, phanTram: 50, laLanhDao: false, loai: 'TIEN_TRINH' };
 
-  it('Chuẩn bị → Đang làm cần dòng P', () => {
+  it('Chuẩn bị → Đang làm cần dòng P (kế hoạch làm)', () => {
     expect(lyDoChanChuyen('CHUAN_BI', 'DANG_LAM', { ...bc, coDongP: false })).toContain('Plan');
     expect(lyDoChanChuyen('CHUAN_BI', 'DANG_LAM', bc)).toBeNull();
   });
 
-  it('Hoàn thành cần 100% và dòng C', () => {
+  it('Hoàn thành cần 100% VÀ chữ ký lãnh đạo — phương án D của GĐ 15/08', () => {
     expect(lyDoChanChuyen('DANG_LAM', 'HOAN_THANH', bc)).toContain('100%');
-    expect(lyDoChanChuyen('DANG_LAM', 'HOAN_THANH', { ...bc, phanTram: 100 })).toContain('Check');
-    expect(lyDoChanChuyen('DANG_LAM', 'HOAN_THANH', { ...bc, phanTram: 100, coDongC: true })).toBeNull();
+    // Cán bộ đủ 100% vẫn không tự chuyển được — phải trình Trưởng phòng duyệt
+    expect(lyDoChanChuyen('DANG_LAM', 'HOAN_THANH', { ...bc, phanTram: 100 })).toContain('Trình duyệt');
+    expect(lyDoChanChuyen('DANG_LAM', 'HOAN_THANH', { ...bc, phanTram: 100, laLanhDao: true })).toBeNull();
+    // Lãnh đạo duyệt từ cột chờ: CHO_DUYET → HOAN_THANH thông suốt
+    expect(lyDoChanChuyen('CHO_DUYET', 'HOAN_THANH', { ...bc, phanTram: 100, laLanhDao: true })).toBeNull();
   });
 
-  it('Đã đóng cần lãnh đạo + dòng A', () => {
-    expect(lyDoChanChuyen('HOAN_THANH', 'DA_DONG', { ...bc, coDongA: true })).toContain('Trưởng/Phó');
-    expect(lyDoChanChuyen('HOAN_THANH', 'DA_DONG', { ...bc, laLanhDao: true })).toContain('Act');
-    expect(lyDoChanChuyen('HOAN_THANH', 'DA_DONG', { ...bc, laLanhDao: true, coDongA: true })).toBeNull();
+  it('Đã đóng chỉ cần lãnh đạo — không đòi dòng Act nữa', () => {
+    expect(lyDoChanChuyen('HOAN_THANH', 'DA_DONG', bc)).toContain('Trưởng/Phó');
+    expect(lyDoChanChuyen('HOAN_THANH', 'DA_DONG', { ...bc, laLanhDao: true })).toBeNull();
   });
 
   it('việc THƯỜNG TRỰC không vào cột tiến trình', () => {
     expect(lyDoChanChuyen('DANG_LAM', 'CHO_DUYET', { ...bc, loai: 'THUONG_TRUC' })).toContain('THƯỜNG TRỰC');
+  });
+
+  it('mở lại thẻ đã đóng/hủy LUÔN cần lãnh đạo — kể cả khi đích là cột chờ', () => {
+    // Bản cũ vô tình miễn cho đích «chờ»: cán bộ kéo được thẻ đã hủy vào
+    // «Chờ duyệt». Rà soát trước triển khai 06/08 bịt đường lách này.
+    expect(lyDoChanChuyen('DUNG_HUY', 'CHO_DUYET', bc)).toContain('lãnh đạo');
+    expect(lyDoChanChuyen('DA_DONG', 'CHO_PHOI_HOP', bc)).toContain('lãnh đạo');
+    expect(lyDoChanChuyen('DA_DONG', 'DANG_LAM', { ...bc, laLanhDao: true })).toBeNull();
+  });
+});
+
+describe('Ô «Chuyển trạng thái» đồng bộ với bảng — GĐ chỉnh sáng 06/08', () => {
+  it('đích chuyển = đúng 4 cột của bảng, không hơn — hai nơi phải nói cùng một thứ', () => {
+    // Chờ phối hợp/duyệt là nút «Giao đồng hồ chờ» trong Đang làm; Đã đóng là
+    // nút «Chốt» của lãnh đạo trên thẻ Hoàn thành — không phải đích để chọn.
+    expect(CT2_COT.map((c) => c.ma)).toEqual(['CHUAN_BI', 'DANG_LAM', 'HOAN_THANH', 'DUNG_HUY']);
+  });
+
+  it('thẻ đang chờ / đã đóng vẫn quy về đúng cột của nó trên ô chọn', () => {
+    expect(cotHienThi('CHO_DUYET')).toBe('DANG_LAM');
+    expect(cotHienThi('CHO_PHOI_HOP')).toBe('DANG_LAM');
+    expect(cotHienThi('DA_DONG')).toBe('HOAN_THANH');
+  });
+
+  it('luật của bảy trạng thái thật vẫn nguyên ở lyDoChanChuyen — chỉ cách bày đổi', () => {
+    const bc: BoiCanhChuyen = { coDongP: true, phanTram: 50, laLanhDao: false, loai: 'TIEN_TRINH' };
+    expect(lyDoChanChuyen('DANG_LAM', 'CHO_DUYET', { ...bc, loai: 'THUONG_TRUC' })).toContain('THƯỜNG TRỰC');
+    expect(lyDoChanChuyen('HOAN_THANH', 'DA_DONG', bc)).toContain('Trưởng/Phó');
+    expect(lyDoChanChuyen('DANG_LAM', 'CHO_DUYET', bc)).toBeNull();
+  });
+});
+
+describe('Bốn cột theo chỉ đạo GĐ — thẻ trạng thái cũ không được biến mất', () => {
+  it('bảng chỉ còn 4 cột, không còn cột chờ và đã đóng', () => {
+    expect(CT2_COT.map((c) => c.ma)).toEqual(['CHUAN_BI', 'DANG_LAM', 'HOAN_THANH', 'DUNG_HUY']);
+  });
+
+  it('thẻ mang trạng thái cũ xếp về cột gần nghĩa nhất', () => {
+    expect(cotHienThi('CHO_PHOI_HOP')).toBe('DANG_LAM');
+    expect(cotHienThi('CHO_DUYET')).toBe('DANG_LAM');
+    expect(cotHienThi('DA_DONG')).toBe('HOAN_THANH');
+    expect(cotHienThi('DANG_LAM')).toBe('DANG_LAM');
   });
 });
 
@@ -185,6 +234,7 @@ describe('Cảnh báo ngoại lệ', () => {
     muc_tieu_lien_ket: 'casa', cach_lam: 'các bước triển khai chi tiết đầy đủ',
     chi_tieu_dinh_luong: null, don_vi: null, nguon_luc_du_kien: null,
     nguoi_chiu_trach_nhiem: 'p1', nguoi_phoi_hop: [], lanh_dao_theo_doi: 'p2',
+    pho_phong: null, truong_phong: null, pgd_phu_trach: null, bang_id: null,
     phong: 'd1', pham_vi: 'PHONG', loai_dau_viec: 'TIEN_TRINH', lien_phong: false,
     cac_phong_tham_gia: [], muc_uu_tien: 'THUONG', trang_thai: 'DANG_LAM',
     phan_tram: 40, co_tinh_trang: 'XANH', ngay_bat_dau: '2026-08-01',
@@ -197,10 +247,10 @@ describe('Cảnh báo ngoại lệ', () => {
   it('tính đúng số ngày quá hạn và im lặng', () => {
     // Quá hạn đếm NGÀY LỊCH: hạn 10/08 → 12/08 là trễ 2 ngày với BGĐ và khách
     expect(soNgayQuaHan(goc, moc)).toBe(2);
-    // Im lặng đếm NGÀY LÀM VIỆC: nhịp gần nhất 05/08 (thứ 4) → 12/08 (thứ 4) là
-    // 7 ngày lịch nhưng chỉ 5 ngày làm việc (6, 7, 10, 11, 12) — hai ngày nghỉ
-    // không phải lỗi của ai
-    expect(soNgayImLang(goc, moc)).toBe(5);
+    // Im lặng đếm NGÀY LÀM VIỆC và KẸP TỪ NGÀY TRIỂN KHAI 06/08: nhịp gần nhất
+    // 05/08 rơi trước mốc → đếm từ 06/08 (thứ 5) tới 12/08 (thứ 4) = 4 ngày
+    // làm việc (7, 10, 11, 12) — kỷ luật nhịp không tính lùi về trước khai trương
+    expect(soNgayImLang(goc, moc)).toBe(4);
     expect(soNgayQuaHan({ ...goc, trang_thai: 'HOAN_THANH' }, moc)).toBe(0);
   });
 
@@ -212,10 +262,10 @@ describe('Cảnh báo ngoại lệ', () => {
   });
 
   it('điểm rủi ro theo đúng công thức M4', () => {
-    // 2 ngày quá hạn (lịch) × 3 + 5 ngày im lặng (làm việc) × 2 = 16;
+    // 2 ngày quá hạn (lịch) × 3 + 4 ngày im lặng (kẹp từ ngày triển khai) × 2 = 14;
     // +5 trọng điểm; +3 liên phòng
-    expect(diemRuiRo(goc, moc)).toBe(16);
-    expect(diemRuiRo({ ...goc, muc_uu_tien: 'TRONG_DIEM_BGD', lien_phong: true }, moc)).toBe(24);
+    expect(diemRuiRo(goc, moc)).toBe(14);
+    expect(diemRuiRo({ ...goc, muc_uu_tien: 'TRONG_DIEM_BGD', lien_phong: true }, moc)).toBe(22);
   });
 
   it('chuẩn bị quá lâu khi còn ≤ 25% quỹ thời gian', () => {
@@ -302,6 +352,45 @@ describe('Tiện ích', () => {
   });
 });
 
+describe('Nhãn phân hệ của thông báo — đọc từ nhãn dòng đầu thân tin', () => {
+  it('tin về dấu ấn và hành động CT3 được nhận ra, họ CT2 thì không đeo nhãn', () => {
+    expect(moduleThongBao({ noi_dung: 'Dấu ấn: Chuyển đổi số toàn phòng\nPhần S2: ảnh biên bản' })).toBe('DAU_AN');
+    expect(moduleThongBao({ noi_dung: 'Hành động: Học Excel nâng cao\nTrao đổi: đã xong bài 3' })).toBe('CT3');
+    expect(moduleThongBao({ noi_dung: 'Việc: Thu hồi nợ nhóm 2\nTrao đổi: đã gặp khách' })).toBeNull();
+    expect(moduleThongBao({ noi_dung: 'Hồ sơ: Công ty Hải Nam (2,5 tỷ)\nNội dung: bổ sung BCTC' })).toBeNull();
+    // Tin không theo chuẩn nhãn (câu văn) — mặc định họ CT2, không nhãn
+    expect(moduleThongBao({ noi_dung: 'Phòng: KHDN\nĐúng giờ: 3/4' })).toBeNull();
+  });
+});
+
+describe('Tách nhãn đầu dòng để chuông in đậm', () => {
+  it('bắt mọi nhãn đang dùng, kể cả nhãn có dấu cảnh báo hoặc số', () => {
+    expect(tachNhanDong('Việc: Bàn giao báo cáo TF cho hậu kiểm'))
+      .toEqual({ nhan: 'Việc:', con: ' Bàn giao báo cáo TF cho hậu kiểm' });
+    expect(tachNhanDong('Hồ sơ: Công ty Hải Nam (2,5 tỷ)')?.nhan).toBe('Hồ sơ:');
+    expect(tachNhanDong('Hành động: Học Excel nâng cao')?.nhan).toBe('Hành động:');
+    expect(tachNhanDong('⚠️ Vướng: chưa có phương thức họp')?.nhan).toBe('⚠️ Vướng:');
+    expect(tachNhanDong('Phần S2: Biên bản làm việc')?.nhan).toBe('Phần S2:');
+    // Nhãn đánh số của tin nhắc nhịp sáng (12/08) — chuông phải in đậm được cả số
+    expect(tachNhanDong('Việc 1: Hoàn thiện hs bảo lãnh cho cty tiến phát')?.nhan).toBe('Việc 1:');
+    expect(tachNhanDong('Việc 2: hoàn thiện cấp GHTD cho cty sơn tùng')?.nhan).toBe('Việc 2:');
+    expect(tachNhanDong('Đúng giờ: 3/4')?.nhan).toBe('Đúng giờ:');
+    expect(tachNhanDong('Hạn: 07/08/2026 → 16/08/2026')?.nhan).toBe('Hạn:');
+  });
+
+  it('không bôi đậm nhầm câu văn có dấu hai chấm ở giữa', () => {
+    expect(tachNhanDong('Đã báo hoàn thành — mời anh/chị rà và đóng thẻ.')).toBeNull();
+    expect(tachNhanDong('❗ Cần trả lời')).toBeNull();
+    // Dấu hai chấm nằm sau một câu trọn vẹn: dấu chấm chặn lại
+    expect(tachNhanDong('Còn 2 hành động chưa cập nhật. Hạn chót: hết Chủ nhật')).toBeNull();
+    // Nhãn quá dài thì coi như câu văn, tránh bôi đen nửa dòng
+    expect(tachNhanDong('Tổ chức Hội đồng BHY ideas phiên đầu tiên: đã tổng hợp')).toBeNull();
+    // Chỉ tách ở dấu hai chấm ĐẦU TIÊN — phần nội dung giữ nguyên dấu của nó
+    expect(tachNhanDong('Trao đổi: anh Nam: em gửi rồi ạ'))
+      .toEqual({ nhan: 'Trao đổi:', con: ' anh Nam: em gửi rồi ạ' });
+  });
+});
+
 describe('Mốc tuần của dấu ấn — phải trùng mốc tuần Kanban (T2 00:00 giờ VN)', () => {
   it('mọi ngày trong tuần đều quy về đúng thứ Hai của tuần đó', () => {
     // Thứ 4 12/08/2026 → thứ 2 là 10/08
@@ -330,7 +419,18 @@ describe('Thông báo — bấm vào phải mở đúng thứ nó nói tới', (
       .toBe('/one/chieu-thuc-2?the=x1');
   });
 
-  it('tin hồ sơ tín dụng mở đúng tab tín dụng, không phải tab mặc định', () => {
+  it('tin gắn hồ sơ tín dụng thì mở THẲNG hồ sơ đó — không bắt tự tìm giữa 48 hồ sơ', () => {
+    expect(duongDanThongBao({ ma_su_kien: 'HS_TRINH', dau_viec_id: null, ho_so_id: 'hs-9' }))
+      .toBe('/one/chieu-thuc-2?ho_so=hs-9');
+    // Nhịp và trao đổi trên hồ sơ cũng mang mã hồ sơ dù mã sự kiện không phải HS_*
+    expect(duongDanThongBao({ ma_su_kien: 'NHIP', dau_viec_id: null, ho_so_id: 'hs-9' }))
+      .toBe('/one/chieu-thuc-2?ho_so=hs-9');
+    // Đầu việc vẫn thắng nếu tin gắn cả hai
+    expect(duongDanThongBao({ ma_su_kien: 'N12', dau_viec_id: 'dv-1', ho_so_id: 'hs-9' }))
+      .toBe('/one/chieu-thuc-2?the=dv-1');
+  });
+
+  it('tin hồ sơ CŨ (trước khi có mã) vẫn về tab tín dụng, không phải tab mặc định', () => {
     expect(duongDanThongBao({ ma_su_kien: 'HS_TRINH', dau_viec_id: null }))
       .toBe('/one/chieu-thuc-2?tab=tin-dung');
     expect(duongDanThongBao({ ma_su_kien: 'HS_TU_CHOI', dau_viec_id: null }))
@@ -394,9 +494,22 @@ describe('Nhịp chỉ chạy thứ 2 → thứ 6', () => {
       trang_thai: 'DANG_LAM' as const,
       nhip_gan_nhat: '2026-08-07T07:30:00+07:00',
       ngay_bat_dau: '2026-08-01',
+      created_at: '2026-08-01T01:00:00Z',
     };
     expect(soNgayImLang(the, T2)).toBe(1);
     expect(soNgayImLang(the, CN)).toBe(0);
+  });
+
+  it('sáng khai trương 06/08 không thẻ nhập cũ nào bị «im lặng» — nhịp tính từ ngày triển khai', () => {
+    // 97 thẻ nhập từ Miro ngày 03/08, chưa ai ghi nhịp. Không kẹp mốc thì sáng
+    // 06/08 cả bảng đã «im lặng 3 ngày» — khiển trách về một kỷ luật hôm qua
+    // chưa tồn tại. Sang 07/08 chưa ghi thì im lặng 1 ngày: từ đây là lỗi thật.
+    const nhapCu = {
+      trang_thai: 'DANG_LAM' as const, nhip_gan_nhat: null,
+      ngay_bat_dau: null, created_at: '2026-08-03T02:00:00Z',
+    };
+    expect(soNgayImLang(nhapCu, new Date('2026-08-06T02:00:00Z'))).toBe(0);
+    expect(soNgayImLang(nhapCu, new Date('2026-08-07T02:00:00Z'))).toBe(1);
   });
 
   it('nhưng QUÁ HẠN vẫn đếm ngày lịch — hạn là lời hứa theo tờ lịch', () => {
@@ -413,6 +526,7 @@ describe('Thẻ nhập từ board cũ — ô trống phải nói ra, không đư
     muc_tieu_lien_ket: null, cach_lam: null,
     chi_tieu_dinh_luong: null, don_vi: null, nguon_luc_du_kien: null,
     nguoi_chiu_trach_nhiem: null, nguoi_phoi_hop: [], lanh_dao_theo_doi: null,
+    pho_phong: null, truong_phong: null, pgd_phu_trach: null, bang_id: null,
     phong: 'd1', pham_vi: 'PHONG', loai_dau_viec: 'TIEN_TRINH', lien_phong: false,
     cac_phong_tham_gia: [], muc_uu_tien: 'THUONG', trang_thai: 'DANG_LAM',
     phan_tram: 0, co_tinh_trang: 'XANH', ngay_bat_dau: null,
@@ -484,16 +598,94 @@ describe('Thẻ nhập từ board cũ — ô trống phải nói ra, không đư
   });
 });
 
-describe('moduleThongBao', () => {
-  // Nhãn phân hệ phải trùng nhanPhanHe() của edge function notify-ct2:
-  // chuông trong ứng dụng và push trên màn hình khoá không được nói hai đằng.
-  it('đọc theo nhãn dòng đầu của thân tin, không theo mã sự kiện', () => {
-    expect(moduleThongBao({ ma_su_kien: 'N12', noi_dung: 'Dấu ấn: Chị Lan vừa ghi nhận' })).toBe('Dấu ấn');
-    expect(moduleThongBao({ ma_su_kien: 'N12', noi_dung: 'Hành động: cập nhật tiến độ' })).toBe('CT3');
-    expect(moduleThongBao({ ma_su_kien: 'NHIP', noi_dung: 'Bằng chứng vừa được nộp' })).toBe('CT2');
+
+describe('Dòng thời gian — trộn báo cáo và trao đổi thành MỘT mạch', () => {
+  const bc = (id: string, luc: string) => ({ id, luc, nguoi: 'p1', noi_dung: 'x' });
+  const bl = (id: string, luc: string) => ({
+    id, pham_vi: 'DAU_VIEC' as const, doi_tuong_id: 'd', cha_id: null,
+    nguoi_gui: 'p2', noi_dung: 'y', nhac_ten: [], can_tra_loi: false,
+    da_tra_loi_luc: null, ghim: false, thu_hoi: false, created_at: luc,
   });
 
-  it('tin hạ tầng toàn cổng thì không mang nhãn phân hệ nào', () => {
-    expect(moduleThongBao({ ma_su_kien: 'LICH_NGHI', noi_dung: 'Còn 3 ngày tới Quốc khánh' })).toBe('');
+  it('trộn đúng thứ tự thời gian, mới nhất trước, xuyên qua hai nguồn', () => {
+    const nhom = gopDongThoiGian(
+      [bc('a', '2026-08-03T01:00:00Z'), bc('b', '2026-08-03T05:00:00Z')],
+      [bl('c', '2026-08-03T03:00:00Z')],
+    );
+    expect(nhom).toHaveLength(1);
+    expect(nhom[0].items.map((d) => (d.kieu === 'BAO_CAO' ? d.bc.id : d.bl.id)))
+      .toEqual(['b', 'c', 'a']);   // báo cáo – trao đổi – báo cáo, đan xen theo giờ
+  });
+
+  it('gom theo NGÀY GIỜ VIỆT NAM — nửa đêm UTC vẫn là chiều hôm đó ở VN', () => {
+    // 18:00 UTC ngày 3/8 = 01:00 VN ngày 4/8 → phải nằm ở nhóm ngày 4/8
+    const nhom = gopDongThoiGian([bc('a', '2026-08-03T18:00:00Z'), bc('b', '2026-08-03T02:00:00Z')], []);
+    expect(nhom).toHaveLength(2);
+    expect(nhom[0].nhan).toBe('4/8/2026');
+    expect(nhom[1].nhan).toBe('3/8/2026');
+  });
+
+  it('lọc «Báo cáo» / «Trao đổi» đúng — quản lý họp giao ban chỉ đọc báo cáo', () => {
+    const baoCao = [bc('a', '2026-08-03T01:00:00Z')];
+    const traoDoi = [bl('c', '2026-08-03T03:00:00Z')];
+    const chiBc = gopDongThoiGian(baoCao, traoDoi, 'BAO_CAO');
+    expect(chiBc[0].items).toHaveLength(1);
+    expect(chiBc[0].items[0].kieu).toBe('BAO_CAO');
+    const chiTd = gopDongThoiGian(baoCao, traoDoi, 'TRAO_DOI');
+    expect(chiTd[0].items[0].kieu).toBe('TRAO_DOI');
+  });
+
+  it('hai định dạng ISO khác nhau vẫn xếp đúng — so bằng Date, không so chuỗi', () => {
+    const nhom = gopDongThoiGian(
+      [bc('a', '2026-08-03T05:00:00+07:00')],          // 22:00 UTC 2/8
+      [bl('c', '2026-08-03T01:00:00Z')],               // 01:00 UTC 3/8 — MỚI hơn
+    );
+    const phang = nhom.flatMap((n) => n.items);
+    expect(phang[0].kieu).toBe('TRAO_DOI');
+  });
+});
+
+/**
+ * Thẻ ở «Chuẩn bị» đã đến lúc phải chạy thì vẫn phải ghi nhịp (GĐ 15/08).
+ * Luật thật ở database (ct2_vi_sao_phai_bao_cao); bản chiếu client phải nói
+ * đúng cùng một thứ, nếu không bảng chấm một đằng thẻ hiện một nẻo.
+ */
+describe('lyDoPhaiBaoCao — bịt đường né bằng cách nằm ở «Chuẩn bị»', () => {
+  // Thứ Tư 12/08/2026, tránh cuối tuần làm lệch phép đếm ngày làm việc
+  const moc = new Date('2026-08-12T03:00:00Z');
+  const the = (v: Partial<Ct2DauViec>) => ({
+    trang_thai: 'CHUAN_BI', loai_dau_viec: 'TIEN_TRINH',
+    ngay_bat_dau: null, han_hoan_thanh: null, ...v,
+  } as Pick<Ct2DauViec, 'trang_thai' | 'loai_dau_viec' | 'ngay_bat_dau' | 'han_hoan_thanh'>);
+
+  it('quá ngày bắt đầu mà chưa mở việc → phải báo cáo', () => {
+    expect(lyDoPhaiBaoCao(the({ ngay_bat_dau: '2026-08-07' }), moc)).toBe('QUA_HAN_BAT_DAU');
+  });
+
+  it('đúng ngày bắt đầu thì chưa đòi — còn cả ngày hôm nay để mở việc', () => {
+    expect(lyDoPhaiBaoCao(the({ ngay_bat_dau: '2026-08-12' }), moc)).toBeNull();
+  });
+
+  it('sắp đến hạn hoàn thành mà chưa bắt đầu → nguy cấp hơn, thắng nhãn kia', () => {
+    expect(lyDoPhaiBaoCao(the({ ngay_bat_dau: '2026-08-03', han_hoan_thanh: '2026-08-13' }), moc))
+      .toBe('SAP_DEN_HAN');
+  });
+
+  it('đã quá hạn hoàn thành mà chưa bắt đầu vẫn nằm trong lưới', () => {
+    expect(lyDoPhaiBaoCao(the({ han_hoan_thanh: '2026-07-30' }), moc)).toBe('SAP_DEN_HAN');
+  });
+
+  it('chưa tới ngày bắt đầu và còn xa hạn → nằm ở «Chuẩn bị» là hợp lệ', () => {
+    expect(lyDoPhaiBaoCao(the({ ngay_bat_dau: '2026-08-20', han_hoan_thanh: '2026-09-30' }), moc))
+      .toBeNull();
+  });
+
+  it('thẻ trống ngày — không bịa hạn cho ai, không đòi báo cáo', () => {
+    expect(lyDoPhaiBaoCao(the({}), moc)).toBeNull();
+  });
+
+  it('thẻ đang làm / việc thường trực không thuộc luật này', () => {
+    expect(lyDoPhaiBaoCao(the({ trang_thai: 'DANG_LAM', ngay_bat_dau: '2026-08-01' }), moc)).toBeNull();
+    expect(lyDoPhaiBaoCao(the({ loai_dau_viec: 'THUONG_TRUC', ngay_bat_dau: '2026-08-01' }), moc)).toBeNull();
   });
 });

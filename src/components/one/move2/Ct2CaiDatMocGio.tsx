@@ -47,11 +47,30 @@ export function Ct2CaiDatMocGio() {
     if (coLoi) { toast.error('Còn mốc giờ chưa hợp lệ — kiểm tra lại các ô báo đỏ.'); return; }
     setDangLuu(true);
     const db = supabase as unknown as {
-      from(t: string): { update(v: unknown): { eq(c: string, v: unknown): PromiseLike<{ error: { message?: string } | null }> } };
+      from(t: string): {
+        update(v: unknown): {
+          eq(c: string, v: unknown): {
+            select(c: string): PromiseLike<{ data: unknown[] | null; error: { message?: string } | null }>;
+          };
+        };
+      };
     };
-    const { error } = await db.from('ct2_cau_hinh_thoi_gian').update(f).eq('id', true);
+    /*
+      `.select()` không phải để lấy dữ liệu — nó để ĐẾM SỐ DÒNG THỰC SỰ ĐỔI.
+      RLS chặn một UPDATE thì PostgREST trả 0 dòng và KHÔNG kèm lỗi, nên bản cũ
+      báo «Đã lưu mốc giờ» trong khi không lưu gì: Giám đốc bấm lưu, thấy báo
+      thành công, mở lại thấy số cũ, không có manh mối nào để đoán vì sao.
+      Một màn hình nói dối còn tệ hơn một màn hình báo lỗi.
+    */
+    const { data: doi, error } = await db
+      .from('ct2_cau_hinh_thoi_gian').update(f).eq('id', true).select('id');
     setDangLuu(false);
     if (error) { toast.error(error.message ?? 'Không lưu được.'); return; }
+    if (!doi || doi.length === 0) {
+      toast.error('Không lưu được: tài khoản của anh/chị không có quyền đổi mốc giờ '
+        + 'của Chi nhánh. Cần vai Giám đốc, Tổ chức Tổng hợp hoặc quản trị hệ thống.');
+      return;
+    }
     toast.success('Đã lưu mốc giờ. Các bảng sẽ tính lại theo mốc mới.');
     lamTuoi();
   };
@@ -138,14 +157,23 @@ export function Ct2CaiDatMocGio() {
 
             <div>
               <p className="mb-2 text-sm font-medium">Ngưỡng cảnh báo</p>
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <OSo id="nguong-cho" nhan="Nghẽn cột chờ (ngày làm việc)"
                   gia={f.nguong_tuoi_cho} onDoi={(v) => dat('nguong_tuoi_cho', v)} min={1} max={30} />
                 <OSo id="nguong-im" nhan="Hồ sơ tín dụng chưa cập nhật (ngày làm việc)"
                   gia={f.nguong_im_lang_ho_so} onDoi={(v) => dat('nguong_im_lang_ho_so', v)} min={1} max={30} />
-                <OSo id="tran-tb" nhan="Trần thông báo nhắc nhẹ / người / ngày"
-                  gia={f.tran_thong_bao} onDoi={(v) => dat('tran_thong_bao', v)} min={1} max={20} />
               </div>
+              {/*
+                Ô «Trần thông báo / người / ngày» đã gỡ 09/08/2026 theo yêu cầu Giám đốc.
+                Đối chiếu số liệu: trần chỉ từng chặn mã N15 «Có việc chờ anh/chị chốt» —
+                đúng loại tin cần hành động nhất — trong khi hai loại ồn nhất (nhịp và
+                trao đổi) vốn đã được miễn trừ. Chống phiền nay chỉ còn dựa vào khung giờ
+                yên tĩnh phía trên.
+              */}
+              <p className="mt-1.5 text-2xs text-muted-foreground">
+                Không còn giới hạn số thông báo mỗi người mỗi ngày. Việc chống phiền do
+                khung giờ yên tĩnh phía trên đảm nhiệm.
+              </p>
             </div>
 
             {anHanQuaMuon && (

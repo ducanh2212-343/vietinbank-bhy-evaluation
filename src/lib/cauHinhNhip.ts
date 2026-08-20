@@ -14,6 +14,22 @@
  * này chỉ để giao diện hiện đúng con số mà không phải hỏi server mỗi lần.
  */
 
+/**
+ * NGÀY TRIỂN KHAI CHÍNH THỨC Chiêu thức 2 tại ba phòng đầu tiên (TCTH, KHDN,
+ * Bán lẻ) — Giám đốc chốt sáng 06/08/2026.
+ *
+ * Mọi thước đo KỶ LUẬT NHỊP (im lặng mấy ngày, mất nhịp ngày nào) tính từ mốc
+ * này trở đi: 194 thẻ và hồ sơ nhập từ Miro vào hệ thống trong các ngày 03–05/08,
+ * nếu đếm im lặng từ ngày nhập thì sáng khai trương cả bảng đã vàng rực «im
+ * lặng 3 ngày» — cán bộ bị khiển trách về một kỷ luật chưa tồn tại. Ngược lại
+ * KHÔNG lùi mốc nào về sau: hạn hoàn thành, quá hạn, tuổi cột chờ vẫn tính từ
+ * ngày thật của chúng — đó là lời hứa với khách và BGĐ, không phải kỷ luật nhịp.
+ *
+ * Phòng vào sau không cần mốc riêng: thẻ của họ tạo sau ngày này thì phép kẹp
+ * max(mốc bắt đầu, ngày triển khai) tự trả về mốc bắt đầu thật.
+ */
+export const NGAY_TRIEN_KHAI = '2026-08-06';
+
 export interface CauHinhNhip {
   /** Trước giờ này = đúng giờ */
   gio_dung_gio: string;

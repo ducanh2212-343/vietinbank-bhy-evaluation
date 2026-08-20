@@ -1,7 +1,7 @@
 // notify-ct2 — phát Web Push cho hàng đợi thông báo Chiêu thức 2 + Phê duyệt tín dụng.
 //
 // Khác notify-kanban-update ở chỗ: hàm này KHÔNG tự quyết ai được nhận. Mọi luật
-// (ai liên quan, trần 3 tin/người/ngày, im lặng ngoài giờ) đã nằm trong DB ở
+// (ai liên quan, im lặng ngoài giờ) đã nằm trong DB ở
 // public.ct2_dat_thong_bao — nơi duy nhất, để giao diện hay trigger mới sau này
 // cũng không lách được. Hàm này chỉ làm đúng một việc: đọc các dòng chưa gửi
 // trong ct2_thong_bao, đẩy đi, rồi đóng dấu gui_luc.
@@ -30,6 +30,7 @@ interface ThongBao {
   ma_su_kien: string;
   nguoi_nhan: string;
   dau_viec_id: string | null;
+  ho_so_id: string | null;
   tieu_de: string;
   noi_dung: string;
   muc: string;
@@ -48,12 +49,36 @@ function parseJwtClaims(token: string): Record<string, unknown> | null {
 }
 
 // Biểu tượng theo mức, không theo mã sự kiện — cán bộ chỉ cần phân biệt
-// «phải xử lý ngay» với «biết để đấy».
-const DAU_MUC: Record<string, string> = { CHAN: '⛔', DO: '🔴', NHE: '🟡' };
+// «phải xử lý ngay» với «biết để đấy». KHEN (13/08) là tin vui — khen mốc chuỗi
+// đúng giờ — nên mang 🔥 trùng huy hiệu trong app, không đội mũ cảnh báo 🟡.
+// Trùng bảng CT2_DAU_MUC ở client (src/lib/ct2.ts) — chuông và push không lệch nhau.
+const DAU_MUC: Record<string, string> = { CHAN: '⛔', DO: '🔴', NHE: '🟡', KHEN: '🔥' };
 
-/** Bấm vào thông báo phải mở đúng chỗ, nếu không cán bộ phải tự đi tìm thẻ. */
+// Nhãn phân hệ trong tiêu đề push — GĐ yêu cầu 11/08: nhìn màn hình khóa phải biết
+// ngay tin thuộc Chiêu thức 2, Chiêu thức 3 (upskill) hay Dấu ấn BHY Mark.
+// Đọc từ NHÃN DÒNG ĐẦU thân tin (chuẩn 09/08), không đọc ma_su_kien: bình luận dùng
+// chung N12, bằng chứng dùng chung NHIP cho mọi loại đối tượng — chỉ dòng đầu biết
+// tin nói về thứ gì. Trùng luật với moduleThongBao (src/lib/ct2.ts) để chuông và
+// push không lệch nhau.
+function nhanPhanHe(tb: ThongBao): string {
+  if (tb.ma_su_kien === 'LICH_NGHI') return ''; // tin hạ tầng cho quản trị — không thuộc phân hệ nào
+  // Công bố phiên bản nói về CẢ hệ thống, không thuộc phân hệ nào — dán [CT2]
+  // vào là nói sai chỗ và làm tin dài thêm một cách vô ích.
+  if (tb.ma_su_kien === 'PHIEN_BAN') return '';
+  if (tb.noi_dung.startsWith('Dấu ấn:')) return '[Dấu ấn] ';
+  if (tb.noi_dung.startsWith('Hành động:')) return '[CT3] ';
+  return '[CT2] ';
+}
+
+/**
+ * Bấm vào thông báo phải mở đúng chỗ, nếu không cán bộ phải tự đi tìm thẻ.
+ * Quy tắc PHẢI trùng với duongDanThongBao() ở client (src/lib/ct2.ts) —
+ * push và chuông trong ứng dụng không được lệch nhau.
+ */
 function duongDan(tb: ThongBao): string {
+  if (tb.ma_su_kien === 'PHIEN_BAN') return '/co-gi-moi';
   if (tb.dau_viec_id) return `/one/chieu-thuc-2?the=${tb.dau_viec_id}`;
+  if (tb.ho_so_id) return `/one/chieu-thuc-2?ho_so=${tb.ho_so_id}`;
   if (tb.ma_su_kien.startsWith('HS_')) return '/one/chieu-thuc-2?tab=tin-dung';
   return '/one/chieu-thuc-2';
 }
@@ -83,7 +108,7 @@ Deno.serve(async (req) => {
     const qua = new Date(Date.now() - 12 * 3600 * 1000).toISOString();
     const { data: rows, error: loiDoc } = await admin
       .from('ct2_thong_bao')
-      .select('id, ma_su_kien, nguoi_nhan, dau_viec_id, tieu_de, noi_dung, muc, kenh, phat_luc')
+      .select('id, ma_su_kien, nguoi_nhan, dau_viec_id, ho_so_id, tieu_de, noi_dung, muc, kenh, phat_luc')
       .is('gui_luc', null)
       .lte('phat_luc', bayGio)
       .gte('phat_luc', qua)
@@ -120,11 +145,14 @@ Deno.serve(async (req) => {
 
     let sent = 0;
     const daXuLy: string[] = [];
+    // Thống kê lỗi trả về ngay trong phản hồi — người gọi tay (kiểm thử) thấy
+    // được kết quả mà không phải đi đọc log
+    const loiGui: Array<{ sub: string; status: number | string; body?: string }> = [];
 
     if (vapidPrivateKey && nguoiNhan.length) {
       const { data: subs } = await admin
         .from('push_subscriptions')
-        .select('id, profile_id, endpoint, p256dh, auth')
+        .select('id, profile_id, endpoint, p256dh, auth, loi_cuoi')
         .eq('is_active', true)
         .in('profile_id', nguoiNhan);
 
@@ -138,7 +166,7 @@ Deno.serve(async (req) => {
 
       for (const tb of canPush) {
         const msg = {
-          title: `${DAU_MUC[tb.muc] || '🔔'} ${tb.tieu_de}`,
+          title: `${DAU_MUC[tb.muc] || '🔔'} ${nhanPhanHe(tb)}${tb.tieu_de}`,
           body: tb.noi_dung,
           url: duongDan(tb),
           // tag riêng từng tin: hai việc khác nhau không được đè lên nhau
@@ -149,16 +177,50 @@ Deno.serve(async (req) => {
             const init = await buildPushPayload(
               {
                 data: JSON.stringify(msg),
-                options: { ttl: 12 * 3600, urgency: tb.muc === 'NHE' ? 'normal' : 'high' },
+                options: { ttl: 12 * 3600, urgency: tb.muc === 'DO' || tb.muc === 'CHAN' ? 'high' : 'normal' },
               },
               { endpoint: s.endpoint, expirationTime: null, keys: { p256dh: s.p256dh, auth: s.auth } },
               { subject: VAPID_SUBJECT, publicKey: VAPID_PUBLIC_KEY, privateKey: vapidPrivateKey },
             );
             const res = await fetch(s.endpoint, init);
             if (res.status === 404 || res.status === 410) {
-              await admin.from('push_subscriptions').update({ is_active: false }).eq('id', s.id);
-            } else if (res.ok) sent++;
-          } catch (e) { console.error('Push CT2 lỗi', { tb: tb.id, error: String(e) }); }
+              await admin.from('push_subscriptions')
+                .update({ is_active: false, loi_cuoi: `${res.status} endpoint đã hết hiệu lực`, loi_luc: bayGio })
+                .eq('id', s.id);
+              loiGui.push({ sub: s.id, status: res.status });
+            } else if (res.ok) {
+              sent++;
+              // Xoá vết lỗi cũ khi máy này nhận lại được — nếu không thì một lần
+              // trục trặc sẽ đeo bám mãi và ta đọc nhầm là máy vẫn đang hỏng
+              if (s.loi_cuoi) {
+                await admin.from('push_subscriptions')
+                  .update({ loi_cuoi: null, loi_luc: null }).eq('id', s.id);
+              }
+            } else {
+              /*
+                ĐIỂM MÙ CŨ: mọi mã lỗi ngoài 404/410 từng bị nuốt lặng lẽ — đăng
+                ký vẫn is_active nên bảng điều khiển báo «máy còn sống», trong
+                khi Apple/Google từ chối từng tin một và người dùng không bao giờ
+                nhận được gì. Đúng cảnh iPhone của Giám đốc: đăng ký sống từ
+                19/07, tin nào cũng «gửi xong», màn hình khóa im lặng.
+                Nay ghi lại nguyên văn để còn truy được.
+              */
+              const chiTiet = (await res.text().catch(() => '')).slice(0, 300);
+              console.error('Push CT2 bị từ chối', {
+                tb: tb.id, sub: s.id, status: res.status,
+                endpoint: s.endpoint.slice(0, 60), body: chiTiet,
+              });
+              await admin.from('push_subscriptions')
+                .update({ loi_cuoi: `${res.status} ${chiTiet}`.slice(0, 400), loi_luc: bayGio })
+                .eq('id', s.id);
+              loiGui.push({ sub: s.id, status: res.status, body: chiTiet });
+            }
+          } catch (e) {
+            console.error('Push CT2 lỗi', { tb: tb.id, sub: s.id, error: String(e) });
+            await admin.from('push_subscriptions')
+              .update({ loi_cuoi: String(e).slice(0, 400), loi_luc: bayGio }).eq('id', s.id);
+            loiGui.push({ sub: s.id, status: 'ngoại lệ', body: String(e).slice(0, 300) });
+          }
         }
         daXuLy.push(tb.id);
       }
@@ -172,9 +234,10 @@ Deno.serve(async (req) => {
     await admin.from('ct2_thong_bao').update({ gui_luc: bayGio })
       .is('gui_luc', null).lt('phat_luc', qua);
 
-    return new Response(JSON.stringify({ hang_doi: dsTb.length, da_day: daXuLy.length, push_sent: sent }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({ hang_doi: dsTb.length, da_day: daXuLy.length, push_sent: sent, loi: loiGui }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
   } catch (e) {
     return new Response(JSON.stringify({ error: String((e as Error)?.message || e) }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },

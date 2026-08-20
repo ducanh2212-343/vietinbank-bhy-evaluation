@@ -28,11 +28,11 @@
 // AN TOÀN: dry_run MẶC ĐỊNH = true → chỉ trả về nội dung sẽ gửi, KHÔNG gửi.
 // Quyền: service_role (cron) hoặc user admin (system_admin/bgd/tcth_admin).
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { APP_URL, FROM_DOMAIN, FROM_NAME, SENDER_DOMAIN } from '../_shared/email-config.ts';
+import { APP_URL, FROM_DOMAIN, SENDER_DOMAIN } from '../_shared/email-config.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const SITE_NAME = FROM_NAME;
+const SITE_NAME = 'chieuthuc3';
 const ADMIN_ROLES = ['system_admin', 'bgd', 'tcth_admin'];
 
 // Ngày triển khai chính thức kỷ luật nhịp — trùng ct2_bang_nhip_ky, xem ghi chú (2) ở đầu file.
@@ -349,7 +349,17 @@ Deno.serve(async (req) => {
             `<td style="padding:3px 0;color:#b45309">${v.muon} ngày muộn</td></tr>`).join('')}</table>`;
 
       const subject = `📈 Nhịp Chiêu thức 2 tuần ${nhan}: giữ nhịp ${tiLe}% · ${dsNhac.length} cán bộ cần nhắc`;
-      const html = `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#1f2937;line-height:1.5">\n<p>Kính gửi <b>${esc(nn.hoSo.full_name)}</b>,</p>\n<p>Tổng hợp kỷ luật ghi nhịp <b>tuần ${nhan}</b> (${nn.pham_vi === 'chi_nhanh' ? 'toàn chi nhánh' : 'phòng phụ trách'}):</p>\n<p style="font-size:15px">Tỷ lệ giữ nhịp: <b style="font-size:20px">${tiLe}%</b> — trên ${luot} lượt ngày có việc phải ghi.</p>\n<h3 style="margin:14px 0 6px;font-size:15px">Theo phòng</h3>\n<table style="border-collapse:collapse;font-size:13px">${hangPhong}</table>\n<h3 style="margin:14px 0 6px;font-size:15px">🔴 Cần nhắc (${dsNhac.length} cán bộ)</h3>\n${hangNhac}\n<p style="margin-top:14px"><a href="${APP_URL}/one/chieu-thuc-2" style="display:inline-block;background:#0b3d91;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">Mở Bảng nhịp</a></p>\n<p style="color:#6b7280;font-size:12px">Muộn vẫn tính là có ghi; chỉ mất nhịp mới tính là không ghi. Người nghỉ phép hoặc không có việc đang chạy không vào mẫu số. Email tự động chiều thứ Sáu — vui lòng không trả lời.</p>\n</body></html>`;
+      const html = `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#1f2937;line-height:1.5">
+<p>Kính gửi <b>${esc(nn.hoSo.full_name)}</b>,</p>
+<p>Tổng hợp kỷ luật ghi nhịp <b>tuần ${nhan}</b> (${nn.pham_vi === 'chi_nhanh' ? 'toàn chi nhánh' : 'phòng phụ trách'}):</p>
+<p style="font-size:15px">Tỷ lệ giữ nhịp: <b style="font-size:20px">${tiLe}%</b> — trên ${luot} lượt ngày có việc phải ghi.</p>
+<h3 style="margin:14px 0 6px;font-size:15px">Theo phòng</h3>
+<table style="border-collapse:collapse;font-size:13px">${hangPhong}</table>
+<h3 style="margin:14px 0 6px;font-size:15px">🔴 Cần nhắc (${dsNhac.length} cán bộ)</h3>
+${hangNhac}
+<p style="margin-top:14px"><a href="${APP_URL}/one/chieu-thuc-2" style="display:inline-block;background:#0b3d91;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">Mở Bảng nhịp</a></p>
+<p style="color:#6b7280;font-size:12px">Muộn vẫn tính là có ghi; chỉ mất nhịp mới tính là không ghi. Người nghỉ phép hoặc không có việc đang chạy không vào mẫu số. Email tự động chiều thứ Sáu — vui lòng không trả lời.</p>
+</body></html>`;
       const text = `Kính gửi ${nn.hoSo.full_name},\nNhịp Chiêu thức 2 tuần ${nhan}: giữ nhịp ${tiLe}% trên ${luot} lượt.\n` +
         `Cần nhắc: ${dsNhac.length} cán bộ${dsNhac.length ? ` — ${dsNhac.slice(0, 10).map((v) => `${v.ten} (${v.mat} ngày mất nhịp)`).join(', ')}` : ''}.\n` +
         `Xem chi tiết: ${APP_URL}/one/chieu-thuc-2`;

@@ -6,7 +6,9 @@ import { OnePageShell } from '@/components/one/OnePageShell';
 import { CultureTree } from '@/components/one/CultureTree';
 import { PersonalKanbanMini } from '@/components/kanban/PersonalKanbanMini';
 import { Ct2HomeStrip } from '@/components/one/move2/Ct2HomeStrip';
+import { EnablePushBanner } from '@/components/EnablePushBanner';
 import { Ct2DieuHanhBgd } from '@/components/one/move2/Ct2DieuHanhBgd';
+import { Ct2KanbanPhongMini } from '@/components/one/move2/Ct2KanbanPhongMini';
 import { NewsRail } from '@/components/one/news/NewsRail';
 import { useOneUploads } from '@/components/one/useOneUploads';
 import { useAuth } from '@/hooks/useAuth';
@@ -14,6 +16,7 @@ import { useMyFullName } from '@/components/one/useMyFullName';
 import { useMyStars } from '@/components/one/star/useMyStars';
 import { useAdminEditable, EditableText } from '@/components/one/AdminEditableContext';
 import { BHY_WAYS, BHY_WAYS_DINH_NGHIA } from '@/data/one/bhyWays';
+import { MAN_HINH_KHACH } from '@/lib/manHinhKhach';
 import { BO_3_CHIEU_THUC } from '@/data/one/chieuThuc';
 import { MOVE3_ATTITUDES, MOVE3_SKILL_GROUPS } from '@/data/one/move3Data';
 
@@ -28,7 +31,8 @@ const THAO_TAC_NHANH = [
   { to: '/one/chieu-thuc-2', icon: ClipboardList, label: 'Bảng việc & ghi nhịp', color: 'from-brand-navy to-blue-700' },
   { to: '/one/tin-tuc?action=chia-se', icon: Upload, label: 'Chia sẻ kinh nghiệm', color: 'from-blue-500 to-brand-royal' },
   { to: '/quizzi', icon: Zap, label: 'Làm BHY Quizzi', color: 'from-red-500 to-amber-500' },
-  { to: '/one/y-tuong', icon: Lightbulb, label: 'Gửi BHY Ideas', color: 'from-amber-500 to-orange-500' },
+  // Thao tác nhanh phải rơi thẳng vào ô nhập, không qua trang giới thiệu
+  { to: '/one/y-tuong/gui', icon: Lightbulb, label: 'Gửi BHY Ideas', color: 'from-amber-500 to-orange-500' },
   { to: '/one/credit-360', icon: ShieldAlert, label: 'Đăng ký Credit 360', color: 'from-emerald-500 to-teal-600' },
   { to: '/one/ghi-nhan', icon: Star, label: 'Gửi Sao Xứng Đáng', color: 'from-amber-400 to-yellow-600' },
 ];
@@ -44,7 +48,7 @@ export default function OneHomePage() {
 }
 
 function HomeContent() {
-  const { profileId, isGuest } = useAuth();
+  const { profileId, isGuest, guestScreens } = useAuth();
   const myName = useMyFullName();
   const { siteContent } = useAdminEditable();
   // Tin nội bộ dùng chung kho tư liệu; RLS lo phần khách đối tác chỉ thấy tin
@@ -59,9 +63,11 @@ function HomeContent() {
   const treeImage = siteContent['culture.tree_image']?.trim() || 'https://i.ibb.co/kV5cgsbp/c-y-k-c.jpg';
   const soSkill = MOVE3_SKILL_GROUPS.reduce((s, g) => s + g.skills.length, 0);
 
-  // Khách đối tác chỉ thấy các khu được mở
-  const waysChoKhach = ['sharing'];
-  const waysHienThi = isGuest ? BHY_WAYS.filter(w => waysChoKhach.includes(w.id)) : BHY_WAYS;
+  // Khách đối tác chỉ thấy thẻ của những màn hình Phòng TCTH đã mở cho tài khoản
+  // mình — bấm vào thẻ không mở được là mất công quay lại (GuestGate đá về đây).
+  const waysHienThi = isGuest
+    ? BHY_WAYS.filter((w) => MAN_HINH_KHACH.some((m) => m.wayId === w.id && guestScreens.includes(m.id)))
+    : BHY_WAYS;
 
   return (
     <>
@@ -84,6 +90,16 @@ function HomeContent() {
           </p>
         </div>
 
+        {/*
+          Dải «Bật thông báo» từng chỉ nằm ở trang Tổng quan cũ — từ khi cả chi
+          nhánh sống ở cổng ONE thì không ai gặp nó nữa: đăng ký thiết bị ôi đi
+          (trình duyệt thu hồi endpoint) mà không có chỗ nào bật lại, chuông
+          trong web vẫn reo còn điện thoại im lặng. Giám đốc là ca đầu tiên:
+          2/3 thiết bị chết từ 31/07. Đặt ở đây, dải này tự ẩn khi thiết bị đã
+          bật và lặng lẽ làm mới đăng ký cũ mỗi lần mở cổng.
+        */}
+        {!isGuest && profileId && <EnablePushBanner profileId={profileId} />}
+
         {/* Nhịp sáng của Chiêu thức 2 đứng trên cùng: đây là thứ đổi mỗi ngày
             và có khung giờ cố định, nên phải thấy ngay khi mở cổng, không bắt
             cán bộ nhớ đường vào trang riêng. */}
@@ -92,6 +108,11 @@ function HomeContent() {
         {/* BGĐ: gộp ba tầng điều hành về một chỗ thay vì bắt đi qua bốn nơi —
             việc đang chờ chính mình · nhịp các phòng phụ trách · dấu ấn tuần này. */}
         {!isGuest && profileId && <Ct2DieuHanhBgd />}
+
+        {/* Kanban Phòng của tôi — bày thẻ theo cột và nhập được tại chỗ. Đặt
+            trên Kanban phát triển cá nhân vì đây là việc của ngày hôm nay;
+            hành động phát triển bản thân là nhịp quý. */}
+        {!isGuest && profileId && <Ct2KanbanPhongMini />}
 
         {!isGuest && profileId && (
           <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-3">

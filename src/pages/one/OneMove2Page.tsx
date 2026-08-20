@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Banknote, CalendarRange, ClipboardList, Info, Inbox, UserRound } from 'lucide-react';
 import { OnePageShell } from '@/components/one/OnePageShell';
@@ -11,8 +10,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { laLoiThieuBangCt2, type Ct2DauViec, type Ct2TrangThai } from '@/lib/ct2';
+import { laLoiThieuBangCt2, type Ct2Bang, type Ct2DauViec, type Ct2TrangThai } from '@/lib/ct2';
 import { Ct2Board } from '@/components/one/move2/Ct2Board';
+import { Ct2BangDialog } from '@/components/one/move2/Ct2BangDialog';
 import { Ct2GioiThieu } from '@/components/one/move2/Ct2GioiThieu';
 import { Ct2BangNhip } from '@/components/one/move2/Ct2BangNhip';
 import { Ct2CardDialog } from '@/components/one/move2/Ct2CardDialog';
@@ -25,17 +25,17 @@ import {
 } from '@/components/one/move2/useCt2TinDung';
 import type { HoSoTinDung, HsTrangThai } from '@/lib/ct2TinDung';
 import { Ct2MyWork } from '@/components/one/move2/Ct2MyWork';
+import { Ct2HopDuyet } from '@/components/one/move2/Ct2HopDuyet';
 import {
-  ct2XuLyDeXuat, useCt2Board, useCt2DeXuat, useCt2LamTuoi, useCt2NhanSu,
+  ct2DoiTheoDoi, ct2XuLyDeXuat, useCt2Board, useCt2CycleId, useCt2DeXuat, useCt2DsBang,
+  useCt2LamTuoi, useCt2NhanSu, useCt2TheoDoi,
   useCt2NhipPhong, useCt2Phong, type Ct2DeXuat,
 } from '@/components/one/move2/useCt2Data';
 
 // Chiêu thức 2 — «Kế hoạch hành động»: Kanban 5W2H + PDCA theo đặc tả v1.0
 // (01/08/2026). Hai màn hình chính: M1 «Việc của tôi» (mặc định — nơi ghi nhịp
-// sáng 7h00–8h00) và M2 «Bảng của Phòng» (Kanban 7 cột, cả phòng cùng đọc).
+// sáng 7h00–8h00) và M2 «Kanban của Phòng» (Kanban 4 cột, cả phòng cùng đọc).
 
-
-interface Cycle { id: string; name: string; status: string }
 
 export default function OneMove2Page() {
   return (
@@ -47,6 +47,9 @@ export default function OneMove2Page() {
 
 function NoiDung() {
   const { isAdmin, isManager, isPgd, departmentId, scope, visibleDeptIds, profileId } = useAuth();
+  // Giám đốc Chi nhánh trong danh bạ thật mang vai system_admin chứ không phải
+  // 'bgd' — dò theo tên vai làm nút «Theo dõi phòng» tàng hình với chính GĐ
+  const laBgd = isAdmin || isPgd;
   const lamTuoi = useCt2LamTuoi();
 
   const { data: phongs = [] } = useCt2Phong();
@@ -59,7 +62,9 @@ function NoiDung() {
     return phongs.filter((p) => ids.has(p.id));
   }, [phongs, scope, isAdmin, departmentId, visibleDeptIds]);
 
-  const [phongId, setPhongId] = useState<string | null>(null);
+  // Vào thẳng bảng một phòng từ «Điều hành của tôi» trên trang chủ: ?phong=<id>
+  const [thamSoDau] = useSearchParams();
+  const [phongId, setPhongId] = useState<string | null>(() => thamSoDau.get('phong'));
   useEffect(() => {
     if (phongId) return;
     // Ưu tiên phòng của chính mình — không chờ danh mục phòng tải xong
@@ -67,21 +72,14 @@ function NoiDung() {
     if (phongDuocChon.length > 0) setPhongId(phongDuocChon[0].id);
   }, [phongId, phongDuocChon, departmentId]);
 
-  const { data: cycles = [] } = useQuery({
-    queryKey: ['ct2', 'cycles'],
-    staleTime: 300_000,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('evaluation_cycles')
-        .select('id, name, status')
-        .order('start_date', { ascending: false })
-        .limit(8);
-      return (data ?? []) as Cycle[];
-    },
-  });
-  const cycleId = cycles.find((c) => c.status === 'active')?.id ?? cycles[0]?.id ?? null;
+  const cycleId = useCt2CycleId();
 
-  const { data: dsThe = [], isLoading, error } = useCt2Board(phongId);
+  // Bảng Kanban đang xem trong tab «Kanban của Phòng» — null = Kanban chung
+  const [bangId, setBangId] = useState<string | null>(null);
+  const { data: dsBang } = useCt2DsBang(phongId);
+  // GĐ theo dõi cả phòng: mọi nhịp và trao đổi trong phòng sẽ báo về
+  const { data: dangTheoDoiPhong = false } = useCt2TheoDoi('PHONG', laBgd ? phongId : null);
+  const { data: dsThe = [], isLoading, error } = useCt2Board(phongId, bangId);
   const { data: nhipNguoi = [] } = useCt2NhipPhong(phongId);
   const { data: deXuats = [] } = useCt2DeXuat(phongId);
 
@@ -89,6 +87,8 @@ function NoiDung() {
   const laLanhDao = isAdmin || isPgd || (isManager && phongId === departmentId);
 
   const [dangTao, setDangTao] = useState(false);
+  const [bangDangSua, setBangDangSua] = useState<Ct2Bang | null>(null);
+  const [moTaoBang, setMoTaoBang] = useState(false);
   const [deXuatDangDuyet, setDeXuatDangDuyet] = useState<Ct2DeXuat | null>(null);
   const [theMo, setTheMo] = useState<Ct2DauViec | null>(null);
   const [chuyenDen, setChuyenDen] = useState<Ct2TrangThai | null>(null);
@@ -148,6 +148,37 @@ function NoiDung() {
     // moTheTuId phụ thuộc dsThe (đổi mỗi lần làm tươi) — cố ý chỉ chạy theo tham số
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [thamSo]);
+  // Đường ?ho_so= — đối xứng với ?the= nhưng cho hồ sơ PDTD: «Có hồ sơ chờ
+  // anh/chị» bấm vào phải MỞ hồ sơ đó (nơi có sẵn ô Trao đổi), không phải mở
+  // chung tab rồi bắt người duyệt tự tìm giữa 48 hồ sơ. Tải riêng một hồ sơ
+  // thay vì tìm trong dsHoSo: người nhận có thể đang xem phòng khác, và board
+  // phòng đó có khi còn chưa tải xong lúc effect chạy.
+  const daMoHoSoTheoLien = useRef<string | null>(null);
+  useEffect(() => {
+    const id = thamSo.get('ho_so');
+    if (!id || daMoHoSoTheoLien.current === id) return;
+    daMoHoSoTheoLien.current = id;
+    (async () => {
+      const db = supabase as unknown as {
+        from(t: string): { select(c: string): { eq(c: string, v: string): { maybeSingle(): PromiseLike<{ data: unknown }> } } };
+      };
+      const { data } = await db.from('ct2_ho_so_tin_dung').select('*').eq('id', id).maybeSingle();
+      if (data) {
+        const hs = data as HoSoTinDung;
+        // Chuyển bảng về đúng phòng của hồ sơ — lãnh đạo tuyến trên có thể
+        // đang đứng ở phòng khác lúc bấm thông báo
+        setPhongId(hs.phong);
+        setTab('tin-dung');
+        setHoSoChuyenDen(null);
+        setHoSoMo(hs);
+      }
+    })();
+    const con = new URLSearchParams(thamSo);
+    con.delete('ho_so');
+    datThamSo(con, { replace: true });
+    // Cùng lý do với ?the= — cố ý chỉ chạy theo tham số
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [thamSo]);
   // Tab tín dụng chỉ tồn tại với phòng có cấp tín dụng — về mặc định nếu không có
   useEffect(() => {
     if (tab === 'tin-dung' && phongCoPdtd.length > 0 && !coPdtd) setTab('cua-toi');
@@ -171,32 +202,52 @@ function NoiDung() {
           </Alert>
         ) : (
           <Tabs value={tab} onValueChange={setTab}>
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <TabsList>
-                <TabsTrigger value="cua-toi" className="gap-1.5">
-                  <UserRound className="h-4 w-4" /> Việc của tôi
-                </TabsTrigger>
-                <TabsTrigger value="phong" className="gap-1.5">
-                  <ClipboardList className="h-4 w-4" /> Bảng của Phòng
-                </TabsTrigger>
-                {coPdtd && (
-                  <TabsTrigger value="tin-dung" className="gap-1.5">
-                    <Banknote className="h-4 w-4" /> Phê duyệt tín dụng
+            <div className="mb-4 space-y-2 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 sm:space-y-0">
+              {/*
+                TabsList là inline-flex KHÔNG cuộn: ở khổ 390px bốn tab tiếng
+                Việt tràn khỏi màn, «Phê duyệt tín dụng» còn mỗi icon và «Bảng
+                nhịp» mất hẳn — tức là bấm không tới. Hai lớp sửa: nhãn ngắn
+                trên điện thoại để bốn tab vừa một hàng, và bọc trong khung
+                cuộn ngang làm lưới an toàn cho máy hẹp hơn nữa.
+              */}
+              <div className="-mx-1 overflow-x-auto px-1 pb-0.5">
+                <TabsList className="w-max">
+                  <TabsTrigger value="cua-toi" className="gap-1.5 px-2.5 sm:px-3">
+                    <UserRound className="h-4 w-4 shrink-0" />
+                    <span className="sm:hidden">Của tôi</span>
+                    <span className="hidden sm:inline">Việc của tôi</span>
                   </TabsTrigger>
-                )}
-                {/* Bảng tổng hợp nhịp là công cụ điều hành — chỉ lãnh đạo thấy.
-                    Cán bộ nhìn thấy bảng xếp mình so với đồng nghiệp mỗi sáng thì
-                    nhịp thành cuộc thi, không còn là tấm gương soi cho chính mình. */}
-                {laLanhDao && (
-                  <TabsTrigger value="bang-nhip" className="gap-1.5">
-                    <CalendarRange className="h-4 w-4" /> Bảng nhịp
+                  <TabsTrigger value="phong" className="gap-1.5 px-2.5 sm:px-3">
+                    <ClipboardList className="h-4 w-4 shrink-0" />
+                    <span className="sm:hidden">Phòng</span>
+                    <span className="hidden sm:inline">Kanban của Phòng</span>
                   </TabsTrigger>
-                )}
-              </TabsList>
-              <div className="flex flex-wrap items-center gap-2">
+                  {coPdtd && (
+                    <TabsTrigger value="tin-dung" className="gap-1.5 px-2.5 sm:px-3">
+                      <Banknote className="h-4 w-4 shrink-0" />
+                      <span className="sm:hidden">Tín dụng</span>
+                      <span className="hidden sm:inline">Phê duyệt tín dụng</span>
+                    </TabsTrigger>
+                  )}
+                  {/* Bảng tổng hợp nhịp là công cụ điều hành — chỉ lãnh đạo thấy.
+                      Cán bộ nhìn thấy bảng xếp mình so với đồng nghiệp mỗi sáng thì
+                      nhịp thành cuộc thi, không còn là tấm gương soi cho chính mình. */}
+                  {laLanhDao && (
+                    <TabsTrigger value="bang-nhip" className="gap-1.5 px-2.5 sm:px-3">
+                      <CalendarRange className="h-4 w-4 shrink-0" />
+                      <span className="sm:hidden">Nhịp</span>
+                      <span className="hidden sm:inline">Bảng nhịp</span>
+                    </TabsTrigger>
+                  )}
+                </TabsList>
+              </div>
+              {/* Một hàng trên điện thoại: select co lại, nút giữ nguyên chiều
+                  cao chạm được — trước đây mỗi thứ chiếm trọn một hàng, đẩy
+                  bảng Kanban xuống quá nửa màn hình */}
+              <div className="flex items-center gap-2">
                 {phongDuocChon.length > 1 && (
-                  <Select value={phongId ?? ''} onValueChange={setPhongId}>
-                    <SelectTrigger className="h-9 w-full sm:w-52" aria-label="Chọn phòng">
+                  <Select value={phongId ?? ''} onValueChange={(v) => { setPhongId(v); setBangId(null); }}>
+                    <SelectTrigger className="h-9 min-w-0 flex-1 sm:w-52 sm:flex-none" aria-label="Chọn phòng">
                       <SelectValue placeholder="Chọn phòng" />
                     </SelectTrigger>
                     <SelectContent>
@@ -204,7 +255,34 @@ function NoiDung() {
                     </SelectContent>
                   </Select>
                 )}
-                <Button onClick={() => { setDeXuatDangDuyet(null); setDangTao(true); }}>
+                {laBgd && phongId && (
+                  <Button
+                    variant={dangTheoDoiPhong ? 'default' : 'outline'}
+                    /* KHÔNG dùng size="icon": biến thể đó phát md:w-10, thắng
+                       sm:w-auto ở màn ≥768px — nút bị ép 40px trong khi vẫn
+                       hiện chữ, chữ tràn đè lên nút «Ghi việc» bên cạnh */
+                    className={`h-9 shrink-0 whitespace-nowrap px-2.5 sm:px-3 ${dangTheoDoiPhong ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`}
+                    title="Nhận thông báo mọi nhịp và trao đổi của phòng này"
+                    onClick={async () => {
+                      if (!profileId) return;
+                      const { error: e } = await ct2DoiTheoDoi(profileId, 'PHONG', phongId, !dangTheoDoiPhong);
+                      if (e) toast.error(e);
+                      else {
+                        toast.success(dangTheoDoiPhong
+                          ? 'Đã bỏ theo dõi phòng.'
+                          : 'Đang theo dõi phòng — mọi nhịp và trao đổi sẽ báo về anh/chị.');
+                        lamTuoi();
+                      }
+                    }}
+                  >
+                    <span aria-hidden>👁</span>
+                    <span className="ml-1 hidden sm:inline">
+                      {dangTheoDoiPhong ? 'Đang theo dõi phòng' : 'Theo dõi phòng'}
+                    </span>
+                  </Button>
+                )}
+                <Button className="h-9 shrink-0 px-3"
+                  onClick={() => { setDeXuatDangDuyet(null); setDangTao(true); }}>
                   + Ghi việc
                 </Button>
               </div>
@@ -215,6 +293,69 @@ function NoiDung() {
             </TabsContent>
 
             <TabsContent value="phong">
+              {/*
+                Một phòng nhiều bảng Kanban cùng mẫu: Kanban chung + các mảng
+                công việc + bảng liên phòng (đặt ở phòng đầu mối, thành viên
+                phòng khác tự thấy). Bảng 🔒 hạn chế: RLS chỉ trả về cho thành
+                viên đích danh và BGĐ — người khác không thấy cả cái chip.
+              */}
+              <div className="-mx-1 mb-3 flex items-center gap-1.5 overflow-x-auto px-1 pb-1">
+                <button type="button" onClick={() => setBangId(null)}
+                  className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs transition ${
+                    bangId === null ? 'border-brand-navy bg-brand-navy font-medium text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-brand-navy/40'
+                  }`}>
+                  Kanban chung
+                </button>
+                {(dsBang?.cuaPhong ?? []).map((b) => (
+                  <button key={b.id} type="button" onClick={() => setBangId(b.id)}
+                    className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs transition ${
+                      bangId === b.id ? 'border-brand-navy bg-brand-navy font-medium text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-brand-navy/40'
+                    }`}>
+                    {b.che_do_xem === 'HAN_CHE' && '🔒 '}{b.loai === 'LIEN_PHONG' && '🤝 '}{b.loai === 'TOAN_CN' && '🏦 '}{b.ten}
+                  </button>
+                ))}
+                {/* Bảng toàn chi nhánh của phòng khác — hiện ở MỌI phòng, không cần
+                    là thành viên. Đứng trước bảng liên phòng vì phạm vi rộng hơn. */}
+                {(dsBang?.toanCnKhac ?? []).map((b) => (
+                  <button key={b.id} type="button" onClick={() => setBangId(b.id)}
+                    className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs transition ${
+                      bangId === b.id ? 'border-brand-navy bg-brand-navy font-medium text-white' : 'border-dashed border-slate-300 bg-white text-slate-600 hover:border-brand-navy/40'
+                    }`}
+                    title={`Bảng toàn chi nhánh — đầu mối: ${phongs.find((p) => p.id === b.phong)?.name ?? ''}`}>
+                    🏦 {b.ten} <span className="text-slate-400">· {phongs.find((p) => p.id === b.phong)?.code ?? ''}</span>
+                  </button>
+                ))}
+                {(dsBang?.lienPhongKhac ?? []).map((b) => (
+                  <button key={b.id} type="button" onClick={() => setBangId(b.id)}
+                    className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs transition ${
+                      bangId === b.id ? 'border-brand-navy bg-brand-navy font-medium text-white' : 'border-dashed border-slate-300 bg-white text-slate-600 hover:border-brand-navy/40'
+                    }`}
+                    title={`Bảng liên phòng — đầu mối: ${phongs.find((p) => p.id === b.phong)?.name ?? ''}`}>
+                    🤝 {b.ten} <span className="text-slate-400">· {phongs.find((p) => p.id === b.phong)?.code ?? ''}</span>
+                  </button>
+                ))}
+                {laLanhDao && (
+                  <>
+                    <button type="button" onClick={() => { setBangDangSua(null); setMoTaoBang(true); }}
+                      className="shrink-0 whitespace-nowrap rounded-full border border-dashed border-slate-300 px-3 py-1.5 text-xs text-slate-500 hover:border-brand-navy/40 hover:text-brand-navy">
+                      + Bảng mới
+                    </button>
+                    {bangId && (dsBang?.cuaPhong ?? []).some((b) => b.id === bangId) && (
+                      <button type="button"
+                        onClick={() => { setBangDangSua(dsBang!.cuaPhong.find((b) => b.id === bangId)!); setMoTaoBang(true); }}
+                        className="shrink-0 whitespace-nowrap rounded-full border border-slate-200 px-3 py-1.5 text-xs text-slate-500 hover:border-brand-navy/40 hover:text-brand-navy">
+                        ⚙️ Thành viên & cài đặt
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Màn hình duyệt hoàn thành của Trưởng phòng (phương án D 15/08).
+                  Hộp tự ẩn khi hàng đợi rỗng — theo hàng đợi CỦA TÔI, không theo
+                  phòng đang xem, nên thẻ liên phòng trình sang vẫn hiện. */}
+              <Ct2HopDuyet nhanSu={nhanSu} onMoThe={(t) => { setChuyenDen(null); setTheMo(t); }} />
+
               {/* Hộp đề xuất chờ duyệt — chỉ lãnh đạo thấy nút xử lý */}
               {deXuats.length > 0 && (
                 <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-3">
@@ -261,6 +402,7 @@ function NoiDung() {
                   nhanSu={nhanSu}
                   nhipNguoi={nhipNguoi}
                   laLanhDao={laLanhDao}
+                  phongId={phongId}
                   onMoThe={(t) => { setChuyenDen(null); setTheMo(t); }}
                   onKeoThe={(t, den) => {
                     if (den === 'DANG_LAM' && t.trang_thai === 'CHUAN_BI' && t.loai_dau_viec === 'TIEN_TRINH') {
@@ -342,9 +484,22 @@ function NoiDung() {
         cycleId={cycleId}
         laLanhDao={laLanhDao}
         deXuat={deXuatDangDuyet}
+        bangId={tab === 'phong' ? bangId : null}
         onClose={() => { setDangTao(false); setDeXuatDangDuyet(null); }}
         onXong={() => lamTuoi()}
       />
+
+      {phongId && (
+        <Ct2BangDialog
+          open={moTaoBang}
+          bang={bangDangSua}
+          phongId={phongId}
+          nhanSu={nhanSu}
+          phongs={phongs}
+          onClose={() => setMoTaoBang(false)}
+          onXong={() => lamTuoi()}
+        />
+      )}
     </>
   );
 }

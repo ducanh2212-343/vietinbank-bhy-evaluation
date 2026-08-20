@@ -22,9 +22,9 @@ const tenNguoi = new Map([[CAN_BO, 'Tôn Thị Thanh Mai']]);
 const hsTuMiro: HoSoTinDung = {
   id: 'hs-miro', phong: 'p1', ma_hs: 'KHDN-TD-2608-007',
   khach_hang: 'Công ty Nhựa và Khuôn Đông Dương',
-  loai_ho_so: 'TAI_CAP', so_tien: null, ky_han: null,
+  loai_ho_so: 'TAI_CAP', cac_loai: ['TAI_CAP'], so_tien: null, ky_han: null,
   cap_phe_duyet: 'CHI_NHANH', trang_thai: 'THU_THAP',
-  can_bo: CAN_BO, lanh_dao_theo_doi: null,
+  can_bo: CAN_BO, lanh_dao_theo_doi: null, pho_phong: null, truong_phong: null, pgd_phu_trach: null,
   ngay_nhan: null, han_xu_ly: null, ngay_den_han_ghtd: null, ngay_hoan_thanh: null,
   nguoi_dang_giu: null, giu_tu: null, nhip_gan_nhat: null,
   ly_do_tu_choi: null, ghi_chu: 'Nhập từ Miro 08/2026.',
@@ -61,9 +61,18 @@ describe('Toàn cảnh hồ sơ — dữ liệu nhập từ Miro còn thiếu', 
   });
 
   it('nhưng để lâu không ghi thì phải hiện «chưa cập nhật lần nào»', () => {
-    const cu = new Date(Date.now() - 30 * 86_400_000).toISOString();
-    render(<Ct2CreditList dsHoSo={[{ ...hsTuMiro, created_at: cu }]}
-      tenNguoi={tenNguoi} onMoHoSo={vi.fn()} />);
-    expect(screen.getAllByText(/chưa cập nhật lần nào/i).length).toBeGreaterThan(0);
+    // Ghim đồng hồ về một ngày SAU triển khai hẳn: im lặng nay kẹp từ ngày
+    // triển khai 06/08, nên «để lâu» phải đo so với mốc đó chứ không phải so
+    // với ngày nhập. Để đồng hồ thật thì test này đúng/sai tùy hôm chạy.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-09-15T02:00:00Z'));
+    try {
+      const cu = new Date(Date.now() - 30 * 86_400_000).toISOString();
+      render(<Ct2CreditList dsHoSo={[{ ...hsTuMiro, created_at: cu }]}
+        tenNguoi={tenNguoi} onMoHoSo={vi.fn()} />);
+      expect(screen.getAllByText(/chưa cập nhật lần nào/i).length).toBeGreaterThan(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

@@ -35,8 +35,13 @@ self.addEventListener('notificationclick', (event) => {
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
       for (const client of list) {
         if ('focus' in client) {
-          client.navigate(url);
-          return client.focus();
+          // navigate() TỪ CHỐI khi cửa sổ không do service worker này điều khiển — tab
+          // mở từ trước khi SW kịp nắm quyền. Trước 12/08 lỗi đó bị nuốt lặng lẽ: cửa sổ
+          // vẫn được focus nhưng đứng nguyên trang cũ, nên người dùng bấm thông báo mà
+          // như không bấm. Hỏng kiểu này khó tả lại vì tùy máy, tùy lần mở app.
+          return client.navigate(url)
+            .then((daMo) => (daMo || client).focus())
+            .catch(() => self.clients.openWindow(url));
         }
       }
       return self.clients.openWindow(url);

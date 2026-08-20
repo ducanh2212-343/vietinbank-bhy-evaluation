@@ -15,7 +15,7 @@ import {
   type Ct2FormGhiViec, type Ct2NguonViec,
 } from '@/lib/ct2';
 import {
-  ct2TaoDauViec, ct2TaoDeXuat, ct2XuLyDeXuat,
+  ct2TaoDauViec, ct2TaoDeXuat, ct2XuLyDeXuat, useCt2DsPgd, useCt2PgdCuaPhong,
   type Ct2DeXuat, type Ct2NhanSu, type Ct2Phong,
 } from './useCt2Data';
 
@@ -48,16 +48,22 @@ interface Props {
   laLanhDao: boolean;
   /** Duyệt một đề xuất của cán bộ: điền sẵn tên việc, tạo xong đánh dấu ĐÃ DUYỆT */
   deXuat?: Ct2DeXuat | null;
+  /** Đang xem bảng nào thì việc mới vào thẳng bảng đó; null = Kanban chung */
+  bangId?: string | null;
   onClose: () => void;
   onXong: () => void;
 }
 
-export function Ct2CreateDialog({ open, phongId, phongs, nhanSu, cycleId, laLanhDao, deXuat, onClose, onXong }: Props) {
+export function Ct2CreateDialog({ open, phongId, phongs, nhanSu, cycleId, laLanhDao, deXuat, bangId = null, onClose, onXong }: Props) {
   const { profileId, departmentId } = useAuth();
   const [f, setF] = useState<Ct2FormGhiViec>({
     nguon_viec: 'CHU_DONG', cuoc_hop: '', tieu_de: '', nguoi_chiu_trach_nhiem: '', han_hoan_thanh: '',
   });
   const [lienPhong, setLienPhong] = useState(false);
+  // Ba cấp phụ trách — Trưởng phòng và PGĐ tự điền sẵn theo phòng, sửa được
+  const [phoPhong, setPhoPhong] = useState('');
+  const [truongPhongChon, setTruongPhongChon] = useState('');
+  const [pgdChon, setPgdChon] = useState('');
   const [phongThamGia, setPhongThamGia] = useState<string[]>([]);
   const [dangGui, setDangGui] = useState(false);
   const [tiepTuc, setTiepTuc] = useState(false);
@@ -79,6 +85,7 @@ export function Ct2CreateDialog({ open, phongId, phongs, nhanSu, cycleId, laLanh
     setPhongThamGia([]);
     setTiepTuc(false);
     setTruongDo(null);
+    setPhoPhong('');
   }, [open, deXuat, profileId]);
 
   const thieu = useMemo(() => kiemTraGhiViec(f), [f]);
@@ -87,6 +94,33 @@ export function Ct2CreateDialog({ open, phongId, phongs, nhanSu, cycleId, laLanh
     () => nhanSu.filter((n) => n.department_id === phong),
     [nhanSu, phong],
   );
+
+  // Trưởng phòng tự link từ danh mục phòng; PGĐ phụ trách tự link qua RPC —
+  // cả hai đều SỬA ĐƯỢC trước khi lưu (yêu cầu của GĐ: auto nhưng không khoá)
+  const truongPhongMacDinh = phongs.find((p) => p.id === phong)?.manager_id ?? '';
+  useEffect(() => {
+    if (open) setTruongPhongChon(truongPhongMacDinh);
+  }, [open, truongPhongMacDinh]);
+
+  const { data: pgdMacDinh } = useCt2PgdCuaPhong(open ? (phong || null) : null);
+  useEffect(() => {
+    if (open) setPgdChon(pgdMacDinh ?? '');
+  }, [open, pgdMacDinh]);
+
+  const { data: dsPgd = [] } = useCt2DsPgd(open);
+
+  // Lãnh đạo theo dõi suy ra từ Trưởng phòng. Người làm không được là lãnh đạo
+  // theo dõi của chính mình — trừ khi chính họ là Trưởng phòng (không còn ai
+  // trên nữa trong phòng) hoặc là Ban Giám đốc.
+  const lanhDaoTheoDoi = truongPhongChon || truongPhongMacDinh;
+  const tuTheoDoiMinh = !!lanhDaoTheoDoi && lanhDaoTheoDoi === f.nguoi_chiu_trach_nhiem;
+  const duocTuTheoDoi = f.nguoi_chiu_trach_nhiem === truongPhongMacDinh
+    || (laLanhDao && f.nguoi_chiu_trach_nhiem === profileId);
+  const thieuLanhDao = !lanhDaoTheoDoi
+    ? 'Phòng chưa có Trưởng phòng trong danh mục — chọn người theo dõi việc này.'
+    : (tuTheoDoiMinh && !duocTuTheoDoi
+      ? 'Người làm không tự theo dõi chính mình — chọn Trưởng phòng hoặc lãnh đạo khác.'
+      : null);
 
   // Cán bộ thường giao việc cho người khác → hệ thống tự chuyển thành đề xuất
   const laDeXuat = !laLanhDao && f.nguoi_chiu_trach_nhiem !== profileId;
@@ -113,15 +147,20 @@ export function Ct2CreateDialog({ open, phongId, phongs, nhanSu, cycleId, laLanh
       return;
     }
 
-    const truongPhong = phongs.find((p) => p.id === phong)?.manager_id ?? '';
     const { error, id } = await ct2TaoDauViec({
       cycle_id: cycleId,
       nguon_viec: f.nguon_viec,
       cuoc_hop: f.nguon_viec === 'GIAO_BAN' ? (f.cuoc_hop.trim() || null) : null,
       tieu_de: locEmojiTieuDe(f.tieu_de),
       nguoi_chiu_trach_nhiem: f.nguoi_chiu_trach_nhiem,
-      // Lãnh đạo theo dõi mặc định là Trưởng phòng (đặc tả 2.3 — tự điền)
-      lanh_dao_theo_doi: truongPhong || f.nguoi_chiu_trach_nhiem,
+      // Lãnh đạo theo dõi = Trưởng phòng đã chọn (đặc tả 2.3 — tự điền, sửa được).
+      // KHÔNG có đường lùi «không chọn ai thì lấy chính người làm»: đó là cách
+      // sinh ra thẻ tự-theo-dõi-mình, giám sát trên giấy mà không ai giám sát.
+      lanh_dao_theo_doi: lanhDaoTheoDoi || null,
+      pho_phong: phoPhong || null,
+      truong_phong: truongPhongChon || null,
+      pgd_phu_trach: pgdChon || null,
+      bang_id: bangId,
       phong,
       // Phạm vi suy ra, không hỏi: liên phòng thì là việc toàn Chi nhánh
       pham_vi: lienPhong ? 'CHI_NHANH' : 'PHONG',
@@ -265,6 +304,64 @@ export function Ct2CreateDialog({ open, phongId, phongs, nhanSu, cycleId, laLanh
                   onChange={(e) => dat('han_hoan_thanh', e.target.value)}
                 />
               </span>
+            </div>
+          </div>
+
+          {/*
+            Các cấp phụ trách — GĐ yêu cầu nhập được Phó phòng · Trưởng phòng ·
+            PGĐ phụ trách. Trưởng phòng và PGĐ TỰ ĐIỀN SẴN theo phòng (auto-link)
+            nhưng sửa được; Phó phòng chọn tay vì hệ thống không biết phó nào
+            phụ trách mảng việc này.
+          */}
+          <div className="rounded-xl border border-slate-200 p-3">
+            <p className="mb-2 text-sm font-medium text-slate-700">Các cấp phụ trách</p>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <div>
+                <Label className="text-xs">Phó phòng</Label>
+                <Select value={phoPhong || 'KHONG'} onValueChange={(v) => setPhoPhong(v === 'KHONG' ? '' : v)}>
+                  <SelectTrigger className="mt-1 h-9 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="KHONG">— Không gán —</SelectItem>
+                    {nguoiTrongPhong.map((n) => (
+                      <SelectItem key={n.id} value={n.id}>{n.full_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Trưởng phòng</Label>
+                <Select value={truongPhongChon || 'KHONG'} onValueChange={(v) => setTruongPhongChon(v === 'KHONG' ? '' : v)}>
+                  <SelectTrigger className="mt-1 h-9 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="KHONG">— Không gán —</SelectItem>
+                    {nguoiTrongPhong.map((n) => (
+                      <SelectItem key={n.id} value={n.id}>
+                        {n.full_name}{n.id === truongPhongMacDinh ? ' (mặc định)' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {/* Trưởng phòng cũng chính là lãnh đạo theo dõi — nói thẳng ra
+                    khi chưa chọn được ai, thay vì lặng lẽ điền tên người làm */}
+                {thieuLanhDao && (
+                  <p className="mt-1 text-2xs font-medium text-amber-700">{thieuLanhDao}</p>
+                )}
+              </div>
+              <div>
+                <Label className="text-xs">PGĐ phụ trách</Label>
+                <Select value={pgdChon || 'KHONG'} onValueChange={(v) => setPgdChon(v === 'KHONG' ? '' : v)}>
+                  <SelectTrigger className="mt-1 h-9 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="KHONG">— Không gán —</SelectItem>
+                    {dsPgd.map((n) => (
+                      <SelectItem key={n.id} value={n.id}>
+                        {n.full_name}{n.id === (pgdMacDinh ?? '') ? ' (phụ trách phòng)' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="mt-1 text-2xs text-slate-400">Tự link theo PGĐ phụ trách phòng — sửa được.</p>
+              </div>
             </div>
           </div>
 

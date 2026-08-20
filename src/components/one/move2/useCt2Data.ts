@@ -1,7 +1,11 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { trongKhungNhip, type Ct2BinhLuan, type Ct2DauViec, type Ct2Nhip, type Ct2PhamVi } from '@/lib/ct2';
+import {
+  trongKhungNhip,
+  type Ct2Bang, type Ct2BinhLuan, type Ct2DauViec, type Ct2LyDoBaoCao,
+  type Ct2Nhip, type Ct2PhamVi,
+} from '@/lib/ct2';
 
 /**
  * Lớp dữ liệu Chiêu thức 2.
@@ -20,11 +24,14 @@ interface SelectChain extends PromiseLike<Ket<unknown>> {
   eq(c: string, v: unknown): SelectChain;
   or(f: string): SelectChain;
   in(c: string, v: unknown[]): SelectChain;
-  order(c: string, o?: { ascending?: boolean }): SelectChain;
+  order(c: string, o?: { ascending?: boolean; nullsFirst?: boolean }): SelectChain;
   limit(n: number): SelectChain;
   maybeSingle(): PromiseLike<Ket<unknown>>;
 }
-interface UpdateChain extends PromiseLike<Ket<unknown>> { eq(c: string, v: unknown): UpdateChain }
+interface UpdateChain extends PromiseLike<Ket<unknown>> {
+  eq(c: string, v: unknown): UpdateChain;
+  in(c: string, v: unknown[]): UpdateChain;
+}
 const db = supabase as unknown as {
   from(t: string): {
     select(c: string): SelectChain;
@@ -43,18 +50,36 @@ export interface Ct2ViecCuaToi {
   phan_tram: number; co_tinh_trang: 'XANH' | 'VANG' | 'DO'; han_hoan_thanh: string | null;
   muc_uu_tien: string; loai_dau_viec: string; lien_phong: boolean; phong: string;
   nhip_gan_nhat: string | null; da_ghi_nhip_hom_nay: boolean;
+  ngay_bat_dau: string | null;
+  /** Thẻ còn ở «Chuẩn bị» nhưng đã đến lúc phải chạy → vẫn phải ghi nhịp */
+  ly_do_bao_cao: Ct2LyDoBaoCao;
 }
 
 export interface Ct2NhipNguoi {
   profile_id: string;
   full_name: string;
   avatar_url: string | null;
+  /** GỘP cả hai bảng: thẻ công việc phòng + hồ sơ PDTD (GĐ 12/08) */
   so_viec_dang_chay: number;
   so_viec_da_ghi: number;
   so_the_do: number;
   so_qua_han: number;
   /** NGAY_NGHI = thứ Bảy/Chủ nhật — nhịp chỉ chạy thứ 2 đến thứ 6 */
   ket_qua: 'DUNG_GIO' | 'MUON' | 'CHUA_DU' | 'CHUA_GHI' | 'KHONG_CO_VIEC' | 'NGAY_NGHI';
+  /** Tách nguồn để nhắc đúng bảng: cv_* = việc phòng, hs_* = hồ sơ PDTD */
+  cv_dang_chay: number;
+  cv_da_ghi: number;
+  hs_dang_chay: number;
+  hs_da_ghi: number;
+  /**
+   * cb_* = thẻ còn ở «Chuẩn bị» nhưng đã đến lúc phải chạy (quá ngày bắt đầu
+   * hoặc sắp đến hạn hoàn thành). Tách riêng vì cách nhắc khác hẳn: không phải
+   * «ghi thêm một câu» mà «mở việc ra làm, hoặc nói rõ vướng ở đâu».
+   */
+  cb_can_bao_cao: number;
+  cb_da_ghi: number;
+  cb_qua_han_bd: number;
+  cb_sap_den_han: number;
 }
 
 export interface Ct2DeXuat {
@@ -99,18 +124,67 @@ export function useCt2NhanSu() {
 }
 
 /**
+ * PGĐ phụ trách một phòng — suy từ `pgd_id` của Trưởng phòng (RPC
+ * `ct2_pgd_cua_phong`). Dùng làm giá trị mặc định khi tạo/sửa thẻ.
+ */
+export function useCt2PgdCuaPhong(phongId: string | null) {
+  return useQuery({
+    queryKey: ['ct2', 'pgd-cua-phong', phongId],
+    enabled: !!phongId,
+    staleTime: NAM_PHUT,
+    queryFn: async () => {
+      const { data } = await db.rpc('ct2_pgd_cua_phong', { _phong: phongId });
+      return (data as string | null) ?? '';
+    },
+  });
+}
+
+/**
+ * Ứng viên PGĐ: những người đang là `pgd_id` của ít nhất một cán bộ — suy từ
+ * danh bạ, không cần bảng vai trò riêng.
+ */
+export function useCt2DsPgd(bat = true) {
+  return useQuery({
+    queryKey: ['ct2', 'ds-pgd'],
+    enabled: bat,
+    staleTime: NAM_PHUT,
+    queryFn: async () => {
+      const { data } = await supabase.from('profiles')
+        .select('pgd_id').not('pgd_id', 'is', null);
+      const ids = [...new Set(((data ?? []) as Array<{ pgd_id: string }>).map((r) => r.pgd_id))];
+      if (ids.length === 0) return [] as Ct2NhanSu[];
+      const { data: ds } = await supabase.from('profiles')
+        .select('id, full_name, department_id').in('id', ids).order('full_name');
+      return (ds ?? []) as Ct2NhanSu[];
+    },
+  });
+}
+
+/**
  * Bảng Kanban một phòng: thẻ phòng chủ trì + thẻ liên phòng có phòng này tham
  * gia. MỘT query, đi qua index (phong, trang_thai) + GIN cac_phong_tham_gia.
  */
-export function useCt2Board(phongId: string | null) {
+export function useCt2Board(phongId: string | null, bangId: string | null = null) {
   return useQuery({
-    queryKey: ['ct2', 'board', phongId],
+    queryKey: ['ct2', 'board', phongId, bangId],
     enabled: !!phongId,
     staleTime: NUA_PHUT,
     // Trong khung nhịp sáng bảng đổi liên tục → tự làm mới cho có cảm giác
     // «bảng sống»; ngoài khung thì tắt hẳn, không tốn query vô ích.
     refetchInterval: () => (trongKhungNhip() ? NUA_PHUT : false),
     queryFn: async () => {
+      // Đang xem một bảng cụ thể → lấy theo bảng, KHÔNG theo phòng: bảng liên
+      // phòng chứa thẻ của phòng đầu mối, người phòng khác là thành viên vẫn
+      // phải thấy đủ.
+      if (bangId) {
+        const { data, error } = await db
+          .from('ct2_dau_viec')
+          .select('*')
+          .eq('bang_id', bangId)
+          .order('han_hoan_thanh', { ascending: true, nullsFirst: false });
+        if (error) throw error;
+        return (data ?? []) as Ct2DauViec[];
+      }
       const { data, error } = await db
         .from('ct2_dau_viec')
         .select('*')
@@ -118,9 +192,84 @@ export function useCt2Board(phongId: string | null) {
         // nullsFirst: false — thẻ chưa có hạn xếp cuối, không chen lên đầu
         .order('han_hoan_thanh', { ascending: true, nullsFirst: false });
       if (error) throw error;
-      return (data ?? []) as Ct2DauViec[];
+      // Kanban chung chỉ hiện thẻ KHÔNG thuộc bảng nào — thẻ của các mảng nằm
+      // trong bảng mảng, không hiện đúp ở hai nơi
+      return ((data ?? []) as Ct2DauViec[]).filter((t) => !t.bang_id);
     },
   });
+}
+
+/**
+ * Các bảng Kanban người này thấy được: bảng của phòng đang xem + bảng liên
+ * phòng của phòng khác mà mình là thành viên + bảng TOÀN CHI NHÁNH (hiện ở
+ * mọi phòng, không cần là thành viên). RLS đã lọc — client chỉ chia nhóm để bày.
+ */
+export function useCt2DsBang(phongId: string | null) {
+  return useQuery({
+    queryKey: ['ct2', 'ds-bang', phongId],
+    enabled: !!phongId,
+    staleTime: NAM_PHUT,
+    queryFn: async () => {
+      const { data, error } = await db.from('ct2_bang').select('*').order('ten');
+      if (error) throw error;
+      const tatCa = (data ?? []) as Ct2Bang[];
+      return {
+        tatCa,
+        cuaPhong: tatCa.filter((b) => b.phong === phongId),
+        lienPhongKhac: tatCa.filter((b) => b.phong !== phongId && b.loai === 'LIEN_PHONG'),
+        toanCnKhac: tatCa.filter((b) => b.phong !== phongId && b.loai === 'TOAN_CN'),
+      };
+    },
+  });
+}
+
+export interface Ct2ThanhVienBang { profile_id: string }
+
+export function useCt2ThanhVienBang(bangId: string | null) {
+  return useQuery({
+    queryKey: ['ct2', 'thanh-vien-bang', bangId],
+    enabled: !!bangId,
+    staleTime: NUA_PHUT,
+    queryFn: async () => {
+      const { data, error } = await db
+        .from('ct2_bang_thanh_vien').select('profile_id').eq('bang_id', bangId);
+      if (error) throw error;
+      return ((data ?? []) as Ct2ThanhVienBang[]).map((t) => t.profile_id);
+    },
+  });
+}
+
+/**
+ * GĐ theo dõi cả phòng / từng thẻ. RLS chỉ trả về dòng CỦA MÌNH, nên query
+ * này trả lời đúng một câu: «tôi có đang theo dõi thứ này không».
+ */
+export function useCt2TheoDoi(phamVi: 'PHONG' | 'DAU_VIEC', doiTuongId: string | null) {
+  const { profileId } = useAuth();
+  return useQuery({
+    queryKey: ['ct2', 'theo-doi', phamVi, doiTuongId],
+    enabled: !!doiTuongId && !!profileId,
+    staleTime: NUA_PHUT,
+    queryFn: async () => {
+      const { data, error } = await db
+        .from('ct2_theo_doi').select('nguoi')
+        .eq('pham_vi', phamVi).eq('doi_tuong_id', doiTuongId);
+      if (error) throw error;
+      return ((data ?? []) as Array<{ nguoi: string }>).length > 0;
+    },
+  });
+}
+
+export async function ct2DoiTheoDoi(
+  nguoi: string, phamVi: 'PHONG' | 'DAU_VIEC', doiTuongId: string, bat: boolean,
+): Promise<{ error: string | null }> {
+  if (bat) {
+    const { error } = await db.from('ct2_theo_doi')
+      .insert({ nguoi, pham_vi: phamVi, doi_tuong_id: doiTuongId });
+    return { error: thongDiep(error) };
+  }
+  const { error } = await db.from('ct2_theo_doi')
+    .delete().eq('nguoi', nguoi).eq('pham_vi', phamVi).eq('doi_tuong_id', doiTuongId);
+  return { error: thongDiep(error) };
 }
 
 /** M1 «Việc của tôi» — 1 RPC trả kèm cờ "đã ghi nhịp hôm nay" */
@@ -138,6 +287,84 @@ export function useCt2ViecCuaToi() {
   });
 }
 
+/**
+ * Chuỗi ngày làm việc liên tiếp ghi nhịp đúng giờ của CHÍNH MÌNH — nguồn cho
+ * huy hiệu 🔥 ở tab «Của tôi». RPC phía DB chỉ trả chuỗi của người đang đăng
+ * nhập: cán bộ không tra được chuỗi của đồng nghiệp (nguyên tắc «nhịp là gương
+ * soi», không phải bảng so sánh). Số tính đến lần chốt sổ 09:00 gần nhất; ngày
+ * nghỉ phép hoặc không có việc không phá chuỗi.
+ */
+export function useCt2ChuoiCuaToi() {
+  const { profileId, isGuest } = useAuth();
+  return useQuery({
+    queryKey: ['ct2', 'chuoi-cua-toi', profileId],
+    enabled: !!profileId && !isGuest,
+    staleTime: NAM_PHUT,
+    queryFn: async () => {
+      const { data } = await db.rpc('ct2_chuoi_dung_gio_cua_toi');
+      return (data as number | null) ?? 0;
+    },
+  });
+}
+
+/** Số ngày còn giữ thẻ đã xong trên Kanban trang chủ trước khi nó rời tầm mắt */
+const NGAY_GIU_THE_XONG = 14;
+
+/**
+ * Kanban của Phòng, phần việc do CHÍNH TÔI phụ trách — dùng cho khối trên
+ * trang chủ.
+ *
+ * Vì sao không dùng lại RPC `ct2_viec_cua_toi`: RPC đó trả một bản rút gọn và
+ * cắt hẳn thẻ đã xong, nên không dựng được ba cột Kanban (thiếu cột Hoàn
+ * thành) và không biết thẻ thuộc bảng nào — mà Phòng TCTH có tới hai bảng
+ * («Mảng Tổng hợp», «Mảng Hành chính»), gộp chung thì đúng cái Giám đốc muốn
+ * tách lại mất. Đọc thẳng bảng cho ra `Ct2DauViec` đầy đủ, tức là hộp thoại
+ * thẻ dùng chung được luôn, không phải nạp lại thẻ khi bấm mở.
+ *
+ * Thẻ đã Hoàn thành/Đã đóng chỉ giữ 14 ngày: cột Hoàn thành có tác dụng cho
+ * người ta thấy thành quả tuần này, chứ không phải thành kho lưu trữ càng ngày
+ * càng nặng ngay trên trang chủ. Thẻ Dừng/Hủy không lấy — xem ở bảng Phòng.
+ */
+export function useCt2KanbanCuaToi() {
+  const { profileId } = useAuth();
+  return useQuery({
+    queryKey: ['ct2', 'kanban-cua-toi', profileId],
+    enabled: !!profileId,
+    staleTime: NUA_PHUT,
+    refetchInterval: () => (trongKhungNhip() ? NUA_PHUT : false),
+    queryFn: async () => {
+      const moc = new Date(Date.now() - NGAY_GIU_THE_XONG * 86_400_000).toISOString();
+      const { data, error } = await db
+        .from('ct2_dau_viec')
+        .select('*')
+        .eq('nguoi_chiu_trach_nhiem', profileId)
+        .or(`trang_thai.in.(CHUAN_BI,DANG_LAM,CHO_PHOI_HOP,CHO_DUYET),`
+          + `and(trang_thai.in.(HOAN_THANH,DA_DONG),updated_at.gte.${moc})`)
+        .order('han_hoan_thanh', { ascending: true, nullsFirst: false });
+      if (error) throw error;
+      return (data ?? []) as Ct2DauViec[];
+    },
+  });
+}
+
+/** Kỳ đánh giá đang mở — thẻ mới gắn vào kỳ này */
+export function useCt2CycleId() {
+  const { data = [] } = useQuery({
+    queryKey: ['ct2', 'cycles'],
+    staleTime: NAM_PHUT,
+    queryFn: async () => {
+      const { data, error } = await db
+        .from('evaluation_cycles')
+        .select('id, name, status')
+        .order('start_date', { ascending: false })
+        .limit(8);
+      if (error) throw error;
+      return (data ?? []) as Array<{ id: string; name: string; status: string }>;
+    },
+  });
+  return data.find((c) => c.status === 'active')?.id ?? data[0]?.id ?? null;
+}
+
 /** M2 «Bảng nhịp theo người» của phòng hôm nay — 1 RPC */
 export function useCt2NhipPhong(phongId: string | null) {
   return useQuery({
@@ -149,6 +376,57 @@ export function useCt2NhipPhong(phongId: string | null) {
       const { data, error } = await db.rpc('ct2_nhip_phong_hom_nay', { _phong: phongId });
       if (error) throw error;
       return (data ?? []) as Ct2NhipNguoi[];
+    },
+  });
+}
+
+/** Một dòng «hôm nay tôi phải làm gì» — nguồn của ô tổng hợp trang chủ */
+export interface Ct2CanLamHomNay {
+  can_ghi_nhip: number;
+  chua_bat_dau: number;
+  cho_toi_duyet: number;
+  cho_toi_y_kien: number;
+  hs_can_nhip: number;
+}
+
+export function useCt2CanLamHomNay(bat = true) {
+  return useQuery({
+    queryKey: ['ct2', 'can-lam-hom-nay'],
+    enabled: bat,
+    staleTime: NUA_PHUT,
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const { data, error } = await db.rpc('ct2_viec_can_lam_hom_nay');
+      if (error) throw error;
+      const dong = (Array.isArray(data) ? data[0] : data) as Ct2CanLamHomNay | undefined;
+      return dong ?? {
+        can_ghi_nhip: 0, chua_bat_dau: 0, cho_toi_duyet: 0, cho_toi_y_kien: 0, hs_can_nhip: 0,
+      };
+    },
+  });
+}
+
+/**
+ * Thẻ trình hoàn thành đang chờ CHÍNH TÔI duyệt (phương án D, GĐ 15/08).
+ * Lấy theo người giữ đồng hồ chứ không theo phòng: Trưởng phòng mở màn duyệt
+ * là thấy đúng hàng đợi của mình, kể cả thẻ liên phòng trình sang.
+ */
+export function useCt2ChoToiDuyet(profileId: string | null) {
+  return useQuery({
+    queryKey: ['ct2', 'cho-toi-duyet', profileId],
+    enabled: !!profileId,
+    staleTime: NUA_PHUT,
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const { data, error } = await db
+        .from('ct2_dau_viec')
+        .select('*')
+        .eq('trang_thai', 'CHO_DUYET')
+        .eq('nguoi_dang_giu', profileId)
+        .eq('phan_tram', 100)
+        .order('giu_tu', { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as Ct2DauViec[];
     },
   });
 }
@@ -226,12 +504,16 @@ export function useCt2LamTuoi() {
     if (nhom === 'board') {
       qc.invalidateQueries({ queryKey: ['ct2', 'board'] });
       qc.invalidateQueries({ queryKey: ['ct2', 'viec-cua-toi'] });
+      qc.invalidateQueries({ queryKey: ['ct2', 'kanban-cua-toi'] });
     }
     if (nhom === 'nhip') {
       qc.invalidateQueries({ queryKey: ['ct2', 'nhat-ky'] });
       qc.invalidateQueries({ queryKey: ['ct2', 'nhip-phong'] });
       qc.invalidateQueries({ queryKey: ['ct2', 'viec-cua-toi'] });
       qc.invalidateQueries({ queryKey: ['ct2', 'board'] });
+      // Ghi nhịp ngay trên trang chủ mà khối trang chủ không tự đổi thì cán bộ
+      // tưởng chưa ăn, ghi lại lần nữa — cùng một câu, hai dòng nhật ký.
+      qc.invalidateQueries({ queryKey: ['ct2', 'kanban-cua-toi'] });
     }
   };
 }
@@ -247,6 +529,41 @@ function thongDiep(error: { message?: string } | null): string | null {
 }
 
 /** Cổng 1 — ghi việc: chỉ 3 trường bắt buộc, phần 5W2H còn lại do Cổng 2 điền */
+export async function ct2TaoBang(v: {
+  phong: string; ten: string; mo_ta: string | null;
+  loai: 'MANG' | 'LIEN_PHONG' | 'TOAN_CN'; che_do_xem: 'PHONG' | 'HAN_CHE'; nguoi_tao: string;
+}): Promise<{ error: string | null; id: string | null }> {
+  const { data, error } = await db.from('ct2_bang').insert(v).select('id').single();
+  return { error: thongDiep(error), id: (data as { id: string } | null)?.id ?? null };
+}
+
+export async function ct2SuaBang(id: string, v: Record<string, unknown>): Promise<{ error: string | null }> {
+  const { error } = await db.from('ct2_bang').update(v).eq('id', id);
+  return { error: thongDiep(error) };
+}
+
+/**
+ * Ghi đè danh sách thành viên: xoá người bị bỏ, thêm người mới. Hai lệnh nhỏ
+ * thay vì delete-all-insert-all để RLS kiểm được từng dòng.
+ */
+export async function ct2DatThanhVienBang(
+  bangId: string, moi: string[], cu: string[], nguoiThem: string,
+): Promise<{ error: string | null }> {
+  const them = moi.filter((id) => !cu.includes(id));
+  const xoa = cu.filter((id) => !moi.includes(id));
+  if (them.length > 0) {
+    const { error } = await db.from('ct2_bang_thanh_vien')
+      .insert(them.map((profile_id) => ({ bang_id: bangId, profile_id, nguoi_them: nguoiThem })));
+    if (error) return { error: thongDiep(error) };
+  }
+  if (xoa.length > 0) {
+    const { error } = await db.from('ct2_bang_thanh_vien')
+      .delete().eq('bang_id', bangId).in('profile_id', xoa);
+    if (error) return { error: thongDiep(error) };
+  }
+  return { error: null };
+}
+
 export async function ct2TaoDauViec(v: Record<string, unknown>): Promise<{ error: string | null; id: string | null }> {
   const { data, error } = await db.from('ct2_dau_viec').insert(v).select('id').single();
   return { error: thongDiep(error), id: (data as { id: string } | null)?.id ?? null };
@@ -254,6 +571,40 @@ export async function ct2TaoDauViec(v: Record<string, unknown>): Promise<{ error
 
 export async function ct2SuaDauViec(id: string, v: Record<string, unknown>): Promise<{ error: string | null }> {
   const { error } = await db.from('ct2_dau_viec').update(v).eq('id', id);
+  return { error: thongDiep(error) };
+}
+
+export interface Ct2TheDaGo {
+  id: string; ma_hien_thi: string | null; tieu_de: string;
+  go_boi: string; go_luc: string; ly_do: string | null;
+}
+
+/**
+ * Thẻ nhập nhầm đã gỡ — KHÁC Dừng/Hủy. Chỉ lãnh đạo Phòng và chính người đã gỡ
+ * nhìn thấy (RLS quyết định, đây chỉ là truy vấn).
+ */
+export function useCt2TheDaGo(phongId: string | null, bat: boolean) {
+  return useQuery({
+    queryKey: ['ct2', 'the-da-go', phongId],
+    enabled: bat && !!phongId,
+    staleTime: NUA_PHUT,
+    queryFn: async () => {
+      const { data, error } = await db.from('ct2_the_da_go')
+        .select('id, ma_hien_thi, tieu_de, go_boi, go_luc, ly_do')
+        .eq('phong', phongId).order('go_luc', { ascending: false }).limit(20);
+      if (error) throw error;
+      return (data ?? []) as Ct2TheDaGo[];
+    },
+  });
+}
+
+export async function ct2GoThe(id: string, lyDo: string): Promise<{ error: string | null }> {
+  const { error } = await db.rpc('ct2_go_the', { _id: id, _ly_do: lyDo });
+  return { error: thongDiep(error) };
+}
+
+export async function ct2PhucHoiThe(id: string): Promise<{ error: string | null }> {
+  const { error } = await db.rpc('ct2_phuc_hoi_the', { _id: id });
   return { error: thongDiep(error) };
 }
 

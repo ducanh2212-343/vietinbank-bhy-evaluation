@@ -6,7 +6,7 @@
  * client chặn để trải nghiệm tốt, server chặn để dữ liệu không thể sai.
  */
 
-import { cauHinhNhip, gioSangPhut } from './cauHinhNhip';
+import { NGAY_TRIEN_KHAI, cauHinhNhip, gioSangPhut } from './cauHinhNhip';
 import { ngayLamViecTheoLich, ngayVnChuoi } from './lichNghi';
 
 export type Ct2TrangThai =
@@ -44,6 +44,16 @@ export interface Ct2DauViec {
   nguoi_chiu_trach_nhiem: string | null;
   nguoi_phoi_hop: string[];
   lanh_dao_theo_doi: string | null;
+  /**
+   * Ba cấp phụ trách theo yêu cầu của Giám đốc: Phó phòng · Trưởng phòng ·
+   * PGĐ phụ trách (tự link từ PGĐ của phòng lúc ghi việc, sửa được).
+   * `lanh_dao_theo_doi` giữ nguyên vai trò định tuyến thông báo.
+   */
+  pho_phong: string | null;
+  truong_phong: string | null;
+  pgd_phu_trach: string | null;
+  /** Thuộc bảng Kanban nào; NULL = «Kanban chung» của phòng */
+  bang_id: string | null;
   phong: string;
   pham_vi: 'PHONG' | 'PGD' | 'CHI_NHANH';
   loai_dau_viec: Ct2Loai;
@@ -86,7 +96,10 @@ export interface Ct2Nhip {
  * Chiêu thức 2, Phê duyệt tín dụng và Kanban 38 skill/Dấu ấn — để cán bộ chỉ
  * phải học một cách trao đổi, và để @nhắc tên chỉ phải viết một lần.
  */
-export type Ct2PhamVi = 'DAU_VIEC' | 'PHONG' | 'CHIEN_DICH' | 'HO_SO_TIN_DUNG' | 'THE_KANBAN';
+export type Ct2PhamVi =
+  | 'DAU_VIEC' | 'PHONG' | 'CHIEN_DICH' | 'HO_SO_TIN_DUNG' | 'THE_KANBAN'
+  /** Thẻ dấu ấn BHY Mark — trao đổi bổ sung 08/2026, cùng mạch với ba bàn kia */
+  | 'DAU_AN';
 
 export interface Ct2BinhLuan {
   id: string;
@@ -104,18 +117,156 @@ export interface Ct2BinhLuan {
 }
 
 // ---------------------------------------------------------------------------
+// Nhiều bảng Kanban một phòng — mảng công việc / liên phòng
+// ---------------------------------------------------------------------------
+
+/**
+ * Một bảng Kanban cùng mẫu «Kanban của Phòng» nhưng cho một mảng công việc
+ * riêng (VD TCTH: hành chính · tổ chức · tổng hợp) hoặc một việc liên phòng.
+ *
+ * Bảng LIÊN PHÒNG đặt ở PHÒNG ĐẦU MỐI — không treo lên trang chủ. Người phòng
+ * khác được thêm làm thành viên thì bảng tự hiện trong màn của họ; hàng rào
+ * thật là RLS đọc theo danh sách thành viên, giao diện chỉ phản chiếu.
+ *
+ * HAN_CHE (VD mảng tổ chức — nhân sự): chỉ thành viên đích danh + BGĐ thấy.
+ * Danh sách thành viên CHÍNH LÀ hàng rào — không đoán «phó phụ trách» từ
+ * chức danh.
+ */
+export interface Ct2Bang {
+  id: string;
+  phong: string;
+  ten: string;
+  mo_ta: string | null;
+  /** TOAN_CN = hiện ở màn hình mọi phòng, chỉ BGĐ đặt/gỡ được chế độ này */
+  loai: 'MANG' | 'LIEN_PHONG' | 'TOAN_CN';
+  che_do_xem: 'PHONG' | 'HAN_CHE';
+  nguoi_tao: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ---------------------------------------------------------------------------
+// Dòng thời gian — MỘT mạch kể chuyện cho mỗi thẻ, dùng chung cả ba bàn
+// ---------------------------------------------------------------------------
+
+/**
+ * Một dòng «Báo cáo» đã chuẩn hoá — nguồn có thể là nhịp PDCA (đầu việc),
+ * nhật ký hồ sơ tín dụng, hay log tiến độ của thẻ BHY Mark. Ba bảng khác nhau
+ * nhưng với người đọc chúng là CÙNG MỘT THỨ: cán bộ báo cáo mình đang ở đâu.
+ */
+export interface DongBaoCao {
+  id: string;
+  /** ISO — mốc để trộn với trao đổi thành một mạch */
+  luc: string;
+  /** profile_id; null = dòng hệ thống tự ghi (tạo thẻ, đổi trạng thái…) */
+  nguoi: string | null;
+  /** Nhãn loại dòng: «Cập nhật tiến độ», «Đổi trạng thái», tên bước hồ sơ… */
+  tieu_de?: string | null;
+  nhan_pdca?: Ct2NhanPdca | null;
+  co?: Ct2Co | null;
+  phan_tram?: number | null;
+  dung_nhip?: 'DUNG_GIO' | 'MUON' | null;
+  noi_dung?: string | null;
+  /** Các cặp nhãn–giá trị phụ: vướng mắc, hành động, bằng chứng, kết quả… */
+  chi_tiet?: Array<{ nhan: string; gia: string; mau?: 'DO' | 'XANH' }>;
+  /** Link bằng chứng (thẻ BHY Mark) */
+  url?: string | null;
+  /** Dòng sự kiện hệ thống — hiện mảnh, không đóng khung như báo cáo */
+  he_thong?: boolean;
+}
+
+export type Ct2LocDong = 'TAT_CA' | 'BAO_CAO' | 'TRAO_DOI';
+
+/** Một dòng trong mạch trộn: hoặc báo cáo, hoặc trao đổi */
+export type DongThoiGian =
+  | { kieu: 'BAO_CAO'; luc: string; bc: DongBaoCao }
+  | { kieu: 'TRAO_DOI'; luc: string; bl: Ct2BinhLuan };
+
+export interface NhomNgay { nhan: string; items: DongThoiGian[] }
+
+function nhanNgayVn(iso: string): string {
+  return new Date(iso).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+}
+
+/**
+ * Trộn báo cáo và trao đổi thành MỘT dòng thời gian, mới nhất trước, gom theo
+ * ngày.
+ *
+ * Vì sao trộn: quản lý mở thẻ ra muốn đọc CÂU CHUYỆN — «hôm 25/7 cán bộ báo
+ * 50%, hôm sau lãnh đạo hỏi lại, hôm 30/7 báo 75%». Hai danh sách tách rời
+ * bắt người đọc tự ráp hai luồng theo trí nhớ. Nhưng trộn KHÔNG có nghĩa là
+ * lẫn: hai loại dòng giữ hai hình dạng khác hẳn nhau, và có bộ lọc.
+ *
+ * Gom theo ngày để bỏ phần lặp «4/8/2026» ở từng dòng — mỗi ngày một vạch,
+ * trong ngày chỉ còn giờ:phút.
+ */
+export function gopDongThoiGian(
+  baoCao: DongBaoCao[],
+  traoDoi: Ct2BinhLuan[],
+  loc: Ct2LocDong = 'TAT_CA',
+): NhomNgay[] {
+  const tron: DongThoiGian[] = [
+    ...(loc !== 'TRAO_DOI' ? baoCao.map((bc) => ({ kieu: 'BAO_CAO' as const, luc: bc.luc, bc })) : []),
+    ...(loc !== 'BAO_CAO' ? traoDoi.map((bl) => ({ kieu: 'TRAO_DOI' as const, luc: bl.created_at, bl })) : []),
+    // So bằng Date chứ không localeCompare chuỗi: hai nguồn có thể trả hai
+    // định dạng ISO khác nhau ('…Z' và '…+00:00'), so chuỗi sẽ xếp sai.
+  ].sort((a, b) => new Date(b.luc).getTime() - new Date(a.luc).getTime());
+
+  const nhom: NhomNgay[] = [];
+  for (const d of tron) {
+    const nhan = nhanNgayVn(d.luc);
+    const cuoi = nhom[nhom.length - 1];
+    if (cuoi && cuoi.nhan === nhan) cuoi.items.push(d);
+    else nhom.push({ nhan, items: [d] });
+  }
+  return nhom;
+}
+
+// ---------------------------------------------------------------------------
 // Cột Kanban chuẩn toàn Chi nhánh (đặc tả §4.1)
 // ---------------------------------------------------------------------------
 
+/**
+ * BỐN cột, theo chỉ đạo của Giám đốc Chi nhánh 08/2026 — bỏ «Chờ phối hợp»,
+ * «Chờ ý kiến/duyệt», «Đã đóng». Kanban vận hành theo stand-up hằng ngày:
+ * việc hoặc đang chạy hoặc xong, trạng thái «chờ» diễn đạt bằng cờ vàng/đỏ
+ * kèm câu «Đang vướng vì…» trong nhịp — chỗ đó nói được VÌ SAO chờ, còn một
+ * cột chờ thì không.
+ *
+ * Các mã cũ vẫn hợp lệ trong kiểu dữ liệu (database còn CHECK cho chúng, dữ
+ * liệu lịch sử có thể mang chúng) — thẻ cũ được XẾP VỀ cột gần nghĩa nhất
+ * bằng cotHienThi(), không mất thẻ nào.
+ */
 export const CT2_COT: Array<{ ma: Ct2TrangThai; ten: string; icon: string }> = [
   { ma: 'CHUAN_BI', ten: 'Chuẩn bị', icon: '📋' },
   { ma: 'DANG_LAM', ten: 'Đang làm', icon: '🔨' },
-  { ma: 'CHO_PHOI_HOP', ten: 'Chờ phối hợp', icon: '🤝' },
-  { ma: 'CHO_DUYET', ten: 'Chờ ý kiến / duyệt', icon: '⏳' },
   { ma: 'HOAN_THANH', ten: 'Hoàn thành', icon: '✅' },
-  { ma: 'DA_DONG', ten: 'Đã đóng', icon: '📦' },
   { ma: 'DUNG_HUY', ten: 'Dừng/Hủy', icon: '⛔' },
 ];
+
+/** Thẻ mang trạng thái cũ hiện ở cột nào — không thẻ nào được phép biến mất */
+export function cotHienThi(t: Ct2TrangThai): Ct2TrangThai {
+  if (t === 'CHO_PHOI_HOP' || t === 'CHO_DUYET') return 'DANG_LAM';
+  if (t === 'DA_DONG') return 'HOAN_THANH';
+  return t;
+}
+
+/*
+ * Ghi chú hai lần chỉnh liên tiếp của mục «Chuyển trạng thái» (06/08, ngày
+ * triển khai) — để người sau không lặp lại vòng này:
+ *
+ *  1. Rà soát phát hiện CHO_PHOI_HOP / CHO_DUYET / DA_DONG có luật ở cả client
+ *     lẫn trigger nhưng KHÔNG CÓ CỬA vào → mở ô chọn đủ 7 đích.
+ *  2. GĐ chỉnh ngay trong sáng: bảng có 4 cột mà ô chuyển bày 7 — hai nơi nói
+ *     hai thứ. ĐỒNG BỘ VỀ 4: ô chọn chỉ còn đúng CT2_COT. Ba trạng thái con
+ *     đổi vai chứ không mất cửa: CHỜ là nút «Giao đồng hồ chờ» bên trong
+ *     «Đang làm» (thẻ vẫn nằm cột Đang làm), ĐÃ ĐÓNG là nút «Chốt» của lãnh
+ *     đạo trên thẻ Hoàn thành. Database giữ nguyên bảy trạng thái và mọi luật.
+ *
+ * Bài học: cửa phải mở ĐÚNG HÌNH của bảng — thêm đích vào ô chọn thì dễ,
+ * nhưng người dùng đọc bảng bằng cột, và một đích không phải cột là một trạng
+ * thái họ không biết xếp vào đâu.
+ */
 
 export const CT2_TEN_CO: Record<Ct2Co, string> = {
   XANH: '🟢 Đúng hẹn', VANG: '🟡 Có rủi ro', DO: '🔴 Đang vướng',
@@ -174,12 +325,15 @@ export const CT2_CAM_XUC = ['👍', '✅', '👀', '🎯', '🙏', '❤️', '�
 // ---------------------------------------------------------------------------
 
 /** Ba nguồn việc vào Kanban. Việc lặp hằng ngày KHÔNG thuộc nhóm nào — không vào bảng. */
-export type Ct2NguonViec = 'KE_HOACH' | 'GIAO_BAN' | 'CHU_DONG';
+export type Ct2NguonViec = 'KE_HOACH' | 'GIAO_BAN' | 'CHU_DONG' | 'CHI_DAO';
 
 export const CT2_NGUON_VIEC: Array<{ ma: Ct2NguonViec; ten: string; icon: string; mo: string }> = [
   { ma: 'KE_HOACH', ten: 'Kế hoạch hành động', icon: '📋', mo: 'Việc đã có trong KHHĐ của Phòng kỳ này' },
   { ma: 'GIAO_BAN', ten: 'Chỉ đạo giao ban', icon: '🗣️', mo: 'Việc phát sinh từ giao ban tuần/tháng' },
   { ma: 'CHU_DONG', ten: 'Phòng/cá nhân chủ động', icon: '💡', mo: 'Việc tự thấy cần làm, không ai giao' },
+  // Bổ sung theo yêu cầu GĐ 08/2026: việc từ chỉ đạo trực tiếp của cấp trên,
+  // ngoài kênh giao ban — VD BGĐ gọi điện giao gấp, văn bản chỉ đạo của TSC
+  { ma: 'CHI_DAO', ten: 'Chỉ đạo của cấp trên', icon: '📌', mo: 'Việc do cấp trên chỉ đạo trực tiếp (ngoài giao ban)' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -364,11 +518,18 @@ export function kiemTraCauNhip(input: {
   return { hopLe: true, loi: null };
 }
 
-/** Mẫu câu gợi ý theo cờ (hiện sẵn dưới ô nhập) */
+/**
+ * Công thức MỘT câu nhịp — Giám đốc chốt 08/2026: «hôm qua đã làm gì, kế hoạch
+ * ngày hôm nay, đề xuất gì». Đây là hướng dẫn duy nhất còn giữ trong hộp thoại
+ * thẻ; mọi lời dẫn khác đã gỡ vì dàn trang quá dài.
+ */
+export const CT2_CONG_THUC_NHIP = 'Hôm qua đã làm gì · kế hoạch hôm nay · đề xuất gì (nếu có)';
+
+/** Mẫu câu gợi ý theo cờ (placeholder ô nhập) — cùng công thức, đổi theo tình trạng */
 export const CT2_MAU_CAU: Record<Ct2Co, string> = {
-  XANH: 'Đã xong bước [X], dự kiến hoàn thành đúng hẹn ngày [dd/mm].',
-  VANG: 'Đang chậm ở bước [X] vì [lý do]. Hôm nay tôi [hành động] để bắt kịp.',
-  DO: 'Đang vướng [nguyên nhân, ai đang giữ]. Hôm nay tôi [hành động] và cần [ai] hỗ trợ [việc gì] trước [ngày].',
+  XANH: 'Hôm qua đã [làm gì], hôm nay [làm gì], đề xuất [nếu có].',
+  VANG: 'Hôm qua chậm ở [bước] vì [lý do], hôm nay [làm gì để bắt kịp], đề xuất [hỗ trợ nếu cần].',
+  DO: 'Đang vướng [gì, ai đang giữ], hôm nay [làm gì], đề xuất [ai hỗ trợ việc gì, trước ngày nào].',
 };
 
 // ---------------------------------------------------------------------------
@@ -377,8 +538,6 @@ export const CT2_MAU_CAU: Record<Ct2Co, string> = {
 
 export interface BoiCanhChuyen {
   coDongP: boolean;
-  coDongC: boolean;
-  coDongA: boolean;
   phanTram: number;
   laLanhDao: boolean;
   loai: Ct2Loai;
@@ -393,18 +552,28 @@ export function lyDoChanChuyen(tu: Ct2TrangThai, den: Ct2TrangThai, bc: BoiCanhC
   if (den === 'DANG_LAM' && tu === 'CHUAN_BI' && bc.loai === 'TIEN_TRINH' && !bc.coDongP) {
     return 'Chưa có dòng Plan (P) — ghi cách làm/mốc kiểm soát trước khi bắt đầu.';
   }
-  if (den === 'HOAN_THANH') {
-    if (bc.phanTram !== 100) return 'Chưa đạt 100% — cập nhật tiến độ trước khi chuyển Hoàn thành.';
-    if (!bc.coDongC) return 'Thiếu bước Check (C) — đối chiếu kết quả với chỉ tiêu trước khi Hoàn thành.';
+  // 08/2026, GĐ bỏ cổng Check/Act: Kanban vốn là vòng lặp — xong thì Done,
+  // check thấy vấn đề thì TẠO VIỆC MỚI chứ không giữ thẻ cũ làm con tin.
+  // Nhãn P/D/C/A trên nhịp vẫn còn (để đọc nhật ký), chỉ bỏ vai trò barie.
+  if (den === 'HOAN_THANH' && bc.phanTram !== 100) {
+    return 'Chưa đạt 100% — cập nhật tiến độ trước khi chuyển Hoàn thành.';
   }
-  if (den === 'DA_DONG') {
-    if (!bc.laLanhDao) return 'Chỉ Trưởng/Phó phòng được chốt «Đã đóng».';
-    if (!bc.coDongA) return 'Thiếu bước Act (A) — ghi bài học rút ra trước khi đóng.';
+  // Phương án D (GĐ 15/08): «Hoàn thành» là chữ ký của lãnh đạo Phòng. Trước
+  // đây 31/33 lần chuyển là chủ thẻ tự chuyển và 0/109 thẻ được chốt — tự
+  // hoàn thành đồng nghĩa tự thoát lưới nhịp. Cán bộ đi đường «Trình duyệt».
+  if (den === 'HOAN_THANH' && !bc.laLanhDao) {
+    return 'Hoàn thành cần Trưởng phòng duyệt — dùng nút «Trình duyệt hoàn thành».';
+  }
+  if (den === 'DA_DONG' && !bc.laLanhDao) {
+    return 'Chỉ Trưởng/Phó phòng được chốt «Đã đóng».';
   }
   if (den === 'DUNG_HUY' && !bc.laLanhDao) {
     return 'Chỉ Trưởng/Phó phòng được Dừng/Hủy đầu việc.';
   }
-  if ((den === 'CHO_PHOI_HOP' || den === 'CHO_DUYET') === false && (tu === 'DA_DONG' || tu === 'DUNG_HUY') && !bc.laLanhDao) {
+  // Mở lại thẻ đã đóng/hủy là việc của lãnh đạo — KHÔNG có ngoại lệ nào theo
+  // đích đến. (Bản cũ vô tình miễn cho đích «chờ», tức cán bộ kéo được thẻ đã
+  // hủy vào cột chờ duyệt — một đường lách không ai chủ đích mở.)
+  if ((tu === 'DA_DONG' || tu === 'DUNG_HUY') && !bc.laLanhDao) {
     return 'Thẻ đã đóng/hủy — chỉ lãnh đạo Phòng mở lại được.';
   }
   return null;
@@ -484,6 +653,47 @@ export function soNgayQuaHan(dv: Pick<Ct2DauViec, 'han_hoan_thanh' | 'trang_thai
 }
 
 /**
+ * Vì sao một thẻ CHƯA BẮT ĐẦU vẫn phải ghi nhịp (GĐ 15/08).
+ *
+ * Luật thật nằm ở database (`ct2_vi_sao_phai_bao_cao`) — hàm này chỉ để giao
+ * diện gọi tên cho người đọc hiểu, và PHẢI nói cùng một thứ. Nếu sửa một bên,
+ * sửa cả hai: bảng chấm một đằng mà thẻ hiện một nẻo là cách nhanh nhất khiến
+ * cán bộ mất tin vào con số.
+ *
+ * Trước đây chỉ thẻ «Đang làm» bị đòi nhịp, nên để yên thẻ ở «Chuẩn bị» là
+ * cách né báo cáo hợp lệ — càng chậm càng không ai phải giải trình.
+ */
+export type Ct2LyDoBaoCao = 'QUA_HAN_BAT_DAU' | 'SAP_DEN_HAN' | null;
+
+export const CT2_NHAN_LY_DO_BAO_CAO: Record<'QUA_HAN_BAT_DAU' | 'SAP_DEN_HAN', string> = {
+  QUA_HAN_BAT_DAU: 'Quá ngày bắt đầu mà chưa mở việc',
+  SAP_DEN_HAN: 'Sắp đến hạn hoàn thành mà chưa bắt đầu',
+};
+
+/** Ngưỡng «sắp đến hạn», tính bằng ngày làm việc — khớp cấu hình mặc định DB */
+export const CT2_NGUONG_SAP_DEN_HAN = 3;
+
+/**
+ * Thẻ CHƯA BẮT ĐẦU này có phải ghi nhịp không, vì sao. Bản chiếu của
+ * `ct2_vi_sao_phai_bao_cao` ở database, cho những màn hình đọc thẳng bảng
+ * `ct2_dau_viec` thay vì qua RPC. Xét SAP_DEN_HAN trước vì nguy cấp hơn.
+ */
+export function lyDoPhaiBaoCao(
+  dv: Pick<Ct2DauViec, 'trang_thai' | 'loai_dau_viec' | 'ngay_bat_dau' | 'han_hoan_thanh'>,
+  moc: Date = new Date(),
+): Ct2LyDoBaoCao {
+  if (dv.loai_dau_viec !== 'TIEN_TRINH' || dv.trang_thai !== 'CHUAN_BI') return null;
+  if (dv.han_hoan_thanh
+      && soNgayLamViec(moc, `${dv.han_hoan_thanh}T00:00:00+07:00`) <= CT2_NGUONG_SAP_DEN_HAN) {
+    return 'SAP_DEN_HAN';
+  }
+  if (dv.ngay_bat_dau && ngayVnChuoi(new Date(`${dv.ngay_bat_dau}T00:00:00+07:00`)) < ngayVnChuoi(moc)) {
+    return 'QUA_HAN_BAT_DAU';
+  }
+  return null;
+}
+
+/**
  * Số NGÀY LÀM VIỆC thẻ "im lặng" — không có nhịp mới. Thẻ chưa từng có nhịp
  * tính từ ngày bắt đầu. Cuối tuần không đòi nhịp nên không tính vào đây.
  */
@@ -498,7 +708,41 @@ export function soNgayImLang(
   const tu = dv.nhip_gan_nhat
     ?? (dv.ngay_bat_dau ? `${dv.ngay_bat_dau}T00:00:00+07:00` : dv.created_at);
   if (!tu) return 0;
-  return soNgayLamViec(tu, moc);
+  // Kỷ luật nhịp tính từ NGÀY TRIỂN KHAI: mốc nào sớm hơn thì kẹp lên ngày
+  // triển khai — sáng khai trương không ai bị «im lặng 3 ngày» vì một kỷ luật
+  // hôm qua chưa tồn tại. Thẻ sinh sau ngày triển khai không bị phép kẹp đụng tới.
+  const tuKep = ngayVnChuoi(new Date(tu)) < NGAY_TRIEN_KHAI
+    ? `${NGAY_TRIEN_KHAI}T00:00:00+07:00` : tu;
+  return soNgayLamViec(tuKep, moc);
+}
+
+/**
+ * Thẻ đã có nhịp trong NGÀY VIỆT NAM hôm nay chưa.
+ *
+ * Cùng một phép so sánh mà RPC `ct2_viec_cua_toi` làm ở database (đổi
+ * `nhip_gan_nhat` sang lịch Asia/Ho_Chi_Minh rồi so ngày). Viết lại thành hàm
+ * thuần ở đây để những màn hình đọc thẳng bảng `ct2_dau_viec` — không đi qua
+ * RPC đó — không phải tự chế một phép so sánh thứ hai rồi lệch nhau lúc nửa đêm.
+ */
+export function daGhiNhipHomNay(nhipGanNhat: string | null, moc: Date = new Date()): boolean {
+  if (!nhipGanNhat) return false;
+  return ngayVnChuoi(new Date(nhipGanNhat)) === ngayVnChuoi(moc);
+}
+
+/**
+ * Sáng nay thẻ này còn chờ nhịp không.
+ *
+ * Chỉ việc TIẾN TRÌNH đang làm mới đòi nhịp: việc THƯỜNG TRỰC là việc lặp
+ * hằng ngày, bắt ghi nhịp cho nó thì mỗi sáng cán bộ phải gõ một câu vô nghĩa
+ * — đúng cách giết một nếp sinh hoạt.
+ */
+export function canGhiNhipHomNay(
+  dv: Pick<Ct2DauViec, 'loai_dau_viec' | 'trang_thai' | 'nhip_gan_nhat'>,
+  moc: Date = new Date(),
+): boolean {
+  return dv.loai_dau_viec === 'TIEN_TRINH'
+    && dv.trang_thai === 'DANG_LAM'
+    && !daGhiNhipHomNay(dv.nhip_gan_nhat, moc);
 }
 
 /** Tuổi thẻ trong cột chờ (NGÀY LÀM VIỆC) — quá CT2_NGUONG_TUOI_CHO thì escalate người giữ */
@@ -566,7 +810,7 @@ export function thieuTruongBatBuoc(
  * (ngày quá hạn × 3) + (ngày im lặng × 2) + (5 nếu Trọng điểm BGĐ) + (3 nếu chặn phòng khác)
  */
 export function diemRuiRo(
-  dv: Pick<Ct2DauViec, 'han_hoan_thanh' | 'trang_thai' | 'nhip_gan_nhat' | 'ngay_bat_dau' | 'muc_uu_tien' | 'lien_phong'>,
+  dv: Pick<Ct2DauViec, 'han_hoan_thanh' | 'trang_thai' | 'nhip_gan_nhat' | 'ngay_bat_dau' | 'muc_uu_tien' | 'lien_phong' | 'created_at'>,
   moc: Date = new Date(),
 ): number {
   return soNgayQuaHan(dv, moc) * 3
@@ -669,32 +913,18 @@ export interface Ct2ThongBao {
   id: string;
   ma_su_kien: string;
   dau_viec_id: string | null;
+  /** Hồ sơ PDTD mà tin nói tới — bấm thông báo mở thẳng hồ sơ đó */
+  ho_so_id: string | null;
   tieu_de: string;
   noi_dung: string;
-  muc: 'NHE' | 'DO' | 'CHAN' | string;
+  muc: 'NHE' | 'DO' | 'CHAN' | 'KHEN' | string;
   created_at: string;
   doc_luc: string | null;
 }
 
+// KHEN (13/08): tin vui — khen mốc chuỗi đúng giờ — mang 🔥 trùng huy hiệu ở tab
+// «Của tôi», không đội mũ cảnh báo 🟡. Trùng bảng DAU_MUC trong notify-ct2.
 export const CT2_DAU_MUC: Record<string, string> = { CHAN: '⛔', DO: '🔴', NHE: '🟡', KHEN: '🔥' };
-
-/**
- * Nhãn phân hệ đứng trước tiêu đề thông báo — nhìn chuông (hoặc màn hình khoá)
- * là biết ngay tin thuộc Chiêu thức 2, Chiêu thức 3 hay Dấu ấn BHY Mark.
- *
- * Đọc theo NHÃN DÒNG ĐẦU của thân tin chứ không theo ma_su_kien: bình luận dùng
- * chung mã N12, bằng chứng dùng chung mã NHIP cho mọi loại đối tượng — chỉ dòng
- * đầu mới biết tin nói về thứ gì. Quy tắc PHẢI trùng nhanPhanHe() trong edge
- * function notify-ct2, nếu không thì chuông và push nói hai đằng.
- *
- * Trả về chuỗi rỗng cho tin hạ tầng toàn cổng (lịch nghỉ) — không thuộc phân hệ nào.
- */
-export function moduleThongBao(tb: Pick<Ct2ThongBao, 'ma_su_kien' | 'noi_dung'>): string {
-  if (tb.ma_su_kien === 'LICH_NGHI') return '';
-  if (tb.noi_dung.startsWith('Dấu ấn:')) return 'Dấu ấn';
-  if (tb.noi_dung.startsWith('Hành động:')) return 'CT3';
-  return 'CT2';
-}
 
 /**
  * Bấm vào thông báo phải mở đúng thứ nó nói tới.
@@ -703,10 +933,55 @@ export function moduleThongBao(tb: Pick<Ct2ThongBao, 'ma_su_kien' | 'noi_dung'>)
  * thẻ giữa bảy cột, và lần sau họ sẽ bỏ qua chuông. Quy tắc này dùng chung với
  * edge function notify-ct2 để push và chuông trong ứng dụng không lệch nhau.
  */
-export function duongDanThongBao(tb: Pick<Ct2ThongBao, 'ma_su_kien' | 'dau_viec_id'>): string {
+export function duongDanThongBao(
+  tb: Pick<Ct2ThongBao, 'ma_su_kien' | 'dau_viec_id'> & { ho_so_id?: string | null },
+): string {
+  // Tin công bố phiên bản không gắn với thẻ nào — mở thẳng trang «Có gì mới»
+  if (tb.ma_su_kien === 'PHIEN_BAN') return '/co-gi-moi';
   if (tb.dau_viec_id) return `/one/chieu-thuc-2?the=${tb.dau_viec_id}`;
+  // Tin hồ sơ mang mã hồ sơ mở THẲNG hồ sơ đó — nơi có sẵn ô Trao đổi.
+  // «Có hồ sơ chờ anh/chị» mà chỉ mở chung tab là bắt người duyệt tự tìm
+  // giữa 48 hồ sơ. Tin cũ trước 08/2026 chưa có mã thì vẫn về tab tín dụng.
+  if (tb.ho_so_id) return `/one/chieu-thuc-2?ho_so=${tb.ho_so_id}`;
   if (tb.ma_su_kien.startsWith('HS_')) return '/one/chieu-thuc-2?tab=tin-dung';
   return '/one/chieu-thuc-2';
+}
+
+/**
+ * Tin thuộc phân hệ nào — để chuông và push phân biệt CT2 / CT3 / Dấu ấn BHY Mark.
+ *
+ * Nguồn sự thật là NHÃN DÒNG ĐẦU thân tin (chuẩn hình thức 09/08: mỗi dòng một
+ * nhãn), không phải ma_su_kien: bình luận dùng chung N12 và bằng chứng dùng chung
+ * NHIP cho mọi loại đối tượng, chỉ nhãn dòng đầu biết tin nói về thứ gì.
+ * Trả null cho họ CT2 (Việc/Hồ sơ/nhịp): chuông vốn là chuông CT2, dán nhãn cho
+ * số đông chỉ thêm rối — chỉ tin «lạc dòng» (CT3, Dấu ấn) mới cần nhãn.
+ */
+export function moduleThongBao(tb: Pick<Ct2ThongBao, 'noi_dung'>): 'CT3' | 'DAU_AN' | null {
+  if (tb.noi_dung.startsWith('Dấu ấn:')) return 'DAU_AN';
+  if (tb.noi_dung.startsWith('Hành động:')) return 'CT3';
+  return null;
+}
+
+/**
+ * Tách nhãn đầu dòng («Việc:», «Nội dung:», «⚠️ Vướng:») khỏi phần chữ theo sau,
+ * để chuông in đậm riêng phần nhãn — mắt bắt được cấu trúc tin mà không phải đọc hết.
+ *
+ * Màn hình khóa KHÔNG làm được việc này: Notification API chỉ nhận `body` là chuỗi
+ * thuần, hệ điều hành cho đúng hai mức (tiêu đề đậm, thân thường). Vì vậy nhãn dòng
+ * đầu vẫn phải tự đứng vững bằng vị trí và dấu hai chấm — đậm chỉ là phần thưởng
+ * thêm ở nơi dựng được HTML.
+ *
+ * Nhận diện theo HÌNH DẠNG chứ không theo danh sách nhãn cố định: nhãn nằm đầu dòng,
+ * chỉ gồm chữ/số/khoảng trắng, tối đa 28 ký tự. Nhờ vậy nhãn mới sinh sau này
+ * («Hạn nộp:», «Phần S3:») tự khớp, còn câu văn có dấu hai chấm ở giữa thì không.
+ */
+export function tachNhanDong(dong: string): { nhan: string; con: string } | null {
+  const i = dong.indexOf(':');
+  if (i < 1 || i > 28) return null;
+  // Cho phép một dấu cảnh báo đứng trước nhãn (⚠️ Vướng:), nhưng không cho dấu câu
+  // lọt vào giữa — «xong việc. Hạn chót:» phải trượt, vì đó là câu văn chứ không phải nhãn.
+  if (!/^(?:[^\p{L}\p{N}]{1,3})?[\p{L}\p{N}][\p{L}\p{N} ]*$/u.test(dong.slice(0, i))) return null;
+  return { nhan: dong.slice(0, i + 1), con: dong.slice(i + 1) };
 }
 
 /** «12 phút trước» dễ đọc hơn dấu thời gian đầy đủ trong danh sách chuông */

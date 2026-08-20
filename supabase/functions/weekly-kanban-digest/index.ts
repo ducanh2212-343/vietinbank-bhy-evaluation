@@ -1,15 +1,17 @@
 // weekly-kanban-digest — Thông báo tuần về kỷ luật cập nhật Kanban kế hoạch hành động.
 //
 // 2 chế độ (body.mode):
-//   'leader_digest' (mặc định) — chạy SÁNG THỨ HAI: gửi GĐ/PGĐ/TP email + push tổng
-//     kết TUẦN VỪA KẾT THÚC (T2→CN): ai đã cập nhật nội dung gì, ai chưa cập nhật thẻ
-//     nào. Nhịp do phòng LINH HOẠT — quy ước duy nhất là trong tuần phải có cập nhật,
-//     hết tuần chưa cập nhật thì báo đỏ (chốt với GĐ 26/07).
-//     Phạm vi: TP = cán bộ mình quản lý trực tiếp (manager_id); PGĐ = khối phụ trách
-//     (pgd_id); BGĐ/TCTH admin = toàn chi nhánh. Mỗi người 1 email theo phạm vi rộng nhất.
+//   'leader_digest' (mặc định) — chạy SÁNG THỨ HAI, tổng kết TUẦN VỪA KẾT THÚC (T2→CN):
+//     · GĐ/PGĐ/TP: email chi tiết + push. Email mở đầu bằng TIẾN ĐỘ KẾ HOẠCH (hoàn thành
+//       %, thẻ chưa khởi động, quá hạn, sắp tới hạn, xếp hạng phòng) rồi mới tới kỷ luật
+//       cập nhật — vì đó mới là thứ lãnh đạo cần quyết (chốt với GĐ 09/08).
+//     · CÁN BỘ TOÀN PHÒNG: push tóm tắt phòng mình, NÊU TÊN ai đã/chưa cập nhật.
+//     Phạm vi email: TP = cán bộ mình quản lý trực tiếp (manager_id); PGĐ = khối phụ
+//     trách (pgd_id); BGĐ/TCTH admin = toàn chi nhánh. Mỗi người 1 email, phạm vi rộng nhất.
 //   'staff_nudge' — chạy CHIỀU THỨ SÁU: web push cho TỪNG cán bộ tuần này chưa cập nhật
-//     (còn T6–CN để kịp trước hạn chót Chủ nhật). Không email (giữ Resend trong ngưỡng
-//     miễn phí — nhất quán với send-reminders).
+//     VÀ cho lãnh đạo của họ (TP + PGĐ) kèm danh sách tên — nhắc hai phía cùng lúc, còn
+//     T6–CN để kịp trước hạn chót Chủ nhật. Không email (giữ Resend trong ngưỡng miễn
+//     phí — nhất quán với send-reminders).
 //
 // Quy tắc "đã cập nhật tuần" ĐỒNG BỘ với frontend (src/lib/kanban.ts):
 //   - Thẻ theo dõi: is_active, chưa 'done', tiêu đề không phải placeholder.
@@ -70,13 +72,14 @@ function short(s: string | null | undefined, max = 140): string {
   return t.length > max ? t.slice(0, max - 1) + '…' : t;
 }
 
-interface PushSub { id: string; profile_id: string; endpoint: string; p256dh: string; auth: string }
+interface PushSub { id: string; profile_id: string; endpoint: string; p256dh: string; auth: string; loi_cuoi?: string | null }
 async function sendPush(
   admin: any, subsByProfile: Map<string, PushSub[]>, vapidPrivateKey: string | null,
   profileId: string, msg: { title: string; body: string; url: string; tag: string },
 ): Promise<number> {
   if (!vapidPrivateKey) return 0;
   let sent = 0;
+  const bayGio = new Date().toISOString();
   for (const s of subsByProfile.get(profileId) || []) {
     try {
       const init = await buildPushPayload(
@@ -86,9 +89,33 @@ async function sendPush(
       );
       const res = await fetch(s.endpoint, init);
       if (res.status === 404 || res.status === 410) {
-        await admin.from('push_subscriptions').update({ is_active: false }).eq('id', s.id);
-      } else if (res.ok) sent++;
-    } catch (e) { console.error('Push lỗi', { error: String(e) }); }
+        await admin.from('push_subscriptions')
+          .update({ is_active: false, loi_cuoi: `${res.status} endpoint đã hết hiệu lực`, loi_luc: bayGio })
+          .eq('id', s.id);
+      } else if (res.ok) {
+        sent++;
+        // Xoá vết lỗi cũ khi máy nhận lại được, để một lần trục trặc không đeo bám mãi
+        if (s.loi_cuoi) {
+          await admin.from('push_subscriptions')
+            .update({ loi_cuoi: null, loi_luc: null }).eq('id', s.id);
+        }
+      } else {
+        // Mã lỗi ngoài 404/410 từng bị nuốt lặng lẽ: đăng ký vẫn is_active nên nhìn
+        // vào bảng thì tưởng máy còn sống, trong khi thực tế mọi tin đều bị từ chối.
+        // Vá 09/08, cùng cách notify-ct2 đã làm 11/09.
+        const chiTiet = (await res.text().catch(() => '')).slice(0, 300);
+        console.error('Push tuần bị từ chối', {
+          sub: s.id, status: res.status, endpoint: s.endpoint.slice(0, 60), body: chiTiet,
+        });
+        await admin.from('push_subscriptions')
+          .update({ loi_cuoi: `${res.status} ${chiTiet}`.slice(0, 400), loi_luc: bayGio })
+          .eq('id', s.id);
+      }
+    } catch (e) {
+      console.error('Push tuần lỗi', { sub: s.id, error: String(e) });
+      await admin.from('push_subscriptions')
+        .update({ loi_cuoi: String(e).slice(0, 400), loi_luc: bayGio }).eq('id', s.id);
+    }
   }
   return sent;
 }
@@ -141,7 +168,7 @@ Deno.serve(async (req) => {
       admin.from('profiles').select('id, user_id, full_name, email, manager_id, pgd_id, department_id').eq('status', 'active'),
       admin.from('departments').select('id, name'),
       admin.from('kanban_cards')
-        .select('id, profile_id, title, kanban_status, progress_percent, leadership_mark_id, created_at')
+        .select('id, profile_id, title, kanban_status, progress_percent, leadership_mark_id, created_at, last_progress_at, deadline')
         .eq('is_active', true),
     ]);
     const profiles = (profRes.data || []) as any[];
@@ -155,6 +182,47 @@ Deno.serve(async (req) => {
     const tracked = cards.filter((c) =>
       c.kanban_status !== 'done' && !isTitleMissing(c.title) &&
       new Date(c.created_at).getTime() < winEnd.getTime());
+
+    // ---- Chỉ số TIẾN ĐỘ KẾ HOẠCH (khác hẳn kỷ luật cập nhật) ----
+    // Kỷ luật cập nhật chỉ trả lời "tuần này có ai động vào thẻ không". Câu quản trị
+    // thật sự là "kế hoạch đã duyệt nhích được bao nhiêu" — hai thứ khác nhau: cán bộ
+    // mở thẻ, gõ một dòng, để nguyên 0% thì vẫn được tính là đã cập nhật và vẫn xanh.
+    // Vì vậy digest lãnh đạo phải mang cả hai nhóm số.
+    //
+    // «Chưa khởi động» tách riêng khỏi «tuần này chưa cập nhật»: thẻ nằm im từ ngày
+    // tạo là vấn đề khác hẳn thẻ đang chạy mà tuần này lỡ nhịp, nhưng đếm theo tuần
+    // thì hai loại lẫn vào nhau và loại nguy hiểm hơn bị che mất.
+    const homNayVN = new Date(now.getTime() + 7 * 3600 * 1000).toISOString().slice(0, 10);
+    const sau30Ngay = new Date(now.getTime() + 30 * 86400000 + 7 * 3600 * 1000).toISOString().slice(0, 10);
+    const coNoiDung = cards.filter((c) => !isTitleMissing(c.title));
+    const chuaXong = coNoiDung.filter((c) => c.kanban_status !== 'done');
+    const daXong = coNoiDung.filter((c) => c.kanban_status === 'done');
+    const chuaKhoiDong = chuaXong.filter((c) => !c.last_progress_at);
+    const quaHan = chuaXong.filter((c) => c.deadline && c.deadline < homNayVN);
+    const satHan = chuaXong.filter((c) => c.deadline && c.deadline >= homNayVN && c.deadline <= sau30Ngay);
+
+    /** Gom chỉ số theo phòng — dùng cho bảng xếp hạng trong email lãnh đạo. */
+    const chiSoTheoPhong = (loc: (staffId: string) => boolean) => {
+      const gom = new Map<string, { ten: string; tong: number; xong: number; im: number; tre: number; tienDo: number }>();
+      for (const c of coNoiDung) {
+        if (!loc(c.profile_id)) continue;
+        const p = byId.get(c.profile_id);
+        if (!p) continue;
+        const key = p.department_id || 'khac';
+        let g = gom.get(key);
+        if (!g) { g = { ten: deptName.get(p.department_id) || '—', tong: 0, xong: 0, im: 0, tre: 0, tienDo: 0 }; gom.set(key, g); }
+        g.tong++;
+        g.tienDo += Number(c.progress_percent) || 0;
+        if (c.kanban_status === 'done') g.xong++;
+        else {
+          if (!c.last_progress_at) g.im++;
+          if (c.deadline && c.deadline < homNayVN) g.tre++;
+        }
+      }
+      return [...gom.values()]
+        .map((g) => ({ ...g, tbTienDo: g.tong ? Math.round(g.tienDo / g.tong) : 0 }))
+        .sort((a, b) => a.tbTienDo - b.tbTienDo);
+    };
 
     // ---- Log trong cửa sổ tuần ----
     const { data: logRows } = await admin
@@ -213,7 +281,7 @@ Deno.serve(async (req) => {
       if (!ids.length) return map;
       const { data } = await admin
         .from('push_subscriptions')
-        .select('id, profile_id, endpoint, p256dh, auth')
+        .select('id, profile_id, endpoint, p256dh, auth, loi_cuoi')
         .eq('is_active', true)
         .in('profile_id', ids);
       for (const r of (data || []) as PushSub[]) {
@@ -224,28 +292,62 @@ Deno.serve(async (req) => {
 
     // ================= CHẾ ĐỘ 2: nhắc cán bộ chiều thứ Sáu (push) =================
     if (mode === 'staff_nudge') {
+      // Nhắc CẢ HAI phía cùng lúc (chốt với GĐ 09/08): cán bộ biết mình còn nợ, lãnh đạo
+      // biết ai còn nợ để đốc ngay trong chiều thứ Sáu. Nhắc một phía thì cán bộ dễ bỏ
+      // qua, mà chờ tới sáng thứ Hai mới báo lãnh đạo thì tuần đã đóng — không cứu kịp.
+      const theoLanhDao = new Map<string, MissItem[]>();
+      for (const m of misses) {
+        const s = byId.get(m.staffId);
+        if (!s) continue;
+        for (const ld of [s.manager_id, s.pgd_id]) {
+          if (!ld || ld === m.staffId) continue;
+          const ds = theoLanhDao.get(ld) || [];
+          if (!ds.some((x) => x.staffId === m.staffId)) ds.push(m);
+          theoLanhDao.set(ld, ds);
+        }
+      }
       const staffIds = misses.map((m) => m.staffId);
-      const subsByProfile = await loadSubs(staffIds);
+      const moiNguoi = [...new Set([...staffIds, ...theoLanhDao.keys()])];
+      const subsByProfile = await loadSubs(moiNguoi);
+
       if (dryRun) {
         return new Response(JSON.stringify({
           dry_run: true, mode, week: weekLabel,
           staff_not_updated: misses.map((m) => `${m.staffName} (${m.cards} thẻ)`),
           staff_with_device: staffIds.filter((id) => (subsByProfile.get(id) || []).length > 0).length,
+          leaders_notified: [...theoLanhDao.entries()].map(([id, ds]) => ({
+            to: byId.get(id)?.full_name || id,
+            staff: ds.map((m) => `${m.staffName} (${m.cards})`),
+          })),
           vapid_ready: !!vapidPrivateKey,
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
+
       let pushSent = 0;
       for (const m of misses) {
         pushSent += await sendPush(admin, subsByProfile, vapidPrivateKey, m.staffId, {
-          title: '⏰ Tuần này bạn chưa cập nhật Kanban',
+          title: '⏰ [CT3] Tuần này bạn chưa cập nhật Kanban',
           body: `Còn ${m.cards} hành động chưa cập nhật tuần này. Hạn chót: hết Chủ nhật — quá tuần sẽ báo đỏ tới lãnh đạo.`,
           url: '/hanh-dong-phat-trien',
           tag: 'kanban-tuan',
         });
       }
-      return new Response(JSON.stringify({ dry_run: false, mode, week: weekLabel, staff: misses.length, push_sent: pushSent }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      let leaderPush = 0;
+      for (const [ldId, ds] of theoLanhDao.entries()) {
+        const ten = ds.slice(0, 4).map((m) => m.staffName).join(', ');
+        const them = ds.length > 4 ? ` và ${ds.length - 4} người nữa` : '';
+        leaderPush += await sendPush(admin, subsByProfile, vapidPrivateKey, ldId, {
+          title: `⏰ [CT3] ${ds.length} cán bộ chưa cập nhật Kanban tuần này`,
+          body: `Chưa cập nhật: ${ten}${them}.\nCòn thứ Sáu tới hết Chủ nhật để kịp — nhắc ngay thì tuần này không phải báo đỏ.`,
+          url: '/hanh-dong-phat-trien?view=team',
+          tag: 'kanban-tuan-lanh-dao',
+        });
+      }
+      return new Response(JSON.stringify({
+        dry_run: false, mode, week: weekLabel,
+        staff: misses.length, push_sent: pushSent,
+        leaders: theoLanhDao.size, leader_push_sent: leaderPush,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // ================= CHẾ ĐỘ 1: digest lãnh đạo sáng thứ Hai =================
@@ -292,11 +394,26 @@ Deno.serve(async (req) => {
       if (myMisses.length === 0 && myUpdates.length === 0) continue;
 
       const missCards = myMisses.reduce((n, m) => n + m.cards, 0);
-      const subject = `📋 Kanban tuần ${weekLabel}: ${myUpdates.length} cập nhật · ${myMisses.length} cán bộ chưa cập nhật`;
+
+      // Tiến độ kế hoạch trong phạm vi người nhận — phần trả lời câu hỏi quản trị,
+      // đặt TRƯỚC phần kỷ luật cập nhật vì đó mới là thứ lãnh đạo cần quyết.
+      const trongPV = (staffId: string) => inScope(r, staffId);
+      const thePV = coNoiDung.filter((c) => trongPV(c.profile_id));
+      const xongPV = thePV.filter((c) => c.kanban_status === 'done').length;
+      const imPV = thePV.filter((c) => c.kanban_status !== 'done' && !c.last_progress_at).length;
+      const trePV = thePV.filter((c) => c.kanban_status !== 'done' && c.deadline && c.deadline < homNayVN).length;
+      const satPV = thePV.filter((c) =>
+        c.kanban_status !== 'done' && c.deadline && c.deadline >= homNayVN && c.deadline <= sau30Ngay).length;
+      const tiLeXong = thePV.length ? Math.round((100 * xongPV) / thePV.length) : 0;
+      const bangPhongPV = chiSoTheoPhong(trongPV);
+
+      const subject = `📋 Kanban tuần ${weekLabel}: hoàn thành ${tiLeXong}% · ${imPV} thẻ chưa khởi động · ${myMisses.length} cán bộ chưa cập nhật`;
 
       if (dryRun) {
         previews.push({
           to: r.profile.full_name, scope: r.scope, subject,
+          ke_hoach: { tong: thePV.length, xong: xongPV, ti_le: tiLeXong, chua_khoi_dong: imPV, qua_han: trePV, sat_han: satPV },
+          theo_phong: bangPhongPV.slice(0, 5).map((g) => `${g.ten}: TB ${g.tbTienDo}% · ${g.im} im · ${g.tre} trễ`),
           not_updated: myMisses.slice(0, 10).map((m) => `${m.staffName} (${m.cards})`),
           updates: myUpdates.length,
         });
@@ -329,10 +446,29 @@ Deno.serve(async (req) => {
           ).join('') +
           (myUpdates.length > MAX_UPDATE_ROWS ? `<p style="color:#6b7280;font-size:12px">… và ${myUpdates.length - MAX_UPDATE_ROWS} cập nhật khác (xem trong app)</p>` : '');
 
+      const phongHtml = bangPhongPV.length <= 1 ? '' :
+        `<h3 style="margin:16px 0 6px;font-size:15px">Theo phòng — xếp tiến độ thấp lên đầu</h3>
+<table style="border-collapse:collapse;font-size:13px">${bangPhongPV.map((g) =>
+          `<tr><td style="padding:3px 12px 3px 0"><b>${esc(g.ten)}</b></td>` +
+          `<td style="padding:3px 12px 3px 0;text-align:right">TB <b>${g.tbTienDo}%</b></td>` +
+          `<td style="padding:3px 12px 3px 0;color:#059669">${g.xong}/${g.tong} xong</td>` +
+          `<td style="padding:3px 12px 3px 0;color:${g.im ? '#b91c1c' : '#6b7280'}">${g.im} chưa khởi động</td>` +
+          `<td style="padding:3px 0;color:${g.tre ? '#b45309' : '#6b7280'}">${g.tre} quá hạn</td></tr>`).join('')}</table>`;
+
       const html = `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#1f2937;line-height:1.5">
 <p>Kính gửi <b>${esc(r.profile.full_name)}</b>,</p>
-<p>Tổng kết nhịp cập nhật Kanban kế hoạch hành động <b>tuần ${weekLabel}</b> (${SCOPE_LABEL[r.scope]}):</p>
-<h3 style="margin:14px 0 6px;font-size:15px">🔴 Chưa cập nhật tuần (${myMisses.length} cán bộ · ${missCards} thẻ)</h3>
+<p>Tiến độ kế hoạch phát triển (Chiêu thức 3) và nhịp cập nhật <b>tuần ${weekLabel}</b> (${SCOPE_LABEL[r.scope]}):</p>
+
+<h3 style="margin:14px 0 6px;font-size:15px">📊 Tiến độ so với kế hoạch đã duyệt</h3>
+<table style="border-collapse:collapse;font-size:14px">
+<tr><td style="padding:4px 16px 4px 0">Hoàn thành</td><td style="padding:4px 0"><b style="font-size:18px">${tiLeXong}%</b> — ${xongPV}/${thePV.length} hành động</td></tr>
+<tr><td style="padding:4px 16px 4px 0">Chưa khởi động</td><td style="padding:4px 0;color:${imPV ? '#b91c1c' : '#059669'}"><b>${imPV}</b> hành động chưa từng cập nhật lần nào kể từ khi lập</td></tr>
+<tr><td style="padding:4px 16px 4px 0">Quá hạn</td><td style="padding:4px 0;color:${trePV ? '#b45309' : '#059669'}"><b>${trePV}</b> hành động</td></tr>
+<tr><td style="padding:4px 16px 4px 0">Sắp tới hạn 30 ngày</td><td style="padding:4px 0"><b>${satPV}</b> hành động</td></tr>
+</table>
+${phongHtml}
+
+<h3 style="margin:16px 0 6px;font-size:15px">🔴 Chưa cập nhật tuần (${myMisses.length} cán bộ · ${missCards} thẻ)</h3>
 ${missHtml}
 <h3 style="margin:14px 0 6px;font-size:15px">✅ Nội dung đã cập nhật (${myUpdates.length})</h3>
 ${updHtml}
@@ -340,6 +476,7 @@ ${updHtml}
 <p style="color:#6b7280;font-size:12px">Quy ước toàn chi nhánh: mỗi tuần (thứ Hai → hết Chủ nhật) mỗi hành động cập nhật ít nhất 1 lần trên Kanban; thời điểm do phòng linh hoạt (ví dụ chốt tại họp phòng). Hết tuần không cập nhật sẽ báo đỏ. Email tổng hợp tự động sáng thứ Hai — vui lòng không trả lời.</p>
 </body></html>`;
       const text = `Kính gửi ${r.profile.full_name},\nKanban tuần ${weekLabel} (${SCOPE_LABEL[r.scope]}):\n` +
+        `- Tiến độ kế hoạch: hoàn thành ${tiLeXong}% (${xongPV}/${thePV.length}); ${imPV} chưa khởi động; ${trePV} quá hạn; ${satPV} sắp tới hạn 30 ngày\n` +
         `- Chưa cập nhật: ${myMisses.length} cán bộ (${missCards} thẻ): ${myMisses.slice(0, 15).map((m) => `${m.staffName} (${m.cards})`).join(', ')}\n` +
         `- Đã cập nhật: ${myUpdates.length} lượt\nXem chi tiết: ${APP_URL}/hanh-dong-phat-trien?view=team`;
 
@@ -359,12 +496,55 @@ ${updHtml}
       });
       if (!error) enqueued++;
       pushSent += await sendPush(admin, subsByProfile, vapidPrivateKey, r.profile.id, {
-        title: `📋 Kanban tuần ${weekLabel}`,
-        body: `${myMisses.length} cán bộ chưa cập nhật (${missCards} thẻ) · ${myUpdates.length} cập nhật nội dung. Bấm để mở màn Đội ngũ.`,
+        title: `📋 [CT3] Kanban tuần ${weekLabel} — hoàn thành ${tiLeXong}%`,
+        body: `Chưa khởi động: ${imPV} thẻ\nQuá hạn: ${trePV}\nChưa cập nhật tuần: ${myMisses.length} cán bộ`,
         url: '/hanh-dong-phat-trien?view=team',
         tag: 'kanban-tuan-digest',
       });
     }
+
+    // ---- Push tổng hợp cho CÁN BỘ TOÀN PHÒNG, nêu tên đầy đủ (chốt với GĐ 09/08) ----
+    // GĐ chọn nêu tên: cả phòng thấy ai đã nhập, ai chưa. Đây là quyết định có chủ ý,
+    // NGƯỢC với nguyên tắc của Bảng nhịp Chiêu thức 2 — bảng đó cố tình giấu so sánh
+    // đồng nghiệp khỏi cán bộ để nhịp không thành cuộc thi. Lý do khác nhau: nhịp hằng
+    // ngày là tấm gương soi cho chính mình, còn kế hoạch phát triển là cam kết chung
+    // của phòng nên áp lực đồng đội là đòn bẩy hợp lý. Đổi ý thì sửa đúng khối này.
+    const phongTuan = new Map<string, { ten: string; daNhap: string[]; chuaNhap: string[]; canBo: string[] }>();
+    for (const p of profiles) {
+      if (!p.department_id) continue;
+      let g = phongTuan.get(p.department_id);
+      if (!g) {
+        g = { ten: deptName.get(p.department_id) || '—', daNhap: [], chuaNhap: [], canBo: [] };
+        phongTuan.set(p.department_id, g);
+      }
+      g.canBo.push(p.id);
+    }
+    // Chỉ xét cán bộ CÓ thẻ theo dõi trong tuần — người không có kế hoạch đang chạy
+    // thì không có gì để nêu tên, đưa vào chỉ làm loãng.
+    const coTheTheoDoi = new Set(tracked.map((c) => c.profile_id));
+    for (const p of profiles) {
+      const g = p.department_id ? phongTuan.get(p.department_id) : null;
+      if (!g || !coTheTheoDoi.has(p.id)) continue;
+      if (missByStaff.has(p.id)) g.chuaNhap.push(p.full_name);
+      else g.daNhap.push(p.full_name);
+    }
+    const phongCoViec = [...phongTuan.values()].filter((g) => g.daNhap.length + g.chuaNhap.length > 0);
+
+    const soanTinPhong = (g: { ten: string; daNhap: string[]; chuaNhap: string[] }) => {
+      const tong = g.daNhap.length + g.chuaNhap.length;
+      return {
+        // [CT3] — nhãn phân hệ 11/08 (đồng bộ notify-kanban-update và notify-ct2)
+        title: g.chuaNhap.length === 0
+          ? `✅ [CT3] ${g.ten}: cả phòng đã cập nhật tuần ${weekLabel}`
+          : `📋 [CT3] ${g.ten} tuần ${weekLabel}: ${g.chuaNhap.length}/${tong} chưa cập nhật`,
+        body: g.chuaNhap.length === 0
+          ? `Cả ${tong} cán bộ có kế hoạch đang chạy đều đã cập nhật. Giữ nhịp này sang tuần mới.`
+          : `Chưa cập nhật: ${g.chuaNhap.join(', ')}` +
+            (g.daNhap.length ? `\nĐã cập nhật: ${g.daNhap.join(', ')}` : ''),
+        url: '/hanh-dong-phat-trien',
+        tag: 'kanban-tuan-phong',
+      };
+    };
 
     if (dryRun) {
       return new Response(JSON.stringify({
@@ -373,14 +553,35 @@ ${updHtml}
           tracked_cards: tracked.length,
           updates: updates.length,
           staff_not_updated: misses.length,
+          ke_hoach: {
+            tong: coNoiDung.length, xong: daXong.length,
+            ti_le: coNoiDung.length ? Math.round((100 * daXong.length) / coNoiDung.length) : 0,
+            chua_khoi_dong: chuaKhoiDong.length, qua_han: quaHan.length, sat_han: satHan.length,
+          },
         },
         recipients: previews,
+        push_toan_phong: phongCoViec.map((g) => ({
+          phong: g.ten, so_can_bo_nhan: g.daNhap.length + g.chuaNhap.length, tin: soanTinPhong(g),
+        })),
         vapid_ready: !!vapidPrivateKey,
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
+
+    // Gửi push toàn phòng — tải riêng đăng ký thiết bị của cán bộ (recipients ở trên
+    // chỉ có lãnh đạo).
+    let staffPush = 0;
+    const subsCanBo = await loadSubs([...new Set(phongCoViec.flatMap((g: any) => g.canBo))]);
+    for (const g of phongCoViec as any[]) {
+      const msg = soanTinPhong(g);
+      for (const pid of g.canBo) {
+        staffPush += await sendPush(admin, subsCanBo, vapidPrivateKey, pid, msg);
+      }
+    }
+
     return new Response(JSON.stringify({
       dry_run: false, mode, week: weekLabel,
       recipients: recipients.length, enqueued, push_sent: pushSent, skipped_idempotent: skippedIdem,
+      phong_da_bao: phongCoViec.length, push_can_bo: staffPush,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e) {
     return new Response(JSON.stringify({ error: String((e as Error)?.message || e) }), {

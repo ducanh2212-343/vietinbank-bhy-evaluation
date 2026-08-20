@@ -10,13 +10,20 @@
  */
 
 import { soNgayLamViec } from './ct2';
-import { cauHinhNhip } from './cauHinhNhip';
+import { NGAY_TRIEN_KHAI, cauHinhNhip } from './cauHinhNhip';
+import { ngayVnChuoi } from './lichNghi';
 
 export type HsTrangThai =
+  | 'DEN_HAN_GHTD'
   | 'THU_THAP' | 'TRINH_LDP' | 'TRINH_LDCN' | 'TRINH_TSC'
   | 'HOAN_THIEN_GN' | 'HOAN_THANH' | 'TU_CHOI';
 
-export type HsLoai = 'CAP_MOI' | 'TAI_CAP' | 'DIEU_CHINH' | 'CO_CAU_NO' | 'DU_AN' | 'GIAI_NGAN';
+/**
+ * «Hồ sơ giải ngân» đã bỏ khỏi danh sách (GĐ chốt 07/08/2026): giải ngân không
+ * phải đặc tính của giới hạn tín dụng mà là một BƯỚC — đã có cột «Hoàn thiện
+ * HS giải ngân» trên bảng. Để trong danh sách loại là mời chọn nhầm.
+ */
+export type HsLoai = 'CAP_MOI' | 'TAI_CAP' | 'DIEU_CHINH' | 'CO_CAU_NO' | 'DU_AN';
 export type HsCap = 'PHONG' | 'CHI_NHANH' | 'TSC';
 export type HsKyHan = 'NGAN_HAN' | 'TRUNG_DAI_HAN';
 
@@ -25,7 +32,18 @@ export interface HoSoTinDung {
   phong: string;
   ma_hs: string | null;
   khach_hang: string;
+  /**
+   * Đặc tính CHÍNH của hồ sơ = `cac_loai[0]`, database tự đồng bộ.
+   * Nơi cần xét đầy đủ phải dùng `hsCoLoai()` chứ không so sánh cột này.
+   */
   loai_ho_so: HsLoai;
+  /**
+   * Các đặc tính đã tích. Một hồ sơ ngoài đời có thể vừa tái cấp vừa điều
+   * chỉnh giới hạn, hoặc cấp mới cho một dự án trung dài hạn — ép chọn một là
+   * ép cán bộ bỏ mất nửa sự thật, mà nửa bị bỏ chính là cái quyết định hồ sơ
+   * có bị cảnh báo hạn mức hay không.
+   */
+  cac_loai: HsLoai[];
   /**
    * Đơn vị: TRIỆU ĐỒNG.
    *
@@ -39,6 +57,10 @@ export interface HoSoTinDung {
   trang_thai: HsTrangThai;
   can_bo: string;
   lanh_dao_theo_doi: string | null;
+  /** Ba cấp phụ trách — cùng luật với thẻ Kanban, chỉ lãnh đạo gán được */
+  pho_phong: string | null;
+  truong_phong: string | null;
+  pgd_phu_trach: string | null;
   ngay_nhan: string | null;
   han_xu_ly: string | null;
   ngay_den_han_ghtd: string | null;
@@ -68,6 +90,15 @@ export interface NhipHoSo {
 // ---------------------------------------------------------------------------
 
 export const HS_COT: Array<{ ma: HsTrangThai; ten: string; icon: string }> = [
+  // Cột DỰ KIẾN, đứng đầu đường ống. Không phải hồ sơ đang làm — là công việc
+  // sắp phải làm, cho trước vào bảng để Phòng thấy khối lượng đang tới.
+  //
+  // Tên mở rộng theo GĐ 06/08: cột chứa HAI loại việc sắp tới, không chỉ một.
+  // Năm thẻ Miro chưa xếp cột (Ngành Ong 290 tỷ, Đài Loan, Minh Anh Đô Lương,
+  // Ngân Hà, Mặt Trời Việt) đều là nhu cầu CẦN DÙNG hạn mức — không thẻ nào có
+  // ngày hạn mức đến hạn. Giữ tên cũ thì hoặc chúng đứng ngoài bảng, hoặc cột
+  // nói sai về chính nội dung của nó.
+  { ma: 'DEN_HAN_GHTD', ten: 'Đến hạn GHTD hoặc cần sử dụng trong 2 tháng tới', icon: '⏰' },
   { ma: 'THU_THAP', ten: 'Thu thập hồ sơ', icon: '📂' },
   { ma: 'TRINH_LDP', ten: 'Trình Lãnh đạo Phòng', icon: '📤' },
   { ma: 'TRINH_LDCN', ten: 'Trình LĐ Chi nhánh', icon: '🏢' },
@@ -83,8 +114,35 @@ export const HS_TEN_LOAI: Record<HsLoai, string> = {
   DIEU_CHINH: 'Điều chỉnh giới hạn',
   CO_CAU_NO: 'Cơ cấu nợ',
   DU_AN: 'Cho vay dự án / TDH',
-  GIAI_NGAN: 'Hồ sơ giải ngân',
 };
+
+/**
+ * Bộ đặc tính của một hồ sơ, an toàn với dữ liệu cũ.
+ *
+ * Bản ghi tải về từ trước khi có cột `cac_loai`, hoặc từ bộ nhớ đệm của trình
+ * duyệt, vẫn chỉ có `loai_ho_so` — lấy tạm nó làm bộ một phần tử, thay vì trả
+ * mảng rỗng rồi để mọi cảnh báo tắt câm.
+ */
+export function hsCacLoai(h: Pick<HoSoTinDung, 'loai_ho_so' | 'cac_loai'>): HsLoai[] {
+  return h.cac_loai?.length ? h.cac_loai : [h.loai_ho_so];
+}
+
+/** Hồ sơ có mang đặc tính nào trong số này không */
+export function hsCoLoai(
+  h: Pick<HoSoTinDung, 'loai_ho_so' | 'cac_loai'>,
+  cac: HsLoai[],
+): boolean {
+  return hsCacLoai(h).some((l) => cac.includes(l));
+}
+
+/**
+ * Hồ sơ tái cấp / điều chỉnh phải biết hạn mức cũ hết ngày nào — đó là gốc của
+ * cảnh báo sớm 60 ngày. Xét trên CẢ BỘ đặc tính: hồ sơ tích [Cấp mới, Điều
+ * chỉnh] mà chỉ soi đặc tính chính thì tuột khỏi lưới cảnh báo.
+ */
+export function hsCanNgayDenHan(h: Pick<HoSoTinDung, 'loai_ho_so' | 'cac_loai'>): boolean {
+  return hsCoLoai(h, ['TAI_CAP', 'DIEU_CHINH']);
+}
 
 export const HS_TEN_CAP: Record<HsCap, string> = {
   PHONG: 'Thẩm quyền Phòng',
@@ -100,9 +158,35 @@ export const HS_TEN_KY_HAN: Record<HsKyHan, string> = {
 /** Ba bước «trình» — hồ sơ nằm trong tay người khác, không phải lỗi cán bộ */
 export const HS_BUOC_CHO: HsTrangThai[] = ['TRINH_LDP', 'TRINH_LDCN', 'TRINH_TSC'];
 
-/** Hồ sơ còn đang chạy (vào mẫu số mọi chỉ số) */
+/**
+ * Hồ sơ còn đang chạy (vào mẫu số mọi chỉ số).
+ *
+ * DEN_HAN_GHTD CỐ Ý đứng ngoài: thẻ ở cột dự kiến chưa phải hồ sơ, chưa có số
+ * tiền, chưa có hạn xử lý, chưa ai bắt tay làm. Đếm nó vào «hồ sơ đang chạy»
+ * hay cộng vào tổng dư nợ đang trình là báo cáo một khối lượng công việc chưa
+ * tồn tại — và đòi nó ghi nhịp mỗi ngày thì còn vô lý hơn.
+ */
 export const HS_DANG_CHAY: HsTrangThai[] =
   ['THU_THAP', 'TRINH_LDP', 'TRINH_LDCN', 'TRINH_TSC', 'HOAN_THIEN_GN'];
+
+/**
+ * Ba trường phải có TRƯỚC KHI thẻ dự kiến vào «Thu thập hồ sơ».
+ *
+ * Đây là hàng rào được DỜI CHỖ, không phải bị gỡ: `f_ct2_hs_truoc_tao` vốn bắt
+ * đủ ba thứ này ngay lúc mở hồ sơ. Thẻ dự kiến sinh ra từ một sự thật duy nhất
+ * — hạn mức của khách sắp hết — nên lúc đó chưa thể biết vay bao nhiêu, kỳ hạn
+ * nào, hẹn xong ngày nào. Bắt điền ngay là ép người ta bịa; bỏ hẳn thì hồ sơ
+ * trôi vào đường ống mà không có gì đo được. Nên hỏi đúng lúc bắt tay làm.
+ */
+export function hsThieuDeVaoThuThap(
+  h: Pick<HoSoTinDung, 'so_tien' | 'han_xu_ly' | 'ky_han'>,
+): string[] {
+  const thieu: string[] = [];
+  if (h.so_tien === null) thieu.push('số tiền');
+  if (!h.han_xu_ly) thieu.push('hạn xử lý');
+  if (!h.ky_han) thieu.push('kỳ hạn');
+  return thieu;
+}
 
 /**
  * Ngưỡng tuổi cột chờ theo cấp — quy chế Miro §A5 nêu 3–5 ngày làm việc.
@@ -137,7 +221,8 @@ export function hsNguongImLang(): number {
 
 export interface HsFormTao {
   khach_hang: string;
-  loai_ho_so: string;
+  /** Tích chọn nhiều — tối thiểu một đặc tính */
+  cac_loai: HsLoai[];
   /** Chuỗi nhập tay, đơn vị triệu đồng */
   so_tien: string;
   ky_han: string;
@@ -154,7 +239,9 @@ export function kiemTraHoSo(f: HsFormTao): HsThieuTruong[] {
   if (f.khach_hang.trim().length < 3) {
     thieu.push({ truong: 'khach_hang', ten: 'Khách hàng', ly_do: 'ghi tên đầy đủ' });
   }
-  if (!f.loai_ho_so) thieu.push({ truong: 'loai_ho_so', ten: 'Loại hồ sơ' });
+  if (f.cac_loai.length === 0) {
+    thieu.push({ truong: 'cac_loai', ten: 'Loại hồ sơ', ly_do: 'tích ít nhất một' });
+  }
   const tien = docSoTien(f.so_tien);
   if (tien === null || tien <= 0) {
     thieu.push({ truong: 'so_tien', ten: 'Số tiền', ly_do: 'nhập số, đơn vị triệu đồng' });
@@ -202,11 +289,31 @@ export interface BoiCanhHoSo {
   cap_phe_duyet: HsCap;
   laLanhDao: boolean;
   coLyDoTuChoi: boolean;
+  /** Các trường còn thiếu để rời cột dự kiến — xem hsThieuDeVaoThuThap() */
+  thieuDeVaoThuThap?: string[];
 }
 
 /** null = được chuyển; chuỗi = lý do từ chối (hiện cho người dùng) */
 export function lyDoChanChuyenHoSo(tu: HsTrangThai, den: HsTrangThai, bc: BoiCanhHoSo): string | null {
   if (tu === den) return null;
+
+  // Cột dự kiến là điểm XUẤT PHÁT, một chiều.
+  //
+  // Không cho lùi về: hồ sơ đã vào Thu thập là đã có người bắt tay làm, kéo
+  // ngược về «dự kiến» xoá mất sự thật đó và làm đồng hồ xử lý chạy lại từ đầu.
+  // Muốn dừng thì có Từ chối/Dừng — cửa đó ghi lý do và giữ vết.
+  if (den === 'DEN_HAN_GHTD') {
+    return 'Cột dự kiến là điểm xuất phát — hồ sơ đã bắt đầu không quay lại được. Cần dừng thì dùng Từ chối/Dừng.';
+  }
+  if (tu === 'DEN_HAN_GHTD') {
+    if (den !== 'THU_THAP' && den !== 'TU_CHOI') {
+      return 'Từ cột dự kiến chỉ đi sang «Thu thập hồ sơ» — chưa thu thập thì chưa có gì để trình.';
+    }
+    if (den === 'THU_THAP' && bc.thieuDeVaoThuThap && bc.thieuDeVaoThuThap.length > 0) {
+      return `Bắt tay làm thì cần điền ${bc.thieuDeVaoThuThap.join(' · ')} — thẻ dự kiến chưa có các thông tin này.`;
+    }
+  }
+
   if (den === 'TRINH_TSC' && bc.cap_phe_duyet !== 'TSC') {
     return `Hồ sơ này thuộc ${HS_TEN_CAP[bc.cap_phe_duyet].toLowerCase()} — không trình lên cấp PDTD Trụ sở chính.`;
   }
@@ -223,6 +330,7 @@ export function lyDoChanChuyenHoSo(tu: HsTrangThai, den: HsTrangThai, bc: BoiCan
 /** Bước kế tiếp hợp lý theo cấp phê duyệt — dùng cho nút «Chuyển bước tiếp» */
 export function buocKeTiep(tu: HsTrangThai, cap: HsCap): HsTrangThai | null {
   switch (tu) {
+    case 'DEN_HAN_GHTD': return 'THU_THAP';
     case 'THU_THAP': return 'TRINH_LDP';
     case 'TRINH_LDP':
       return cap === 'PHONG' ? 'HOAN_THIEN_GN' : 'TRINH_LDCN';
@@ -284,26 +392,31 @@ export function hsConLaiDenHan(h: Pick<HoSoTinDung, 'ngay_den_han_ghtd'>, moc: D
 }
 
 /**
- * Hồ sơ có thuộc dải theo dõi «Đến hạn GHTD 2 tháng tới» không.
+ * Mốc neo một thẻ DỰ KIẾN vào cửa sổ 2 tháng — và nó thuộc loại nào.
  *
- * Trên Miro đây là một CỘT và Phòng đã quen nhìn nó — nên bàn Kanban giữ lại
- * đúng cột đó, nhưng là CỘT DẪN XUẤT tính từ trường ngày: hồ sơ hiện ở đây
- * VẪN GIỮ NGUYÊN bước thật của nó, không phải một trạng thái để kéo vào.
- * (Miro không làm được thế: một thẻ chỉ nằm được ở một cột, vào cột đến hạn
- * là mất dấu bước.)
+ * Cột dự kiến chứa hai loại việc sắp tới, cần phân biệt vì chúng đọc khác nhau:
+ *  · HAN_MUC  — hạn mức cũ sắp hết: quá ngày là khách MẤT hạn mức đang dùng.
+ *  · CAN_DUNG — khách cần vốn trước một ngày: quá ngày là mình LỠ cơ hội.
  *
- * Tái cấp/điều chỉnh mà CHƯA ghi ngày đến hạn cũng vào dải — đó chính là
- * những hồ sơ lẽ ra phải theo dõi hạn mức mà không ai biết còn bao nhiêu
- * ngày, ví dụ hai thẻ Đông Dương nằm ở cột này trên Miro mà không có ngày.
+ * Thứ tự ưu tiên có chủ ý: có ngày hạn mức thì lấy ngày đó, vì mất hạn mức
+ * đang chạy nặng hơn lỡ một nhu cầu mới. Không có mốc nào thì trả null — thẻ
+ * trôi nổi, và ô trống đó phải hiện thành cảnh báo chứ không được im lặng.
  */
-export function hsThuocDaiDenHan(
-  h: Pick<HoSoTinDung, 'trang_thai' | 'ngay_den_han_ghtd' | 'loai_ho_so'>,
-  moc: Date = new Date(),
-): boolean {
-  if (!HS_DANG_CHAY.includes(h.trang_thai)) return false;
-  const conLai = hsConLaiDenHan(h, moc);
-  if (conLai !== null) return conLai <= HS_NGUONG_DEN_HAN;
-  return h.loai_ho_so === 'TAI_CAP' || h.loai_ho_so === 'DIEU_CHINH';
+export function hsMocDuKien(
+  h: Pick<HoSoTinDung, 'ngay_den_han_ghtd' | 'han_xu_ly'>,
+): { ngay: string; loai: 'HAN_MUC' | 'CAN_DUNG' } | null {
+  if (h.ngay_den_han_ghtd) return { ngay: h.ngay_den_han_ghtd, loai: 'HAN_MUC' };
+  if (h.han_xu_ly) return { ngay: h.han_xu_ly, loai: 'CAN_DUNG' };
+  return null;
+}
+
+/** Số ngày còn lại tới mốc dự kiến (âm = đã quá); null nếu thẻ chưa có mốc nào */
+export function hsConLaiDuKien(
+  h: Pick<HoSoTinDung, 'ngay_den_han_ghtd' | 'han_xu_ly'>, moc: Date = new Date(),
+): number | null {
+  const m = hsMocDuKien(h);
+  if (!m) return null;
+  return ngayVn(`${m.ngay}T00:00:00+07:00`) - ngayVn(moc);
 }
 
 /**
@@ -322,7 +435,11 @@ export function hsNgayImLang(
   const tu = h.nhip_gan_nhat
     ?? (h.ngay_nhan ? `${h.ngay_nhan}T00:00:00+07:00` : h.created_at);
   if (!tu) return 0;
-  return soNgayLamViec(tu, moc);
+  // Cùng phép kẹp với soNgayImLang bên đầu việc: kỷ luật cập nhật tính từ ngày
+  // triển khai chính thức, không tính lùi về những ngày hệ thống chưa vận hành
+  const tuKep = ngayVnChuoi(new Date(tu)) < NGAY_TRIEN_KHAI
+    ? `${NGAY_TRIEN_KHAI}T00:00:00+07:00` : tu;
+  return soNgayLamViec(tuKep, moc);
 }
 
 /** Mức «chưa cập nhật» để giao diện chọn màu và biểu tượng */
@@ -349,6 +466,26 @@ export function hsMucImLang(
 /** Hồ sơ chưa từng được ghi nhịp lần nào — mở ra rồi để đó */
 export function hsChuaGhiLanNao(h: Pick<HoSoTinDung, 'nhip_gan_nhat'>): boolean {
   return !h.nhip_gan_nhat;
+}
+
+/**
+ * Hồ sơ này có thuộc diện GHI NHỊP HẰNG NGÀY không.
+ *
+ * Giám đốc chốt 06/08: thẻ ở cột dự kiến («Đến hạn GHTD hoặc cần sử dụng trong
+ * 2 tháng tới») KHÔNG phải ghi nhịp ngày — mốc còn quá xa, bắt ghi mỗi sáng
+ * chỉ đẻ ra những câu vô nghĩa lặp lại, và một sổ nhịp đầy câu vô nghĩa thì
+ * chính những dòng có nội dung thật cũng mất giá trị.
+ *
+ * Nhịp ngày là để trả lời «hôm nay việc đi tới đâu» — câu đó chỉ có nghĩa khi
+ * đã có người bắt tay làm. Thẻ dự kiến chưa ai làm gì; thứ nó cần là được nhìn
+ * thấy đúng lúc, không phải được tường thuật hằng ngày.
+ *
+ * KHÔNG cấm ghi — cấm là chuyện khác hẳn. Ai có tin cần lưu lại trên thẻ dự
+ * kiến (VD «gọi khách, tháng 9 mới cần vốn») thì dùng ô Trao đổi ở Dòng thời
+ * gian: nó vẫn vào đúng mạch của thẻ và vẫn báo đủ tuyến phụ trách.
+ */
+export function hsCanGhiNhipNgay(h: Pick<HoSoTinDung, 'trang_thai'>): boolean {
+  return HS_DANG_CHAY.includes(h.trang_thai);
 }
 
 /**
@@ -382,7 +519,30 @@ export function canhBaoHoSo(h: HoSoTinDung, moc: Date = new Date()): CanhBaoHoSo
   const ds: CanhBaoHoSo[] = [];
   const conLai = hsConLaiDenHan(h, moc);
 
-  // Nặng nhất: hạn mức của khách hàng sắp hết mà hồ sơ vẫn chưa xong
+  // Thẻ ở CỘT DỰ KIẾN có bộ cảnh báo riêng: nó chưa phải hồ sơ nên không đo
+  // bằng thước của hồ sơ, nhưng mốc thời gian của nó thì phải nói ra — đó là
+  // lý do duy nhất nó nằm trên bảng.
+  if (h.trang_thai === 'DEN_HAN_GHTD') {
+    const m = hsMocDuKien(h);
+    if (!m) {
+      // Không có mốc nào thì thẻ trôi nổi: không ai biết «2 tháng tới» là tới
+      // bao giờ. Ô trống phải hiện thành cảnh báo, không được im lặng.
+      ds.push({ muc: 'VANG', noi_dung: 'Chưa có ngày hạn mức hoặc ngày cần dùng — không đo được còn bao lâu' });
+      return ds;
+    }
+    const con = hsConLaiDuKien(h, moc)!;
+    const viec = m.loai === 'HAN_MUC' ? 'Hạn mức' : 'Khách cần dùng vốn';
+    if (con < 0) {
+      ds.push({ muc: 'DO', noi_dung: `${viec} đã quá ${-con} ngày mà chưa vào việc` });
+    } else if (con <= 30) {
+      ds.push({ muc: 'DO', noi_dung: `${viec} còn ${con} ngày` });
+    } else if (con <= HS_NGUONG_DEN_HAN) {
+      ds.push({ muc: 'VANG', noi_dung: `${viec} còn ${con} ngày` });
+    }
+    return ds;
+  }
+
+  // Nặng nhất: hạn mức của khách hàng sắp hết mà hồ sơ vẫn chưa xong.
   if (conLai !== null && HS_DANG_CHAY.includes(h.trang_thai)) {
     if (conLai < 0) {
       ds.push({ muc: 'DO', noi_dung: `Hạn mức đã hết ${-conLai} ngày, hồ sơ chưa xong` });
@@ -420,6 +580,10 @@ export function canhBaoHoSo(h: HoSoTinDung, moc: Date = new Date()): CanhBaoHoSo
   // Hồ sơ nhập từ board Miro có thể trống số tiền / hạn xử lý / kỳ hạn. Ô trống
   // KHÔNG được im lặng: nếu không nêu ra thì hồ sơ thiếu số tiền trông sạch sẽ
   // y hệt hồ sơ đủ, và tổng dư nợ đang trình thiếu hụt mà không ai biết.
+  //
+  // Trừ cột dự kiến: ở đó ba ô này TRỐNG LÀ ĐÚNG — chưa bắt tay làm thì chưa
+  // biết vay bao nhiêu, kỳ hạn nào, hẹn xong ngày nào. Gắn cờ vàng cho cả cột
+  // chỉ dạy người dùng bỏ qua cờ vàng. Chúng được hỏi ở cổng vào Thu thập.
   if (HS_DANG_CHAY.includes(h.trang_thai)) {
     if (h.so_tien === null) {
       ds.push({ muc: 'VANG', noi_dung: 'Chưa có số tiền — hồ sơ này không vào được tổng dư nợ' });
@@ -430,8 +594,7 @@ export function canhBaoHoSo(h: HoSoTinDung, moc: Date = new Date()): CanhBaoHoSo
     if (!h.ky_han) {
       ds.push({ muc: 'VANG', noi_dung: 'Chưa ghi kỳ hạn (ngắn hạn / trung dài hạn)' });
     }
-    if (!h.ngay_den_han_ghtd
-        && (h.loai_ho_so === 'TAI_CAP' || h.loai_ho_so === 'DIEU_CHINH')) {
+    if (!h.ngay_den_han_ghtd && hsCanNgayDenHan(h)) {
       ds.push({ muc: 'VANG', noi_dung: 'Hồ sơ tái cấp/điều chỉnh nhưng chưa ghi ngày hạn mức đến hạn' });
     }
   }
@@ -458,6 +621,36 @@ export function tongTheoBuoc(
     });
   }
   return m;
+}
+
+/**
+ * MỘT KHÁCH — MỘT CHỖ trên bàn: giấu hồ sơ ĐÃ ĐÓNG của khách hàng đang còn
+ * một hồ sơ/thẻ khác mở.
+ *
+ * Giám đốc chỉ ra Công ty CP Nhựa Tuệ Minh vừa nằm ở «Hoàn thành» vừa nằm ở
+ * «Đến hạn GHTD». Hai bản ghi này KHÔNG trùng nhau — một là hạn mức cũ đã cấp
+ * xong, một là việc tái cấp sắp phải làm — nhưng trên bảng thì người đọc thấy
+ * cùng một cái tên hai chỗ, và đó đúng là điều phải hết.
+ *
+ * Đây không phải hậu quả của đợt gieo thẻ dự kiến: 4 cặp đã trùng từ trước
+ * (Phú Thái, Thaicom, Mỹ Hương, Hưng Phát — hoàn thành + hồ sơ mới đang chạy).
+ * Gốc là bàn giữ hồ sơ hoàn thành trên bảng mãi mãi, nên khách nào có lịch sử
+ * cộng với việc đang làm đều hiện hai lần.
+ *
+ * Luật giấu: hồ sơ đã đóng (Hoàn thành / Từ chối) lui khỏi bảng KHI VÀ CHỈ KHI
+ * khách đó còn một thẻ chưa đóng. Không xoá gì — bản ghi vẫn nguyên trong
+ * database và vẫn tra được; chỉ là bàn điều hành nói về việc đang sống. Khách
+ * không còn việc gì mở thì hồ sơ hoàn thành vẫn nằm đó làm thành quả của Phòng.
+ */
+export function locTrungKhachHang(ds: HoSoTinDung[]): HoSoTinDung[] {
+  const coTheMo = new Set(
+    ds.filter((h) => h.trang_thai !== 'HOAN_THANH' && h.trang_thai !== 'TU_CHOI')
+      .map((h) => `${h.phong}|${h.khach_hang.trim().toLowerCase()}`),
+  );
+  return ds.filter((h) => {
+    if (h.trang_thai !== 'HOAN_THANH' && h.trang_thai !== 'TU_CHOI') return true;
+    return !coTheMo.has(`${h.phong}|${h.khach_hang.trim().toLowerCase()}`);
+  });
 }
 
 /**

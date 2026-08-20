@@ -38,7 +38,7 @@ export interface NavTree {
 const NavTreeContext = createContext<NavTree | null>(null);
 
 export function NavTreeProvider({ children }: { children: ReactNode }) {
-  const { isAdmin, isManager, isPgd, isGuest, roles } = useAuth();
+  const { isAdmin, isManager, isPgd, isGuest, guestScreens, roles } = useAuth();
   const reportAccess = useSubmissionReportAccess();
   const strategicAccess = useStrategicHrAccess();
   const councilAccess = useCouncilAccess();
@@ -53,6 +53,9 @@ export function NavTreeProvider({ children }: { children: ReactNode }) {
   const permissions = useMemo<NavPermissions>(
     () => ({
       isGuest,
+      // Khách đối tác: menu dựng theo đúng danh sách màn hình Phòng TCTH mở cho
+      // tài khoản đó (guest_access.allowed_screens)
+      guestScreens,
       isAdmin,
       isManager,
       isPgd,
@@ -64,7 +67,7 @@ export function NavTreeProvider({ children }: { children: ReactNode }) {
       leadershipMarks: isAdmin || isPgd,
     }),
     [
-      isGuest, isAdmin, isManager, isPgd,
+      isGuest, guestScreens, isAdmin, isManager, isPgd,
       reportAccess.allowed, strategicAccess.allowed,
       councilAccess.isMember, councilAccess.isSubject, councilAccess.isSupervisor,
       isFullCouncilAdmin,

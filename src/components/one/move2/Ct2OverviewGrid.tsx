@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import {
-  CT2_COT, mucChuY, type Ct2DauViec, type Ct2MucChuY, type Ct2TrangThai,
+  CT2_COT, cotHienThi, mucChuY, type Ct2DauViec, type Ct2MucChuY, type Ct2TrangThai,
 } from '@/lib/ct2';
 import type { Ct2NhanSu } from './useCt2Data';
 
@@ -39,7 +39,7 @@ export function Ct2OverviewGrid({ dsThe, nhanSu, onMoThe }: Props) {
     const m = new Map<Ct2TrangThai, Ct2DauViec[]>();
     for (const c of CT2_COT) m.set(c.ma, []);
     for (const t of dsThe.filter((x) => x.loai_dau_viec === 'TIEN_TRINH')) {
-      m.get(t.trang_thai)?.push(t);
+      m.get(cotHienThi(t.trang_thai))?.push(t);
     }
     // Trong mỗi cột: ô đỏ lên trước để mắt bắt được ngay
     const diem = { DO: 0, VANG: 1, XANH: 2, XONG: 3 };

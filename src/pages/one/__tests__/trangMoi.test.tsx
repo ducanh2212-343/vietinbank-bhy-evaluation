@@ -18,6 +18,7 @@ const mockAuth = {
   departmentId: 'd1',
   roles: ['employee'],
   isGuest: false,
+  guestScreens: [] as string[],
   guestExpiresAt: null,
   isAdmin: false,
   isManager: false,
@@ -115,6 +116,6 @@ describe('Trang Chiêu thức 2', () => {
     dung(<OneMove2Page />, '/one/chieu-thuc-2');
     expect(await screen.findByText(/chưa có đầu việc nào đang chạy/)).toBeInTheDocument();
     expect(screen.getByText('Việc của tôi')).toBeInTheDocument();
-    expect(screen.getByText('Bảng của Phòng')).toBeInTheDocument();
+    expect(screen.getByText('Kanban của Phòng')).toBeInTheDocument();
   });
 });

@@ -186,7 +186,7 @@ export const IdeaForm: React.FC<IdeaFormProps> = ({
             <Lightbulb className="w-5 h-5 text-amber-500" />
             <span>{editing ? '✏️ Cập Nhật Ý Tưởng Sáng Kiến' : 'Đăng Ký Ý Tưởng Sáng Kiến Mới'}</span>
           </h4>
-          <p className="text-[11px] text-slate-500 mt-1">
+          <p className="text-2xs text-slate-500 mt-1">
             Các ý tưởng được lưu trữ trên hệ thống và hiển thị trong báo cáo thống kê của chi nhánh.
           </p>
         </div>
@@ -194,7 +194,7 @@ export const IdeaForm: React.FC<IdeaFormProps> = ({
           <button
             type="button"
             onClick={() => onDone?.()}
-            className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full transition-all cursor-pointer flex items-center gap-1 text-[10px] font-bold px-2.5"
+            className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full transition-all cursor-pointer flex items-center gap-1 text-2xs font-bold px-2.5"
             title="Hủy sửa"
           >
             <X className="w-3.5 h-3.5" />
@@ -227,7 +227,7 @@ export const IdeaForm: React.FC<IdeaFormProps> = ({
                   ))}
                 </select>
               )}
-              <p className="text-[11px] text-slate-500 mt-0.5">
+              <p className="text-2xs text-slate-500 mt-0.5">
                 Phòng/Ban: <span className="font-bold text-slate-700">{identityLabel.dept || '—'}</span>
                 {' · '}Lấy từ hồ sơ nhân sự, không cần khai lại.
               </p>
@@ -252,7 +252,7 @@ export const IdeaForm: React.FC<IdeaFormProps> = ({
                 ))}
               </select>
               {coAuthors.length > 0 && (
-                <p className="text-[11px] text-slate-600 mt-1">
+                <p className="text-2xs text-slate-600 mt-1">
                   Ghi nhận: <span className="font-bold">{proposerText}</span>
                 </p>
               )}

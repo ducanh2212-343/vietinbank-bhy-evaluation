@@ -6,11 +6,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  CT2_COT, CT2_NGUONG_WIP, chuanBiQuaLau, daDuKeHoach, demWip, mucChuY,
+  CT2_COT, CT2_NGUONG_WIP, chuanBiQuaLau, cotHienThi, daDuKeHoach, demWip, mucChuY,
   nguongTuoiCho, sapXepThe, soNgayImLang, soNgayQuaHan, thieuTruongBatBuoc, tuoiCho,
   type Ct2Co, type Ct2DauViec, type Ct2MucChuY, type Ct2TrangThai,
 } from '@/lib/ct2';
-import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  ct2PhucHoiThe, useCt2LamTuoi, useCt2TheDaGo,
+} from './useCt2Data';
 import { Ct2NhipPhongStrip } from './Ct2NhipPhongStrip';
 import { Ct2OverviewGrid } from './Ct2OverviewGrid';
 import type { Ct2NhanSu, Ct2NhipNguoi } from './useCt2Data';
@@ -28,6 +30,8 @@ interface Props {
   nhanSu: Ct2NhanSu[];
   nhipNguoi: Ct2NhipNguoi[];
   laLanhDao: boolean;
+  /** Phòng đang xem — để tra danh sách thẻ đã gỡ của đúng phòng đó */
+  phongId: string | null;
   onMoThe: (the: Ct2DauViec) => void;
   /** Chuyển trạng thái cần thêm thông tin (người giữ / lý do) → mở hộp thoại */
   onKeoThe: (the: Ct2DauViec, den: Ct2TrangThai) => void;
@@ -48,13 +52,14 @@ const VIEN_CO: Record<Ct2MucChuY, string> = {
   XONG: 'border-l-slate-300',
 };
 
-export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoThe }: Props) {
+export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, phongId, onMoThe, onKeoThe }: Props) {
   const { profileId } = useAuth();
-  const dienThoai = useIsMobile();
-  // Trên điện thoại mặc định mở «Toàn cảnh»: cả bảng lọt một màn hình, không
-  // phải cuộn ngang qua 7 cột mới biết phòng đang thế nào.
+  // Mặc định «Cột» ở cả điện thoại lẫn máy tính: bảng Kanban phải mở ra bằng
+  // hình ảnh mà mọi người đã quen ở Miro — việc xếp theo bước. Trước đây điện
+  // thoại mở thẳng «Toàn cảnh», tiện cho người đã hiểu bảng nhưng lại giấu mất
+  // chính chức năng cần dạy.
   const [cheDo, setCheDo] = useState<'cot' | 'toan-canh' | null>(null);
-  const dangXem = cheDo ?? (dienThoai ? 'toan-canh' : 'cot');
+  const dangXem = cheDo ?? 'cot';
   const [locNguoi, setLocNguoi] = useState<string | null>(null);
   const [locCo, setLocCo] = useState<Ct2Co | null>(null);
   const [chiQuaHan, setChiQuaHan] = useState(false);
@@ -81,7 +86,9 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoTh
     for (const cot of CT2_COT) m.set(cot.ma, []);
     // Loại THƯỜNG TRỰC không vào luồng Kanban tiến trình (đặc tả §2.2)
     for (const t of daLoc.filter((x) => x.loai_dau_viec === 'TIEN_TRINH')) {
-      m.get(t.trang_thai)?.push(t);
+      // cotHienThi: thẻ mang trạng thái cũ (chờ phối hợp/duyệt, đã đóng) xếp
+      // về cột gần nghĩa nhất — bỏ cột không được làm mất thẻ
+      m.get(cotHienThi(t.trang_thai))?.push(t);
     }
     for (const [k, v] of m) m.set(k, sapXepThe(v));
     return m;
@@ -104,7 +111,7 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoTh
       tiLe: coViec.length ? Math.round((daDu / coViec.length) * 100) : 100,
       theDo: dsThe.filter((t) => t.co_tinh_trang === 'DO' && t.trang_thai !== 'DA_DONG' && t.trang_thai !== 'DUNG_HUY').length,
       quaHan: dsThe.filter((t) => soNgayQuaHan(t) > 0).length,
-      nghenCho: dsThe.filter((t) => tuoiCho(t) > nguongTuoiCho()).length,
+      thieuThongTin: dsThe.filter((t) => thieuTruongBatBuoc(t).length > 0).length,
     };
   }, [nhipNguoi, dsThe]);
 
@@ -139,7 +146,7 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoTh
         />
         <OSo nhan="Thẻ 🔴 đang vướng" giaTri={String(tongNhip.theDo)} tot={tongNhip.theDo === 0} />
         <OSo nhan="Thẻ quá hạn" giaTri={String(tongNhip.quaHan)} tot={tongNhip.quaHan === 0} />
-        <OSo nhan={`Nghẽn cột chờ > ${nguongTuoiCho()} ngày`} giaTri={String(tongNhip.nghenCho)} tot={tongNhip.nghenCho === 0} />
+        <OSo nhan="Thẻ thiếu thông tin" giaTri={String(tongNhip.thieuThongTin)} tot={tongNhip.thieuThongTin === 0} />
       </div>
 
       {/* Bộ lọc chip */}
@@ -172,16 +179,13 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoTh
         >
           Quá hạn
         </Button>
+        {/*
+          «Cột» đứng TRƯỚC và là mặc định ở mọi khổ màn hình: cái người ta cần
+          nắm đầu tiên là việc đang nằm ở bước nào — đó là chức năng của Kanban,
+          và cũng là hình ảnh mọi người đã quen ở Miro. «Toàn cảnh» là cách xem
+          bổ trợ để soát nhanh, không phải cửa vào.
+        */}
         <span className="ml-auto inline-flex overflow-hidden rounded-lg border border-slate-200">
-          <button
-            type="button"
-            onClick={() => setCheDo('toan-canh')}
-            className={`inline-flex h-8 items-center gap-1 px-2 text-xs ${
-              dangXem === 'toan-canh' ? 'bg-brand-navy text-white' : 'bg-white text-slate-600'
-            }`}
-          >
-            <Grid2x2 className="h-3.5 w-3.5" /> Toàn cảnh
-          </button>
           <button
             type="button"
             onClick={() => setCheDo('cot')}
@@ -190,6 +194,15 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoTh
             }`}
           >
             <Columns3 className="h-3.5 w-3.5" /> Cột
+          </button>
+          <button
+            type="button"
+            onClick={() => setCheDo('toan-canh')}
+            className={`inline-flex h-8 items-center gap-1 px-2 text-xs ${
+              dangXem === 'toan-canh' ? 'bg-brand-navy text-white' : 'bg-white text-slate-600'
+            }`}
+          >
+            <Grid2x2 className="h-3.5 w-3.5" /> Toàn cảnh
           </button>
         </span>
         {locNguoi && (wip.get(locNguoi) ?? 0) >= CT2_NGUONG_WIP && (
@@ -205,6 +218,8 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoTh
       )}
 
       {/* 7 cột Kanban — cuộn ngang trong khung riêng, trang không vỡ */}
+      <TheDaGo phongId={phongId} laLanhDao={laLanhDao} />
+
       {dangXem === 'cot' && (
       <DndContext sensors={sensors} onDragEnd={handleDrag}>
         <div className="overflow-x-auto pb-2">
@@ -249,39 +264,108 @@ export function Ct2Board({ dsThe, nhanSu, nhipNguoi, laLanhDao, onMoThe, onKeoTh
         </div>
       )}
 
-      {/* Bảng nhịp theo người (đặc tả §7.2) */}
-      {nhipNguoi.length > 0 && (
+      {/* Bảng nhịp theo người (đặc tả §7.2) — MỘT bảng chung cho cả hai Kanban,
+          số liệu tách cột «Việc phòng» / «PDTD» để lãnh đạo nhắc đúng người
+          đúng bảng (GĐ 12/08). Phòng không có hồ sơ tín dụng thì cột PDTD tự ẩn. */}
+      {nhipNguoi.length > 0 && (() => {
+        const coPdtd = nhipNguoi.some((n) => n.hs_dang_chay > 0);
+        const coChuaBatDau = nhipNguoi.some((n) => n.cb_can_bao_cao > 0);
+        const rong = 480 + (coPdtd ? 80 : 0) + (coChuaBatDau ? 110 : 0);
+        return (
         <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200">
-          <table className="w-full min-w-[480px] text-sm">
+          <table className="w-full text-sm" style={{ minWidth: `${rong}px` }}>
             <thead>
               <tr className="border-b bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                 <th className="px-3 py-2">Cán bộ</th>
-                <th className="px-3 py-2 text-center">Thẻ đang chạy</th>
-                <th className="px-3 py-2 text-center">Đã ghi hôm nay</th>
+                <th className="px-3 py-2 text-center">
+                  Việc phòng
+                  <span className="block text-2xs font-normal normal-case tracking-normal text-slate-400">đã ghi / đang chạy</span>
+                </th>
+                {coPdtd && (
+                  <th className="px-3 py-2 text-center">
+                    PDTD
+                    <span className="block text-2xs font-normal normal-case tracking-normal text-slate-400">đã ghi / đang chạy</span>
+                  </th>
+                )}
+                {/* Cột này là câu trả lời cho «để thẻ ở Chuẩn bị để khỏi báo cáo»:
+                    việc đã đến lúc phải chạy thì hiện ở đây, có ghi hay chưa. */}
+                {coChuaBatDau && (
+                  <th className="px-3 py-2 text-center">
+                    Chưa bắt đầu
+                    <span className="block text-2xs font-normal normal-case tracking-normal text-slate-400">quá ngày mở / sắp hạn</span>
+                  </th>
+                )}
                 <th className="px-3 py-2">Nhịp</th>
               </tr>
             </thead>
             <tbody>
-              {nhipNguoi.map((n) => (
+              {nhipNguoi.map((n) => {
+                const thieu: string[] = [];
+                if (n.cv_da_ghi < n.cv_dang_chay) thieu.push(`${n.cv_dang_chay - n.cv_da_ghi} việc phòng`);
+                if (n.hs_da_ghi < n.hs_dang_chay) thieu.push(`${n.hs_dang_chay - n.hs_da_ghi} hồ sơ PDTD`);
+                if (n.cb_da_ghi < n.cb_can_bao_cao) thieu.push(`${n.cb_can_bao_cao - n.cb_da_ghi} việc chưa bắt đầu`);
+                return (
                 <tr key={n.profile_id} className="border-b last:border-0">
                   <td className="px-3 py-2 font-medium text-slate-800">{n.full_name}</td>
-                  <td className="px-3 py-2 text-center tabular-nums">{n.so_viec_dang_chay}</td>
-                  <td className="px-3 py-2 text-center tabular-nums">{n.so_viec_da_ghi}</td>
+                  <td className="px-3 py-2 text-center"><OTiSo daGhi={n.cv_da_ghi} dangChay={n.cv_dang_chay} /></td>
+                  {coPdtd && (
+                    <td className="px-3 py-2 text-center"><OTiSo daGhi={n.hs_da_ghi} dangChay={n.hs_dang_chay} /></td>
+                  )}
+                  {coChuaBatDau && (
+                    <td className="px-3 py-2 text-center">
+                      {n.cb_can_bao_cao === 0 ? <span className="text-slate-300">—</span> : (
+                        <span title={[
+                          n.cb_qua_han_bd > 0 ? `${n.cb_qua_han_bd} việc quá ngày bắt đầu` : '',
+                          n.cb_sap_den_han > 0 ? `${n.cb_sap_den_han} việc sắp đến hạn mà chưa bắt đầu` : '',
+                        ].filter(Boolean).join(' · ')}>
+                          <OTiSo daGhi={n.cb_da_ghi} dangChay={n.cb_can_bao_cao} />
+                          <span className="ml-1 text-2xs text-slate-500">
+                            {n.cb_qua_han_bd > 0 && `${n.cb_qua_han_bd}⏰`}
+                            {n.cb_sap_den_han > 0 && ` ${n.cb_sap_den_han}🔥`}
+                          </span>
+                        </span>
+                      )}
+                    </td>
+                  )}
                   <td className="px-3 py-2">
                     {n.ket_qua === 'DUNG_GIO' && <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">✅ Đúng nhịp</Badge>}
                     {n.ket_qua === 'MUON' && <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">🟡 Nhịp muộn</Badge>}
                     {n.ket_qua === 'CHUA_DU' && <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">🟠 Mới ghi một phần</Badge>}
                     {n.ket_qua === 'CHUA_GHI' && <Badge className="bg-red-100 text-red-800 hover:bg-red-100">🔴 Chưa ghi nhịp</Badge>}
                     {n.ket_qua === 'KHONG_CO_VIEC' && <span className="text-xs text-slate-400">Không có việc cần ghi</span>}
+                    {/* Câu nhắc soạn sẵn: lãnh đạo đọc là biết nhắc về bảng nào */}
+                    {thieu.length > 0 && n.ket_qua !== 'NGAY_NGHI' && (
+                      <span className="mt-0.5 block text-2xs text-slate-500">còn thiếu {thieu.join(' · ')}</span>
+                    )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
+          {coChuaBatDau && (
+            <p className="border-t border-slate-100 bg-slate-50/60 px-3 py-2 text-2xs text-slate-500">
+              ⏰ quá ngày bắt đầu mà chưa mở việc · 🔥 sắp đến hạn hoàn thành mà chưa bắt đầu.
+              Việc đã đến lúc phải chạy vẫn phải ghi nhịp, dù thẻ còn nằm ở cột «Chuẩn bị».
+            </p>
+          )}
         </div>
-      )}
+        );
+      })()}
     </div>
   );
+}
+
+/**
+ * Ô tỉ số «đã ghi / đang chạy» của một bảng Kanban trong bảng nhịp.
+ * Màu nói thay lời: xanh = đủ, vàng = một phần, đỏ = chưa ghi gì,
+ * gạch ngang = người này không có việc ở bảng đó (không phải lỗi).
+ */
+function OTiSo({ daGhi, dangChay }: { daGhi: number; dangChay: number }) {
+  if (dangChay === 0) return <span className="text-slate-300">—</span>;
+  const mau = daGhi === dangChay ? 'text-emerald-700'
+    : daGhi > 0 ? 'text-amber-700' : 'text-red-700';
+  return <span className={`font-semibold tabular-nums ${mau}`}>{daGhi}/{dangChay}</span>;
 }
 
 function OSo({ nhan, giaTri, tot }: { nhan: string; giaTri: string; tot: boolean }) {
@@ -293,6 +377,49 @@ function OSo({ nhan, giaTri, tot }: { nhan: string; giaTri: string; tot: boolean
   );
 }
 
+/**
+ * Dải «Thẻ đã gỡ» — chỉ hiện khi thật sự có thẻ vừa bị gỡ nhầm, và chỉ với
+ * người được phép khôi phục. Cố ý đặt ngay trên bảng chứ không giấu trong một
+ * trang quản trị riêng: thẻ gỡ nhầm cần được nhìn thấy trong vài phút sau đó,
+ * chứ không phải đi tìm ở nơi không ai mở.
+ */
+function TheDaGo({ phongId, laLanhDao }: { phongId: string | null; laLanhDao: boolean }) {
+  const lamTuoi = useCt2LamTuoi();
+  const { data: ds = [], refetch } = useCt2TheDaGo(phongId, laLanhDao);
+  if (ds.length === 0) return null;
+  return (
+    <div className="mb-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 py-2">
+      <p className="text-xs font-medium text-slate-600">
+        Thẻ đã gỡ ({ds.length}) — không phải Dừng/Hủy, khôi phục lại được
+      </p>
+      <ul className="mt-1 space-y-1">
+        {ds.map((t) => (
+          <li key={t.id} className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+            <span className="font-mono text-slate-400">{t.ma_hien_thi ?? '—'}</span>
+            <span className="text-slate-800">{t.tieu_de}</span>
+            {t.ly_do && <span className="text-slate-400">· {t.ly_do}</span>}
+            <button
+              className="font-medium text-brand-navy underline underline-offset-2"
+              onClick={async () => {
+                const { error } = await ct2PhucHoiThe(t.id);
+                if (error) { toast.error(error); return; }
+                toast.success('Đã khôi phục thẻ về cột Chuẩn bị.');
+                lamTuoi('board'); refetch();
+              }}
+            >
+              Khôi phục
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** Cột đã kết thúc mặc định chỉ hé vài thẻ — việc xong tích lại theo tháng
+ *  sẽ kéo bảng dài vô tận, mà thứ cần nhìn mỗi sáng là việc ĐANG chạy. */
+const SO_THE_HE_LO = 3;
+
 function CotKanban({ cot, dsThe, tenNguoi, wip, onMoThe }: {
   cot: (typeof CT2_COT)[number];
   dsThe: Ct2DauViec[];
@@ -301,6 +428,11 @@ function CotKanban({ cot, dsThe, tenNguoi, wip, onMoThe }: {
   onMoThe: (t: Ct2DauViec) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: cot.ma });
+  const cotKetThuc = cot.ma === 'HOAN_THANH' || cot.ma === 'DUNG_HUY';
+  const [moRong, setMoRong] = useState(false);
+  const hienThi = cotKetThuc && !moRong ? dsThe.slice(0, SO_THE_HE_LO) : dsThe;
+  const soAn = dsThe.length - hienThi.length;
+
   return (
     <div
       ref={setNodeRef}
@@ -313,9 +445,27 @@ function CotKanban({ cot, dsThe, tenNguoi, wip, onMoThe }: {
         <span className="tabular-nums text-slate-400">{dsThe.length}</span>
       </p>
       <div className="mt-1 flex flex-col gap-2">
-        {dsThe.map((t) => (
+        {hienThi.map((t) => (
           <TheKanban key={t.id} the={t} tenNguoi={tenNguoi} wip={wip} onMo={() => onMoThe(t)} />
         ))}
+        {soAn > 0 && (
+          <button
+            type="button"
+            onClick={() => setMoRong(true)}
+            className="rounded-xl border border-dashed border-slate-300 p-2 text-center text-xs text-slate-500 hover:border-brand-navy/40 hover:text-brand-navy"
+          >
+            Hiện thêm {soAn} thẻ đã kết thúc
+          </button>
+        )}
+        {cotKetThuc && moRong && dsThe.length > SO_THE_HE_LO && (
+          <button
+            type="button"
+            onClick={() => setMoRong(false)}
+            className="rounded-xl p-1.5 text-center text-2xs text-slate-400 hover:text-brand-navy"
+          >
+            Thu gọn lại
+          </button>
+        )}
         {dsThe.length === 0 && (
           <p className="rounded-xl border border-dashed border-slate-200 p-3 text-center text-xs text-slate-400">
             Trống

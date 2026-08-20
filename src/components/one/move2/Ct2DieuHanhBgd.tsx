@@ -140,8 +140,11 @@ function TangPhongPhuTrach({ ds }: { ds: ReturnType<typeof useCt2PhongCuaToi>['d
           const tiLe = p.so_nguoi_can_ghi > 0
             ? Math.round((p.so_nguoi_da_ghi / p.so_nguoi_can_ghi) * 100)
             : 100;
+          // Cả dòng là liên kết vào thẳng bảng phòng đó — GĐ phản ánh bấm
+          // vào tên phòng không ra gì, chỉ nút «Mở bảng các phòng» chạy
           return (
-            <div key={p.phong} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-slate-200 p-2.5 text-sm">
+            <Link key={p.phong} to={`/one/chieu-thuc-2?tab=phong&phong=${p.phong}`}
+              className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-slate-200 p-2.5 text-sm transition hover:border-brand-navy/40 hover:bg-slate-50">
               <span className="min-w-32 flex-1 font-medium text-slate-800">{p.ten_phong}</span>
               <span className="inline-flex items-center gap-1">
                 {/* Thanh nhịp: đọc được tỷ lệ mà không phải đọc số */}
@@ -162,7 +165,8 @@ function TangPhongPhuTrach({ ds }: { ds: ReturnType<typeof useCt2PhongCuaToi>['d
                 <span className="text-xs font-medium text-red-600">{p.so_the_qua_han} quá hạn</span>
               )}
               <span className="text-xs text-slate-400">{p.so_the_dang_chay} việc</span>
-            </div>
+              <ArrowRight className="h-3.5 w-3.5 text-slate-300" />
+            </Link>
           );
         })}
       </div>

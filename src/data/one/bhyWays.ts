@@ -67,8 +67,10 @@ export const BHY_WAYS: WayItem[] = [
       '→ Lan tỏa, có bình chọn, dự toán thưởng và theo dõi việc áp dụng thực tế.',
     icon: Lightbulb,
     accent: '#F59E0B',
+    // Dẫn về trang giới thiệu của thương hiệu (không phải thẳng vào ô nhập):
+    // đây là thẻ giới thiệu hệ sinh thái, người bấm vào là để tìm hiểu
     duongDan: '/one/y-tuong',
-    nhanNut: 'Gửi ý tưởng',
+    nhanNut: 'Vào BHY Ideas',
   },
   {
     id: 'connect',
