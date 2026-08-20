@@ -112,11 +112,11 @@ function renderHtml(d: Digest): { subject: string; html: string; text: string; s
   if (d.deptNotSubmitted) lines.push(`${d.deptNotSubmitted} cán bộ trong phòng CHƯA NỘP phiếu${dueSuffix}`);
   if (d.blockNotSubmitted) lines.push(`${d.blockNotSubmitted} cán bộ trong khối phụ trách CHƯA NỘP phiếu${dueSuffix}`);
   const total = d.reviews + d.approvals + d.kanban + (d.deptNotSubmitted || 0) + (d.blockNotSubmitted || 0);
-  const subject = `[343 Phát triển nhân sự] Bạn có ${total} việc cần xử lý`;
+  const subject = `[CT3] ${SITE_NAME} — bạn có ${total} việc cần xử lý`;
   const items = lines.map((l) => `<li style="margin:4px 0">${l}</li>`).join('');
   const html = `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#1f2937;line-height:1.5">
 <p>Kính gửi <b>${d.name}</b>,</p>
-<p>Hệ thống 343 Phát triển nhân sự ghi nhận bạn đang có các việc cần xử lý:</p>
+<p>Hệ thống ${SITE_NAME} ghi nhận bạn đang có các việc cần xử lý:</p>
 <ul>${items}</ul>
 <p><a href="${APP_URL}" style="display:inline-block;background:#0b3d91;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">Đăng nhập để xử lý</a></p>
 <p style="color:#6b7280;font-size:12px">Email nhắc việc tự động. Vui lòng không trả lời email này.</p>
@@ -456,7 +456,7 @@ Deno.serve(async (req) => {
         .from('suppressed_emails').select('id').eq('email', recipient).maybeSingle();
       if (suppressed) continue;
       const subjectList = c.pending.map((s) => `<li style="margin:3px 0">${s}</li>`).join('');
-      const subject = `🗳️ Nhắc chấm điểm đầu mối ${c.roundName} — 343 Phát triển nhân sự`;
+      const subject = `[CT3] 🗳️ Nhắc chấm điểm đầu mối ${c.roundName} — ${SITE_NAME}`;
       const html = `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#1f2937;line-height:1.5">
 <p>Kính gửi <b>${c.name}</b>,</p>
 <p>Kỳ đánh giá công tác đầu mối <b>${c.roundName}</b> sẽ chốt phiếu lúc <b>${c.deadline}</b>.
@@ -493,7 +493,7 @@ Deno.serve(async (req) => {
     if (inWindow && cycle) {
       for (const p of notSubmitted) {
         staffPushSent += await sendPushToProfile(admin, subsByProfile, vapidPrivateKey, p.id, {
-          title: `⏰ Nhắc nộp phiếu đánh giá ${cycle.name}`,
+          title: `⏰ [CT3] Nhắc nộp phiếu đánh giá ${cycle.name}`,
           body: `Hạn nộp: ${deadlineText}\nPhiếu của bạn CHƯA nộp — nộp muộn bị trừ điểm KPI. Bấm để mở phiếu.`,
           url: '/tu-danh-gia',
           tag: 'nop-phieu',
@@ -513,7 +513,7 @@ Deno.serve(async (req) => {
       rows.push(`• ${globalWaitPGD} phiếu đang chờ PGĐ phê duyệt (mọi kỳ)`);
       rows.push(`• ${kanbanWaitingTotal} thẻ hành động phát triển chờ quản lý xác nhận`);
       rows.push(`• ${kanbanOverdueTotal || 0} thẻ hành động phát triển QUÁ HẠN`);
-      const subject = `📊 Toàn cảnh xử lý đánh giá${cycle ? ` — kỳ ${cycle.name}` : ''} — 343 Phát triển nhân sự`;
+      const subject = `[CT3] 📊 Toàn cảnh xử lý đánh giá${cycle ? ` — kỳ ${cycle.name}` : ''} — ${SITE_NAME}`;
       const bodyHtml = rows.map((r) => `<p style="margin:4px 0">${r}</p>`).join('');
       const text = rows.map((r) => r.replace(/<[^>]+>/g, '')).join('\n');
       for (const l of leaders) {
@@ -553,7 +553,7 @@ ${bodyHtml}
         });
         if (!error) leadershipEnqueued++;
         leadershipPushSent += await sendPushToProfile(admin, subsByProfile, vapidPrivateKey, l.id, {
-          title: `📊 Toàn cảnh xử lý đánh giá${cycle ? ` — kỳ ${cycle.name}` : ''}`,
+          title: `📊 [CT3] Toàn cảnh xử lý đánh giá${cycle ? ` — kỳ ${cycle.name}` : ''}`,
           // Bỏ đầu dòng «• » khi vào push: mỗi dòng một việc đã đủ tách, chấm tròn
           // chỉ ăn bớt chiều ngang màn hình khóa (chuẩn hình thức 09/08).
           body: text.replace(/^• /gm, ''),

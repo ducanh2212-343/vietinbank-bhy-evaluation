@@ -28,11 +28,11 @@
 // AN TOÀN: dry_run MẶC ĐỊNH = true → chỉ trả về nội dung sẽ gửi, KHÔNG gửi.
 // Quyền: service_role (cron) hoặc user admin (system_admin/bgd/tcth_admin).
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { APP_URL, FROM_DOMAIN, SENDER_DOMAIN } from '../_shared/email-config.ts';
+import { APP_URL, FROM_DOMAIN, FROM_NAME, SENDER_DOMAIN } from '../_shared/email-config.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const SITE_NAME = 'chieuthuc3';
+const SITE_NAME = FROM_NAME;
 const ADMIN_ROLES = ['system_admin', 'bgd', 'tcth_admin'];
 
 // Ngày triển khai chính thức kỷ luật nhịp — trùng ct2_bang_nhip_ky, xem ghi chú (2) ở đầu file.
