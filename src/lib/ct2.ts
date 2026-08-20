@@ -936,6 +936,8 @@ export const CT2_DAU_MUC: Record<string, string> = { CHAN: '⛔', DO: '🔴', NH
 export function duongDanThongBao(
   tb: Pick<Ct2ThongBao, 'ma_su_kien' | 'dau_viec_id'> & { ho_so_id?: string | null },
 ): string {
+  // Tin công bố phiên bản không gắn với thẻ nào — mở thẳng trang «Có gì mới»
+  if (tb.ma_su_kien === 'PHIEN_BAN') return '/co-gi-moi';
   if (tb.dau_viec_id) return `/one/chieu-thuc-2?the=${tb.dau_viec_id}`;
   // Tin hồ sơ mang mã hồ sơ mở THẲNG hồ sơ đó — nơi có sẵn ô Trao đổi.
   // «Có hồ sơ chờ anh/chị» mà chỉ mở chung tab là bắt người duyệt tự tìm

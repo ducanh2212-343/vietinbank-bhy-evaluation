@@ -13,6 +13,7 @@ import {
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Ct2ChuongThongBao } from '@/components/one/move2/Ct2ChuongThongBao';
 import { GopYNut } from '@/components/one/feedback/GopYNut';
+import { CoGiMoiNut } from '@/components/phien-ban/CoGiMoiNut';
 import { useAuth } from '@/hooks/useAuth';
 import { nhanDangNhap } from '@/lib/taiKhoanKhach';
 import { useNavTree } from '@/hooks/useNavTree';
@@ -393,6 +394,9 @@ export function TopNav({ onMoBangLenh }: Props) {
 
         {/* Góp ý cải thiện hệ thống — ai cũng bấm được, ở mọi trang */}
         <GopYNut />
+
+        {/* Hệ thống vừa lên tính năng gì — chấm đỏ tắt khi cán bộ mở trang */}
+        {!isGuest && <CoGiMoiNut />}
 
         <Ct2ChuongThongBao />
 
