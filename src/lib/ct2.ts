@@ -676,7 +676,25 @@ export interface Ct2ThongBao {
   doc_luc: string | null;
 }
 
-export const CT2_DAU_MUC: Record<string, string> = { CHAN: '⛔', DO: '🔴', NHE: '🟡' };
+export const CT2_DAU_MUC: Record<string, string> = { CHAN: '⛔', DO: '🔴', NHE: '🟡', KHEN: '🔥' };
+
+/**
+ * Nhãn phân hệ đứng trước tiêu đề thông báo — nhìn chuông (hoặc màn hình khoá)
+ * là biết ngay tin thuộc Chiêu thức 2, Chiêu thức 3 hay Dấu ấn BHY Mark.
+ *
+ * Đọc theo NHÃN DÒNG ĐẦU của thân tin chứ không theo ma_su_kien: bình luận dùng
+ * chung mã N12, bằng chứng dùng chung mã NHIP cho mọi loại đối tượng — chỉ dòng
+ * đầu mới biết tin nói về thứ gì. Quy tắc PHẢI trùng nhanPhanHe() trong edge
+ * function notify-ct2, nếu không thì chuông và push nói hai đằng.
+ *
+ * Trả về chuỗi rỗng cho tin hạ tầng toàn cổng (lịch nghỉ) — không thuộc phân hệ nào.
+ */
+export function moduleThongBao(tb: Pick<Ct2ThongBao, 'ma_su_kien' | 'noi_dung'>): string {
+  if (tb.ma_su_kien === 'LICH_NGHI') return '';
+  if (tb.noi_dung.startsWith('Dấu ấn:')) return 'Dấu ấn';
+  if (tb.noi_dung.startsWith('Hành động:')) return 'CT3';
+  return 'CT2';
+}
 
 /**
  * Bấm vào thông báo phải mở đúng thứ nó nói tới.

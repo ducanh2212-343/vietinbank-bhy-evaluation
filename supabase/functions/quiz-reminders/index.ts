@@ -172,7 +172,7 @@ Deno.serve(async (req) => {
         for (const p of profilesByDept.get(dept.id) || []) {
           planned.push({
             profileId: p.id, name: p.full_name,
-            title: 'BHY Quizzi — tuần mới bắt đầu!',
+            title: '[Quizzi] Tuần mới bắt đầu!',
             text: `Phòng ${dept.name} đang giữ chuỗi ${streak} tuần. Tạo quiz tuần này để giữ lửa 🔥`,
           });
         }
@@ -184,7 +184,7 @@ Deno.serve(async (req) => {
         for (const p of profilesByDept.get(dept.id) || []) {
           planned.push({
             profileId: p.id, name: p.full_name,
-            title: `Phòng ${dept.name} chưa có quiz tuần này`,
+            title: `[Quizzi] Phòng ${dept.name} chưa có quiz tuần này`,
             text: 'Ai cũng tạo được quiz — mở màn tuần này và nhận huy hiệu Người gieo hạt 🌱',
           });
         }
@@ -208,7 +208,7 @@ Deno.serve(async (req) => {
           if (authoredAll) continue;
           planned.push({
             profileId: p.id, name: p.full_name,
-            title: 'Quiz tuần này đang chờ bạn',
+            title: '[Quizzi] Quiz tuần này đang chờ bạn',
             text: 'Còn 3 ngày để giữ chuỗi tuần — làm quiz của phòng ngay nhé ⚡',
           });
         }

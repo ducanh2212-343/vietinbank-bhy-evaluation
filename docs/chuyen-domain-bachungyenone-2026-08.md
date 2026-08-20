@@ -147,21 +147,38 @@ Phần code đã sửa sẵn trong repo, nhưng phải "đẩy lên chạy thậ
 **Việc A — Website:** merge nhánh `claude/cloudflare-domain-change-0dptld` vào `main`.
 Cloudflare tự build lại và cập nhật web sau vài phút (Workers Builds). Không cần làm gì thêm.
 
-**Việc B — Các function gửi email:** cần deploy lại **8 function** sau:
+**Việc B — Các function gửi email:** deploy lại **8 function** bắt buộc cho cutover:
 
 ```
-auth-email-hook
-send-reminders
-send-hr-notification
-weekly-kanban-digest
-ct2-nhip-bao-cao
-create-staff-user
-bulk-create-staff-users
-reset-staff-password
+auth-email-hook          send-reminders           send-hr-notification
+weekly-kanban-digest     ct2-nhip-bao-cao         create-staff-user
+bulk-create-staff-users  reset-staff-password
 ```
 
-Cách làm: nhờ người kỹ thuật (hoặc nhắn cho Claude trong phiên làm việc) chạy
-`supabase functions deploy <tên-function>` cho từng cái ở trên.
+Kèm theo (đổi thương hiệu/nhãn, không gấp — deploy khi tiện):
+`send-feature-tip-push`, `notify-kanban-update`, `ai-advisor`.
+
+> ⛔ **KHÔNG deploy thẳng bản trong repo cho 5 hàm dưới đây — repo đang CŨ HƠN máy chủ.**
+> Có người đã sửa thẳng trên Supabase ngày 10–12/08 mà không đưa mã về repo:
+>
+> | Hàm | Repo sửa lần cuối | Máy chủ deploy lần cuối |
+> |---|---|---|
+> | `notify-ct2` | 02/08 | **12/08** |
+> | `notify-kanban-update` | 03/08 | **11/08** |
+> | `weekly-kanban-digest` | 03/08 | **11/08** |
+> | `send-reminders` | 03/08 | **10/08** |
+> | `nhac-lich-nghi` | 02/08 | **10/08** |
+>
+> Đã kiểm chứng bằng `notify-ct2`: bản máy chủ có hàm `nhanPhanHe()` gắn nhãn
+> `[CT2]/[CT3]/[Dấu ấn]` mà bản repo hoàn toàn không có. Deploy đè bản repo là **xoá mất
+> một tuần công việc** và làm push mất nhãn phân hệ.
+>
+> **Cách làm đúng cho 5 hàm này:** tải mã đang chạy từ Supabase về → vá thêm phần đổi
+> tên miền/thương hiệu lên trên → deploy → commit bản đã hợp nhất vào repo. Claude làm
+> được việc này ở Bước 4; đừng chạy `supabase functions deploy` thẳng từ repo.
+
+Các hàm còn lại (repo mới hơn hoặc bằng máy chủ) thì deploy bình thường bằng
+`supabase functions deploy <tên-function>`, hoặc nhắn cho Claude làm.
 
 > ⏱ **Chỉ deploy SAU khi Bước 2 đã xanh hết.** Deploy sớm quá thì email sẽ cố gửi từ
 > một tên miền Resend chưa xác minh → lỗi.
@@ -324,6 +341,63 @@ tên miền. Khi nào muốn đổi tên hiển thị, chỉ cần thêm secret 
 — **có hiệu lực ngay, không cần sửa code, không cần deploy lại**. Lưu ý khi đổi: hàm
 `ct2-nhip-bao-cao` (ngoài repo) vẫn hardcode `chieuthuc3`, nên muốn đồng bộ hoàn toàn
 thì phải xử lý việc số 1 ở trên trước.
+
+## Thương hiệu BHY ONE & nhãn cấu phần trong lời nhắc
+
+### 1. Một thương hiệu duy nhất: Bắc Hưng Yên ONE / BHY ONE
+
+Trước đây cổng mang **bốn** cái tên khác nhau tuỳ chỗ. Nay gom hết về một:
+
+| Chỗ | Tên cũ | Tên mới |
+|---|---|---|
+| Người gửi email (5 luồng) | `chieuthuc3` | `BHY ONE` |
+| Email xác thực: người gửi + 6 tiêu đề | `343 Phát triển nhân sự` | `BHY ONE` |
+| Email nhân sự: đầu thư, chân thư, 4 tiêu đề | `343 Phát triển nhân sự` | `BHY ONE` |
+| Thư duyệt/từ chối đăng ký | `SKILL LEVEL 38` | `BHY ONE` |
+| Tin nhắn bàn giao tài khoản | `343 Phát triển nhân sự` | `Bắc Hưng Yên ONE` |
+| Màn Cài đặt → Ứng dụng | `343 Phát triển nhân sự` | `Bắc Hưng Yên ONE` |
+| Chữ ký thư AI (bản tin quý) | `Hệ thống 343 Phát triển nhân sự` | `Hệ thống Bắc Hưng Yên ONE` |
+| Tiêu đề push dự phòng (`sw.js`) | `343 Nội bộ` | `BHY ONE` |
+| Ví dụ email trên form đăng nhập | `bhy001@343skill.com` | `bhy001@gmail.com` |
+
+Tên người gửi email nằm ở **một chỗ duy nhất**: secret `EMAIL_FROM_NAME` (mặc định
+`BHY ONE`). Đổi lần sau chỉ sửa secret.
+
+**Cố ý KHÔNG đổi:** các khoá lưu trong trình duyệt (`343skill:last-activity`,
+`343skill:nep-tot-quick-note-draft`). Đây là mã kỹ thuật người dùng không nhìn thấy —
+đổi tên là **đăng xuất toàn bộ cán bộ và xoá mọi bản nháp ghi nhanh đang dở**.
+
+### 2. Nhãn cấu phần: nhìn thông báo là biết của phân hệ nào
+
+Quy ước thống nhất — nhãn đứng ngay sau biểu tượng mức, trước tiêu đề:
+
+```
+⛔ [CT2] Đầu việc quá hạn 3 ngày          ← push màn hình khoá
+[CT3] ⏰ Nhắc nộp phiếu đánh giá — BHY ONE ← tiêu đề email
+```
+
+| Nhãn | Cấu phần | Ai gắn |
+|---|---|---|
+| `[CT2]` | Chiêu thức 2 — đầu việc, nhịp, phê duyệt tín dụng | `notify-ct2` (tự suy từ thân tin) |
+| `[CT3]` | Chiêu thức 3 — hành động phát triển, đánh giá, biểu mẫu | `notify-ct2`, `send-hr-notification` |
+| `[Dấu ấn]` | Dấu ấn BHY Mark | `notify-ct2` |
+| `[Quizzi]` | BHY Quizzi | `quiz-reminders` |
+| `[Mẹo]` | Mẹo tính năng toàn cổng | `send-feature-tip-push` |
+| *(không nhãn)* | Tin hạ tầng toàn cổng: lịch nghỉ, email xác thực | — |
+
+**Kết quả rà soát — 3 chỗ đang lệch, đã xử lý 2:**
+
+1. ✅ **Chuông trong ứng dụng không có nhãn, trong khi push thì có.** Bản `notify-ct2`
+   đang chạy gắn `[CT2]/[CT3]/[Dấu ấn]` theo nhãn dòng đầu của thân tin, nhưng chuông
+   trong app chỉ hiện biểu tượng mức — cùng một tin, hai nơi hiển thị khác nhau. Đã thêm
+   `moduleThongBao()` vào `src/lib/ct2.ts` (trùng luật với `nhanPhanHe()` của
+   `notify-ct2`, có kiểm thử) và hiện nhãn trong chuông.
+2. ✅ **Mức KHEN 🔥 chỉ có ở push.** Chuông hiện 🔔 cho tin khen chuỗi đúng giờ trong khi
+   push hiện 🔥. Đã bổ sung `KHEN: '🔥'` vào `CT2_DAU_MUC` ở client.
+3. ⏳ **Ba hàm gửi thẳng chưa có nhãn**: `send-reminders` (nhắc việc, chấm điểm đầu mối,
+   toàn cảnh), `weekly-kanban-digest`, `notify-kanban-update` — đều thuộc **CT3**. Chưa
+   sửa vì đây đúng 3 hàm mà **repo đang cũ hơn máy chủ** (xem cảnh báo ở Bước 4); sẽ gắn
+   `[CT3]` khi hợp nhất mã từ máy chủ lúc deploy.
 
 ## Phần code đã sửa sẵn (dành cho người kỹ thuật)
 

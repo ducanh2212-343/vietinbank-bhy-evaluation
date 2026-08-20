@@ -54,7 +54,7 @@ export default function SettingsPage() {
             </div>
           </div>
           <dl className="space-y-2 text-sm">
-            <Row label="Ứng dụng" value="343 Phát triển nhân sự" />
+            <Row label="Ứng dụng" value="Bắc Hưng Yên ONE" />
             <Row label="Đơn vị" value="VietinBank Chi nhánh Bắc Hưng Yên" />
             <Row label="Cập nhật gần nhất" value={APP_VERSION_DATE} />
             <Row label="Khung năng lực" value="38 kỹ năng · 6 nhóm thái độ" />

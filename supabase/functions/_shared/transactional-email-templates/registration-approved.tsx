@@ -4,7 +4,7 @@ import {
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 
-const SITE_NAME = "SKILL LEVEL 38"
+const SITE_NAME = "BHY ONE"
 
 interface Props {
   fullName?: string
@@ -47,7 +47,7 @@ const RegistrationApprovedEmail = ({ fullName, email, tempPasswordHint }: Props)
 
 export const template = {
   component: RegistrationApprovedEmail,
-  subject: 'Tài khoản đã được phê duyệt - SKILL LEVEL 38',
+  subject: 'Tài khoản đã được phê duyệt - BHY ONE',
   displayName: 'Phê duyệt đăng ký',
   previewData: { fullName: 'Nguyễn Văn A', email: 'nguyenvana@example.com', tempPasswordHint: '8 số cuối SĐT' },
 } satisfies TemplateEntry

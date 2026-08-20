@@ -21,7 +21,7 @@ export function buildHandoverMessage(info: HandoverInfo): string {
   const greeting = name ? `Chào anh/chị ${name},` : 'Chào anh/chị,';
   return [
     greeting,
-    'Tài khoản hệ thống "343 Phát triển nhân sự" (VietinBank Bắc Hưng Yên) của anh/chị đã sẵn sàng:',
+    'Tài khoản hệ thống "Bắc Hưng Yên ONE" (VietinBank Bắc Hưng Yên) của anh/chị đã sẵn sàng:',
     `- Đường dẫn đăng nhập: ${SITE_LOGIN_URL}`,
     `- Tên đăng nhập: ${info.email}`,
     `- Mật khẩu tạm: ${info.tempPassword}`,
@@ -35,7 +35,7 @@ export function buildResetMessage(info: HandoverInfo): string {
   const greeting = name ? `Chào anh/chị ${name},` : 'Chào anh/chị,';
   return [
     greeting,
-    'Mật khẩu đăng nhập hệ thống "343 Phát triển nhân sự" (VietinBank Bắc Hưng Yên) của anh/chị vừa được cấp lại:',
+    'Mật khẩu đăng nhập hệ thống "Bắc Hưng Yên ONE" (VietinBank Bắc Hưng Yên) của anh/chị vừa được cấp lại:',
     `- Đường dẫn đăng nhập: ${SITE_LOGIN_URL}`,
     `- Tên đăng nhập: ${info.email}`,
     `- Mật khẩu tạm mới: ${info.tempPassword}`,

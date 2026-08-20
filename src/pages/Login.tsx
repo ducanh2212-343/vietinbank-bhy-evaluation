@@ -108,7 +108,7 @@ export default function Login() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="bhy001@343skill.com"
+                  placeholder="bhy001@gmail.com"
                   autoComplete="username"
                   required
                   className="bg-background"

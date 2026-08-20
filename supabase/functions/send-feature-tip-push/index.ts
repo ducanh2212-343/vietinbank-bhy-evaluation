@@ -221,7 +221,7 @@ Deno.serve(async (req) => {
     for (const plan of planned) {
       const tip = tipById.get(plan.tip_id)!;
       const n = await sendPushToProfile(admin, subsByProfile, vapidPrivateKey, plan.profile_id, {
-        title: `💡 ${tip.title}`,
+        title: `💡 [Mẹo] ${tip.title}`,
         body: tipBody(tip.content),
         url: plan.url,
         tag: 'meo-tinh-nang',

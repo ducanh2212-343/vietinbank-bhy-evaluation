@@ -7,6 +7,7 @@ import {
   diemRuiRo,
   duongDanThongBao,
   laNgayLamViec,
+  moduleThongBao,
   goiYNhan,
   gopCacBuoc,
   hanGoiY,
@@ -480,5 +481,19 @@ describe('Thẻ nhập từ board cũ — ô trống phải nói ra, không đư
 
   it('chuanBiQuaLau không đoán bừa khi thiếu mốc', () => {
     expect(chuanBiQuaLau({ ...goc, trang_thai: 'CHUAN_BI' }, moc)).toBe(false);
+  });
+});
+
+describe('moduleThongBao', () => {
+  // Nhãn phân hệ phải trùng nhanPhanHe() của edge function notify-ct2:
+  // chuông trong ứng dụng và push trên màn hình khoá không được nói hai đằng.
+  it('đọc theo nhãn dòng đầu của thân tin, không theo mã sự kiện', () => {
+    expect(moduleThongBao({ ma_su_kien: 'N12', noi_dung: 'Dấu ấn: Chị Lan vừa ghi nhận' })).toBe('Dấu ấn');
+    expect(moduleThongBao({ ma_su_kien: 'N12', noi_dung: 'Hành động: cập nhật tiến độ' })).toBe('CT3');
+    expect(moduleThongBao({ ma_su_kien: 'NHIP', noi_dung: 'Bằng chứng vừa được nộp' })).toBe('CT2');
+  });
+
+  it('tin hạ tầng toàn cổng thì không mang nhãn phân hệ nào', () => {
+    expect(moduleThongBao({ ma_su_kien: 'LICH_NGHI', noi_dung: 'Còn 3 ngày tới Quốc khánh' })).toBe('');
   });
 });

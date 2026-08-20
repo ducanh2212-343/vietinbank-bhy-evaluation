@@ -19,17 +19,18 @@ import { RecoveryEmail } from './email-templates/recovery.tsx'
 import { EmailChangeEmail } from './email-templates/email-change.tsx'
 import { ReauthenticationEmail } from './email-templates/reauthentication.tsx'
 
-import { APP_URL, FROM_DOMAIN, SENDER_DOMAIN } from '../_shared/email-config.ts'
+import { APP_URL, FROM_DOMAIN, FROM_NAME, SENDER_DOMAIN } from '../_shared/email-config.ts'
 
-const SITE_NAME = '343 Phát triển nhân sự'
+// Tên thương hiệu chung của cổng — đổi bằng secret EMAIL_FROM_NAME, không sửa code.
+const SITE_NAME = FROM_NAME
 
 const EMAIL_SUBJECTS: Record<string, string> = {
-  signup: 'Xác nhận email đăng ký — 343 Phát triển nhân sự',
-  invite: 'Bạn được mời tham gia — 343 Phát triển nhân sự',
-  magiclink: 'Liên kết đăng nhập — 343 Phát triển nhân sự',
-  recovery: 'Đặt lại mật khẩu — 343 Phát triển nhân sự',
-  email_change: 'Xác nhận thay đổi email — 343 Phát triển nhân sự',
-  reauthentication: 'Mã xác minh của bạn — 343 Phát triển nhân sự',
+  signup: `Xác nhận email đăng ký — ${SITE_NAME}`,
+  invite: `Bạn được mời tham gia — ${SITE_NAME}`,
+  magiclink: `Liên kết đăng nhập — ${SITE_NAME}`,
+  recovery: `Đặt lại mật khẩu — ${SITE_NAME}`,
+  email_change: `Xác nhận thay đổi email — ${SITE_NAME}`,
+  reauthentication: `Mã xác minh của bạn — ${SITE_NAME}`,
 }
 
 const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {

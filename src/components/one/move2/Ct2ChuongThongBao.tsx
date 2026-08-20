@@ -8,7 +8,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { CT2_DAU_MUC, duongDanThongBao, khiNaoThongBao, type Ct2ThongBao } from '@/lib/ct2';
+import { CT2_DAU_MUC, duongDanThongBao, khiNaoThongBao, moduleThongBao, type Ct2ThongBao } from '@/lib/ct2';
 import { cn } from '@/lib/utils';
 
 /**
@@ -118,6 +118,11 @@ export function Ct2ChuongThongBao() {
               >
                 <p className="flex items-start gap-1.5 text-sm font-medium">
                   <span aria-hidden>{CT2_DAU_MUC[t.muc] ?? '🔔'}</span>
+                  {moduleThongBao(t) && (
+                    <span className="mt-0.5 shrink-0 rounded bg-muted px-1 py-px text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {moduleThongBao(t)}
+                    </span>
+                  )}
                   <span className="flex-1">{t.tieu_de}</span>
                 </p>
                 <p className="mt-0.5 line-clamp-2 whitespace-pre-wrap text-xs text-muted-foreground">{t.noi_dung}</p>
