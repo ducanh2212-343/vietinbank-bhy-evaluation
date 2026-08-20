@@ -120,7 +120,7 @@ Muốn gửi từ `noreply@bachungyenone.com` thì Resend phải "xác minh" tê
    | `APP_URL` | `https://bachungyenone.com` |
    | `EMAIL_FROM_DOMAIN` | `bachungyenone.com` |
    | `EMAIL_SENDER_DOMAIN` | *(xoá đi, hoặc để trống — hệ thống tự tính)* |
-   | `EMAIL_FROM_NAME` | *(KHÔNG đặt — để trống thì tên người gửi giữ nguyên `chieuthuc3` như hiện nay. Chỉ đặt khi muốn đổi tên hiển thị, ví dụ `BHY ONE`)* |
+   | `EMAIL_FROM_NAME` | *(không cần đặt — sau Bước 4 tên người gửi mặc định đã là `BHY ONE`. Chỉ đặt khi muốn một tên khác)* |
    | `RESEND_API_KEY` | dán key **Full access** vừa tạo ở Bước 2 |
 
    Lưu ý: `APP_URL` **không có dấu `/` ở cuối**.
@@ -147,13 +147,14 @@ Phần code đã sửa sẵn trong repo, nhưng phải "đẩy lên chạy thậ
 **Việc A — Website:** merge nhánh `claude/cloudflare-domain-change-0dptld` vào `main`.
 Cloudflare tự build lại và cập nhật web sau vài phút (Workers Builds). Không cần làm gì thêm.
 
-**Việc B — Các function gửi email:** cần deploy lại **7 function** sau:
+**Việc B — Các function gửi email:** cần deploy lại **8 function** sau:
 
 ```
 auth-email-hook
 send-reminders
 send-hr-notification
 weekly-kanban-digest
+ct2-nhip-bao-cao
 create-staff-user
 bulk-create-staff-users
 reset-staff-password
@@ -175,7 +176,7 @@ Làm lần lượt, tick vào ô khi đạt:
 - [ ] **2. Không 404:** `https://bachungyenone.com/hanh-dong-phat-trien` mở thẳng vẫn ra trang.
 - [ ] **3. Đăng nhập được** bằng tài khoản admin của anh/chị trên domain mới.
 - [ ] **4. Email gửi được:** vào **Quản trị Email** trong cổng → gửi 1 email test →
-      kiểm tra hộp thư: người gửi phải là **`chieuthuc3 <noreply@bachungyenone.com>`**,
+      kiểm tra hộp thư: người gửi phải là **`BHY ONE <noreply@bachungyenone.com>`**,
       và **vào Inbox** (nếu vào Spam, xem Bước 6).
 - [ ] **5. Quên mật khẩu chạy đúng:** ở màn hình đăng nhập bấm "Quên mật khẩu" với email
       của chính mình → mở email → link phải chứa `bachungyenone.com` → bấm vào ra đúng
@@ -305,12 +306,10 @@ bảng `push_subscriptions`: **không sửa gì**.
 
 ### Hai việc phát hiện thêm, cần biết
 
-1. ⚠️ **`ct2-nhip-bao-cao` đang chạy trên Supabase nhưng KHÔNG có trong repo.** Nó gửi
-   email `ct2-nhip-tuan` chiều thứ Sáu và đẩy push nhịp ngày cho Trưởng phòng. Nó đọc
-   secret `APP_URL`/`EMAIL_FROM_DOMAIN` nên **sau Bước 3 nó tự đổi sang tên miền mới,
-   không cần deploy** — cutover không bị ảnh hưởng. Nhưng vì mã nguồn chỉ tồn tại trên
-   máy chủ, nó không được rà soát/kiểm thử cùng repo và sẽ mất nếu ai đó deploy đè.
-   **Nên đưa mã của nó về repo** trong một lần thay đổi riêng (không gộp vào cutover).
+1. ✅ **`ct2-nhip-bao-cao` trước đây chạy trên Supabase nhưng KHÔNG có trong repo** —
+   đã chép mã từ máy chủ về `supabase/functions/ct2-nhip-bao-cao/index.ts` và sửa
+   `SITE_NAME` sang `FROM_NAME` để email nhịp tuần cũng mang tên `BHY ONE`. Bản chép này
+   **phải đối chiếu lại với bản trên máy chủ ngay trước khi deploy** (Bước 4) rồi mới đẩy.
 2. **Cron `bhy-ideas-hoi-dong-nhac` (02:00 các ngày làm việc) gọi hàm
    `notify-idea-council` — hàm này không tồn tại trên Supabase.** Job này đang lỗi âm
    thầm từ trước, không liên quan đổi tên miền. Cần xử lý riêng: hoặc deploy hàm, hoặc
@@ -320,7 +319,7 @@ bảng `push_subscriptions`: **không sửa gì**.
 
 Bản đầu tôi đổi tên hiển thị người gửi từ `chieuthuc3` sang `BHY ONE`. Theo yêu cầu
 "không có sự thay đổi ngoài tên miền", **mặc định đã trả về `chieuthuc3`** — email sau
-cutover hiện `chieuthuc3 <noreply@bachungyenone.com>`, đúng như hôm nay chỉ khác phần
+cutover hiện `BHY ONE <noreply@bachungyenone.com>`, đúng như hôm nay chỉ khác phần
 tên miền. Khi nào muốn đổi tên hiển thị, chỉ cần thêm secret `EMAIL_FROM_NAME` = `BHY ONE`
 — **có hiệu lực ngay, không cần sửa code, không cần deploy lại**. Lưu ý khi đổi: hàm
 `ct2-nhip-bao-cao` (ngoài repo) vẫn hardcode `chieuthuc3`, nên muốn đồng bộ hoàn toàn
@@ -332,12 +331,14 @@ Nhánh `claude/cloudflare-domain-change-0dptld`:
 
 - `supabase/functions/_shared/email-config.ts` — mặc định `APP_URL` →
   `https://bachungyenone.com`, `FROM_DOMAIN` → `bachungyenone.com`; thêm `FROM_NAME`
-  (secret `EMAIL_FROM_NAME`, **mặc định `chieuthuc3` = đúng tên đang chạy**, để việc đổi
-  domain không kéo theo đổi tên người gửi).
+  (secret `EMAIL_FROM_NAME`, mặc định **`BHY ONE`**).
 - `supabase/functions/_shared/staff.ts` — fallback `resolveSiteUrl()` → domain mới.
 - `send-reminders`, `weekly-kanban-digest`, `send-hr-notification`,
-  `send-transactional-email` — `SITE_NAME` hết hardcode `'chieuthuc3'`, nay lấy từ
-  `FROM_NAME` (tên hiển thị trong header From đổi được bằng secret, không cần sửa code).
+  `send-transactional-email`, `ct2-nhip-bao-cao` — `SITE_NAME` hết hardcode `'chieuthuc3'`,
+  nay lấy từ `FROM_NAME` (đổi tên hiển thị bằng secret, không cần sửa code).
+- `supabase/functions/ct2-nhip-bao-cao/` — **mới đưa vào repo**, chép từ bản đang chạy
+  trên Supabase (trước đó chỉ tồn tại trên máy chủ). Cần đối chiếu với bản máy chủ trước
+  khi deploy.
 - `src/lib/handoverMessage.ts` — fallback link đăng nhập → domain mới (đường chính vẫn là
   `window.location.origin`).
 - `src/pages/EmailAdmin.tsx`, `src/pages/AddStaff.tsx` — chữ hiển thị cho người dùng.
