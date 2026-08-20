@@ -120,7 +120,7 @@ Muốn gửi từ `noreply@bachungyenone.com` thì Resend phải "xác minh" tê
    | `APP_URL` | `https://bachungyenone.com` |
    | `EMAIL_FROM_DOMAIN` | `bachungyenone.com` |
    | `EMAIL_SENDER_DOMAIN` | *(xoá đi, hoặc để trống — hệ thống tự tính)* |
-   | `EMAIL_FROM_NAME` | `BHY ONE` |
+   | `EMAIL_FROM_NAME` | *(KHÔNG đặt — để trống thì tên người gửi giữ nguyên `chieuthuc3` như hiện nay. Chỉ đặt khi muốn đổi tên hiển thị, ví dụ `BHY ONE`)* |
    | `RESEND_API_KEY` | dán key **Full access** vừa tạo ở Bước 2 |
 
    Lưu ý: `APP_URL` **không có dấu `/` ở cuối**.
@@ -175,7 +175,7 @@ Làm lần lượt, tick vào ô khi đạt:
 - [ ] **2. Không 404:** `https://bachungyenone.com/hanh-dong-phat-trien` mở thẳng vẫn ra trang.
 - [ ] **3. Đăng nhập được** bằng tài khoản admin của anh/chị trên domain mới.
 - [ ] **4. Email gửi được:** vào **Quản trị Email** trong cổng → gửi 1 email test →
-      kiểm tra hộp thư: người gửi phải là **`BHY ONE <noreply@bachungyenone.com>`**,
+      kiểm tra hộp thư: người gửi phải là **`chieuthuc3 <noreply@bachungyenone.com>`**,
       và **vào Inbox** (nếu vào Spam, xem Bước 6).
 - [ ] **5. Quên mật khẩu chạy đúng:** ở màn hình đăng nhập bấm "Quên mật khẩu" với email
       của chính mình → mở email → link phải chứa `bachungyenone.com` → bấm vào ra đúng
@@ -261,13 +261,79 @@ Mẫu tin nhắn gửi nhóm:
 Tóm lại: phần push **không nằm trong việc chuyển domain**. Ai đang nhận thông báo cứ nhận
 tiếp; ai muốn nhận ở địa chỉ mới thì bật thêm một lần (và nên tắt bên cũ để khỏi trùng).
 
+## Biên bản rà soát toàn bộ luồng email & push (20/08/2026)
+
+Rà soát trước cutover để chắc chắn **không luồng nào bị đổi hành vi ngoài tên miền**.
+
+### Email — 5 luồng đang chạy thật (đối chiếu `email_send_log` 120 ngày)
+
+| Template | Hàm phát | Sau cutover đổi gì |
+|---|---|---|
+| `reminder_digest` (nhắc việc 08:00 hằng ngày) | `send-reminders` | chỉ domain ở From + link |
+| `leadership-digest` | `send-reminders` | chỉ domain ở From + link |
+| `recovery` (đặt lại mật khẩu) | `auth-email-hook` | chỉ domain ở From + redirect |
+| `kanban-weekly-digest` | `weekly-kanban-digest` | chỉ domain ở From + link |
+| `ct2-nhip-tuan` | `ct2-nhip-bao-cao` ⚠ | chỉ domain — **nhưng xem cảnh báo bên dưới** |
+
+Ngưng dùng từ 07/2026, không cần quan tâm: `council-report`, `council-vote-reminder`,
+`quarterly-letter`, `dmarc_test`, `resend_test`.
+
+Toàn bộ email đều đi qua một cửa duy nhất là `process-email-queue` → Resend. Hàm này
+**không hardcode tên miền nào** — nó gửi đúng `from` mà hàm phát đã đặt.
+
+### Push — 6 hàm, tất cả đều an toàn
+
+`notify-ct2`, `notify-kanban-update`, `weekly-kanban-digest`, `send-reminders`,
+`send-feature-tip-push`, `quiz-reminders`. Đã kiểm từng payload: **mọi `url` đều là
+đường dẫn tương đối** (`/tong-quan`, `/hanh-dong-phat-trien`, `/one/chieu-thuc-2`…),
+kể cả 2 chỗ sinh động (`duongDan()` của CT2 và `cta_url` của Mẹo tính năng — đã kiểm
+8/8 bản ghi trong CSDL đều tương đối). VAPID key, `tag`, `public/sw.js`,
+bảng `push_subscriptions`: **không sửa gì**.
+
+### Những thứ tuyệt đối không đụng — đã xác nhận còn nguyên
+
+- **Email đăng nhập của cán bộ**: 102 tài khoản `@gmail.com`, 1 `@vietinbank.vn`,
+  2 tài khoản khách `@khach.343skill.com`. Đây chỉ là **định danh đăng nhập**, không
+  phải hộp thư — đổi tên miền không ảnh hưởng, và **không được sửa** thành tên miền mới
+  (sửa là 2 tài khoản khách mất đường đăng nhập).
+- **Lịch cron** (12 job): tất cả gọi `whlysprzsguehxmrjwha.supabase.co`, không dính
+  tên miền của mình → giờ giấc và tần suất giữ nguyên.
+- **Dữ liệu cũ trong CSDL** có chứa chữ `chieuthuc3`/`343skill`: chỉ nằm ở
+  `audit_logs`, `email_send_log`, `kanban_card_logs`, `skill_assessments`, `guest_access`
+  — đều là **nhật ký lịch sử**, để nguyên.
+- **Tên người gửi email** giữ nguyên `chieuthuc3` (xem mục dưới).
+
+### Hai việc phát hiện thêm, cần biết
+
+1. ⚠️ **`ct2-nhip-bao-cao` đang chạy trên Supabase nhưng KHÔNG có trong repo.** Nó gửi
+   email `ct2-nhip-tuan` chiều thứ Sáu và đẩy push nhịp ngày cho Trưởng phòng. Nó đọc
+   secret `APP_URL`/`EMAIL_FROM_DOMAIN` nên **sau Bước 3 nó tự đổi sang tên miền mới,
+   không cần deploy** — cutover không bị ảnh hưởng. Nhưng vì mã nguồn chỉ tồn tại trên
+   máy chủ, nó không được rà soát/kiểm thử cùng repo và sẽ mất nếu ai đó deploy đè.
+   **Nên đưa mã của nó về repo** trong một lần thay đổi riêng (không gộp vào cutover).
+2. **Cron `bhy-ideas-hoi-dong-nhac` (02:00 các ngày làm việc) gọi hàm
+   `notify-idea-council` — hàm này không tồn tại trên Supabase.** Job này đang lỗi âm
+   thầm từ trước, không liên quan đổi tên miền. Cần xử lý riêng: hoặc deploy hàm, hoặc
+   xoá job.
+
+### Một thay đổi tôi đã tự rút lại
+
+Bản đầu tôi đổi tên hiển thị người gửi từ `chieuthuc3` sang `BHY ONE`. Theo yêu cầu
+"không có sự thay đổi ngoài tên miền", **mặc định đã trả về `chieuthuc3`** — email sau
+cutover hiện `chieuthuc3 <noreply@bachungyenone.com>`, đúng như hôm nay chỉ khác phần
+tên miền. Khi nào muốn đổi tên hiển thị, chỉ cần thêm secret `EMAIL_FROM_NAME` = `BHY ONE`
+— **có hiệu lực ngay, không cần sửa code, không cần deploy lại**. Lưu ý khi đổi: hàm
+`ct2-nhip-bao-cao` (ngoài repo) vẫn hardcode `chieuthuc3`, nên muốn đồng bộ hoàn toàn
+thì phải xử lý việc số 1 ở trên trước.
+
 ## Phần code đã sửa sẵn (dành cho người kỹ thuật)
 
 Nhánh `claude/cloudflare-domain-change-0dptld`:
 
 - `supabase/functions/_shared/email-config.ts` — mặc định `APP_URL` →
   `https://bachungyenone.com`, `FROM_DOMAIN` → `bachungyenone.com`; thêm `FROM_NAME`
-  (secret `EMAIL_FROM_NAME`, mặc định `BHY ONE`).
+  (secret `EMAIL_FROM_NAME`, **mặc định `chieuthuc3` = đúng tên đang chạy**, để việc đổi
+  domain không kéo theo đổi tên người gửi).
 - `supabase/functions/_shared/staff.ts` — fallback `resolveSiteUrl()` → domain mới.
 - `send-reminders`, `weekly-kanban-digest`, `send-hr-notification`,
   `send-transactional-email` — `SITE_NAME` hết hardcode `'chieuthuc3'`, nay lấy từ
