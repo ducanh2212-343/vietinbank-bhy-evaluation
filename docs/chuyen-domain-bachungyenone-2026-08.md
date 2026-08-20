@@ -147,22 +147,33 @@ Phần code đã sửa sẵn trong repo, nhưng phải "đẩy lên chạy thậ
 **Việc A — Website:** merge nhánh `claude/cloudflare-domain-change-0dptld` vào `main`.
 Cloudflare tự build lại và cập nhật web sau vài phút (Workers Builds). Không cần làm gì thêm.
 
-**Việc B — Các function gửi email:** deploy lại **8 function** bắt buộc cho cutover:
+**Việc B — Các function gửi email.** Điều quan trọng phải hiểu trước: **sau Bước 3 thì
+việc chuyển tên miền đã xong về mặt chức năng.** Mã đang chạy trên Supabase đọc secret
+`APP_URL` / `EMAIL_FROM_DOMAIN` ngay khi bấm Save, nên email đã gửi từ
+`noreply@bachungyenone.com` với link về tên miền mới mà không cần deploy gì.
 
-```
-auth-email-hook          send-reminders           send-hr-notification
-weekly-kanban-digest     ct2-nhip-bao-cao         create-staff-user
-bulk-create-staff-users  reset-staff-password
-```
+Deploy ở bước này chỉ để đổi **tên hiển thị người gửi** và **nhãn cấu phần** — không gấp,
+và nên làm sau khi đã nghiệm thu Bước 5.
 
-Kèm theo (đổi thương hiệu/nhãn, không gấp — deploy khi tiện):
-`send-feature-tip-push`, `notify-kanban-update`, `ai-advisor`.
+| Hàm | Vì sao deploy | Mức cấp thiết |
+|---|---|---|
+| `send-reminders` | tên người gửi + nhãn `[CT3]` cho nhắc việc hằng ngày | cao (chạy 08:00 mỗi ngày) |
+| `auth-email-hook` | tên người gửi + 6 tiêu đề email xác thực | cao (đặt lại mật khẩu) |
+| `ct2-nhip-bao-cao` | tên người gửi cho email nhịp tuần | vừa (chiều thứ Sáu) |
+| `weekly-kanban-digest` | tên người gửi | vừa |
+| `send-hr-notification` | tên người gửi + nhãn `[CT3]` | thấp (không dùng từ 07/2026) |
+| `send-feature-tip-push`, `quiz-reminders` | nhãn `[Mẹo]`, `[Quizzi]` | thấp |
+| `ai-advisor` | chữ ký thư AI | thấp |
 
-> ⛔ **KHÔNG deploy thẳng bản trong repo cho 5 hàm dưới đây — repo đang CŨ HƠN máy chủ.**
-> Có người đã sửa thẳng trên Supabase ngày 10–12/08 mà không đưa mã về repo:
->
-> | Hàm | Repo sửa lần cuối | Máy chủ deploy lần cuối |
-> |---|---|---|
+**Không cần deploy:** `create-staff-user`, `bulk-create-staff-users`,
+`reset-staff-password` — chúng lấy địa chỉ từ secret `APP_URL`, đã đúng sẵn.
+
+> **Bài học vận hành (20/08):** trước khi deploy phải `git fetch origin main` và hợp nhất.
+> Nhánh làm việc lần này chậm **120 commit** so với `main`; deploy thẳng từ nhánh cũ sẽ
+> đẩy bản cũ đè lên máy chủ và xoá mất phần nhãn phân hệ `[CT2]/[CT3]/[Dấu ấn]` mà `main`
+> đã làm ngày 11–12/08. Đã hợp nhất, nay repo và máy chủ khớp nhau.
+
+---|---|---|
 > | `notify-ct2` | 02/08 | **12/08** |
 > | `notify-kanban-update` | 03/08 | **11/08** |
 > | `weekly-kanban-digest` | 03/08 | **11/08** |
