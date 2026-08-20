@@ -174,6 +174,13 @@ npm run phien-ban -- ten-ngan-khong-dau --loai=tinh-nang --phan-he=chieu-thuc-2
 - **PR nào đổi thứ cán bộ nhìn thấy hoặc thao tác thì phải kèm một file
   changelog** (kể cả PR sửa lỗi — ghi `sua-loi`). Đổi tài liệu / test / cấu hình
   build thì không cần.
+- **Ba lớp giữ cho quy ước không rơi giữa các phiên làm việc**: `CLAUDE.md` ở
+  gốc repo (Claude Code đọc mỗi phiên) → `.github/pull_request_template.md`
+  (ô tick) → `.github/workflows/kiem-tra.yml` chạy `scripts/kiem-tra-changelog.mjs`
+  (PR đổi `src/**` · `supabase/functions|migrations/**` · `public/**` ·
+  `index.html` mà không thêm file changelog nào thì **đỏ**; cửa thoát cho PR
+  thuần kỹ thuật: ghi `[khong-can-changelog]` vào commit message).
+  Tự kiểm trước khi mở PR: `npm run phien-ban:kiem-tra -- origin/main`.
 - `src/lib/__tests__/lichSuPhienBan.test.ts` canh quy ước: mã trùng, mã lệch tên
   file, thiếu trường, tiêu đề quá 80 ký tự, mục mới đặt tay số phiên bản, số
   phiên bản trùng… đều làm `npm run test` đỏ.

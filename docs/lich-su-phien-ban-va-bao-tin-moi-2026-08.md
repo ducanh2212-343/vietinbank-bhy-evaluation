@@ -173,7 +173,52 @@ Một PR gộp nhiều việc rời rạc thì thêm **nhiều file**, mỗi vi�
 nhồi năm việc vào một mục rồi tóm tắt chung chung, vì mục là thứ cán bộ đọc chứ
 không phải nhật ký của lập trình viên.
 
-### 4.3. Hàng rào máy kiểm — nguyên tắc mà máy không canh thì chỉ là lời khuyên
+### 4.3. Sáu tình huống khi nhiều phiên làm việc cùng chạy
+
+Đây là phần trả lời trực tiếp cho *«các PR tạo từ các session khác nhau thì quy
+ước thế nào, cách nào để thống nhất»*. Sáu tình huống có thể xảy ra, và cái gì
+xử lý cái nào:
+
+| # | Tình huống | Hệ quả | Ai xử lý |
+| --- | --- | --- | --- |
+| A | Hai PR thêm hai mục khác tên file | Không xung đột. Gộp xong có đủ cả hai, số phiên bản tự giãn ra | **Kết cấu** — mỗi mục một file |
+| B | Hai PR cùng ngày, cùng slug ⇒ cùng tên file | Xung đột git add/add — **ồn ào, thấy ngay**, sửa bằng đổi tên một file | Git. Phòng bằng cách đặt slug mô tả đúng tính năng, không đặt `sua-loi`, `cai-tien` |
+| C | Hai PR cùng nhắm một số phiên bản | **Không xảy ra được** — không ai đặt số, hệ thống tự tính sau khi gộp | **Kết cấu** — số phiên bản là kết quả, không phải đầu vào |
+| D | PR gộp muộn nhưng ghi ngày sớm hơn | Các mục sau bị đánh số lại. Cán bộ KHÔNG bị dội tin (mốc đã xem theo `ma`), nhưng số phiên bản đã in ra có thể lệch | **Quy ước**: ngày = ngày merge, không lùi ngày |
+| E | PR quên hẳn không thêm mục | Trước 19/08 thì **không ai biết** — đúng cách bản cũ chết | **Cổng chặn CI** (mục 4.4) |
+| F | Hai quản trị viên cùng bấm công bố một đợt | Chỉ ra một tin | **Database** — `phien_ban_cong_bo` khoá chính là mã mục |
+
+Điểm mấu chốt: **không có bước nào cần hai phiên làm việc phải biết nhau đang
+làm gì**. Mỗi nhánh làm xong việc của mình, thứ tự gộp nhánh quyết định thứ tự
+phiên bản, và kết quả giống nhau trên mọi máy (chốt xếp là `(ngày, mã)` chứ
+không phải thứ tự file mà hệ điều hành trả về).
+
+### 4.4. Ba lớp giữ cho quy ước không rơi
+
+Quy ước chỉ nằm trong tài liệu thì phiên làm việc sau **có thể không đọc tới**.
+Ba lớp, xếp từ sớm tới muộn:
+
+| Lớp | Nơi | Bắt được gì |
+| --- | --- | --- |
+| 1. Phiên làm việc vừa mở | `CLAUDE.md` ở gốc repo | Claude Code đọc file này mỗi phiên — quy ước tới tay trước cả dòng mã đầu tiên |
+| 2. Lúc mở PR | `.github/pull_request_template.md` | Ô tick «đã thêm file changelog» + phần «cần làm khi triển khai» |
+| 3. Trước khi gộp | `.github/workflows/kiem-tra.yml` → `scripts/kiem-tra-changelog.mjs` | PR đổi `src/**`, `supabase/functions/**`, `supabase/migrations/**`, `public/**`, `index.html` mà **không thêm file nào** trong `src/data/changelog/` ⇒ **đỏ** |
+
+Cổng chặn có cửa thoát cho PR thuần kỹ thuật: ghi `[khong-can-changelog]` vào
+commit message. Cửa thoát **để lại vết trong lịch sử git** — bỏ qua có lý do thì
+được, bỏ qua im lặng thì không.
+
+Tự kiểm trước khi mở PR:
+
+```sh
+npm run phien-ban:kiem-tra -- origin/main
+```
+
+CI cố ý **không chạy `npm run lint`**: repo đang nợ 544 lỗi lint có sẵn, bật lên
+là mọi PR đỏ ngay từ commit đầu — và một cổng lúc nào cũng đỏ thì mất luôn tác
+dụng của hai cổng còn lại.
+
+### 4.5. Hàng rào máy kiểm — nguyên tắc mà máy không canh thì chỉ là lời khuyên
 
 `src/lib/__tests__/lichSuPhienBan.test.ts` (chạy trong `npm run test`) bắt đỏ khi:
 
@@ -186,7 +231,7 @@ không phải nhật ký của lập trình viên.
 - mục mới đặt tay số phiên bản;
 - số phiên bản tính ra bị trùng, hoặc thứ tự thời gian đảo lộn.
 
-### 4.4. Viết nội dung cho ai
+### 4.6. Viết nội dung cho ai
 
 Viết cho **cán bộ**, không viết cho lập trình viên: không tên bảng, không tên
 hàm, không số migration. Ba trường bắt buộc trả lời ba câu:
