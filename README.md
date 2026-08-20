@@ -151,6 +151,23 @@ cả; đổi trạng thái qua RPC `gop_y_cap_nhat_trang_thai` (không có polic
 `20260827090000_gop_y_bhy_one.sql` **đã áp** vào project `whlysprzsguehxmrjwha`
 (05/08/2026), kèm cập nhật `types.ts`.
 
+**Đính kèm ảnh chụp lỗi (08/2026)** — hai cán bộ cùng đề nghị ngay trong hòm
+góp ý ("tải ảnh báo lỗi để Admin nhìn cho rõ"). Tối đa 3 ảnh/phiếu, **nén tại
+máy người dùng** trước khi tải lên (1600px / JPEG 0.75 — rộng hơn mức 800px của
+Kho Dữ Liệu vì ảnh chụp màn hình phải đọc được chữ trong bảng Kanban); ảnh gốc
+> 10MB bị chặn ngay tại client. Ước lượng tải: ~11 MB/tháng, tức 0,16% hạn mức
+Storage của gói Pro sau một năm — không đáng kể.
+
+Ảnh nằm ở bucket **riêng** `bhy-gop-y` (private, trần 3MB/file, chỉ nhận
+jpeg/png/webp) chứ KHÔNG dùng chung `bhy-one`: policy đọc của `bhy-one` là
+`is_staff()` cho mọi object, trong khi ảnh chụp lỗi Kanban PDTD chứa tên khách
+hàng và hạn mức tín dụng. Đường dẫn `<user_id>/<uuid>.jpg` nên thư mục cấp 1 là
+chủ ảnh — policy chỉ cho **người gửi + người duyệt** đọc/xoá. Xoá góp ý thì xoá
+luôn ảnh (Storage không cascade theo dòng bảng). Helper:
+`src/components/one/feedback/anhGopY.ts`. Migration
+`20260929090000_gop_y_dinh_kem_anh.sql` **đã áp** (20/08/2026) — nhân tiện đặt
+trần 10MB cho bucket `bhy-one` vốn đang để không giới hạn.
+
 ## Lịch sử phiên bản & báo tính năng mới (08/2026)
 
 Trang **«Có gì mới»** (`/co-gi-moi`, mục đầu tiên của Trang chủ) — mở cho **mọi

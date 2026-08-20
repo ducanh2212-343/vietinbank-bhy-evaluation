@@ -2551,6 +2551,7 @@ export type Database = {
       }
       portal_gop_y: {
         Row: {
+          anh: string[]
           created_at: string
           created_by: string
           danh_dau_boi: string | null
@@ -2565,6 +2566,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          anh?: string[]
           created_at?: string
           created_by?: string
           danh_dau_boi?: string | null
@@ -2579,6 +2581,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          anh?: string[]
           created_at?: string
           created_by?: string
           danh_dau_boi?: string | null

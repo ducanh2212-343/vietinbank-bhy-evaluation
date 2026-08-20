@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
-import { Check, Clock3, Eye, MessageSquarePlus, Trash2 } from 'lucide-react';
+import { Check, Clock3, Eye, ImagePlus, MessageSquarePlus, Trash2, X } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -14,12 +15,17 @@ import { useNavTree } from '@/hooks/useNavTree';
 import { cn } from '@/lib/utils';
 import { useGopY, GOP_Y_TRANG_THAI_LABEL, type GopYMuc, type GopYTrangThai } from './useGopY';
 import { nhomMucGopY } from './gopYMuc';
+import { GOP_Y_MAX_ANH, GOP_Y_MIME_CHO_PHEP, nenAnh, taiAnhGopY, xoaAnhGopY } from './anhGopY';
 
 /**
  * Nút «Góp ý» trên thanh điều hướng — hiện ở MỌI trang để ai cũng bấm vào
  * đóng góp được ngay. Form chỉ hai bước: tick menu/tính năng liên quan
- * (mục của trang đang mở được tick sẵn) và gõ nội dung. Bên dưới là danh sách
- * góp ý đã gửi của chính mình kèm trạng thái xử lý của Phòng TCTH / BGĐ.
+ * (mục của trang đang mở được tick sẵn), gõ nội dung và — nếu là lỗi — đính kèm
+ * ảnh chụp màn hình. Bên dưới là danh sách góp ý đã gửi của chính mình kèm
+ * trạng thái xử lý của Phòng TCTH / BGĐ.
+ *
+ * Ảnh nén tại máy người dùng trước khi tải lên (1600px / JPEG 0.75): ảnh gốc
+ * từ điện thoại 5–12MB tải thẳng qua 4G sẽ treo hoặc đứt giữa chừng.
  */
 
 const TRANG_THAI_BADGE: Record<GopYTrangThai, { icon: typeof Clock3; className: string }> = {
@@ -38,6 +44,10 @@ export function GopYNut() {
   const [noiDung, setNoiDung] = useState('');
   const [dangGui, setDangGui] = useState(false);
   const [mucDaChon, setMucDaChon] = useState<Map<string, string>>(new Map());
+  // Ảnh đã nén + tải lên sẵn, chờ gắn vào phiếu lúc bấm Gửi
+  const [anh, setAnh] = useState<Array<{ path: string; xemTruoc: string }>>([]);
+  const [dangTaiAnh, setDangTaiAnh] = useState(false);
+  const anhInputRef = useRef<HTMLInputElement>(null);
 
   // Họ tên + tên phòng chụp vào phiếu góp ý (file kết xuất không phải tra lại
   // profiles). Chỉ tra khi form mở — nút hiện trên mọi trang, không tự truy vấn.
@@ -83,6 +93,42 @@ export function GopYNut() {
     });
   };
 
+  // Nén rồi tải ảnh lên NGAY khi chọn: lúc bấm Gửi chỉ còn ghi một dòng dữ liệu,
+  // người dùng không phải chờ hai việc chồng nhau.
+  const handleChonAnh = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = '';
+    if (files.length === 0) return;
+
+    const conTrong = GOP_Y_MAX_ANH - anh.length;
+    if (conTrong <= 0) {
+      toast.error(`Mỗi góp ý đính kèm tối đa ${GOP_Y_MAX_ANH} ảnh.`);
+      return;
+    }
+    if (files.length > conTrong) {
+      toast.info(`Chỉ nhận thêm ${conTrong} ảnh nữa cho góp ý này.`);
+    }
+
+    setDangTaiAnh(true);
+    for (const file of files.slice(0, conTrong)) {
+      try {
+        const blob = await nenAnh(file);
+        const path = await taiAnhGopY(blob, user.id);
+        setAnh((truoc) => [...truoc, { path, xemTruoc: URL.createObjectURL(blob) }]);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Không tải được ảnh.');
+      }
+    }
+    setDangTaiAnh(false);
+  };
+
+  const handleBoAnh = async (path: string) => {
+    const bo = anh.find((a) => a.path === path);
+    if (bo) URL.revokeObjectURL(bo.xemTruoc);
+    setAnh((truoc) => truoc.filter((a) => a.path !== path));
+    await xoaAnhGopY([path]).catch(() => {});
+  };
+
   const handleGui = async () => {
     if (!noiDung.trim()) return;
     setDangGui(true);
@@ -92,11 +138,14 @@ export function GopYNut() {
       trangGui: pathname,
       nguoiGui: nguoiGui?.hoTen || user.email || 'Không rõ',
       phongBan: nguoiGui?.phong ?? null,
+      anh: anh.map((a) => a.path),
     });
     setDangGui(false);
     if (ok) {
       setNoiDung('');
       setMucDaChon(new Map());
+      anh.forEach((a) => URL.revokeObjectURL(a.xemTruoc));
+      setAnh([]);
       setOpen(false);
     }
   };
@@ -182,15 +231,64 @@ export function GopYNut() {
               />
             </div>
 
+            {/* 3. Ảnh chụp màn hình — hai cán bộ đề nghị: «tải ảnh báo lỗi để
+                Admin nhìn cho rõ». Ảnh nén ngay tại máy trước khi tải lên. */}
+            <div>
+              <p className="mb-1.5 text-sm font-medium">
+                Ảnh chụp màn hình{' '}
+                <span className="font-normal text-muted-foreground">
+                  (không bắt buộc — tối đa {GOP_Y_MAX_ANH} ảnh, giúp nhìn ra lỗi ngay)
+                </span>
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {anh.map((a) => (
+                  <div key={a.path} className="relative">
+                    <img
+                      src={a.xemTruoc}
+                      alt="Ảnh đính kèm góp ý"
+                      className="h-20 w-20 rounded-lg border object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void handleBoAnh(a.path)}
+                      aria-label="Bỏ ảnh này"
+                      className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-destructive text-destructive-foreground shadow-sm"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+                {anh.length < GOP_Y_MAX_ANH && (
+                  <button
+                    type="button"
+                    onClick={() => anhInputRef.current?.click()}
+                    disabled={dangTaiAnh}
+                    className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border border-dashed text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:opacity-60"
+                  >
+                    <ImagePlus className="h-5 w-5" />
+                    {dangTaiAnh ? 'Đang tải…' : 'Thêm ảnh'}
+                  </button>
+                )}
+              </div>
+              <input
+                ref={anhInputRef}
+                type="file"
+                accept={GOP_Y_MIME_CHO_PHEP.join(',')}
+                multiple
+                onChange={(e) => void handleChonAnh(e)}
+                className="hidden"
+              />
+            </div>
+
             <Button
               onClick={handleGui}
-              disabled={dangGui || !noiDung.trim()}
+              disabled={dangGui || dangTaiAnh || !noiDung.trim()}
               className="h-11 w-full rounded-xl"
             >
               {dangGui ? 'Đang gửi…' : 'Gửi góp ý'}
             </Button>
 
-            {/* 3. Góp ý đã gửi của tôi + trạng thái xử lý */}
+            {/* 4. Góp ý đã gửi của tôi + trạng thái xử lý */}
             {cuaToi.length > 0 && (
               <div className="border-t pt-3">
                 <p className="mb-2 text-sm font-medium">Góp ý của tôi ({cuaToi.length})</p>
