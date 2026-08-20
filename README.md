@@ -20,10 +20,12 @@ quy trình duyệt 3 cấp, kế hoạch phát triển IDP 70/20/10 và trợ l�
 - **Chiến dịch học tập tập thể** — `/chien-dich-hoc-tap` (bảng `learning_campaigns`,
   RPC `get_campaign_progress`)
 
-- **Production:** https://chieuthuc3.com (domain Cloudflare, 07/2026) — app chạy trên
+- **Production:** https://bachungyenone.com (domain Cloudflare, 08/2026) — app chạy trên
   **Cloudflare Worker** `343-noi-bo` (đường dự phòng: https://343-noi-bo.ducanh2212.workers.dev).
-  Domain cũ `343skill.com` không còn truy cập được — xem mục "Chuyển domain" trong
-  `docs/quan-tri-email-2026-07.md`.
+  Domain cũ `chieuthuc3.com` giữ lại trỏ về cùng Worker trong giai đoạn chuyển tiếp;
+  `343skill.com` đã ngừng. Hướng dẫn chuyển domain từng bước:
+  `docs/chuyen-domain-bachungyenone-2026-08.md` (lịch sử lần trước: mục "Chuyển domain"
+  trong `docs/quan-tri-email-2026-07.md`).
 - **Backend:** Supabase — project `whlysprzsguehxmrjwha` (chieuthuc3-bachungyen)
 - **Stack:** Vite + React + TypeScript + Tailwind + shadcn/ui
 

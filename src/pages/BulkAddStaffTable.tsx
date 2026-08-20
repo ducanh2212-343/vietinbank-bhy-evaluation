@@ -400,7 +400,7 @@ export default function BulkAddStaffTable() {
                         type="email"
                         value={r.email}
                         onChange={(e) => setRow(r.key, { email: e.target.value })}
-                        placeholder="a@343skill.com"
+                        placeholder="a@gmail.com"
                         className="h-8"
                       />
                       {r.email && existingEmails.has(r.email.trim().toLowerCase()) && (

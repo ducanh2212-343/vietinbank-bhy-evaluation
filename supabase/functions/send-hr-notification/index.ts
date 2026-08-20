@@ -11,9 +11,9 @@
 // Tôn trọng suppressed_emails + unsubscribe token; chống gửi trùng theo idempotency_key
 // (thư: 1 lần/kỳ/người; nhắc hạn: tối đa 1 lần/ngày/kỳ/người).
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { APP_URL, FROM_DOMAIN, SENDER_DOMAIN } from '../_shared/email-config.ts';
+import { APP_URL, FROM_DOMAIN, FROM_NAME, SENDER_DOMAIN } from '../_shared/email-config.ts';
 
-const SITE_NAME = 'chieuthuc3';
+const SITE_NAME = FROM_NAME;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -65,7 +65,7 @@ function wrapEmail(title: string, bodyHtml: string): string {
 <body style="margin:0;padding:0;background:#f2f4f8;font-family:Arial,Helvetica,sans-serif;color:#1a202c;">
   <div style="max-width:560px;margin:0 auto;padding:24px 16px;">
     <div style="background:#0b2e59;border-radius:10px 10px 0 0;padding:18px 24px;">
-      <div style="color:#ffffff;font-size:16px;font-weight:bold;">343 Phát triển nhân sự</div>
+      <div style="color:#ffffff;font-size:16px;font-weight:bold;">${SITE_NAME}</div>
       <div style="color:#9fb6d4;font-size:11px;">VietinBank Bắc Hưng Yên · 20 năm Vun gốc bền rễ</div>
     </div>
     <div style="background:#ffffff;border-radius:0 0 10px 10px;padding:24px;font-size:14px;">
@@ -73,7 +73,7 @@ function wrapEmail(title: string, bodyHtml: string): string {
       ${bodyHtml}
     </div>
     <p style="text-align:center;font-size:11px;color:#8a94a6;margin-top:14px;">
-      Email tự động từ hệ thống 343 Phát triển nhân sự — ${escapeHtml(APP_URL)}
+      Email tự động từ hệ thống ${SITE_NAME} — ${escapeHtml(APP_URL)}
     </p>
   </div>
 </body></html>`;
@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
       const letter = (body.letter_markdown as string || '').trim();
       if (!letter) return json({ error: 'Thiếu letter_markdown' }, 400);
       label = 'quarterly-letter';
-      subject = `🌱 Thư phát triển cá nhân ${cycleName} — 343 Phát triển nhân sự`;
+      subject = `[CT3] 🌱 Thư phát triển cá nhân ${cycleName} — ${SITE_NAME}`;
       idempotencyKey = `qletter-${cycleName}-${profileId}`;
       bodyHtml = letterMarkdownToHtml(letter);
       text = letter;
@@ -153,7 +153,7 @@ Deno.serve(async (req) => {
         : [];
       if (!scoreText) return json({ error: 'Thiếu score_text' }, 400);
       label = 'council-report';
-      subject = `📊 Kết quả đánh giá công tác đầu mối ${cycleName} — 343 Phát triển nhân sự`;
+      subject = `[CT3] 📊 Kết quả đánh giá công tác đầu mối ${cycleName} — ${SITE_NAME}`;
       const today = new Date().toISOString().slice(0, 10);
       // Cho phép gửi lại trong ngày nếu điểm thay đổi (có thêm phiếu mới)
       idempotencyKey = `creport-${cycleName}-${profileId}-${today}-${scoreText}`;
@@ -200,7 +200,7 @@ ${wishesBlock}`;
       const deadlineText = (body.deadline_text as string || '').trim();
       if (pendingSubjects.length === 0) return json({ error: 'Thiếu pending_subjects' }, 400);
       label = 'council-vote-reminder';
-      subject = `🗳️ Nhắc chấm điểm đầu mối ${cycleName} — 343 Phát triển nhân sự`;
+      subject = `[CT3] 🗳️ Nhắc chấm điểm đầu mối ${cycleName} — ${SITE_NAME}`;
       const today = new Date().toISOString().slice(0, 10);
       idempotencyKey = `cvote-${cycleName}-${profileId}-${today}`;
       const ctaUrl = `${APP_URL}/danh-gia-dau-moi`;
@@ -220,7 +220,7 @@ ${deadlineText ? `— hạn bỏ phiếu: <strong>${escapeHtml(deadlineText)}</s
       const deadlineText = (body.deadline_text as string || '').trim();
       const statusLabel = (body.status_label as string || 'Chưa nộp').trim();
       label = 'submission-reminder';
-      subject = `⏰ Nhắc nộp phiếu đánh giá ${cycleName} — 343 Phát triển nhân sự`;
+      subject = `[CT3] ⏰ Nhắc nộp phiếu đánh giá ${cycleName} — ${SITE_NAME}`;
       const today = new Date().toISOString().slice(0, 10);
       idempotencyKey = `reminder-${cycleName}-${profileId}-${today}`;
       const ctaUrl = `${APP_URL}/tu-danh-gia`;

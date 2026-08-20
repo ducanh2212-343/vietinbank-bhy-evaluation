@@ -16,7 +16,7 @@ self.addEventListener('push', (event) => {
   } catch (_e) {
     data = { body: event.data ? event.data.text() : '' };
   }
-  const title = data.title || '343 Nội bộ';
+  const title = data.title || 'BHY ONE';
   event.waitUntil(
     self.registration.showNotification(title, {
       body: data.body || '',

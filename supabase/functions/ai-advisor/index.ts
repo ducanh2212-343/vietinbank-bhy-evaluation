@@ -381,7 +381,7 @@ ${JSON.stringify(payload).slice(0, 12000)}`;
   }
   if (mode === 'quarterly_letter') {
     const { payload } = body;
-    return `Bạn viết THƯ TỔNG KẾT PHÁT TRIỂN CÁ NHÂN cuối kỳ cho một cán bộ ngân hàng, giọng ấm áp - tích cực - cụ thể (xưng "bạn", ký tên "Hệ thống 343 Phát triển nhân sự"). Dựa hoàn toàn trên dữ liệu JSON bên dưới. KHÔNG nêu tên người khác, KHÔNG so sánh với đồng nghiệp — chỉ so bạn-với-chính-bạn.
+    return `Bạn viết THƯ TỔNG KẾT PHÁT TRIỂN CÁ NHÂN cuối kỳ cho một cán bộ ngân hàng, giọng ấm áp - tích cực - cụ thể (xưng "bạn", ký tên "Hệ thống Bắc Hưng Yên ONE"). Dựa hoàn toàn trên dữ liệu JSON bên dưới. KHÔNG nêu tên người khác, KHÔNG so sánh với đồng nghiệp — chỉ so bạn-với-chính-bạn.
 
 Cấu trúc (markdown, 200-320 từ):
 1. Mở đầu: ghi nhận nỗ lực trong kỳ (nhắc tên kỳ).
