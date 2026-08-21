@@ -151,6 +151,47 @@ cả; đổi trạng thái qua RPC `gop_y_cap_nhat_trang_thai` (không có polic
 `20260827090000_gop_y_bhy_one.sql` **đã áp** vào project `whlysprzsguehxmrjwha`
 (05/08/2026), kèm cập nhật `types.ts`.
 
+**Đính kèm ảnh chụp lỗi (08/2026)** — hai cán bộ cùng đề nghị ngay trong hòm
+góp ý ("tải ảnh báo lỗi để Admin nhìn cho rõ"). Tối đa 3 ảnh/phiếu, **nén tại
+máy người dùng** trước khi tải lên (1600px / JPEG 0.75 — rộng hơn mức 800px của
+Kho Dữ Liệu vì ảnh chụp màn hình phải đọc được chữ trong bảng Kanban); ảnh gốc
+> 10MB bị chặn ngay tại client. Ước lượng tải: ~11 MB/tháng, tức 0,16% hạn mức
+Storage của gói Pro sau một năm — không đáng kể.
+
+Ảnh nằm ở bucket **riêng** `bhy-gop-y` (private, trần 3MB/file, chỉ nhận
+jpeg/png/webp) chứ KHÔNG dùng chung `bhy-one`: policy đọc của `bhy-one` là
+`is_staff()` cho mọi object, trong khi ảnh chụp lỗi Kanban PDTD chứa tên khách
+hàng và hạn mức tín dụng. Đường dẫn `<user_id>/<uuid>.jpg` nên thư mục cấp 1 là
+chủ ảnh — policy chỉ cho **người gửi + người duyệt** đọc/xoá. Xoá góp ý thì xoá
+luôn ảnh (Storage không cascade theo dòng bảng). Helper:
+`src/components/one/feedback/anhGopY.ts`. Migration
+`20260929090000_gop_y_dinh_kem_anh.sql` **đã áp** (20/08/2026) — nhân tiện đặt
+trần 10MB cho bucket `bhy-one` vốn đang để không giới hạn.
+
+**Bản tin sáng báo góp ý mới (08/2026)** — trước đó ba người tiếp nhận chỉ biết
+có góp ý khi tự mở trang, nên có phiếu nằm «Mới gửi» nhiều ngày. Nay cron
+`gop-y-ban-tin-sang` chạy **9h10 thứ 2–6** (`10 2 * * 1-5` giờ UTC) gọi
+`gop_y_ban_tin_sang()`: gộp mọi phiếu `bao_luc IS NULL` thành MỘT tin, đặt vào
+hàng đợi `ct2_thong_bao` mã `GOP_Y` cho đúng nhóm `la_nguoi_duyet_gop_y`, rồi
+đóng dấu `bao_luc`. Chuông trong app là nguồn sự thật, push chỉ là kênh phát.
+
+Chốt 9h (không phải 7h00 như tin hoãn khác) là yêu cầu nghiệp vụ: chờ cán bộ
+nhập xong đầu giờ sáng. Ngày nghỉ thì **bỏ qua hẳn** thay vì dùng
+`ct2_moc_phat_gan_nhat()` — hàm đó đẩy tin về 7h00, sớm hơn mốc đã chốt.
+Thân tin **cắt cứng 3 dòng** + «… và N phiếu khác» nên không bao giờ dài: chạy
+thử trên 14 phiếu dồn lại chỉ 271 ký tự. Chèn thẳng vào hàng đợi (không qua
+`ct2_dat_thong_bao`) theo lối của tin `PHIEN_BAN` — bản tin ngày một lần không
+được rơi vào trần 3 tin NHE/người/ngày.
+
+Mã `GOP_Y` phải có nhánh đường dẫn ở **cả hai bản**: `duongDanThongBao()`
+(`src/lib/ct2.ts`) và `duongDan()` (`supabase/functions/notify-ct2/index.ts`) —
+thiếu là bấm vào tin rơi về Kanban. Migration
+`20260930090000_gop_y_ban_tin_sang.sql` **đã áp** (21/08/2026, có backfill
+`bao_luc` cho 14 phiếu cũ để sáng hôm sau không dội một bản tin 14 phiếu);
+`notify-ct2` **đã deploy lại (v14)** — bản này mang theo cả nhánh `PHIEN_BAN`
+vốn đang chờ deploy, vô hại vì migration lịch sử phiên bản chưa áp nên chưa có
+tin `PHIEN_BAN` nào phát sinh.
+
 ## Lịch sử phiên bản & báo tính năng mới (08/2026)
 
 Trang **«Có gì mới»** (`/co-gi-moi`, mục đầu tiên của Trang chủ) — mở cho **mọi
@@ -196,7 +237,8 @@ npm run phien-ban -- ten-ngan-khong-dau --loai=tinh-nang --phan-he=chieu-thuc-2
   đã báo, khoá chính là mã mục nên bấm hai lần cũng chỉ ra một tin) — migration
   `20260928090000_lich_su_phien_ban.sql` **chưa áp** vào project
   `whlysprzsguehxmrjwha`; chưa áp thì trang vẫn chạy, mốc đã xem rơi về trình
-  duyệt từng máy. `notify-ct2` cần deploy lại (nhánh `PHIEN_BAN`).
+  duyệt từng máy. `notify-ct2` **đã deploy lại v14** (21/08/2026) nên nhánh
+  `PHIEN_BAN` đã có sẵn trên máy chủ — chỉ còn chờ áp migration.
 
 Nghiên cứu đầy đủ (có nên push mỗi khi lên tính năng mới, ba phương án đã cân,
 chính sách kênh theo mức thay đổi): `docs/lich-su-phien-ban-va-bao-tin-moi-2026-08.md`.

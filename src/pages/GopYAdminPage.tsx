@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {
   Check, Clock3, Download, Eye, Inbox, MessageSquarePlus, Trash2,
@@ -16,6 +16,7 @@ import {
   useGopY, GOP_Y_TRANG_THAI_LABEL, type GopY, type GopYTrangThai,
 } from '@/components/one/feedback/useGopY';
 import { locGopYTheoTrangThai, downloadGopYExcel } from '@/components/one/feedback/gopYExcel';
+import { kyAnhGopY } from '@/components/one/feedback/anhGopY';
 
 /**
  * Tiếp nhận góp ý cải thiện hệ thống BHY One — dành cho Phòng Tổ chức Tổng hợp
@@ -39,9 +40,11 @@ const THE_TRANG_THAI: Record<GopYTrangThai, { icon: typeof Clock3; className: st
 };
 
 function TheGopY({
-  gopY, onDoiTrangThai, onXoa,
+  gopY, anhUrl, onDoiTrangThai, onXoa,
 }: {
   gopY: GopY;
+  /** path ảnh → signed URL (bucket bhy-gop-y là private) */
+  anhUrl: Record<string, string>;
   onDoiTrangThai: (id: string, trangThai: GopYTrangThai) => void;
   onXoa: (id: string) => void;
 }) {
@@ -62,6 +65,26 @@ function TheGopY({
                     {m.label}
                   </span>
                 ))}
+              </div>
+            )}
+            {gopY.anh.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {gopY.anh.map((path) => {
+                  const url = anhUrl[path];
+                  if (!url) return null;
+                  return (
+                    // Mở tab mới để xem cỡ đầy đủ — ảnh chụp bảng Kanban đọc
+                    // trong khung 96px thì không ra chữ
+                    <a key={path} href={url} target="_blank" rel="noopener noreferrer">
+                      <img
+                        src={url}
+                        alt="Ảnh cán bộ đính kèm góp ý"
+                        loading="lazy"
+                        className="h-24 w-24 rounded-lg border object-cover transition-opacity hover:opacity-80"
+                      />
+                    </a>
+                  );
+                })}
               </div>
             )}
             <p className="mt-2 text-xs text-muted-foreground">
@@ -117,7 +140,30 @@ export default function GopYAdminPage() {
   const [dangTai, setDangTai] = useState(false);
   const [xoaId, setXoaId] = useState<string | null>(null);
 
+  const [anhUrl, setAnhUrl] = useState<Record<string, string>>({});
+  // Đường dẫn ĐÃ gọi ký (kể cả ký hụt) — giữ trong ref chứ không suy ra từ
+  // anhUrl: một path ký hụt mà vẫn tính là "chưa có" sẽ khiến effect gọi lại
+  // vô hạn sau mỗi lần setState.
+  const daKyRef = useRef<Set<string>>(new Set());
+
   const danhSach = useMemo(() => locGopYTheoTrangThai(gopYs, boLoc), [gopYs, boLoc]);
+
+  // Ký hàng loạt trong MỘT lượt gọi (bucket private, URL hạn 1 giờ), chỉ cho
+  // các phiếu đang hiện trên màn hình.
+  useEffect(() => {
+    const canKy = [...new Set(danhSach.flatMap((g) => g.anh))]
+      .filter((p) => !daKyRef.current.has(p));
+    if (canKy.length === 0) return;
+    canKy.forEach((p) => daKyRef.current.add(p));
+    let huy = false;
+    void kyAnhGopY(canKy).then((them) => {
+      if (!huy && Object.keys(them).length > 0) {
+        setAnhUrl((truoc) => ({ ...truoc, ...them }));
+      }
+    });
+    return () => { huy = true; };
+  }, [danhSach]);
+
   const dem = (t: GopYTrangThai) => gopYs.filter((g) => g.trangThai === t).length;
 
   const taiExcel = async () => {
@@ -194,6 +240,7 @@ export default function GopYAdminPage() {
           <TheGopY
             key={g.id}
             gopY={g}
+            anhUrl={anhUrl}
             onDoiTrangThai={(id, tt) => void capNhatTrangThai(id, tt)}
             onXoa={setXoaId}
           />

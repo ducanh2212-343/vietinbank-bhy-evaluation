@@ -35,6 +35,7 @@ const COT_DANH_SACH: CotConfig[] = [
   { header: 'Người gửi', width: 24 },
   { header: 'Phòng/Ban', width: 26 },
   { header: 'Ngày gửi', width: 18, numFmt: DINH_DANG_NGAY, center: true },
+  { header: 'Số ảnh kèm', width: 11, center: true },
   { header: 'Trạng thái', width: 14, center: true },
   { header: 'Ngày đánh dấu', width: 18, numFmt: DINH_DANG_NGAY, center: true },
   { header: 'Trang đang mở khi gửi', width: 26 },
@@ -103,6 +104,7 @@ export async function buildGopYWorkbook(rows: GopY[]): Promise<Workbook> {
       g.nguoiGui,
       g.phongBan ?? '',
       ngay(g.createdAt),
+      g.anh.length,
       GOP_Y_TRANG_THAI_LABEL[g.trangThai],
       ngay(g.danhDauLuc),
       g.trangGui ?? '',
@@ -120,6 +122,7 @@ export async function buildGopYWorkbook(rows: GopY[]): Promise<Workbook> {
     ['Đã xem xét', dem('da_xem_xet')],
     ['Đã xử lý', dem('da_xu_ly')],
     ['Số người gửi', new Set(rows.map((g) => g.createdBy)).size],
+    ['Số góp ý có ảnh kèm', rows.filter((g) => g.anh.length > 0).length],
   ];
   dong.forEach((d) => ws2.addRow(d));
   trangTriSheet(

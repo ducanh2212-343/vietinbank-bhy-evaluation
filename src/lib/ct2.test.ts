@@ -430,6 +430,13 @@ describe('Thông báo — bấm vào phải mở đúng thứ nó nói tới', (
       .toBe('/one/chieu-thuc-2?the=dv-1');
   });
 
+  it('bản tin sáng góp ý mở hòm tiếp nhận, không rơi về Kanban', () => {
+    // Tin GOP_Y không gắn thẻ nào; thiếu nhánh riêng là rơi vào nhánh mặc định
+    // '/one/chieu-thuc-2' — bấm vào chẳng thấy góp ý đâu.
+    expect(duongDanThongBao({ ma_su_kien: 'GOP_Y', dau_viec_id: null }))
+      .toBe('/gop-y-he-thong');
+  });
+
   it('tin hồ sơ CŨ (trước khi có mã) vẫn về tab tín dụng, không phải tab mặc định', () => {
     expect(duongDanThongBao({ ma_su_kien: 'HS_TRINH', dau_viec_id: null }))
       .toBe('/one/chieu-thuc-2?tab=tin-dung');

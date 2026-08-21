@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { xoaAnhGopY } from './anhGopY';
 
 // Góp ý cải thiện hệ thống BHY One — bảng portal_gop_y.
 // RLS quyết định phạm vi: cán bộ thường chỉ nhận về góp ý của mình,
@@ -30,6 +31,8 @@ export interface GopY {
   nguoiGui: string;
   phongBan: string | null;
   trangThai: GopYTrangThai;
+  /** Đường dẫn ảnh đính kèm trong bucket bhy-gop-y (render qua signed URL) */
+  anh: string[];
   danhDauLuc: string | null;
   createdAt: string;
   createdBy: string;
@@ -42,6 +45,8 @@ export interface GopYInput {
   trangGui: string;
   nguoiGui: string;
   phongBan: string | null;
+  /** Path ảnh đã tải lên trước khi gọi guiGopY */
+  anh: string[];
 }
 
 const GOP_Y_KEY = ['bhy-gop-y'];
@@ -83,6 +88,7 @@ export function useGopY(enabled = true) {
         nguoiGui: r.nguoi_gui,
         phongBan: r.phong_ban,
         trangThai: r.trang_thai as GopYTrangThai,
+        anh: r.anh ?? [],
         danhDauLuc: r.danh_dau_luc,
         createdAt: r.created_at,
         createdBy: r.created_by,
@@ -105,6 +111,7 @@ export function useGopY(enabled = true) {
       trang_gui: input.trangGui,
       nguoi_gui: input.nguoiGui,
       phong_ban: input.phongBan,
+      anh: input.anh,
     });
     if (error) {
       toast.error(`Không gửi được góp ý: ${error.message}`);
@@ -115,16 +122,24 @@ export function useGopY(enabled = true) {
     return true;
   }, [refresh]);
 
-  /** Người gửi rút lại góp ý còn trạng thái 'moi' (RLS chặn các trường hợp khác) */
+  /**
+   * Người gửi rút lại góp ý còn trạng thái 'moi'; người duyệt xoá mục rác
+   * (RLS chặn các trường hợp khác). Xoá luôn ảnh kèm — Storage KHÔNG cascade
+   * theo dòng bảng, để nguyên là đọng ảnh mồ côi vĩnh viễn.
+   */
   const xoaGopY = useCallback(async (id: string) => {
+    const anh = gopYs.find((g) => g.id === id)?.anh ?? [];
     const { error } = await supabase.from('portal_gop_y').delete().eq('id', id);
     if (error) {
       toast.error(`Không xóa được: ${error.message}`);
       return;
     }
-    toast.success('Đã rút lại góp ý');
+    // Dòng đã xoá thành công thì ảnh chắc chắn không còn ai tham chiếu tới.
+    // Ảnh xoá hụt chỉ tốn vài trăm KB, không đáng để chặn luồng người dùng.
+    await xoaAnhGopY(anh).catch(() => {});
+    toast.success('Đã xóa góp ý');
     refresh();
-  }, [refresh]);
+  }, [gopYs, refresh]);
 
   /** Người duyệt tích «Đã xem xét» / «Đã xử lý» (hoặc bỏ tích về 'moi') */
   const capNhatTrangThai = useCallback(async (id: string, trangThai: GopYTrangThai) => {

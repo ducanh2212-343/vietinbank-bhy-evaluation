@@ -938,6 +938,8 @@ export function duongDanThongBao(
 ): string {
   // Tin công bố phiên bản không gắn với thẻ nào — mở thẳng trang «Có gì mới»
   if (tb.ma_su_kien === 'PHIEN_BAN') return '/co-gi-moi';
+  // Bản tin sáng góp ý — mở thẳng hòm tiếp nhận của Phòng TCTH / BGĐ
+  if (tb.ma_su_kien === 'GOP_Y') return '/gop-y-he-thong';
   if (tb.dau_viec_id) return `/one/chieu-thuc-2?the=${tb.dau_viec_id}`;
   // Tin hồ sơ mang mã hồ sơ mở THẲNG hồ sơ đó — nơi có sẵn ô Trao đổi.
   // «Có hồ sơ chờ anh/chị» mà chỉ mở chung tab là bắt người duyệt tự tìm
