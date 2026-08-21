@@ -6,10 +6,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { BellRing } from 'lucide-react';
 import { toast } from 'sonner';
 import {
+  donDangKyDomainCu,
   enablePush,
   hasActiveSubscription,
   isIosNeedingHomeScreen,
   isPushSupported,
+  laDomainCu,
   refreshPushSubscription,
 } from '@/lib/pushNotifications';
 
@@ -22,6 +24,12 @@ export function EnablePushBanner({ profileId }: { profileId: string }) {
     let mounted = true;
     (async () => {
       if (!isPushSupported()) return;
+      // Domain cũ: không mời bật (bật ở đây chỉ sinh thêm đăng ký sẽ bị trùng),
+      // ngược lại tự dọn đăng ký cũ của thiết bị này để hết thông báo đúp.
+      if (laDomainCu()) {
+        void donDangKyDomainCu();
+        return;
+      }
       if (await hasActiveSubscription()) {
         // Đã bật — lặng lẽ làm mới đăng ký trong DB rồi thôi
         void refreshPushSubscription(profileId);

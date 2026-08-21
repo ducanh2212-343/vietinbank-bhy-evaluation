@@ -250,9 +250,10 @@ nên có mấy thứ mọi người phải làm lại **một lần duy nhất**
 3. **Ai đã cài app ra màn hình điện thoại** (biểu tượng BHY ONE): xoá biểu tượng cũ,
    mở `bachungyenone.com` rồi cài lại ("Thêm vào màn hình chính").
 4. **Ai đã bật thông báo đẩy**: thông báo đã đăng ký ở `chieuthuc3.com` **vẫn chạy bình
-   thường, không mất** (xem mục dưới). Chỉ khi muốn nhận thông báo *ở địa chỉ mới* thì
-   vào cài đặt trong cổng bật lại một lần — nếu bật cả hai nơi sẽ nhận **2 thông báo trùng
-   nhau**, khi đó tắt bớt ở địa chỉ cũ.
+   thường, không mất**. Muốn nhận ở địa chỉ mới thì bật lại một lần tại đó. Từ 21/08,
+   chuyện **thông báo đúp** (bật cả hai nơi → mỗi tin hiện 2 lần, đã xảy ra sáng 21/08)
+   được xử lý tự động: mở cổng ở địa chỉ cũ là thiết bị tự gỡ đăng ký cũ của chính nó,
+   và địa chỉ cũ không còn cho bật thông báo mới.
 
 Mẫu tin nhắn gửi nhóm:
 
@@ -352,6 +353,47 @@ tên miền. Khi nào muốn đổi tên hiển thị, chỉ cần thêm secret 
 — **có hiệu lực ngay, không cần sửa code, không cần deploy lại**. Lưu ý khi đổi: hàm
 `ct2-nhip-bao-cao` (ngoài repo) vẫn hardcode `chieuthuc3`, nên muốn đồng bộ hoàn toàn
 thì phải xử lý việc số 1 ở trên trước.
+
+## Nhật ký cutover thật — 20/08/2026
+
+| Bước | Trạng thái |
+|---|---|
+| 1. Cloudflare gắn `bachungyenone.com` + `www` vào Worker | ✅ xong |
+| 2. Resend verify tên miền + API key Full access | ✅ xong |
+| 3. Secrets Supabase + Site URL / Redirect URLs | ✅ xong |
+| 4a. Merge `main` → website chạy tên miền mới | ✅ PR #128 |
+| 4b. Deploy 6 edge function | ✅ xong, xem bảng dưới |
+| 5. Nghiệm thu «Quên mật khẩu» đầu–cuối | ✅ thư về, link mở đúng màn đổi mật khẩu |
+
+| Hàm | Bản | Kiểm chứng |
+|---|---|---|
+| `send-hr-notification` | v14 | gọi thử → 401 đúng nhánh xác thực |
+| `ct2-nhip-bao-cao` | v9 | `dry_run` tuần → 200, giữ nhịp 55%, 109 lượt, 14 người nhận |
+| `send-reminders` | v21 | `dry_run` → 200, 10 người nhận, 22 thiết bị push |
+| `auth-email-hook` | v14 | 401 «Invalid signature» + gửi thật thành công |
+| `send-feature-tip-push` | v8 | `dry_run` → 200, 16 người lâu không đăng nhập, 9 có thiết bị |
+| `weekly-kanban-digest` | v13 | `dry_run` → 200, tuần 10–16/08, 15 người nhận, 513 thẻ theo dõi |
+
+`ai-advisor` **chưa deploy**: thay đổi duy nhất là chữ ký cuối thư AI trong Bản tin quý —
+để lần nào deploy bằng CLI thì kèm luôn, không đáng chép tay 1.080 dòng.
+
+### Sự cố trong lúc cutover — một ký tự tab
+
+Sau Bước 3, mọi email ngừng gửi. Resend trả 422 «Invalid `from` field». Nguyên nhân:
+ô secret `EMAIL_FROM_DOMAIN` bị dán lọt **một ký tự TAB** ở đầu, nên header From thành
+`BHY ONE <noreply@	bachungyenone.com>`. Trên giao diện Supabase ô đó nhìn hoàn toàn
+bình thường — chỉ đọc `email_send_log` và payload trong hàng đợi mới thấy.
+
+Đã vá tận gốc trong `_shared/email-config.ts`: mọi giá trị đọc từ secret đều được làm
+sạch khoảng trắng, và chấp nhận cả khi người nhập lỡ dán kèm `https://` hay dấu `/`.
+
+**Bài học cho lần sau:** `dry_run` xanh **không** chứng minh email gửi được — nó không
+gọi Resend. Sau mỗi lần đổi cấu hình email, phải soi `email_send_log` một lượt:
+
+```sql
+select created_at, template_name, status, error_message
+from email_send_log order by created_at desc limit 10;
+```
 
 ## Thương hiệu BHY ONE & nhãn cấu phần trong lời nhắc
 
