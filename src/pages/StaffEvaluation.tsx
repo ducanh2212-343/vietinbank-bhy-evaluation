@@ -41,6 +41,8 @@ import {
 } from '@/lib/evaluationPersistence';
 import { OverallReviewBlock, type OverallReviewValue } from '@/components/evaluation/OverallReviewBlock';
 import { validateManagerReview } from '@/lib/evaluationValidation';
+import { mergeTransferItems, describeMergeResult, PLAN_LIMITS } from '@/lib/planTransfer';
+import { PlanAmendmentBlock } from '@/components/evaluation/PlanAmendmentBlock';
 import { StarClassificationBlock } from '@/components/evaluation/StarClassificationBlock';
 import { getReviewerLevel, getOverallReviewField, resolveDefaultReviewerId } from '@/lib/reviewerScope';
 import { useCycleOneOnOneQuestions } from '@/hooks/useCycleOneOnOneQuestions';
@@ -184,13 +186,25 @@ export default function StaffEvaluation() {
       Object.values(overallReview || {}).some(v => typeof v === 'string' && v.trim().length > 0) ||
       (remark || '').trim().length > 0 ||
       (managerConclusion || '').trim().length > 0;
-    return validateManagerReview({
+    const missing = validateManagerReview({
       coreAssessments,
       supplementaryAssessments: suppAssessments,
       attitudeAssessments,
       overallFilled,
     });
-  }, [coreAssessments, suppAssessments, attitudeAssessments, overallReview, remark, managerConclusion]);
+    // Giới hạn kế hoạch (27/07) phải gác cả ĐƯỜNG CẤP TRÊN: phiếu đã duyệt bị BGĐ
+    // chuyển trả TP bổ sung (PR #81) đi qua "Xác nhận rà soát" chứ không qua
+    // validation nộp phiếu của cán bộ — thiếu gate này là tuồn kế hoạch vượt 3/3.
+    const nSkillActs = skillActions.filter((a) => (a.action_text || '').trim()).length;
+    if (nSkillActs > PLAN_LIMITS.SKILL_ACTIONS) {
+      missing.push(`Mục D có ${nSkillActs} hành động upskill — tối đa ${PLAN_LIMITS.SKILL_ACTIONS}, hãy chọn lọc trước khi chuyển duyệt`);
+    }
+    const nAiActs = aiActions.filter((a) => (a.ai_action_text || '').trim()).length;
+    if (nAiActs > PLAN_LIMITS.AI_ACTIONS) {
+      missing.push(`Mục F có ${nAiActs} hành động AI — tối đa ${PLAN_LIMITS.AI_ACTIONS}, hãy chọn lọc trước khi chuyển duyệt`);
+    }
+    return missing;
+  }, [coreAssessments, suppAssessments, attitudeAssessments, overallReview, remark, managerConclusion, skillActions, aiActions]);
   const canConfirmReview = reviewMissing.length === 0;
 
   // Duyệt theo ngoại lệ: đối chiếu tự đánh giá vs đánh giá quản lý trên toàn bộ skill + thái độ
@@ -602,7 +616,10 @@ export default function StaffEvaluation() {
     if (!formId || saving || actionLoading) return 'ok';
     if (!cycleOpen) return 'ok'; // kỳ đóng: chỉ xem — cùng luật với canSaveForm
     const canChildren = canEditManagerAssessment || canEmployeeEditSelf;
-    const canParentOverall = isManagerMode && !!reviewField;
+    // "Kết luận & định hướng" là BẢN SAU CÙNG khi phê duyệt (nguyên tắc 29/07) — sau
+    // approved/closed không autosave nữa, tránh sửa im lặng nội dung đã duyệt. Muốn
+    // sửa: BGĐ "Chuyển trả Trưởng phòng bổ sung" để phiếu quay lại luồng rồi duyệt lại.
+    const canParentOverall = isManagerMode && !!reviewField && !['approved', 'closed'].includes(formStatus);
     if (!canChildren && !canParentOverall) return 'ok';
 
     // Khóa lạc quan (select nhẹ): phiếu bị tab/người khác sửa → dừng autosave, không ghi đè
@@ -642,7 +659,8 @@ export default function StaffEvaluation() {
 
   const autosaveEnabled =
     !loading && !!formId && cycleOpen &&
-    (canEditManagerAssessment || canEmployeeEditSelf || (isManagerMode && !!reviewField));
+    (canEditManagerAssessment || canEmployeeEditSelf ||
+      (isManagerMode && !!reviewField && !['approved', 'closed'].includes(formStatus)));
   const autosave = useEvaluationAutosave({ enabled: autosaveEnabled, save: autosaveNow });
 
   // Theo dõi thay đổi form → đánh dấu dirty (bỏ qua lượt hydrate ngay sau loadData)
@@ -1256,6 +1274,24 @@ export default function StaffEvaluation() {
           <div className="mt-1 text-xs text-muted-foreground">Vui lòng cập nhật nội dung và nộp lại phiếu.</div>
         </div>
       )}
+      {/* LĐP/cấp trên xem phiếu đang bị trả về CÁN BỘ: hiện rõ ý kiến trả để cùng nắm
+          và đôn đốc — không phải mở hộp thoại nào mới thấy (yêu cầu GĐ 27/07). */}
+      {formStatus === 'returned' && !isSelfEval && formMeta.return_target !== 'manager' && (
+        <div className="rounded-md border border-amber-400 bg-amber-50 p-3 text-sm">
+          <div className="font-medium text-amber-900 flex items-center gap-1">
+            <AlertTriangle className="w-4 h-4" /> Phiếu đã trả lại cán bộ chỉnh sửa
+          </div>
+          {formMeta.return_reason ? (
+            <div className="mt-1 text-amber-900/90"><span className="text-amber-700">Ý kiến khi trả:</span> {formMeta.return_reason}</div>
+          ) : (
+            <div className="mt-1 text-xs text-amber-800">Không có ý kiến kèm theo (phiếu bị chuyển trạng thái thủ công).</div>
+          )}
+          <div className="mt-1 text-xs text-amber-800">
+            Cán bộ nhìn thấy cùng nội dung này trên phiếu của mình. Phần "Kết luận &amp; định hướng phát triển"
+            là bản đánh giá sau cùng — chỉ chốt khi phê duyệt, không dùng để nhắn việc cần sửa.
+          </div>
+        </div>
+      )}
       {formMeta.return_target === 'manager' && isManagerMode && reviewerLevel === 'manager' && (
         <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
           <div className="font-medium text-destructive flex items-center gap-1">
@@ -1282,80 +1318,22 @@ export default function StaffEvaluation() {
         previousCycleName={previousCycleName}
         isManager={isManagerMode}
         onTransferIncomplete={(items) => {
-          const newSkillPriorities = [...skillPriorities];
-          const newSkillActions = [...skillActions];
-          const newAttPriorities = [...attitudePriorities];
-          const newAttActions = [...attitudeActions];
-          const newAiActions = [...aiActions];
-          const norm = (s: string) => (s || '').trim().toLowerCase();
-          for (const it of items) {
-            const text = norm(it.action_text);
-            if (!text) continue;
-            if (it.type === 'skill' && it.skill_id) {
-              let sp = newSkillPriorities.find(p => p.skill_id === it.skill_id);
-              if (!sp) {
-                const sk: any = allSkills.find((s: any) => s.id === it.skill_id);
-                sp = {
-                  id: `tmp-${crypto.randomUUID()}`,
-                  skill_id: it.skill_id,
-                  current_level: null,
-                  target_level: null,
-                  priority_order: newSkillPriorities.length + 1,
-                  reason_text: `Tiếp tục từ ${previousCycleName}`,
-                  source_type: 'core_skill',
-                  status: 'planned',
-                  skill_name: sk?.name,
-                  skill_code: sk?.code,
-                  skill_group: sk?.skill_group,
-                } as any;
-                newSkillPriorities.push(sp);
-              }
-              if (newSkillActions.some(a => a.skill_priority_id === sp!.id && norm(a.action_text) === text)) continue;
-              newSkillActions.push({
-                skill_priority_id: sp.id!,
-                row_no: newSkillActions.filter(a => a.skill_priority_id === sp!.id).length + 1,
-                action_type: '70', action_text: it.action_text,
-                expected_result: it.expected_result || '', deadline: '', requested_support: '',
-                evidence_expected: '', status: 'planned', actual_result: '',
-                manager_review: `Tiếp tục từ ${previousCycleName}`,
-              } as any);
-            } else if (it.type === 'attitude' && it.attitude_dim_id) {
-              let ap = newAttPriorities.find(p => p.attitude_dimension_id === it.attitude_dim_id);
-              if (!ap) {
-                ap = {
-                  id: `tmp-${crypto.randomUUID()}`,
-                  attitude_dimension_id: it.attitude_dim_id,
-                  attitude_name: it.attitude_name || it.label || 'Thái độ',
-                  current_status: '', desired_status: '', issue_summary: '',
-                  improvement_goal: `Tiếp tục từ ${previousCycleName}`,
-                  priority_order: newAttPriorities.length + 1, status: 'planned',
-                } as any;
-                newAttPriorities.push(ap);
-              }
-              if (newAttActions.some(a => a.attitude_priority_id === ap!.id && norm(a.action_text) === text)) continue;
-              newAttActions.push({
-                attitude_priority_id: ap.id!,
-                row_no: newAttActions.filter(a => a.attitude_priority_id === ap!.id).length + 1,
-                action_text: it.action_text, expected_evidence: it.expected_result || '',
-                deadline: '', requested_support: '', status: 'planned', actual_result: '',
-                manager_review: `Tiếp tục từ ${previousCycleName}`,
-              } as any);
-            } else if (it.type === 'ai') {
-              if (newAiActions.some(a => norm(a.ai_action_text) === text)) continue;
-              newAiActions.push({
-                linked_skill_priority_id: '', linked_attitude_priority_id: '',
-                row_no: newAiActions.length + 1, ai_action_text: it.action_text,
-                expected_result: it.expected_result || '', deadline: '', requested_support: '',
-                evidence_expected: '', status: 'planned', actual_result: '',
-                manager_review: `Tiếp tục từ ${previousCycleName}`, unlinked_reason: '',
-              } as any);
-            }
-          }
-          setSkillPriorities(newSkillPriorities);
-          setSkillActions(newSkillActions);
-          setAttitudePriorities(newAttPriorities);
-          setAttitudeActions(newAttActions);
-          setAiActions(newAiActions);
+          // Gộp có GIỚI HẠN (nguyên tắc 27/07): tối đa 3 hành động upskill, 3 hành động AI,
+          // thái độ không giới hạn — logic + dedup nằm trong lib/planTransfer (có unit test).
+          const r = mergeTransferItems({
+            items,
+            skillPriorities, skillActions,
+            attitudePriorities, attitudeActions, aiActions,
+            previousCycleName, allSkills,
+          });
+          setSkillPriorities(r.skillPriorities);
+          setSkillActions(r.skillActions);
+          setAttitudePriorities(r.attitudePriorities);
+          setAttitudeActions(r.attitudeActions);
+          setAiActions(r.aiActions);
+          const msg = describeMergeResult(r);
+          if (r.skippedOverLimit.length > 0) toast({ title: 'Chuyển hành động kỳ trước', description: msg, variant: 'destructive' });
+          else toast({ title: 'Chuyển hành động kỳ trước', description: msg });
         }}
       />
 
@@ -1445,6 +1423,17 @@ export default function StaffEvaluation() {
       {/* F */}
       <AIActionsBlock aiActions={aiActions} onChange={setAiActions} skillPriorities={skillPriorities} attitudePriorities={attitudePriorities} quarterLabel="quý này" />
 
+      {/* Đề xuất sửa kế hoạch sau phê duyệt — người đánh giá của phiếu duyệt/từ chối
+          (đúng cấp như phiếu, GĐ chốt 27/07). RPC áp bản sửa, thẻ Kanban tự đồng bộ. */}
+      {formId && ['approved', 'closed'].includes(formStatus) && (
+        <PlanAmendmentBlock
+          formId={formId}
+          mode="reviewer"
+          canDecide={isAssignedReviewer || isAdmin}
+          onApplied={loadData}
+        />
+      )}
+
       {/* Đánh giá của các cấp dưới người xem (chỉ đọc) — PGĐ/GĐ đọc được nội dung TP
           đã nhập ngay tại trang này thay vì phải mở hồ sơ đã duyệt */}
       {formId && peerOverallReviews.map((p) => (
@@ -1487,9 +1476,12 @@ export default function StaffEvaluation() {
               : 'Giám đốc'})`}
             value={overallReview}
             onChange={setOverallReview}
+            disabled={['approved', 'closed'].includes(formStatus)}
           />
           <p className="text-[11px] text-muted-foreground px-1">
-            Nội dung mục này được tự lưu cùng phiếu — không cần nút lưu riêng.
+            {['approved', 'closed'].includes(formStatus)
+              ? 'Phiếu đã phê duyệt — kết luận là bản sau cùng, chỉ sửa được khi phiếu quay lại luồng (Chuyển trả Trưởng phòng bổ sung).'
+              : 'Nội dung mục này được tự lưu cùng phiếu — không cần nút lưu riêng.'}
           </p>
         </div>
       )}
