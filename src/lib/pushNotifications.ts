@@ -24,33 +24,54 @@ export function laDomainCu(hostname: string = typeof window !== 'undefined' ? wi
   return DOMAIN_CU.includes(hostname);
 }
 
+// Mốc gắn domain mới vào Worker (sáng 20/08 giờ VN). Đăng ký sinh TRƯỚC mốc này
+// chắc chắn thuộc thời chieuthuc3.com — dùng để giết đúng "người anh em song sinh"
+// cũ của một thiết bị vừa đăng ký lại, không đụng đăng ký mới nào khác.
+const MOC_CHUYEN_DOMAIN = '2026-08-20T03:00:00Z';
+
 /**
- * Tự dọn đăng ký push của CHÍNH THIẾT BỊ NÀY khi app chạy trên domain cũ.
+ * Làm mới / phục hồi đăng ký khi app chạy trên DOMAIN CŨ.
  *
- * Vì sao: đăng ký push gắn theo origin. Cán bộ bật lại thông báo ở
- * bachungyenone.com thì máy chủ thấy HAI đăng ký của cùng một máy mà không có
- * cách nào biết chúng là một — mỗi tin bắn ra hai thông báo trùng nhau trên
- * màn hình khóa (sự cố sáng 21/08). Chỉ thiết bị mới biết endpoint cũ của
- * chính nó, nên việc dọn phải làm ở client: hủy đăng ký trình duyệt rồi tắt
- * dòng tương ứng trong DB (khớp endpoint — chính xác từng thiết bị, không đụng
- * máy khác của cùng người).
+ * Bài học 21/08 — bản đầu tiên làm NGƯỢC LẠI (cứ mở domain cũ là tự gỡ đăng ký
+ * của thiết bị): chỉ trong một giờ sáng, 19 thiết bị của cán bộ CHƯA HỀ chuyển
+ * sang domain mới bị gỡ mất kênh nhắc việc. Mất thông báo trong im lặng nguy
+ * hiểm hơn thông báo đúp rất nhiều, nên ở domain cũ tuyệt đối không chủ động
+ * gỡ gì nữa. Việc chống đúp chuyển sang enablePush ở domain MỚI.
+ *
+ * Ở đây chỉ còn hai việc an toàn:
+ *   1. Đăng ký đang sống → làm tươi updated_at. KHÔNG upsert: upsert dựng lại
+ *      is_active=true và sẽ hồi sinh dòng đã bị tắt vì trùng — đường tái sinh
+ *      tin đúp kín đáo nhất.
+ *   2. Đã được cấp quyền mà không còn đăng ký trình duyệt → đây là thiết bị bị
+ *      bản 21/08 dọn nhầm: lặng lẽ đăng ký lại để trả kênh nhắc việc cho họ.
+ *      Chỉ phục hồi khi thiết bị này (profile + user_agent) không còn dòng sống
+ *      nào khác — nếu còn nghĩa là họ đã sang domain mới, phục hồi là tạo đúp.
  */
-export async function donDangKyDomainCu(): Promise<void> {
+export async function lamMoiTaiDomainCu(profileId: string): Promise<void> {
   try {
     if (!laDomainCu() || !isPushSupported()) return;
     const reg = await navigator.serviceWorker.getRegistration('/');
     const sub = await reg?.pushManager.getSubscription();
-    if (!sub) return;
-    const endpoint = sub.endpoint;
-    await sub.unsubscribe();
-    // Tắt trong DB ngay để đợt phát kế tiếp không gửi vào endpoint vừa hủy
-    // (không chờ máy chủ tự phát hiện 410). RLS chỉ cho sửa dòng của mình.
-    await (supabase as any)
+    if (sub) {
+      await (supabase as any)
+        .from('push_subscriptions')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('endpoint', sub.endpoint)
+        .eq('is_active', true);
+      return;
+    }
+    if (Notification.permission !== 'granted' || isIosNeedingHomeScreen()) return;
+    const { data: conSong } = await (supabase as any)
       .from('push_subscriptions')
-      .update({ is_active: false, loi_cuoi: 'thiết bị đã chuyển sang bachungyenone.com', loi_luc: new Date().toISOString() })
-      .eq('endpoint', endpoint);
+      .select('id')
+      .eq('profile_id', profileId)
+      .eq('user_agent', navigator.userAgent.slice(0, 250))
+      .eq('is_active', true)
+      .limit(1);
+    if (conSong && conSong.length > 0) return;
+    await dangKyVaLuu(profileId);
   } catch (_e) {
-    // best-effort — máy chủ vẫn tự dọn qua mã 410 ở lần gửi sau
+    // best-effort — không được làm hỏng phiên làm việc vì chuyện đăng ký push
   }
 }
 
@@ -92,7 +113,7 @@ export async function hasActiveSubscription(): Promise<boolean> {
  */
 export async function enablePush(profileId: string): Promise<string | null> {
   if (laDomainCu()) {
-    return 'Địa chỉ này đã chuyển về bachungyenone.com — vui lòng mở địa chỉ mới rồi bật thông báo tại đó.';
+    return 'Cổng đã chuyển về bachungyenone.com — vui lòng mở địa chỉ mới rồi bật thông báo tại đó.';
   }
   if (!isPushSupported()) return 'Trình duyệt này không hỗ trợ thông báo đẩy.';
   if (isIosNeedingHomeScreen()) {
@@ -102,6 +123,29 @@ export async function enablePush(profileId: string): Promise<string | null> {
   if (permission !== 'granted') {
     return 'Bạn chưa cho phép thông báo. Có thể bật lại trong cài đặt trình duyệt.';
   }
+  const loi = await dangKyVaLuu(profileId);
+  if (loi) return loi;
+  // Giết "người anh em song sinh" thời domain cũ của CHÍNH thiết bị này (khớp
+  // profile + user_agent, chỉ dòng sinh trước mốc chuyển domain): đây là chỗ duy
+  // nhất tin đúp ra đời, nên chặn tại đây thay vì đụng vào đăng ký của những
+  // người chưa chuyển. Thiết bị khác của cùng người (user_agent khác) giữ nguyên.
+  await (supabase as any)
+    .from('push_subscriptions')
+    .update({
+      is_active: false,
+      loi_cuoi: 'trùng thiết bị — đã đăng ký lại tại bachungyenone.com',
+      loi_luc: new Date().toISOString(),
+    })
+    .eq('profile_id', profileId)
+    .eq('user_agent', navigator.userAgent.slice(0, 250))
+    .eq('is_active', true)
+    .lt('created_at', MOC_CHUYEN_DOMAIN)
+    .neq('endpoint', (await (await getRegistration()).pushManager.getSubscription())?.endpoint ?? '');
+  return null;
+}
+
+/** Subscribe trình duyệt + lưu DB — phần chung của bật thủ công và phục hồi. */
+async function dangKyVaLuu(profileId: string): Promise<string | null> {
   const reg = await getRegistration();
   await navigator.serviceWorker.ready;
   let sub = await reg.pushManager.getSubscription();
@@ -135,6 +179,10 @@ export async function enablePush(profileId: string): Promise<string | null> {
 /** Gọi khi app khởi động: nếu đã cấp quyền từ trước thì lặng lẽ làm mới đăng ký trong DB. */
 export async function refreshPushSubscription(profileId: string): Promise<void> {
   try {
+    if (laDomainCu()) {
+      await lamMoiTaiDomainCu(profileId);
+      return;
+    }
     if (!isPushSupported() || Notification.permission !== 'granted') return;
     if (isIosNeedingHomeScreen()) return;
     await enablePush(profileId);
