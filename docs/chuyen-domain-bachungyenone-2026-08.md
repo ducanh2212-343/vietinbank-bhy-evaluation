@@ -250,10 +250,18 @@ nên có mấy thứ mọi người phải làm lại **một lần duy nhất**
 3. **Ai đã cài app ra màn hình điện thoại** (biểu tượng BHY ONE): xoá biểu tượng cũ,
    mở `bachungyenone.com` rồi cài lại ("Thêm vào màn hình chính").
 4. **Ai đã bật thông báo đẩy**: thông báo đã đăng ký ở `chieuthuc3.com` **vẫn chạy bình
-   thường, không mất**. Muốn nhận ở địa chỉ mới thì bật lại một lần tại đó. Từ 21/08,
-   chuyện **thông báo đúp** (bật cả hai nơi → mỗi tin hiện 2 lần, đã xảy ra sáng 21/08)
-   được xử lý tự động: mở cổng ở địa chỉ cũ là thiết bị tự gỡ đăng ký cũ của chính nó,
-   và địa chỉ cũ không còn cho bật thông báo mới.
+   thường, không mất**. Muốn nhận ở địa chỉ mới thì bật lại một lần tại đó — từ 21/08,
+   đúng lúc bật lại, hệ thống **tự tắt đăng ký cũ của chính thiết bị đó** nên không còn
+   chuyện mỗi tin hiện 2 lần. Địa chỉ cũ không mời bật thông báo mới nữa, chỉ hiện lời
+   mời chuyển sang địa chỉ mới.
+
+   > **Bài học 21/08 — ghi lại để không lặp:** bản chống-đúp đầu tiên làm ngược (mở
+   > địa chỉ cũ là tự GỠ đăng ký của thiết bị). Chỉ một giờ buổi sáng, 19 thiết bị của
+   > cán bộ CHƯA chuyển địa chỉ bị gỡ mất kênh nhắc việc — mất thông báo trong im lặng
+   > nguy hiểm hơn thông báo đúp nhiều. Nguyên tắc rút ra: **chống đúp phải chặn ở nơi
+   > bản đúp RA ĐỜI (lúc đăng ký mới), không phải ở nơi bản cũ ĐANG SỐNG.** Các thiết
+   > bị bị gỡ nhầm tự khôi phục ở lần mở cổng kế tiếp (quyền thông báo vẫn còn, hệ
+   > thống lặng lẽ đăng ký lại).
 
 Mẫu tin nhắn gửi nhóm:
 
