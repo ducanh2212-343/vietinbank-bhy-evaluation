@@ -250,9 +250,10 @@ nên có mấy thứ mọi người phải làm lại **một lần duy nhất**
 3. **Ai đã cài app ra màn hình điện thoại** (biểu tượng BHY ONE): xoá biểu tượng cũ,
    mở `bachungyenone.com` rồi cài lại ("Thêm vào màn hình chính").
 4. **Ai đã bật thông báo đẩy**: thông báo đã đăng ký ở `chieuthuc3.com` **vẫn chạy bình
-   thường, không mất** (xem mục dưới). Chỉ khi muốn nhận thông báo *ở địa chỉ mới* thì
-   vào cài đặt trong cổng bật lại một lần — nếu bật cả hai nơi sẽ nhận **2 thông báo trùng
-   nhau**, khi đó tắt bớt ở địa chỉ cũ.
+   thường, không mất**. Muốn nhận ở địa chỉ mới thì bật lại một lần tại đó. Từ 21/08,
+   chuyện **thông báo đúp** (bật cả hai nơi → mỗi tin hiện 2 lần, đã xảy ra sáng 21/08)
+   được xử lý tự động: mở cổng ở địa chỉ cũ là thiết bị tự gỡ đăng ký cũ của chính nó,
+   và địa chỉ cũ không còn cho bật thông báo mới.
 
 Mẫu tin nhắn gửi nhóm:
 
