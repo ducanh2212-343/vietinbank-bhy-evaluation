@@ -19,6 +19,9 @@ export default function Login() {
   // từ chối đăng nhập. `lamMoiCaptcha` tăng sau mỗi lần thử hỏng để lấy token mới.
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [lamMoiCaptcha, setLamMoiCaptcha] = useState(0);
+  // Ô kiểm hỏng (sai cấu hình khoá / chặn mạng): KHÔNG được khóa cửa vào —
+  // hàng rào thật nằm ở máy chủ Auth. Xem sự cố 24/08 trong README.
+  const [captchaLoi, setCaptchaLoi] = useState(false);
   const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -156,6 +159,7 @@ export default function Login() {
               {CAPTCHA_SAN_SANG ? (
                 <XacThucTurnstile
                   onToken={setCaptchaToken}
+                  onLoi={setCaptchaLoi}
                   lamMoi={lamMoiCaptcha}
                   className="flex justify-center"
                 />
@@ -164,10 +168,15 @@ export default function Login() {
                   {NHAC_THIEU_SITE_KEY}
                 </p>
               )}
+              {captchaLoi && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Ô kiểm bảo mật không tải được — bạn vẫn bấm đăng nhập bình thường.
+                </p>
+              )}
               <Button
                 type="submit"
                 className="w-full h-11"
-                disabled={loading || (CAPTCHA_SAN_SANG && !captchaToken)}
+                disabled={loading || (CAPTCHA_SAN_SANG && !captchaToken && !captchaLoi)}
               >
                 {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
               </Button>

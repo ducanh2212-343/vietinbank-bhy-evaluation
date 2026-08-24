@@ -27,6 +27,9 @@ export default function ChangePassword() {
   // khẩu hỏng cho toàn bộ cán bộ.
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [lamMoiCaptcha, setLamMoiCaptcha] = useState(0);
+  // Ô kiểm hỏng (sai cấu hình khoá / chặn mạng): KHÔNG được khóa cửa vào —
+  // hàng rào thật nằm ở máy chủ Auth. Xem sự cố 24/08 trong README.
+  const [captchaLoi, setCaptchaLoi] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -196,7 +199,8 @@ export default function ChangePassword() {
             </div>
 
             {CAPTCHA_SAN_SANG ? (
-              <XacThucTurnstile onToken={setCaptchaToken} lamMoi={lamMoiCaptcha} />
+              <XacThucTurnstile onToken={setCaptchaToken}
+                  onLoi={setCaptchaLoi} lamMoi={lamMoiCaptcha} />
             ) : (
               <p className="rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
                 {NHAC_THIEU_SITE_KEY}
@@ -204,7 +208,7 @@ export default function ChangePassword() {
             )}
             <Button
               type="submit"
-              disabled={saving || (CAPTCHA_SAN_SANG && !captchaToken)}
+              disabled={saving || (CAPTCHA_SAN_SANG && !captchaToken && !captchaLoi)}
               className="w-full sm:w-auto"
             >
               {saving ? 'Đang cập nhật...' : 'Đổi mật khẩu'}

@@ -18,6 +18,9 @@ export default function ForgotPassword() {
   // Supabase Auth kiểm captcha cả ở đường "quên mật khẩu" — thiếu token là máy chủ từ chối.
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [lamMoiCaptcha, setLamMoiCaptcha] = useState(0);
+  // Ô kiểm hỏng (sai cấu hình khoá / chặn mạng): KHÔNG được khóa cửa vào —
+  // hàng rào thật nằm ở máy chủ Auth. Xem sự cố 24/08 trong README.
+  const [captchaLoi, setCaptchaLoi] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,6 +91,7 @@ export default function ForgotPassword() {
             {CAPTCHA_SAN_SANG ? (
               <XacThucTurnstile
                 onToken={setCaptchaToken}
+                  onLoi={setCaptchaLoi}
                 lamMoi={lamMoiCaptcha}
                 className="flex justify-center"
               />
@@ -99,7 +103,7 @@ export default function ForgotPassword() {
             <Button
               type="submit"
               className="w-full h-11"
-              disabled={sending || (CAPTCHA_SAN_SANG && !captchaToken)}
+              disabled={sending || (CAPTCHA_SAN_SANG && !captchaToken && !captchaLoi)}
             >
               {sending ? 'Đang gửi...' : 'Gửi liên kết đặt lại mật khẩu'}
             </Button>

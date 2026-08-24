@@ -24,7 +24,8 @@ type ThamSoVe = {
   sitekey: string;
   callback: (token: string) => void;
   'expired-callback'?: () => void;
-  'error-callback'?: () => void;
+  /** Cloudflare truyền vào MÃ LỖI (vd '110200' = tên miền chưa khai). */
+  'error-callback'?: (ma?: string) => void;
   'timeout-callback'?: () => void;
   theme?: 'auto' | 'light' | 'dark';
   language?: string;
@@ -71,19 +72,39 @@ function napScriptTurnstile(): Promise<void> {
 }
 
 interface Props {
-  /** Nhận token mới; nhận null khi token hết hạn hoặc lỗi (trang cha phải khóa nút gửi). */
+  /** Nhận token mới; nhận null khi token hết hạn hoặc lỗi. */
   onToken: (token: string | null) => void;
+  /**
+   * Báo ô kiểm đang HỎNG (không tải được script, sai cấu hình khoá, hết giờ…).
+   *
+   * VÌ SAO PHẢI CÓ: sự cố 24/08 — khoá Turnstile chưa khai đúng tên miền nên widget
+   * chỉ hiện một liên kết «Troubleshoot», không bao giờ phát token. Bản đầu khoá nút
+   * Đăng nhập cho tới khi có token, thành ra một lỗi cấu hình BÊN NGOÀI khoá luôn cửa
+   * vào của cả chi nhánh — trong khi hàng rào thật nằm ở máy chủ Auth chứ không phải
+   * ở nút bấm này. Nay ô hỏng thì trang cha mở lại nút và để máy chủ phán quyết.
+   */
+  onLoi?: (coLoi: boolean) => void;
   /** Tăng số này để buộc ô lấy token mới — gọi sau mỗi lần gửi hỏng. */
   lamMoi?: number;
   className?: string;
 }
 
-export default function XacThucTurnstile({ onToken, lamMoi = 0, className }: Props) {
+export default function XacThucTurnstile({ onToken, onLoi, lamMoi = 0, className }: Props) {
   const oRef = useRef<HTMLDivElement | null>(null);
   const idRef = useRef<string | null>(null);
   // Giữ callback mới nhất mà không khiến effect vẽ lại ô mỗi lần trang cha render.
   const onTokenRef = useRef(onToken);
   onTokenRef.current = onToken;
+  const onLoiRef = useRef(onLoi);
+  onLoiRef.current = onLoi;
+
+  /** Gom một chỗ: mất token vì lý do hỏng hóc → báo trang cha mở lại nút gửi. */
+  const bao = (token: string | null, coLoi: boolean) => {
+    onTokenRef.current(token);
+    onLoiRef.current?.(coLoi);
+  };
+  const baoRef = useRef(bao);
+  baoRef.current = bao;
 
   useEffect(() => {
     if (!CAPTCHA_SAN_SANG) return;
@@ -99,14 +120,24 @@ export default function XacThucTurnstile({ onToken, lamMoi = 0, className }: Pro
           sitekey: TURNSTILE_SITE_KEY,
           language: 'vi',
           theme: 'auto',
-          callback: (token) => onTokenRef.current(token),
-          'expired-callback': () => onTokenRef.current(null),
-          'error-callback': () => onTokenRef.current(null),
-          'timeout-callback': () => onTokenRef.current(null),
+          callback: (token) => baoRef.current(token, false),
+          // Hết hạn / lỗi / quá giờ đều là "không có token vì trục trặc", không phải
+          // "người dùng chưa làm xong" — mở lại nút gửi, đừng giam cán bộ ngoài cửa.
+          'expired-callback': () => baoRef.current(null, true),
+          'error-callback': (ma) => {
+            // In mã lỗi ra Console để chẩn đoán được ngay thay vì đoán mò: ô kiểm
+            // hỏng chỉ hiện đúng chữ «Troubleshoot», không nói vì sao.
+            // 110xxx = sai cấu hình khoá (110200 là tên miền chưa khai trong Cloudflare),
+            // 300xxx/600xxx = lỗi lúc chạy, thường do mạng hoặc bị chặn.
+            console.error('[Turnstile] ô kiểm bảo mật lỗi, mã:', ma ?? '(không rõ)');
+            baoRef.current(null, true);
+          },
+          'timeout-callback': () => baoRef.current(null, true),
         });
       })
       .catch(() => {
-        if (conGan) onTokenRef.current(null);
+        // Không tải nổi script Cloudflare (mạng chi nhánh chặn, Cloudflare sự cố…)
+        if (conGan) baoRef.current(null, true);
       });
 
     return () => {
@@ -122,7 +153,7 @@ export default function XacThucTurnstile({ onToken, lamMoi = 0, className }: Pro
   useEffect(() => {
     if (lamMoi === 0) return;
     if (!idRef.current || !window.turnstile) return;
-    onTokenRef.current(null);
+    baoRef.current(null, false);
     try { window.turnstile.reset(idRef.current); } catch { /* ô chưa sẵn sàng */ }
   }, [lamMoi]);
 

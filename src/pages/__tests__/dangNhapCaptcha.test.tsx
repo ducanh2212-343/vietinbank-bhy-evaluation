@@ -37,12 +37,18 @@ vi.mock('@/lib/turnstile', () => ({
 /** Ô Turnstile giả: phát token ngay, và ghi lại số lần trang cha yêu cầu làm mới. */
 const lamMoiDaThay: number[] = [];
 let oPhatToken = true;
+let oBaoLoi = false;
 vi.mock('@/components/XacThucTurnstile', () => ({
-  default: ({ onToken, lamMoi }: { onToken: (t: string | null) => void; lamMoi?: number }) => {
+  default: ({ onToken, onLoi, lamMoi }: {
+    onToken: (t: string | null) => void;
+    onLoi?: (c: boolean) => void;
+    lamMoi?: number;
+  }) => {
     useEffect(() => {
       lamMoiDaThay.push(lamMoi ?? 0);
+      if (oBaoLoi) { onToken(null); onLoi?.(true); return; }
       if (oPhatToken) onToken(`token-${lamMoi ?? 0}`);
-    }, [onToken, lamMoi]);
+    }, [onToken, onLoi, lamMoi]);
     return <div data-testid="o-turnstile" />;
   },
 }));
@@ -60,6 +66,7 @@ describe('Đăng nhập kèm Turnstile', () => {
     delete daGoi.options;
     lamMoiDaThay.length = 0;
     oPhatToken = true;
+    oBaoLoi = false;
     ketQuaDangNhap = { error: null };
   });
 
@@ -76,6 +83,21 @@ describe('Đăng nhập kèm Turnstile', () => {
     render(<MemoryRouter><Login /></MemoryRouter>);
     nhapForm();
     expect(screen.getByRole('button', { name: 'Đăng nhập' })).toBeDisabled();
+  });
+
+  it('ô kiểm HỎNG thì vẫn phải đăng nhập được — sự cố 24/08', async () => {
+    // Khoá Turnstile khai thiếu tên miền: widget chỉ hiện liên kết «Troubleshoot»,
+    // không bao giờ phát token. Bản đầu khoá nút cho tới khi có token, thành ra một
+    // lỗi cấu hình BÊN NGOÀI khoá luôn cửa vào của cả chi nhánh. Hàng rào thật nằm ở
+    // máy chủ Auth, nên ô hỏng phải mở lại nút và để máy chủ phán quyết.
+    oBaoLoi = true;
+    render(<MemoryRouter><Login /></MemoryRouter>);
+    nhapForm();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Đăng nhập' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Đăng nhập' }));
+    // Vẫn gửi đi (không kèm token) — Supabase quyết định chấp nhận hay không.
+    await waitFor(() => expect(daGoi.email).toBe('bhy001@343skill.com'));
+    expect(daGoi.options?.captchaToken).toBeUndefined();
   });
 
   it('đăng nhập hỏng thì xin token mới cho lần thử sau', async () => {
