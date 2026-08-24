@@ -39,6 +39,17 @@ const EMAIL_RE = /^[^\s@,()"'\\]+@[^\s@,()"'\\]+\.[^\s@,()"'\\]+$/
  * gửi cho người bị TỪ CHỐI đăng ký, mà dòng `profiles` chỉ được tạo khi DUYỆT.
  * Chỉ tra `profiles` là thư báo từ chối im lặng biến mất.
  *
+ * VÀ VÌ SAO NHÁNH ĐÓ PHẢI SIẾT HAI LẦN (`registration-rejected` + đơn đã ở trạng
+ * thái `rejected`): bảng `registration_requests` mở INSERT cho cả `anon`
+ * (chính sách «Anyone can submit registration request», WITH CHECK (true)) — ai
+ * cũng nộp được một đơn mang địa chỉ bất kỳ. Nếu chỉ hỏi «email này có trong
+ * registration_requests không» thì kẻ tấn công nộp đơn mang địa chỉ nạn nhân là
+ * biến địa chỉ đó thành «hệ thống đã biết», và đường gửi tới địa chỉ tuỳ ý vừa
+ * bịt lại mở ra y nguyên. Đơn tự nộp luôn ở trạng thái `pending`; chỉ người có
+ * quyền duyệt (qua approve-registration) mới đẩy được sang `rejected` — và luồng
+ * đó cập nhật trạng thái TRƯỚC khi gọi gửi thư nên thư từ chối thật vẫn đi bình
+ * thường.
+ *
  * So khớp bằng `in` với đúng hai biến thể (nguyên văn + chữ thường) thay vì
  * `ilike`: `ilike` coi `%` và `_` là ký tự đại diện nên "%@bachungyenone.com"
  * sẽ khớp mọi hồ sơ — đúng lỗ hổng vừa vá. Phía gọi thật luôn truyền đúng
@@ -49,6 +60,7 @@ async function nguonBietDiaChi(
   admin: any,
   diaChi: string,
   emailNguoiGoi: string | null,
+  templateName: string,
 ): Promise<string | null> {
   const sach = diaChi.trim()
   if (!EMAIL_RE.test(sach)) return null
@@ -56,10 +68,10 @@ async function nguonBietDiaChi(
     return 'nguoi_goi'
   }
   const bienThe = [...new Set([sach, sach.toLowerCase()])]
+  // Chỉ `profiles` mới là danh sách địa chỉ mà người ngoài KHÔNG tự ghi vào được.
   const cho: Array<[string, string, string]> = [
     ['profiles', 'email', 'ho_so'],
     ['profiles', 'personal_email', 'ho_so_email_ca_nhan'],
-    ['registration_requests', 'email', 'don_dang_ky'],
   ]
   for (const [bang, cot, nguon] of cho) {
     // Lỗi truy vấn → coi như KHÔNG biết địa chỉ (fail-closed): thà không gửi
@@ -70,6 +82,22 @@ async function nguonBietDiaChi(
       return null
     }
     if (data && data.length > 0) return nguon
+  }
+
+  // Nhánh đơn đăng ký — bảng anon ghi được nên khoá đúng một trường hợp dùng thật
+  // (xem ghi chú dài ở đầu hàm): thư báo TỪ CHỐI gửi cho đơn ĐÃ bị từ chối.
+  if (templateName === 'registration-rejected') {
+    const { data, error } = await admin
+      .from('registration_requests')
+      .select('id')
+      .in('email', bienThe)
+      .eq('status', 'rejected')
+      .limit(1)
+    if (error) {
+      console.error('Không tra được đơn đăng ký của người nhận', { error })
+      return null
+    }
+    if (data && data.length > 0) return 'don_dang_ky'
   }
   return null
 }
@@ -251,7 +279,7 @@ Deno.serve(async (req) => {
     }
     nguonNguoiNhan = 'ma_ho_so'
   } else if (recipientEmail) {
-    const nguon = await nguonBietDiaChi(supabase, recipientEmail, emailNguoiGoi)
+    const nguon = await nguonBietDiaChi(supabase, recipientEmail, emailNguoiGoi, templateName)
     if (!nguon) {
       console.warn('Từ chối gửi tới địa chỉ hệ thống không biết', { templateName })
       return new Response(

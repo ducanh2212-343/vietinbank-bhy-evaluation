@@ -215,6 +215,19 @@ Báo cáo đầy đủ, viết cho người không chuyên: `docs/kiem-tra-bao-m
   `skill-images` được đặt trần 5 MB + danh sách định dạng ảnh, **có giữ
   heic/heif** cho ảnh iPhone.
 
+- `20261001090200_khoi_phuc_thu_hoi_quyen_public_bi_dat_lai.sql` **đã áp**.
+  Đợt vá 15/08 (`20260815090000`) từng thu hồi quyền người lạ trên
+  `suggest_skill_mentors` và `get_campaign_progress`, nhưng quyền **đã quay lại**:
+  `CREATE OR REPLACE` giữ quyền, còn `DROP` + `CREATE` thì đặt lại về mặc định
+  PUBLIC — một migration sau đó tạo lại hàm theo cách thứ hai là đủ lặng lẽ mở
+  cửa mà diff không thấy gì. **Quy ước từ nay: hễ DROP rồi CREATE lại một hàm
+  SECURITY DEFINER thì viết lại cặp REVOKE/GRANT ngay dưới nó trong cùng
+  migration.** Đã kiểm sau khi áp: người lạ nhận `permission denied`, cán bộ đã
+  đăng nhập vẫn gọi được cả ba hàm.
+
+**Đối chiếu khách quan bằng Supabase advisors:** lỗi mức ERROR **2 → 0**, tổng
+cảnh báo 142 → 133, số hàm người lạ chạy được 34 → 25.
+
 **Edge function:** `doi-mat-khau` **đã deploy (v1, verify_jwt = true)**. Đây là
 nơi DUY NHẤT hạ được cờ `must_change_password` ở `app_metadata`, và nó chỉ hạ khi
 đã thực sự đặt mật khẩu mới — trước đây cờ nằm ở `user_metadata` nên người cầm
