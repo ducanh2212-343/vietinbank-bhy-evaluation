@@ -24,7 +24,8 @@ type ThamSoVe = {
   sitekey: string;
   callback: (token: string) => void;
   'expired-callback'?: () => void;
-  'error-callback'?: () => void;
+  /** Cloudflare truyền vào MÃ LỖI (vd '110200' = tên miền chưa khai). */
+  'error-callback'?: (ma?: string) => void;
   'timeout-callback'?: () => void;
   theme?: 'auto' | 'light' | 'dark';
   language?: string;
@@ -123,7 +124,14 @@ export default function XacThucTurnstile({ onToken, onLoi, lamMoi = 0, className
           // Hết hạn / lỗi / quá giờ đều là "không có token vì trục trặc", không phải
           // "người dùng chưa làm xong" — mở lại nút gửi, đừng giam cán bộ ngoài cửa.
           'expired-callback': () => baoRef.current(null, true),
-          'error-callback': () => baoRef.current(null, true),
+          'error-callback': (ma) => {
+            // In mã lỗi ra Console để chẩn đoán được ngay thay vì đoán mò: ô kiểm
+            // hỏng chỉ hiện đúng chữ «Troubleshoot», không nói vì sao.
+            // 110xxx = sai cấu hình khoá (110200 là tên miền chưa khai trong Cloudflare),
+            // 300xxx/600xxx = lỗi lúc chạy, thường do mạng hoặc bị chặn.
+            console.error('[Turnstile] ô kiểm bảo mật lỗi, mã:', ma ?? '(không rõ)');
+            baoRef.current(null, true);
+          },
           'timeout-callback': () => baoRef.current(null, true),
         });
       })
