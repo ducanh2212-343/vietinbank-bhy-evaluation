@@ -239,6 +239,21 @@ cố ý: các hàm cấp tài khoản (đặt cờ) deploy sau lúc nào cũng a
 (thêm mode `trang_thai_khoa`), `reset-staff-password`, `approve-registration`,
 `create-guest-user`, `_shared/staff.ts`.
 
+**THỨ TỰ DEPLOY — đọc trước khi phát hành:**
+
+1. `doi-mat-khau` **đã deploy sẵn**, nên các hàm cấp tài khoản
+   (`create-staff-user` qua `_shared/staff.ts`, `reset-staff-password`,
+   `approve-registration`, `create-guest-user`) deploy lúc nào cũng an toàn: cờ
+   `must_change_password` ở `app_metadata` luôn có nơi hạ xuống.
+2. **`ai-advisor` phải deploy CÙNG hoặc TRƯỚC bản web mới.** Trang quản lý prompt
+   gọi mode mới `trang_thai_khoa`; bản `ai-advisor` cũ không biết mode này sẽ đi
+   tiếp tới khối đếm lượt và **ghi một dòng rác vào `ai_usage_log`** mỗi lần mở
+   trang. Không hỏng tính năng (client bắt lỗi, chỉ mất dòng hiện 4 số cuối)
+   nhưng làm bẩn số liệu chi phí AI.
+3. `send-transactional-email` deploy kèm là đủ; `approve-registration` vẫn gọi
+   nó bằng tham số cũ (`recipientEmail`) và đường tương thích đã giữ cho cả thư
+   duyệt lẫn thư từ chối chạy được.
+
 **Việc phải làm tay trên Supabase:** điền `VITE_TURNSTILE_SITE_KEY` (GẤP — đã bật
 kiểm captcha ở Auth nên thiếu token là **mọi lượt đăng nhập bị từ chối**), bật MFA
 cho nhóm quản trị, bật *Leaked password protection*, tắt tự đăng ký.

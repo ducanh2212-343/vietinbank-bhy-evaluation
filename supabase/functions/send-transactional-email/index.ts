@@ -40,15 +40,23 @@ const EMAIL_RE = /^[^\s@,()"'\\]+@[^\s@,()"'\\]+\.[^\s@,()"'\\]+$/
  * Chỉ tra `profiles` là thư báo từ chối im lặng biến mất.
  *
  * VÀ VÌ SAO NHÁNH ĐÓ PHẢI SIẾT HAI LẦN (`registration-rejected` + đơn đã ở trạng
- * thái `rejected`): bảng `registration_requests` mở INSERT cho cả `anon`
- * (chính sách «Anyone can submit registration request», WITH CHECK (true)) — ai
- * cũng nộp được một đơn mang địa chỉ bất kỳ. Nếu chỉ hỏi «email này có trong
- * registration_requests không» thì kẻ tấn công nộp đơn mang địa chỉ nạn nhân là
- * biến địa chỉ đó thành «hệ thống đã biết», và đường gửi tới địa chỉ tuỳ ý vừa
- * bịt lại mở ra y nguyên. Đơn tự nộp luôn ở trạng thái `pending`; chỉ người có
- * quyền duyệt (qua approve-registration) mới đẩy được sang `rejected` — và luồng
- * đó cập nhật trạng thái TRƯỚC khi gọi gửi thư nên thư từ chối thật vẫn đi bình
- * thường.
+ * thái `rejected`): nếu chỉ hỏi «email này có trong registration_requests không»
+ * thì bất cứ ai nộp được một đơn mang địa chỉ nạn nhân là biến địa chỉ đó thành
+ * «hệ thống đã biết», và đường gửi tới địa chỉ tuỳ ý vừa bịt lại mở ra y nguyên.
+ *
+ * Ghi cho đúng sự thật (đã đo trên chính project `whlysprzsguehxmrjwha` ngày
+ * 24/08/2026, đừng suy từ mỗi tệp migration): HIỆN TẠI `anon` KHÔNG nộp đơn được
+ * — bảng chỉ còn policy SELECT/UPDATE cho quản trị, và `anon` cũng không có
+ * quyền INSERT ở tầng GRANT. Chính sách «Anyone can submit registration request»
+ * (WITH CHECK (true), TO anon) có thật trong migration
+ * `20260415161613_e854b1e7-...sql:30` nhưng đã bị gỡ ở một đợt siết sau đó.
+ * Nghĩa là đây là PHÒNG THỦ CHIỀU SÂU cho ngày policy ấy quay lại, chứ không
+ * phải đang bịt một đường đang mở. Giữ lại vì rẻ và vì repo này đã có tiền lệ
+ * quyền bị đặt lại âm thầm (xem migration 20261001090200).
+ *
+ * Đơn tự nộp luôn ở trạng thái `pending`; chỉ người có quyền duyệt (qua
+ * approve-registration) mới đẩy được sang `rejected` — và luồng đó cập nhật
+ * trạng thái TRƯỚC khi gọi gửi thư nên thư từ chối thật vẫn đi bình thường.
  *
  * So khớp bằng `in` với đúng hai biến thể (nguyên văn + chữ thường) thay vì
  * `ilike`: `ilike` coi `%` và `_` là ký tự đại diện nên "%@bachungyenone.com"
