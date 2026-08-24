@@ -192,6 +192,85 @@ thiếu là bấm vào tin rơi về Kanban. Migration
 vốn đang chờ deploy, vô hại vì migration lịch sử phiên bản chưa áp nên chưa có
 tin `PHIEN_BAN` nào phát sinh.
 
+## Rà soát bảo mật & chống bot đăng nhập (24/08/2026)
+
+Báo cáo đầy đủ, viết cho người không chuyên: `docs/kiem-tra-bao-mat-toan-dien-2026-08.md`.
+
+**Đã áp vào project `whlysprzsguehxmrjwha` ngày 24/08/2026:**
+
+- `20261001090000_va_chot_chan_viet_nguoc_va_thu_hoi_quyen_anon.sql` **đã áp**.
+  Bốn hàm SECURITY DEFINER dùng chung một chốt chặn VIẾT NGƯỢC
+  (`IF auth.uid() IS NOT NULL AND NOT (là_quản_trị)`) — với khách vãng lai thì
+  `auth.uid()` là NULL nên cả điều kiện sai và **không ai bị chặn**. Ba trong bốn
+  hàm còn quyền `anon` (`ct2_khen_chuoi_moc` mở tới tận PUBLIC), tức là chỉ cần
+  anon key vốn nằm sẵn trong mã trang là gọi được: lấy **họ tên cán bộ**, lấy
+  **tiêu đề đầu việc đang nợ**, ghi `ct2_thong_bao` và **bắn push giả**.
+  Vá hai lớp: thu hồi quyền (hàng rào cứng) + đổi chiều chốt chặn qua hàm phụ
+  `ct2_can_kiem_quyen()`. Đã kiểm sau khi áp: người lạ nhận `permission denied`,
+  đường cron (không có JWT) chạy khô vẫn thoát bình thường.
+- `20261001090100_bit_view_bo_qua_rls_va_gioi_han_kho_anh.sql` **đã áp**.
+  Hai view `ct2_suc_khoe_kho_cau` / `ct2_hieu_qua_theo_nhom` chạy bằng quyền chủ
+  view nên đọc xuyên RLS — người lạ đọc được 11 và 7 dòng; nay cắt hẳn quyền
+  (không màn hình nào dùng nên không đổi hành vi). Kho `avatars` và
+  `skill-images` được đặt trần 5 MB + danh sách định dạng ảnh, **có giữ
+  heic/heif** cho ảnh iPhone.
+
+- `20261001090200_khoi_phuc_thu_hoi_quyen_public_bi_dat_lai.sql` **đã áp**.
+  Đợt vá 15/08 (`20260815090000`) từng thu hồi quyền người lạ trên
+  `suggest_skill_mentors` và `get_campaign_progress`, nhưng quyền **đã quay lại**:
+  `CREATE OR REPLACE` giữ quyền, còn `DROP` + `CREATE` thì đặt lại về mặc định
+  PUBLIC — một migration sau đó tạo lại hàm theo cách thứ hai là đủ lặng lẽ mở
+  cửa mà diff không thấy gì. **Quy ước từ nay: hễ DROP rồi CREATE lại một hàm
+  SECURITY DEFINER thì viết lại cặp REVOKE/GRANT ngay dưới nó trong cùng
+  migration.** Đã kiểm sau khi áp: người lạ nhận `permission denied`, cán bộ đã
+  đăng nhập vẫn gọi được cả ba hàm.
+
+**Đối chiếu khách quan bằng Supabase advisors:** lỗi mức ERROR **2 → 0**, tổng
+cảnh báo 142 → 133, số hàm người lạ chạy được 34 → 25.
+
+**Edge function:** `doi-mat-khau` **đã deploy (v1, verify_jwt = true)**. Đây là
+nơi DUY NHẤT hạ được cờ `must_change_password` ở `app_metadata`, và nó chỉ hạ khi
+đã thực sự đặt mật khẩu mới — trước đây cờ nằm ở `user_metadata` nên người cầm
+mật khẩu tạm tự gỡ được bằng một câu lệnh trong console. Deploy hàm này TRƯỚC là
+cố ý: các hàm cấp tài khoản (đặt cờ) deploy sau lúc nào cũng an toàn.
+
+**Chờ phát hành (chưa deploy):** các hàm còn lại đã sửa trong nhánh —
+`send-transactional-email` (không còn gửi tới địa chỉ tuỳ ý), `ai-advisor`
+(thêm mode `trang_thai_khoa`), `reset-staff-password`, `approve-registration`,
+`create-guest-user`, `_shared/staff.ts`.
+
+**THỨ TỰ DEPLOY — đọc trước khi phát hành:**
+
+1. `doi-mat-khau` **đã deploy sẵn**, nên các hàm cấp tài khoản
+   (`create-staff-user` qua `_shared/staff.ts`, `reset-staff-password`,
+   `approve-registration`, `create-guest-user`) deploy lúc nào cũng an toàn: cờ
+   `must_change_password` ở `app_metadata` luôn có nơi hạ xuống.
+2. **`ai-advisor` phải deploy CÙNG hoặc TRƯỚC bản web mới.** Trang quản lý prompt
+   gọi mode mới `trang_thai_khoa`; bản `ai-advisor` cũ không biết mode này sẽ đi
+   tiếp tới khối đếm lượt và **ghi một dòng rác vào `ai_usage_log`** mỗi lần mở
+   trang. Không hỏng tính năng (client bắt lỗi, chỉ mất dòng hiện 4 số cuối)
+   nhưng làm bẩn số liệu chi phí AI.
+3. `send-transactional-email` deploy kèm là đủ; `approve-registration` vẫn gọi
+   nó bằng tham số cũ (`recipientEmail`) và đường tương thích đã giữ cho cả thư
+   duyệt lẫn thư từ chối chạy được.
+
+**Turnstile site key đã điền sẵn** trong `src/lib/turnstile.ts`
+(`SITE_KEY_DU_PHONG`, đã kiểm là có mặt trong bundle sau `npm run build`). Site key
+là khoá CÔNG KHAI — nó nằm trong HTML mà ai xem nguồn trang cũng đọc được — nên để
+thẳng trong mã đúng khuôn anon key. Thứ phải giữ kín là secret key và nó chỉ nằm ở
+Supabase. Vẫn có thể ghi đè bằng biến môi trường `VITE_TURNSTILE_SITE_KEY`.
+
+**SỰ CỐ 24/08 — GHI LẠI ĐỂ KHÔNG LẶP:** bật kiểm captcha ở Supabase Auth TRƯỚC khi
+bản web biết gửi token đã làm **toàn bộ cán bộ không đăng nhập được**
+(`captcha protection: request disallowed (no captcha_token found)`). Công tắc đó có
+hiệu lực NGAY, không chờ deploy. Trình tự đúng luôn là: **deploy web trước → thử
+đăng nhập → rồi mới bật captcha**. Gửi token khi captcha đang tắt là vô hại (máy chủ
+bỏ qua), nên bật/tắt lúc nào cũng có đường lùi trong một phút.
+
+**Việc phải làm tay trên Supabase (sau khi deploy):** bật lại *Enable Captcha
+protection*, bật MFA cho nhóm quản trị, bật *Leaked password protection*, tắt tự
+đăng ký.
+
 ## Lịch sử phiên bản & báo tính năng mới (08/2026)
 
 Trang **«Có gì mới»** (`/co-gi-moi`, mục đầu tiên của Trang chủ) — mở cho **mọi

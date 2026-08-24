@@ -34,3 +34,44 @@ project_id = "whlysprzsguehxmrjwha"
   [functions.send-feature-tip-push]
     # Cron gửi service_role JWT; admin chạy tay bằng JWT của họ → verify_jwt = true
     verify_jwt = true
+
+  # ---- Chín hàm dưới đây trước 24/08/2026 KHÔNG được khai ở đây ------------
+  # Vì sao phải khai đủ dù Supabase mặc định verify_jwt = true: thiết lập nào
+  # không nằm trong config.toml thì chỉ tồn tại ở bảng điều khiển trên web —
+  # một cú bấm nhầm (hoặc một người có quyền dự án) tắt verify_jwt là hàm mở
+  # toang ra Internet mà repo không hề đổi một dòng nào, review PR cũng không
+  # thấy. Khai đủ mọi hàm để mỗi lần deploy đều ép lại đúng trạng thái mong muốn
+  # và mọi thay đổi quyền phải đi qua một diff có người duyệt.
+  #
+  # AI THÊM HÀM MỚI THÌ THÊM MỘT KHỐI Ở ĐÂY NGAY TRONG CÙNG PR — kể cả khi để
+  # mặc định. `doi-mat-khau` ra đời trong chính nhánh này nên được khai ở cuối tệp.
+  # Lưu ý khi gộp nhánh: khai trùng một [functions.x] là hỏng cả tệp TOML, nên nếu
+  # nhánh khác cũng khai hàm đó thì giữ lại đúng MỘT khối.
+  #
+  # Tất cả đều đang được gọi bằng JWT hợp lệ nên khai = true KHÔNG đổi hành vi:
+  # cron/trigger gọi qua pg_net kèm service_role key lấy từ Vault, còn các hàm
+  # chạy tay thì gọi từ giao diện bằng JWT của cán bộ (code vẫn tự kiểm vai trò).
+  [functions.approve-registration]
+    verify_jwt = true
+  [functions.create-guest-user]
+    verify_jwt = true
+  [functions.ct2-nhip-bao-cao]
+    verify_jwt = true
+  [functions.nhac-lich-nghi]
+    verify_jwt = true
+  [functions.notify-ct2]
+    verify_jwt = true
+  [functions.notify-idea-council]
+    verify_jwt = true
+  [functions.notify-kanban-update]
+    verify_jwt = true
+  [functions.quiz-reminders]
+    verify_jwt = true
+  [functions.weekly-kanban-digest]
+    verify_jwt = true
+
+  # Đổi mật khẩu của chính mình + hạ cờ must_change_password ở app_metadata.
+  # verify_jwt = true là BẮT BUỘC: hàm dựa hẳn vào JWT để biết đang đổi mật khẩu
+  # cho ai, tắt đi là ai cũng đổi được mật khẩu của người khác.
+  [functions.doi-mat-khau]
+    verify_jwt = true

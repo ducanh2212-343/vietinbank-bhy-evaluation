@@ -191,7 +191,11 @@ export async function createOrUpdateStaffUser(
       email,
       password: tempPassword,
       email_confirm: true,
+      // Cờ đặt ở CẢ app_metadata: user_metadata người dùng tự sửa được nên ai cầm mật
+      // khẩu tạm có thể tự gỡ yêu cầu đổi rồi dùng mãi. app_metadata chỉ máy chủ ghi,
+      // và chỉ hàm doi-mat-khau hạ được — mà hàm đó chỉ hạ khi đã đặt mật khẩu mới thật.
       user_metadata: { full_name: fullName, must_change_password: true },
+      app_metadata: { must_change_password: true },
     });
     if (error) {
       // Auth user may already exist without a profile row — recover its id.

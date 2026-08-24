@@ -7,6 +7,7 @@ import { useCreditSessions, CreditSession, CreditSessionInput } from '@/componen
 import { useMyFullName } from '@/components/one/useMyFullName';
 import { useAuth } from '@/hooks/useAuth';
 import { IDEA_DEPARTMENTS } from '@/data/one/ideasConfig';
+import { dongCsv } from '@/lib/xuatCsv';
 
 interface Credit360PillarProps {
   images: string[];
@@ -122,8 +123,11 @@ const CreditSessionLogger: React.FC = () => {
       s.creatorName,
       s.createdAt ? new Date(s.createdAt).toLocaleDateString('vi-VN') : '',
     ]);
+    // TÊN KHÁCH HÀNG và lĩnh vực kinh doanh là chữ do cán bộ gõ, nên ngoài việc
+    // bọc dấu " như cũ còn phải chặn ô mở đầu bằng = + - @ — Excel sẽ hiểu là
+    // công thức và chạy trên máy lãnh đạo mở tệp. Xem src/lib/xuatCsv.ts.
     const csvContent = [headers, ...rows]
-      .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+      .map(row => dongCsv(row, ','))
       .join('\n');
     // BOM UTF-8 để Excel mở đúng tiếng Việt có dấu
     const blob = new Blob(['﻿', csvContent], { type: 'text/csv;charset=utf-8;' });

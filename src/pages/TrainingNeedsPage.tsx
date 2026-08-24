@@ -15,6 +15,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { GraduationCap, ChevronDown, ChevronUp, Users, Download, Target, Building2, Briefcase, Layers } from 'lucide-react';
+import { dongCsv } from '@/lib/xuatCsv';
 
 const sb = supabase as any;
 
@@ -137,16 +138,19 @@ export default function TrainingNeedsPage() {
   };
 
   const exportCsv = () => {
-    const lines = [['Mã khóa', 'Tên khóa', 'Cán bộ', 'Phòng', 'Vị trí', 'Skill liên quan', 'Ngày đăng ký', 'Phương án tổ chức'].join(';')];
+    // Tên khóa, tên cán bộ, tên phòng đều là chữ do người dùng gõ: dongCsv bọc
+    // dấu " cho khỏi lệch cột khi có dấu ';' và chặn ô mở đầu bằng '=' chạy như
+    // công thức trên máy người mở tệp. Xem src/lib/xuatCsv.ts.
+    const lines = [dongCsv(['Mã khóa', 'Tên khóa', 'Cán bộ', 'Phòng', 'Vị trí', 'Skill liên quan', 'Ngày đăng ký', 'Phương án tổ chức'])];
     byCourse.forEach(([cid, list]) => {
       const c = courses[cid];
-      list.forEach(r => lines.push([
-        c?.code || '', `"${c?.name || ''}"`, r.profiles?.full_name || '',
+      list.forEach(r => lines.push(dongCsv([
+        c?.code || '', c?.name || '', r.profiles?.full_name || '',
         r.profiles?.departments?.name || '', r.profiles?.position || '',
         r.skill_catalog ? `${r.skill_catalog.code} ${r.skill_catalog.name}` : '',
         new Date(r.created_at).toLocaleDateString('vi-VN'),
         PLAN_LABEL[plans[cid]?.status || 'new'],
-      ].join(';')));
+      ])));
     });
     const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');

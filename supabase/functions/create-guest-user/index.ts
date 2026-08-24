@@ -101,6 +101,8 @@ Deno.serve(async (req) => {
         const { error: pwErr } = await admin.auth.admin.updateUserById(userId, {
           password: tempPassword,
           user_metadata: { ...existing.user_metadata, must_change_password: true },
+          // Xem chú thích ở nhánh tạo mới bên dưới: app_metadata là cờ máy chủ giữ.
+          app_metadata: { ...(existing.app_metadata ?? {}), must_change_password: true },
         });
         if (pwErr) throw new HttpError(`Không cấp lại được mật khẩu: ${pwErr.message}`, 400);
       }
@@ -110,7 +112,11 @@ Deno.serve(async (req) => {
         email,
         password: tempPassword,
         email_confirm: true,
+      // Cờ đặt ở CẢ app_metadata: user_metadata người dùng tự sửa được nên ai cầm mật
+      // khẩu tạm có thể tự gỡ yêu cầu đổi rồi dùng mãi. app_metadata chỉ máy chủ ghi,
+      // và chỉ hàm doi-mat-khau hạ được — mà hàm đó chỉ hạ khi đã đặt mật khẩu mới thật.
         user_metadata: { full_name: displayName, must_change_password: true, is_guest: true },
+        app_metadata: { must_change_password: true },
       });
       if (error || !data.user) {
         throw new HttpError(`Không tạo được tài khoản: ${error?.message ?? "unknown"}`, 400);

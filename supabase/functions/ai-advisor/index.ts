@@ -2,6 +2,7 @@
 // Modes: suggest_evidence | suggest_idp_plan | chat (SSE) | summarize_assessment
 // | coach_skill | suggest_attitude_action | competency_portrait | generate_criteria (admin)
 // | evidence_review | one_on_one_prep | quarterly_letter
+// | test_connection (admin) | trang_thai_khoa (admin)
 // Prompts/model are loaded from public.ai_prompts (admin-editable).
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -487,6 +488,45 @@ Deno.serve(async (req) => {
     const stream: boolean = mode === 'chat';
 
     const adminCli = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // ============ Mode trang_thai_khoa — chỉ admin, trả TRẠNG THÁI khóa (không trả khóa) ============
+    // VÌ SAO có mode này: trước đây trang Quản trị AI select thẳng cột api_key về trình duyệt
+    // chỉ để hiển thị "đã có khóa ••••1234". Khóa của nhà cung cấp AI là khóa TÍNH TIỀN THẬT —
+    // khác hẳn anon key vốn được thiết kế để công khai. Khi đã gửi xuống client thì bản đầy đủ
+    // của khóa nằm trong tab Network, trong state React và trong bộ nhớ trình duyệt máy quản trị
+    // viên; một extension, một lần chia sẻ màn hình hay một bản dump heap là lộ khóa và cháy
+    // credit thật. Bí mật ở lại máy chủ; client chỉ nhận phần dẫn xuất vô hại (có/không + 4 số
+    // cuối) — vừa đủ để admin nhận ra mình đang dùng khóa nào mà không dựng lại được khóa.
+    //
+    // Đặt TRƯỚC resolveProvider có chủ đích: resolveProvider trả configError (HTTP 500) khi
+    // chưa có khóa, mà "chưa có khóa" lại đúng là trạng thái mode này cần báo về cho admin.
+    // Cũng nằm trước khối rate limit nên không tiêu lượt AI và không ghi ai_usage_log.
+    if (mode === 'trang_thai_khoa') {
+      const { data: roleRows0 } = await adminCli
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+      const roles0 = (roleRows0 || []).map((r: any) => r.role);
+      if (!roles0.some((r: string) => ['system_admin', 'bgd', 'tcth_admin'].includes(r))) {
+        return new Response(JSON.stringify({ error: 'Chỉ quản trị viên được xem trạng thái khóa AI.' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const { data: cauHinh } = await adminCli
+        .from('ai_settings')
+        .select('provider, api_key, api_base_url')
+        .eq('id', 1)
+        .maybeSingle();
+      // Chỉ xét khóa lưu trong DB (không xét secret LOVABLE_API_KEY) — giữ đúng ý nghĩa
+      // ô "API key" trên giao diện: ô đó chỉ quản lý khóa do admin dán vào.
+      const khoa = String(cauHinh?.api_key || '').trim();
+      return new Response(JSON.stringify({
+        provider: String(cauHinh?.provider || 'lovable'),
+        api_base_url: cauHinh?.api_base_url || '',
+        daCoKhoa: khoa.length > 0,
+        bonSoCuoi: khoa.length > 4 ? khoa.slice(-4) : '',
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
 
     // ============ Nhà cung cấp AI (BYOK) ============
     const providerCfg = await resolveProvider(adminCli);

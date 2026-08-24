@@ -23,6 +23,93 @@ function generateToken(): string {
     .join('')
 }
 
+// Địa chỉ email hợp lệ ở mức thô — chặn luôn giá trị chứa dấu phẩy/ngoặc để
+// không bao giờ có chuỗi lạ lọt vào bộ lọc PostgREST.
+const EMAIL_RE = /^[^\s@,()"'\\]+@[^\s@,()"'\\]+\.[^\s@,()"'\\]+$/
+
+/**
+ * Địa chỉ này hệ thống đã biết chưa? Trả về nguồn khớp (để ghi log) hoặc null.
+ *
+ * Dùng cho ĐƯỜNG TƯƠNG THÍCH: phía gọi cũ truyền thẳng `recipientEmail`. Ta
+ * không cấm hẳn tham số đó (sẽ làm chết thư duyệt/từ chối đăng ký đang chạy),
+ * nhưng chỉ nhận địa chỉ ĐÃ CÓ SẴN trong hệ thống — nhờ vậy hàm không còn là
+ * công cụ gửi thư "chính chủ ngân hàng" tới địa chỉ bất kỳ.
+ *
+ * VÌ SAO CÓ NHÁNH registration_requests (đừng bỏ): thư `registration-rejected`
+ * gửi cho người bị TỪ CHỐI đăng ký, mà dòng `profiles` chỉ được tạo khi DUYỆT.
+ * Chỉ tra `profiles` là thư báo từ chối im lặng biến mất.
+ *
+ * VÀ VÌ SAO NHÁNH ĐÓ PHẢI SIẾT HAI LẦN (`registration-rejected` + đơn đã ở trạng
+ * thái `rejected`): nếu chỉ hỏi «email này có trong registration_requests không»
+ * thì bất cứ ai nộp được một đơn mang địa chỉ nạn nhân là biến địa chỉ đó thành
+ * «hệ thống đã biết», và đường gửi tới địa chỉ tuỳ ý vừa bịt lại mở ra y nguyên.
+ *
+ * Ghi cho đúng sự thật (đã đo trên chính project `whlysprzsguehxmrjwha` ngày
+ * 24/08/2026, đừng suy từ mỗi tệp migration): HIỆN TẠI `anon` KHÔNG nộp đơn được
+ * — bảng chỉ còn policy SELECT/UPDATE cho quản trị, và `anon` cũng không có
+ * quyền INSERT ở tầng GRANT. Chính sách «Anyone can submit registration request»
+ * (WITH CHECK (true), TO anon) có thật trong migration
+ * `20260415161613_e854b1e7-...sql:30` nhưng đã bị gỡ ở một đợt siết sau đó.
+ * Nghĩa là đây là PHÒNG THỦ CHIỀU SÂU cho ngày policy ấy quay lại, chứ không
+ * phải đang bịt một đường đang mở. Giữ lại vì rẻ và vì repo này đã có tiền lệ
+ * quyền bị đặt lại âm thầm (xem migration 20261001090200).
+ *
+ * Đơn tự nộp luôn ở trạng thái `pending`; chỉ người có quyền duyệt (qua
+ * approve-registration) mới đẩy được sang `rejected` — và luồng đó cập nhật
+ * trạng thái TRƯỚC khi gọi gửi thư nên thư từ chối thật vẫn đi bình thường.
+ *
+ * So khớp bằng `in` với đúng hai biến thể (nguyên văn + chữ thường) thay vì
+ * `ilike`: `ilike` coi `%` và `_` là ký tự đại diện nên "%@bachungyenone.com"
+ * sẽ khớp mọi hồ sơ — đúng lỗ hổng vừa vá. Phía gọi thật luôn truyền đúng
+ * chuỗi đã lưu trong DB (cùng lấy từ một dòng registration_requests) nên khớp
+ * chính xác là đủ.
+ */
+async function nguonBietDiaChi(
+  admin: any,
+  diaChi: string,
+  emailNguoiGoi: string | null,
+  templateName: string,
+): Promise<string | null> {
+  const sach = diaChi.trim()
+  if (!EMAIL_RE.test(sach)) return null
+  if (emailNguoiGoi && emailNguoiGoi.trim().toLowerCase() === sach.toLowerCase()) {
+    return 'nguoi_goi'
+  }
+  const bienThe = [...new Set([sach, sach.toLowerCase()])]
+  // Chỉ `profiles` mới là danh sách địa chỉ mà người ngoài KHÔNG tự ghi vào được.
+  const cho: Array<[string, string, string]> = [
+    ['profiles', 'email', 'ho_so'],
+    ['profiles', 'personal_email', 'ho_so_email_ca_nhan'],
+  ]
+  for (const [bang, cot, nguon] of cho) {
+    // Lỗi truy vấn → coi như KHÔNG biết địa chỉ (fail-closed): thà không gửi
+    // được một thư còn hơn mở lại đường gửi tới địa chỉ tuỳ ý.
+    const { data, error } = await admin.from(bang).select('id').in(cot, bienThe).limit(1)
+    if (error) {
+      console.error('Không tra được địa chỉ người nhận', { bang, cot, error })
+      return null
+    }
+    if (data && data.length > 0) return nguon
+  }
+
+  // Nhánh đơn đăng ký — bảng anon ghi được nên khoá đúng một trường hợp dùng thật
+  // (xem ghi chú dài ở đầu hàm): thư báo TỪ CHỐI gửi cho đơn ĐÃ bị từ chối.
+  if (templateName === 'registration-rejected') {
+    const { data, error } = await admin
+      .from('registration_requests')
+      .select('id')
+      .in('email', bienThe)
+      .eq('status', 'rejected')
+      .limit(1)
+    if (error) {
+      console.error('Không tra được đơn đăng ký của người nhận', { error })
+      return null
+    }
+    if (data && data.length > 0) return 'don_dang_ky'
+  }
+  return null
+}
+
 // Auth note: this function uses verify_jwt = true in config.toml. We additionally
 // require the caller to be either service_role (internal invocation) or an
 // authenticated admin user — otherwise anyone with the public anon key could
@@ -53,6 +140,9 @@ Deno.serve(async (req) => {
   const authHeader = req.headers.get('Authorization') || ''
   const token = authHeader.replace(/^Bearer\s+/i, '')
   let authorized = false
+  // Email của chính người gọi — dùng cho đường tương thích bên dưới (admin được
+  // phép tự gửi thư về hòm thư của mình để thử template).
+  let emailNguoiGoi: string | null = null
   try {
     const payloadB64 = token.split('.')[1] || ''
     const padded = payloadB64 + '='.repeat((4 - (payloadB64.length % 4)) % 4)
@@ -65,6 +155,7 @@ Deno.serve(async (req) => {
       })
       const { data: { user } } = await userClient.auth.getUser()
       if (user) {
+        emailNguoiGoi = user.email ?? null
         const adminCheck = createClient(supabaseUrl, supabaseServiceKey)
         const { data: roles } = await adminCheck
           .from('user_roles')
@@ -90,14 +181,22 @@ Deno.serve(async (req) => {
 
   // Parse request body
   let templateName: string
-  let recipientEmail: string
+  let recipientEmail: string | null
+  let recipientProfileId: string | null
   let idempotencyKey: string
   let messageId: string
   let templateData: Record<string, any> = {}
   try {
     const body = await req.json()
     templateName = body.templateName || body.template_name
-    recipientEmail = body.recipientEmail || body.recipient_email
+    // Cách MỚI (nên dùng): phía gọi nêu MÃ HỒ SƠ, máy chủ tự tra email.
+    const maHoSo = body.recipientProfileId || body.recipient_profile_id
+    recipientProfileId = typeof maHoSo === 'string' && maHoSo.trim() ? maHoSo.trim() : null
+    // Cách CŨ: địa chỉ email do phía gọi truyền — nay phải qua kiểm chứng bên dưới.
+    // Ép về chuỗi ngay tại đây: phía gọi truyền số/đối tượng thì các bước sau
+    // gọi .trim() sẽ nổ 500 thay vì trả lỗi 400 tử tế.
+    const diaChiTho = body.recipientEmail || body.recipient_email
+    recipientEmail = typeof diaChiTho === 'string' && diaChiTho.trim() ? diaChiTho.trim() : null
     messageId = crypto.randomUUID()
     idempotencyKey = body.idempotencyKey || body.idempotency_key || messageId
     if (body.templateData && typeof body.templateData === 'object') {
@@ -139,15 +238,74 @@ Deno.serve(async (req) => {
     )
   }
 
-  // Resolve effective recipient: template-level `to` takes precedence over
-  // the caller-provided recipientEmail. This allows notification templates
-  // to always send to a fixed address (e.g., site owner from env var).
-  const effectiveRecipient = template.to || recipientEmail
+  // Create Supabase client with service role (bypasses RLS).
+  // Tạo sớm hơn trước đây vì bước chọn người nhận ngay dưới đã cần tra bảng.
+  const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+  // ---- Chọn người nhận (siết 24/08/2026) ----------------------------------
+  // TRƯỚC ĐÂY: gửi thẳng tới `recipientEmail` do phía gọi truyền. Thư lại đi từ
+  // tên miền đã xác thực của ngân hàng (noreply@bachungyenone.com), nên chỉ cần
+  // một lần lọt quyền quản trị hoặc rò service key là có ngay công cụ gửi thư
+  // lừa đảo trông y như thật tới ĐỊA CHỈ BẤT KỲ — mồi lừa đảo lợi hại nhất mà
+  // hệ thống này có thể tự trao cho kẻ tấn công.
+  // NAY: địa chỉ do MÁY CHỦ tra ra từ hồ sơ (cùng khuôn send-hr-notification),
+  // phía gọi chỉ được nêu mã hồ sơ; ai vẫn truyền email thì địa chỉ đó bắt buộc
+  // phải đã tồn tại trong hệ thống.
+  let effectiveRecipient: string | null = null
+  let nguonNguoiNhan = ''
+
+  if (template.to) {
+    // Template khai người nhận cố định (vd hòm thư quản trị) — không phụ thuộc
+    // phía gọi, nên luôn được ưu tiên. Giữ nguyên hành vi cũ.
+    effectiveRecipient = template.to
+    nguonNguoiNhan = 'template'
+  } else if (recipientProfileId) {
+    const { data: hoSo, error: loiHoSo } = await supabase
+      .from('profiles')
+      .select('id, email, personal_email, status')
+      .eq('id', recipientProfileId)
+      .maybeSingle()
+    if (loiHoSo) {
+      console.error('Lỗi tra hồ sơ người nhận', { error: loiHoSo, recipientProfileId })
+      return new Response(
+        JSON.stringify({ error: 'Không tra được hồ sơ người nhận' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    if (!hoSo || hoSo.status !== 'active') {
+      return new Response(
+        JSON.stringify({ error: 'Không tìm thấy cán bộ đang hoạt động với mã hồ sơ này' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    effectiveRecipient = (hoSo.email || hoSo.personal_email || '').trim() || null
+    if (!effectiveRecipient) {
+      return new Response(
+        JSON.stringify({ error: 'Hồ sơ cán bộ này chưa có email — không gửi được' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    nguonNguoiNhan = 'ma_ho_so'
+  } else if (recipientEmail) {
+    const nguon = await nguonBietDiaChi(supabase, recipientEmail, emailNguoiGoi, templateName)
+    if (!nguon) {
+      console.warn('Từ chối gửi tới địa chỉ hệ thống không biết', { templateName })
+      return new Response(
+        JSON.stringify({
+          error:
+            'Địa chỉ người nhận không thuộc hệ thống. Hãy truyền recipient_profile_id thay cho recipientEmail.',
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    effectiveRecipient = recipientEmail.trim()
+    nguonNguoiNhan = nguon
+  }
 
   if (!effectiveRecipient) {
     return new Response(
       JSON.stringify({
-        error: 'recipientEmail is required (unless the template defines a fixed recipient)',
+        error: 'recipient_profile_id is required (unless the template defines a fixed recipient)',
       }),
       {
         status: 400,
@@ -155,9 +313,6 @@ Deno.serve(async (req) => {
       }
     )
   }
-
-  // Create Supabase client with service role (bypasses RLS)
-  const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
   // 2. Check suppression list (fail-closed: if we can't verify, don't send)
   const { data: suppressed, error: suppressionError } = await supabase
@@ -381,7 +536,9 @@ Deno.serve(async (req) => {
     })
   }
 
-  console.log('Transactional email enqueued', { templateName, effectiveRecipient })
+  // Ghi kèm nguồn người nhận: sau vài tuần nhìn log là biết còn nơi nào dùng
+  // đường tương thích cũ, để gỡ hẳn tham số recipientEmail.
+  console.log('Transactional email enqueued', { templateName, effectiveRecipient, nguonNguoiNhan })
 
   return new Response(
     JSON.stringify({ success: true, queued: true }),

@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { kiemAnhTaiLen } from '@/lib/anhTaiLen';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -82,12 +83,15 @@ export default function SkillMediaPage() {
     const key = `${skillId}_L${level}`;
     setUploading(key);
     try {
-      const ext = file.name.split('.').pop() || 'png';
+      // Đuôi tệp suy từ LOẠI ẢNH THẬT (xem src/lib/anhTaiLen.ts) — kho này công khai.
+      const kiem = kiemAnhTaiLen(file);
+      if (!kiem.ok) throw new Error(kiem.loi);
+      const ext = kiem.duoi;
       const path = `${skillId}/level_${level}.${ext}`;
 
       const { error: uploadErr } = await supabase.storage
         .from('skill-images')
-        .upload(path, file, { upsert: true });
+        .upload(path, file, { upsert: true, contentType: kiem.loai });
       if (uploadErr) throw uploadErr;
 
       const { data: urlData } = supabase.storage.from('skill-images').getPublicUrl(path);
@@ -127,12 +131,15 @@ export default function SkillMediaPage() {
     const key = `${skillId}_icon`;
     setUploading(key);
     try {
-      const ext = file.name.split('.').pop() || 'png';
+      // Đuôi tệp suy từ LOẠI ẢNH THẬT (xem src/lib/anhTaiLen.ts) — kho này công khai.
+      const kiem = kiemAnhTaiLen(file);
+      if (!kiem.ok) throw new Error(kiem.loi);
+      const ext = kiem.duoi;
       const path = `${skillId}/icon.${ext}`;
 
       const { error: uploadErr } = await supabase.storage
         .from('skill-images')
-        .upload(path, file, { upsert: true });
+        .upload(path, file, { upsert: true, contentType: kiem.loai });
       if (uploadErr) throw uploadErr;
 
       const { data: urlData } = supabase.storage.from('skill-images').getPublicUrl(path);
@@ -154,12 +161,15 @@ export default function SkillMediaPage() {
     const key = `stage_${stage}`;
     setUploading(key);
     try {
-      const ext = file.name.split('.').pop() || 'png';
+      // Đuôi tệp suy từ LOẠI ẢNH THẬT (xem src/lib/anhTaiLen.ts) — kho này công khai.
+      const kiem = kiemAnhTaiLen(file);
+      if (!kiem.ok) throw new Error(kiem.loi);
+      const ext = kiem.duoi;
       const path = `growth-stages/stage_${stage}.${ext}`;
 
       const { error: uploadErr } = await supabase.storage
         .from('skill-images')
-        .upload(path, file, { upsert: true });
+        .upload(path, file, { upsert: true, contentType: kiem.loai });
       if (uploadErr) throw uploadErr;
 
       const { data: urlData } = supabase.storage.from('skill-images').getPublicUrl(path);

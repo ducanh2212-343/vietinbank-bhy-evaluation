@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { datMatKhauMoi } from '@/lib/doiMatKhau';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -58,13 +59,11 @@ export default function ResetPassword() {
       return;
     }
     setSaving(true);
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword,
-      data: { must_change_password: false },
-    });
+    // Cùng đường với trang đổi mật khẩu: hạ cờ ở app_metadata phải do máy chủ làm.
+    const { error } = await datMatKhauMoi(newPassword);
     setSaving(false);
     if (error) {
-      toast({ title: 'Đặt lại mật khẩu thất bại', description: error.message, variant: 'destructive' });
+      toast({ title: 'Đặt lại mật khẩu thất bại', description: error, variant: 'destructive' });
       return;
     }
     toast({ title: 'Đã đặt lại mật khẩu thành công' });
