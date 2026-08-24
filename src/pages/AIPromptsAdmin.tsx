@@ -172,27 +172,58 @@ export default function AIPromptsAdmin() {
       setDrafts(map);
     }
 
-    // Cấu hình nhà cung cấp AI — chỉ admin đọc được (RLS)
+    // Cấu hình nhà cung cấp AI — chỉ admin đọc được (RLS).
+    // CHỦ Ý chỉ select phần KHÔNG bí mật (provider, base URL): khóa API của nhà cung cấp AI
+    // là khóa tính tiền thật, khác hẳn anon key vốn được thiết kế để công khai. Trước đây chỗ
+    // này select cả cột api_key chỉ để hiện "đã có khóa ••••1234" — nghĩa là bản đầy đủ của
+    // khóa đi qua tab Network, nằm trong state React và trong bộ nhớ trình duyệt máy quản trị
+    // viên, chỉ cần một extension hay một lần chia sẻ màn hình là lộ. Bí mật ở lại máy chủ.
     const { data: settingsRow } = await (supabase as any)
       .from('ai_settings')
-      .select('provider, api_key, api_base_url')
+      .select('provider, api_base_url')
       .eq('id', 1)
       .maybeSingle();
+
     if (settingsRow) {
-      const key = (settingsRow.api_key || '').trim();
-      setProviderSettings({
+      // Cập nhật theo hàm để GIỮ LẠI hasKey/keyLast4 mà taiTrangThaiKhoa() đặt: hai lời gọi
+      // chạy song song, về đích theo thứ tự nào cũng không xóa kết quả của nhau.
+      setProviderSettings((s) => ({
+        ...s,
         provider: settingsRow.provider || 'lovable',
         api_base_url: settingsRow.api_base_url || '',
-        hasKey: key.length > 0,
-        keyLast4: key.length > 4 ? key.slice(-4) : '',
-      });
+      }));
       setNewBaseUrl(settingsRow.api_base_url || '');
     }
     setLoading(false);
   };
 
+  // Phần "đã có khóa ••••1234" do MÁY CHỦ tính rồi trả về (ai-advisor mode 'trang_thai_khoa',
+  // chỉ admin gọi được) — xem ghi chú vì sao khóa không được xuống trình duyệt ở load().
+  // TÁCH RIÊNG KHỎI load() có chủ ý, vì hai lý do:
+  //  1. load() còn chạy lại sau MỖI lần lưu một prompt, mà trạng thái khóa không đổi theo
+  //     prompt — để chung thì admin sửa 10 tác vụ là tốn thêm 10 lượt gọi edge function.
+  //  2. Danh sách prompt không được phép chờ edge function. ai-advisor deploy tách rời
+  //     frontend; nếu nó chậm hoặc lỗi mà lại nằm trong đường chờ của load() thì cả trang
+  //     quản trị prompt treo ở "Đang tải…" chỉ vì một dòng hiển thị 4 số cuối.
+  // Best-effort: bản ai-advisor đang chạy chưa có mode này thì chỉ mất dòng gợi ý 4 số cuối,
+  // phần chọn nhà cung cấp / lưu khóa / kiểm tra kết nối vẫn chạy bình thường.
+  const taiTrangThaiKhoa = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-advisor', {
+        body: { mode: 'trang_thai_khoa' },
+      });
+      if (error || !data) return; // giữ nguyên những gì đang hiển thị
+      setProviderSettings((s) => ({
+        ...s,
+        hasKey: !!data.daCoKhoa,
+        keyLast4: String(data.bonSoCuoi || ''),
+      }));
+    } catch { /* best-effort — xem ghi chú ở trên */ }
+  };
+
   useEffect(() => {
     load();
+    taiTrangThaiKhoa();
   }, []);
 
   const saveProviderSettings = async () => {
@@ -201,7 +232,14 @@ export default function AIPromptsAdmin() {
       provider: providerSettings.provider,
       api_base_url: providerSettings.provider === 'custom' ? (newBaseUrl.trim() || null) : null,
     };
-    // Chỉ ghi đè key khi admin nhập key mới — để trống là giữ key cũ
+    // Chỉ ghi đè key khi admin nhập key mới — để trống là giữ key cũ.
+    // Chiều GHI vẫn đi thẳng từ client vào bảng: khóa là do chính admin gõ ra nên nó vốn đã ở
+    // trên máy đó, gửi lên qua TLS không làm lộ thêm gì; chiều ĐỌC mới là chỗ hệ thống tự phát
+    // khóa ra cho trình duyệt và đã được bịt ở hàm load().
+    // CÒN LẠI CẦN LÀM (việc riêng, cần migration nên không gộp vào PR này): chuyển đường ghi
+    // này qua ai-advisor rồi thu hồi quyền của vai trò `authenticated` trên cột api_key
+    // (column-level REVOKE hoặc chuyển khóa sang Vault). Chừng nào RLS còn cho admin SELECT cả
+    // dòng thì một lỗ XSS trên trang quản trị vẫn đọc lại được khóa.
     if (newApiKey.trim()) patch.api_key = newApiKey.trim();
     const { error } = await (supabase as any)
       .from('ai_settings')
@@ -215,6 +253,7 @@ export default function AIPromptsAdmin() {
     toast({ title: 'Đã lưu nhà cung cấp AI', description: 'Áp dụng ngay cho các lượt gọi AI tiếp theo.' });
     setNewApiKey('');
     load();
+    taiTrangThaiKhoa(); // khóa vừa đổi → lấy lại 4 số cuối từ máy chủ
   };
 
   const testConnection = async () => {

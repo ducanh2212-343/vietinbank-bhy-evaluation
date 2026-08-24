@@ -8,11 +8,17 @@ import { useToast } from '@/hooks/use-toast';
 import { CORE_VALUES as VALUES } from '@/lib/coreValues';
 import { markActivity } from '@/lib/idleSession';
 import { chuanHoaTenDangNhap, emailTuTenDangNhap } from '@/lib/taiKhoanKhach';
+import XacThucTurnstile from '@/components/XacThucTurnstile';
+import { CAPTCHA_SAN_SANG, NHAC_THIEU_SITE_KEY } from '@/lib/turnstile';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  // Token Turnstile: Supabase Auth đã bật kiểm captcha nên thiếu token là máy chủ
+  // từ chối đăng nhập. `lamMoiCaptcha` tăng sau mỗi lần thử hỏng để lấy token mới.
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [lamMoiCaptcha, setLamMoiCaptcha] = useState(0);
   const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -23,9 +29,18 @@ export default function Login() {
     // email thật thì giữ nguyên.
     const dinhDanh = email.trim();
     const taiKhoan = dinhDanh.includes('@') ? dinhDanh : emailTuTenDangNhap(chuanHoaTenDangNhap(dinhDanh));
-    const { error } = await supabase.auth.signInWithPassword({ email: taiKhoan, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email: taiKhoan,
+      password,
+      ...(captchaToken ? { options: { captchaToken } } : {}),
+    });
     setLoading(false);
     if (error) {
+      // MỖI TOKEN CHỈ DÙNG ĐƯỢC MỘT LẦN. Gõ sai mật khẩu là token cháy theo, nên
+      // phải xin token mới trước lần thử sau — nếu không, lần bấm thứ hai vẫn hỏng
+      // dù mật khẩu đã đúng, và cán bộ sẽ tưởng mình nhớ nhầm mật khẩu.
+      setCaptchaToken(null);
+      setLamMoiCaptcha((n) => n + 1);
       toast({ title: 'Đăng nhập thất bại', description: error.message, variant: 'destructive' });
     } else {
       markActivity(); // đăng nhập mới = mốc hoạt động mới (tránh guard idle đăng xuất oan vì mốc cũ)
@@ -138,7 +153,22 @@ export default function Login() {
                   className="bg-background"
                 />
               </div>
-              <Button type="submit" className="w-full h-11" disabled={loading}>
+              {CAPTCHA_SAN_SANG ? (
+                <XacThucTurnstile
+                  onToken={setCaptchaToken}
+                  lamMoi={lamMoiCaptcha}
+                  className="flex justify-center"
+                />
+              ) : (
+                <p className="rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+                  {NHAC_THIEU_SITE_KEY}
+                </p>
+              )}
+              <Button
+                type="submit"
+                className="w-full h-11"
+                disabled={loading || (CAPTCHA_SAN_SANG && !captchaToken)}
+              >
                 {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
               </Button>
               <div className="text-center">

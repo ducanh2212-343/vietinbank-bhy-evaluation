@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import type { User } from '@supabase/supabase-js';
 import { chuanHoaManHinhKhach, type MaManHinhKhach } from '@/lib/manHinhKhach';
+import { donDuLieuCaNhanTrenMay } from '@/lib/donDuLieuCaNhan';
 
 /** Ném khi tài khoản không còn hoạt động (nghỉ việc/tạm khóa) — chặn đăng nhập. */
 class InactiveAccountError extends Error {
@@ -234,8 +235,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isGuest = roles.includes('guest');
 
   // Cờ được gắn khi admin cấp tài khoản/mật khẩu tạm; xóa sau khi đổi mật khẩu thành công.
-  const mcp = user?.user_metadata?.must_change_password;
-  const mustChangePassword = mcp === true || mcp === 'true';
+  //
+  // ĐỌC CẢ HAI NƠI, và app_metadata là nơi đáng tin:
+  //   · user_metadata NGƯỜI DÙNG TỰ SỬA ĐƯỢC (đó chính là cách app xoá cờ sau khi đổi
+  //     mật khẩu). Nghĩa là ai cầm mật khẩu tạm chỉ cần gọi một câu
+  //     supabase.auth.updateUser({ data: { must_change_password: false } }) trong console
+  //     là thoát được yêu cầu đổi — vô hiệu hoá đúng biện pháp sinh ra để bảo vệ họ.
+  //   · app_metadata CHỈ MÁY CHỦ ghi được, nên là chốt thật. Các hàm cấp tài khoản /
+  //     cấp lại mật khẩu đặt cờ ở đây; chỉ hàm máy chủ doi-mat-khau xoá nó, và hàm đó
+  //     chỉ xoá KHI THẬT SỰ đặt mật khẩu mới.
+  // Giữ cả hai để tài khoản cấp trước đợt vá (chỉ có user_metadata) vẫn bị buộc đổi.
+  const coCo = (v: unknown) => v === true || v === 'true';
+  const mustChangePassword =
+    coCo(user?.app_metadata?.must_change_password) || coCo(user?.user_metadata?.must_change_password);
 
   const scope: AuthScope = isAdmin ? 'all' : isPgd ? 'block' : isManager ? 'department' : 'self';
 
@@ -253,6 +265,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     // Xóa mốc "hoạt động cuối" để lần đăng nhập sau không bị guard idle đăng xuất oan
     try { localStorage.removeItem('343skill:last-activity'); } catch { /* noop */ }
+    // Máy ở chi nhánh là máy dùng chung: phải xoá nốt nhận xét về đồng nghiệp, chân dung
+    // năng lực AI và PDF kỷ yếu đã tải, nếu không người ngồi sau đọc được của người trước.
+    donDuLieuCaNhanTrenMay();
     await supabase.auth.signOut();
     setUser(null);
     setRoles([]);

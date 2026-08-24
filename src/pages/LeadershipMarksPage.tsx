@@ -27,6 +27,7 @@ import { Award, Download, Pencil, Plus, Sparkles, Archive, CalendarCheck, AlertT
 import { fetchWeeklyUpdateMap, isWeeklyTracked, type KanbanCard, type WeeklyUpdateMap } from '@/lib/kanban';
 import { UpdateProgressDialog } from '@/components/kanban/UpdateProgressDialog';
 import { Ct2DongThoiGian } from '@/components/one/move2/Ct2DongThoiGian';
+import { tachBangChung } from '@/lib/safeUrl';
 
 const sb = supabase as any;
 
@@ -522,24 +523,30 @@ export default function LeadershipMarksPage() {
                       <Ct2DongThoiGian
                         phamVi="DAU_AN"
                         doiTuongId={m.id}
-                        baoCao={logs.map((l) => ({
-                          id: l.id,
-                          luc: l.created_at,
-                          nguoi: l.created_by,
-                          tieu_de: LOG_LABEL[l.log_type] || l.log_type,
-                          phan_tram: l.progress_percent,
-                          noi_dung: [
-                            l.new_status ? (KANBAN_LABEL[l.new_status] || l.new_status) : null,
-                            l.progress_note,
-                          ].filter(Boolean).join(' · ') || null,
-                          chi_tiet: [
-                            ...(l.current_result ? [{ nhan: 'Kết quả', gia: l.current_result, mau: 'XANH' as const }] : []),
-                            ...(l.blocker_note ? [{ nhan: 'Vướng mắc', gia: l.blocker_note, mau: 'DO' as const }] : []),
-                            ...(l.support_needed ? [{ nhan: 'Cần hỗ trợ', gia: l.support_needed, mau: 'DO' as const }] : []),
-                            ...(l.evidence_text ? [{ nhan: 'Bằng chứng', gia: l.evidence_text }] : []),
-                          ],
-                          url: l.evidence_url,
-                        }))}
+                        baoCao={logs.map((l) => {
+                          // Cùng luật với bàn Kanban: ô bằng chứng do cán bộ tự gõ,
+                          // chỉ giá trị qua được bộ lọc mới thành liên kết bấm được.
+                          const bangChung = tachBangChung(l.evidence_url);
+                          return {
+                            id: l.id,
+                            luc: l.created_at,
+                            nguoi: l.created_by,
+                            tieu_de: LOG_LABEL[l.log_type] || l.log_type,
+                            phan_tram: l.progress_percent,
+                            noi_dung: [
+                              l.new_status ? (KANBAN_LABEL[l.new_status] || l.new_status) : null,
+                              l.progress_note,
+                            ].filter(Boolean).join(' · ') || null,
+                            chi_tiet: [
+                              ...(l.current_result ? [{ nhan: 'Kết quả', gia: l.current_result, mau: 'XANH' as const }] : []),
+                              ...(l.blocker_note ? [{ nhan: 'Vướng mắc', gia: l.blocker_note, mau: 'DO' as const }] : []),
+                              ...(l.support_needed ? [{ nhan: 'Cần hỗ trợ', gia: l.support_needed, mau: 'DO' as const }] : []),
+                              ...(l.evidence_text ? [{ nhan: 'Bằng chứng', gia: l.evidence_text }] : []),
+                              ...(bangChung.chuThuong ? [{ nhan: 'Đính kèm', gia: bangChung.chuThuong }] : []),
+                            ],
+                            url: bangChung.lienKet,
+                          };
+                        })}
                         nguoiLienQuan={[{ id: m.profile_id, ten: m.profiles?.full_name ?? '—', vaiTro: 'chủ dấu ấn' }]}
                         tenNguoi={tenNguoi}
                         loiMoiDau="Chưa có dòng nào — cập nhật tuần và trao đổi sẽ hiện ở đây."

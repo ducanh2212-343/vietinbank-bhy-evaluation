@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { kiemAnhTaiLen } from '@/lib/anhTaiLen';
 import { ArrowLeft, Loader2, Save, Upload, User } from 'lucide-react';
 
 export default function EditMyProfile() {
@@ -58,15 +59,20 @@ export default function EditMyProfile() {
   const onAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
-    if (file.size > 4 * 1024 * 1024) {
-      toast.error('Ảnh tối đa 4MB');
+    // Kho `avatars` là kho CÔNG KHAI: trước đây chỉ kiểm dung lượng và lấy đuôi tệp từ
+    // tên người dùng đặt, nên tải lên được .html/.svg rồi có địa chỉ công khai trên hạ
+    // tầng gắn với ngân hàng. Nay kiểm loại ảnh thật và suy đuôi từ loại đó.
+    const kiem = kiemAnhTaiLen(file);
+    if (!kiem.ok) {
+      toast.error(kiem.loi);
       return;
     }
     setUploading(true);
     try {
-      const ext = file.name.split('.').pop() || 'jpg';
-      const path = `${user.id}/avatar-${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+      const path = `${user.id}/avatar-${Date.now()}.${kiem.duoi}`;
+      const { error: upErr } = await supabase.storage
+        .from('avatars')
+        .upload(path, file, { upsert: true, contentType: kiem.loai });
       if (upErr) throw upErr;
       const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
       setAvatarUrl(pub.publicUrl);

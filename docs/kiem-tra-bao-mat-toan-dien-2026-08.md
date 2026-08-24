@@ -9,6 +9,50 @@
 
 ---
 
+## 0-A. TÌNH TRẠNG SAU ĐỢT VÁ 24/08/2026 (đọc mục này trước)
+
+Báo cáo bên dưới là kết quả **rà soát** ngày 23/08. Ngày 24/08 đã tiến hành vá.
+Bảng này là trạng thái **hiện tại**; phần chi tiết kỹ thuật của từng lỗ hổng vẫn giữ
+nguyên ở các mục sau để tra cứu.
+
+### Đã vá và ĐÃ ÁP LÊN HỆ THỐNG THẬT
+
+| Mục | Việc | Bằng chứng đã kiểm |
+| --- | --- | --- |
+| 🔴 A1 | Bịt "cửa phụ" cho người lạ. Rà theo **lớp lỗi** phát hiện **không chỉ 1 mà 3 hàm** cùng dính chốt chặn viết ngược và còn quyền `anon`: `ct2_khen_chuoi_moc` (rò họ tên cán bộ, bắn push giả), `ct2_nhac_nhip_sang` (rò tên cán bộ + tiêu đề đầu việc), `ct2_chon_cau_mo_ngay` (ghi trái phép). | Người lạ gọi → `permission denied`. Đường cron chạy khô vẫn thoát bình thường. |
+| 🟢 C1 | Hai "khung nhìn" bỏ qua RLS mà người lạ đọc được (11 và 7 dòng) → cắt hẳn quyền. Không màn hình nào dùng chúng nên **không đổi hành vi**. | Người lạ gọi → `permission denied for view`. |
+| 🟡 B3 | Hai kho ảnh công khai không giới hạn loại/kích thước → đặt trần 5MB và chỉ nhận định dạng ảnh. Cố ý **giữ heic/heif** để cán bộ dùng iPhone không bị chặn. | Đã đọc lại cấu hình kho, giới hạn có hiệu lực. |
+
+### Đã vá trong mã nguồn (chờ phát hành)
+
+| Mục | Việc |
+| --- | --- |
+| 🟡 D | **Turnstile** gắn vào **cả 3 cửa** bị captcha chặn: đăng nhập, quên mật khẩu, **và đổi mật khẩu** (cửa thứ 3 rất dễ sót — bỏ quên là hỏng chức năng đổi mật khẩu của toàn chi nhánh). Token chỉ dùng một lần nên có cơ chế tự xin token mới sau mỗi lần gõ sai. CSP đã mở đúng nguồn Cloudflare ở **cả** `vercel.json` lẫn `public/_headers`. |
+| 🟠 A2 | Khóa API trả tiền của dịch vụ AI **không còn được gửi về trình duyệt**. Phần hiển thị "đã có khóa / 4 số cuối" chuyển sang máy chủ tính. |
+| 🟠 A3 | Cờ "bắt buộc đổi mật khẩu" chuyển sang `app_metadata` (**người dùng không tự sửa được**). Nơi duy nhất hạ được cờ là hàm máy chủ `doi-mat-khau`, và hàm đó **chỉ hạ khi đã thực sự đặt mật khẩu mới** — không còn đường tắt. |
+| 🟡 B1 | Khai đủ các hàm máy chủ còn thiếu trong `config.toml`. |
+| 🟡 B2 | Hàm gửi email **không còn gửi tới địa chỉ tùy ý**. Giữ đường tương thích để **thư duyệt và thư từ chối đăng ký vẫn chạy** (người bị từ chối chưa có hồ sơ nên phải tra thêm bảng đơn đăng ký — chỗ này suýt làm mất thư). |
+| 🟡 B4 | Chặn "chèn công thức" ở **cả 3** chỗ xuất CSV (gồm chỗ có tên khách hàng). |
+| 🟢 B5 | Đăng xuất nay xoá nháp ghi chú về đồng nghiệp, chân dung năng lực AI và PDF kỷ yếu — quan trọng với **máy dùng chung**. |
+| 🟢 C8 | Service worker chỉ mở liên kết cùng miền; bộ lọc URL không còn bị chính đoạn dự phòng vô hiệu hoá; kiểm thêm tên miền khi đặt lại mật khẩu. |
+
+### Việc CÒN LẠI cần bạn tự làm (không làm thay được)
+
+1. **Điền Turnstile site key.** Đặt biến `VITE_TURNSTILE_SITE_KEY` trên Vercel/Cloudflare,
+   hoặc điền vào hằng số `SITE_KEY_DU_PHONG` trong `src/lib/turnstile.ts`.
+   **Việc này GẤP:** Supabase đã bật kiểm captcha, mà trang chưa gửi token thì **máy chủ Auth
+   từ chối mọi lượt đăng nhập**. Chưa có khóa thì trang đăng nhập sẽ hiện cảnh báo rõ ràng.
+2. **Bật MFA (2 lớp) cho nhóm quản trị** — biện pháp lợi ích cao nhất ở mục đăng nhập, vì
+   CAPTCHA không cứu được khi mật khẩu quản trị đã bị lộ.
+3. **Bật "Leaked password protection"** và rà lại giới hạn số lần thử trong Supabase Auth.
+4. **Tắt tự đăng ký** ở tầng Supabase Auth (app đã chặn, nhưng nên khoá cả tầng dưới).
+5. **Phát hành mã + deploy lại các hàm máy chủ đã sửa.** Lưu ý thứ tự: hàm `doi-mat-khau`
+   **đã được deploy trước** nên các hàm cấp tài khoản deploy sau lúc nào cũng an toàn.
+6. **Kiểm thử thật một lần** luồng đổi mật khẩu bằng một tài khoản thử trước khi thông báo
+   rộng — đây là luồng duy nhất không thể kiểm tự động từ xa.
+
+---
+
 ## 0. Tóm tắt cho người bận
 
 Tôi đã soi toàn bộ website: **114 bảng dữ liệu**, **25 hàm máy chủ (edge function)**,

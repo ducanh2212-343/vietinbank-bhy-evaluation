@@ -192,6 +192,44 @@ thiếu là bấm vào tin rơi về Kanban. Migration
 vốn đang chờ deploy, vô hại vì migration lịch sử phiên bản chưa áp nên chưa có
 tin `PHIEN_BAN` nào phát sinh.
 
+## Rà soát bảo mật & chống bot đăng nhập (24/08/2026)
+
+Báo cáo đầy đủ, viết cho người không chuyên: `docs/kiem-tra-bao-mat-toan-dien-2026-08.md`.
+
+**Đã áp vào project `whlysprzsguehxmrjwha` ngày 24/08/2026:**
+
+- `20261001090000_va_chot_chan_viet_nguoc_va_thu_hoi_quyen_anon.sql` **đã áp**.
+  Bốn hàm SECURITY DEFINER dùng chung một chốt chặn VIẾT NGƯỢC
+  (`IF auth.uid() IS NOT NULL AND NOT (là_quản_trị)`) — với khách vãng lai thì
+  `auth.uid()` là NULL nên cả điều kiện sai và **không ai bị chặn**. Ba trong bốn
+  hàm còn quyền `anon` (`ct2_khen_chuoi_moc` mở tới tận PUBLIC), tức là chỉ cần
+  anon key vốn nằm sẵn trong mã trang là gọi được: lấy **họ tên cán bộ**, lấy
+  **tiêu đề đầu việc đang nợ**, ghi `ct2_thong_bao` và **bắn push giả**.
+  Vá hai lớp: thu hồi quyền (hàng rào cứng) + đổi chiều chốt chặn qua hàm phụ
+  `ct2_can_kiem_quyen()`. Đã kiểm sau khi áp: người lạ nhận `permission denied`,
+  đường cron (không có JWT) chạy khô vẫn thoát bình thường.
+- `20261001090100_bit_view_bo_qua_rls_va_gioi_han_kho_anh.sql` **đã áp**.
+  Hai view `ct2_suc_khoe_kho_cau` / `ct2_hieu_qua_theo_nhom` chạy bằng quyền chủ
+  view nên đọc xuyên RLS — người lạ đọc được 11 và 7 dòng; nay cắt hẳn quyền
+  (không màn hình nào dùng nên không đổi hành vi). Kho `avatars` và
+  `skill-images` được đặt trần 5 MB + danh sách định dạng ảnh, **có giữ
+  heic/heif** cho ảnh iPhone.
+
+**Edge function:** `doi-mat-khau` **đã deploy (v1, verify_jwt = true)**. Đây là
+nơi DUY NHẤT hạ được cờ `must_change_password` ở `app_metadata`, và nó chỉ hạ khi
+đã thực sự đặt mật khẩu mới — trước đây cờ nằm ở `user_metadata` nên người cầm
+mật khẩu tạm tự gỡ được bằng một câu lệnh trong console. Deploy hàm này TRƯỚC là
+cố ý: các hàm cấp tài khoản (đặt cờ) deploy sau lúc nào cũng an toàn.
+
+**Chờ phát hành (chưa deploy):** các hàm còn lại đã sửa trong nhánh —
+`send-transactional-email` (không còn gửi tới địa chỉ tuỳ ý), `ai-advisor`
+(thêm mode `trang_thai_khoa`), `reset-staff-password`, `approve-registration`,
+`create-guest-user`, `_shared/staff.ts`.
+
+**Việc phải làm tay trên Supabase:** điền `VITE_TURNSTILE_SITE_KEY` (GẤP — đã bật
+kiểm captcha ở Auth nên thiếu token là **mọi lượt đăng nhập bị từ chối**), bật MFA
+cho nhóm quản trị, bật *Leaked password protection*, tắt tự đăng ký.
+
 ## Lịch sử phiên bản & báo tính năng mới (08/2026)
 
 Trang **«Có gì mới»** (`/co-gi-moi`, mục đầu tiên của Trang chủ) — mở cho **mọi

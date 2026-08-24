@@ -9,7 +9,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { nhanDangNhap } from '@/lib/taiKhoanKhach';
+import { datMatKhauMoi } from '@/lib/doiMatKhau';
 import { KeyRound, ShieldCheck, ShieldAlert } from 'lucide-react';
+import XacThucTurnstile from '@/components/XacThucTurnstile';
+import { CAPTCHA_SAN_SANG, NHAC_THIEU_SITE_KEY } from '@/lib/turnstile';
 
 export default function ChangePassword() {
   const { user, mustChangePassword } = useAuth();
@@ -19,6 +22,11 @@ export default function ChangePassword() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [saving, setSaving] = useState(false);
+  // Bước xác minh mật khẩu hiện tại dùng signInWithPassword — cùng một cửa mà Supabase
+  // Auth đang kiểm captcha, nên trang này cũng phải có token, nếu không việc đổi mật
+  // khẩu hỏng cho toàn bộ cán bộ.
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [lamMoiCaptcha, setLamMoiCaptcha] = useState(0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,10 +78,14 @@ export default function ChangePassword() {
     const { error: verifyError } = await supabase.auth.signInWithPassword({
       email: loginId,
       password: currentPassword,
+      ...(captchaToken ? { options: { captchaToken } } : {}),
     });
 
     if (verifyError) {
       setSaving(false);
+      // Token captcha đã cháy sau lần gọi vừa rồi — xin token mới cho lần thử sau.
+      setCaptchaToken(null);
+      setLamMoiCaptcha((n) => n + 1);
       toast({
         title: 'Mật khẩu hiện tại không đúng',
         description: 'Vui lòng kiểm tra lại mật khẩu hiện tại.',
@@ -82,17 +94,15 @@ export default function ChangePassword() {
       return;
     }
 
-    // Đổi mật khẩu + xóa cờ "bắt buộc đổi mật khẩu" trong cùng một lần cập nhật.
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword,
-      data: { must_change_password: false },
-    });
+    // Đổi mật khẩu + hạ cờ "bắt buộc đổi mật khẩu" ở app_metadata. Phải đi qua hàm máy
+    // chủ vì app_metadata người dùng không tự ghi được — xem src/lib/doiMatKhau.ts.
+    const { error } = await datMatKhauMoi(newPassword);
     setSaving(false);
 
     if (error) {
       toast({
         title: 'Đổi mật khẩu thất bại',
-        description: error.message,
+        description: error,
         variant: 'destructive',
       });
       return;
@@ -185,7 +195,18 @@ export default function ChangePassword() {
               />
             </div>
 
-            <Button type="submit" disabled={saving} className="w-full sm:w-auto">
+            {CAPTCHA_SAN_SANG ? (
+              <XacThucTurnstile onToken={setCaptchaToken} lamMoi={lamMoiCaptcha} />
+            ) : (
+              <p className="rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+                {NHAC_THIEU_SITE_KEY}
+              </p>
+            )}
+            <Button
+              type="submit"
+              disabled={saving || (CAPTCHA_SAN_SANG && !captchaToken)}
+              className="w-full sm:w-auto"
+            >
               {saving ? 'Đang cập nhật...' : 'Đổi mật khẩu'}
             </Button>
           </form>

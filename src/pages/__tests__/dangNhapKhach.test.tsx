@@ -11,6 +11,17 @@ import Login from '../Login';
 
 const daGoi: { email?: string; password?: string } = {};
 
+/**
+ * Ghim trạng thái "chưa cấu hình site key" cho nhóm test này. Không có mock này,
+ * ngày ai đó điền SITE_KEY_DU_PHONG trong src/lib/turnstile.ts là nút Đăng nhập bị
+ * khóa (phải chờ token) và cả bốn test dưới đây vỡ, dù mã chạy thật vẫn đúng.
+ */
+vi.mock('@/lib/turnstile', () => ({
+  TURNSTILE_SITE_KEY: '',
+  CAPTCHA_SAN_SANG: false,
+  NHAC_THIEU_SITE_KEY: 'Chưa cấu hình khóa Turnstile.',
+}));
+
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
     auth: {

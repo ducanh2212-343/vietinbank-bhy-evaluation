@@ -9,7 +9,7 @@ import { ReturnCardDialog } from './ReturnCardDialog';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { Ct2DongThoiGian, type NguoiTraoDoi } from '@/components/one/move2/Ct2DongThoiGian';
-import { safeHref } from '@/lib/safeUrl';
+import { tachBangChung } from '@/lib/safeUrl';
 
 interface Props {
   card: KanbanCard;
@@ -140,6 +140,9 @@ export function CardDetailDialog({ card, open, onClose, onChanged, ownerName }: 
               baoCao={logs.map((l) => {
                 const heThong = l.log_type !== 'progress_update' && l.log_type !== 'evidence_added'
                   && l.log_type !== 'completion_requested';
+                // Link bằng chứng cán bộ tự gõ: chỉ thứ qua được bộ lọc mới thành
+                // liên kết bấm được, phần còn lại tụt xuống «Đính kèm» dạng chữ.
+                const bangChung = tachBangChung(l.evidence_url);
                 return {
                   id: l.id,
                   luc: l.created_at,
@@ -154,8 +157,9 @@ export function CardDetailDialog({ card, open, onClose, onChanged, ownerName }: 
                     ...(l.blocker_note ? [{ nhan: 'Vướng/Lý do', gia: l.blocker_note, mau: 'DO' as const }] : []),
                     ...(l.support_needed ? [{ nhan: 'Cần hỗ trợ', gia: l.support_needed, mau: 'DO' as const }] : []),
                     ...(l.evidence_text ? [{ nhan: 'Bằng chứng', gia: l.evidence_text }] : []),
+                    ...(bangChung.chuThuong ? [{ nhan: 'Đính kèm', gia: bangChung.chuThuong }] : []),
                   ],
-                  url: l.evidence_url ? (safeHref(l.evidence_url) ?? l.evidence_url) : null,
+                  url: bangChung.lienKet,
                   he_thong: heThong,
                 };
               })}
