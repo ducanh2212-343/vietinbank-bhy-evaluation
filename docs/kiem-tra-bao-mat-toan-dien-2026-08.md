@@ -38,10 +38,16 @@ nguyên ở các mục sau để tra cứu.
 
 ### Việc CÒN LẠI cần bạn tự làm (không làm thay được)
 
-1. **Điền Turnstile site key.** Đặt biến `VITE_TURNSTILE_SITE_KEY` trên Vercel/Cloudflare,
-   hoặc điền vào hằng số `SITE_KEY_DU_PHONG` trong `src/lib/turnstile.ts`.
-   **Việc này GẤP:** Supabase đã bật kiểm captcha, mà trang chưa gửi token thì **máy chủ Auth
-   từ chối mọi lượt đăng nhập**. Chưa có khóa thì trang đăng nhập sẽ hiện cảnh báo rõ ràng.
+1. ~~Điền Turnstile site key~~ — **ĐÃ XONG**, khóa nằm trong `src/lib/turnstile.ts` và đã
+   kiểm là có mặt trong bản build. Việc còn lại chỉ là **phát hành**, theo ĐÚNG thứ tự dưới
+   đây (làm sai thứ tự là lặp lại sự cố sáng 24/08 — cả chi nhánh không đăng nhập được):
+
+   > **a.** Giữ captcha ở Supabase đang **TẮT** (bạn đã tắt).
+   > **b.** Merge nhánh + deploy web.
+   > **c.** Mở trang đăng nhập thật, thấy ô Turnstile và **đăng nhập thử thành công**.
+   >    Lúc này captcha đang tắt nên chắc chắn vào được — gửi token thừa thì máy chủ bỏ qua.
+   > **d.** Bật lại *Enable Captcha protection* ở Supabase → **đăng nhập thử lần nữa**.
+   > **e.** Nếu có trục trặc: tắt lại công tắc ở bước d là về trạng thái chạy được trong 1 phút.
 2. **Bật MFA (2 lớp) cho nhóm quản trị** — biện pháp lợi ích cao nhất ở mục đăng nhập, vì
    CAPTCHA không cứu được khi mật khẩu quản trị đã bị lộ.
 3. **Bật "Leaked password protection"** và rà lại giới hạn số lần thử trong Supabase Auth.

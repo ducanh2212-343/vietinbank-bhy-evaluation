@@ -16,7 +16,7 @@
  * ĐIỀN SITE KEY VÀO ĐÂY (dạng '0x4AAAAAAA...') để khỏi phụ thuộc biến môi trường.
  * Lấy tại Cloudflare Dashboard → Turnstile → chọn site → Site Key.
  */
-const SITE_KEY_DU_PHONG = '';
+const SITE_KEY_DU_PHONG = '0x4AAAAAAEZqSITX_VyCEXmyk2YR2SBE4pE';
 
 export const TURNSTILE_SITE_KEY: string = (
   (import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined) ?? SITE_KEY_DU_PHONG

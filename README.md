@@ -254,9 +254,22 @@ cố ý: các hàm cấp tài khoản (đặt cờ) deploy sau lúc nào cũng a
    nó bằng tham số cũ (`recipientEmail`) và đường tương thích đã giữ cho cả thư
    duyệt lẫn thư từ chối chạy được.
 
-**Việc phải làm tay trên Supabase:** điền `VITE_TURNSTILE_SITE_KEY` (GẤP — đã bật
-kiểm captcha ở Auth nên thiếu token là **mọi lượt đăng nhập bị từ chối**), bật MFA
-cho nhóm quản trị, bật *Leaked password protection*, tắt tự đăng ký.
+**Turnstile site key đã điền sẵn** trong `src/lib/turnstile.ts`
+(`SITE_KEY_DU_PHONG`, đã kiểm là có mặt trong bundle sau `npm run build`). Site key
+là khoá CÔNG KHAI — nó nằm trong HTML mà ai xem nguồn trang cũng đọc được — nên để
+thẳng trong mã đúng khuôn anon key. Thứ phải giữ kín là secret key và nó chỉ nằm ở
+Supabase. Vẫn có thể ghi đè bằng biến môi trường `VITE_TURNSTILE_SITE_KEY`.
+
+**SỰ CỐ 24/08 — GHI LẠI ĐỂ KHÔNG LẶP:** bật kiểm captcha ở Supabase Auth TRƯỚC khi
+bản web biết gửi token đã làm **toàn bộ cán bộ không đăng nhập được**
+(`captcha protection: request disallowed (no captcha_token found)`). Công tắc đó có
+hiệu lực NGAY, không chờ deploy. Trình tự đúng luôn là: **deploy web trước → thử
+đăng nhập → rồi mới bật captcha**. Gửi token khi captcha đang tắt là vô hại (máy chủ
+bỏ qua), nên bật/tắt lúc nào cũng có đường lùi trong một phút.
+
+**Việc phải làm tay trên Supabase (sau khi deploy):** bật lại *Enable Captcha
+protection*, bật MFA cho nhóm quản trị, bật *Leaked password protection*, tắt tự
+đăng ký.
 
 ## Lịch sử phiên bản & báo tính năng mới (08/2026)
 
