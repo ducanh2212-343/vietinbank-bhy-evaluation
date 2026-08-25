@@ -13,10 +13,17 @@
  */
 
 /**
- * ĐIỀN SITE KEY VÀO ĐÂY (dạng '0x4AAAAAAA...') để khỏi phụ thuộc biến môi trường.
- * Lấy tại Cloudflare Dashboard → Turnstile → chọn site → Site Key.
+ * ĐIỀN SITE KEY VÀO ĐÂY. Lấy tại Cloudflare Dashboard → Turnstile → chọn widget → Site Key.
+ *
+ * PHÂN BIỆT KẼO NHẦM (đã nhầm một lần ngày 24/08, mất nửa buổi truy lỗi): hai khóa của
+ * Turnstile nhìn na ná nhau vì cùng mở đầu '0x4AAAAAAA…', nhưng KHÁC ĐỘ DÀI:
+ *   · SITE key   ~23–24 ký tự — CÔNG KHAI, đặt ở đây, ai xem nguồn trang cũng thấy.
+ *   · SECRET key ~35 ký tự    — BÍ MẬT, chỉ nạp vào Supabase (Auth → Attack Protection).
+ * Đặt nhầm secret key vào đây thì ô kiểm chỉ hiện đúng chữ «Troubleshoot» (mã 110100),
+ * và tệ hơn: khóa bí mật lọt vào git + gói web, buộc phải xoay lại khóa ở Cloudflare.
+ * Đếm số ký tự trước khi dán — dài hơn 30 là đang cầm nhầm khóa.
  */
-const SITE_KEY_DU_PHONG = '0x4AAAAAAEZqSITX_VyCEXmyk2YR2SBE4pE';
+const SITE_KEY_DU_PHONG = '0x4AAAAAAEbiNEvhNgutYM_E';
 
 export const TURNSTILE_SITE_KEY: string = (
   (import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined) ?? SITE_KEY_DU_PHONG
