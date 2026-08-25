@@ -234,6 +234,39 @@ nơi DUY NHẤT hạ được cờ `must_change_password` ở `app_metadata`, v�
 mật khẩu tạm tự gỡ được bằng một câu lệnh trong console. Deploy hàm này TRƯỚC là
 cố ý: các hàm cấp tài khoản (đặt cờ) deploy sau lúc nào cũng an toàn.
 
+### Trạng thái deploy edge function (cập nhật 24/08/2026)
+
+**Đã deploy và đã kiểm chứng** (mỗi hàm gọi thử bằng service_role qua `pg_net`, phải
+trả về đúng nhánh lỗi của chính mã ta viết chứ không phải lỗi boot 500):
+
+| Hàm | Bản | Kết quả gọi thử |
+| --- | --- | --- |
+| `doi-mat-khau` | v1 | ACTIVE (hàm mới) |
+| `approve-registration` | v12 | 400 `{"error":"Unauthorized"}` |
+| `create-guest-user` | v10 | 401 `{"error":"Phiên đăng nhập không hợp lệ"}` |
+| `create-staff-user` | v20 | 401 — kèm đối chiếu đọc ngược toàn bộ tệp, khớp từng ký tự |
+| `bulk-create-staff-users` | v20 | 401 |
+| `reset-staff-password` | v17 | 401 |
+
+Sau đợt này, cờ `must_change_password` mới thực sự được ghi vào `app_metadata` cho
+**tài khoản cấp MỚI**. Tài khoản cũ (107 tài khoản) vẫn chỉ có cờ ở `user_metadata` —
+không hồi quy, vì `useAuth` đọc cả hai nơi; chỉ là chúng vẫn còn đường tự gỡ cờ cho tới
+khi được cấp lại mật khẩu.
+
+**CHƯA deploy, có lý do:**
+
+- `ai-advisor` — tệp 57 KB, là hàm AI cán bộ đang dùng thật. Lợi ích của bản mới chỉ là
+  hiển thị 4 số cuối khóa API và tránh ghi dòng rác vào `ai_usage_log`; không phải vá
+  bảo mật. Chép tay 57 KB qua kênh công cụ để deploy một hàm đang chạy là đánh đổi sai.
+  Deploy bằng CLI: `supabase functions deploy ai-advisor --project-ref whlysprzsguehxmrjwha`
+- `send-transactional-email` — **phát hiện trong lúc deploy: hàm này CHƯA TỪNG được
+  deploy** (`get_edge_function` trả về *Function not found*). Nghĩa là thư duyệt/từ chối
+  đăng ký lâu nay âm thầm không gửi được — `approve-registration` gọi nó trong `try/catch`
+  nên không ai thấy lỗi. Chưa deploy vì làm vậy là **bật một đường gửi email đang tắt**,
+  đó là quyết định nghiệp vụ chứ không phải kỹ thuật. Lưu ý: vì hàm không tồn tại nên
+  hiện KHÔNG có rủi ro gửi thư tới địa chỉ tuỳ ý; bản trong repo đã siết sẵn cho ngày
+  bật lên.
+
 **Chờ phát hành (chưa deploy):** các hàm còn lại đã sửa trong nhánh —
 `send-transactional-email` (không còn gửi tới địa chỉ tuỳ ý), `ai-advisor`
 (thêm mode `trang_thai_khoa`), `reset-staff-password`, `approve-registration`,
