@@ -11,51 +11,52 @@
 
 ## 0-A. TÌNH TRẠNG SAU ĐỢT VÁ 24/08/2026 (đọc mục này trước)
 
-Báo cáo bên dưới là kết quả **rà soát** ngày 23/08. Ngày 24/08 đã tiến hành vá.
-Bảng này là trạng thái **hiện tại**; phần chi tiết kỹ thuật của từng lỗ hổng vẫn giữ
+Báo cáo bên dưới là kết quả **rà soát** ngày 23/08. Ngày 24/08 đã vá xong và **đã phát
+hành**. Mục này là trạng thái **hiện tại**; phần chi tiết kỹ thuật của từng lỗ hổng giữ
 nguyên ở các mục sau để tra cứu.
 
-### Đã vá và ĐÃ ÁP LÊN HỆ THỐNG THẬT
+### ĐÃ XONG — đã chạy thật và đã kiểm chứng
 
-| Mục | Việc | Bằng chứng đã kiểm |
+| Mục | Việc | Bằng chứng |
 | --- | --- | --- |
-| 🔴 A1 | Bịt "cửa phụ" cho người lạ. Rà theo **lớp lỗi** phát hiện **không chỉ 1 mà 3 hàm** cùng dính chốt chặn viết ngược và còn quyền `anon`: `ct2_khen_chuoi_moc` (rò họ tên cán bộ, bắn push giả), `ct2_nhac_nhip_sang` (rò tên cán bộ + tiêu đề đầu việc), `ct2_chon_cau_mo_ngay` (ghi trái phép). | Người lạ gọi → `permission denied`. Đường cron chạy khô vẫn thoát bình thường. |
-| 🟢 C1 | Hai "khung nhìn" bỏ qua RLS mà người lạ đọc được (11 và 7 dòng) → cắt hẳn quyền. Không màn hình nào dùng chúng nên **không đổi hành vi**. | Người lạ gọi → `permission denied for view`. |
-| 🟡 B3 | Hai kho ảnh công khai không giới hạn loại/kích thước → đặt trần 5MB và chỉ nhận định dạng ảnh. Cố ý **giữ heic/heif** để cán bộ dùng iPhone không bị chặn. | Đã đọc lại cấu hình kho, giới hạn có hiệu lực. |
+| 🟡 **D** | **Chống bot ở cửa đăng nhập đã hoạt động đầy đủ.** Ô Turnstile sinh token → web gửi kèm → Supabase xác minh → đăng nhập thành công. Gắn ở **cả 3 cửa** bị captcha chặn: đăng nhập, quên mật khẩu, và đổi mật khẩu. | Gọi thẳng cửa Auth không kèm token → `captcha_failed`. Đăng nhập thật bằng trình duyệt → vào được. |
+| 🔴 **A1** | Bịt "cửa phụ" cho người lạ. Rà theo **lớp lỗi** nên tìm ra **3 hàm** chứ không phải 1: `ct2_khen_chuoi_moc` (rò họ tên cán bộ, bắn push giả), `ct2_nhac_nhip_sang` (rò tên + tiêu đề đầu việc), `ct2_chon_cau_mo_ngay` (ghi trái phép). | Người lạ gọi → `permission denied`. Cron chạy khô vẫn thoát bình thường. |
+| 🟠 **A3** | Cờ "bắt buộc đổi mật khẩu" chuyển sang `app_metadata` — người dùng không tự sửa được. Nơi duy nhất hạ cờ là hàm `doi-mat-khau`, và nó **chỉ hạ khi đã thực sự đặt mật khẩu mới**. | 5 hàm cấp tài khoản đã deploy, mỗi hàm gọi thử qua `pg_net` trả đúng nhánh lỗi của mã ta viết. |
+| 🟢 **C1** | Hai "khung nhìn" bỏ qua RLS mà người lạ đọc được (11 và 7 dòng) → cắt hẳn quyền. | Người lạ gọi → `permission denied for view`. |
+| 🟡 **B3** | Hai kho ảnh công khai: đặt trần 5 MB + chỉ nhận định dạng ảnh, **giữ heic/heif** cho ảnh iPhone. | Đọc lại cấu hình kho, giới hạn có hiệu lực. |
+| 🟡 **B4** | Chặn "chèn công thức" ở **cả 3** chỗ xuất CSV (gồm chỗ có tên khách hàng). | Test tự động ghim hành vi. |
+| 🟢 **B5** | Đăng xuất xoá nháp ghi chú về đồng nghiệp, chân dung năng lực AI và PDF kỷ yếu. | Test tự động. |
+| 🟢 **C8** | Service worker chỉ mở liên kết cùng miền; bộ lọc URL hết bị đoạn dự phòng vô hiệu hoá; kiểm tên miền khi đặt lại mật khẩu (**có giữ `chieuthuc3.com`**). | Test tự động + đọc lại mã. |
+| 🔐 | **Secret key Turnstile đã được xoay.** Khóa cũ từng lọt vào git và lên web nay vô hiệu. | Đăng nhập vẫn chạy sau khi xoay. |
 
-### Đã vá trong mã nguồn (chờ phát hành)
+Đối chiếu khách quan bằng Supabase advisors: **lỗi mức ERROR 2 → 0**, tổng cảnh báo
+142 → 133, số hàm người lạ chạy được **34 → 25**.
 
-| Mục | Việc |
-| --- | --- |
-| 🟡 D | **Turnstile** gắn vào **cả 3 cửa** bị captcha chặn: đăng nhập, quên mật khẩu, **và đổi mật khẩu** (cửa thứ 3 rất dễ sót — bỏ quên là hỏng chức năng đổi mật khẩu của toàn chi nhánh). Token chỉ dùng một lần nên có cơ chế tự xin token mới sau mỗi lần gõ sai. CSP đã mở đúng nguồn Cloudflare ở **cả** `vercel.json` lẫn `public/_headers`. |
-| 🟠 A2 | Khóa API trả tiền của dịch vụ AI **không còn được gửi về trình duyệt**. Phần hiển thị "đã có khóa / 4 số cuối" chuyển sang máy chủ tính. |
-| 🟠 A3 | Cờ "bắt buộc đổi mật khẩu" chuyển sang `app_metadata` (**người dùng không tự sửa được**). Nơi duy nhất hạ được cờ là hàm máy chủ `doi-mat-khau`, và hàm đó **chỉ hạ khi đã thực sự đặt mật khẩu mới** — không còn đường tắt. |
-| 🟡 B1 | Khai đủ các hàm máy chủ còn thiếu trong `config.toml`. |
-| 🟡 B2 | Hàm gửi email **không còn gửi tới địa chỉ tùy ý**. Giữ đường tương thích để **thư duyệt và thư từ chối đăng ký vẫn chạy** (người bị từ chối chưa có hồ sơ nên phải tra thêm bảng đơn đăng ký — chỗ này suýt làm mất thư). |
-| 🟡 B4 | Chặn "chèn công thức" ở **cả 3** chỗ xuất CSV (gồm chỗ có tên khách hàng). |
-| 🟢 B5 | Đăng xuất nay xoá nháp ghi chú về đồng nghiệp, chân dung năng lực AI và PDF kỷ yếu — quan trọng với **máy dùng chung**. |
-| 🟢 C8 | Service worker chỉ mở liên kết cùng miền; bộ lọc URL không còn bị chính đoạn dự phòng vô hiệu hoá; kiểm thêm tên miền khi đặt lại mật khẩu. |
+### CÒN LẠI — xếp theo mức quan trọng
 
-### Việc CÒN LẠI cần bạn tự làm (không làm thay được)
-
-1. ~~Điền Turnstile site key~~ — **ĐÃ XONG**, khóa nằm trong `src/lib/turnstile.ts` và đã
-   kiểm là có mặt trong bản build. Việc còn lại chỉ là **phát hành**, theo ĐÚNG thứ tự dưới
-   đây (làm sai thứ tự là lặp lại sự cố sáng 24/08 — cả chi nhánh không đăng nhập được):
-
-   > **a.** Giữ captcha ở Supabase đang **TẮT** (bạn đã tắt).
-   > **b.** Merge nhánh + deploy web.
-   > **c.** Mở trang đăng nhập thật, thấy ô Turnstile và **đăng nhập thử thành công**.
-   >    Lúc này captcha đang tắt nên chắc chắn vào được — gửi token thừa thì máy chủ bỏ qua.
-   > **d.** Bật lại *Enable Captcha protection* ở Supabase → **đăng nhập thử lần nữa**.
-   > **e.** Nếu có trục trặc: tắt lại công tắc ở bước d là về trạng thái chạy được trong 1 phút.
-2. **Bật MFA (2 lớp) cho nhóm quản trị** — biện pháp lợi ích cao nhất ở mục đăng nhập, vì
-   CAPTCHA không cứu được khi mật khẩu quản trị đã bị lộ.
-3. **Bật "Leaked password protection"** và rà lại giới hạn số lần thử trong Supabase Auth.
-4. **Tắt tự đăng ký** ở tầng Supabase Auth (app đã chặn, nhưng nên khoá cả tầng dưới).
-5. **Phát hành mã + deploy lại các hàm máy chủ đã sửa.** Lưu ý thứ tự: hàm `doi-mat-khau`
-   **đã được deploy trước** nên các hàm cấp tài khoản deploy sau lúc nào cũng an toàn.
-6. **Kiểm thử thật một lần** luồng đổi mật khẩu bằng một tài khoản thử trước khi thông báo
-   rộng — đây là luồng duy nhất không thể kiểm tự động từ xa.
+1. **Thử đổi mật khẩu bằng một tài khoản thử.** Luồng này đang chạy thật và **chưa ai
+   kiểm**. Đây là thứ duy nhất không kiểm tự động từ xa được, vì cần một phiên đăng nhập
+   thật. Làm trước khi cấp tài khoản mới cho ai.
+2. **Bật MFA (2 lớp) cho nhóm quản trị.** Biện pháp lợi ích cao nhất còn lại: CAPTCHA
+   chặn máy, nhưng **không cứu được khi mật khẩu quản trị đã bị lộ** — lúc đó kẻ gian
+   đăng nhập bằng mật khẩu đúng.
+3. **Bật "Leaked password protection"** trong Supabase Auth (chặn mật khẩu đã từng lộ
+   trên Internet).
+4. **Tắt tự đăng ký** ở tầng Supabase Auth. Rủi ro thực tế đã thấp vì cửa đăng ký cũng
+   được captcha bảo vệ (đã đo: trả về `captcha_failed`) và `anon` không ghi được vào
+   cơ sở dữ liệu — nhưng khoá cả tầng dưới vẫn sạch hơn.
+5. **`ai-advisor`** — chưa deploy, có chủ ý. Bản mới chỉ thêm hiển thị 4 số cuối khóa
+   API và tránh ghi dòng rác vào `ai_usage_log`; **không phải vá bảo mật**. Deploy bằng
+   `supabase functions deploy ai-advisor --project-ref whlysprzsguehxmrjwha`.
+6. **`send-transactional-email`** — chưa deploy. Phát hiện khi triển khai: hàm này
+   **chưa từng được deploy**, nên thư duyệt/từ chối đăng ký lâu nay âm thầm không gửi
+   được. Deploy nó là **bật một đường gửi email đang tắt** — quyết định nghiệp vụ, không
+   phải kỹ thuật. Vì hàm không tồn tại nên hiện **không có** rủi ro gửi thư tới địa chỉ
+   tuỳ ý; bản trong repo đã siết sẵn cho ngày bật lên.
+7. **`A2` — khóa API của dịch vụ AI**: chiều ĐỌC đã bịt (không còn gửi khóa về trình
+   duyệt), nhưng chiều GHI vẫn đi thẳng từ client vào bảng và RLS vẫn cho admin
+   `SELECT` cả dòng. Việc còn lại cần một migration riêng: chuyển khóa sang Vault hoặc
+   thu hồi quyền của `authenticated` trên cột `api_key`.
 
 ---
 
