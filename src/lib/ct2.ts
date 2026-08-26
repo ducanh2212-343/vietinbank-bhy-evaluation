@@ -189,6 +189,31 @@ function nhanNgayVn(iso: string): string {
 }
 
 /**
+ * TÊN NGƯỜI TRA ĐƯỢC BẰNG CẢ HAI LOẠI MÃ.
+ *
+ * Trong một mạch thời gian có HAI loại mã người lẫn vào nhau:
+ *  · trao đổi và danh sách người liên quan  → `profiles.id`
+ *  · dòng Báo cáo lấy `kanban_card_logs.created_by` → trigger
+ *    `kanban_cards_guard` ghi bằng `auth.uid()`, tức `profiles.user_id`
+ *
+ * Trước 26/08/2026 chỗ tra tên chỉ nhận `profiles.id`. Hệ quả: MỌI dòng Báo cáo
+ * trên bàn Dấu ấn BHY Mark và bàn Kanban hiện dấu gạch «—» thay cho tên cán bộ
+ * đã ghi nhịp — mạch đọc như thể không ai làm gì. Ghi tên vào CẢ HAI khoá thì
+ * bàn gọi truyền mã kiểu nào cũng ra tên, và không bàn nào phải tự nhớ luật này.
+ */
+export function gopTenTheoHaiKhoa(
+  ds: Array<{ id?: string | null; user_id?: string | null; full_name?: string | null }>,
+): Map<string, string> {
+  const ten = new Map<string, string>();
+  for (const p of ds ?? []) {
+    if (!p?.full_name) continue;
+    if (p.id) ten.set(p.id, p.full_name);
+    if (p.user_id) ten.set(p.user_id, p.full_name);
+  }
+  return ten;
+}
+
+/**
  * Trộn báo cáo và trao đổi thành MỘT dòng thời gian, mới nhất trước, gom theo
  * ngày.
  *

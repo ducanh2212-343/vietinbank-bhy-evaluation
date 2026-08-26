@@ -11,6 +11,7 @@ import {
   laNgayLamViec,
   goiYNhan,
   gopCacBuoc,
+  gopTenTheoHaiKhoa,
   hanGoiY,
   kiemTraCauNhip,
   kiemTraGhiViec,
@@ -694,5 +695,33 @@ describe('lyDoPhaiBaoCao — bịt đường né bằng cách nằm ở «Chuẩ
   it('thẻ đang làm / việc thường trực không thuộc luật này', () => {
     expect(lyDoPhaiBaoCao(the({ trang_thai: 'DANG_LAM', ngay_bat_dau: '2026-08-01' }), moc)).toBeNull();
     expect(lyDoPhaiBaoCao(the({ loai_dau_viec: 'THUONG_TRUC', ngay_bat_dau: '2026-08-01' }), moc)).toBeNull();
+  });
+});
+
+describe('Tra tên người trong mạch thời gian — hai loại mã lẫn nhau', () => {
+  // Sự cố 26/08/2026: bàn Dấu ấn BHY Mark hiện «—» ở mọi dòng Báo cáo vì
+  // created_by là user_id, còn danh bạ tra theo profiles.id.
+  const hai = [{ id: 'ho-so-1', user_id: 'dang-nhap-1', full_name: 'Phạm Minh Hải' }];
+
+  it('tra được bằng mã hồ sơ (profiles.id) — đường của trao đổi', () => {
+    expect(gopTenTheoHaiKhoa(hai).get('ho-so-1')).toBe('Phạm Minh Hải');
+  });
+
+  it('tra được bằng mã đăng nhập (user_id) — đường của dòng Báo cáo', () => {
+    expect(gopTenTheoHaiKhoa(hai).get('dang-nhap-1')).toBe('Phạm Minh Hải');
+  });
+
+  it('thiếu tên thì bỏ qua, không ghi khoá rỗng đè lên người khác', () => {
+    const ten = gopTenTheoHaiKhoa([
+      { id: 'ho-so-2', user_id: 'dang-nhap-2', full_name: null },
+      ...hai,
+    ]);
+    expect(ten.has('ho-so-2')).toBe(false);
+    expect(ten.size).toBe(2);
+  });
+
+  it('danh sách rỗng hoặc thiếu một trong hai mã vẫn không vỡ', () => {
+    expect(gopTenTheoHaiKhoa([]).size).toBe(0);
+    expect(gopTenTheoHaiKhoa([{ id: 'chi-ho-so', full_name: 'Không có mã đăng nhập' }]).size).toBe(1);
   });
 });
