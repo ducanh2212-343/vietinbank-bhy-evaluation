@@ -175,6 +175,58 @@ export interface DongBaoCao {
   he_thong?: boolean;
 }
 
+/** Bốn phần của khung STAR — nhãn tiếng Việt cho mẩu bằng chứng bồi vào */
+export const NHAN_PHAN_STAR: Record<string, string> = {
+  S: 'Bối cảnh', T: 'Nhiệm vụ', A: 'Hành động', R: 'Kết quả',
+};
+
+/** Một mẩu bằng chứng tuần của dấu ấn — bảng ct2_bang_chung_dau_an */
+export interface BangChungDauAn {
+  id: string;
+  /** 'YYYY-MM-DD' — thứ Hai của tuần được ghi */
+  tuan: string;
+  phan_star?: string | null;
+  noi_dung?: string | null;
+  /** profile_id của người ghi */
+  nguoi_ghi?: string | null;
+  ghi_luc: string;
+}
+
+/** '2026-08-17' → '17/08'. Cắt chuỗi chứ không qua Date: chuỗi ngày không có
+ *  giờ, dựng Date là hiểu 00:00 UTC rồi lệch một ngày ở múi giờ Việt Nam. */
+function nhanTuanVn(tuan: string): string {
+  const [, thang, ngay] = (tuan ?? '').split('-');
+  return ngay && thang ? `${ngay}/${thang}` : (tuan ?? '');
+}
+
+/**
+ * BẰNG CHỨNG TUẦN CŨNG LÀ DÒNG BÁO CÁO.
+ *
+ * Từ 10/08/2026 dấu ấn BHY Mark đổi câu hỏi hằng tuần: thay vì «% bao nhiêu»
+ * (một việc kéo hai tháng thì tuần nào cũng trả lời «vẫn đang làm») thì hỏi
+ * «tuần này có thêm bằng chứng gì», mỗi mẩu bồi vào một phần của STAR. Cửa ghi
+ * mới nằm ở màn Điều hành BGĐ và đổ vào `ct2_bang_chung_dau_an`.
+ *
+ * Nhưng dòng thời gian của thẻ dấu ấn vẫn chỉ đọc nhật ký thẻ Kanban. Hệ quả
+ * đo được ngày 26/08: PGĐ chuyển hẳn sang cách ghi MỚI thì mạch đứng lại đúng
+ * ngày bỏ cách CŨ — 16 mẩu bằng chứng viết trong ba tuần không hiện ở đâu cả,
+ * và người làm đúng nhất lại trông như người bỏ bê. Đưa hai nguồn về một mạch
+ * để không còn cửa ghi nào rơi ra ngoài.
+ */
+export function dongTuBangChungDauAn(ds: BangChungDauAn[]): DongBaoCao[] {
+  return (ds ?? []).filter(Boolean).map((b) => {
+    const phan = NHAN_PHAN_STAR[b.phan_star ?? ''] ?? null;
+    return {
+      // Tiền tố để nhìn khoá React là biết dòng đến từ nguồn nào
+      id: `bang-chung-${b.id}`,
+      luc: b.ghi_luc,
+      nguoi: b.nguoi_ghi ?? null,
+      tieu_de: `Bằng chứng tuần ${nhanTuanVn(b.tuan)}${phan ? ` · ${phan}` : ''}`,
+      noi_dung: b.noi_dung ?? null,
+    };
+  });
+}
+
 export type Ct2LocDong = 'TAT_CA' | 'BAO_CAO' | 'TRAO_DOI';
 
 /** Một dòng trong mạch trộn: hoặc báo cáo, hoặc trao đổi */

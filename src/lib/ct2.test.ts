@@ -10,6 +10,7 @@ import {
   duongDanThongBao,
   laNgayLamViec,
   goiYNhan,
+  dongTuBangChungDauAn,
   gopCacBuoc,
   gopTenTheoHaiKhoa,
   hanGoiY,
@@ -723,5 +724,46 @@ describe('Tra tên người trong mạch thời gian — hai loại mã lẫn nh
   it('danh sách rỗng hoặc thiếu một trong hai mã vẫn không vỡ', () => {
     expect(gopTenTheoHaiKhoa([]).size).toBe(0);
     expect(gopTenTheoHaiKhoa([{ id: 'chi-ho-so', full_name: 'Không có mã đăng nhập' }]).size).toBe(1);
+  });
+});
+
+describe('Bằng chứng tuần của dấu ấn cũng phải nằm trên dòng thời gian', () => {
+  // Sự cố 26/08/2026: PGĐ chuyển hẳn sang cửa ghi mới (màn Điều hành BGĐ) thì
+  // mạch của thẻ BHY Mark đứng lại đúng ngày bỏ cửa cũ — 16 mẩu bằng chứng
+  // viết trong ba tuần không hiện ở đâu, người làm đúng nhất trông như bỏ bê.
+  const mau = {
+    id: 'bc-1', tuan: '2026-08-17', phan_star: 'A',
+    noi_dung: 'Làm việc với phòng TNKH về trường hợp khiếu nại.',
+    nguoi_ghi: 'ho-so-hai', ghi_luc: '2026-08-22T09:59:00Z',
+  };
+
+  it('thành một dòng báo cáo, giữ nguyên mốc thời gian để trộn đúng thứ tự', () => {
+    const [d] = dongTuBangChungDauAn([mau]);
+    expect(d.luc).toBe('2026-08-22T09:59:00Z');
+    expect(d.noi_dung).toBe(mau.noi_dung);
+  });
+
+  it('ghi rõ tuần và phần STAR — không qua Date nên không lệch ngày ở múi giờ VN', () => {
+    expect(dongTuBangChungDauAn([mau])[0].tieu_de).toBe('Bằng chứng tuần 17/08 · Hành động');
+  });
+
+  it('mang mã HỒ SƠ người ghi để tra ra tên, không phải dòng «Hệ thống»', () => {
+    expect(dongTuBangChungDauAn([mau])[0].nguoi).toBe('ho-so-hai');
+  });
+
+  it('trộn chung với nhịp thẻ Kanban thì mới nhất đứng trước', () => {
+    const nhipCu = {
+      id: 'log-1', luc: '2026-08-03T09:52:00Z', nguoi: 'ho-so-hai',
+      tieu_de: 'Cập nhật tiến độ',
+    };
+    const nhom = gopDongThoiGian([nhipCu, ...dongTuBangChungDauAn([mau])], []);
+    expect(nhom[0].items[0].luc).toBe('2026-08-22T09:59:00Z');
+    expect(nhom.flatMap((n) => n.items)).toHaveLength(2);
+  });
+
+  it('thiếu phần STAR hoặc danh sách rỗng vẫn không vỡ', () => {
+    expect(dongTuBangChungDauAn([])).toEqual([]);
+    expect(dongTuBangChungDauAn([{ ...mau, phan_star: null }])[0].tieu_de)
+      .toBe('Bằng chứng tuần 17/08');
   });
 });

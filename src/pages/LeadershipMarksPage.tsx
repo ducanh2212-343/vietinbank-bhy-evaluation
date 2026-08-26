@@ -28,6 +28,8 @@ import { fetchWeeklyUpdateMap, isWeeklyTracked, type KanbanCard, type WeeklyUpda
 import { UpdateProgressDialog } from '@/components/kanban/UpdateProgressDialog';
 import { Ct2DongThoiGian } from '@/components/one/move2/Ct2DongThoiGian';
 import { tachBangChung } from '@/lib/safeUrl';
+import { dongTuBangChungDauAn, type BangChungDauAn } from '@/lib/ct2';
+import { dauTuanVn } from '@/components/one/move2/useCt2Bgd';
 
 const sb = supabase as any;
 
@@ -126,6 +128,9 @@ export default function LeadershipMarksPage() {
   const [cardByMark, setCardByMark] = useState<Record<string, KanbanCard>>({});
   const [weekly, setWeekly] = useState<WeeklyUpdateMap>({});
   const [logsByMark, setLogsByMark] = useState<Record<string, LogRow[]>>({});
+  // Cửa ghi nhịp MỚI của dấu ấn (màn Điều hành BGĐ) đổ vào bảng riêng — phải
+  // đọc cùng nhật ký thẻ, nếu không mạch mất hẳn phần ghi theo cách mới.
+  const [bangChungByMark, setBangChungByMark] = useState<Record<string, BangChungDauAn[]>>({});
   const [updateCard, setUpdateCard] = useState<KanbanCard | null>(null);
   const [openTimeline, setOpenTimeline] = useState<Record<string, boolean>>({});
   // Tra tên cho dòng thời gian trộn: người ghi log, người trao đổi — bất kỳ ai
@@ -173,8 +178,18 @@ export default function LeadershipMarksPage() {
       // Luôn ghi đè state phụ thuộc để không giữ dữ liệu cũ khi danh sách rỗng lại
       const byMark: Record<string, KanbanCard> = {};
       const lbm: Record<string, LogRow[]> = {};
+      const bcm: Record<string, BangChungDauAn[]> = {};
       let weeklyMap: WeeklyUpdateMap = {};
       if (ids.length) {
+        // Tải THẲNG theo mark_id, không phụ thuộc thẻ Kanban: dấu ấn có thể có
+        // bằng chứng tuần mà chưa từng có thẻ.
+        const { data: bcRows } = await sb.from('ct2_bang_chung_dau_an')
+          .select('id, mark_id, tuan, phan_star, noi_dung, nguoi_ghi, ghi_luc')
+          .in('mark_id', ids)
+          .order('ghi_luc', { ascending: false });
+        ((bcRows || []) as Array<BangChungDauAn & { mark_id: string }>).forEach((b) => {
+          (bcm[b.mark_id] = bcm[b.mark_id] || []).push(b);
+        });
         const { data: cardRows } = await sb.from('kanban_cards')
           .select('*').in('leadership_mark_id', ids).eq('is_active', true);
         ((cardRows || []) as any[]).forEach(c => { if (c.leadership_mark_id) byMark[c.leadership_mark_id] = c; });
@@ -197,6 +212,7 @@ export default function LeadershipMarksPage() {
       setCardByMark(byMark);
       setWeekly(weeklyMap);
       setLogsByMark(lbm);
+      setBangChungByMark(bcm);
     }
     setCompetencies((compRes.data as Option[]) || []);
     setCoreValues((cvRes.data as Option[]) || []);
@@ -219,6 +235,10 @@ export default function LeadershipMarksPage() {
       }
     })();
   }, [isAdmin]);
+
+  // Mốc thứ Hai của tuần này — lấy từ nguồn dùng chung với màn Điều hành BGĐ
+  // để hai nơi không bao giờ hiểu «tuần này» lệch nhau một ngày.
+  const tuanNay = dauTuanVn();
 
   const byProfile = useMemo(() => {
     const map = new Map<string, { name: string; roleFocus: string | null; marks: MarkRow[] }>();
@@ -421,9 +441,16 @@ export default function LeadershipMarksPage() {
               const card = cardByMark[m.id];
               // Nhịp hằng tuần: cùng quy tắc isWeeklyTracked với bảng Kanban cá nhân
               const needsWeekly = !!card && isWeeklyTracked(card);
-              const updatedThisWeek = card ? !!weekly[card.id] : false;
+              // Tuần này coi là ĐÃ cập nhật nếu ghi bằng BẤT KỲ cửa nào: nhịp thẻ
+              // Kanban (cách cũ) hoặc bằng chứng tuần ở màn Điều hành BGĐ (cách
+              // mới). Trước 26/08 chỉ đếm cách cũ, nên PGĐ chuyển sang cách mới
+              // bị báo đỏ «Chưa cập nhật tuần này» suốt ba tuần dù tuần nào cũng ghi.
+              const daGhiBangChungTuanNay = (bangChungByMark[m.id] || []).some((b) => b.tuan === tuanNay);
+              const updatedThisWeek = (card ? !!weekly[card.id] : false) || daGhiBangChungTuanNay;
               const weeklyRed = needsWeekly && !updatedThisWeek;
               const logs = logsByMark[m.id] || [];
+              const bangChungTuan = bangChungByMark[m.id] || [];
+              const soDongMach = logs.length + bangChungTuan.length;
               const canUpdate = !!card && m.status === 'active' && (isOwner || roles.includes('system_admin'));
               return (
                 <div key={m.id}
@@ -490,7 +517,7 @@ export default function LeadershipMarksPage() {
                     <Button size="sm" variant="ghost"
                             onClick={() => setOpenTimeline(prev => ({ ...prev, [m.id]: !prev[m.id] }))}>
                       <History className="w-3.5 h-3.5 mr-1" />
-                      Dòng thời gian & trao đổi{logs.length > 0 ? ` (${logs.length})` : ''}
+                      Dòng thời gian & trao đổi{soDongMach > 0 ? ` (${soDongMach})` : ''}
                     </Button>
                     {isAdmin && (
                       <>
@@ -523,7 +550,7 @@ export default function LeadershipMarksPage() {
                       <Ct2DongThoiGian
                         phamVi="DAU_AN"
                         doiTuongId={m.id}
-                        baoCao={logs.map((l) => {
+                        baoCao={[...logs.map((l) => {
                           // Cùng luật với bàn Kanban: ô bằng chứng do cán bộ tự gõ,
                           // chỉ giá trị qua được bộ lọc mới thành liên kết bấm được.
                           const bangChung = tachBangChung(l.evidence_url);
@@ -546,7 +573,7 @@ export default function LeadershipMarksPage() {
                             ],
                             url: bangChung.lienKet,
                           };
-                        })}
+                        }), ...dongTuBangChungDauAn(bangChungTuan)]}
                         nguoiLienQuan={[{ id: m.profile_id, ten: m.profiles?.full_name ?? '—', vaiTro: 'chủ dấu ấn' }]}
                         tenNguoi={tenNguoi}
                         loiMoiDau="Chưa có dòng nào — cập nhật tuần và trao đổi sẽ hiện ở đây."
