@@ -4,6 +4,7 @@ import { phieuBenReRong, phieuCoNoiDung, type PhieuBenRe } from '@/lib/ideaBenRe
 import { BenReDanhGiaForm, BenReDanhGiaTomTat } from './BenReDanhGiaForm';
 import { useBenReActions, useViecCuaGiamDoc, type ViecGiamDoc } from './useBenRe';
 import { useLaGiamDoc, useMyDepartmentForIdeas } from './useUomMamPicker';
+import { useAuth } from '@/hooks/useAuth';
 
 // Màn "Việc của Giám đốc" — hàng chờ phê duyệt cấp Bén rễ.
 //
@@ -163,13 +164,19 @@ function TheViec({ v, laGiamDoc, onQuyet }: {
 }
 
 export const GiamDocDuyetBenRe: React.FC = () => {
-  const { laGiamDoc, isLoading: dangDoQuyen } = useLaGiamDoc();
+  // Quyền XEM suy thẳng từ vai trò của phiên đăng nhập, không chờ mạng: bản
+  // trước ẩn cả khối trong lúc còn hỏi máy chủ «có phải Giám đốc không», nên
+  // một lượt hỏi treo là hàng chờ biến mất mà không ai biết vì sao.
+  // Lượt hỏi vẫn giữ để bắt thêm Giám đốc nhận theo chức danh trong hồ sơ.
+  const { roles } = useAuth();
+  const { laGiamDoc: giamDocTheoHoSo } = useLaGiamDoc();
+  const laGiamDoc = roles.includes('bgd') || roles.includes('system_admin') || giamDocTheoHoSo;
   const { isAdmin } = useMyDepartmentForIdeas();
   const duocXem = laGiamDoc || isAdmin;
   const { viec, isLoading } = useViecCuaGiamDoc(duocXem);
   const { duyet } = useBenReActions();
 
-  if (dangDoQuyen || !duocXem) return null;
+  if (!duocXem) return null;
 
   const quyet = async (ideaId: string, dongY: boolean, phieu: PhieuBenRe) => {
     await duyet(ideaId, dongY, phieu.ghiChu, phieuCoNoiDung(phieu) ? phieu : undefined);
