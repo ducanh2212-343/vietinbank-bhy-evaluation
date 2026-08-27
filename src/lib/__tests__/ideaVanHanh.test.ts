@@ -4,6 +4,7 @@ import {
   cacViecHienThi,
   chonViec,
   duocVaoVanHanh,
+  quyenTuVaiTro,
   viecMacDinh,
   type QuyenVanHanh,
 } from '../ideaVanHanh';
@@ -79,5 +80,47 @@ describe('Đọc tham số ?viec= trên URL', () => {
   it('tham số rác thì về việc mặc định', () => {
     expect(chonViec('khong-ton-tai', TCTH)).toBe('trinh_ben_re');
     expect(chonViec(null, TCTH)).toBe('trinh_ben_re');
+  });
+});
+
+/**
+ * Ngày 27/08/2026 một cán bộ TCTH ngồi trước dòng «Đang đọc quyền làm việc…»
+ * suốt 10 phút: màn hỏi máy chủ ba câu rồi mới dựng, một câu treo là cả màn
+ * đứng im. Bộ test này khóa việc quyền phải suy được TỪ VAI TRÒ, không phụ
+ * thuộc lượt gọi nào — hỏng mạng thì cùng lắm thiếu một mục, không mất màn.
+ */
+describe('Quyền suy thẳng từ vai trò — không chờ máy chủ', () => {
+  it('cán bộ TCTH (tcth_admin) vào được ngay, đứng ở việc đánh giá & trình', () => {
+    const q = quyenTuVaiTro(['tcth_admin'], 'tcth');
+    expect(q.laQuanTri).toBe(true);
+    expect(duocVaoVanHanh(q)).toBe(true);
+    expect(viecMacDinh(q)).toBe('trinh_ben_re');
+  });
+
+  it('Giám đốc (bgd) vào được ngay, đứng ở hàng chờ duyệt', () => {
+    const q = quyenTuVaiTro(['bgd'], 'tcth');
+    expect(q.laGiamDoc).toBe(true);
+    expect(viecMacDinh(q)).toBe('duyet_ben_re');
+  });
+
+  it('system_admin mang cả hai vai — trùng đúng hai hàm gác của CSDL', () => {
+    const q = quyenTuVaiTro(['system_admin'], 'tcth');
+    expect(q).toMatchObject({ laGiamDoc: true, laQuanTri: true });
+  });
+
+  it('lãnh đạo phòng chỉ được chốt khi công tắc trả quyền về Trưởng phòng', () => {
+    expect(quyenTuVaiTro(['manager'], 'tcth').lanhDaoDuocChot).toBe(false);
+    expect(quyenTuVaiTro(['manager'], 'truong_phong').lanhDaoDuocChot).toBe(true);
+    expect(quyenTuVaiTro(['pgd'], 'truong_phong').lanhDaoDuocChot).toBe(true);
+  });
+
+  it('cán bộ thường không có việc gì ở màn quản trị', () => {
+    expect(duocVaoVanHanh(quyenTuVaiTro([], 'tcth'))).toBe(false);
+    expect(duocVaoVanHanh(quyenTuVaiTro(['guest'], 'truong_phong'))).toBe(false);
+  });
+
+  it('không vai trò nào lọt vào bằng chuỗi lạ', () => {
+    const q = quyenTuVaiTro(['tcth', 'admin', 'giam_doc'], 'tcth');
+    expect(q).toMatchObject({ laGiamDoc: false, laQuanTri: false, lanhDaoDuocChot: false });
   });
 });

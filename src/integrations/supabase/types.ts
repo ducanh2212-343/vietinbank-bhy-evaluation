@@ -5102,6 +5102,7 @@ export type Database = {
           da_tung_tu_choi: boolean
           danh_gia_tcth: Json | null
           diem_tcth: number | null
+          cap_de_xuat: string | null
         }[]
       }
       bhy_ideas_viec_cua_giam_doc: {

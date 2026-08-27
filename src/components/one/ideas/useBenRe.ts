@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { docPhieuBenRe, goiPhieuBenRe, type PhieuBenRe } from '@/lib/ideaBenRe';
+import type { IdeaLevel } from '@/data/one/ideasConfig';
 
 // Luồng cấp BÉN RỄ — TCTH trình LIÊN TỤC, Giám đốc phê duyệt (chỉ đạo 08/2026).
 //
@@ -47,6 +48,12 @@ export interface UngVienBenRe {
   daTungTuChoi: boolean;
   /** Phiếu đã chấm dở lần trước, nếu có */
   danhGiaTcth: PhieuBenRe;
+  /**
+   * Cấp đề xuất — quyết định ý tưởng đi ĐƯỜNG NÀO trong hai đường lên Bén rễ:
+   * «Nội bộ CN» thì TCTH chấm phiếu rồi trình Giám đốc; «Đề xuất TSC» thì chỉ
+   * khớp trạng thái với phê duyệt của Trụ sở chính ở màn Đối chiếu SMP.
+   */
+  capDeXuat: IdeaLevel | null;
 }
 
 const viecKey = ['bhy-ideas-viec-giam-doc'];
@@ -106,6 +113,7 @@ export function useUngVienBenRe(enabled = true) {
         smpTrangThai: r.smp_trang_thai,
         daTungTuChoi: r.da_tung_tu_choi,
         danhGiaTcth: docPhieuBenRe(r.danh_gia_tcth),
+        capDeXuat: (r.cap_de_xuat as IdeaLevel | null) ?? null,
       }));
     },
   });

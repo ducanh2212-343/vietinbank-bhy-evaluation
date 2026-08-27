@@ -88,6 +88,45 @@ export function cacViecHienThi(q: QuyenVanHanh): ViecVanHanh[] {
   return CAC_VIEC_VAN_HANH.filter(v => v.hien(q));
 }
 
+/**
+ * Suy quyền làm việc THẲNG TỪ VAI TRÒ CỦA PHIÊN ĐĂNG NHẬP — không chờ lượt gọi
+ * máy chủ nào.
+ *
+ * VÌ SAO PHẢI LÀ HÀM THUẦN, KHÔNG PHẢI BA CÂU HỎI TỚI MÁY CHỦ
+ *
+ * Bản đầu của màn vận hành hỏi máy chủ ba câu trước khi dựng màn: có phải Giám
+ * đốc không, hồ sơ thuộc phòng nào, công tắc cấu hình đang để đâu. Ngày
+ * 27/08/2026 một cán bộ TCTH ngồi trước dòng «Đang đọc quyền làm việc…» suốt
+ * 10 phút — chỉ cần MỘT trong ba câu không bao giờ được trả lời (mạng treo,
+ * phiên đăng nhập đang tự làm mới) là cả màn đứng im, không có lối thoát và
+ * cũng không có thông báo lỗi.
+ *
+ * Nặng hơn: câu hỏi «hồ sơ thuộc phòng nào» màn này KHÔNG dùng tới — chỉ khối
+ * chốt Ươm mầm bên trong cần, mà khối đó đã tự có trạng thái chờ riêng. Tức là
+ * màn đứng im để đợi một câu trả lời mà nó không cần.
+ *
+ * Cả ba vai đều suy được từ danh sách vai trò mà phiên đăng nhập đã có sẵn
+ * (App chờ xong `useAuth` rồi mới dựng bất kỳ trang nào), nên không có lý do
+ * gì phải hỏi lại. Bảng vai dưới đây trùng đúng các hàm gác của CSDL:
+ *
+ *   laGiamDoc  ↔ bhy_ideas_la_giam_doc()  (bgd hoặc system_admin)
+ *   laQuanTri  ↔ is_content_admin()       (tcth_admin hoặc system_admin)
+ *
+ * CSDL vẫn là hàng rào thật: sai ở đây thì cùng lắm hiện thừa một mục, bấm vào
+ * vẫn bị hàm gác từ chối.
+ */
+export function quyenTuVaiTro(
+  vaiTro: readonly string[],
+  aiChonUomMam: 'tcth' | 'truong_phong',
+): QuyenVanHanh {
+  const co = (r: string) => vaiTro.includes(r);
+  return {
+    laGiamDoc: co('bgd') || co('system_admin'),
+    laQuanTri: co('tcth_admin') || co('system_admin'),
+    lanhDaoDuocChot: (co('manager') || co('pgd')) && aiChonUomMam === 'truong_phong',
+  };
+}
+
 /** Không có việc nào để làm thì không vào màn quản trị — xem thì sang màn tra cứu */
 export function duocVaoVanHanh(q: QuyenVanHanh): boolean {
   return cacViecHienThi(q).length > 0;

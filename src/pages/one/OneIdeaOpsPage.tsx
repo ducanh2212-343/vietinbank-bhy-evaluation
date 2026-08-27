@@ -1,7 +1,8 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { ClipboardCheck, ClipboardPen, Globe, Lightbulb, ShieldCheck, Sprout, Tags, Wallet, type LucideIcon } from 'lucide-react';
 import { OnePageShell } from '@/components/one/OnePageShell';
-import { chonViec, cacViecHienThi, type MaViecVanHanh, type QuyenVanHanh } from '@/lib/ideaVanHanh';
+import { chonViec, cacViecHienThi, quyenTuVaiTro, type MaViecVanHanh } from '@/lib/ideaVanHanh';
+import { useAuth } from '@/hooks/useAuth';
 import { IdeaHero, IdeaTabs } from '@/components/one/ideas/IdeaNav';
 import { GiamDocDuyetBenRe } from '@/components/one/ideas/GiamDocDuyetBenRe';
 import { TrinhBenRePanel } from '@/components/one/ideas/TrinhBenRePanel';
@@ -11,7 +12,7 @@ import { SmpTracker } from '@/components/one/ideas/SmpTracker';
 import { IdeaBudgetExport } from '@/components/one/ideas/IdeaBudgetExport';
 import { usePortalIdeas } from '@/components/one/ideas/usePortalIdeas';
 import { useUngVienBenRe, useViecCuaGiamDoc } from '@/components/one/ideas/useBenRe';
-import { useCauHinhIdeas, useLaGiamDoc, useMyDepartmentForIdeas } from '@/components/one/ideas/useUomMamPicker';
+import { useCauHinhIdeas, useLaGiamDoc } from '@/components/one/ideas/useUomMamPicker';
 
 /**
  * VẬN HÀNH & PHÊ DUYỆT BHY IDEAS — bàn làm việc của Ban Giám đốc và Phòng TCTH.
@@ -58,24 +59,25 @@ function KhongCoViec() {
 }
 
 export default function OneIdeaOpsPage() {
-  const { laGiamDoc, isLoading: dangDoGiamDoc } = useLaGiamDoc();
-  const { laLanhDaoPhong, isAdmin: laQuanTri, isLoading: dangDoPhong } = useMyDepartmentForIdeas();
-  const { cauHinh, isLoading: dangDoCauHinh } = useCauHinhIdeas();
+  const { roles } = useAuth();
+  // Công tắc có mặc định theo quy chế nên đọc hỏng cũng không khóa màn
+  const { cauHinh } = useCauHinhIdeas();
   const { ideas } = usePortalIdeas();
   const [thamSo, datThamSo] = useSearchParams();
 
-  const quyen: QuyenVanHanh = {
-    laGiamDoc,
-    laQuanTri,
-    lanhDaoDuocChot: laLanhDaoPhong && cauHinh.aiChonUomMam === 'truong_phong',
-  };
-  const dangDoQuyen = dangDoGiamDoc || dangDoPhong || dangDoCauHinh;
+  // Quyền suy thẳng từ vai trò của phiên đăng nhập — màn dựng ngay, không chờ
+  // mạng. Lượt hỏi máy chủ dưới đây chỉ để BỔ SUNG trường hợp Giám đốc nhận
+  // theo chức danh trong hồ sơ mà chưa gắn vai trò; nó chậm hay hỏng thì màn
+  // vẫn chạy bằng những gì đã biết.
+  const quyenNen = quyenTuVaiTro(roles, cauHinh.aiChonUomMam);
+  const { laGiamDoc: giamDocTheoHoSo } = useLaGiamDoc();
+  const quyen = { ...quyenNen, laGiamDoc: quyenNen.laGiamDoc || giamDocTheoHoSo };
   const cacViec = cacViecHienThi(quyen);
   const viecDangChon = chonViec(thamSo.get('viec'), quyen);
 
   // Số việc chờ trên từng tab — chỉ hỏi CSDL khi người này thấy tab tương ứng
   const { viec: hangChoGd } = useViecCuaGiamDoc(cacViec.some(v => v.ma === 'duyet_ben_re'));
-  const { ungVien } = useUngVienBenRe(laQuanTri);
+  const { ungVien } = useUngVienBenRe(quyen.laQuanTri);
   const soViecCho: Partial<Record<MaViecVanHanh, number>> = {
     duyet_ben_re: hangChoGd.length,
     trinh_ben_re: ungVien.length,
@@ -94,9 +96,7 @@ export default function OneIdeaOpsPage() {
 
         <IdeaTabs />
 
-        {dangDoQuyen ? (
-          <p className="py-16 text-center text-xs italic text-slate-400">Đang đọc quyền làm việc…</p>
-        ) : cacViec.length === 0 || !viecDangChon ? (
+        {cacViec.length === 0 || !viecDangChon ? (
           <KhongCoViec />
         ) : (
           <div className="space-y-3">
