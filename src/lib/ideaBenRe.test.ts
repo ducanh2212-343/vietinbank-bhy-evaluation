@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   CAU_HOI_BEN_RE,
+  canChamPhieuBenRe,
+  duongLenBenRe,
   DIEM_TOI_DA_BEN_RE,
   MUC_DIEM_BEN_RE,
   NGUONG_CAN_NHAC,
@@ -130,5 +132,23 @@ describe('Đọc và gói phiếu qua CSDL', () => {
     expect(phieuCoNoiDung({ ghiChu: '   ' })).toBe(false);
     expect(phieuCoNoiDung({ ghiChu: 'có ý kiến' })).toBe(true);
     expect(phieuCoNoiDung({ d3: 0 })).toBe(true); // chấm 0 vẫn là đã chấm
+  });
+});
+
+describe('Hai đường lên Bén rễ — chọn theo cấp đề xuất', () => {
+  it('ý tưởng nội bộ Chi nhánh thì phải chấm phiếu rồi trình Giám đốc', () => {
+    expect(canChamPhieuBenRe('Nội bộ CN')).toBe(true);
+    expect(duongLenBenRe('Nội bộ CN')).toMatchObject({ duong: 1, ten: 'Chi nhánh thử nghiệm' });
+  });
+
+  it('ý tưởng Đề xuất TSC KHÔNG chấm phiếu ở màn này — khớp SMP là xong', () => {
+    expect(canChamPhieuBenRe('Đề xuất TSC')).toBe(false);
+    expect(duongLenBenRe('Đề xuất TSC')).toMatchObject({ duong: 2, ten: 'Trụ sở chính đồng ý' });
+  });
+
+  it('phiếu cũ chưa ghi cấp đề xuất thì mặc định đi đường 1 — không bỏ sót việc', () => {
+    expect(canChamPhieuBenRe(null)).toBe(true);
+    expect(canChamPhieuBenRe(undefined)).toBe(true);
+    expect(canChamPhieuBenRe('')).toBe(true);
   });
 });

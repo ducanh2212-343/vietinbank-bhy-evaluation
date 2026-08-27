@@ -209,3 +209,44 @@ export function goiPhieuBenRe(phieu: PhieuBenRe): Record<string, number | string
   if (phieu.ghiChu?.trim()) out.ghi_chu = phieu.ghiChu.trim();
   return out;
 }
+
+// ---------------------------------------------------------------------------
+// HAI ĐƯỜNG LÊN BÉN RỄ — chọn đường theo CẤP ĐỀ XUẤT của ý tưởng
+//
+// Quy chế mục 4 mở hai đường, và mỗi đường là một việc khác hẳn nhau:
+//
+//   Nội bộ CN   → TCTH chấm phiếu 5 câu rồi TRÌNH GIÁM ĐỐC quyết
+//   Đề xuất TSC → TCTH khớp trạng thái với phê duyệt của Trụ sở chính ở màn
+//                 Đối chiếu SMP; hệ thống tự ghi nhận, KHÔNG qua Giám đốc
+//
+// Vận hành 27/08/2026, Phòng TCTH nêu đúng chỗ vướng: màn đánh giá đổ chung
+// một danh sách nên phải lướt 109 phiếu đường 2 để tìm 44 phiếu đường 1 —
+// phần việc cần làm lại là phần bị lẫn nhiều nhất.
+// ---------------------------------------------------------------------------
+
+/** Ý tưởng cấp đề xuất này có phải chấm phiếu rồi trình Giám đốc không? */
+export function canChamPhieuBenRe(capDeXuat: string | null | undefined): boolean {
+  return capDeXuat !== 'Đề xuất TSC';
+}
+
+/**
+ * Câu giải thích cho TCTH biết ý tưởng này đi đường nào — dùng chung cho màn
+ * đánh giá và cho tài liệu, để hai nơi không mô tả quy trình bằng hai giọng.
+ */
+export function duongLenBenRe(capDeXuat: string | null | undefined): {
+  duong: 1 | 2;
+  ten: string;
+  viec: string;
+} {
+  return canChamPhieuBenRe(capDeXuat)
+    ? {
+        duong: 1,
+        ten: 'Chi nhánh thử nghiệm',
+        viec: 'Chấm phiếu 5 câu rồi trình Giám đốc công nhận Bén rễ.',
+      }
+    : {
+        duong: 2,
+        ten: 'Trụ sở chính đồng ý',
+        viec: 'Khớp trạng thái với phê duyệt của Trụ sở chính ở màn Đối chiếu SMP — không cần qua Giám đốc.',
+      };
+}

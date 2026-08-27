@@ -1,7 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { ChevronDown, ChevronUp, ClipboardPen, Info, Search, Send } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, ChevronDown, ChevronUp, ClipboardPen, Globe, Info, Search, Send } from 'lucide-react';
 import { khopTimKiem } from '@/lib/vietnamese';
-import { chamPhieuBenRe, phieuBenReRong, phieuCoNoiDung, type PhieuBenRe } from '@/lib/ideaBenRe';
+import type { IdeaLevel } from '@/data/one/ideasConfig';
+import { canChamPhieuBenRe, chamPhieuBenRe, duongLenBenRe, phieuBenReRong, phieuCoNoiDung, type PhieuBenRe } from '@/lib/ideaBenRe';
 import { BenReDanhGiaForm } from './BenReDanhGiaForm';
 import { useBenReActions, useUngVienBenRe, type UngVienBenRe } from './useBenRe';
 
@@ -16,6 +18,22 @@ import { useBenReActions, useUngVienBenRe, type UngVienBenRe } from './useBenRe'
 // thống chỉ nêu gợi ý và cảnh báo.
 
 const SO_HIEN_MAC_DINH = 8;
+
+// Bộ lọc theo CẤP ĐỀ XUẤT — chính là hai đường lên Bén rễ của quy chế mục 4.
+//
+// Vận hành 27/08/2026, Phòng TCTH nêu: ý tưởng «Đề xuất TSC» thì TCTH chỉ khớp
+// trạng thái với phê duyệt của Trụ sở chính, KHÔNG chấm phiếu ở màn này. Đổ
+// chung một danh sách thì phải lướt 109 phiếu đường 2 để tìm 44 phiếu đường 1.
+//
+// Mặc định mở đúng phần việc của màn này (Đề xuất nội bộ). Không giấu phần còn
+// lại: mỗi mục đều hiện số lượng nên nhìn là biết còn gì chưa đụng tới.
+type MaLoc = 'noi_bo' | 'tsc' | 'tat_ca';
+
+const CAC_LOC: { ma: MaLoc; nhan: string; capDeXuat: IdeaLevel | null }[] = [
+  { ma: 'noi_bo', nhan: 'Đề xuất nội bộ', capDeXuat: 'Nội bộ CN' },
+  { ma: 'tsc', nhan: 'Đề xuất TSC', capDeXuat: 'Đề xuất TSC' },
+  { ma: 'tat_ca', nhan: 'Tất cả', capDeXuat: null },
+];
 
 const ngay = (iso: string) => new Date(iso).toLocaleDateString('vi-VN');
 
@@ -62,6 +80,15 @@ function TheUngVien({ uv, onXong }: { uv: UngVienBenRe; onXong: () => void }) {
                 TSC đã duyệt trên SMP — ghi nhận ở màn Đối chiếu SMP, khỏi qua Giám đốc
               </span>
             )}
+            {uv.capDeXuat && (
+              <span className={`rounded-full px-2 py-0.5 text-2xs font-bold ${
+                uv.capDeXuat === 'Đề xuất TSC'
+                  ? 'bg-sky-100 text-sky-700'
+                  : 'bg-slate-100 text-slate-600'
+              }`}>
+                {uv.capDeXuat}
+              </span>
+            )}
             {phieuCoNoiDung(uv.danhGiaTcth) && !uv.daTungTuChoi && (
               <span className="rounded-full bg-amber-100 px-2 py-0.5 text-2xs font-bold text-amber-800">
                 Có phiếu chấm dở
@@ -85,11 +112,23 @@ function TheUngVien({ uv, onXong }: { uv: UngVienBenRe; onXong: () => void }) {
             </p>
           ))}
 
-          <BenReDanhGiaForm
-            phieu={phieu}
-            onChange={setPhieu}
-            nhanGhiChu="Ý kiến của Phòng TCTH trình Giám đốc (không bắt buộc)…"
-          />
+          {/* Ý tưởng đi đường 2 thì mở ra vẫn xem được nội dung, nhưng không
+              bày phiếu chấm — chấm ở đây là làm thừa một việc quy chế không
+              đòi, và dễ tưởng đã trình rồi trong khi chưa. */}
+          {canChamPhieuBenRe(uv.capDeXuat) ? (
+            <BenReDanhGiaForm
+              phieu={phieu}
+              onChange={setPhieu}
+              nhanGhiChu="Ý kiến của Phòng TCTH trình Giám đốc (không bắt buộc)…"
+            />
+          ) : (
+            <p className="rounded-lg border border-sky-200 bg-sky-50 p-2.5 text-2xs leading-relaxed text-sky-900">
+              <b>Đường 2 — {duongLenBenRe(uv.capDeXuat).ten}.</b>{' '}
+              {duongLenBenRe(uv.capDeXuat).viec}{' '}
+              Vẫn trình Giám đốc được nếu Chi nhánh muốn tự thử nghiệm ý tưởng này
+              trước khi Trụ sở chính trả lời.
+            </p>
+          )}
 
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -121,15 +160,27 @@ function TheUngVien({ uv, onXong }: { uv: UngVienBenRe; onXong: () => void }) {
 export const TrinhBenRePanel: React.FC = () => {
   const { ungVien, isLoading } = useUngVienBenRe();
   const [tim, setTim] = useState('');
+  const [maLoc, setMaLoc] = useState<MaLoc>('noi_bo');
   const [xemHet, setXemHet] = useState(false);
   const [vuaTrinh, setVuaTrinh] = useState<string[]>([]);
 
+  const conLai = useMemo(
+    () => ungVien.filter(u => !vuaTrinh.includes(u.ideaId)),
+    [ungVien, vuaTrinh]);
+
+  const demTheoLoc = useMemo(() => ({
+    noi_bo: conLai.filter(u => u.capDeXuat === 'Nội bộ CN').length,
+    tsc: conLai.filter(u => u.capDeXuat === 'Đề xuất TSC').length,
+    tat_ca: conLai.length,
+  }), [conLai]);
+
   const loc = useMemo(() => {
-    const conLai = ungVien.filter(u => !vuaTrinh.includes(u.ideaId));
-    if (!tim.trim()) return conLai;
-    return conLai.filter(u => khopTimKiem(
+    const cap = CAC_LOC.find(l => l.ma === maLoc)?.capDeXuat ?? null;
+    const theoCap = cap ? conLai.filter(u => u.capDeXuat === cap) : conLai;
+    if (!tim.trim()) return theoCap;
+    return theoCap.filter(u => khopTimKiem(
       [u.title, u.proposer, u.phong, u.proposedSolution ?? ''].join(' '), tim));
-  }, [ungVien, tim, vuaTrinh]);
+  }, [conLai, tim, maLoc]);
 
   const hien = xemHet ? loc : loc.slice(0, SO_HIEN_MAC_DINH);
 
@@ -145,20 +196,61 @@ export const TrinhBenRePanel: React.FC = () => {
         </span>
       </div>
 
-      <div className="flex gap-2 rounded-lg border border-sky-200 bg-sky-50 p-2.5 text-2xs text-sky-900">
-        <Info className="mt-0.5 h-4 w-4 shrink-0" />
-        <span>
-          Bảng câu hỏi này là <b>tham khảo</b>, thang <b>thấp hơn</b> Hội đồng chấm Vươn cành và
-          Lan tỏa: quy chế đặt điều kiện Bén rễ là <b>«có khả năng thử nghiệm»</b>, chưa đòi bằng
-          chứng kết quả. Hệ thống chỉ <b>gợi ý</b> — Phòng TCTH vẫn trình được ý tưởng điểm thấp
-          nếu có lý do, và Giám đốc vẫn quyết theo thẩm quyền.
-        </span>
+      {/* Chọn đường trước, rồi mới tới việc — mỗi mục kèm số để không giấu gì */}
+      <div className="flex flex-wrap gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1">
+        {CAC_LOC.map(l => (
+          <button
+            key={l.ma}
+            type="button"
+            onClick={() => { setMaLoc(l.ma); setXemHet(false); }}
+            className={`flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-2xs font-bold transition-colors ${
+              maLoc === l.ma ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            {l.nhan}
+            <span className={`rounded-full px-1.5 py-0.5 font-black leading-none ${
+              maLoc === l.ma ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-600'
+            }`}>
+              {demTheoLoc[l.ma]}
+            </span>
+          </button>
+        ))}
       </div>
+
+      {/* Đang xem đường 2 thì việc KHÔNG nằm ở màn này — nói thẳng và dẫn đi
+          luôn, thay vì để TCTH chấm phiếu cho những ý tưởng không cần chấm.
+          Trạng thái SMP vẫn chỉ sửa ở MỘT nơi là màn Đối chiếu SMP. */}
+      {maLoc === 'tsc' ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 p-2.5 text-2xs text-sky-900">
+          <Globe className="h-4 w-4 shrink-0" />
+          <span className="min-w-[240px] flex-1">
+            Ý tưởng <b>Đề xuất TSC</b> lên Bén rễ bằng <b>đường 2</b>: chỉ cần khớp trạng thái
+            với phê duyệt của Trụ sở chính («Đồng ý» hoặc «Đồng ý một phần»), hệ thống tự ghi
+            nhận — <b>không phải chấm phiếu và không phải trình Giám đốc</b>.
+          </span>
+          <Link
+            to="/one/y-tuong/van-hanh?viec=doi_chieu_smp"
+            className="flex items-center gap-1.5 rounded-lg bg-[#005a9c] px-3 py-1.5 font-black text-white transition-colors hover:bg-[#00457a]"
+          >
+            Sang màn Đối chiếu SMP <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+      ) : (
+        <div className="flex gap-2 rounded-lg border border-sky-200 bg-sky-50 p-2.5 text-2xs text-sky-900">
+          <Info className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            Bảng câu hỏi này là <b>tham khảo</b>, thang <b>thấp hơn</b> Hội đồng chấm Vươn cành và
+            Lan tỏa: quy chế đặt điều kiện Bén rễ là <b>«có khả năng thử nghiệm»</b>, chưa đòi bằng
+            chứng kết quả. Hệ thống chỉ <b>gợi ý</b> — Phòng TCTH vẫn trình được ý tưởng điểm thấp
+            nếu có lý do, và Giám đốc vẫn quyết theo thẩm quyền.
+          </span>
+        </div>
+      )}
 
       {/* Quy chế mục 4 mở HAI đường lên Bén rễ. Nêu rõ ở đây vì đi nhầm đường
           thì hoặc làm phiền Giám đốc việc không cần duyệt, hoặc bỏ sót ý tưởng
           Trụ sở chính đã đồng ý. */}
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className={`gap-2 sm:grid-cols-2 ${maLoc === 'tsc' ? 'hidden' : 'grid'}`}>
         <div className="rounded-lg border border-slate-200 bg-white p-2.5 text-2xs text-slate-700">
           <b className="block text-slate-800">Đường 1 — Chi nhánh thử nghiệm</b>
           Ý tưởng có khả năng làm thử tại Chi nhánh: đánh giá ở màn này rồi
