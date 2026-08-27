@@ -20,6 +20,7 @@ import {
 } from '@/lib/kanban';
 import { toast } from 'sonner';
 import { ListChecks, Download, AlertTriangle, Users, Building2 } from 'lucide-react';
+import { dongCsv } from '@/lib/xuatCsv';
 
 interface StaffProfile {
   id: string;
@@ -186,16 +187,19 @@ export default function KanbanAdminPage() {
   const weekLabel = `${weekStart.toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit' })} – nay`;
 
   const exportCsv = () => {
-    const lines = [['Cán bộ', 'Phòng', 'Hành động', 'Nguồn', 'Trạng thái', 'Tiến độ %', 'Cập nhật tuần này', 'Quá hạn', 'Hạn', 'Cập nhật gần nhất'].join(';')];
+    // Tên cán bộ và tiêu đề thẻ do người dùng tự gõ nên phải qua dongCsv:
+    // vừa chặn ô mở đầu bằng '=' chạy như công thức trên máy người mở tệp, vừa
+    // giữ đúng cột khi tiêu đề có dấu ';'. Xem src/lib/xuatCsv.ts.
+    const lines = [dongCsv(['Cán bộ', 'Phòng', 'Hành động', 'Nguồn', 'Trạng thái', 'Tiến độ %', 'Cập nhật tuần này', 'Quá hạn', 'Hạn', 'Cập nhật gần nhất'])];
     for (const r of filteredRows) {
       for (const c of r.list) {
         const b = computeBadges(c, new Date(), weeklyMap[c.id]);
-        lines.push([
-          r.profile.full_name, r.deptName, `"${(c.title || '').replace(/"/g, "'")}"`, getSourceLabel(c),
-          STATUS_LABEL[c.kanban_status] || c.kanban_status, String(c.progress_percent),
+        lines.push(dongCsv([
+          r.profile.full_name, r.deptName, c.title || '', getSourceLabel(c),
+          STATUS_LABEL[c.kanban_status] || c.kanban_status, c.progress_percent,
           isWeeklyTracked(c) ? (weeklyMap[c.id] ? 'Đã cập nhật' : 'CHƯA') : '—',
           b.overdue ? 'QUÁ HẠN' : '', c.deadline || '', fmtDate(c.last_progress_at),
-        ].join(';'));
+        ]));
       }
     }
     const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });

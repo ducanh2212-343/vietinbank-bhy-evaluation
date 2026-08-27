@@ -62,6 +62,11 @@ const DAU_MUC: Record<string, string> = { CHAN: '⛔', DO: '🔴', NHE: '🟡', 
 // push không lệch nhau.
 function nhanPhanHe(tb: ThongBao): string {
   if (tb.ma_su_kien === 'LICH_NGHI') return ''; // tin hạ tầng cho quản trị — không thuộc phân hệ nào
+  // Công bố phiên bản nói về CẢ hệ thống, không thuộc phân hệ nào — dán [CT2]
+  // vào là nói sai chỗ và làm tin dài thêm một cách vô ích.
+  if (tb.ma_su_kien === 'PHIEN_BAN') return '';
+  // Bản tin góp ý nói về cả hệ thống, không thuộc phân hệ nào
+  if (tb.ma_su_kien === 'GOP_Y') return '';
   if (tb.noi_dung.startsWith('Dấu ấn:')) return '[Dấu ấn] ';
   if (tb.noi_dung.startsWith('Hành động:')) return '[CT3] ';
   return '[CT2] ';
@@ -73,6 +78,8 @@ function nhanPhanHe(tb: ThongBao): string {
  * push và chuông trong ứng dụng không được lệch nhau.
  */
 function duongDan(tb: ThongBao): string {
+  if (tb.ma_su_kien === 'PHIEN_BAN') return '/co-gi-moi';
+  if (tb.ma_su_kien === 'GOP_Y') return '/gop-y-he-thong';
   if (tb.dau_viec_id) return `/one/chieu-thuc-2?the=${tb.dau_viec_id}`;
   if (tb.ho_so_id) return `/one/chieu-thuc-2?ho_so=${tb.ho_so_id}`;
   if (tb.ma_su_kien.startsWith('HS_')) return '/one/chieu-thuc-2?tab=tin-dung';

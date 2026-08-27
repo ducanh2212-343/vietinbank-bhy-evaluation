@@ -18,6 +18,7 @@ const mockAuth = {
   departmentId: 'd1',
   roles: ['employee'],
   isGuest: false,
+  guestScreens: [] as string[],
   guestExpiresAt: null,
   isAdmin: false,
   isManager: false,

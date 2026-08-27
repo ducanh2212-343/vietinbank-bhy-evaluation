@@ -2,6 +2,8 @@ import { createContext, useContext, useEffect, useState, ReactNode, useMemo } fr
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import type { User } from '@supabase/supabase-js';
+import { chuanHoaManHinhKhach, type MaManHinhKhach } from '@/lib/manHinhKhach';
+import { donDuLieuCaNhanTrenMay } from '@/lib/donDuLieuCaNhan';
 
 /** Ném khi tài khoản không còn hoạt động (nghỉ việc/tạm khóa) — chặn đăng nhập. */
 class InactiveAccountError extends Error {
@@ -30,6 +32,8 @@ interface AuthState {
   isGuest: boolean;
   /** Hạn truy cập của guest (ISO), null với cán bộ */
   guestExpiresAt: string | null;
+  /** Màn hình cổng ONE mở cho guest này (rỗng với cán bộ) — xem src/lib/manHinhKhach.ts */
+  guestScreens: MaManHinhKhach[];
   scope: AuthScope;
   /** dept ids the current user is allowed to see (empty array => no scope filter applied for admin; check `scope === 'all'` first) */
   visibleDeptIds: string[];
@@ -50,6 +54,7 @@ const AuthContext = createContext<AuthState>({
   isPgd: false,
   isGuest: false,
   guestExpiresAt: null,
+  guestScreens: [],
   scope: 'self',
   visibleDeptIds: [],
   canManageProfile: () => false,
@@ -63,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [departmentId, setDepartmentId] = useState<string | null>(null);
   const [visibleDeptIds, setVisibleDeptIds] = useState<string[]>([]);
   const [guestExpiresAt, setGuestExpiresAt] = useState<string | null>(null);
+  const [guestScreens, setGuestScreens] = useState<MaManHinhKhach[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchRolesAndProfile = async (userId: string) => {
@@ -79,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (isGuestRole) {
       const { data: ga } = await supabase
         .from('guest_access')
-        .select('expires_at')
+        .select('expires_at, allowed_screens')
         .eq('user_id', userId)
         .maybeSingle();
       if (!ga || new Date(ga.expires_at) <= new Date()) {
@@ -88,8 +94,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new InactiveAccountError();
       }
       setGuestExpiresAt(ga.expires_at);
+      // Danh sách màn hình do Phòng TCTH chọn cho từng khách; chuẩn hóa để mã lạ
+      // (màn hình đã gỡ) không lọt vào chốt chặn điều hướng
+      setGuestScreens(chuanHoaManHinhKhach(ga.allowed_screens));
     } else {
       setGuestExpiresAt(null);
+      setGuestScreens([]);
     }
 
     // Chặn truy cập của cán bộ đã bị chuyển "Nghỉ việc"/vô hiệu hóa (thu hồi quyền khi chấm dứt lao động).
@@ -225,8 +235,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isGuest = roles.includes('guest');
 
   // Cờ được gắn khi admin cấp tài khoản/mật khẩu tạm; xóa sau khi đổi mật khẩu thành công.
-  const mcp = user?.user_metadata?.must_change_password;
-  const mustChangePassword = mcp === true || mcp === 'true';
+  //
+  // ĐỌC CẢ HAI NƠI, và app_metadata là nơi đáng tin:
+  //   · user_metadata NGƯỜI DÙNG TỰ SỬA ĐƯỢC (đó chính là cách app xoá cờ sau khi đổi
+  //     mật khẩu). Nghĩa là ai cầm mật khẩu tạm chỉ cần gọi một câu
+  //     supabase.auth.updateUser({ data: { must_change_password: false } }) trong console
+  //     là thoát được yêu cầu đổi — vô hiệu hoá đúng biện pháp sinh ra để bảo vệ họ.
+  //   · app_metadata CHỈ MÁY CHỦ ghi được, nên là chốt thật. Các hàm cấp tài khoản /
+  //     cấp lại mật khẩu đặt cờ ở đây; chỉ hàm máy chủ doi-mat-khau xoá nó, và hàm đó
+  //     chỉ xoá KHI THẬT SỰ đặt mật khẩu mới.
+  // Giữ cả hai để tài khoản cấp trước đợt vá (chỉ có user_metadata) vẫn bị buộc đổi.
+  const coCo = (v: unknown) => v === true || v === 'true';
+  const mustChangePassword =
+    coCo(user?.app_metadata?.must_change_password) || coCo(user?.user_metadata?.must_change_password);
 
   const scope: AuthScope = isAdmin ? 'all' : isPgd ? 'block' : isManager ? 'department' : 'self';
 
@@ -244,6 +265,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     // Xóa mốc "hoạt động cuối" để lần đăng nhập sau không bị guard idle đăng xuất oan
     try { localStorage.removeItem('343skill:last-activity'); } catch { /* noop */ }
+    // Máy ở chi nhánh là máy dùng chung: phải xoá nốt nhận xét về đồng nghiệp, chân dung
+    // năng lực AI và PDF kỷ yếu đã tải, nếu không người ngồi sau đọc được của người trước.
+    donDuLieuCaNhanTrenMay();
     await supabase.auth.signOut();
     setUser(null);
     setRoles([]);
@@ -251,12 +275,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setDepartmentId(null);
     setVisibleDeptIds([]);
     setGuestExpiresAt(null);
+    setGuestScreens([]);
   };
 
   return (
     <AuthContext.Provider value={{
       user, roles, profileId, departmentId, loading, mustChangePassword,
-      isAdmin, isManager, isPgd, isGuest, guestExpiresAt, scope, visibleDeptIds,
+      isAdmin, isManager, isPgd, isGuest, guestExpiresAt, guestScreens, scope, visibleDeptIds,
       canManageProfile, signOut,
     }}>
       {children}

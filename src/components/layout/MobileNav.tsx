@@ -3,6 +3,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, LogOut, User, KeyRound } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
 import { useAuth } from '@/hooks/useAuth';
+import { nhanDangNhap } from '@/lib/taiKhoanKhach';
 import { useNavTree } from '@/hooks/useNavTree';
 import { NoiDungKhu } from '@/components/layout/WorkspaceSidebar';
 import { isFolder, matchesLeaf, leavesOf, type NavSection } from '@/lib/navigation';
@@ -137,7 +138,7 @@ export function MobileNav() {
                       {(user?.email ?? '?').slice(0, 2).toUpperCase()}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{user?.email}</p>
+                      <p className="truncate text-sm font-medium">{nhanDangNhap(user?.email)}</p>
                       {roles[0] && <p className="truncate text-xs text-muted-foreground">{roles[0]}</p>}
                     </div>
                   </div>

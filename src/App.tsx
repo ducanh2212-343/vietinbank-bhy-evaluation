@@ -68,6 +68,7 @@ const SkillMediaPage = lazyWithRetry(() => import("./pages/SkillMediaPage"));
 const SkillCriteriaAdminPage = lazyWithRetry(() => import("./pages/SkillCriteriaAdminPage"));
 const ReportsPage = lazyWithRetry(() => import("./pages/ReportsPage"));
 const SettingsPage = lazyWithRetry(() => import("./pages/SettingsPage"));
+const CoGiMoiPage = lazyWithRetry(() => import("./pages/CoGiMoiPage"));
 const BM01Page = lazyWithRetry(() => import("./pages/BM01Page"));
 const BM02Page = lazyWithRetry(() => import("./pages/BM02Page"));
 const BM03Page = lazyWithRetry(() => import("./pages/BM03Page"));
@@ -260,6 +261,10 @@ const App = () => (
               {/* Hội đồng đánh giá đầu mối — trang tự gác quyền: thành viên HĐ chấm điểm, đầu mối/admin xem báo cáo */}
               <Route path="/danh-gia-dau-moi" element={<CouncilEvaluationPage />} />
               <Route path="/bao-cao-dau-moi" element={<CouncilReportPage />} />
+
+              {/* Có gì mới — lịch sử phiên bản viết cho cán bộ đọc, mở cho MỌI cán bộ.
+                  Trước 08/2026 chỉ có trong màn Cài đặt của quản trị viên. */}
+              <Route path="/co-gi-moi" element={<CoGiMoiPage />} />
 
               <Route path="/bieu-mau-01" element={<BM01Page />} />
               <Route path="/bieu-mau-02" element={<BM02Page />} />

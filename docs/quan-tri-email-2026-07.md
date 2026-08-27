@@ -3,6 +3,11 @@
 **Ngày:** 05/07/2026 — **cập nhật 14/07/2026: chuyển domain sang `chieuthuc3.com` (mục 0)**.
 Gửi qua **Resend** riêng, không còn phụ thuộc Lovable ở đường gửi.
 
+> **08/2026 — domain hiện hành là `bachungyenone.com`.** Mục 0 dưới đây là lịch sử lần
+> chuyển trước; hướng dẫn từng bước cho lần chuyển mới nhất xem
+> `docs/chuyen-domain-bachungyenone-2026-08.md`. Mọi chỗ ghi `chieuthuc3.com` trong tài
+> liệu này đọc là "domain đang dùng lúc đó".
+
 ## 0. Chuyển domain sang chieuthuc3.com (14/07/2026)
 
 **Bối cảnh:** `343skill.com` không còn truy cập được (web chết); app chạy tạm tại

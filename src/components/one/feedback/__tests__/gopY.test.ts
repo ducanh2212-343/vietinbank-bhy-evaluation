@@ -4,6 +4,7 @@ import { describe, it, expect } from 'vitest';
 import { NAV_SECTIONS, filterSections, type NavPermissions } from '@/lib/navigation';
 import { nhomMucGopY } from '../gopYMuc';
 import { buildGopYWorkbook, locGopYTheoTrangThai, tenFileGopY } from '../gopYExcel';
+import { GOP_Y_MAX_ANH, GOP_Y_MAX_FILE_BYTES, GOP_Y_MIME_CHO_PHEP, nenAnh } from '../anhGopY';
 import type { GopY } from '../useGopY';
 
 // Góp ý mẫu — đủ trường, override phần cần cho từng ca test
@@ -15,6 +16,7 @@ const makeGopY = (overrides: Partial<GopY> = {}): GopY => ({
   nguoiGui: 'Nguyễn Văn A',
   phongBan: 'Phòng KHDN',
   trangThai: 'moi',
+  anh: [],
   danhDauLuc: null,
   createdAt: '2026-08-05T09:00:00+07:00',
   createdBy: 'user-1',
@@ -24,6 +26,7 @@ const makeGopY = (overrides: Partial<GopY> = {}): GopY => ({
 
 const KHONG_QUYEN: NavPermissions = {
   isGuest: false,
+  guestScreens: [] as string[],
   isAdmin: false,
   isManager: false,
   isPgd: false,
@@ -82,13 +85,18 @@ describe('buildGopYWorkbook', () => {
   it('dựng đủ 2 sheet, đếm đúng trạng thái ở Tổng quan', async () => {
     const wb = await buildGopYWorkbook([
       makeGopY({ id: 'a', trangThai: 'moi' }),
-      makeGopY({ id: 'b', trangThai: 'da_xu_ly', createdBy: 'user-2', danhDauLuc: '2026-08-05T10:00:00+07:00' }),
+      makeGopY({
+        id: 'b', trangThai: 'da_xu_ly', createdBy: 'user-2',
+        danhDauLuc: '2026-08-05T10:00:00+07:00',
+        anh: ['user-2/aaa.jpg', 'user-2/bbb.jpg'],
+      }),
     ]);
     const ws1 = wb.getWorksheet('Danh sách góp ý')!;
     const ws2 = wb.getWorksheet('Tổng quan')!;
     expect(ws1.rowCount).toBe(3); // 1 tiêu đề + 2 dòng
-    // Cột trạng thái (7) in nhãn tiếng Việt
-    expect(ws1.getRow(3).getCell(7).value).toBe('Đã xử lý');
+    // Cột số ảnh (7) rồi tới cột trạng thái (8) in nhãn tiếng Việt
+    expect(ws1.getRow(3).getCell(7).value).toBe(2);
+    expect(ws1.getRow(3).getCell(8).value).toBe('Đã xử lý');
 
     const tongQuan = new Map<string, unknown>();
     ws2.eachRow((row, n) => {
@@ -98,11 +106,30 @@ describe('buildGopYWorkbook', () => {
     expect(tongQuan.get('Mới gửi (chưa xem xét)')).toBe(1);
     expect(tongQuan.get('Đã xử lý')).toBe(1);
     expect(tongQuan.get('Số người gửi')).toBe(2);
+    expect(tongQuan.get('Số góp ý có ảnh kèm')).toBe(1);
   });
 });
 
 describe('tenFileGopY', () => {
   it('tên file mang ngày kết xuất', () => {
     expect(tenFileGopY()).toMatch(/^GOP_Y_HE_THONG_BHY_ONE_\d{4}-\d{2}-\d{2}\.xlsx$/);
+  });
+});
+
+
+describe('nenAnh — chốt chặn hiệu năng của ảnh đính kèm', () => {
+  it('từ chối tệp không phải ảnh JPEG/PNG/WebP', async () => {
+    const file = new File(['x'], 'bao-cao.pdf', { type: 'application/pdf' });
+    await expect(nenAnh(file)).rejects.toThrow(/JPEG, PNG hoặc WebP/);
+  });
+
+  it('từ chối ảnh gốc lớn hơn 10MB trước cả khi đọc tệp', async () => {
+    const to = new File([new Uint8Array(GOP_Y_MAX_FILE_BYTES + 1)], 'anh.jpg', { type: 'image/jpeg' });
+    await expect(nenAnh(to)).rejects.toThrow(/lớn hơn 10MB/);
+  });
+
+  it('giới hạn 3 ảnh mỗi phiếu và chỉ nhận 3 kiểu ảnh', () => {
+    expect(GOP_Y_MAX_ANH).toBe(3);
+    expect(GOP_Y_MIME_CHO_PHEP).toEqual(['image/jpeg', 'image/png', 'image/webp']);
   });
 });

@@ -13,6 +13,7 @@ import {
   type NavPermissions,
 } from '../navigation';
 import { boDau, khopTimKiem } from '../vietnamese';
+import { MAN_HINH_KHACH, MAN_HINH_KHACH_MAC_DINH, MA_MAN_HINH_KHACH } from '../manHinhKhach';
 
 /**
  * Cây điều hướng là nguồn dữ liệu duy nhất cho thanh ngang, menu dọc, thanh tab
@@ -22,6 +23,7 @@ import { boDau, khopTimKiem } from '../vietnamese';
 
 const KHONG_QUYEN: NavPermissions = {
   isGuest: false,
+  guestScreens: [],
   isAdmin: false,
   isManager: false,
   isPgd: false,
@@ -44,7 +46,14 @@ const quanTri: NavPermissions = {
   councilAnalytics: true,
   leadershipMarks: true,
 };
-const khach: NavPermissions = { ...KHONG_QUYEN, isGuest: true };
+// Khách "mặc định": đúng bộ màn hình mọi khách vẫn được xem trước khi có ô chọn
+const khach: NavPermissions = { ...KHONG_QUYEN, isGuest: true, guestScreens: MAN_HINH_KHACH_MAC_DINH };
+// Khách được Phòng TCTH mở thêm Cây Ký Ức và Sao Xứng Đáng
+const khachMoRong: NavPermissions = {
+  ...KHONG_QUYEN,
+  isGuest: true,
+  guestScreens: [...MAN_HINH_KHACH_MAC_DINH, 'cay-ky-uc', 'ghi-nhan'],
+};
 
 function nhanCuaKhu(p: NavPermissions): string[] {
   return filterSections(NAV_SECTIONS, p).map((s) => s.label);
@@ -217,8 +226,50 @@ describe('Cấu trúc cây điều hướng', () => {
 });
 
 describe('Phân quyền menu — khóa hành vi của bản cũ', () => {
-  it('khách đối tác fail-closed: chỉ thấy khu được mở tường minh', () => {
+  it('khách đối tác fail-closed: chỉ thấy khu chứa màn hình đã mở cho mình', () => {
     expect(nhanCuaKhu(khach)).toEqual(['Trang chủ', 'Bắc Hưng Yên Ways']);
+  });
+
+  it('khách chưa được mở màn nào ngoài Trang chủ thì chỉ còn khu Trang chủ', () => {
+    const chiTrangChu: NavPermissions = { ...KHONG_QUYEN, isGuest: true, guestScreens: ['trang-chu'] };
+    expect(nhanCuaKhu(chiTrangChu)).toEqual(['Trang chủ']);
+    expect(moiDuongDan(chiTrangChu)).toEqual(['/one']);
+  });
+
+  it('mở thêm màn hình là khách thấy ngay khu và mục tương ứng — không phải sửa code', () => {
+    const duongDan = moiDuongDan(khachMoRong);
+    expect(duongDan).toContain('/one/cay-ky-uc');
+    expect(duongDan).toContain('/one/ghi-nhan');
+    expect(nhanCuaKhu(khachMoRong)).toContain('Cây Ký Ức');
+    // Nhưng những màn ngoài danh mục vẫn đóng
+    expect(duongDan).not.toContain('/one/chieu-thuc-2');
+    expect(duongDan).not.toContain('/quizzi');
+  });
+
+  it('mã màn hình lạ trong hồ sơ khách không mở thêm được gì', () => {
+    const khachMaLa: NavPermissions = {
+      ...KHONG_QUYEN, isGuest: true, guestScreens: ['trang-chu', 'quan-tri-he-thong'],
+    };
+    expect(moiDuongDan(khachMaLa)).toEqual(['/one']);
+  });
+
+  it('mọi mã trong danh mục màn hình khách đều gắn với ít nhất một mục menu', () => {
+    // Danh mục và cây menu là hai file: lệch nhau là ô chọn ở màn quản trị bật
+    // lên nhưng khách không thấy thêm gì.
+    const coTrongMenu = new Set(
+      flattenLeaves(NAV_SECTIONS).map((x) => x.leaf.guestScreen).filter(Boolean),
+    );
+    for (const ma of MA_MAN_HINH_KHACH) {
+      expect(coTrongMenu.has(ma), `mã "${ma}" không gắn mục menu nào`).toBe(true);
+    }
+  });
+
+  it('mục menu mở cho khách phải trỏ đúng đường dẫn của màn hình trong danh mục', () => {
+    for (const { leaf } of flattenLeaves(NAV_SECTIONS)) {
+      if (!leaf.guestScreen) continue;
+      const manHinh = MAN_HINH_KHACH.find((m) => m.id === leaf.guestScreen)!;
+      expect(manHinh.duongDan, `mục ${leaf.path} lệch danh mục`).toContain(leaf.path);
+    }
   });
 
   it('khách đối tác không thấy bất kỳ trang nghiệp vụ nào', () => {
@@ -433,7 +484,7 @@ describe('Trợ giúp dựng giao diện', () => {
     const trangChu = NAV_SECTIONS.find((s) => s.id === 'one-home')!;
     const tinTuc = leavesOf(trangChu).find((l) => l.path === '/one/tin-tuc');
     expect(tinTuc).toBeDefined();
-    expect(tinTuc!.guestVisible).toBe(true);
+    expect(tinTuc!.guestScreen).toBe('tin-tuc');
   });
 
   it('Cây Ký Ức là KHU riêng — một tab thấy ngay trên thanh, không nằm trong menu xổ', () => {
@@ -449,8 +500,10 @@ describe('Trợ giúp dựng giao diện', () => {
     expect(la[0].path).toBe(khu!.path);
     // Link đã gửi theo tên cũ vẫn tô sáng đúng tab
     expect(matchesLeaf('/one/ky-yeu-so', la[0])).toBe(true);
-    // Khách đối tác không được xem ấn phẩm nội bộ
-    expect(khu!.guestVisible).toBeUndefined();
+    // Ấn phẩm nội bộ: đóng với khách theo mặc định, chỉ mở khi Phòng TCTH bật
+    // riêng cho một tài khoản khách
+    expect(la[0].guestScreen).toBe('cay-ky-uc');
+    expect(MAN_HINH_KHACH_MAC_DINH).not.toContain('cay-ky-uc');
   });
 
   it('mỗi khu cổng đều có nhãn ngắn đủ gọn cho thanh tab điện thoại', () => {

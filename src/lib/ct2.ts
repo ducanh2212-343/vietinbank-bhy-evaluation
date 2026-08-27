@@ -175,6 +175,58 @@ export interface DongBaoCao {
   he_thong?: boolean;
 }
 
+/** Bốn phần của khung STAR — nhãn tiếng Việt cho mẩu bằng chứng bồi vào */
+export const NHAN_PHAN_STAR: Record<string, string> = {
+  S: 'Bối cảnh', T: 'Nhiệm vụ', A: 'Hành động', R: 'Kết quả',
+};
+
+/** Một mẩu bằng chứng tuần của dấu ấn — bảng ct2_bang_chung_dau_an */
+export interface BangChungDauAn {
+  id: string;
+  /** 'YYYY-MM-DD' — thứ Hai của tuần được ghi */
+  tuan: string;
+  phan_star?: string | null;
+  noi_dung?: string | null;
+  /** profile_id của người ghi */
+  nguoi_ghi?: string | null;
+  ghi_luc: string;
+}
+
+/** '2026-08-17' → '17/08'. Cắt chuỗi chứ không qua Date: chuỗi ngày không có
+ *  giờ, dựng Date là hiểu 00:00 UTC rồi lệch một ngày ở múi giờ Việt Nam. */
+function nhanTuanVn(tuan: string): string {
+  const [, thang, ngay] = (tuan ?? '').split('-');
+  return ngay && thang ? `${ngay}/${thang}` : (tuan ?? '');
+}
+
+/**
+ * BẰNG CHỨNG TUẦN CŨNG LÀ DÒNG BÁO CÁO.
+ *
+ * Từ 10/08/2026 dấu ấn BHY Mark đổi câu hỏi hằng tuần: thay vì «% bao nhiêu»
+ * (một việc kéo hai tháng thì tuần nào cũng trả lời «vẫn đang làm») thì hỏi
+ * «tuần này có thêm bằng chứng gì», mỗi mẩu bồi vào một phần của STAR. Cửa ghi
+ * mới nằm ở màn Điều hành BGĐ và đổ vào `ct2_bang_chung_dau_an`.
+ *
+ * Nhưng dòng thời gian của thẻ dấu ấn vẫn chỉ đọc nhật ký thẻ Kanban. Hệ quả
+ * đo được ngày 26/08: PGĐ chuyển hẳn sang cách ghi MỚI thì mạch đứng lại đúng
+ * ngày bỏ cách CŨ — 16 mẩu bằng chứng viết trong ba tuần không hiện ở đâu cả,
+ * và người làm đúng nhất lại trông như người bỏ bê. Đưa hai nguồn về một mạch
+ * để không còn cửa ghi nào rơi ra ngoài.
+ */
+export function dongTuBangChungDauAn(ds: BangChungDauAn[]): DongBaoCao[] {
+  return (ds ?? []).filter(Boolean).map((b) => {
+    const phan = NHAN_PHAN_STAR[b.phan_star ?? ''] ?? null;
+    return {
+      // Tiền tố để nhìn khoá React là biết dòng đến từ nguồn nào
+      id: `bang-chung-${b.id}`,
+      luc: b.ghi_luc,
+      nguoi: b.nguoi_ghi ?? null,
+      tieu_de: `Bằng chứng tuần ${nhanTuanVn(b.tuan)}${phan ? ` · ${phan}` : ''}`,
+      noi_dung: b.noi_dung ?? null,
+    };
+  });
+}
+
 export type Ct2LocDong = 'TAT_CA' | 'BAO_CAO' | 'TRAO_DOI';
 
 /** Một dòng trong mạch trộn: hoặc báo cáo, hoặc trao đổi */
@@ -186,6 +238,31 @@ export interface NhomNgay { nhan: string; items: DongThoiGian[] }
 
 function nhanNgayVn(iso: string): string {
   return new Date(iso).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+}
+
+/**
+ * TÊN NGƯỜI TRA ĐƯỢC BẰNG CẢ HAI LOẠI MÃ.
+ *
+ * Trong một mạch thời gian có HAI loại mã người lẫn vào nhau:
+ *  · trao đổi và danh sách người liên quan  → `profiles.id`
+ *  · dòng Báo cáo lấy `kanban_card_logs.created_by` → trigger
+ *    `kanban_cards_guard` ghi bằng `auth.uid()`, tức `profiles.user_id`
+ *
+ * Trước 26/08/2026 chỗ tra tên chỉ nhận `profiles.id`. Hệ quả: MỌI dòng Báo cáo
+ * trên bàn Dấu ấn BHY Mark và bàn Kanban hiện dấu gạch «—» thay cho tên cán bộ
+ * đã ghi nhịp — mạch đọc như thể không ai làm gì. Ghi tên vào CẢ HAI khoá thì
+ * bàn gọi truyền mã kiểu nào cũng ra tên, và không bàn nào phải tự nhớ luật này.
+ */
+export function gopTenTheoHaiKhoa(
+  ds: Array<{ id?: string | null; user_id?: string | null; full_name?: string | null }>,
+): Map<string, string> {
+  const ten = new Map<string, string>();
+  for (const p of ds ?? []) {
+    if (!p?.full_name) continue;
+    if (p.id) ten.set(p.id, p.full_name);
+    if (p.user_id) ten.set(p.user_id, p.full_name);
+  }
+  return ten;
 }
 
 /**
@@ -936,6 +1013,10 @@ export const CT2_DAU_MUC: Record<string, string> = { CHAN: '⛔', DO: '🔴', NH
 export function duongDanThongBao(
   tb: Pick<Ct2ThongBao, 'ma_su_kien' | 'dau_viec_id'> & { ho_so_id?: string | null },
 ): string {
+  // Tin công bố phiên bản không gắn với thẻ nào — mở thẳng trang «Có gì mới»
+  if (tb.ma_su_kien === 'PHIEN_BAN') return '/co-gi-moi';
+  // Bản tin sáng góp ý — mở thẳng hòm tiếp nhận của Phòng TCTH / BGĐ
+  if (tb.ma_su_kien === 'GOP_Y') return '/gop-y-he-thong';
   if (tb.dau_viec_id) return `/one/chieu-thuc-2?the=${tb.dau_viec_id}`;
   // Tin hồ sơ mang mã hồ sơ mở THẲNG hồ sơ đó — nơi có sẵn ô Trao đổi.
   // «Có hồ sơ chờ anh/chị» mà chỉ mở chung tab là bắt người duyệt tự tìm

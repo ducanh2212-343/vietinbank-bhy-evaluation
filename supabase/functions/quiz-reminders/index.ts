@@ -14,7 +14,6 @@
 // trạng thái gửi (push không có hộp thư), chạy lại cùng ngày chỉ thay thông báo cũ.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { buildPushPayload } from 'npm:@block65/webcrypto-web-push@1.0.2';
-import { APP_URL } from '../_shared/email-config.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -173,7 +172,7 @@ Deno.serve(async (req) => {
         for (const p of profilesByDept.get(dept.id) || []) {
           planned.push({
             profileId: p.id, name: p.full_name,
-            title: 'BHY Quizzi — tuần mới bắt đầu!',
+            title: '[Quizzi] Tuần mới bắt đầu!',
             text: `Phòng ${dept.name} đang giữ chuỗi ${streak} tuần. Tạo quiz tuần này để giữ lửa 🔥`,
           });
         }
@@ -185,7 +184,7 @@ Deno.serve(async (req) => {
         for (const p of profilesByDept.get(dept.id) || []) {
           planned.push({
             profileId: p.id, name: p.full_name,
-            title: `Phòng ${dept.name} chưa có quiz tuần này`,
+            title: `[Quizzi] Phòng ${dept.name} chưa có quiz tuần này`,
             text: 'Ai cũng tạo được quiz — mở màn tuần này và nhận huy hiệu Người gieo hạt 🌱',
           });
         }
@@ -209,7 +208,7 @@ Deno.serve(async (req) => {
           if (authoredAll) continue;
           planned.push({
             profileId: p.id, name: p.full_name,
-            title: 'Quiz tuần này đang chờ bạn',
+            title: '[Quizzi] Quiz tuần này đang chờ bạn',
             text: 'Còn 3 ngày để giữ chuỗi tuần — làm quiz của phòng ngay nhé ⚡',
           });
         }
@@ -250,7 +249,10 @@ Deno.serve(async (req) => {
     let pushSent = 0;
     for (const x of planned) {
       pushSent += await sendPushToProfile(admin, subsByProfile, vapidPrivateKey, x.profileId, {
-        title: x.title, body: x.text, url: `${APP_URL}/quizzi`, tag: `quizzi:${weekday}:${today}`,
+        // url của PUSH luôn để đường dẫn TƯƠNG ĐỐI (không ghép APP_URL): service worker mở
+        // theo đúng domain mà thiết bị đã đăng ký nhận thông báo. Ai subscribe ở
+        // chieuthuc3.com thì vẫn mở chieuthuc3.com — đổi domain không phá đăng ký cũ.
+        title: x.title, body: x.text, url: '/quizzi', tag: `quizzi:${weekday}:${today}`,
       });
     }
 

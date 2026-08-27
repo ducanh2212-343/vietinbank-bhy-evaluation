@@ -11,14 +11,54 @@ import { isElevatedRole, STAFF_CREATOR_ROLES } from "../_shared/roles.ts";
 import { generatePassword, writeAuditLog } from "../_shared/staff.ts";
 import { APP_URL } from "../_shared/email-config.ts";
 
-// Chỉ chấp nhận redirect https tới đúng trang đặt lại mật khẩu (chống open-redirect).
-// Allow-list của Supabase Auth là chốt chặn cuối; đây là lớp phòng vệ thêm.
+// Miền được phép nhận link đặt lại mật khẩu.
+//
+// VÌ SAO PHẢI KIỂM MIỀN (vá 24/08/2026): bản cũ chỉ kiểm giao thức https và
+// đường dẫn "/dat-lai-mat-khau", nên https://trang-gia-mao.example/dat-lai-mat-khau
+// vẫn lọt. Link đặt lại mang theo token khôi phục — ai dựng một trang cùng đường
+// dẫn ở miền của mình là hứng trọn token và chiếm được tài khoản cán bộ, mà quản
+// trị viên bấm nút vẫn thấy mọi thứ bình thường.
+//
+// Lấy từ secret RESET_REDIRECT_DOMAINS (các miền ngăn cách bằng dấu phẩy) để đổi
+// tên miền không phải deploy lại — cùng nếp APP_URL/EMAIL_FROM_DOMAIN ở
+// _shared/email-config.ts. Mặc định gồm: miền của APP_URL, miền chính
+// bachungyenone.com và miền cũ chieuthuc3.com (giai đoạn chuyển tiếp vẫn vào
+// được — chặn nhầm nó thì cán bộ còn dùng dấu trang cũ sẽ mất đường đặt lại).
+const MIEN_CHO_PHEP: ReadonlySet<string> = (() => {
+  const ds = new Set<string>();
+  const them = (giaTri: string) => {
+    const host = giaTri.trim().toLowerCase()
+      .replace(/^https?:\/\//, "")
+      .replace(/\/.*$/, "");
+    if (!host) return;
+    ds.add(host);
+    // Chấp nhận cả biến thể www: hai địa chỉ này là cùng một cổng.
+    ds.add(host.startsWith("www.") ? host.slice(4) : `www.${host}`);
+  };
+  try {
+    them(new URL(APP_URL).host);
+  } catch { /* APP_URL hỏng thì vẫn còn các miền mặc định bên dưới */ }
+  for (const m of (Deno.env.get("RESET_REDIRECT_DOMAINS") || "").split(",")) them(m);
+  them("bachungyenone.com");
+  them("chieuthuc3.com");
+  return ds;
+})();
+
+// Chỉ chấp nhận redirect https, ĐÚNG MIỀN của cổng, tới đúng trang đặt lại mật
+// khẩu (chống open-redirect). Allow-list của Supabase Auth là chốt chặn cuối;
+// đây là lớp phòng vệ thêm.
+// Không hợp lệ thì rơi về link chuẩn của APP_URL chứ KHÔNG báo lỗi: quản trị
+// viên chạy trên máy cá nhân (localhost) hay bản xem thử vẫn gửi được thư, chỉ
+// là link trỏ về địa chỉ thật của cổng.
 function safeResetRedirect(input: unknown): string {
   const fallback = `${APP_URL}/dat-lai-mat-khau`;
   if (typeof input !== "string") return fallback;
   try {
     const u = new URL(input);
-    if (u.protocol === "https:" && u.pathname === "/dat-lai-mat-khau") return input;
+    if (u.protocol === "https:" && u.pathname === "/dat-lai-mat-khau") {
+      if (MIEN_CHO_PHEP.has(u.host.toLowerCase())) return input;
+      console.warn("Bỏ qua redirect_to ngoài danh sách miền cho phép", { host: u.host });
+    }
   } catch { /* ignore */ }
   return fallback;
 }
@@ -130,6 +170,14 @@ Deno.serve(async (req) => {
         password: tempPassword,
         user_metadata: {
           ...existingUser.user.user_metadata,
+          must_change_password: true,
+        },
+        // Cờ đặt ở CẢ app_metadata: user_metadata người dùng tự sửa được nên cán bộ
+        // cầm mật khẩu tạm có thể tự gỡ yêu cầu đổi rồi dùng mãi. app_metadata chỉ
+        // máy chủ ghi, và chỉ hàm doi-mat-khau hạ được — mà hàm đó chỉ hạ khi đã
+        // thực sự đặt mật khẩu mới.
+        app_metadata: {
+          ...(existingUser.user.app_metadata ?? {}),
           must_change_password: true,
         },
       },

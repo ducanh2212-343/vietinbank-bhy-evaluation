@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  CT2_CAM_XUC, gopDongThoiGian,
+  CT2_CAM_XUC, gopDongThoiGian, gopTenTheoHaiKhoa,
   type Ct2BinhLuan, type Ct2LocDong, type Ct2PhamVi, type DongBaoCao,
 } from '@/lib/ct2';
 import { ct2GuiBinhLuan, ct2ThuHoiBinhLuan, useCt2BinhLuan } from './useCt2Data';
@@ -90,8 +90,15 @@ export function Ct2DongThoiGian({
     enabled: thieuTen.length > 0,
     staleTime: 300_000,
     queryFn: async () => {
-      const { data } = await supabase.from('profiles').select('id, full_name').in('id', thieuTen);
-      return new Map((data ?? []).map((p) => [p.id, p.full_name as string]));
+      // Tra bằng CẢ HAI khoá: `profiles.id` (trao đổi) và `profiles.user_id`
+      // (dòng Báo cáo — trigger ghi created_by bằng auth.uid()). Hai truy vấn
+      // rời chứ không ghép một chuỗi lọc .or(...) bằng tay: không nối mã lấy từ
+      // dữ liệu vào câu lọc gửi lên máy chủ.
+      const [theoId, theoUser] = await Promise.all([
+        supabase.from('profiles').select('id, user_id, full_name').in('id', thieuTen),
+        supabase.from('profiles').select('id, user_id, full_name').in('user_id', thieuTen),
+      ]);
+      return gopTenTheoHaiKhoa([...(theoId.data ?? []), ...(theoUser.data ?? [])]);
     },
   });
   const tenDayDu = useMemo(() => {

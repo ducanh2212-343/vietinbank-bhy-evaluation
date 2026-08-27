@@ -2,13 +2,12 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Info, ListChecks, Shield, History, ArrowRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { APP_FEATURES } from '@/lib/version';
 import {
-  APP_VERSION, APP_VERSION_DATE, APP_VERSION_TYPE,
-  VERSION_HISTORY, APP_FEATURES,
-} from '@/lib/version';
-
-const typeLabel: Record<string, string> = { major: 'Nâng cấp lớn', minor: 'Tính năng mới', patch: 'Sửa lỗi' };
-const typeDot: Record<string, string> = { major: 'bg-red-500', minor: 'bg-amber-500', patch: 'bg-emerald-500' };
+  LICH_SU_PHIEN_BAN, PHIEN_BAN_HIEN_TAI, NGAY_PHIEN_BAN, LOAI_PHIEN_BAN,
+  TEN_LOAI, MAU_LOAI, tenPhanHe,
+} from '@/lib/lichSuPhienBan';
+import { CongBoPhienBanPanel } from '@/components/phien-ban/CongBoPhienBanPanel';
 
 // Vai trò & quyền — bảng tham chiếu (chỉnh sửa thực tế tại trang Phân quyền)
 const ROLE_REF: { role: string; perm: string }[] = [
@@ -46,17 +45,17 @@ export default function SettingsPage() {
               <h3 className="text-sm font-semibold">Thông tin hệ thống</h3>
             </div>
             <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-semibold">v{APP_VERSION}</span>
+              <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-semibold">v{PHIEN_BAN_HIEN_TAI}</span>
               <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                <span className={`w-1.5 h-1.5 rounded-full ${typeDot[APP_VERSION_TYPE]}`} />
-                {typeLabel[APP_VERSION_TYPE]}
+                <span className={`w-1.5 h-1.5 rounded-full ${MAU_LOAI[LOAI_PHIEN_BAN]}`} />
+                {TEN_LOAI[LOAI_PHIEN_BAN]}
               </span>
             </div>
           </div>
           <dl className="space-y-2 text-sm">
-            <Row label="Ứng dụng" value="343 Phát triển nhân sự" />
+            <Row label="Ứng dụng" value="Bắc Hưng Yên ONE" />
             <Row label="Đơn vị" value="VietinBank Chi nhánh Bắc Hưng Yên" />
-            <Row label="Cập nhật gần nhất" value={APP_VERSION_DATE} />
+            <Row label="Cập nhật gần nhất" value={NGAY_PHIEN_BAN} />
             <Row label="Khung năng lực" value="38 kỹ năng · 6 nhóm thái độ" />
             <Row label="Số cán bộ đang hoạt động" value={staffCount === null ? 'Đang tính…' : `${staffCount} người`} />
           </dl>
@@ -103,28 +102,41 @@ export default function SettingsPage() {
           <p className="mt-2 text-[11px] text-muted-foreground">Bảng tham chiếu. Gán vai trò cụ thể cho từng cán bộ tại trang Phân quyền.</p>
         </div>
 
-        {/* Lịch sử phiên bản */}
+        {/* Lịch sử phiên bản — bản đầy đủ cho cán bộ nằm ở trang «Có gì mới» */}
         <div className="stat-card">
-          <div className="flex items-center gap-2 mb-3">
-            <History className="w-4 h-4 text-primary" />
-            <h3 className="text-sm font-semibold">Lịch sử phiên bản</h3>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <History className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-semibold">Lịch sử phiên bản</h3>
+            </div>
+            <Link to="/co-gi-moi" className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+              Có gì mới <ArrowRight className="w-3 h-3" />
+            </Link>
           </div>
           <ul className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
-            {VERSION_HISTORY.map((v) => (
-              <li key={v.version} className="flex items-start gap-2 text-[11px]">
-                <span className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${typeDot[v.type]}`} />
+            {LICH_SU_PHIEN_BAN.map((v) => (
+              <li key={v.ma} className="flex items-start gap-2 text-[11px]">
+                <span className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${MAU_LOAI[v.loai]}`} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-foreground">v{v.version}</span>
-                    <span className="text-muted-foreground">· {v.date}</span>
-                    <span className="text-[9px] uppercase tracking-wide text-muted-foreground">{typeLabel[v.type]}</span>
+                    <span className="font-semibold text-foreground">v{v.phienBan}</span>
+                    <span className="text-muted-foreground">· {v.ngayHienThi}</span>
+                    <span className="text-[9px] uppercase tracking-wide text-muted-foreground">{TEN_LOAI[v.loai]}</span>
+                    <span className="text-[9px] uppercase tracking-wide text-muted-foreground">· {tenPhanHe(v.phanHe)}</span>
                   </div>
-                  <div className="text-muted-foreground leading-snug">{v.summary}</div>
+                  <div className="text-muted-foreground leading-snug">{v.tieuDe}</div>
                 </div>
               </li>
             ))}
           </ul>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Thêm mục cho lần cập nhật mới: tạo một file trong <code>src/data/changelog/</code> —
+            số phiên bản hệ thống tự tính.
+          </p>
         </div>
+
+        {/* Báo cho cán bộ biết — nút bấm, không tự động */}
+        <CongBoPhienBanPanel />
       </div>
     </div>
   );

@@ -16,6 +16,7 @@ import { useMyFullName } from '@/components/one/useMyFullName';
 import { useMyStars } from '@/components/one/star/useMyStars';
 import { useAdminEditable, EditableText } from '@/components/one/AdminEditableContext';
 import { BHY_WAYS, BHY_WAYS_DINH_NGHIA } from '@/data/one/bhyWays';
+import { MAN_HINH_KHACH } from '@/lib/manHinhKhach';
 import { BO_3_CHIEU_THUC } from '@/data/one/chieuThuc';
 import { MOVE3_ATTITUDES, MOVE3_SKILL_GROUPS } from '@/data/one/move3Data';
 
@@ -47,7 +48,7 @@ export default function OneHomePage() {
 }
 
 function HomeContent() {
-  const { profileId, isGuest } = useAuth();
+  const { profileId, isGuest, guestScreens } = useAuth();
   const myName = useMyFullName();
   const { siteContent } = useAdminEditable();
   // Tin nội bộ dùng chung kho tư liệu; RLS lo phần khách đối tác chỉ thấy tin
@@ -62,9 +63,11 @@ function HomeContent() {
   const treeImage = siteContent['culture.tree_image']?.trim() || 'https://i.ibb.co/kV5cgsbp/c-y-k-c.jpg';
   const soSkill = MOVE3_SKILL_GROUPS.reduce((s, g) => s + g.skills.length, 0);
 
-  // Khách đối tác chỉ thấy các khu được mở
-  const waysChoKhach = ['sharing'];
-  const waysHienThi = isGuest ? BHY_WAYS.filter(w => waysChoKhach.includes(w.id)) : BHY_WAYS;
+  // Khách đối tác chỉ thấy thẻ của những màn hình Phòng TCTH đã mở cho tài khoản
+  // mình — bấm vào thẻ không mở được là mất công quay lại (GuestGate đá về đây).
+  const waysHienThi = isGuest
+    ? BHY_WAYS.filter((w) => MAN_HINH_KHACH.some((m) => m.wayId === w.id && guestScreens.includes(m.id)))
+    : BHY_WAYS;
 
   return (
     <>

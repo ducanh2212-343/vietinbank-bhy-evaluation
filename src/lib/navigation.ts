@@ -6,8 +6,10 @@ import {
   CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag, GitBranch,
   ListChecks, Building2, Gavel, TrendingUp, Zap, Lightbulb,
   Home, BookOpen, Compass, Layers, Share2, CalendarDays, NotebookPen, Sprout, TreeDeciduous,
+  Sparkles as SparklesIcon,
   type LucideIcon,
 } from 'lucide-react';
+import type { MaManHinhKhach } from './manHinhKhach';
 
 /**
  * NGUỒN DỮ LIỆU ĐIỀU HƯỚNG DUY NHẤT của cổng BHY ONE.
@@ -42,8 +44,12 @@ export interface NavLeaf {
   end?: boolean;
   minRole?: MinRole;
   special?: Special;
-  /** Khách đối tác không thấy mục này (mặc định: không thấy) */
-  guestVisible?: boolean;
+  /**
+   * Mục này thuộc màn hình nào trong danh mục mở cho khách đối tác
+   * (src/lib/manHinhKhach.ts). Không đặt = không bao giờ mở cho khách; có đặt
+   * thì còn phải được Phòng TCTH bật cho ĐÚNG tài khoản khách đó.
+   */
+  guestScreen?: MaManHinhKhach;
   /** Từ khóa phụ giúp tìm thấy mục trong bảng lệnh ⌘K */
   keywords?: string[];
   /**
@@ -84,8 +90,6 @@ export interface NavSection {
   path?: string;
   end?: boolean;
   items?: NavEntry[];
-  /** Khách đối tác được thấy khu này */
-  guestVisible?: boolean;
   /** Mô tả ngắn hiện trong mega-menu */
   desc?: string;
   /** Trang tự lo bố cục tràn viền — xem NavLeaf.bleed */
@@ -122,7 +126,6 @@ export const NAV_SECTIONS: NavSection[] = [
     zone: 'portal',
     path: '/one',
     end: true,
-    guestVisible: true,
     bleed: true,
     desc: 'Việc của tôi, bản sắc 20 năm và giới thiệu hệ sinh thái Bắc Hưng Yên Ways',
     items: [
@@ -131,11 +134,22 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: Home,
         path: '/one',
         end: true,
-        guestVisible: true,
+        guestScreen: 'trang-chu',
         bleed: true,
         keywords: ['trang chu', 'cay ky uc', 'nguon coi', 'ban sac', 'van hoa', '20 nam', 'viec cua toi'],
         // Nguồn cội & Bản sắc đã gộp vào trang chủ — giữ link cũ khỏi gãy
         extraPaths: ['/one/nguon-coi', '/one/dac-trung', '/one/chieu-thuc'],
+      },
+      {
+        // «Có gì mới» — lịch sử phiên bản viết cho cán bộ. Đặt ở Trang chủ chứ
+        // KHÔNG ở Quản trị: người cần biết hệ thống vừa có gì là 150 cán bộ
+        // dùng hằng ngày, không phải mấy tài khoản quản trị. Không mở cho khách
+        // đối tác — đây là chuyện nội bộ Chi nhánh.
+        label: 'Có gì mới',
+        icon: SparklesIcon,
+        path: '/co-gi-moi',
+        keywords: ['co gi moi', 'phien ban', 'lich su phien ban', 'tinh nang moi',
+          'cap nhat', 'nang cap', 'changelog', 'version'],
       },
       {
         // Dải tin trượt ngang nằm trên Trang chủ; đây là nơi đọc hết dòng tin.
@@ -143,7 +157,7 @@ export const NAV_SECTIONS: NavSection[] = [
         label: 'Tin tức nội bộ',
         icon: Newspaper,
         path: '/one/tin-tuc',
-        guestVisible: true,
+        guestScreen: 'tin-tuc',
         bleed: true,
         keywords: ['tin tuc', 'ban tin', 'dong chia se', 'thong bao', 'news'],
       },
@@ -153,7 +167,8 @@ export const NAV_SECTIONS: NavSection[] = [
     // Cây Ký Ức — kỷ yếu số 20 năm, là TAB RIÊNG chứ không phải mục con của
     // Trang chủ: đây là ấn phẩm cả Chi nhánh cùng xem trong dịp kỷ niệm, nằm
     // trong menu xổ xuống thì nhìn vào thanh điều hướng không ai thấy.
-    // Nội bộ cán bộ (ảnh tập thể, lưu bút) — không mở cho khách đối tác.
+    // Nội bộ cán bộ (ảnh tập thể, lưu bút): mặc định đóng với khách đối tác,
+    // Phòng TCTH mở riêng cho từng tài khoản khách khi thật sự cần khoe ấn phẩm.
     id: 'cay-ky-uc',
     label: 'Cây Ký Ức',
     shortLabel: 'Cây Ký Ức',
@@ -170,6 +185,7 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: TreeDeciduous,
         path: '/one/cay-ky-uc',
         bleed: true,
+        guestScreen: 'cay-ky-uc',
         keywords: ['cay ky uc', 'ky yeu', 'ky yeu so', 'so luu but', '20 nam', 'flipbook', 'sach lat'],
         // Đường dẫn thời còn tên "Kỷ yếu số" — giữ để không gãy link đã gửi
         extraPaths: ['/one/ky-yeu-so'],
@@ -200,7 +216,6 @@ export const NAV_SECTIONS: NavSection[] = [
     accent: '#0057B8',
     zone: 'portal',
     mobileOrder: 2,
-    guestVisible: true,
     desc: 'Hệ sinh thái các phương thức, công cụ và cơ chế quản trị của Chi nhánh',
     items: [
       // Sharing + Kho tri thức là MỘT không gian 2 tab (chung một kho dữ liệu)
@@ -208,7 +223,7 @@ export const NAV_SECTIONS: NavSection[] = [
         label: 'Bắc Hưng Yên Sharing',
         icon: BookOpen,
         path: '/one/hoc-hoi',
-        guestVisible: true,
+        guestScreen: 'sharing',
         bleed: true,
         keywords: ['chia se', 'kho tri thuc', 'tu lieu', 'thu vien', 'sharing', 'hoc hoi'],
         extraPaths: ['/one/kho-du-lieu'],
@@ -218,7 +233,7 @@ export const NAV_SECTIONS: NavSection[] = [
         label: 'Bắc Hưng Yên Connect',
         icon: Share2,
         path: '/one/bhy-connect',
-        guestVisible: true,
+        guestScreen: 'connect',
         bleed: true,
         keywords: ['connect', 'hoi nghi khach hang', 'ket noi', 'he sinh thai doanh nghiep'],
       },
@@ -227,6 +242,7 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: Star,
         path: '/one/ghi-nhan',
         bleed: true,
+        guestScreen: 'ghi-nhan',
         keywords: ['sao xung dang', 'khen thuong', 'vinh danh', 'tu qua', 'ghi nhan'],
       },
       {
@@ -234,6 +250,7 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: ShieldAlert,
         path: '/one/credit-360',
         bleed: true,
+        guestScreen: 'credit-360',
         keywords: ['tin dung', 'tham dinh', 'phien hop', 'credit 360'],
       },
       {
@@ -249,9 +266,10 @@ export const NAV_SECTIONS: NavSection[] = [
             path: '/one/y-tuong',
             end: true,
             bleed: true,
-            // KHÔNG mở cho khách đối tác dù chỉ là trang giới thiệu: Ideas là
-            // nghiệp vụ nội bộ, phần giới thiệu hệ sinh thái cho khách đã nằm ở
-            // Trang chủ ONE (quy ước khóa bằng test phân quyền menu).
+            // Chỉ TRANG GIỚI THIỆU mới nằm trong danh mục mở được cho khách, và
+            // vẫn phải Phòng TCTH bật cho đúng tài khoản. Ba màn còn lại của
+            // Ideas (gửi, chấm điểm, vận hành) là nghiệp vụ nội bộ — không mở.
+            guestScreen: 'ideas',
             keywords: ['ideas', 'gioi thieu', 'tong quan', 'cap do', 'uom mam', 'ben re', 'vuon canh', 'lan toa', 'ngan sach'],
             // Trang "Sáng kiến & Nghiệp vụ" cũ đã gộp về đây
             extraPaths: ['/one/sang-kien', '/one/bhy-ways'],
@@ -363,6 +381,7 @@ export const NAV_SECTIONS: NavSection[] = [
             icon: Layers,
             path: '/one/bhy-3806',
             bleed: true,
+            guestScreen: 'bhy-3806',
             keywords: ['3806', '38 skill', '06 thai do', 'khung nang luc', 'chieu thuc 3', 'level'],
           },
         ],
@@ -407,10 +426,10 @@ export const NAV_SECTIONS: NavSection[] = [
             extraPaths: ['/ho-so-ca-nhan/'],
           },
           {
-            // KHÔNG đặt guestVisible: khu 'Phát triển nhân sự 343' vốn đã đóng với
+            // KHÔNG đặt guestScreen: khu 'Phát triển nhân sự 343' vốn đã đóng với
             // khách đối tác nên cờ ở đây không bao giờ có hiệu lực — để lại chỉ gây
             // hiểu nhầm là khách thấy được mục này. Khách đổi mật khẩu bằng nút
-            // riêng trong menu tài khoản (GuestGate cho phép /doi-mat-khau).
+            // riêng trong menu tài khoản (GuestGate luôn cho /doi-mat-khau).
             label: 'Đổi mật khẩu',
             icon: KeyRound,
             path: '/doi-mat-khau',
@@ -636,6 +655,8 @@ export const NAV_SECTIONS: NavSection[] = [
  */
 export interface NavPermissions {
   isGuest: boolean;
+  /** Màn hình đã mở cho tài khoản khách đang đăng nhập (rỗng với cán bộ) */
+  guestScreens: readonly string[];
   isAdmin: boolean;
   isManager: boolean;
   isPgd: boolean;
@@ -655,8 +676,9 @@ export interface NavPermissions {
  * `minRole`. Đổi thứ tự này là đổi quyền — không được phép.
  */
 export function canSeeLeaf(item: NavLeaf, p: NavPermissions): boolean {
-  // Khách đối tác chỉ thấy mục được mở tường minh (fail-closed)
-  if (p.isGuest) return !!item.guestVisible;
+  // Khách đối tác chỉ thấy màn hình được mở cho ĐÚNG tài khoản mình (fail-closed):
+  // mục phải nằm trong danh mục VÀ được Phòng TCTH bật ở màn quản trị tài khoản khách
+  if (p.isGuest) return !!item.guestScreen && p.guestScreens.includes(item.guestScreen);
   // Special (theo phạm vi/hội đồng) được ưu tiên xét trước minRole
   if (item.special === 'submission-report') return p.submissionReport;
   if (item.special === 'strategic-hr') return p.strategicHr;
@@ -673,9 +695,6 @@ export function canSeeLeaf(item: NavLeaf, p: NavPermissions): boolean {
 export function filterSections(sections: NavSection[], p: NavPermissions): NavSection[] {
   return sections
     .map((s): NavSection | null => {
-      // Khách đối tác: khu phải được mở tường minh
-      if (p.isGuest && !s.guestVisible) return null;
-
       const entries = (s.items ?? [])
         .map((e): NavEntry | null => {
           if (isFolder(e)) {
@@ -686,8 +705,9 @@ export function filterSections(sections: NavSection[], p: NavPermissions): NavSe
         })
         .filter((e): e is NavEntry => e !== null);
 
-      // Khu dẫn thẳng tới một trang thì không cần mục con
-      if (!s.items?.length) return s.path ? s : null;
+      // Khu dẫn thẳng tới một trang thì không cần mục con. Riêng khách đối tác:
+      // không có mục lá thì không có mã màn hình để đối chiếu — fail-closed.
+      if (!s.items?.length) return s.path && !p.isGuest ? s : null;
       // Khu có mục con nhưng bị lọc sạch: CHỈ giữ lại nếu chính đường dẫn cấp khu
       // cũng nằm trong danh sách mục con — nghĩa là nó đã qua được vòng xét quyền.
       // Giữ vô điều kiện sẽ là bẫy lộ khu cho vai trò không đủ quyền khi sau này

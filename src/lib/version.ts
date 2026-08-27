@@ -1,20 +1,27 @@
 /**
- * Quy ước phiên bản X.Y.Z (Semantic Versioning)
- * - X (Major): thay đổi lớn — thêm module mới, đổi diện rộng, thay đổi cấu trúc dữ liệu.
- * - Y (Minor): thêm tính năng, cải tiến UX/UI một khu vực.
- * - Z (Patch): sửa lỗi, tinh chỉnh giao diện/nội dung.
+ * Phiên bản ứng dụng — LỚP TƯƠNG THÍCH.
  *
- * Khi cập nhật: bump APP_VERSION, cập nhật ngày, thêm 1 entry vào ĐẦU VERSION_HISTORY.
+ * Lịch sử phiên bản đã chuyển sang `src/lib/lichSuPhienBan.ts` (mỗi lần cập
+ * nhật một file trong `src/data/changelog/`, số phiên bản do hệ thống tự tính).
+ * File này chỉ còn giữ hai thứ:
+ *   1. Các hằng số phiên bản, gọi lại từ nguồn mới — để chỗ nào đang dùng tên cũ
+ *      thì vẫn chạy.
+ *   2. `APP_FEATURES` — danh mục TÍNH NĂNG CHÍNH (hệ thống làm được gì, ở thì
+ *      hiện tại), khác hẳn lịch sử phiên bản (hệ thống vừa có thêm gì, theo thời
+ *      gian). Hai thứ này trả lời hai câu hỏi khác nhau nên để riêng.
+ *
+ * KHÔNG thêm mục lịch sử vào đây nữa — xem `src/lib/lichSuPhienBan.ts`.
  */
+import {
+  LICH_SU_PHIEN_BAN, PHIEN_BAN_HIEN_TAI, NGAY_PHIEN_BAN, LOAI_PHIEN_BAN,
+} from './lichSuPhienBan';
 
-export type VersionType = 'major' | 'minor' | 'patch';
+export type { LoaiThayDoi as VersionType, MucPhienBan as VersionEntry } from './lichSuPhienBan';
 
-export interface VersionEntry {
-  version: string;
-  date: string; // dd/mm/yyyy
-  type: VersionType;
-  summary: string;
-}
+export const APP_VERSION = PHIEN_BAN_HIEN_TAI;
+export const APP_VERSION_DATE = NGAY_PHIEN_BAN;
+export const APP_VERSION_TYPE = LOAI_PHIEN_BAN;
+export const VERSION_HISTORY = LICH_SU_PHIEN_BAN;
 
 /** Nhóm tính năng chính — hiển thị ở trang Cài đặt để người dùng nắm được hệ thống làm được gì. */
 export interface FeatureGroup {
@@ -24,88 +31,31 @@ export interface FeatureGroup {
 
 export const APP_FEATURES: FeatureGroup[] = [
   {
-    title: 'Tự đánh giá năng lực',
-    desc: '38 kỹ năng (4 nhóm, 4 cấp độ) và 6 nhóm thái độ; nhập minh chứng, chọn điểm cần cải thiện.',
+    title: 'Cổng Bắc Hưng Yên ONE',
+    desc: 'Một cửa vào sau đăng nhập: việc của tôi, tin tức nội bộ, bản sắc 20 năm, Kho Dữ Liệu và các thương hiệu Bắc Hưng Yên Ways.',
   },
   {
-    title: 'Quy trình duyệt 3 cấp',
-    desc: 'Cán bộ tự đánh giá → Trưởng phòng rà soát → PGĐ phê duyệt; hỗ trợ trả lại và nộp lại.',
+    title: 'Chiêu thức 2 — Kanban 5W2H + PDCA',
+    desc: 'Bàn đầu việc của phòng và bàn Phê duyệt tín dụng: một người chịu trách nhiệm, cổng chặn PDCA, ghi nhịp hằng ngày, nhắc nhịp sáng 07:30.',
   },
   {
-    title: 'Kế hoạch phát triển (IDP)',
-    desc: 'Tối đa 3 kỹ năng trọng tâm theo mô hình 70/20/10, kèm bảng Kanban theo dõi hành động.',
+    title: 'Chiêu thức 3 — Phát triển nhân sự',
+    desc: '38 kỹ năng (4 nhóm, 4 cấp độ) và 6 nhóm thái độ, quy trình duyệt 3 cấp, kế hoạch phát triển 70/20/10 kèm Kanban hành động.',
+  },
+  {
+    title: 'BHY Ideas & Hội đồng đầu mối',
+    desc: 'Gửi ý tưởng, Hội đồng chấm theo bộ câu hỏi Phụ lục 06, sổ ghi nhận thưởng lũy kế và KPI Đổi mới sáng tạo.',
   },
   {
     title: 'Trợ lý AI',
-    desc: 'Chân dung năng lực tổng thể, gợi ý kế hoạch hành động 70/20/10, gợi ý khóa học Trường ĐT VietinBank; admin bật/tắt từng tác vụ.',
+    desc: 'Chân dung năng lực tổng thể, gợi ý kế hoạch hành động 70/20/10, gợi ý khóa học Trường ĐT VietinBank; admin bật/tắt và định mức chi phí từng tác vụ.',
   },
   {
-    title: 'Quản trị đội ngũ',
-    desc: 'Tạo tài khoản đơn lẻ/hàng loạt, phân quyền, phân nhóm sao, báo cáo tổng hợp theo phạm vi.',
+    title: 'Quản trị đội ngũ & tài khoản khách',
+    desc: 'Tạo tài khoản đơn lẻ/hàng loạt, phân quyền, cấp tài khoản khách đối tác có hạn và chọn màn hình mở cho từng khách.',
   },
   {
-    title: 'Biểu mẫu & xuất Word',
-    desc: 'Biểu mẫu BM01/02/03 theo kỳ và xuất phiếu đánh giá ra file Word.',
+    title: 'Thông báo & biểu mẫu',
+    desc: 'Chuông trong ứng dụng và thông báo đẩy theo chuẩn hình thức chung; biểu mẫu BM01/02/03 theo kỳ, xuất phiếu ra file Word.',
   },
 ];
-
-export const VERSION_HISTORY: VersionEntry[] = [
-  {
-    version: '3.1.1',
-    date: '05/07/2026',
-    type: 'patch',
-    summary: 'Mục D tự điền level hiện tại từ mục B hoặc từ phiếu đánh giá gần nhất — cán bộ không phải tự nhập lại level, tránh sai lệch.',
-  },
-  {
-    version: '3.1.0',
-    date: '04/07/2026',
-    type: 'minor',
-    summary: 'Thêm nút "Gợi ý kế hoạch hành động" 70/20/10 bằng AI cho từng skill ưu tiên; nút AI tự ẩn khi quản trị viên tắt tác vụ tại Quản trị AI.',
-  },
-  {
-    version: '3.0.0',
-    date: '04/07/2026',
-    type: 'major',
-    summary: 'Bộ nhận diện "Cây ký ức 20 năm": bảng màu, huy hiệu, banner; menu tinh gọn theo thực tế sử dụng; giao diện đa nền tảng laptop/iPad/điện thoại.',
-  },
-  {
-    version: '2.4.0',
-    date: '04/07/2026',
-    type: 'minor',
-    summary: 'Trợ lý AI gắn linh vật: tư vấn kỹ năng, chân dung năng lực, gợi ý khóa học; lưu chân dung dùng chung, giới hạn lượt & ẩn thông tin cá nhân khi gọi AI.',
-  },
-  {
-    version: '2.3.0',
-    date: '04/07/2026',
-    type: 'minor',
-    summary: 'Quản trị AI chủ động: chọn nhà cung cấp (Gemini/OpenAI/Lovable/tùy chỉnh), tự nhập API key và chọn model theo chi phí.',
-  },
-  {
-    version: '2.2.0',
-    date: '03/07/2026',
-    type: 'minor',
-    summary: 'Tạo tài khoản cán bộ đơn lẻ & hàng loạt (bắt buộc phòng ban/vị trí); chuẩn hóa luồng duyệt và trạng thái phiếu.',
-  },
-  {
-    version: '2.1.0',
-    date: '03/07/2026',
-    type: 'patch',
-    summary: 'Sửa checklist thái độ: minh chứng chỉ bắt buộc với nhóm "Nổi bật/Cần cải thiện"; đồng bộ dữ liệu thái độ giữa cán bộ và trưởng phòng.',
-  },
-  {
-    version: '2.0.0',
-    date: '24/05/2026',
-    type: 'major',
-    summary: 'Áp dụng quy ước version X.Y.Z, cải tiến biểu mẫu đánh giá và trải nghiệm trên điện thoại.',
-  },
-  {
-    version: '1.0.0',
-    date: '01/04/2026',
-    type: 'major',
-    summary: 'Phiên bản đầu tiên: 38 kỹ năng, 6 nhóm thái độ, kế hoạch phát triển IDP, hồ sơ cá nhân.',
-  },
-];
-
-export const APP_VERSION = VERSION_HISTORY[0].version;
-export const APP_VERSION_DATE = VERSION_HISTORY[0].date;
-export const APP_VERSION_TYPE = VERSION_HISTORY[0].type;

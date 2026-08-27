@@ -10,6 +10,7 @@ import {
   hasActiveSubscription,
   isIosNeedingHomeScreen,
   isPushSupported,
+  laDomainCu,
   refreshPushSubscription,
 } from '@/lib/pushNotifications';
 
@@ -17,11 +18,21 @@ export function EnablePushBanner({ profileId }: { profileId: string }) {
   const [visible, setVisible] = useState(false);
   const [iosHint, setIosHint] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [domainCu, setDomainCu] = useState(false);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       if (!isPushSupported()) return;
+      // Domain cũ: KHÔNG mời bật mới (đăng ký ở đây rồi sẽ phải chuyển), nhưng
+      // cũng KHÔNG đụng vào đăng ký đang có — refresh sẽ giữ tươi dòng đang sống
+      // và lặng lẽ phục hồi thiết bị bị bản 21/08 dọn nhầm. Chống thông báo đúp
+      // nằm ở enablePush phía domain mới, không nằm ở đây.
+      if (laDomainCu()) {
+        void refreshPushSubscription(profileId);
+        if (mounted) setDomainCu(true);
+        return;
+      }
       if (await hasActiveSubscription()) {
         // Đã bật — lặng lẽ làm mới đăng ký trong DB rồi thôi
         void refreshPushSubscription(profileId);
@@ -33,6 +44,26 @@ export function EnablePushBanner({ profileId }: { profileId: string }) {
     })();
     return () => { mounted = false; };
   }, [profileId]);
+
+  if (domainCu) {
+    return (
+      <Card className="border-primary/40 bg-primary/5">
+        <CardContent className="py-3 flex flex-col sm:flex-row sm:items-center gap-3">
+          <BellRing className="w-5 h-5 text-primary shrink-0" />
+          <div className="flex-1 text-sm">
+            <p className="font-medium">Cổng đã có địa chỉ mới: bachungyenone.com</p>
+            <p className="text-muted-foreground text-xs mt-0.5">
+              Địa chỉ này vẫn dùng được trong giai đoạn chuyển tiếp. Khi chuyển hẳn, hãy bật lại
+              thông báo một lần tại địa chỉ mới — hệ thống tự tắt đăng ký cũ của thiết bị, không lo nhận tin đúp.
+            </p>
+          </div>
+          <Button size="sm" asChild>
+            <a href="https://bachungyenone.com">Mở địa chỉ mới</a>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (!visible) return null;
 

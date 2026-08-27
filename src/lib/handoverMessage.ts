@@ -2,12 +2,12 @@
 // qua kênh nội bộ (Zalo/SMS). Dùng chung cho: tạo 1 cán bộ, tạo hàng loạt,
 // và cấp lại mật khẩu tạm.
 
-// Lấy theo domain đang chạy (chieuthuc3.com / domain dự phòng) — không hardcode
+// Lấy theo domain đang chạy (bachungyenone.com / domain dự phòng) — không hardcode
 // để đổi domain không phải sửa code. Fallback cho môi trường không có window (test).
 export const SITE_LOGIN_URL =
   typeof window !== 'undefined' && window.location?.origin
     ? window.location.origin
-    : 'https://chieuthuc3.com';
+    : 'https://bachungyenone.com';
 
 export interface HandoverInfo {
   fullName?: string | null;
@@ -21,7 +21,7 @@ export function buildHandoverMessage(info: HandoverInfo): string {
   const greeting = name ? `Chào anh/chị ${name},` : 'Chào anh/chị,';
   return [
     greeting,
-    'Tài khoản hệ thống "343 Phát triển nhân sự" (VietinBank Bắc Hưng Yên) của anh/chị đã sẵn sàng:',
+    'Tài khoản hệ thống "Bắc Hưng Yên ONE" (VietinBank Bắc Hưng Yên) của anh/chị đã sẵn sàng:',
     `- Đường dẫn đăng nhập: ${SITE_LOGIN_URL}`,
     `- Tên đăng nhập: ${info.email}`,
     `- Mật khẩu tạm: ${info.tempPassword}`,
@@ -35,7 +35,7 @@ export function buildResetMessage(info: HandoverInfo): string {
   const greeting = name ? `Chào anh/chị ${name},` : 'Chào anh/chị,';
   return [
     greeting,
-    'Mật khẩu đăng nhập hệ thống "343 Phát triển nhân sự" (VietinBank Bắc Hưng Yên) của anh/chị vừa được cấp lại:',
+    'Mật khẩu đăng nhập hệ thống "Bắc Hưng Yên ONE" (VietinBank Bắc Hưng Yên) của anh/chị vừa được cấp lại:',
     `- Đường dẫn đăng nhập: ${SITE_LOGIN_URL}`,
     `- Tên đăng nhập: ${info.email}`,
     `- Mật khẩu tạm mới: ${info.tempPassword}`,
