@@ -20,6 +20,8 @@ const makeIdea = (overrides: Partial<PortalIdea> = {}): PortalIdea => ({
   hasDemo: false,
   proposer: 'Nguyễn Văn A',
   developmentLevel: 'Ươm mầm',
+  // Phiếu cũ chưa được phân nhóm lĩnh vực — trạng thái thật của 114/134 ý tưởng
+  linhVuc: null,
   councilProposal: false,
   customValues: null,
   likes: 0,
