@@ -10,7 +10,9 @@ import {
   duongDanThongBao,
   laNgayLamViec,
   goiYNhan,
+  dongTuBangChungDauAn,
   gopCacBuoc,
+  gopTenTheoHaiKhoa,
   hanGoiY,
   kiemTraCauNhip,
   kiemTraGhiViec,
@@ -694,5 +696,74 @@ describe('lyDoPhaiBaoCao — bịt đường né bằng cách nằm ở «Chuẩ
   it('thẻ đang làm / việc thường trực không thuộc luật này', () => {
     expect(lyDoPhaiBaoCao(the({ trang_thai: 'DANG_LAM', ngay_bat_dau: '2026-08-01' }), moc)).toBeNull();
     expect(lyDoPhaiBaoCao(the({ loai_dau_viec: 'THUONG_TRUC', ngay_bat_dau: '2026-08-01' }), moc)).toBeNull();
+  });
+});
+
+describe('Tra tên người trong mạch thời gian — hai loại mã lẫn nhau', () => {
+  // Sự cố 26/08/2026: bàn Dấu ấn BHY Mark hiện «—» ở mọi dòng Báo cáo vì
+  // created_by là user_id, còn danh bạ tra theo profiles.id.
+  const hai = [{ id: 'ho-so-1', user_id: 'dang-nhap-1', full_name: 'Phạm Minh Hải' }];
+
+  it('tra được bằng mã hồ sơ (profiles.id) — đường của trao đổi', () => {
+    expect(gopTenTheoHaiKhoa(hai).get('ho-so-1')).toBe('Phạm Minh Hải');
+  });
+
+  it('tra được bằng mã đăng nhập (user_id) — đường của dòng Báo cáo', () => {
+    expect(gopTenTheoHaiKhoa(hai).get('dang-nhap-1')).toBe('Phạm Minh Hải');
+  });
+
+  it('thiếu tên thì bỏ qua, không ghi khoá rỗng đè lên người khác', () => {
+    const ten = gopTenTheoHaiKhoa([
+      { id: 'ho-so-2', user_id: 'dang-nhap-2', full_name: null },
+      ...hai,
+    ]);
+    expect(ten.has('ho-so-2')).toBe(false);
+    expect(ten.size).toBe(2);
+  });
+
+  it('danh sách rỗng hoặc thiếu một trong hai mã vẫn không vỡ', () => {
+    expect(gopTenTheoHaiKhoa([]).size).toBe(0);
+    expect(gopTenTheoHaiKhoa([{ id: 'chi-ho-so', full_name: 'Không có mã đăng nhập' }]).size).toBe(1);
+  });
+});
+
+describe('Bằng chứng tuần của dấu ấn cũng phải nằm trên dòng thời gian', () => {
+  // Sự cố 26/08/2026: PGĐ chuyển hẳn sang cửa ghi mới (màn Điều hành BGĐ) thì
+  // mạch của thẻ BHY Mark đứng lại đúng ngày bỏ cửa cũ — 16 mẩu bằng chứng
+  // viết trong ba tuần không hiện ở đâu, người làm đúng nhất trông như bỏ bê.
+  const mau = {
+    id: 'bc-1', tuan: '2026-08-17', phan_star: 'A',
+    noi_dung: 'Làm việc với phòng TNKH về trường hợp khiếu nại.',
+    nguoi_ghi: 'ho-so-hai', ghi_luc: '2026-08-22T09:59:00Z',
+  };
+
+  it('thành một dòng báo cáo, giữ nguyên mốc thời gian để trộn đúng thứ tự', () => {
+    const [d] = dongTuBangChungDauAn([mau]);
+    expect(d.luc).toBe('2026-08-22T09:59:00Z');
+    expect(d.noi_dung).toBe(mau.noi_dung);
+  });
+
+  it('ghi rõ tuần và phần STAR — không qua Date nên không lệch ngày ở múi giờ VN', () => {
+    expect(dongTuBangChungDauAn([mau])[0].tieu_de).toBe('Bằng chứng tuần 17/08 · Hành động');
+  });
+
+  it('mang mã HỒ SƠ người ghi để tra ra tên, không phải dòng «Hệ thống»', () => {
+    expect(dongTuBangChungDauAn([mau])[0].nguoi).toBe('ho-so-hai');
+  });
+
+  it('trộn chung với nhịp thẻ Kanban thì mới nhất đứng trước', () => {
+    const nhipCu = {
+      id: 'log-1', luc: '2026-08-03T09:52:00Z', nguoi: 'ho-so-hai',
+      tieu_de: 'Cập nhật tiến độ',
+    };
+    const nhom = gopDongThoiGian([nhipCu, ...dongTuBangChungDauAn([mau])], []);
+    expect(nhom[0].items[0].luc).toBe('2026-08-22T09:59:00Z');
+    expect(nhom.flatMap((n) => n.items)).toHaveLength(2);
+  });
+
+  it('thiếu phần STAR hoặc danh sách rỗng vẫn không vỡ', () => {
+    expect(dongTuBangChungDauAn([])).toEqual([]);
+    expect(dongTuBangChungDauAn([{ ...mau, phan_star: null }])[0].tieu_de)
+      .toBe('Bằng chứng tuần 17/08');
   });
 });
