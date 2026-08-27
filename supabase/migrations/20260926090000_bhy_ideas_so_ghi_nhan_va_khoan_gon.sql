@@ -851,12 +851,26 @@ FROM public.portal_ideas i
 WHERE (i.created_at AT TIME ZONE 'Asia/Ho_Chi_Minh') < '2026-08-16'::timestamp
 ON CONFLICT (idea_id, cap_do) DO NOTHING;
 
--- Ý tưởng đang ở cấp Bén rễ trở lên: ghi nhận dòng Bén rễ (không có hạn mức
--- tuần nên ghi nhận KPI được ngay; đây là cấp đã qua sàng lọc của TCTH/Giám đốc)
+-- Ý tưởng đang ở cấp Bén rễ trở lên: ghi nhận dòng Bén rễ (cấp này không có hạn
+-- mức tuần nên ghi nhận KPI được ngay).
+--
+-- NGUỒN CÔNG NHẬN LÀ TRỤ SỞ CHÍNH, không phải Chi nhánh (làm rõ từ vận hành
+-- 10/2026): các ý tưởng này lên được Bén rễ là do TSC đồng ý triển khai, Phòng
+-- TCTH khớp số liệu trên SMP rồi chuyển cấp độ — không qua bước Giám đốc Chi
+-- nhánh phê duyệt. Bản đầu của migration này ghi duyet_cn = true theo giả định
+-- ngược lại; đã sửa dữ liệu ở migration 20261002090000 và sửa luôn tại đây để
+-- môi trường dựng mới không tái lập lỗi.
 INSERT INTO public.portal_idea_awards
-  (idea_id, cap_do, ghi_nhan_kpi, duyet_cn, phong, muc_thuong, ly_do_thuong, ghi_chu)
+  (idea_id, cap_do, ghi_nhan_kpi, duyet_tsc, phong, muc_thuong, ly_do_thuong, ghi_chu)
 SELECT i.id, 'Bén rễ', true, true, i.department_name, 300000, 'trong_han_muc',
-       'Nạp từ cấp độ phát triển hiện có trước 16/08/2026'
+       'TSC đồng ý triển khai — TCTH khớp số liệu SMP và chuyển cấp độ'
 FROM public.portal_ideas i
 WHERE i.development_level IN ('Bén rễ', 'Vươn cành', 'Lan tỏa')
 ON CONFLICT (idea_id, cap_do) DO NOTHING;
+
+-- Ý tưởng đã được TSC đồng ý thì trạng thái SMP phải phản ánh đúng, nếu không
+-- màn đối chiếu hiện «chưa gửi» cho cả những ý tưởng Trụ sở chính đã duyệt.
+UPDATE public.portal_ideas i
+SET smp_trang_thai = 'dong_y', smp_cap_nhat_luc = now()
+WHERE i.development_level IN ('Bén rễ', 'Vươn cành', 'Lan tỏa')
+  AND i.smp_trang_thai = 'chua_gui';

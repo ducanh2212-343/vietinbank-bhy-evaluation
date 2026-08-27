@@ -3,9 +3,12 @@ import { AlertTriangle, Lightbulb, Sparkles, UserCheck, X } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import {
   IDEA_APPLICABILITIES,
+  IDEA_LINH_VUC,
+  IDEA_LINH_VUC_INFO,
   IDEA_LEVELS,
   type IdeaApplicability,
   type IdeaLevel,
+  type IdeaLinhVuc,
 } from '@/data/one/ideasConfig';
 import { useStaffDirectory, type StaffOption } from './useStaffDirectory';
 import type { IdeaInput, PortalIdea } from './usePortalIdeas';
@@ -28,6 +31,7 @@ interface FieldConfig {
 
 interface FormValues {
   level: string;
+  linhVuc: string;
   applicability: string;
   title: string;
   currentStatus: string;
@@ -38,6 +42,9 @@ interface FormValues {
 
 const IDEA_FIELDS: FieldConfig[] = [
   { id: 'level', label: 'Cấp đề xuất', type: 'select', required: true, options: IDEA_LEVELS },
+  // Nhóm lĩnh vực trả lời câu «sáng tạo về chuyện gì» — đặt ngay sau cấp đề
+  // xuất để người gửi định vị ý tưởng trước khi viết nội dung
+  { id: 'linhVuc', label: 'Ý tưởng thuộc nhóm lĩnh vực nào?', type: 'select', required: true, options: IDEA_LINH_VUC },
   { id: 'applicability', label: 'Có thể thử/áp dụng ở đâu?', type: 'select', required: true, options: IDEA_APPLICABILITIES },
   { id: 'title', label: 'Tên ý tưởng/vấn đề?', type: 'text', placeholder: 'VD: Cải tiến thao tác in sao kê tự động tại quầy...', required: true },
   { id: 'currentStatus', label: 'Thực trạng hiện tại (Khó khăn, bất cập):', type: 'textarea', placeholder: 'Mô tả chi tiết những điểm chưa tối ưu, tốn thời gian...', required: true },
@@ -48,6 +55,7 @@ const IDEA_FIELDS: FieldConfig[] = [
 
 const emptyValues = (): FormValues => ({
   level: '',
+  linhVuc: '',
   applicability: '',
   title: '',
   currentStatus: '',
@@ -58,6 +66,7 @@ const emptyValues = (): FormValues => ({
 
 const valuesFromIdea = (idea: PortalIdea): FormValues => ({
   level: idea.level,
+  linhVuc: idea.linhVuc ?? '',
   applicability: idea.applicability,
   title: idea.title,
   currentStatus: idea.currentStatus,
@@ -146,6 +155,7 @@ export const IdeaForm: React.FC<IdeaFormProps> = ({
       const input: IdeaInput = {
         level: values.level as IdeaLevel,
         applicability: values.applicability as IdeaApplicability,
+        linhVuc: (values.linhVuc || null) as IdeaLinhVuc | null,
         title: values.title,
         currentStatus: values.currentStatus,
         proposedSolution: values.proposedSolution,

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { CheckCircle2, Circle, Handshake, Info, Send, Sprout } from 'lucide-react';
+import { CheckCircle2, Circle, Handshake, Info, Sprout } from 'lucide-react';
 import { HO_SO_PHONG_SANG_IDEAS } from '@/data/one/ideasConfig';
 import {
   LY_DO_THUONG_LABELS,
@@ -15,7 +15,6 @@ import {
   useUomMamActions,
   useYTuongTheoTuan,
 } from './useUomMamPicker';
-import { useBenReActions } from './useBenRe';
 
 // Màn "Chốt ý tưởng Ươm mầm" — tính năng theo chỉ đạo 08/2026: phòng nào vượt
 // trần thì phải LỰA CHỌN ý tưởng nào được ghi nhận, để KPI đo lường chuẩn.
@@ -50,7 +49,6 @@ export const UomMamPicker: React.FC = () => {
 
   const { items, isLoading } = useYTuongTheoTuan(phongIdeas, tuan);
   const { chon, boChon } = useUomMamActions(phongIdeas, tuan);
-  const { trinh } = useBenReActions();
 
   // Quyền CHỐT theo công tắc cấu hình — trùng đúng hàm gác của CSDL
   const tcthGiuQuyen = cauHinh.aiChonUomMam === 'tcth';
@@ -59,6 +57,10 @@ export const UomMamPicker: React.FC = () => {
   // Chỉ suất do CHI NHÁNH duyệt mới chiếm hạn mức; TSC duyệt trên SMP thì không
   const daChiemSuat = items.filter(i => i.award?.ghiNhanKpi && i.award.duyetCn).length;
   const suat = suatUomMamConLai(daChiemSuat, cauHinh.tranUomMamMoiTuan);
+  // Tạm dừng áp KPI (chỉ đạo 08/2026): trần không chặn nữa và màn hình bỏ hẳn
+  // ngôn ngữ «tính KPI», «hạn mức» — nói ghi nhận và vinh danh cho đúng việc
+  // đang làm. CSDL cũng bỏ chặn theo cùng cờ này nên hai bên không lệch nhau.
+  const apKpi = cauHinh.dangApKpi;
 
   if (loadingDept) {
     return <p className="text-xs text-slate-400 italic py-4 text-center">Đang đọc hồ sơ…</p>;
@@ -100,20 +102,32 @@ export const UomMamPicker: React.FC = () => {
             ))}
           </select>
         )}
-        <span className={`ml-auto px-2.5 py-1 rounded-full text-2xs font-black ${suat.het ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-700'}`}>
-          Đã ghi nhận {suat.daDung}/{cauHinh.tranUomMamMoiTuan} suất tuần này
+        <span className={`ml-auto px-2.5 py-1 rounded-full text-2xs font-black ${
+          apKpi && suat.het ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-700'
+        }`}>
+          {apKpi
+            ? `Đã ghi nhận ${suat.daDung}/${cauHinh.tranUomMamMoiTuan} suất tuần này`
+            : `Đã ghi nhận ${suat.daDung} ý tưởng tuần này`}
         </span>
       </div>
 
       <div className="p-2.5 rounded-lg bg-sky-50 border border-sky-200 text-2xs text-sky-900 flex gap-2">
         <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
-        <span>
-          Mỗi tuần phòng được ghi nhận tối đa <b>{cauHinh.tranUomMamMoiTuan} ý tưởng</b> Ươm mầm — đây là
-          con số tính vào <b>KPI Đổi mới sáng tạo</b>, phải đúng hạn mức để KPI đo lường chuẩn.
-          Cán bộ vẫn gửi ý tưởng không giới hạn và mọi ý tưởng đều được lưu, vinh danh.
-          Riêng ý tưởng gửi <b>trước {new Date(`${MOC_HOI_TO_THUONG}T00:00:00`).toLocaleDateString('vi-VN')}</b> vẫn
-          được <b>thưởng tiền khuyến khích</b> kể cả khi không nằm trong hạn mức.
-        </span>
+        {apKpi ? (
+          <span>
+            Mỗi tuần phòng được ghi nhận tối đa <b>{cauHinh.tranUomMamMoiTuan} ý tưởng</b> Ươm mầm — đây là
+            con số tính vào <b>KPI Đổi mới sáng tạo</b>, phải đúng hạn mức để KPI đo lường chuẩn.
+            Cán bộ vẫn gửi ý tưởng không giới hạn và mọi ý tưởng đều được lưu, vinh danh.
+            Riêng ý tưởng gửi <b>trước {new Date(`${MOC_HOI_TO_THUONG}T00:00:00`).toLocaleDateString('vi-VN')}</b> vẫn
+            được <b>thưởng tiền khuyến khích</b> kể cả khi không nằm trong hạn mức.
+          </span>
+        ) : (
+          <span>
+            Chi nhánh đang <b>tạm dừng áp KPI</b> để tập trung khuyến khích sáng tạo — ghi nhận
+            <b> không còn giới hạn số lượng mỗi tuần</b>. Cứ ghi nhận mọi ý tưởng xứng đáng.
+            Sổ vẫn lưu đầy đủ nên khi áp KPI trở lại là có ngay số liệu.
+          </span>
+        )}
       </div>
 
       {tcthGiuQuyen && (
@@ -171,7 +185,7 @@ export const UomMamPicker: React.FC = () => {
             // TSC đã duyệt thì ý tưởng đã được ghi nhận sẵn — phòng không cần
             // tiêu suất cho nó nữa, nhưng vẫn chọn/bỏ chọn phía Chi nhánh được
             // (hai cờ độc lập, ghi nhận và tiền vẫn chỉ một lần).
-            const khoa = !duocChot || (!duyetCn && suat.het);
+            const khoa = !duocChot || (apKpi && !duyetCn && suat.het);
             return (
               <div
                 key={it.id}
@@ -188,6 +202,7 @@ export const UomMamPicker: React.FC = () => {
                   title={
                     !duocChot ? 'Quyền chốt cấp Ươm mầm đang thuộc Phòng TCTH'
                       : khoa ? 'Hết suất tuần này — bỏ chọn một ý tưởng khác trước'
+                      : !apKpi && duyetCn ? 'Bỏ ghi nhận'
                       : duyetCn ? 'Bỏ chọn (thu lại suất của phòng)'
                       : duyetTsc ? 'TSC đã duyệt trên SMP — chọn thêm ở Chi nhánh nếu muốn'
                       : 'Ghi nhận Ươm mầm'
@@ -209,14 +224,18 @@ export const UomMamPicker: React.FC = () => {
                 {ghiNhan && (
                   <span
                     className="px-2 py-0.5 rounded-full text-2xs font-black bg-emerald-100 text-emerald-700"
-                    title="Ý tưởng này được tính vào KPI Đổi mới sáng tạo"
+                    title={apKpi
+                      ? 'Ý tưởng này được tính vào KPI Đổi mới sáng tạo'
+                      : 'Ý tưởng này đã được ghi nhận và vinh danh'}
                   >
-                    ✓ Tính KPI
+                    {apKpi ? '✓ Tính KPI' : '✓ Đã ghi nhận'}
                   </span>
                 )}
                 {duyetCn && (
                   <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-slate-100 text-slate-600"
-                    title="Chi nhánh duyệt — chiếm 1 suất hạn mức tuần của phòng">
+                    title={apKpi
+                      ? 'Chi nhánh duyệt — chiếm 1 suất hạn mức tuần của phòng'
+                      : 'Chi nhánh duyệt'}>
                     CN duyệt
                   </span>
                 )}
@@ -248,17 +267,6 @@ export const UomMamPicker: React.FC = () => {
                   </span>
                 )}
 
-                {/* Bén rễ trình liên tục: TCTH trình thẳng từ đây, khỏi đi màn khác */}
-                {isAdmin && (
-                  <button
-                    type="button"
-                    onClick={() => void trinh(it.id)}
-                    title="Trình Giám đốc xem xét công nhận cấp Bén rễ"
-                    className="px-2 py-1 rounded-lg bg-[#005a9c]/10 hover:bg-[#005a9c]/20 text-[#005a9c] font-bold text-2xs flex items-center gap-1 cursor-pointer transition-all"
-                  >
-                    <Send className="w-3 h-3" /> Trình Bén rễ
-                  </button>
-                )}
               </div>
             );
           })}

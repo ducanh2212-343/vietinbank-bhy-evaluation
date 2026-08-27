@@ -11,7 +11,7 @@ import { IdeaForm } from '@/components/one/ideas/IdeaForm';
 import { IdeaList } from '@/components/one/ideas/IdeaList';
 import { IdeaStatsPanel } from '@/components/one/ideas/IdeaStatsPanel';
 import { khopTimKiem } from '@/lib/vietnamese';
-import type { IdeaLevel } from '@/data/one/ideasConfig';
+import { IDEA_LINH_VUC, IDEA_LINH_VUC_INFO, type IdeaLevel, type IdeaLinhVuc } from '@/data/one/ideasConfig';
 
 // Trụ cột 5 — BHY Ideas: thân của màn «Gửi & tra cứu ý tưởng».
 //
@@ -93,6 +93,7 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
   const myName = useMyFullName();
 
   const [filterLevel, setFilterLevel] = useState<'all' | IdeaLevel>('all');
+  const [filterNhom, setFilterNhom] = useState<'all' | IdeaLinhVuc>('all');
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<PortalIdea | null>(null);
   const formRef = useRef<HTMLDivElement | null>(null);
@@ -125,13 +126,14 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
   // Lọc theo cấp + tìm kiếm không dấu trên toàn bộ nội dung phiếu.
   // Mục đích chính: cán bộ tra trước khi gửi để tránh đề xuất trùng ý tưởng đã có.
   const byLevel = filterLevel === 'all' ? ideas : ideas.filter(i => i.level === filterLevel);
+  const byNhom = filterNhom === 'all' ? byLevel : byLevel.filter(i => i.linhVuc === filterNhom);
   const filteredIdeas = search.trim()
-    ? byLevel.filter(i =>
+    ? byNhom.filter(i =>
         khopTimKiem(
           [i.title, i.proposer, i.departmentName, i.currentStatus, i.proposedSolution, i.expectedBenefits].join(' '),
           search,
         ))
-    : byLevel;
+    : byNhom;
 
   const handleStartEdit = (idea: PortalIdea) => {
     setEditing(idea);
@@ -204,9 +206,22 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
             )}
           </div>
 
-          {/* Bộ lọc cấp đề xuất. Kết xuất Excel và lọc theo ngày đã sang màn
-              «Vận hành & phê duyệt» — đó là việc của TCTH, không phải của mọi người. */}
-          <div className="flex shrink-0 items-center gap-2 text-xs">
+          {/* Bộ lọc cấp đề xuất và nhóm lĩnh vực. Kết xuất Excel và lọc theo
+              ngày đã sang màn «Vận hành & phê duyệt» — việc của TCTH. */}
+          <div className="flex shrink-0 flex-wrap items-center gap-2 text-xs">
+            <select
+              value={filterNhom}
+              onChange={e => setFilterNhom(e.target.value as 'all' | IdeaLinhVuc)}
+              className="rounded-lg border border-slate-200 bg-white p-2 font-bold text-slate-700 outline-none focus:border-amber-500"
+              title="Lọc theo nhóm lĩnh vực"
+            >
+              <option value="all">Mọi nhóm lĩnh vực</option>
+              {IDEA_LINH_VUC.map(n => (
+                <option key={n} value={n}>
+                  {IDEA_LINH_VUC_INFO[n as IdeaLinhVuc].emoji} {n}
+                </option>
+              ))}
+            </select>
             <span className="font-bold text-slate-500">Lọc theo cấp:</span>
             <div className="flex gap-1 rounded-lg border bg-slate-100 p-1">
               {([
@@ -229,7 +244,7 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
 
         <IdeaList
           ideas={filteredIdeas}
-          isFiltered={!!search.trim() || filterLevel !== 'all'}
+          isFiltered={!!search.trim() || filterLevel !== 'all' || filterNhom !== 'all'}
           isLoading={isLoading}
           isContentAdmin={isContentAdmin}
           myName={myName}

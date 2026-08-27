@@ -45,6 +45,73 @@ export type IdeaLevel = (typeof IDEA_LEVELS)[number];
 export type IdeaApplicability = (typeof IDEA_APPLICABILITIES)[number];
 export type IdeaDevLevel = (typeof IDEA_DEV_LEVELS)[number];
 
+/**
+ * NHÓM LĨNH VỰC của ý tưởng (chốt vận hành 08/2026).
+ *
+ * Khác ba trục phân loại đã có, và khác ở chỗ nào thì cần nói rõ kẻo dùng lẫn:
+ *   - «Cấp đề xuất» (Nội bộ CN / Đề xuất TSC) — nơi xét duyệt
+ *   - «Phạm vi áp dụng» (Phòng / Chi nhánh / Toàn hàng) — ảnh hưởng tới đâu
+ *   - «Cấp độ phát triển» (Ươm mầm → Lan tỏa) — đi được bao xa
+ *   - «Nhóm lĩnh vực» (dưới đây) — SÁNG TẠO VỀ CHUYỆN GÌ
+ *
+ * Trục thứ tư này trả lời câu hỏi mà ba trục kia không trả lời được: Chi nhánh
+ * đang sáng tạo mạnh ở mảng nào, mảng nào bỏ trống để phát động tiếp.
+ *
+ * Sáu nhóm bám theo việc thật của một chi nhánh ngân hàng, cộng «Khác» để không
+ * ép cán bộ chọn sai khi ý tưởng nằm ngoài khung — thà có một nhóm Khác nhỏ còn
+ * hơn số liệu các nhóm kia bị nhiễu.
+ */
+export const IDEA_LINH_VUC = [
+  'Quy trình nghiệp vụ',
+  'Công nghệ số & AI',
+  'Trải nghiệm khách hàng',
+  'Tiết giảm chi phí',
+  'An toàn & tuân thủ',
+  'Quản trị nội bộ',
+  'Khác',
+] as const;
+
+export type IdeaLinhVuc = (typeof IDEA_LINH_VUC)[number];
+
+/** Gợi ý để cán bộ chọn đúng nhóm ngay lần đầu, khỏi phải đoán */
+export const IDEA_LINH_VUC_INFO: Record<IdeaLinhVuc, { emoji: string; goiY: string; mau: string }> = {
+  'Quy trình nghiệp vụ': {
+    emoji: '⚙️',
+    goiY: 'Rút gọn bước, bỏ giấy tờ thừa, gộp khâu, chuẩn hóa mẫu biểu.',
+    mau: 'bg-sky-100 text-sky-800 border-sky-200',
+  },
+  'Công nghệ số & AI': {
+    emoji: '💻',
+    goiY: 'Dùng công cụ số, tự động hóa việc thủ công, khai thác dữ liệu, trợ lý AI.',
+    mau: 'bg-violet-100 text-violet-800 border-violet-200',
+  },
+  'Trải nghiệm khách hàng': {
+    emoji: '🤝',
+    goiY: 'Giảm thời gian chờ, bớt thủ tục cho khách, cải thiện cách phục vụ tại quầy.',
+    mau: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  },
+  'Tiết giảm chi phí': {
+    emoji: '💰',
+    goiY: 'Giảm chi phí vận hành, tiết kiệm vật tư, tận dụng nguồn lực sẵn có.',
+    mau: 'bg-amber-100 text-amber-800 border-amber-200',
+  },
+  'An toàn & tuân thủ': {
+    emoji: '🛡️',
+    goiY: 'Ngăn sai sót, phát hiện rủi ro sớm, siết điểm hở trong tác nghiệp.',
+    mau: 'bg-rose-100 text-rose-800 border-rose-200',
+  },
+  'Quản trị nội bộ': {
+    emoji: '🏛️',
+    goiY: 'Cách điều hành, họp hành, giao việc, đào tạo và phối hợp giữa các phòng.',
+    mau: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+  },
+  'Khác': {
+    emoji: '💡',
+    goiY: 'Ý tưởng chưa thuộc nhóm nào ở trên.',
+    mau: 'bg-slate-100 text-slate-700 border-slate-200',
+  },
+};
+
 // Đơn giá thưởng theo cấp độ (đúng bản deploy: Lan tỏa dự toán theo cận trên 3M)
 export const IDEA_TIER_REWARDS: Record<IdeaDevLevel, number> = {
   'Ươm mầm': 100_000,

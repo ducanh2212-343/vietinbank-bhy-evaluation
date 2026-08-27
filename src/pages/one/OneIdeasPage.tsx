@@ -4,8 +4,9 @@ import { OnePageShell } from '@/components/one/OnePageShell';
 import { EditableText } from '@/components/one/AdminEditableContext';
 import { IdeaHero, IdeaTabs } from '@/components/one/ideas/IdeaNav';
 import { IdeaStatsPanel } from '@/components/one/ideas/IdeaStatsPanel';
+import { BucTranhLinhVuc } from '@/components/one/ideas/BucTranhLinhVuc';
 import { useViecCuaGiamDoc } from '@/components/one/ideas/useBenRe';
-import { useLaGiamDoc } from '@/components/one/ideas/useUomMamPicker';
+import { useCauHinhIdeas, useLaGiamDoc } from '@/components/one/ideas/useUomMamPicker';
 import { useIdeaCouncilAccess } from '@/components/one/ideas/council/useIdeaCouncil';
 import { usePortalIdeas } from '@/components/one/ideas/usePortalIdeas';
 import { useAuth } from '@/hooks/useAuth';
@@ -38,7 +39,7 @@ function DaiNhacGiamDoc() {
 
   return (
     <Link
-      to="/one/y-tuong/van-hanh"
+      to="/one/y-tuong/van-hanh?viec=duyet_ben_re"
       className="group flex items-center gap-3 rounded-2xl border-2 border-sky-300 bg-gradient-to-r from-sky-50 via-white to-slate-50 p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
     >
       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-navy to-brand-royal text-white shadow-md">
@@ -70,7 +71,12 @@ const CAP_DO = [
 function NoiDungIdeas() {
   const { isGuest, isAdmin, isManager, isPgd } = useAuth();
   const { isMember } = useIdeaCouncilAccess();
+  const { cauHinh } = useCauHinhIdeas();
   const { ideas } = usePortalIdeas();
+
+  // Cùng quy tắc với thanh tab: lãnh đạo phòng chỉ thấy màn vận hành khi công
+  // tắc đang trả quyền chốt Ươm mầm — không có việc thì không mời vào màn đó.
+  const lanhDaoDuocChot = (isManager || isPgd) && cauHinh.aiChonUomMam === 'truong_phong';
 
   // Thẻ tổng quan — cùng khuôn với lưới thương hiệu ở Trang chủ ONE
   const muc = [
@@ -100,9 +106,9 @@ function NoiDungIdeas() {
       accent: '#0057B8',
       ten: 'Vận hành & phê duyệt',
       dinhVi: 'Ban Giám đốc · Phòng TCTH',
-      moTa: 'Phê duyệt cấp Bén rễ, chốt ý tưởng vào hạn mức ghi nhận KPI, đối chiếu kết quả Trụ sở chính và theo dõi ngân sách khen thưởng.',
+      moTa: 'Đánh giá và trình Giám đốc công nhận Bén rễ, chốt ghi nhận Ươm mầm, phân nhóm lĩnh vực, đối chiếu kết quả Trụ sở chính và theo dõi ngân sách.',
       nhanNut: 'Vào màn vận hành',
-      hien: isAdmin || isManager || isPgd,
+      hien: isAdmin || lanhDaoDuocChot,
     },
   ].filter(m => m.hien);
 
@@ -217,7 +223,18 @@ function NoiDungIdeas() {
       )}
 
       {/* ---------------------------------------------------------------- */}
-      {/* 4. CÁCH HỘI ĐỒNG CHẤM — nêu luật chơi để người gửi biết đường viết */}
+      {/* 4. BỨC TRANH SÁNG TẠO — Chi nhánh đang sáng tạo về chuyện gì      */}
+      {/* ---------------------------------------------------------------- */}
+      {!isGuest && (
+        <section className="border-y border-slate-200 bg-gradient-to-r from-[#F0F6FA] via-white to-[#FFF8E7]">
+          <div className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+            <BucTranhLinhVuc chuaPhanNhom={ideas.filter(i => !i.linhVuc).length} />
+          </div>
+        </section>
+      )}
+
+      {/* ---------------------------------------------------------------- */}
+      {/* 5. CÁCH HỘI ĐỒNG CHẤM — nêu luật chơi để người gửi biết đường viết */}
       {/* ---------------------------------------------------------------- */}
       <section className="border-t border-slate-200 bg-slate-50/70">
         <div className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">

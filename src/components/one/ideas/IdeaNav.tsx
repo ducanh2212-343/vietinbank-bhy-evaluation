@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { ClipboardList, Compass, Gavel, Lightbulb } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useIdeaCouncilAccess } from './council/useIdeaCouncil';
+import { useCauHinhIdeas } from './useUomMamPicker';
 
 // Khung dùng chung của ba màn Bắc Hưng Yên Ideas.
 //
@@ -51,12 +52,18 @@ interface MucTab {
 export const IdeaTabs: React.FC = () => {
   const { isAdmin, isManager, isPgd } = useAuth();
   const { isMember } = useIdeaCouncilAccess();
+  const { cauHinh } = useCauHinhIdeas();
+
+  // Tách bạch xem/quản trị: lãnh đạo phòng chỉ thấy tab vận hành khi công tắc
+  // đang trả quyền chốt Ươm mầm cho Trưởng phòng — không có việc thì không
+  // hiện tab, phần «xem» đã đủ ở màn Gửi & tra cứu.
+  const lanhDaoDuocChot = (isManager || isPgd) && cauHinh.aiChonUomMam === 'truong_phong';
 
   const tabs: MucTab[] = [
     { to: '/one/y-tuong', label: 'Giới thiệu & tổng quan', icon: Compass, end: true, hien: true },
     { to: '/one/y-tuong/gui', label: 'Gửi & tra cứu ý tưởng', icon: Lightbulb, hien: true },
     { to: '/one/y-tuong/hoi-dong', label: 'Chấm điểm Hội đồng', icon: Gavel, hien: isMember || isAdmin },
-    { to: '/one/y-tuong/van-hanh', label: 'Vận hành & phê duyệt', icon: ClipboardList, hien: isAdmin || isManager || isPgd },
+    { to: '/one/y-tuong/van-hanh', label: 'Vận hành & phê duyệt', icon: ClipboardList, hien: isAdmin || lanhDaoDuocChot },
   ];
 
   const hienThi = tabs.filter(t => t.hien);
