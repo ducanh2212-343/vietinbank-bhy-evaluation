@@ -6,7 +6,7 @@ import { IdeaHero, IdeaTabs } from '@/components/one/ideas/IdeaNav';
 import { IdeaStatsPanel } from '@/components/one/ideas/IdeaStatsPanel';
 import { BucTranhLinhVuc } from '@/components/one/ideas/BucTranhLinhVuc';
 import { useViecCuaGiamDoc } from '@/components/one/ideas/useBenRe';
-import { useLaGiamDoc } from '@/components/one/ideas/useUomMamPicker';
+import { useCauHinhIdeas, useLaGiamDoc } from '@/components/one/ideas/useUomMamPicker';
 import { useIdeaCouncilAccess } from '@/components/one/ideas/council/useIdeaCouncil';
 import { usePortalIdeas } from '@/components/one/ideas/usePortalIdeas';
 import { useAuth } from '@/hooks/useAuth';
@@ -39,7 +39,7 @@ function DaiNhacGiamDoc() {
 
   return (
     <Link
-      to="/one/y-tuong/van-hanh"
+      to="/one/y-tuong/van-hanh?viec=duyet_ben_re"
       className="group flex items-center gap-3 rounded-2xl border-2 border-sky-300 bg-gradient-to-r from-sky-50 via-white to-slate-50 p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
     >
       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-navy to-brand-royal text-white shadow-md">
@@ -71,7 +71,12 @@ const CAP_DO = [
 function NoiDungIdeas() {
   const { isGuest, isAdmin, isManager, isPgd } = useAuth();
   const { isMember } = useIdeaCouncilAccess();
+  const { cauHinh } = useCauHinhIdeas();
   const { ideas } = usePortalIdeas();
+
+  // Cùng quy tắc với thanh tab: lãnh đạo phòng chỉ thấy màn vận hành khi công
+  // tắc đang trả quyền chốt Ươm mầm — không có việc thì không mời vào màn đó.
+  const lanhDaoDuocChot = (isManager || isPgd) && cauHinh.aiChonUomMam === 'truong_phong';
 
   // Thẻ tổng quan — cùng khuôn với lưới thương hiệu ở Trang chủ ONE
   const muc = [
@@ -103,7 +108,7 @@ function NoiDungIdeas() {
       dinhVi: 'Ban Giám đốc · Phòng TCTH',
       moTa: 'Đánh giá và trình Giám đốc công nhận Bén rễ, chốt ghi nhận Ươm mầm, phân nhóm lĩnh vực, đối chiếu kết quả Trụ sở chính và theo dõi ngân sách.',
       nhanNut: 'Vào màn vận hành',
-      hien: isAdmin || isManager || isPgd,
+      hien: isAdmin || lanhDaoDuocChot,
     },
   ].filter(m => m.hien);
 
