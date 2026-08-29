@@ -24,6 +24,11 @@ describe('parseSerialText — tách chuỗi serial trên phiếu thành danh sá
     expect(parseSerialText(null)).toEqual([]);
     expect(parseSerialText(undefined)).toEqual([]);
   });
+
+  it('đọc được kiểu ngăn cách bằng chữ — ca thật "181 và 182" (12/08)', () => {
+    expect(parseSerialText('181 và 182')).toEqual([181, 182]);
+    expect(parseSerialText('29 - 30')).toEqual([29, 30]);
+  });
 });
 
 describe('formatSerialList — chuẩn dạng lưu mới: tăng dần, không đệm 0', () => {

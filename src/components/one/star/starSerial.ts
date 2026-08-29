@@ -19,15 +19,15 @@ export interface StarSerialRow {
 
 /**
  * Tách chuỗi serial trên phiếu thành danh sách số. Dữ liệu cũ có đủ kiểu:
- * "000084", "000072, 000082", "29; 30", "193, 196, 213" — chấp nhận cả dấu
- * phẩy lẫn chấm phẩy, bỏ số 0 đệm đầu, bỏ phần tử không phải số.
+ * "000084", "000072, 000082", "29; 30", "193, 196, 213", và cả "181 và 182"
+ * (người nhập viết chữ "và"). Vì vậy tách theo MỌI đoạn không phải chữ số —
+ * mọi ký tự ngăn cách đều chấp nhận, bỏ số 0 đệm đầu.
  */
 export const parseSerialText = (text: string | null | undefined): number[] => {
   if (!text) return [];
   return text
-    .split(/[,;]/)
-    .map((t) => t.trim())
-    .filter((t) => /^[0-9]+$/.test(t))
+    .split(/[^0-9]+/)
+    .filter((t) => t.length > 0)
     .map((t) => parseInt(t, 10))
     .filter((n) => Number.isFinite(n) && n > 0);
 };

@@ -72,6 +72,27 @@ chính tả; tập thể chọn từ danh sách phòng chuẩn. Phiếu mới l�
   tồn hệ thống chờ **đối soát kho thật** (đếm sao còn trong tủ TCTH — khu Quản lý
   Sao hiển thị sẵn danh sách dải tồn).
 
+### Bổ sung — rà lại chiều 29/08 (sau khi rebase lên main, trước khi mở PR mới)
+
+- **Form cũ trên production vẫn tạo được phiếu rác**: ngày 28/08 xuất hiện một
+  phiếu `source='form'` không có serial — "Nguyen Thi Huong Ly / PGD Ocean City /
+  1 sao / người tặng trùng người nhận" (id `8f23000e-adfc-4543-9ba6-97fcbbc0dcfd`,
+  created_by `885b7295-56f5-4b2b-ab38-481972f56cd6`). Phòng "PGD Ocean City"
+  không thuộc chi nhánh → phiếu thử nghiệm. Vi phạm nguyên tắc *chỉ ghi nhận sao
+  theo số serial* nên đã gỡ (nội dung lưu tại đây để khôi phục nếu chi nhánh xác
+  nhận là phiếu thật). Lưu ý: sau khi policy INSERT tự do bị gỡ 29/08, form cũ
+  trên production giờ báo lỗi RLS với lãnh đạo — thêm một lý do phải deploy bản
+  mới sớm.
+- **Phiếu "181 và 182"**: phiếu Vũ Đức Nam 12/08 (2 sao) ghi serial bằng chữ
+  "và" nên bị bỏ sót khi nạp sổ. Đã chuẩn hóa thành "181, 182", gắn hai số vào
+  sổ, và sửa `parseSerialText` tách theo mọi ký tự không phải chữ số (kèm test).
+- **Advisor bảo mật**: default privileges của project tự cấp EXECUTE cho `anon`
+  trên hàm mới → đã thu hồi trên cả 5 RPC; khóa `search_path` cho
+  `touch_updated_at` (migration `star_rpcs_thu_hoi_quyen_anon_va_khoa_search_path`).
+- Trạng thái chốt sau rà lại: **163 phiếu / 169 sao / 169 token serial khớp
+  169**, 168 số `awarded` gắn đúng phiếu; lệch duy nhất còn lại là ca serial 90
+  (chờ tra sao vật lý của Bùi Thị Hằng); tồn hệ thống 98 số.
+
 ## 4. Trình tự đưa vào vận hành
 
 1. **Merge + deploy nhánh này** — chừng nào chưa deploy, màn nhập Excel cũ còn sống
