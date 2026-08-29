@@ -7,8 +7,9 @@ import confetti from 'canvas-confetti';
 import { useStarRecords } from './useStarRecords';
 import { STAR_WRITE_LOCKED, STAR_WRITE_LOCK_REASON } from './starImportLock';
 import {
-  calculateRewardValue, formatVnd, getMilestoneInfo, getRewardBreakdown,
+  calculateRewardValue, formatKpi, formatVnd, getKpiPoints, getMilestoneInfo, getRewardBreakdown,
 } from './starMath';
+import { useStarOps } from './useStarSerials';
 import {
   DEPT_QUOTAS, buildTemplateWorkbook, parseStarWorkbook, type ParseResult,
 } from './starParser';
@@ -25,6 +26,9 @@ export const StarAnalytics: React.FC = () => {
   const {
     records, isLoading, isContentAdmin, replaceAll, deleteRecord, deleteAll,
   } = useStarRecords();
+  // Gỡ phiếu ghi trên cổng: qua RPC để số serial quay về pool người giữ —
+  // hoạt động cả khi đường nhập Excel đang khóa (khóa chỉ chặn replaceAll/xóa import)
+  const { revokeFormRecord } = useStarOps();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [deptFilter, setDeptFilter] = useState('all');
@@ -522,6 +526,13 @@ export const StarAnalytics: React.FC = () => {
                                   <span>{staff.totalStars} Sao</span>
                                 </div>
 
+                                <div
+                                  className="px-3 py-1.5 rounded-xl bg-sky-50 border border-sky-200 text-sky-700 font-black text-[10px] shrink-0"
+                                  title="0,5 điểm KPI mỗi sao hợp lệ, trần 10 điểm/năm (văn bản mục 5.1)"
+                                >
+                                  +{formatKpi(getKpiPoints(staff.totalStars))} KPI
+                                </div>
+
                                 <div className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-black text-xs flex items-center gap-1 shrink-0 shadow-sm border border-emerald-700">
                                   <DollarSign className="w-3.5 h-3.5" />
                                   <span>Thưởng quy đổi: {formatVnd(breakdown.totalValue)}</span>
@@ -679,6 +690,12 @@ export const StarAnalytics: React.FC = () => {
                                 <span className="block text-[9px] font-bold text-slate-400">
                                   {dept.collectiveRecords} phiếu tập thể
                                 </span>
+                                <span
+                                  className="block text-[9px] font-black text-sky-600"
+                                  title="0,5 điểm KPI mỗi sao tập thể hợp lệ, trần 10 điểm/năm"
+                                >
+                                  +{formatKpi(getKpiPoints(dept.collectiveStars))} KPI
+                                </span>
                               </td>
                               <td className="p-3 min-w-40">
                                 <div className="flex items-center gap-2">
@@ -774,7 +791,7 @@ export const StarAnalytics: React.FC = () => {
                           <th className="p-2.5">Hiệu quả đem lại</th>
                           <th className="p-2.5 text-center">Ngày nhận</th>
                           <th className="p-2.5 text-center">Nguồn</th>
-                          {isContentAdmin && !STAR_WRITE_LOCKED && <th className="p-2.5 text-center">Hành động</th>}
+                          {isContentAdmin && <th className="p-2.5 text-center">Hành động</th>}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 font-medium text-slate-600">
@@ -800,16 +817,33 @@ export const StarAnalytics: React.FC = () => {
                                   {rec.source === 'form' ? 'Form' : 'Import'}
                                 </span>
                               </td>
-                              {isContentAdmin && !STAR_WRITE_LOCKED && (
+                              {isContentAdmin && (
                                 <td className="p-2.5 text-center">
-                                  <button
-                                    type="button"
-                                    onClick={() => void deleteRecord(rec.id)}
-                                    className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 transition-colors cursor-pointer"
-                                    title="Xóa dòng này"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
+                                  {rec.source === 'form' ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (window.confirm(`Gỡ phiếu của ${rec.name} (serial ${rec.serial})? Số sao sẽ quay về nơi đang giữ để tặng lại.`)) {
+                                          void revokeFormRecord(rec.id);
+                                        }
+                                      }}
+                                      className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 transition-colors cursor-pointer"
+                                      title="Gỡ phiếu ghi trên cổng — trả số serial về pool người giữ"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  ) : STAR_WRITE_LOCKED ? (
+                                    <span className="text-[9px] text-slate-400 font-bold" title="Phiếu nhập từ Excel đang được khóa để rà soát">—</span>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => void deleteRecord(rec.id)}
+                                      className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 transition-colors cursor-pointer"
+                                      title="Xóa dòng này"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
                                 </td>
                               )}
                             </tr>

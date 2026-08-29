@@ -4624,12 +4624,16 @@ export type Database = {
           created_at: string
           created_by: string | null
           department: string
+          entry_mode: string | null
           id: string
           is_collective: boolean
           name: string
+          program_name: string | null
           reason: string | null
+          recipient_profile_id: string | null
           result: string | null
           sender: string | null
+          sender_profile_id: string | null
           serial: string | null
           source: string
           stars: number
@@ -4639,12 +4643,16 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           department: string
+          entry_mode?: string | null
           id?: string
           is_collective?: boolean
           name: string
+          program_name?: string | null
           reason?: string | null
+          recipient_profile_id?: string | null
           result?: string | null
           sender?: string | null
+          sender_profile_id?: string | null
           serial?: string | null
           source?: string
           stars: number
@@ -4654,15 +4662,91 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           department?: string
+          entry_mode?: string | null
           id?: string
           is_collective?: boolean
           name?: string
+          program_name?: string | null
           reason?: string | null
+          recipient_profile_id?: string | null
           result?: string | null
           sender?: string | null
+          sender_profile_id?: string | null
           serial?: string | null
           source?: string
           stars?: number
+        }
+        Relationships: []
+      }
+      star_serials: {
+        Row: {
+          created_at: string
+          handover_id: string | null
+          holder_profile_id: string | null
+          note: string | null
+          record_id: string | null
+          serial_no: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          handover_id?: string | null
+          holder_profile_id?: string | null
+          note?: string | null
+          record_id?: string | null
+          serial_no: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          handover_id?: string | null
+          holder_profile_id?: string | null
+          note?: string | null
+          record_id?: string | null
+          serial_no?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      star_handovers: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          handed_at: string
+          holder_profile_id: string
+          id: string
+          note: string | null
+          quarter: string | null
+          revoked_at: string | null
+          serial_from: number
+          serial_to: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          handed_at?: string
+          holder_profile_id: string
+          id?: string
+          note?: string | null
+          quarter?: string | null
+          revoked_at?: string | null
+          serial_from: number
+          serial_to: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          handed_at?: string
+          holder_profile_id?: string
+          id?: string
+          note?: string | null
+          quarter?: string | null
+          revoked_at?: string | null
+          serial_from?: number
+          serial_to?: number
         }
         Relationships: []
       }
@@ -5005,6 +5089,44 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      award_star: {
+        Args: {
+          p_entry_mode: string
+          p_serials: number[]
+          p_is_collective: boolean
+          p_recipient_profile_id?: string | null
+          p_recipient_name?: string | null
+          p_department?: string | null
+          p_reason?: string
+          p_result?: string
+          p_awarded_on?: string
+          p_holder_profile_id?: string | null
+          p_program_name?: string | null
+        }
+        Returns: string
+      }
+      declare_star_batch: {
+        Args: { p_from: number; p_to: number; p_note?: string | null }
+        Returns: Json
+      }
+      handover_stars: {
+        Args: {
+          p_holder_profile_id: string
+          p_from: number
+          p_to: number
+          p_quarter?: string | null
+          p_note?: string | null
+        }
+        Returns: Json
+      }
+      revoke_handover: {
+        Args: { p_handover_id: string }
+        Returns: Json
+      }
+      revoke_star_record: {
+        Args: { p_record_id: string }
+        Returns: Json
+      }
       admin_update_idea_status: {
         Args: {
           _council_proposal?: boolean

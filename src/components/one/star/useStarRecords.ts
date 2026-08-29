@@ -7,10 +7,13 @@ import { STAR_WRITE_LOCKED, STAR_WRITE_LOCK_TOAST } from './starImportLock';
 
 // Phiếu Sao Xứng Đáng — bảng star_records (mỗi phiếu một dòng).
 //
-// Nguồn dữ liệu duy nhất hiện nay là bản kết xuất từ form Lark của Chi nhánh, do
-// Phòng TCTH nhập vào cổng (source='import'). Cổng KHÔNG còn ô nhập phiếu riêng:
-// đường ghi nhận chính thức là form Lark → Zalo OA (xem StarRecognitionForm).
-// Cột source vẫn giữ giá trị 'form' cho dữ liệu lịch sử và cho khả năng nối API sau này.
+// Hai nguồn phiếu:
+//   source='import' — nhập từ bản kết xuất Excel (Lark cũ); đường này đang KHÓA
+//                     để rà soát (starImportLock).
+//   source='form'   — ghi trực tiếp trên cổng qua RPC award_star (từ 08/2026):
+//                     số serial chọn từ pool bàn giao, chống trùng ở tầng CSDL.
+//                     Gỡ phiếu form đi qua RPC revoke_star_record để trả số sao
+//                     về pool người giữ (xem useStarSerials).
 
 export interface StarRecord {
   id: string;

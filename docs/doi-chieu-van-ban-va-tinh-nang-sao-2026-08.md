@@ -1,0 +1,99 @@
+# Rà soát toàn diện tính năng "Sao Xứng Đáng" đối chiếu văn bản gốc — 29/08/2026
+
+Văn bản đối chiếu: *Thông báo triển khai chương trình ghi nhận "SAO xứng đáng" năm
+2026* (CN Bắc Hưng Yên, Phòng TCTH — bản PDF trên Drive chi nhánh).
+
+## 1. Bảng đối chiếu từng mục văn bản ↔ cổng
+
+| Mục văn bản | Nội dung quy định | Trên cổng (trước 29/08) | Sau đợt xây dựng này |
+|---|---|---|---|
+| 2. Phân quyền | TP phát sao cho CB phòng mình; BGĐ phát toàn CN | Không kiểm soát (dữ liệu nhập Excel) | **Có**: form tặng đọc danh bạ qua RLS — TP chỉ thấy CB phòng mình, PGĐ theo khối, BGĐ/TCTH toàn CN |
+| 3. Cấu trúc 3 vế "Cảm ơn / vì đã / đem lại" | Bắt buộc trên mỗi sao | Có ô soạn lời nhưng vế "đem lại" KHÔNG có trong dữ liệu (cột bị ánh xạ sai khi nhập Excel) | **Có**: form tặng bắt buộc đủ 2 vế nội dung; RPC từ chối phiếu thiếu vế; phiếu mới lưu "đem lại" đúng cột |
+| 3. Ghi nhận trên form trước khi trao | Mọi sao phải ghi nhận trước khi trao | Lark (đã tạm hoãn) | **Có**: ghi trực tiếp trên cổng, một nguồn duy nhất |
+| 3. Tập thể phân bổ sao cho cán bộ | Tập thể chia lại tối đa bằng số sao nhận; KPI giữ, giá trị đổi quà giảm | Chưa có | **Chưa** — ghi nhận ở mục "Việc còn lại" (cần chốt quy trình họp phân bổ trước khi số hóa) |
+| 4. Phân bổ sao theo quý cho người phát | TCTH giao sao cho TP + BGĐ trước mùng 5 tháng đầu quý (8/6/5 sao/quý; GĐ 12, PGĐ 10; tổng 412) | Chỉ hiển thị bảng quota tĩnh | **Có**: tính năng **Bàn giao sao** ghi từng đợt (ai nhận, dải số nào, quý nào), kèm bảng phân bổ tham chiếu và tiến độ đã tặng/còn giữ |
+| 4. Sao ngoài phân bổ từ chương trình/chiến dịch | Vẫn hưởng KPI + đổi quà | Không phân biệt được với sao thường | **Có**: chế độ "Sao chương trình động lực" (entry_mode='program', lưu tên chương trình, lấy số từ kho TCTH) |
+| 5.1 KPI | 0,5 điểm/sao, trần 10 điểm/đối tượng | Không hiển thị | **Có**: badge KPI trên bảng cá nhân + bảng thi đua phòng (hàm `getKpiPoints`, có test) |
+| 5.2 Tủ quà | Các mốc 1→20 sao | Có đủ (starMath port từ app cũ) | Giữ nguyên. Lưu ý tồn tại từ trước: app cộng dồn mọi mốc kể cả ≥8 sao, trong khi văn bản ghi mốc ≥8 "đóng dấu ĐÃ ĐỔI QUÀ, không tích lũy tiếp" — starMath cố ý giữ theo app thật, chờ chủ chương trình chốt |
+| 6. TCTH đầu mối phát sao, theo dõi, đối soát | — | Chỉ nhập Excel + xuất đối soát | **Có**: khu **Quản lý Sao** (khai báo lô in, sổ serial trực quan, thống kê tồn, hủy số hỏng, thu hồi bàn giao) |
+| Serial sao (nguyên tắc vận hành đã chốt 08/2026) | 1 sao = 1 số serial, không trùng | Ô chữ tự do, đã 2 lần phát sinh trùng | **Có**: sổ sao ở CSDL, số chọn từ pool, RPC khóa số trong giao dịch — trùng là không thể ghi |
+
+## 2. Kiến trúc tính năng mới
+
+### Sổ sao (bảng `star_serials`)
+Mỗi ngôi sao vật lý = một dòng, khóa chính là số serial. Vòng đời:
+`in_stock` (kho TCTH) → `handed_over` (lãnh đạo giữ) → `awarded` (đã tặng, gắn phiếu);
+số hỏng → `void`. Gỡ phiếu → số quay về trạng thái trước đó.
+
+### Bàn giao (bảng `star_handovers` + RPC `handover_stars` / `revoke_handover`)
+Số hóa mục 6 văn bản: TCTH bàn giao dải số cho từng lãnh đạo theo quý. Chỉ bàn giao
+được số đang tồn kho; thu hồi trả số chưa tặng về kho, số đã tặng giữ nguyên.
+
+### Tặng sao (RPC `award_star`) — 3 chế độ
+| Chế độ | Ai dùng | Người tặng trên phiếu | Nguồn số serial |
+|---|---|---|---|
+| `self` — Tôi tặng | TP / PGĐ / BGĐ / TCTH | **Tự nhận diện theo tài khoản đăng nhập** | Pool sao của chính người tặng |
+| `proxy` — Nhập hộ | TCTH | Lãnh đạo được chọn (từ danh sách đang giữ sao) | Pool sao của lãnh đạo đó |
+| `program` — Sao chương trình động lực | TCTH | Tên chương trình/chiến dịch | Kho TCTH (`in_stock`) |
+
+Chống trùng nằm trong giao dịch của RPC: ghi phiếu + `UPDATE` từng số với điều kiện
+trạng thái; thiếu một số là hủy toàn bộ, báo lỗi liệt kê số hỏng. Hai người cùng bấm
+một số → chỉ một phiếu được ghi. Đã kiểm thử trực tiếp trên CSDL các ca: tặng lại số
+đã dùng, tặng số chưa bàn giao, người không có quyền — đều bị chặn với thông báo
+tiếng Việt rõ ràng.
+
+Người nhận chọn từ **danh bạ cán bộ** (không gõ tay tên) → hết lỗi trùng tên/lệch
+chính tả; tập thể chọn từ danh sách phòng chuẩn. Phiếu mới lưu kèm
+`sender_profile_id`, `recipient_profile_id`, `entry_mode`, `program_name`.
+
+### Phòng thủ bổ sung
+- Gỡ bỏ policy cũ cho phép mọi cán bộ INSERT thẳng phiếu `source='form'` (đường vòng
+  qua sổ sao).
+- Đường nhập Excel (`replaceAll`) **vẫn khóa** (starImportLock) — xem mục 4.
+- Gỡ phiếu ghi trên cổng đi qua RPC `revoke_star_record`: xóa phiếu + trả số sao về
+  pool người giữ, dùng được ngay cả khi đường Excel đang khóa.
+
+## 3. Hiện trạng dữ liệu ngày 29/08 (đối chiếu lại sau 03/08)
+
+- Bảng phiếu đã bị **nhập đè lại 2 lần (21/08 và 28/08)** từ bản kết xuất Lark —
+  bản khóa nhập nằm trên nhánh chưa merge nên chưa chặn được. Đây là minh chứng
+  trực tiếp cho rủi ro của đường `replaceAll` và lý do phải chuyển sang ghi từng
+  phiếu có kiểm soát.
+- Tin tốt: **nguồn Lark đã được chi nhánh làm sạch đúng báo cáo 03/08** — 5 phiếu
+  nhập lặp cũ không còn, phiếu Chu Thị Thủy 28/07 đã mang số 184 ngay tại nguồn,
+  Nguyễn Quốc Tân còn đúng 4 sao.
+- Hiện có **164 phiếu / 170 sao**, quyển số đã dùng đến **266**.
+- **Ca trùng MỚI cần chi nhánh xác nhận: serial 90** — Hà Minh Huệ (15/07) và
+  Bùi Thị Hằng (05/08), cùng Phòng DVKH, cùng người tặng Nguyễn Thị Huyền, hai
+  việc khác nhau → một phiếu ghi nhầm số (giống ca 194/184). Sổ sao tạm gắn số 90
+  cho phiếu sớm hơn (Hà Minh Huệ); cần tra số thật trên sao vật lý của Bùi Thị Hằng
+  rồi sửa phiếu.
+- Sổ sao đã nạp: khai báo 1–266, trong đó 166 số `awarded` gắn đúng phiếu, 100 số
+  tồn hệ thống chờ **đối soát kho thật** (đếm sao còn trong tủ TCTH — khu Quản lý
+  Sao hiển thị sẵn danh sách dải tồn).
+
+## 4. Trình tự đưa vào vận hành
+
+1. **Merge + deploy nhánh này** — chừng nào chưa deploy, màn nhập Excel cũ còn sống
+   và mọi hàng rào chỉ nằm trên giấy. (Các RPC + bảng đã nằm sẵn trên CSDL, không
+   phụ thuộc deploy.)
+2. TCTH vào khu Quản lý Sao: đối soát tồn kho thật với 100 số tồn hệ thống; hủy số
+   hỏng nếu có.
+3. TCTH **bàn giao dải số Quý 3** cho từng lãnh đạo theo bảng phân bổ (làm mẫu 1–2
+   người trước).
+4. Lãnh đạo bắt đầu tặng sao trên cổng; TCTH dùng nhập hộ cho người chưa quen.
+5. Chốt ca serial 90 (tra sao vật lý của Bùi Thị Hằng) — sửa phiếu bằng gỡ + ghi lại
+   qua nhập hộ với số đúng.
+6. Đường nhập Excel giữ khóa vĩnh viễn hoặc chuyển thành "nhập bổ sung có đối chiếu
+   sổ sao" nếu còn cần nạp dữ liệu cũ.
+
+## 5. Việc còn lại (chưa làm đợt này)
+
+- **Phân bổ sao tập thể → cán bộ** (văn bản mục 3): cần chốt quy trình (ai ghi biên
+  bản họp phòng, phân bổ tính vào phiếu mới hay tách phiếu gốc) trước khi số hóa.
+- **Quy tắc mốc quà ≥8 sao** (đổi quà dừng tích lũy): starMath đang theo app thật
+  (cộng dồn) — chủ chương trình chốt rồi mới sửa công thức.
+- **Xác nhận danh sách lãnh đạo giữ sao Quý 3** để bàn giao đủ 15 đầu mối (10 TP +
+  GĐ + 3 PGĐ + dự phòng chương trình).
+- Backfill `sender_profile_id` cho 164 phiếu import cũ (khớp tên người tặng → hồ sơ)
+  nếu muốn thống kê "ai đã phát bao nhiêu sao" chạy ngược về quá khứ.

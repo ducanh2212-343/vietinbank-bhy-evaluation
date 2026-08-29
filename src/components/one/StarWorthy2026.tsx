@@ -3,6 +3,7 @@ import { Star, Gift, Award, Sparkles, Coffee, ShoppingBag, Headphones, Briefcase
 import { EditableText } from './AdminEditableContext';
 import { useAuth } from '@/hooks/useAuth';
 import { StarRecognitionForm } from './star/StarRecognitionForm';
+import { StarManagementPanel } from './star/StarManagementPanel';
 import { StarAnalytics } from './star/StarAnalytics';
 
 interface RewardTier {
@@ -206,6 +207,9 @@ export const StarWorthy2026: React.FC = () => {
         </div>
 
       </div>
+
+      {/* Khu quản lý sao & bàn giao — component tự ẩn nếu không phải TCTH admin */}
+      {!isGuest && <StarManagementPanel />}
 
       {/* Khối phân tích Sao (dữ liệu nội bộ — ẩn với khách đối tác) */}
       {!isGuest && <StarAnalytics />}
