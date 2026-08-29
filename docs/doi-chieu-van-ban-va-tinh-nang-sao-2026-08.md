@@ -74,15 +74,29 @@ chính tả; tập thể chọn từ danh sách phòng chuẩn. Phiếu mới l�
 
 ### Bổ sung — rà lại chiều 29/08 (sau khi rebase lên main, trước khi mở PR mới)
 
-- **Form cũ trên production vẫn tạo được phiếu rác**: ngày 28/08 xuất hiện một
-  phiếu `source='form'` không có serial — "Nguyen Thi Huong Ly / PGD Ocean City /
-  1 sao / người tặng trùng người nhận" (id `8f23000e-adfc-4543-9ba6-97fcbbc0dcfd`,
-  created_by `885b7295-56f5-4b2b-ab38-481972f56cd6`). Phòng "PGD Ocean City"
-  không thuộc chi nhánh → phiếu thử nghiệm. Vi phạm nguyên tắc *chỉ ghi nhận sao
-  theo số serial* nên đã gỡ (nội dung lưu tại đây để khôi phục nếu chi nhánh xác
-  nhận là phiếu thật). Lưu ý: sau khi policy INSERT tự do bị gỡ 29/08, form cũ
-  trên production giờ báo lỗi RLS với lãnh đạo — thêm một lý do phải deploy bản
-  mới sớm.
+- **Form cũ trên production vẫn tạo được phiếu không hợp lệ**: ngày 28/08 xuất
+  hiện một phiếu `source='form'` không có serial — "Nguyen Thi Huong Ly / PGD
+  Ocean City / 1 sao" (id `8f23000e-adfc-4543-9ba6-97fcbbc0dcfd`, created_by
+  `885b7295-56f5-4b2b-ab38-481972f56cd6`). *Đính chính 29/08 (chi nhánh xác
+  nhận):* PGD Ocean City là **tên mới của Phòng Yên Mỹ** — phòng có thật, kết
+  luận ban đầu "phòng không tồn tại" là sai. Tuy vậy phiếu vẫn không hợp lệ:
+  người tạo là **cán bộ giao dịch viên** của chính phòng này (không thuộc nhóm
+  được phát Sao theo mục 2 văn bản), tự ghi cho bản thân, và không có số serial
+  — vi phạm nguyên tắc *chỉ ghi nhận sao theo số serial*. Đã gỡ (nội dung lưu
+  tại đây); nếu đây là ghi nhận thật, Trưởng phòng ghi lại qua form mới với số
+  serial đúng. Ca này cũng cho thấy policy INSERT tự do cũ nguy hiểm thế nào:
+  cán bộ thường ghi thẳng được phiếu vào bảng chính. Lưu ý: sau khi policy đó
+  bị gỡ 29/08, form cũ trên production giờ báo lỗi RLS với lãnh đạo — thêm một
+  lý do phải deploy bản mới sớm.
+- **Phòng Yên Mỹ đổi tên thành PGD Ocean City** (danh bạ: "Phòng giao dịch
+  Ocean City"): nhãn chuẩn của chương trình Sao đổi theo — `DEPT_QUOTAS` (quota
+  24 giữ nguyên), `standardizeDepartment` quy mọi cách viết cũ/mới về
+  "PGD Ocean City", 14 phiếu cũ mang nhãn "Phòng Yên Mỹ" đã cập nhật trường
+  phân loại (lời phiếu giữ nguyên lịch sử), và cầu nối Ideas ↔ danh bạ
+  (`bhy_phong_ideas_sang_ho_so` + `HO_SO_PHONG_SANG_IDEAS`) nhận tên phòng mới
+  (migration `phong_yen_my_doi_ten_pgd_ocean_city`, đã áp). Nhãn hiển thị bên
+  Ideas vẫn là "PGD Yên Mỹ" — đổi là việc riêng vì đụng dữ liệu phiếu Ideas và
+  cấu hình site (ghi ở mục Việc còn lại).
 - **Phiếu "181 và 182"**: phiếu Vũ Đức Nam 12/08 (2 sao) ghi serial bằng chữ
   "và" nên bị bỏ sót khi nạp sổ. Đã chuẩn hóa thành "181, 182", gắn hai số vào
   sổ, và sửa `parseSerialText` tách theo mọi ký tự không phải chữ số (kèm test).
@@ -116,5 +130,8 @@ chính tả; tập thể chọn từ danh sách phòng chuẩn. Phiếu mới l�
   (cộng dồn) — chủ chương trình chốt rồi mới sửa công thức.
 - **Xác nhận danh sách lãnh đạo giữ sao Quý 3** để bàn giao đủ 15 đầu mối (10 TP +
   GĐ + 3 PGĐ + dự phòng chương trình).
-- Backfill `sender_profile_id` cho 164 phiếu import cũ (khớp tên người tặng → hồ sơ)
-  nếu muốn thống kê "ai đã phát bao nhiêu sao" chạy ngược về quá khứ.
+- Backfill `sender_profile_id` cho các phiếu import cũ (khớp tên người tặng → hồ
+  sơ) nếu muốn thống kê "ai đã phát bao nhiêu sao" chạy ngược về quá khứ.
+- **Đổi nhãn Ideas "PGD Yên Mỹ" → "PGD Ocean City"**: đụng union type, dữ liệu
+  phiếu Ideas đã lưu, `siteContent.departments_config` và hàm SQL — làm thành một
+  đợt riêng khi chi nhánh muốn tên mới hiện cả bên Ideas.

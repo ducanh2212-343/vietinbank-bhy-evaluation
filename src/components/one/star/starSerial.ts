@@ -107,7 +107,7 @@ export const suggestSerials = (pool: number[], n: number): number[] => pool.slic
  */
 export const QUARTERLY_ALLOCATION: Array<{ group: string; perQuarter: number; perYear: number }> = [
   { group: 'Trưởng phòng TCTH / KHDN (phòng ≥ 14 người)', perQuarter: 8, perYear: 32 },
-  { group: 'Trưởng phòng DVKH, Khoái Châu, Văn Giang, Văn Lâm, Yên Mỹ (10–13 người)', perQuarter: 6, perYear: 24 },
+  { group: 'Trưởng phòng DVKH, Khoái Châu, Văn Giang, Văn Lâm, Ocean City — Yên Mỹ cũ (10–13 người)', perQuarter: 6, perYear: 24 },
   { group: 'Trưởng phòng Bán lẻ, Ân Thi, HTTD (7–9 người)', perQuarter: 5, perYear: 20 },
   { group: 'Giám đốc Chi nhánh', perQuarter: 12, perYear: 48 },
   { group: 'Mỗi Phó giám đốc (3 PGĐ)', perQuarter: 10, perYear: 40 },

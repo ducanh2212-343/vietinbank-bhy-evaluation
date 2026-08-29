@@ -107,7 +107,7 @@ export const StarWorthy2026: React.FC = () => {
                   </tr>
                   <tr>
                     <td className="p-2.5 font-bold text-slate-800">10 - 13 người (6 Sao/quý)</td>
-                    <td className="p-2.5">Phòng DVKH (13), P. Văn Lâm (12), P. Khoái Châu (10), P. Văn Giang (10), P. Yên Mỹ (10)</td>
+                    <td className="p-2.5">Phòng DVKH (13), P. Văn Lâm (12), P. Khoái Châu (10), P. Văn Giang (10), PGD Ocean City (10, tên cũ: P. Yên Mỹ)</td>
                     <td className="p-2.5 text-right font-black text-brand-navy">24 Sao / phòng</td>
                   </tr>
                   <tr>

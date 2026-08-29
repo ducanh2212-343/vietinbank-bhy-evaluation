@@ -15,8 +15,8 @@ const muc: MucLichSu = {
     'Lãnh đạo bấm «Tôi tặng Sao»: người tặng tự nhận diện, cán bộ nhận chọn từ danh bạ đúng phạm vi phòng mình.',
     'Phòng TCTH nhập hộ được cho lãnh đạo khác, và ghi được Sao của chương trình động lực (ngoài phân bổ quý).',
     'Khu Quản lý Sao mới cho TCTH: khai báo quyển sao in, bàn giao dải số theo quý, thu hồi, và sổ serial nhìn được trạng thái từng số.',
-    'Phiếu bắt buộc đủ ba vế «Cảm ơn — vì đã — đem lại» đúng văn bản triển khai.',
-    'Bảng tổng hợp hiện thêm điểm KPI tích lũy (0,5 điểm mỗi sao, tối đa 10 điểm/năm).',
+    'Phiếu bắt buộc đủ ba vế «Cảm ơn — vì đã — đem lại»; bảng tổng hợp hiện thêm điểm KPI tích lũy (0,5 điểm mỗi sao, tối đa 10 điểm/năm).',
+    'Phòng Yên Mỹ mang tên mới PGD Ocean City trên toàn bộ bảng Sao — sao đã nhận chuyển theo phòng, không mất.',
   ],
   duongDan: '/one/ghi-nhan',
 };
