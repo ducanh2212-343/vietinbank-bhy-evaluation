@@ -9,7 +9,7 @@ import { STAR_WRITE_LOCKED, STAR_WRITE_LOCK_REASON } from './starImportLock';
 import {
   calculateRewardValue, formatKpi, formatVnd, getKpiPoints, getMilestoneInfo, getRewardBreakdown,
 } from './starMath';
-import { useStarOps } from './useStarSerials';
+import { useStarDepartments, useStarOps } from './useStarSerials';
 import {
   DEPT_QUOTAS, buildTemplateWorkbook, parseStarWorkbook, type ParseResult,
 } from './starParser';
@@ -42,11 +42,22 @@ export const StarAnalytics: React.FC = () => {
   // ---- Tổng hợp cá nhân: gộp theo (tên, phòng), LOẠI phiếu tập thể ----
   const individualStats = useMemo(() => buildIndividualStats(records), [records]);
 
+  // Danh mục phòng lấy từ DANH BẠ, không hardcode: cổng cho phép đổi tên / ngừng
+  // dùng / xoá phòng ở màn Quản lý Phòng ban, nên bảng thi đua phải đi theo đó.
+  const nhanTrenPhieu = useMemo(
+    () => [...new Set(records.map((r) => r.department).filter(Boolean))],
+    [records],
+  );
+  const { nhanDangDung } = useStarDepartments(nhanTrenPhieu);
+
   // ---- Thi đua phòng ban: xếp theo SAO TẬP THỂ, không cộng sao cán bộ ----
   // Cán bộ nhận sao và tập thể phòng nhận sao là hai chủ thể khác nhau: phần thưởng
   // quy đổi của cán bộ về chính cán bộ đó. Cộng gộp vào bảng tập thể vừa sai chủ thể,
   // vừa khiến phòng đông người luôn xếp trên phòng ít người.
-  const departmentStats = useMemo(() => buildDepartmentStats(records), [records]);
+  const departmentStats = useMemo(
+    () => buildDepartmentStats(records, nhanDangDung),
+    [records, nhanDangDung],
+  );
 
   // Mốc so sánh cho thanh tiến độ: phòng dẫn đầu về sao tập thể
   const topCollectiveStars = departmentStats[0]?.collectiveStars ?? 0;
@@ -481,9 +492,11 @@ export const StarAnalytics: React.FC = () => {
                       className="px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white outline-none focus:border-brand-navy text-slate-700 font-medium"
                     >
                       <option value="all">Tất cả Phòng ban</option>
-                      {Object.keys(DEPT_QUOTAS).map((dept) => (
-                        <option key={dept} value={dept}>{dept}</option>
-                      ))}
+                      {[...new Set([...nhanDangDung, ...nhanTrenPhieu])]
+                        .sort((a, b) => a.localeCompare(b, 'vi'))
+                        .map((dept) => (
+                          <option key={dept} value={dept}>{dept}</option>
+                        ))}
                     </select>
                   </div>
 

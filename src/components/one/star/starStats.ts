@@ -68,7 +68,16 @@ export const buildIndividualStats = (records: StarRecord[]): IndividualStat[] =>
  * thưởng quy đổi cũng về cán bộ, nên cộng vào bảng tập thể là nhầm chủ thể (và
  * khiến phòng đông người luôn thắng phòng ít người).
  */
-export const buildDepartmentStats = (records: StarRecord[]): DepartmentStat[] => {
+export const buildDepartmentStats = (
+  records: StarRecord[],
+  /**
+   * Nhãn các phòng phải xuất hiện trong bảng thi đua kể cả khi chưa có phiếu.
+   * Truyền từ DANH BẠ (useStarDepartments) để đổi tên / thêm / ngừng phòng trên
+   * màn Quản lý Phòng ban là bảng thi đua đổi theo. Bỏ trống thì dùng danh sách
+   * trong DEPT_QUOTAS như trước (dùng cho kiểm thử và khi chưa tải xong danh bạ).
+   */
+  danhSachPhong?: string[],
+): DepartmentStat[] => {
   const statsMap: Record<string, {
     collectiveStars: number;
     collectiveRecords: number;
@@ -84,7 +93,7 @@ export const buildDepartmentStats = (records: StarRecord[]): DepartmentStat[] =>
   };
 
   // Phòng chưa có phiếu nào vẫn phải xuất hiện trong bảng thi đua (0 sao)
-  Object.keys(DEPT_QUOTAS).forEach(ensure);
+  (danhSachPhong && danhSachPhong.length > 0 ? danhSachPhong : Object.keys(DEPT_QUOTAS)).forEach(ensure);
 
   records.forEach((rec) => {
     const dept = rec.department || 'Phòng KHDN';

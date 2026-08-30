@@ -1,14 +1,25 @@
 import React, { useMemo, useState } from 'react';
 import {
-  Archive, ArrowRightLeft, BookOpen, Boxes, Loader2, PackagePlus, Search,
-  ShieldCheck, Star, Undo2, X,
+  AlertTriangle, Archive, ArrowRightLeft, BookOpen, Boxes, Building2, CheckCircle2,
+  Loader2, PackagePlus, Search, ShieldCheck, Star, Undo2, X,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { formatRanges, QUARTERLY_ALLOCATION, TOTAL_ALLOCATED_2026 } from './starSerial';
 import {
-  useAwardablePeople, useProfileNames, useStarHandovers, useStarOps, useStarSerials,
-  type StaffOption,
+  useAwardablePeople, useProfileNames, useStarDepartments, useStarHandovers,
+  useStarOps, useStarSerials, type StaffOption,
 } from './useStarSerials';
+import { useStarRecords } from './useStarRecords';
+import type { LoaiLech } from './starDepartments';
+
+/** Nhãn hiển thị cho từng loại lệch giữa danh bạ và chương trình Sao */
+const NHAN_LECH: Record<LoaiLech, { tieuDe: string; mau: string }> = {
+  'chua-co-nhan': { tieuDe: 'Phòng mới chưa có nhãn Sao', mau: 'bg-red-100 text-red-700 border-red-200' },
+  'nhan-trung-phong': { tieuDe: 'Hai phòng chung một nhãn', mau: 'bg-red-100 text-red-700 border-red-200' },
+  'nhan-khong-con-phong': { tieuDe: 'Nhãn cũ không còn phòng', mau: 'bg-red-100 text-red-700 border-red-200' },
+  'phong-ngung-dung': { tieuDe: 'Phòng đã ngừng sử dụng', mau: 'bg-amber-100 text-amber-800 border-amber-200' },
+  'lech-bac-phan-bo': { tieuDe: 'Quân số đổi bậc phân bổ', mau: 'bg-blue-100 text-blue-800 border-blue-200' },
+};
 
 // KHU QUẢN LÝ SAO (Phòng TCTH) — số hóa mục 6 văn bản triển khai:
 // TCTH in sao đóng số (khai báo lô) → bàn giao cho BGĐ/Trưởng phòng trước mùng 5
@@ -43,6 +54,16 @@ export const StarManagementPanel: React.FC = () => {
   const { handovers } = useStarHandovers();
   const { declareBatch, handover, revokeHandover, voidSerial } = useStarOps();
   const { people } = useAwardablePeople(isTcthAdmin);
+  const { records } = useStarRecords();
+
+  // Đối soát danh mục phòng: danh bạ đổi (đổi tên / ngừng dùng / xoá / thêm) mà
+  // chương trình Sao không biết thì bảng thi đua lệch âm thầm — khối dưới đây
+  // báo ngay thay vì để TCTH tự phát hiện lúc tổng hợp quý.
+  const nhanTrenPhieu = useMemo(
+    () => [...new Set(records.map((r) => r.department).filter(Boolean))],
+    [records],
+  );
+  const { danhSachPhong, lechDanhMuc } = useStarDepartments(nhanTrenPhieu);
 
   // Khai báo lô
   const [batchFrom, setBatchFrom] = useState('');
@@ -161,6 +182,72 @@ export const StarManagementPanel: React.FC = () => {
                 để hủy. Tổng phân bổ theo văn bản: {TOTAL_ALLOCATED_2026} sao/năm.
               </div>
             </div>
+          </div>
+
+          {/* ĐỐI SOÁT DANH MỤC PHÒNG so với danh bạ */}
+          <div className="rounded-2xl border border-slate-200 p-4">
+            <h6 className="flex items-center gap-1.5 font-black text-xs text-slate-800 uppercase mb-3">
+              <Building2 className="w-4 h-4 text-brand-navy" /> Đối soát danh mục phòng với danh bạ
+            </h6>
+
+            {lechDanhMuc.length === 0 ? (
+              <p className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-bold">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Danh mục phòng của chương trình Sao đang khớp danh bạ ({danhSachPhong.length} phòng).
+              </p>
+            ) : (
+              <div className="space-y-2">
+                <p className="flex items-center gap-1.5 text-[11px] text-amber-800 font-bold">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  {lechDanhMuc.length} điểm cần xử lý — danh bạ và chương trình Sao đang lệch nhau:
+                </p>
+                {lechDanhMuc.map((l) => (
+                  <div key={`${l.loai}-${l.ten}`} className="flex flex-wrap items-start gap-2 text-[11px] p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className={`px-2 py-0.5 rounded-md border font-black uppercase text-[9px] shrink-0 ${NHAN_LECH[l.loai].mau}`}>
+                      {NHAN_LECH[l.loai].tieuDe}
+                    </span>
+                    <span className="font-bold text-slate-800 shrink-0">{l.ten}</span>
+                    <span className="text-slate-600 flex-1 min-w-40">{l.moTa}</span>
+                  </div>
+                ))}
+                <p className="text-[10px] text-slate-500 leading-relaxed">
+                  Phòng ban sửa ở màn <strong>Tổ chức &amp; Phân quyền → Quản lý Phòng ban &amp; Chức danh</strong>.
+                  Nếu là phòng đổi tên, các phiếu Sao cũ cần được quy về nhãn mới thì bảng thi đua mới gộp làm một dòng.
+                </p>
+              </div>
+            )}
+
+            <details className="mt-3">
+              <summary className="text-[10px] font-black uppercase text-slate-500 cursor-pointer">
+                Xem bảng ánh xạ phòng ({danhSachPhong.length})
+              </summary>
+              <div className="overflow-x-auto mt-2 border border-slate-100 rounded-xl">
+                <table className="w-full text-[11px] text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-700 font-black">
+                      <th className="p-2">Nhãn trên phiếu Sao</th>
+                      <th className="p-2">Tên trong danh bạ</th>
+                      <th className="p-2 text-center">Quân số</th>
+                      <th className="p-2 text-center">Sao phân bổ/năm</th>
+                      <th className="p-2 text-center">Trạng thái</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {danhSachPhong.map((p) => (
+                      <tr key={p.nhan} className={`border-b border-slate-50 ${p.dangDung ? '' : 'opacity-50'}`}>
+                        <td className="p-2 font-bold text-slate-800">{p.nhan}</td>
+                        <td className="p-2 text-slate-600">{p.tenDanhBa}</td>
+                        <td className="p-2 text-center">{p.quanSo}</td>
+                        <td className="p-2 text-center font-bold text-brand-navy">{p.hanMucNam ?? '—'}</td>
+                        <td className="p-2 text-center text-[10px] font-black uppercase">
+                          {p.dangDung ? <span className="text-emerald-600">Đang dùng</span> : <span className="text-slate-400">Ngừng dùng</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">

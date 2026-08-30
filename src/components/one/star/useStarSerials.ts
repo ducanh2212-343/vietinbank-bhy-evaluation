@@ -8,6 +8,7 @@ import {
   buildHolderPools, buildStockPool, deriveSerialStats,
   type SerialStatus, type StarSerialRow,
 } from './starSerial';
+import { dungDanhMucPhongSao, nhanPhongDangDung, type PhongDanhBa } from './starDepartments';
 
 // Tầng dữ liệu cho SỔ SAO + BÀN GIAO + TẶNG SAO.
 //
@@ -289,4 +290,39 @@ export function useProfileNames(profileIds: string[], enabled: boolean) {
     },
   });
   return data ?? new Map<string, { name: string; dept: string | null }>();
+}
+
+/**
+ * Danh mục phòng của chương trình Sao, lấy từ DANH BẠ (bảng departments) chứ
+ * không hardcode — vì cổng cho phép đổi tên / ngừng dùng / xoá phòng ở màn
+ * "Quản lý Phòng ban & Chức danh". Trả kèm danh sách điểm lệch để Phòng TCTH
+ * biết ngay khi danh bạ và chương trình Sao không còn khớp nhau.
+ */
+export function useStarDepartments(nhanTrenPhieu: string[] = []) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['one-star-departments'],
+    staleTime: 10 * 60 * 1000,
+    queryFn: async (): Promise<PhongDanhBa[]> => {
+      const { data: rows, error } = await supabase
+        .from('departments')
+        .select('name, is_active, profiles!profiles_department_id_fkey(id, status)')
+        .order('name');
+      if (error) throw error;
+      return (rows ?? []).map((d) => ({
+        ten: d.name,
+        dangDung: d.is_active,
+        quanSo: ((d.profiles ?? []) as Array<{ status: string }>)
+          .filter((p) => p.status === 'active').length,
+      }));
+    },
+  });
+
+  const nhanKey = useMemo(() => [...new Set(nhanTrenPhieu)].sort().join('|'), [nhanTrenPhieu]);
+  const { danhSach, lech } = useMemo(
+    () => dungDanhMucPhongSao(data ?? [], nhanKey ? nhanKey.split('|') : []),
+    [data, nhanKey],
+  );
+  const nhanDangDung = useMemo(() => nhanPhongDangDung(danhSach), [danhSach]);
+
+  return { danhSachPhong: danhSach, lechDanhMuc: lech, nhanDangDung, isLoading };
 }

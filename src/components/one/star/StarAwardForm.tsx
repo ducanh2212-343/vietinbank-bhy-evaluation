@@ -5,11 +5,10 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useAuth } from '@/hooks/useAuth';
-import { DEPT_QUOTAS } from './starParser';
 import { getKpiPoints, formatKpi } from './starMath';
 import { suggestSerials } from './starSerial';
 import {
-  useAwardablePeople, useProfileNames, useStarOps, useStarSerials,
+  useAwardablePeople, useProfileNames, useStarDepartments, useStarOps, useStarSerials,
   type StaffOption,
 } from './useStarSerials';
 
@@ -43,6 +42,9 @@ export const StarAwardForm: React.FC = () => {
   const { pools, stockPool, myPool, isLoading: serialsLoading } = useStarSerials();
   const { people } = useAwardablePeople(true);
   const { awardStar } = useStarOps();
+  // Danh sách phòng nhận Sao tập thể lấy từ danh bạ: phòng mới tạo hiện ra ngay,
+  // phòng đổi tên hiện tên mới, phòng «Ngừng sử dụng» tự biến mất khỏi ô chọn.
+  const { nhanDangDung } = useStarDepartments();
 
   const [mode, setMode] = useState<EntryMode>('self');
   const [holderId, setHolderId] = useState<string | null>(null);
@@ -340,7 +342,7 @@ export const StarAwardForm: React.FC = () => {
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-brand-navy outline-none font-semibold text-slate-800 bg-white cursor-pointer"
               >
                 <option value="">— Chọn phòng nhận Sao tập thể —</option>
-                {Object.keys(DEPT_QUOTAS).map((d) => (
+                {nhanDangDung.map((d) => (
                   <option key={d} value={d}>Tập thể {d}</option>
                 ))}
               </select>
