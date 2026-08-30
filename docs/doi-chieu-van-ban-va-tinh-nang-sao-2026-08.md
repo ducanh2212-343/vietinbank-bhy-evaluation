@@ -107,6 +107,40 @@ chính tả; tập thể chọn từ danh sách phòng chuẩn. Phiếu mới l�
   169**, 168 số `awarded` gắn đúng phiếu; lệch duy nhất còn lại là ca serial 90
   (chờ tra sao vật lý của Bùi Thị Hằng); tồn hệ thống 98 số.
 
+## 3b. Danh mục phòng lấy từ danh bạ, không hardcode (30/08)
+
+Cổng có màn **Tổ chức & Phân quyền → Quản lý Phòng ban & Chức danh**
+(`/quan-ly-phong-ban`) cho phép **đổi tên, ngừng sử dụng và xoá** phòng ban.
+Chương trình Sao trước đây giữ danh sách phòng riêng trong `DEPT_QUOTAS`, nên mỗi
+lần chi nhánh sửa danh bạ là bảng thi đua lệch âm thầm — đúng như ca Phòng Yên Mỹ
+đổi tên: phiếu cũ mang nhãn cũ, phòng mới không có dòng nào, không ai được báo.
+
+Nay danh mục phòng của chương trình Sao **suy từ bảng `departments`**
+(`starDepartments.ts` + `useStarDepartments`), và màn Quản lý Sao có khối **Đối
+soát danh mục phòng** báo 5 loại lệch:
+
+| Loại lệch | Nghĩa là gì |
+|---|---|
+| Phòng mới chưa có nhãn Sao | Phòng có trong danh bạ nhưng luật nhận tên chưa biết → phiếu không vào đúng dòng |
+| Hai phòng chung một nhãn | Phòng giao dịch mới bị luật cụm chung "giao dịch" dồn vào Phòng DVKH |
+| Nhãn cũ không còn phòng | Phiếu mang nhãn mà danh bạ không còn phòng nào khớp (dấu hiệu vừa đổi tên/xoá) |
+| Phòng đã ngừng sử dụng | Phòng bị tắt trong danh bạ nhưng vẫn còn phiếu Sao |
+| Quân số đổi bậc phân bổ | Quân số hiện tại rơi vào bậc sao/quý khác mức đang áp |
+
+Nhờ vậy: phòng mới tạo hiện ngay trong ô chọn tập thể, phòng đổi tên hiện tên mới,
+phòng ngừng dùng tự rời ô chọn nhưng phiếu cũ vẫn được cảnh báo thay vì mất tích.
+
+**Ba điểm lệch quân số đang có thật** (bậc theo văn bản mục 4 tính trên quân số):
+
+- **Phòng TCTH**: văn bản tính 16 người → 8 sao/quý (32/năm); danh bạ nay còn
+  **8 người** → ứng với 5 sao/quý.
+- **Phòng Khoái Châu**: văn bản tính 10 người → 6 sao/quý; danh bạ nay **9 người**
+  → ứng với 5 sao/quý.
+- **Phòng HTTD**: còn **6 người** — dưới mức 7 người thấp nhất của văn bản.
+
+Hệ thống **không tự sửa hạn mức** — phân bổ là quyết định của chi nhánh, đã giao
+từ đầu năm. Khối đối soát chỉ nêu để TCTH cân nhắc khi giao sao quý sau.
+
 ## 4. Trình tự đưa vào vận hành
 
 1. **Merge + deploy nhánh này** — chừng nào chưa deploy, màn nhập Excel cũ còn sống
