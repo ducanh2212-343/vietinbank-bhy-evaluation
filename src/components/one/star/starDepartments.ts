@@ -43,6 +43,23 @@ export interface LechDanhMuc {
 }
 
 /**
+ * Lệch LÀM SAI DỮ LIỆU — phải xử lý, vì phiếu Sao sẽ vào nhầm dòng thi đua
+ * hoặc biến mất khỏi bảng.
+ *
+ * Cố ý KHÔNG gồm 'lech-bac-phan-bo': hạn mức sao/quý là quyết định của chi
+ * nhánh, giao từ đầu năm theo văn bản. Chi nhánh giữ nguyên mức cũ dù quân số
+ * đã đổi là hoàn toàn hợp lệ — hệ thống không chặn và không có gì để "sửa".
+ * Trộn nó vào danh sách cần xử lý thì cảnh báo đỏ hiện mãi, và bốn loại lệch
+ * thật ở trên sẽ chìm theo.
+ */
+export const LOAI_LECH_CAN_XU_LY: LoaiLech[] = [
+  'chua-co-nhan', 'nhan-trung-phong', 'nhan-khong-con-phong', 'phong-ngung-dung',
+];
+
+export const laLechCanXuLy = (l: LechDanhMuc): boolean =>
+  LOAI_LECH_CAN_XU_LY.includes(l.loai);
+
+/**
  * Ban Giám đốc là cấp PHÁT sao cho toàn chi nhánh, không phải phòng nhận sao
  * tập thể — vắng mặt trong danh mục thi đua là đúng, không phải lệch.
  */
@@ -119,16 +136,19 @@ export const dungDanhMucPhongSao = (
       hanMucNam,
     });
 
-    // Quân số đổi thì bậc phân bổ theo văn bản cũng đổi — báo để TCTH cân nhắc
-    // khi giao sao quý sau (không tự sửa: hạn mức là quyết định của chi nhánh).
+    // Quân số đổi thì bậc phân bổ theo văn bản cũng đổi. Đây là GHI CHÚ THAM
+    // KHẢO, không phải lỗi: hạn mức giao từ đầu năm, chi nhánh giữ nguyên mức cũ
+    // cả năm là hợp lệ và hệ thống không chặn (handover_stars không kiểm hạn mức,
+    // chỉ kiểm số có trong kho hay không).
     const bacTheoQuanSo = bacPhanBoTheoQuanSo(p.quanSo);
     const bacDangAp = hanMucNam !== null ? hanMucNam / 4 : null;
     if (p.dangDung && bacDangAp !== null && bacTheoQuanSo !== bacDangAp) {
       lech.push({
         loai: 'lech-bac-phan-bo',
         ten: nhan,
-        moTa: `Đang áp ${bacDangAp} sao/quý, nhưng quân số hiện tại ${p.quanSo} người `
-          + `ứng với ${bacTheoQuanSo === null ? 'mức chưa có trong văn bản' : `${bacTheoQuanSo} sao/quý`}.`,
+        moTa: `Văn bản giao ${bacDangAp} sao/quý; quân số hiện tại ${p.quanSo} người `
+          + `ứng với ${bacTheoQuanSo === null ? 'mức chưa có trong văn bản' : `${bacTheoQuanSo} sao/quý`}. `
+          + 'Giữ nguyên mức đã giao là hợp lệ — dòng này chỉ để cân nhắc khi giao quý sau.',
       });
     }
   });

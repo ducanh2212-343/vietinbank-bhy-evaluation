@@ -138,8 +138,21 @@ phòng ngừng dùng tự rời ô chọn nhưng phiếu cũ vẫn được cả
   → ứng với 5 sao/quý.
 - **Phòng HTTD**: còn **6 người** — dưới mức 7 người thấp nhất của văn bản.
 
-Hệ thống **không tự sửa hạn mức** — phân bổ là quyết định của chi nhánh, đã giao
-từ đầu năm. Khối đối soát chỉ nêu để TCTH cân nhắc khi giao sao quý sau.
+Hệ thống **không tự sửa hạn mức, và cũng không chặn theo hạn mức**: RPC
+`handover_stars` chỉ kiểm số có trong kho hay không, không có một dòng nào so với
+`DEPT_QUOTAS`. Vì vậy **TCTH giữ nguyên phân bổ theo số sao cũ là hoàn toàn hợp
+lệ** — bàn giao 8 sao/quý cho Phòng TCTH vẫn chạy bình thường, cột "Sao phòng được
+phân bổ để TRAO cả năm" trong file đối soát vẫn ghi đúng số đang áp.
+
+Do đó ba dòng chênh quân số **tách khỏi nhóm "điểm cần xử lý"** (`laLechCanXuLy`),
+xuống mục *"Chênh quân số so với văn bản — tham khảo, không phải lỗi"*. Nếu trộn
+chung, cảnh báo đỏ sẽ hiện mãi vì chi nhánh không có gì để sửa, và bốn loại lệch
+thật (phòng mới chưa có nhãn, hai phòng chung một nhãn, nhãn cũ không còn phòng,
+phòng ngừng dùng còn phiếu) sẽ chìm theo.
+
+Bù lại, khu bàn giao có thêm dòng **"Đã bàn giao [quý]: N sao cho M lãnh đạo"** kèm
+số sao từng người đã nhận trong quý — chỗ để TCTH tự đối chiếu với mức mình đang
+áp, dù là mức cũ theo văn bản hay mức mới theo quân số.
 
 ## 4. Trình tự đưa vào vận hành
 

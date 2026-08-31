@@ -10,7 +10,7 @@ import {
   useStarOps, useStarSerials, type StaffOption,
 } from './useStarSerials';
 import { useStarRecords } from './useStarRecords';
-import type { LoaiLech } from './starDepartments';
+import { laLechCanXuLy, type LoaiLech } from './starDepartments';
 
 /** Nhãn hiển thị cho từng loại lệch giữa danh bạ và chương trình Sao */
 const NHAN_LECH: Record<LoaiLech, { tieuDe: string; mau: string }> = {
@@ -64,6 +64,11 @@ export const StarManagementPanel: React.FC = () => {
     [records],
   );
   const { danhSachPhong, lechDanhMuc } = useStarDepartments(nhanTrenPhieu);
+  // Lệch làm sai dữ liệu (phải xử lý) tách khỏi chênh quân số (chỉ tham khảo) —
+  // chi nhánh giữ hạn mức cũ cả năm là hợp lệ, không nên báo đỏ mãi.
+  const lechCanXuLy = useMemo(() => lechDanhMuc.filter(laLechCanXuLy), [lechDanhMuc]);
+  const chenhQuanSo = useMemo(() => lechDanhMuc.filter((l) => !laLechCanXuLy(l)), [lechDanhMuc]);
+
 
   // Khai báo lô
   const [batchFrom, setBatchFrom] = useState('');
@@ -76,6 +81,23 @@ export const StarManagementPanel: React.FC = () => {
   const [hoFrom, setHoFrom] = useState('');
   const [hoTo, setHoTo] = useState('');
   const [quarter, setQuarter] = useState(currentQuarter());
+
+  // Đã bàn giao bao nhiêu sao trong quý đang chọn, gộp theo từng lãnh đạo —
+  // chỗ để TCTH đối chiếu với mức phân bổ mình đang áp (dù cũ hay mới).
+  const daGiaoTrongQuy = useMemo(() => {
+    const map = new Map<string, number>();
+    handovers
+      .filter((h) => !h.revokedAt && h.quarter === quarter)
+      .forEach((h) => {
+        map.set(h.holderProfileId,
+          (map.get(h.holderProfileId) ?? 0) + (h.serialTo - h.serialFrom + 1));
+      });
+    return [...map.entries()].sort((a, b) => b[1] - a[1]);
+  }, [handovers, quarter]);
+  const tongDaGiaoTrongQuy = useMemo(
+    () => daGiaoTrongQuy.reduce((t, [, n]) => t + n, 0),
+    [daGiaoTrongQuy],
+  );
 
   // Sổ serial
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -190,7 +212,7 @@ export const StarManagementPanel: React.FC = () => {
               <Building2 className="w-4 h-4 text-brand-navy" /> Đối soát danh mục phòng với danh bạ
             </h6>
 
-            {lechDanhMuc.length === 0 ? (
+            {lechCanXuLy.length === 0 ? (
               <p className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-bold">
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 Danh mục phòng của chương trình Sao đang khớp danh bạ ({danhSachPhong.length} phòng).
@@ -199,9 +221,9 @@ export const StarManagementPanel: React.FC = () => {
               <div className="space-y-2">
                 <p className="flex items-center gap-1.5 text-[11px] text-amber-800 font-bold">
                   <AlertTriangle className="w-3.5 h-3.5" />
-                  {lechDanhMuc.length} điểm cần xử lý — danh bạ và chương trình Sao đang lệch nhau:
+                  {lechCanXuLy.length} điểm cần xử lý — danh bạ và chương trình Sao đang lệch nhau:
                 </p>
-                {lechDanhMuc.map((l) => (
+                {lechCanXuLy.map((l) => (
                   <div key={`${l.loai}-${l.ten}`} className="flex flex-wrap items-start gap-2 text-[11px] p-2.5 rounded-xl bg-slate-50 border border-slate-100">
                     <span className={`px-2 py-0.5 rounded-md border font-black uppercase text-[9px] shrink-0 ${NHAN_LECH[l.loai].mau}`}>
                       {NHAN_LECH[l.loai].tieuDe}
@@ -217,6 +239,24 @@ export const StarManagementPanel: React.FC = () => {
               </div>
             )}
 
+            {chenhQuanSo.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-slate-100 space-y-1.5">
+                <p className="text-[10px] font-black uppercase text-slate-500">
+                  Chênh quân số so với văn bản — tham khảo, không phải lỗi
+                </p>
+                <p className="text-[10px] text-slate-500 leading-relaxed">
+                  Hạn mức sao/quý giao từ đầu năm theo văn bản. <strong>Giữ nguyên mức cũ cả năm là
+                  hợp lệ</strong> — hệ thống không chặn bàn giao theo mức nào. Các dòng dưới chỉ để
+                  cân nhắc khi giao quý sau.
+                </p>
+                {chenhQuanSo.map((l) => (
+                  <div key={`${l.loai}-${l.ten}`} className="flex flex-wrap items-start gap-2 text-[11px] p-2 rounded-lg bg-blue-50/60 border border-blue-100">
+                    <span className="font-bold text-slate-800 shrink-0">{l.ten}</span>
+                    <span className="text-slate-600 flex-1 min-w-40">{l.moTa}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             <details className="mt-3">
               <summary className="text-[10px] font-black uppercase text-slate-500 cursor-pointer">
                 Xem bảng ánh xạ phòng ({danhSachPhong.length})
@@ -333,7 +373,30 @@ export const StarManagementPanel: React.FC = () => {
                 </div>
                 <p className="text-[10px] text-slate-500">
                   Chỉ bàn giao được số đang tồn kho; số đã bàn giao/đã tặng sẽ báo lỗi kèm danh sách.
+                  Hệ thống <strong>không giới hạn theo hạn mức</strong> — giao đúng mức chi nhánh
+                  đang áp, bảng dưới để đối chiếu.
                 </p>
+
+                {/* Đã giao trong quý: đối chiếu với mức phân bổ đang áp (cũ hay mới đều được) */}
+                <div className="pt-2 border-t border-slate-100">
+                  <p className="text-[10px] font-black uppercase text-slate-500 mb-1.5">
+                    Đã bàn giao {quarter}: {tongDaGiaoTrongQuy} sao cho {daGiaoTrongQuy.length} lãnh đạo
+                  </p>
+                  {daGiaoTrongQuy.length === 0 ? (
+                    <p className="text-[10px] text-slate-500 italic">
+                      Quý này chưa bàn giao đợt nào.
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {daGiaoTrongQuy.map(([id, soSao]) => (
+                        <span key={id} className="px-2 py-1 rounded-lg bg-blue-50 border border-blue-100 text-[10px] font-bold text-slate-700">
+                          {holderNames.get(id)?.name ?? '…'}
+                          <span className="text-brand-navy font-black"> · {soSao} sao</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>

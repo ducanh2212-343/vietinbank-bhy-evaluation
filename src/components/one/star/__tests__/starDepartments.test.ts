@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  bacPhanBoTheoQuanSo, dungDanhMucPhongSao, nhanPhongDangDung,
+  bacPhanBoTheoQuanSo, dungDanhMucPhongSao, laLechCanXuLy, nhanPhongDangDung,
   type PhongDanhBa,
 } from '../starDepartments';
 
@@ -88,5 +88,24 @@ describe('dungDanhMucPhongSao — danh mục phòng suy từ danh bạ', () => {
     expect(canhBao).toContain('Phòng TCTH');
     expect(canhBao).toContain('Phòng Khoái Châu'); // 10 → 9 người, tụt bậc 6 → 5
     expect(canhBao).not.toContain('Phòng DVKH');   // 13 người, vẫn đúng bậc 6 sao/quý
+  });
+});
+
+describe('phân loại lệch: sai dữ liệu vs chênh quân số', () => {
+  it('chênh quân số KHÔNG nằm trong nhóm cần xử lý — giữ hạn mức cũ là hợp lệ', () => {
+    const { lech } = dungDanhMucPhongSao(DANH_BA_THAT);
+    const chenhQuanSo = lech.filter((l) => l.loai === 'lech-bac-phan-bo');
+    expect(chenhQuanSo.length).toBeGreaterThan(0);
+    expect(chenhQuanSo.every((l) => !laLechCanXuLy(l))).toBe(true);
+    // và danh bạ chuẩn thì không còn lệch nào phải xử lý
+    expect(lech.filter(laLechCanXuLy)).toHaveLength(0);
+  });
+
+  it('lệch làm sai dữ liệu thì nằm trong nhóm cần xử lý', () => {
+    const danhBa = [...DANH_BA_THAT, { ten: 'Phòng giao dịch Mỹ Hào', dangDung: true, quanSo: 8 }];
+    const { lech } = dungDanhMucPhongSao(danhBa, ['Phòng Yên Mỹ']);
+    const canXuLy = lech.filter(laLechCanXuLy).map((l) => l.loai);
+    expect(canXuLy).toContain('nhan-trung-phong');
+    expect(canXuLy).toContain('nhan-khong-con-phong');
   });
 });
