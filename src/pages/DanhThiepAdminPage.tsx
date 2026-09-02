@@ -2,7 +2,7 @@
  * QUẢN TRỊ DANH THIẾP SỐ — bốn tab theo Mục 6 đặc tả:
  *   /quan-tri-danh-thiep/don-vi          từ điển đơn vị
  *   /quan-tri-danh-thiep/chuc-danh       từ điển chức danh (TCTH dùng nhiều nhất)
- *   /quan-tri-danh-thiep/chuc-danh-rieng hàng chờ Giám đốc duyệt chức danh riêng
+ *   /quan-tri-danh-thiep/chuc-danh-rieng hàng chờ duyệt chức danh riêng (Giám đốc / TCTH)
  *   /quan-tri-danh-thiep/can-bo          cán bộ và phát hành thẻ
  * Tab nằm trên URL để gửi link thẳng vào đúng việc (VD: nhắc Giám đốc duyệt).
  */

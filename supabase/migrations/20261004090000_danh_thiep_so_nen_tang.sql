@@ -51,21 +51,23 @@ AS $$
       OR public.has_role(_uid, 'system_admin'::app_role)
 $$;
 
--- Giám đốc Chi nhánh duyệt chức danh đối ngoại riêng và chức danh vai trò thị
--- trường. Trong hệ phân quyền hiện hành, vai trò `bgd` chỉ gán cho Giám đốc
--- (các Phó Giám đốc mang vai trò `pgd`), nên `bgd` chính là «Giám đốc».
-CREATE OR REPLACE FUNCTION public.nc_la_giam_doc(_uid UUID)
+-- Người duyệt cấp cao: chức danh đối ngoại riêng, chức danh vai trò thị trường
+-- và công tắc Wallet cho nhân sự thuê ngoài. Đặc tả gốc dành riêng cho Giám
+-- đốc; Giám đốc quyết định (02/09/2026) mở cho cả Phòng TCTH để không tắc việc
+-- khi Giám đốc vắng. Vai trò `bgd` hiện chỉ gán cho Giám đốc (Phó Giám đốc
+-- mang `pgd`).
+CREATE OR REPLACE FUNCTION public.nc_la_nguoi_duyet(_uid UUID)
 RETURNS BOOLEAN
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
 AS $$
   SELECT public.has_role(_uid, 'bgd'::app_role)
-      OR public.has_role(_uid, 'system_admin'::app_role)
+      OR public.nc_la_quan_tri(_uid)
 $$;
 
 REVOKE ALL ON FUNCTION public.nc_la_quan_tri(UUID) FROM PUBLIC, anon;
-REVOKE ALL ON FUNCTION public.nc_la_giam_doc(UUID) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.nc_la_nguoi_duyet(UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.nc_la_quan_tri(UUID) TO authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.nc_la_giam_doc(UUID) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.nc_la_nguoi_duyet(UUID) TO authenticated, service_role;
 
 -- Mẫu thẻ suy từ loại nhân sự — nguồn duy nhất, giao diện không được tự suy.
 CREATE OR REPLACE FUNCTION public.nc_mau_the(_loai public.nc_employment_type)
@@ -431,10 +433,10 @@ BEGIN
     END IF;
   END IF;
 
-  -- Wallet cho nhân sự thuê ngoài: chỉ Giám đốc bật, và ghi vết ai bật
+  -- Wallet cho nhân sự thuê ngoài: chỉ người duyệt cấp cao (Giám đốc / TCTH) bật, ghi vết ai bật
   IF NEW.wallet_override AND (TG_OP = 'INSERT' OR NOT OLD.wallet_override) THEN
-    IF auth.uid() IS NOT NULL AND NOT public.nc_la_giam_doc(auth.uid()) THEN
-      RAISE EXCEPTION 'Chỉ Giám đốc mới bật thẻ Wallet cho nhân sự ngoài biên chế';
+    IF auth.uid() IS NOT NULL AND NOT public.nc_la_nguoi_duyet(auth.uid()) THEN
+      RAISE EXCEPTION 'Chỉ Giám đốc hoặc Phòng TCTH mới bật thẻ Wallet cho nhân sự ngoài biên chế';
     END IF;
     NEW.wallet_override_by := coalesce(auth.uid(), NEW.wallet_override_by);
     NEW.wallet_override_at := now();
@@ -463,9 +465,9 @@ BEGIN
      OR coalesce(current_setting('nc.bo_qua_chan_cot', true), '') = '1' THEN
     RETURN NEW;
   END IF;
-  -- Giám đốc được đụng đúng MỘT cột ngoài bộ tự phục vụ: công tắc Wallet cho
-  -- nhân sự thuê ngoài (trigger nc_kiem_can_bo ghi vết ai bật)
-  la_gd := public.nc_la_giam_doc(auth.uid());
+  -- Giám đốc (không phải TCTH) được đụng đúng MỘT cột ngoài bộ tự phục vụ:
+  -- công tắc Wallet cho nhân sự thuê ngoài (trigger nc_kiem_can_bo ghi vết ai bật)
+  la_gd := public.nc_la_nguoi_duyet(auth.uid());
   IF NEW.user_id IS DISTINCT FROM OLD.user_id
      OR NEW.profile_id IS DISTINCT FROM OLD.profile_id
      OR NEW.employee_code IS DISTINCT FROM OLD.employee_code
@@ -793,7 +795,7 @@ REVOKE ALL ON FUNCTION public.nc_thu_hoi_the(UUID, TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.nc_thu_hoi_the(UUID, TEXT) TO authenticated, service_role;
 
 -- ---------------------------------------------------------------------------
--- 20) Duyệt chức danh đối ngoại riêng — Giám đốc
+-- 20) Duyệt chức danh đối ngoại riêng — Giám đốc hoặc Phòng TCTH
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.nc_duyet_chuc_danh_rieng(_id UUID, _duyet BOOLEAN, _ly_do TEXT DEFAULT NULL)
 RETURNS VOID
@@ -802,8 +804,8 @@ AS $$
 DECLARE
   ct public.nc_custom_title%ROWTYPE;
 BEGIN
-  IF NOT public.nc_la_giam_doc(auth.uid()) THEN
-    RAISE EXCEPTION 'Chỉ Giám đốc duyệt chức danh đối ngoại riêng';
+  IF NOT public.nc_la_nguoi_duyet(auth.uid()) THEN
+    RAISE EXCEPTION 'Chỉ Giám đốc hoặc Phòng TCTH duyệt chức danh đối ngoại riêng';
   END IF;
   SELECT * INTO ct FROM public.nc_custom_title WHERE id = _id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Không tìm thấy đề nghị'; END IF;
@@ -910,20 +912,20 @@ CREATE POLICY "nc_title_doc" ON public.nc_title FOR SELECT TO authenticated
   USING (public.is_staff(auth.uid()));
 CREATE POLICY "nc_title_quan_tri" ON public.nc_title FOR ALL TO authenticated
   USING (public.nc_la_quan_tri(auth.uid())) WITH CHECK (public.nc_la_quan_tri(auth.uid()));
--- Chức danh cần Giám đốc duyệt: Giám đốc được đổi trạng thái (không sửa nội dung
--- — giao diện chỉ mở nút duyệt; nội dung là việc của TCTH)
-CREATE POLICY "nc_title_giam_doc_duyet" ON public.nc_title FOR UPDATE TO authenticated
-  USING (public.nc_la_giam_doc(auth.uid()) AND requires_director_approval)
-  WITH CHECK (public.nc_la_giam_doc(auth.uid()) AND requires_director_approval);
+-- Chức danh vai trò thị trường: Giám đốc cũng được đổi trạng thái (không sửa nội
+-- dung — giao diện chỉ mở nút duyệt; nội dung là việc của TCTH, vốn đã toàn quyền)
+CREATE POLICY "nc_title_nguoi_duyet" ON public.nc_title FOR UPDATE TO authenticated
+  USING (public.nc_la_nguoi_duyet(auth.uid()) AND requires_director_approval)
+  WITH CHECK (public.nc_la_nguoi_duyet(auth.uid()) AND requires_director_approval);
 
 -- Cán bộ: đọc/sửa bản ghi của chính mình (cột bị giới hạn bởi trigger)
 CREATE POLICY "nc_staff_cua_toi" ON public.nc_staff FOR SELECT TO authenticated
-  USING (user_id = auth.uid() OR public.nc_la_quan_tri(auth.uid()) OR public.nc_la_giam_doc(auth.uid()));
+  USING (user_id = auth.uid() OR public.nc_la_quan_tri(auth.uid()) OR public.nc_la_nguoi_duyet(auth.uid()));
 -- Giám đốc vào được để bật Wallet cho thuê ngoài; cột nào được đụng do trigger
 -- nc_chan_cot_cua_can_bo quyết định
 CREATE POLICY "nc_staff_toi_sua" ON public.nc_staff FOR UPDATE TO authenticated
-  USING (user_id = auth.uid() OR public.nc_la_quan_tri(auth.uid()) OR public.nc_la_giam_doc(auth.uid()))
-  WITH CHECK (user_id = auth.uid() OR public.nc_la_quan_tri(auth.uid()) OR public.nc_la_giam_doc(auth.uid()));
+  USING (user_id = auth.uid() OR public.nc_la_quan_tri(auth.uid()) OR public.nc_la_nguoi_duyet(auth.uid()))
+  WITH CHECK (user_id = auth.uid() OR public.nc_la_quan_tri(auth.uid()) OR public.nc_la_nguoi_duyet(auth.uid()));
 CREATE POLICY "nc_staff_quan_tri_them" ON public.nc_staff FOR INSERT TO authenticated
   WITH CHECK (public.nc_la_quan_tri(auth.uid()));
 CREATE POLICY "nc_staff_quan_tri_xoa" ON public.nc_staff FOR DELETE TO authenticated
@@ -934,7 +936,7 @@ CREATE POLICY "nc_staff_quan_tri_xoa" ON public.nc_staff FOR DELETE TO authentic
 CREATE POLICY "nc_custom_title_doc" ON public.nc_custom_title FOR SELECT TO authenticated
   USING (
     EXISTS (SELECT 1 FROM public.nc_staff s WHERE s.id = staff_id AND s.user_id = auth.uid())
-    OR public.nc_la_quan_tri(auth.uid()) OR public.nc_la_giam_doc(auth.uid())
+    OR public.nc_la_quan_tri(auth.uid()) OR public.nc_la_nguoi_duyet(auth.uid())
   );
 CREATE POLICY "nc_custom_title_gui" ON public.nc_custom_title FOR INSERT TO authenticated
   WITH CHECK (
@@ -967,7 +969,7 @@ CREATE POLICY "nc_channel_cua_toi" ON public.nc_channel FOR ALL TO authenticated
 CREATE POLICY "nc_card_doc" ON public.nc_card FOR SELECT TO authenticated
   USING (
     EXISTS (SELECT 1 FROM public.nc_staff s WHERE s.id = staff_id AND s.user_id = auth.uid())
-    OR public.nc_la_quan_tri(auth.uid()) OR public.nc_la_giam_doc(auth.uid())
+    OR public.nc_la_quan_tri(auth.uid()) OR public.nc_la_nguoi_duyet(auth.uid())
   );
 CREATE POLICY "nc_card_quan_tri" ON public.nc_card FOR ALL TO authenticated
   USING (public.nc_la_quan_tri(auth.uid())) WITH CHECK (public.nc_la_quan_tri(auth.uid()));
@@ -976,11 +978,11 @@ CREATE POLICY "nc_card_quan_tri" ON public.nc_card FOR ALL TO authenticated
 CREATE POLICY "nc_scan_log_doc" ON public.nc_scan_log FOR SELECT TO authenticated
   USING (
     EXISTS (SELECT 1 FROM public.nc_staff s WHERE s.id = staff_id AND s.user_id = auth.uid())
-    OR public.nc_la_quan_tri(auth.uid()) OR public.nc_la_giam_doc(auth.uid())
+    OR public.nc_la_quan_tri(auth.uid()) OR public.nc_la_nguoi_duyet(auth.uid())
   );
 
 CREATE POLICY "nc_audit_doc" ON public.nc_audit FOR SELECT TO authenticated
-  USING (public.nc_la_quan_tri(auth.uid()) OR public.nc_la_giam_doc(auth.uid()));
+  USING (public.nc_la_quan_tri(auth.uid()) OR public.nc_la_nguoi_duyet(auth.uid()));
 
 CREATE POLICY "nc_cau_hinh_doc" ON public.nc_cau_hinh FOR SELECT TO authenticated
   USING (public.is_staff(auth.uid()));

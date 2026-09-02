@@ -6,7 +6,7 @@
  * Không có logic quyền ở đây: cái gì hiện / không hiện do payload của
  * nc_resolve_card() quyết định (NT3 — ma trận thuê ngoài thực thi ở CSDL).
  */
-import type { KenhTrenThe, PayloadThe } from '@/lib/danhThiep/kieu';
+import { THUONG_HIEU, type KenhTrenThe, type PayloadThe } from '@/lib/danhThiep/kieu';
 import { chonBanDich, type MaNgonNgu } from '@/lib/danhThiep/ngonNgu';
 import type { ChuoiGiaoDien } from './chuoi';
 import { tenKenh } from './chuoi';
@@ -46,6 +46,23 @@ function chiSo(v: string | undefined): string {
   return (v ?? '').replace(/[^\d]/g, '');
 }
 
+/**
+ * Hai dòng tổ chức trên thẻ cán bộ, từ chuỗi đơn vị gốc → lá:
+ *   - donVi: đơn vị của cán bộ (PGD / phòng) — bỏ trống nếu cán bộ thuộc thẳng Chi nhánh
+ *   - toChuc: «VietinBank – <tên Chi nhánh theo ngôn ngữ khách>»
+ * Tên pháp lý đầy đủ của Ngân hàng (đơn vị gốc) cố ý KHÔNG hiện trên thẻ — quyết
+ * định của Giám đốc 02/09/2026 — nhưng vẫn nằm trong trường ORG của tệp .vcf.
+ */
+export function dongToChuc(the: PayloadThe, lang: MaNgonNgu): { donVi: string; toChuc: string } {
+  const ten = the.units.map((u) => chonBanDich(u.name, lang));
+  if (ten.length === 0) return { donVi: '', toChuc: THUONG_HIEU };
+  // Chi nhánh là đơn vị ngay dưới gốc; không có gốc riêng thì chính là đơn vị đầu
+  const chiNhanh = ten.length >= 2 ? ten[1] : ten[0];
+  const la = ten[ten.length - 1];
+  const donVi = ten.length >= 3 ? la : '';
+  return { donVi, toChuc: chiNhanh ? `${THUONG_HIEU} – ${chiNhanh}` : THUONG_HIEU };
+}
+
 /** Link mở thẳng kênh chat (Mục 7.3); undefined = phải dùng QR. */
 export function lienKetKenh(k: KenhTrenThe): string | undefined {
   switch (k.type) {
@@ -77,9 +94,7 @@ export function lienKetKenh(k: KenhTrenThe): string | undefined {
 export function TheDanhThiep({ the, lang, chuoi, vcardUrl, onHanhDong, onMoQr }: TheDanhThiepProps) {
   const ten = tenTheoNgonNgu(the, lang);
   const chucDanh = chonBanDich(the.title, lang);
-  const donVi = the.units.map((u) => chonBanDich(u.name, lang)).filter(Boolean);
-  const laDonVi = donVi.length ? donVi[donVi.length - 1] : '';
-  const cha = donVi.slice(0, -1);
+  const { donVi: laDonVi, toChuc } = dongToChuc(the, lang);
   const diaChi = chonBanDich(the.addr, lang);
   const affil = the.affiliation === 'thue_ngoai' ? chuoi.thueNgoai
     : the.affiliation === 'ctv' ? chuoi.ctv
@@ -104,7 +119,7 @@ export function TheDanhThiep({ the, lang, chuoi, vcardUrl, onHanhDong, onMoQr }:
         {ten.phu && <p className="nc-name-sub">{ten.phu}</p>}
         {chucDanh && <p className="nc-title">{chucDanh}</p>}
         {the.bank_line && laDonVi && <p className="nc-unit">{laDonVi}</p>}
-        {the.bank_line && cha.length > 0 && <p className="nc-org">{cha.join(' · ')}</p>}
+        {the.bank_line && <p className="nc-org">{toChuc}</p>}
       </div>
 
       {vcardUrl ? (

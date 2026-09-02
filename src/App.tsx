@@ -340,8 +340,8 @@ const App = () => (
                 {/* Tiếp nhận góp ý cải thiện BHY One — Phòng TCTH + Ban Giám đốc
                     (AdminRoute đã bao gồm bgd/tcth_admin/system_admin) */}
                 <Route path="/gop-y-he-thong" element={<GopYAdminPage />} />
-                {/* Danh thiếp số: từ điển đơn vị / chức danh, hàng chờ Giám đốc duyệt, phát hành thẻ.
-                    AdminRoute gồm bgd để Giám đốc vào duyệt chức danh riêng; RLS + trigger phân việc TCTH/GĐ. */}
+                {/* Danh thiếp số: từ điển đơn vị / chức danh, hàng chờ duyệt chức danh riêng, phát hành thẻ.
+                    AdminRoute gồm bgd để Giám đốc vào duyệt; RLS + trigger phân việc TCTH/GĐ. */}
                 <Route path="/quan-tri-danh-thiep/:tab?" element={<DanhThiepAdminPage />} />
               </Route>
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { lienKetKenh, tenTheoNgonNgu } from '@/danh-thiep-cong-khai/TheDanhThiep';
+import { dongToChuc, lienKetKenh, tenTheoNgonNgu } from '@/danh-thiep-cong-khai/TheDanhThiep';
 import { chucDanhTrung, doGiongNhau } from '@/components/danh-thiep/TabChucDanhRieng';
 import { slugHopLe, slugTuTen } from '../slug';
 import type { ChucDanh, PayloadThe } from '../kieu';
@@ -19,6 +19,25 @@ describe('Tên trên thẻ theo ngôn ngữ (Mục 7.2)', () => {
   it('thiếu tên bản địa thì chỉ hiện tên Việt, không bịa', () => {
     expect(tenTheoNgonNgu(the, 'ja')).toEqual({ chinh: 'Trần Văn Khái' });
     expect(tenTheoNgonNgu(the, 'en')).toEqual({ chinh: 'Trần Văn Khái' });
+  });
+});
+
+describe('Hai dòng tổ chức trên thẻ (quyết định 02/09/2026: «VietinBank – Chi nhánh Bắc Hưng Yên»)', () => {
+  const units = [
+    { code: 'NH', name: { vi: 'Ngân hàng TMCP Công Thương Việt Nam', en: 'Vietnam Joint Stock Commercial Bank for Industry and Trade' }, addr: {} },
+    { code: 'CN_BHY', name: { vi: 'Chi nhánh Bắc Hưng Yên', en: 'Bac Hung Yen Branch', ko: '박흥옌 지점' }, addr: {} },
+    { code: 'PGD_VG', name: { vi: 'Phòng giao dịch Văn Giang', en: 'Van Giang Transaction Office' }, addr: {} },
+  ];
+  it('cán bộ PGD: dòng đơn vị là PGD, dòng tổ chức là thương hiệu + Chi nhánh theo ngôn ngữ khách', () => {
+    expect(dongToChuc({ ...the, units }, 'vi')).toEqual({ donVi: 'Phòng giao dịch Văn Giang', toChuc: 'VietinBank – Chi nhánh Bắc Hưng Yên' });
+    expect(dongToChuc({ ...the, units }, 'ko')).toEqual({ donVi: 'Van Giang Transaction Office', toChuc: 'VietinBank – 박흥옌 지점' });
+  });
+  it('cán bộ thuộc thẳng Chi nhánh: không lặp tên Chi nhánh ở dòng đơn vị', () => {
+    expect(dongToChuc({ ...the, units: units.slice(0, 2) }, 'en')).toEqual({ donVi: '', toChuc: 'VietinBank – Bac Hung Yen Branch' });
+  });
+  it('tên pháp lý đầy đủ của Ngân hàng không hiện trên thẻ', () => {
+    const r = dongToChuc({ ...the, units }, 'en');
+    expect(`${r.donVi} ${r.toChuc}`).not.toContain('Industry and Trade');
   });
 });
 

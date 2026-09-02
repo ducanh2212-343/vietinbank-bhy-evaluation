@@ -106,14 +106,14 @@ function canhBao(cb: CanBo, chucDanh: Map<string, ChucDanh>, hanRieng: Map<strin
       if (conLai <= 30) ra.push(conLai < 0 ? 'Chức danh riêng đã hết hạn' : `Chức danh riêng hết hạn sau ${conLai} ngày`);
     }
   }
-  if (cb.employment_type === 'thue_ngoai' && cb.wallet_override) ra.push('Thuê ngoài đang bật Wallet (Giám đốc duyệt)');
+  if (cb.employment_type === 'thue_ngoai' && cb.wallet_override) ra.push('Thuê ngoài đang bật Wallet (duyệt riêng)');
   return ra;
 }
 
 export function TabCanBo() {
   const { roles, user } = useAuth();
   const laQuanTri = roles.includes('tcth_admin') || roles.includes('system_admin');
-  const laGiamDoc = roles.includes('bgd') || roles.includes('system_admin');
+  const laNguoiDuyet = laQuanTri || roles.includes('bgd');
   const { data: ds = [], isLoading } = useCanBoDanhThiep();
   const { data: donVi = [] } = useDonVi();
   const { data: chucDanh = [] } = useChucDanh();
@@ -255,7 +255,7 @@ export function TabCanBo() {
   const batWallet = async (c: CanBo, bat: boolean) => {
     const { error } = await db.from('nc_staff').update({ wallet_override: bat }).eq('id', c.id);
     if (error) { toast.error(error.message); return; }
-    toast.success(bat ? 'Đã cho phép thẻ Wallet (Giám đốc duyệt riêng)' : 'Đã tắt Wallet');
+    toast.success(bat ? 'Đã cho phép thẻ Wallet cho nhân sự thuê ngoài (có ghi vết)' : 'Đã tắt Wallet');
     lamTuoi();
   };
 
@@ -586,12 +586,12 @@ export function TabCanBo() {
                   <Textarea id="cb-note" rows={2} value={form.note_internal} onChange={(e) => setForm({ ...form, note_internal: e.target.value })} />
                 </div>
               </div>
-              {form.id && laGiamDoc && form.employment_type === 'thue_ngoai' && (() => {
+              {form.id && laNguoiDuyet && form.employment_type === 'thue_ngoai' && (() => {
                 const hienTai = ds.find((x) => x.id === form.id);
                 return hienTai ? (
                   <label className="flex items-center gap-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm dark:bg-amber-950/30">
                     <Switch checked={hienTai.wallet_override} onCheckedChange={(v) => batWallet(hienTai, v)} />
-                    <span>Cho phép thẻ Wallet cho nhân sự thuê ngoài này (quyết định riêng của Giám đốc — có ghi vết)</span>
+                    <span>Cho phép thẻ Wallet cho nhân sự thuê ngoài này (Giám đốc hoặc Phòng TCTH quyết từng trường hợp — có ghi vết)</span>
                   </label>
                 ) : null;
               })()}

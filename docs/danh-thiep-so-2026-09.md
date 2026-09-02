@@ -31,10 +31,11 @@ có» của chính đặc tả được ưu tiên hơn từng chi tiết kỹ th
 | `GET /api/card/[slug]/vcard` | **Edge function** `danh-thiep-vcard` (`verify_jwt = false`) trả `text/vcard; charset=utf-8`, `Content-Disposition: inline` | iOS chỉ mở thẳng màn «Thêm liên hệ» khi tải một URL thật; Blob tạo trên máy khi mở khi không. |
 | Self-host 4 font CJK subset theo `unicode-range` | Be Vietnam Pro qua Google Fonts (CSP đã cho phép); font CJK nạp **đúng ngôn ngữ đang xem và đúng những ký tự có trên thẻ** (`text=` của Google Fonts) — vài KB thay vì vài MB | Không có cách sinh subset font trong pipeline build hiện tại; máy khách Trung/Hàn/Nhật vốn có font hệ thống nên đây chỉ là lớp làm đẹp (`display=swap`). Muốn self-host thật sự: việc riêng ở GĐ2. |
 | Rate limit 60 req/phút/IP ở edge | **Chưa có** trong mã — cần đặt **Cloudflare Rate Limiting rule** cho `bachungyenone.com/card/*` khi triển khai (mục 4). Trong CSDL có trần chống dội 120 dòng/phút/thẻ cho nhật ký quét. | Worker hiện thuần tĩnh, không có script để đếm. |
-| Vai trò `director` | Dùng vai trò **`bgd`** sẵn có (`nc_la_giam_doc()`): hiện chỉ Giám đốc mang `bgd`, các Phó Giám đốc mang `pgd` | Không sinh thêm vai trò; nếu sau này gán `bgd` cho Phó GĐ thì phải sửa helper này. |
+| Vai trò `director` duyệt chức danh riêng, vai trò thị trường, Wallet thuê ngoài | Helper **`nc_la_nguoi_duyet()`** = `bgd` **hoặc** TCTH admin (`tcth_admin` / `system_admin`) | Quyết định của Giám đốc 02/09/2026: «GĐ hoặc TCTH admin duyệt» — để không tắc việc khi Giám đốc vắng. Hiện chỉ Giám đốc mang `bgd` (Phó GĐ mang `pgd`). |
+| Dòng «VietinBank – Chi nhánh Bắc Hưng Yên» | Thẻ hiện đơn vị của cán bộ (PGD/phòng) và dòng **`VietinBank – <tên Chi nhánh theo ngôn ngữ khách>`** (hàm `dongToChuc()`); tên pháp lý đầy đủ của Ngân hàng KHÔNG hiện trên thẻ nhưng vẫn là thành phần đầu của ORG trong tệp .vcf | Quyết định của Giám đốc 02/09/2026. Tên đầy đủ có «for Industry and Trade» được giữ ở nơi khách tra cứu lâu dài (danh bạ). |
 | Ràng buộc 1: `external_title_id` phải trỏ chức danh `approved` | Chức danh phải đúng scope + đúng loại nhân sự **luôn luôn**; điều kiện «đã duyệt» bắt buộc khi **hồ sơ cán bộ `approved` hoặc bật thẻ** | Để TCTH soạn hồ sơ song song với rà soát từ điển. Bất biến quan trọng vẫn giữ: **không thẻ nào phát hành với chức danh chưa duyệt** (đã kiểm thử). |
 | Tab 1 «sửa inline» | Sửa qua hộp thoại (6 tên + 6 địa chỉ + bản đồ + điện thoại) | Địa chỉ dài, sửa inline trong bảng 12 cột không dùng được trên màn nhỏ. |
-| Job hết hạn chức danh riêng «gửi thông báo cho cán bộ và TCTH» | Job thu hồi chạy 0h30 hằng ngày, thẻ tự lùi về chức danh chuẩn; **chưa phát push** — cột cảnh báo «hết hạn sau N ngày» ở Tab 4 | CLAUDE.md: thêm một loại tin là quyết định nghiệp vụ (cán bộ đã nhận 21+ loại push). Xem mục 5. |
+| Job hết hạn chức danh riêng «gửi thông báo cho cán bộ và TCTH» | Job thu hồi chạy 0h30 hằng ngày, thẻ tự lùi về chức danh chuẩn; **không phát push** — cột cảnh báo «hết hạn sau N ngày» ở Tab 4 | Quyết định của Giám đốc 02/09/2026: chỉ cảnh báo ở màn quản trị (cán bộ đã nhận 21+ loại push). |
 | Đường dẫn quản trị `/admin/danh-thiep/...`, tự phục vụ `/toi/danh-thiep` | `/quan-tri-danh-thiep/{don-vi,chuc-danh,chuc-danh-rieng,can-bo}` và `/danh-thiep-cua-toi` | Theo quy ước đường dẫn tiếng Việt của cổng (`/quan-tri-khach`, `/quan-tri-ky-yeu`…). |
 
 ## 3. Mô hình dữ liệu và luật ở tầng CSDL
@@ -93,21 +94,15 @@ nhánh · cán bộ sửa được SĐT, không sửa được chức danh · au
 7. **Xin ý kiến Trụ sở chính** về phạm vi dùng logo trên thẻ số / QR (Mục 9.6);
    công tắc «Logo VietinBank trên thẻ» ở nút Cấu hình tắt được ngay nếu cần.
 
-## 5. Điểm cần Giám đốc quyết (đặc tả yêu cầu «hỏi lại thay vì tự quyết»)
+## 5. Quyết định của Giám đốc (02/09/2026) và cách đã áp dụng
 
-1. **Thông báo khi chức danh riêng hết hạn**: có mở một loại tin mới trong hàng đợi
-   `ct2_thong_bao` (push cho cán bộ + TCTH) không, hay chỉ cảnh báo ở màn quản trị như hiện nay?
-2. **Ai được duyệt thay Giám đốc** khi Giám đốc vắng: hiện `bgd` = Giám đốc; nếu ủy quyền
-   Phó GĐ thì gán `bgd` cho Phó GĐ đó hay sửa helper `nc_la_giam_doc()`?
-3. **Ngân hàng — dòng tiếng Việt trên thẻ**: đang hiện tên đầy đủ «Ngân hàng TMCP Công
-   Thương Việt Nam · Chi nhánh Bắc Hưng Yên» dưới tên PGD. Nếu muốn ngắn («VietinBank –
-   Chi nhánh Bắc Hưng Yên» như Mục 5) thì đổi `name_vi` của đơn vị `NH` trong từ điển
-   — không cần sửa mã.
-4. **Bản dịch địa chỉ Chi nhánh** (mồi tạm «Phường Mỹ Hào, tỉnh Hưng Yên») và số hotline
-   hiện trên trang «đã chuyển công tác» (`nc_org_unit.phone` của `CN_BHY`, đang trống).
-5. **CTV có được hiện chức danh không**: từ điển mồi chưa có chức danh nào cho CTV/thực
-   tập (ma trận Mục 5 ghi ❌ với chức danh ngân hàng). Nếu cần «Cộng tác viên bán hàng»
-   trung tính thì thêm ở Tab 2 với loại nhân sự = CTV.
+| # | Câu hỏi | Quyết định | Đã áp dụng |
+|---|---|---|---|
+| 1 | Thông báo khi chức danh riêng hết hạn | Chỉ cảnh báo ở màn quản trị | Không mở loại push mới; cột cảnh báo ở Tab 4 báo trước 30 ngày và sau khi job thu hồi. |
+| 2 | Ai duyệt khi Giám đốc vắng | Giám đốc **hoặc** TCTH admin | `nc_la_nguoi_duyet()` = `bgd` hoặc `tcth_admin`/`system_admin`; áp cho chức danh riêng, vai trò thị trường và công tắc Wallet thuê ngoài (cả ba đều ghi vết người duyệt). Nhân viên thường vẫn bị chặn (kiểm thử khô). |
+| 3 | Dòng tổ chức trên thẻ | «VietinBank – Chi nhánh Bắc Hưng Yên» | Hàm `dongToChuc()` ghép thương hiệu + tên Chi nhánh theo ngôn ngữ khách; tên pháp lý đầy đủ chỉ còn trong tệp .vcf. |
+| 4 | Địa chỉ đầy đủ và hotline Chi nhánh cho trang «đã chuyển công tác» | (chưa có số cụ thể) | Dữ liệu mồi tạm ghi «Đường Nguyễn Văn Linh, phường Mỹ Hào, tỉnh Hưng Yên» (6 ngôn ngữ) theo danh bạ mạng lưới công khai — **TCTH bổ sung số nhà và số điện thoại trực** ở Tab 1 trước khi duyệt đơn vị `CN_BHY`. Không đưa hotline chưa kiểm chứng vào dữ liệu. |
+| 5 | CTV / thực tập sinh có chức danh không | Có, TCTH nhập theo từng thời kỳ | Không cần đổi mã: Tab 2 cho tick «Cộng tác viên» / «Thực tập sinh» ở «Loại nhân sự được gán»; thẻ hiện chức danh đó nhưng vẫn không logo, không email VietinBank, chỉ Zalo (CTV) theo ma trận. |
 
 ## 6. Còn lại cho GĐ2–GĐ3
 

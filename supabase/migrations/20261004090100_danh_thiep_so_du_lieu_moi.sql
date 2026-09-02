@@ -27,8 +27,14 @@ VALUES
   ('CN_BHY', 'NH', 10,
    'Chi nhánh Bắc Hưng Yên', 'Bac Hung Yen Branch',
    '北兴安分行', '北興安分行', '박흥옌 지점', 'バクフンイエン支店',
-   'Phường Mỹ Hào, tỉnh Hưng Yên', 'My Hao Ward, Hung Yen Province',
-   '兴安省美豪坊', '興安省美豪坊', '흥옌성 미하오구', 'フンイエン省ミーハオ坊'),
+   -- Địa chỉ trụ sở Chi nhánh: theo danh bạ mạng lưới công khai (đường Nguyễn Văn
+   -- Linh, Bần Yên Nhân — nay thuộc phường Mỹ Hào). TCTH bổ sung SỐ NHÀ và số
+   -- điện thoại trực (cột phone) ở Tab «Từ điển đơn vị» trước khi duyệt — số này
+   -- hiện trên trang «cán bộ đã chuyển công tác».
+   'Đường Nguyễn Văn Linh, phường Mỹ Hào, tỉnh Hưng Yên',
+   'Nguyen Van Linh Street, My Hao Ward, Hung Yen Province',
+   '兴安省美豪坊阮文灵路', '興安省美豪坊阮文靈路',
+   '흥옌성 미하오구 응우옌반린 거리', 'フンイエン省ミーハオ坊グエン・ヴァン・リン通り'),
   ('PGD_VG', 'CN_BHY', 100,
    'Phòng giao dịch Văn Giang', 'Van Giang Transaction Office',
    '文江营业部', '文江營業部', '반장 출장소', 'ヴァンザン出張所',

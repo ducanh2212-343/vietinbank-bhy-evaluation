@@ -590,8 +590,8 @@ export const NAV_SECTIONS: NavSection[] = [
           { label: 'Phân quyền', icon: Shield, path: '/phan-quyen', minRole: 'admin', keywords: ['vai tro', 'role'] },
           { label: 'Duyệt yêu cầu user', icon: UserCheck, path: '/duyet-yeu-cau-user', minRole: 'admin' },
           { label: 'Tài khoản khách đối tác', icon: UserCheck, path: '/quan-tri-khach', minRole: 'admin', keywords: ['guest', 'doi tac'] },
-          // Danh thiếp số đa ngôn ngữ: từ điển đơn vị / chức danh, hàng chờ Giám
-          // đốc duyệt chức danh riêng, phát hành và thu hồi thẻ (QR / Wallet / NFC).
+          // Danh thiếp số đa ngôn ngữ: từ điển đơn vị / chức danh, hàng chờ duyệt
+          // chức danh riêng (Giám đốc hoặc TCTH), phát hành và thu hồi thẻ.
           // minRole 'admin' gồm bgd — Giám đốc vào để duyệt.
           {
             label: 'Danh thiếp số',

@@ -3,8 +3,12 @@
  *
  * Hai scope trong cùng một bảng: nội bộ (theo QĐ bổ nhiệm, KHÔNG bao giờ lên
  * thẻ) và đối ngoại (in trên thẻ). Chức danh vai trò thị trường
- * (requires_director_approval) chỉ Giám đốc duyệt. Chức danh đang có cán bộ
- * dùng thì không xóa được — chỉ thu hồi.
+ * (requires_director_approval) do Giám đốc hoặc Phòng TCTH duyệt — đặc tả gốc
+ * dành riêng Giám đốc, Giám đốc mở cho TCTH ngày 02/09/2026. Chức danh đang có
+ * cán bộ dùng thì không xóa được — chỉ thu hồi.
+ *
+ * Chức danh cho CTV / thực tập sinh: TCTH nhập dần theo từng thời kỳ ở đây
+ * (tick đúng loại nhân sự ở «Loại nhân sự được gán»).
  */
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -57,8 +61,9 @@ const TEN_NGAN_LOAI: Record<LoaiNhanSu, string> = {
 
 export function TabChucDanh() {
   const { roles, user } = useAuth();
-  const laGiamDoc = roles.includes('bgd') || roles.includes('system_admin');
   const laQuanTri = roles.includes('tcth_admin') || roles.includes('system_admin');
+  // Giám đốc (bgd) chỉ được duyệt / thu hồi, không sửa nội dung từ điển
+  const laNguoiDuyet = laQuanTri || roles.includes('bgd');
   const { data: ds = [], isLoading } = useChucDanh();
   const { data: soCanBo = {} } = useSoCanBoTheoChucDanh();
   const lamTuoi = useLamTuoiDanhThiep();
@@ -144,7 +149,7 @@ export function TabChucDanh() {
     lamTuoi();
   };
 
-  const duyetDuoc = (c: ChucDanh) => (c.requires_director_approval ? laGiamDoc : laQuanTri || laGiamDoc);
+  const duyetDuoc = (c: ChucDanh) => (c.requires_director_approval ? laNguoiDuyet : laQuanTri);
 
   return (
     <div className="space-y-4">
@@ -225,7 +230,7 @@ export function TabChucDanh() {
                   <TableCell className="font-mono text-xs">
                     {c.code}
                     {c.requires_director_approval && (
-                      <Badge variant="outline" className="ml-1 border-amber-400 text-2xs text-amber-700" title="Vai trò thị trường — Giám đốc duyệt">GĐ</Badge>
+                      <Badge variant="outline" className="ml-1 border-amber-400 text-2xs text-amber-700" title="Vai trò thị trường — Giám đốc hoặc Phòng TCTH duyệt">Thị trường</Badge>
                     )}
                   </TableCell>
                   <TableCell className="text-xs">{TEN_SCOPE[c.scope]}</TableCell>
@@ -248,7 +253,7 @@ export function TabChucDanh() {
                         <Button size="icon" variant="ghost" title="Sửa" onClick={() => moSua(c)}><Pencil className="h-4 w-4" /></Button>
                       )}
                       {(c.status === 'draft' || c.status === 'pending') && (
-                        <Button size="icon" variant="ghost" title={duyetDuoc(c) ? 'Duyệt' : 'Chức danh vai trò thị trường — cần Giám đốc duyệt'}
+                        <Button size="icon" variant="ghost" title={duyetDuoc(c) ? 'Duyệt' : 'Chỉ Phòng TCTH duyệt chức danh chuẩn'}
                           disabled={!duyetDuoc(c)} onClick={() => doiTrangThai(c, 'approved')}>
                           <ShieldCheck className="h-4 w-4 text-emerald-600" />
                         </Button>
@@ -319,7 +324,7 @@ export function TabChucDanh() {
               </div>
               <label className="flex items-center gap-3 text-sm">
                 <Switch checked={form.giamDocDuyet} onCheckedChange={(v) => setForm({ ...form, giamDocDuyet: v })} />
-                <span>Vai trò thị trường — <b>Giám đốc duyệt</b> (Head of FDI Desk, Korea/Japan Desk…)</span>
+                <span>Vai trò thị trường — <b>Giám đốc hoặc Phòng TCTH duyệt</b> (Head of FDI Desk, Korea/Japan Desk…)</span>
               </label>
               <div>
                 <Label htmlFor="cd-ghi-chu">Ghi chú nội bộ (không hiện trên thẻ)</Label>

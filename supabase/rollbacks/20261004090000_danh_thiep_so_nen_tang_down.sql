@@ -37,7 +37,7 @@ DROP FUNCTION IF EXISTS public.nc_chan_cot_cua_can_bo();
 DROP FUNCTION IF EXISTS public.nc_kiem_can_bo();
 DROP FUNCTION IF EXISTS public.nc_tao_slug(TEXT);
 DROP FUNCTION IF EXISTS public.nc_mau_the(public.nc_employment_type);
-DROP FUNCTION IF EXISTS public.nc_la_giam_doc(UUID);
+DROP FUNCTION IF EXISTS public.nc_la_nguoi_duyet(UUID);
 DROP FUNCTION IF EXISTS public.nc_la_quan_tri(UUID);
 
 DROP TYPE IF EXISTS public.nc_channel_type;

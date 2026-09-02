@@ -15,7 +15,7 @@ const muc: MucLichSu = {
   diemChinh: [
     'Từ điển đơn vị và từ điển chức danh 6 ngôn ngữ; sửa một dòng là mọi thẻ liên quan đổi theo.',
     'Chức danh nội bộ (theo quyết định bổ nhiệm) và chức danh đối ngoại (in trên thẻ) tách riêng; thẻ không bao giờ dùng chức danh nội bộ.',
-    'Giám đốc duyệt chức danh vai trò thị trường (FDI Desk, Korea/Japan Desk) và chức danh đối ngoại riêng có thời hạn.',
+    'Giám đốc hoặc Phòng TCTH duyệt chức danh vai trò thị trường (FDI Desk, Korea/Japan Desk) và chức danh đối ngoại riêng có thời hạn.',
     'Nhân sự thuê ngoài, cộng tác viên, thực tập sinh dùng mẫu thẻ riêng: không logo, không chức danh và email VietinBank.',
     'Phát hành / thu hồi thẻ một thao tác; xuất QR (PNG + SVG) và CSV cho nhà in. Thẻ thu hồi hiện trang «đã chuyển công tác» kèm liên hệ Chi nhánh.',
   ],

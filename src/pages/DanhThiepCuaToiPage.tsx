@@ -4,7 +4,7 @@
  * Cán bộ chỉ tự sửa được: số di động, ảnh, tên tiếng nước ngoài (xác nhận mặt
  * chữ), các kênh chat và ảnh QR WeChat/Kakao. Chức danh, đơn vị, email, loại
  * nhân sự là của Phòng TCTH — muốn đổi chức danh đối ngoại thì GỬI ĐỀ NGHỊ để
- * Giám đốc duyệt. CSDL chặn mọi cột khác (trigger), màn này chỉ không bày ra.
+ * Giám đốc hoặc TCTH duyệt. CSDL chặn mọi cột khác (trigger), màn này chỉ không bày ra.
  */
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -151,7 +151,7 @@ export default function DanhThiepCuaToiPage() {
       staff_id: cb.id, ...raCotTen(deNghi.ten), reason: deNghi.lyDo.trim(), expires_on: deNghi.hetHan || null, requested_by: user?.id,
     });
     if (error) { toast.error(`Không gửi được: ${error.message}`); return; }
-    toast.success('Đã gửi đề nghị — Giám đốc sẽ duyệt');
+    toast.success('Đã gửi đề nghị — Giám đốc hoặc Phòng TCTH sẽ duyệt');
     setDeNghi(null);
     lamTuoi();
   };
@@ -287,7 +287,7 @@ export default function DanhThiepCuaToiPage() {
 
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-base">Đề nghị chức danh đối ngoại riêng</CardTitle>
-          <CardDescription>Khi cần chức danh không có trong từ điển (VD: «Phó GĐ kiêm phụ trách Japan Desk»). Giám đốc duyệt; có thể đặt hạn.</CardDescription></CardHeader>
+          <CardDescription>Khi cần chức danh không có trong từ điển (VD: «Phó GĐ kiêm phụ trách Japan Desk»). Giám đốc hoặc Phòng TCTH duyệt; có thể đặt hạn.</CardDescription></CardHeader>
         <CardContent className="space-y-3">
           {(data?.chucDanhRieng ?? []).map((r) => (
             <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2.5 text-sm">
@@ -331,7 +331,7 @@ export default function DanhThiepCuaToiPage() {
               <div><Label htmlFor="dn-han">Hết hạn (nếu là chức danh dự án / nhiệm kỳ)</Label><Input id="dn-han" type="date" value={deNghi.hetHan} onChange={(e) => setDeNghi({ ...deNghi, hetHan: e.target.value })} /></div>
             </div>
           )}
-          <DialogFooter><Button variant="outline" onClick={() => setDeNghi(null)}>Hủy</Button><Button onClick={guiDeNghi}>{dangLuu ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Gửi Giám đốc duyệt'}</Button></DialogFooter>
+          <DialogFooter><Button variant="outline" onClick={() => setDeNghi(null)}>Hủy</Button><Button onClick={guiDeNghi}>{dangLuu ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Gửi duyệt'}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 

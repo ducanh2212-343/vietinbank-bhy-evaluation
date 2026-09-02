@@ -1,5 +1,6 @@
 /**
- * TAB 3 — CHỨC DANH ĐỐI NGOẠI RIÊNG: hàng chờ duyệt của Giám đốc.
+ * TAB 3 — CHỨC DANH ĐỐI NGOẠI RIÊNG: hàng chờ duyệt của Giám đốc hoặc Phòng TCTH
+ * (đặc tả gốc dành riêng Giám đốc; Giám đốc mở cho TCTH ngày 02/09/2026).
  * Cảnh báo khi chức danh đề nghị trùng ý với chức danh đã có trong từ điển
  * (so khớp mờ trên tên tiếng Anh) — tránh đẻ ra bản «riêng» của một chức danh
  * chuẩn chỉ vì cán bộ không biết từ điển đã có.
@@ -67,7 +68,7 @@ function ngayVn(iso: string | null): string {
 
 export function TabChucDanhRieng() {
   const { roles } = useAuth();
-  const laGiamDoc = roles.includes('bgd') || roles.includes('system_admin');
+  const laNguoiDuyet = roles.includes('bgd') || roles.includes('tcth_admin') || roles.includes('system_admin');
   const { data: ds = [], isLoading } = useChucDanhRieng();
   const { data: canBo = [] } = useCanBoDanhThiep();
   const { data: tuDien = [] } = useChucDanh();
@@ -133,11 +134,11 @@ export function TabChucDanhRieng() {
           )}
           {d.status === 'pending' && (
             <div className="flex gap-2">
-              <Button size="sm" disabled={!laGiamDoc || dangXuLy === d.id} onClick={() => duyet(d, true)}
-                title={laGiamDoc ? undefined : 'Chỉ Giám đốc duyệt chức danh riêng'}>
+              <Button size="sm" disabled={!laNguoiDuyet || dangXuLy === d.id} onClick={() => duyet(d, true)}
+                title={laNguoiDuyet ? undefined : 'Chỉ Giám đốc hoặc Phòng TCTH duyệt chức danh riêng'}>
                 <Check className="mr-1 h-4 w-4" /> Duyệt
               </Button>
-              <Button size="sm" variant="outline" disabled={!laGiamDoc || dangXuLy === d.id} onClick={() => { setTuChoi(d); setLyDo(''); }}>
+              <Button size="sm" variant="outline" disabled={!laNguoiDuyet || dangXuLy === d.id} onClick={() => { setTuChoi(d); setLyDo(''); }}>
                 <X className="mr-1 h-4 w-4" /> Từ chối
               </Button>
             </div>
@@ -149,11 +150,9 @@ export function TabChucDanhRieng() {
 
   return (
     <div className="space-y-5">
-      {!laGiamDoc && (
-        <p className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
-          Hàng chờ này do <b>Giám đốc Chi nhánh</b> duyệt. Phòng TCTH xem để theo dõi và nhắc cán bộ bổ sung bản dịch.
-        </p>
-      )}
+      <p className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
+        Giám đốc hoặc Phòng TCTH duyệt. Duyệt xong thẻ đổi ngay; hết hạn thì thẻ tự lùi về chức danh chuẩn (job hằng ngày) và cột cảnh báo ở tab Cán bộ báo trước 30 ngày.
+      </p>
       <section className="space-y-3">
         <h2 className="text-sm font-semibold">Chờ duyệt ({choDuyet.length})</h2>
         {isLoading && <p className="text-sm text-muted-foreground">Đang tải…</p>}

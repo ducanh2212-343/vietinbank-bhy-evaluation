@@ -15,7 +15,7 @@ const muc: MucLichSu = {
     'Thẻ tự chọn ngôn ngữ theo điện thoại khách; thiếu bản dịch thì hiện tiếng Anh, không dịch máy.',
     'Nút «Lưu vào danh bạ» tải tệp liên hệ mở thẳng trên iPhone và Android; khách Trung Quốc thấy tên Hán tự cùng tên tiếng Việt.',
     'Kênh chat trên thẻ: Zalo, LINE, WhatsApp mở thẳng; WeChat và KakaoTalk hiện ảnh QR cá nhân bạn tải lên.',
-    'Muốn chức danh đối ngoại khác từ điển (kiêm nhiệm, dự án) thì gửi đề nghị ngay trên màn — Giám đốc duyệt.',
+    'Muốn chức danh đối ngoại khác từ điển (kiêm nhiệm, dự án) thì gửi đề nghị ngay trên màn — Giám đốc hoặc Phòng TCTH duyệt.',
     'Xem được số lượt quét thẻ 30 ngày qua theo ngôn ngữ.',
   ],
   duongDan: '/danh-thiep-cua-toi',

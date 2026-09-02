@@ -8,6 +8,13 @@
  */
 import type { BanDich, MaNgonNgu } from './ngonNgu';
 
+/**
+ * Nhãn thương hiệu đứng trước tên Chi nhánh trên thẻ («VietinBank – Chi nhánh
+ * Bắc Hưng Yên») — giống nhau ở mọi ngôn ngữ, quyết định của Giám đốc 02/09/2026.
+ * Tên pháp lý đầy đủ (đơn vị gốc NH trong từ điển) vẫn đi vào trường ORG của vCard.
+ */
+export const THUONG_HIEU = 'VietinBank';
+
 export type LoaiNhanSu = 'bien_che' | 'hop_dong' | 'thue_ngoai' | 'ctv' | 'thuc_tap';
 export type PhamViChucDanh = 'internal' | 'external';
 export type TrangThaiDuyet = 'draft' | 'pending' | 'approved' | 'rejected' | 'retired';
