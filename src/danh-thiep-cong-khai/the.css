@@ -1,0 +1,139 @@
+/*
+ * Kiểu của tấm thẻ + trang danh thiếp công khai.
+ * Thuần CSS (không Tailwind): trang công khai không được kéo theo biểu định
+ * kiểu của cổng nội bộ; màn quản trị nhập cùng tệp này để xem trước y hệt.
+ * Bảng màu theo đặc tả: navy #12202E · antique gold #A8763E · Be Vietnam Pro.
+ */
+:root {
+  --nc-navy: #12202E;
+  --nc-gold: #A8763E;
+  --nc-gold-2: #d2a56b;
+  --nc-ink: #12202E;
+  --nc-muted: #5b6b7a;
+  --nc-line: #e6eaef;
+  --nc-font: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui,
+    'PingFang SC', 'Hiragino Sans', 'Microsoft YaHei', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+}
+.nc-card[lang^='zh'] { font-family: 'Noto Sans SC', 'Noto Sans TC', var(--nc-font); }
+.nc-card[lang='zh-hant'] { font-family: 'Noto Sans TC', 'Noto Sans SC', var(--nc-font); }
+.nc-card[lang='ko'] { font-family: 'Noto Sans KR', var(--nc-font); }
+.nc-card[lang='ja'] { font-family: 'Noto Sans JP', var(--nc-font); }
+
+.nc-card {
+  font-family: var(--nc-font);
+  color: var(--nc-ink);
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, .5);
+  overflow: hidden;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  text-align: left;
+  line-height: 1.45;
+  word-break: break-word;
+}
+.nc-card * { box-sizing: border-box; }
+
+.nc-head {
+  min-height: 72px;
+  padding: 18px 22px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 5px solid var(--nc-gold);
+}
+.nc-logo { height: 56px; width: auto; display: block; }
+.nc-affil { margin: 0; font-size: 13px; font-weight: 600; color: var(--nc-muted); letter-spacing: .01em; }
+
+.nc-identity { padding: 14px 22px 4px; }
+.nc-photo {
+  width: 96px; height: 96px; border-radius: 50%; object-fit: cover; display: block;
+  margin-bottom: 12px; border: 3px solid #fff; box-shadow: 0 0 0 2px var(--nc-gold-2);
+  background: #eef2f6;
+}
+.nc-name { margin: 0; font-size: 26px; line-height: 1.2; font-weight: 700; letter-spacing: -0.01em; }
+.nc-name-sub { margin: 2px 0 0; font-size: 15px; color: var(--nc-muted); font-weight: 600; }
+.nc-title { margin: 8px 0 0; font-size: 15px; font-weight: 600; color: var(--nc-gold); }
+.nc-unit { margin: 10px 0 0; font-size: 14px; font-weight: 600; }
+.nc-org { margin: 2px 0 0; font-size: 12.5px; color: var(--nc-muted); }
+
+.nc-cta {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  margin: 18px 22px 6px; padding: 14px 18px; border-radius: 14px;
+  background: var(--nc-navy); color: #fff; text-decoration: none;
+  font-size: 16px; font-weight: 700; letter-spacing: .01em;
+  box-shadow: 0 10px 24px -10px rgba(18, 32, 46, .6);
+  -webkit-tap-highlight-color: transparent;
+}
+.nc-cta:active { transform: translateY(1px); }
+.nc-cta--mo { opacity: .55; cursor: default; }
+
+.nc-contacts { list-style: none; margin: 8px 0 0; padding: 4px 22px 8px; }
+.nc-contacts li { display: flex; flex-direction: column; padding: 10px 0; border-top: 1px solid var(--nc-line); }
+.nc-contacts li:first-child { border-top: 0; }
+.nc-k { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--nc-muted); font-weight: 600; }
+.nc-contacts a { color: var(--nc-ink); text-decoration: none; font-size: 15.5px; font-weight: 600; margin-top: 2px; }
+.nc-contacts a small { color: var(--nc-gold); font-weight: 700; white-space: nowrap; }
+.nc-contacts span + span { font-size: 15px; margin-top: 2px; }
+
+.nc-channels { padding: 6px 22px 22px; }
+.nc-channels h2 { margin: 0 0 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--nc-muted); }
+.nc-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.nc-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 9px 14px; border-radius: 999px;
+  border: 1.5px solid var(--nc-line); background: #fff; color: var(--nc-ink);
+  font: inherit; font-size: 14px; font-weight: 600; text-decoration: none; cursor: pointer;
+}
+.nc-chip--zalo { border-color: #0068ff; color: #0068ff; }
+.nc-chip--wechat { border-color: #07c160; color: #07c160; }
+.nc-chip--kakaotalk { border-color: #d9b400; color: #7a6200; }
+.nc-chip--line { border-color: #06c755; color: #06843a; }
+.nc-chip--whatsapp { border-color: #25d366; color: #128c7e; }
+.nc-chip--linkedin { border-color: #0a66c2; color: #0a66c2; }
+
+/* Mẫu thẻ đối tác / cộng tác viên: không logo, viền xám trung tính thay cho vàng */
+.nc-tpl-tpl_partner .nc-head, .nc-tpl-tpl_collab .nc-head { border-top-color: #9aa7b4; }
+.nc-tpl-tpl_partner .nc-title, .nc-tpl-tpl_collab .nc-title { color: var(--nc-muted); }
+
+/* ---------- Trang công khai (vỏ ngoài tấm thẻ) ---------- */
+.nc-page {
+  min-height: 100dvh; display: flex; flex-direction: column; align-items: center;
+  padding: 14px 16px calc(28px + env(safe-area-inset-bottom));
+  background: radial-gradient(120% 80% at 50% 0%, #1d3349 0%, var(--nc-navy) 60%);
+  font-family: var(--nc-font);
+}
+.nc-langs {
+  display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin: 4px 0 14px;
+}
+.nc-langs button {
+  font: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 11px; border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, .25); background: rgba(255, 255, 255, .06); color: #fff; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.nc-langs button[aria-pressed='true'] { background: var(--nc-gold); border-color: var(--nc-gold); color: #fff; }
+.nc-foot { margin-top: 18px; font-size: 11.5px; color: rgba(255, 255, 255, .55); text-align: center; }
+.nc-foot a { color: inherit; }
+
+.nc-notice {
+  width: 100%; max-width: 420px; background: #fff; border-radius: 20px; padding: 28px 22px; text-align: center;
+  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, .5);
+}
+.nc-notice h1 { font-size: 20px; margin: 0 0 8px; }
+.nc-notice p { margin: 6px 0; color: var(--nc-muted); }
+.nc-notice .nc-cta { margin: 16px 0 0; }
+.nc-notice a.nc-lk { color: var(--nc-ink); font-weight: 600; }
+
+/* Hộp QR toàn màn hình cho WeChat / KakaoTalk: nền trắng, mã to, một dòng hướng dẫn */
+.nc-qr {
+  position: fixed; inset: 0; z-index: 50; background: #fff; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; padding: 24px; text-align: center; font-family: var(--nc-font);
+}
+.nc-qr img { width: min(78vw, 360px); height: auto; aspect-ratio: 1; object-fit: contain; image-rendering: pixelated; }
+.nc-qr p { margin: 18px 0 0; font-size: 15px; color: var(--nc-ink); max-width: 320px; }
+.nc-qr button {
+  margin-top: 22px; font: inherit; font-weight: 700; padding: 12px 28px; border-radius: 999px;
+  border: 0; background: var(--nc-navy); color: #fff; cursor: pointer;
+}

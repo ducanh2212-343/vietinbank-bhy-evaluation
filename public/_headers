@@ -22,6 +22,14 @@
 /sw.js
   Cache-Control: public, max-age=0, must-revalidate
 
+# Vỏ trang danh thiếp số công khai (/card/* → card.html qua _redirects): dữ liệu
+# thẻ đọc từ máy chủ nên vỏ phải luôn tươi như index.html.
+/card.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/card/*
+  Cache-Control: public, max-age=0, must-revalidate
+
 # --- Bảo mật ---
 # Token phiên Supabase nằm ở localStorage, nên nếu có XSS thì connect-src/img-src là
 # chốt chặn cuối ngăn kẻ tấn công gửi token ra miền lạ. Chỉ mở đúng nguồn trang thực

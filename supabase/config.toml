@@ -75,3 +75,9 @@ project_id = "whlysprzsguehxmrjwha"
   # cho ai, tắt đi là ai cũng đổi được mật khẩu của người khác.
   [functions.doi-mat-khau]
     verify_jwt = true
+
+  # Trả tệp .vcf cho KHÁCH quét danh thiếp số — công khai theo thiết kế: dữ liệu
+  # đã được nc_resolve_card() lọc theo ma trận quyền hiển thị và anon vốn gọi
+  # được hàm đó. Bật verify_jwt là khách (không có phiên) tải không được.
+  [functions.danh-thiep-vcard]
+    verify_jwt = false

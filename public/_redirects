@@ -1,0 +1,8 @@
+# Cloudflare Workers static assets — cùng cú pháp với Pages.
+#
+# Trang danh thiếp số công khai: /card/<slug> phục vụ bằng entry riêng card.html
+# (giữ nguyên URL — mã 200 là «proxy», không phải chuyển hướng). Nếu quy tắc này
+# không được áp (deploy sang nền tảng khác), SPA vẫn đỡ được: index.html có
+# route /card/:slug tự chuyển sang /card.html?s=<slug>. Vercel: xem vercel.json.
+/card/* /card.html 200
+/card /card.html 200
