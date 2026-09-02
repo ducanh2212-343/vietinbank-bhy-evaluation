@@ -10,7 +10,7 @@
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import {
-  Ban, Download, Eye, Loader2, Pencil, Plus, QrCode, Send, ShieldCheck, TriangleAlert, UserPlus,
+  Ban, Download, Eye, Loader2, Pencil, Plus, QrCode, RefreshCw, Send, ShieldCheck, TriangleAlert, UserPlus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -135,6 +135,8 @@ export function TabCanBo() {
   const [hoSo, setHoSo] = useState<HoSo343[] | null>(null);
   const [timHoSo, setTimHoSo] = useState('');
   const [moChonHoSo, setMoChonHoSo] = useState(false);
+  const [dangDongBo, setDangDongBo] = useState(false);
+  const [ketQuaDongBo, setKetQuaDongBo] = useState<{ tao_moi: number; loi: number; chua_anh_xa_chuc_danh: string[]; chi_tiet_loi: string[] } | null>(null);
 
   const chucDanhMap = useMemo(() => new Map(chucDanh.map((c) => [c.id, c])), [chucDanh]);
   const donViMap = useMemo(() => new Map(donVi.map((d) => [d.code, d])), [donVi]);
@@ -212,6 +214,22 @@ export function TabCanBo() {
     toast.success(form.id ? 'Đã lưu hồ sơ danh thiếp' : 'Đã tạo hồ sơ danh thiếp (nháp)');
     setForm(null);
     lamTuoi();
+  };
+
+  // Dựng bản nháp cho MỌI cán bộ đang hoạt động chưa có hồ sơ danh thiếp —
+  // phòng ban và chức danh 343 ánh xạ tự động, ai không ánh xạ được thì liệt kê
+  const dongBoTu343 = async () => {
+    setDangDongBo(true);
+    try {
+      const kq = await goiRpc<{ tao_moi: number; loi: number; chua_anh_xa_chuc_danh: string[]; chi_tiet_loi: string[] }>('nc_dong_bo_hang_loat_tu_343');
+      setKetQuaDongBo(kq);
+      toast.success(`Đã dựng ${kq.tao_moi} bản nháp từ hồ sơ 343`);
+      lamTuoi();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setDangDongBo(false);
+    }
   };
 
   // ---- Duyệt / phát hành / thu hồi ----------------------------------------
@@ -356,6 +374,9 @@ export function TabCanBo() {
         </div>
         {laQuanTri && (
           <>
+            <Button variant="outline" onClick={dongBoTu343} disabled={dangDongBo} title="Dựng bản nháp cho mọi cán bộ chưa có hồ sơ danh thiếp">
+              {dangDongBo ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1.5 h-4 w-4" />} Dựng nháp toàn bộ từ 343
+            </Button>
             <Button variant="outline" onClick={moChonTuHoSo}><UserPlus className="mr-1.5 h-4 w-4" /> Tạo từ hồ sơ 343</Button>
             <Button onClick={moThemTay}><Plus className="mr-1.5 h-4 w-4" /> Nhập tay</Button>
           </>
@@ -464,6 +485,29 @@ export function TabCanBo() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Kết quả đồng bộ hàng loạt */}
+      <Dialog open={!!ketQuaDongBo} onOpenChange={(o) => { if (!o) setKetQuaDongBo(null); }}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Đã dựng {ketQuaDongBo?.tao_moi ?? 0} bản nháp từ hồ sơ 343</DialogTitle>
+            <DialogDescription>Bản nháp chưa công khai. Duyệt từng người rồi phát hành; cán bộ đã xem trước được thẻ của mình ở «Danh thiếp số của tôi».</DialogDescription>
+          </DialogHeader>
+          {ketQuaDongBo && ketQuaDongBo.chua_anh_xa_chuc_danh.length > 0 && (
+            <div className="text-sm">
+              <p className="font-medium text-amber-700">Chưa ánh xạ được chức danh đối ngoại ({ketQuaDongBo.chua_anh_xa_chuc_danh.length}) — gán tay:</p>
+              <ul className="mt-1 max-h-48 list-disc overflow-y-auto pl-5 text-muted-foreground">{ketQuaDongBo.chua_anh_xa_chuc_danh.map((t) => <li key={t}>{t}</li>)}</ul>
+            </div>
+          )}
+          {ketQuaDongBo && ketQuaDongBo.loi > 0 && (
+            <div className="text-sm">
+              <p className="font-medium text-destructive">Lỗi ({ketQuaDongBo.loi}):</p>
+              <ul className="mt-1 max-h-48 list-disc overflow-y-auto pl-5 text-muted-foreground">{ketQuaDongBo.chi_tiet_loi.map((t) => <li key={t}>{t}</li>)}</ul>
+            </div>
+          )}
+          <DialogFooter><Button onClick={() => setKetQuaDongBo(null)}>Đóng</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Hộp chọn hồ sơ 343 */}
       <Dialog open={moChonHoSo} onOpenChange={setMoChonHoSo}>

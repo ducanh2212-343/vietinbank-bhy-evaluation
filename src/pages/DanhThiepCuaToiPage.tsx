@@ -20,7 +20,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useCauHinhDanhThiep, useDanhThiepCuaToi, useLamTuoiDanhThiep } from '@/hooks/useDanhThiep';
-import { db, urlAnhDanhThiep } from '@/lib/danhThiep/db';
+import { db, goiRpc, laChuaKichHoat, urlAnhDanhThiep } from '@/lib/danhThiep/db';
 import {
   CAC_KENH, HUONG_DAN_KENH, TEN_KENH, TEN_LOAI_NHAN_SU, kenhCanQr, mauTheTheoLoai, type Kenh, type LoaiKenh,
 } from '@/lib/danhThiep/kieu';
@@ -28,7 +28,7 @@ import { TEN_NGON_NGU } from '@/lib/danhThiep/ngonNgu';
 import { taiTepVeMay, taoQrPng } from '@/lib/danhThiep/qr';
 import { HuyHieuTrangThai } from '@/components/danh-thiep/HuyHieuTrangThai';
 import { GIA_TRI_6_TRONG, NhapSauNgonNgu, raCotTen, type GiaTri6 } from '@/components/danh-thiep/NhapSauNgonNgu';
-import { XemTruocThe } from '@/components/danh-thiep/XemTruocThe';
+import { KhungXemThe } from '@/components/danh-thiep/XemTruocThe';
 
 const SUPABASE_URL: string = import.meta.env.VITE_SUPABASE_URL ?? 'https://whlysprzsguehxmrjwha.supabase.co';
 
@@ -58,7 +58,7 @@ async function kiemQrVuong(file: File): Promise<void> {
 
 export default function DanhThiepCuaToiPage() {
   const { user } = useAuth();
-  const { data, isLoading } = useDanhThiepCuaToi(user?.id);
+  const { data, isLoading, error: loiTai } = useDanhThiepCuaToi(user?.id);
   const { data: cauHinh = {} } = useCauHinhDanhThiep();
   const lamTuoi = useLamTuoiDanhThiep();
   const baseUrl = typeof cauHinh.card_base_url === 'string' ? cauHinh.card_base_url : 'https://bachungyenone.com/card/';
@@ -66,7 +66,7 @@ export default function DanhThiepCuaToiPage() {
   const [dangLuu, setDangLuu] = useState(false);
   const [sdt, setSdt] = useState<string | null>(null);
   const [tenCjk, setTenCjk] = useState<{ zh: string; ko: string; ja: string } | null>(null);
-  const [xemTruoc, setXemTruoc] = useState(false);
+  const [dangDung, setDangDung] = useState(false);
   const [kenhMoi, setKenhMoi] = useState<{ type: LoaiKenh; value: string } | null>(null);
   const [deNghi, setDeNghi] = useState<{ ten: GiaTri6; lyDo: string; hetHan: string } | null>(null);
 
@@ -158,14 +158,56 @@ export default function DanhThiepCuaToiPage() {
 
   const kenhDaCo = useMemo(() => new Set((data?.kenh ?? []).map((k) => k.type)), [data]);
 
+  // Cán bộ tự dựng bản nháp từ hồ sơ nhân sự 343 — thấy thẻ của mình ngay,
+  // không phải chờ Phòng TCTH nhập tay. Thẻ vẫn chưa công khai cho tới khi duyệt.
+  const dungBanNhap = async () => {
+    setDangDung(true);
+    try {
+      await goiRpc('nc_tao_ban_nhap_tu_343', {});
+      toast.success('Đã dựng bản nháp danh thiếp từ hồ sơ nhân sự của bạn');
+      lamTuoi();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setDangDung(false);
+    }
+  };
+
   if (isLoading) return <p className="text-muted-foreground">Đang tải…</p>;
-  if (!cb) {
+  if (loiTai && laChuaKichHoat(loiTai)) {
     return (
       <div className="space-y-4 animate-fade-in">
         <h1 className="page-header">Danh thiếp số của tôi</h1>
         <Card><CardContent className="p-6 text-sm text-muted-foreground">
-          Phòng TCTH chưa tạo hồ sơ danh thiếp số cho bạn. Khi có, bạn sẽ thấy đường dẫn thẻ, mã QR và tự cập nhật được số di động, ảnh, kênh chat tại đây.
+          Phân hệ danh thiếp số chưa được kích hoạt trên máy chủ (Phòng TCTH chưa áp cập nhật cơ sở dữ liệu). Bạn sẽ thấy thẻ của mình ngay sau khi kích hoạt.
         </CardContent></Card>
+      </div>
+    );
+  }
+  if (loiTai) {
+    return (
+      <div className="space-y-4 animate-fade-in">
+        <h1 className="page-header">Danh thiếp số của tôi</h1>
+        <Card><CardContent className="p-6 text-sm text-destructive">Không đọc được hồ sơ danh thiếp: {(loiTai as Error).message}</CardContent></Card>
+      </div>
+    );
+  }
+  if (!cb) {
+    return (
+      <div className="space-y-4 animate-fade-in">
+        <h1 className="page-header">Danh thiếp số của tôi</h1>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-base">Bạn chưa có hồ sơ danh thiếp</CardTitle>
+            <CardDescription>
+              Bấm một nút để máy ghép bản nháp từ hồ sơ nhân sự 343 của bạn (tên, email, phòng → đơn vị, chức danh → chức danh đối ngoại).
+              Bạn xem được ngay ở 6 ngôn ngữ; thẻ chỉ công khai sau khi Phòng TCTH duyệt và phát hành.
+            </CardDescription></CardHeader>
+          <CardContent>
+            <Button onClick={dungBanNhap} disabled={dangDung}>
+              {dangDung ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Eye className="mr-1.5 h-4 w-4" />} Dựng bản nháp danh thiếp của tôi
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -176,6 +218,22 @@ export default function DanhThiepCuaToiPage() {
         <h1 className="page-header">Danh thiếp số của tôi</h1>
         <p className="page-subtitle">Khách quét QR sẽ thấy thẻ đúng ngôn ngữ của họ và lưu được liên hệ trong vài giây.</p>
       </div>
+
+      {/* Thẻ hiện NGAY ở đầu trang — đúng thứ khách sẽ thấy, kể cả khi còn nháp */}
+      <section className="rounded-2xl bg-[#12202E] p-4 sm:p-6">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm text-white/80">
+          <span>{hoatDong ? 'Thẻ của bạn — đúng như khách thấy khi quét' : 'Xem trước thẻ của bạn (chưa công khai)'}</span>
+          {!hoatDong && !cb.revoked_at && (
+            <span className="rounded-full border border-amber-300/50 px-2 py-0.5 text-xs text-amber-200">
+              {cb.status === 'approved' ? 'Đã duyệt · chờ TCTH phát hành' : 'Bản nháp · chờ Phòng TCTH duyệt'}
+            </span>
+          )}
+        </div>
+        <KhungXemThe slug={cb.slug} gon />
+        {!cb.external_title_id && !cb.custom_title_id && (
+          <p className="mt-2 text-xs text-amber-200">Chưa gán được chức danh đối ngoại từ chức danh 343 của bạn — Phòng TCTH sẽ gán khi duyệt.</p>
+        )}
+      </section>
 
       <Card>
         <CardHeader className="pb-2">
@@ -191,7 +249,6 @@ export default function DanhThiepCuaToiPage() {
           <div className="flex flex-wrap items-center gap-2">
             <code className="rounded bg-muted px-2 py-1 text-xs">{url}</code>
             <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(url).then(() => toast.success('Đã sao chép đường dẫn thẻ'))}><Copy className="mr-1 h-4 w-4" /> Sao chép</Button>
-            <Button size="sm" variant="outline" onClick={() => setXemTruoc(true)}><Eye className="mr-1 h-4 w-4" /> Xem trước 6 ngôn ngữ</Button>
             {hoatDong && (
               <>
                 <Button size="sm" variant="outline" onClick={async () => {
@@ -335,7 +392,6 @@ export default function DanhThiepCuaToiPage() {
         </DialogContent>
       </Dialog>
 
-      <XemTruocThe slug={xemTruoc ? cb.slug : null} onDong={() => setXemTruoc(false)} />
     </div>
   );
 }

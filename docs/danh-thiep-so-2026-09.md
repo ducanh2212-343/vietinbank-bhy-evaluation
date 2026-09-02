@@ -8,7 +8,7 @@ vì sao, phải làm gì khi triển khai, và những điểm cần Giám đố
 
 | # | Việc | Kết quả |
 |---|---|---|
-| 1 | Schema + RLS + `nc_resolve_card(slug)` | `supabase/migrations/20261004090000_danh_thiep_so_nen_tang.sql` (+ rollback). **Chưa áp** vào project. |
+| 1 | Schema + RLS + `nc_resolve_card(slug)` | `supabase/migrations/20261004090000_danh_thiep_so_nen_tang.sql` (+ rollback). **Chưa áp** vào project. Kèm `20261004090200_..._tu_tao_ban_nhap.sql` (dựng nháp từ hồ sơ 343, mục 5b). |
 | 2 | Dữ liệu mồi Mục 11, toàn bộ `draft` | `supabase/migrations/20261004090100_danh_thiep_so_du_lieu_moi.sql` (+ rollback). Phồn thể sinh máy bằng OpenCC s2twp. **Chưa áp**. |
 | 3 | Trang `/card/<slug>` + đo ngân sách | Entry riêng `card.html`; đo trên bản build: **~58 KB gzip / 180 KB thô** lần tải đầu (chưa tính font), **LCP 964 ms** ở 4G + CPU chậm ×4 — dưới trần 300 KB / 1,5 s. |
 | 4 | Tab 2 từ điển chức danh | `/quan-tri-danh-thiep/chuc-danh` — kèm luôn Tab 1, 3, 4 và màn tự phục vụ vì không có chúng thì không phát hành nổi một tấm thẻ để nghiệm thu. |
@@ -76,8 +76,8 @@ nhánh · cán bộ sửa được SĐT, không sửa được chức danh · au
 
 ## 4. Việc phải làm khi triển khai (theo thứ tự)
 
-1. **Áp migration** `20261004090000_danh_thiep_so_nen_tang.sql` rồi
-   `20261004090100_danh_thiep_so_du_lieu_moi.sql` vào project `whlysprzsguehxmrjwha`
+1. **Áp migration** `20261004090000_danh_thiep_so_nen_tang.sql`, `20261004090100_danh_thiep_so_du_lieu_moi.sql`
+   rồi `20261004090200_danh_thiep_so_tu_tao_ban_nhap.sql` vào project `whlysprzsguehxmrjwha`
    (SQL Editor). Ghi lại vào README. Regenerate `src/integrations/supabase/types.ts`
    (sau đó có thể đổi `db` trong `src/lib/danhThiep/db.ts` về `supabase`).
 2. **Deploy edge function** `danh-thiep-vcard` (`config.toml` đã khai `verify_jwt = false`).
@@ -103,6 +103,28 @@ nhánh · cán bộ sửa được SĐT, không sửa được chức danh · au
 | 3 | Dòng tổ chức trên thẻ | «VietinBank – Chi nhánh Bắc Hưng Yên» | Hàm `dongToChuc()` ghép thương hiệu + tên Chi nhánh theo ngôn ngữ khách; tên pháp lý đầy đủ chỉ còn trong tệp .vcf. |
 | 4 | Địa chỉ đầy đủ và hotline Chi nhánh cho trang «đã chuyển công tác» | (chưa có số cụ thể) | Dữ liệu mồi tạm ghi «Đường Nguyễn Văn Linh, phường Mỹ Hào, tỉnh Hưng Yên» (6 ngôn ngữ) theo danh bạ mạng lưới công khai — **TCTH bổ sung số nhà và số điện thoại trực** ở Tab 1 trước khi duyệt đơn vị `CN_BHY`. Không đưa hotline chưa kiểm chứng vào dữ liệu. |
 | 5 | CTV / thực tập sinh có chức danh không | Có, TCTH nhập theo từng thời kỳ | Không cần đổi mã: Tab 2 cho tick «Cộng tác viên» / «Thực tập sinh» ở «Loại nhân sự được gán»; thẻ hiện chức danh đó nhưng vẫn không logo, không email VietinBank, chỉ Zalo (CTV) theo ma trận. |
+
+## 5b. Cán bộ thấy NGAY thẻ của mình (bổ sung 02/09/2026)
+
+Vấn đề Giám đốc nêu khi thử bản preview: mở «Danh thiếp số của tôi» chỉ thấy «Phòng
+TCTH chưa tạo hồ sơ», và trang tải chậm.
+
+- **Chậm** vì migration chưa áp: truy vấn bảng `nc_staff` lỗi «không có bảng», React
+  Query thử lại 3 lần (~7 giây) rồi mới hiện câu trên. Nay mọi truy vấn `nc_*` không
+  thử lại khi gặp lỗi này và màn hình nói thẳng «phân hệ chưa kích hoạt».
+- **Thấy ngay**: migration `20261004090200_danh_thiep_so_tu_tao_ban_nhap.sql` thêm
+  `nc_tao_ban_nhap_tu_343()` (cán bộ tự dựng bản nháp từ hồ sơ 343 của mình, một nút
+  bấm) và `nc_dong_bo_hang_loat_tu_343()` (TCTH dựng nháp cho toàn bộ cán bộ chưa có).
+  Phòng 343 → đơn vị, chức danh 343 → chức danh đối ngoại qua hai hàm ánh xạ
+  `nc_anh_xa_don_vi_343()` / `nc_anh_xa_chuc_danh_343()`. Thẻ hiện ngay ở đầu màn
+  tự phục vụ (6 ngôn ngữ) qua `nc_resolve_card(slug, xem_truoc = true)` — vẫn **chưa
+  công khai** cho tới khi TCTH duyệt và phát hành, nên NT1/NT2 không đổi.
+- Đối chiếu trên 100 hồ sơ 343 đang hoạt động (02/09/2026): **100/100 ánh xạ được**
+  chức danh đối ngoại — RM_BL 23, GDV 20, Chuyên viên (CV) 13, RM_KHDN 8, Phó GĐ PGD 7,
+  Phó phòng 7, GĐ PGD 5, Trưởng phòng 5, RM_FDI 3, Thủ quỹ 3, Phó GĐ CN 3, KSV 2, GĐ 1.
+  Ba mã `PGD_PGD`, `CV`, `TQ` được thêm vào dữ liệu mồi (nháp) để ánh xạ đủ. Lưu ý dữ
+  liệu 343: 98/100 chưa có ảnh, 96/100 chưa có số di động — cán bộ tự bổ sung ở màn
+  tự phục vụ.
 
 ## 6. Còn lại cho GĐ2–GĐ3
 

@@ -202,8 +202,8 @@ lên thẻ, nhân sự thuê ngoài dùng mẫu riêng — mọi luật thực t
 riêng); tự phục vụ: `/danh-thiep-cua-toi`. Trang công khai là entry riêng `card.html`
 (~58 KB gzip, LCP < 1 s trên 4G), ánh xạ `/card/*` bằng `public/_redirects`.
 
-**Trạng thái (02/09/2026):** migration `20261004090000_danh_thiep_so_nen_tang.sql` và
-`20261004090100_danh_thiep_so_du_lieu_moi.sql` **chưa áp** (đã chạy khô 27 kịch bản trên
+**Trạng thái (02/09/2026):** migration `20261004090000_danh_thiep_so_nen_tang.sql`,
+`20261004090100_danh_thiep_so_du_lieu_moi.sql` và `20261004090200_danh_thiep_so_tu_tao_ban_nhap.sql` **chưa áp** (đã chạy khô 27 kịch bản trên
 project thật, rollback, đạt 27/27); edge function `danh-thiep-vcard` **chưa deploy**.
 Checklist triển khai và các điểm cần Giám đốc quyết: `docs/danh-thiep-so-2026-09.md`.
 

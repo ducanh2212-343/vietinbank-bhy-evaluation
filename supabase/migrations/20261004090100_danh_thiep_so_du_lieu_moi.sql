@@ -86,7 +86,12 @@ VALUES
   ('RM_KHDN', 'external', 'Chuyên viên QHKH Doanh nghiệp', 'Corporate Relationship Manager','企业客户经理', '企業客戶經理', '기업고객 담당', '法人営業担当'),
   ('RM_BL',   'external', 'Chuyên viên QHKH Bán lẻ',       'Retail Relationship Manager',   '零售客户经理', '零售客戶經理', '개인고객 담당', '個人営業担当'),
   ('GDV',     'external', 'Giao dịch viên',                'Teller',                        '柜员',         '櫃員',         '텔러',          'テラー'),
-  ('KSV',     'external', 'Kiểm soát viên',                'Controller',                    '复核员',       '複核員',       '검사역',        '検査役')
+  ('KSV',     'external', 'Kiểm soát viên',                'Controller',                    '复核员',       '複核員',       '검사역',        '検査役'),
+  -- Ba dòng thêm ngoài đặc tả để hồ sơ 343 ánh xạ được (nc_anh_xa_chuc_danh_343):
+  -- Phó phòng giao dịch, cán bộ nghiệp vụ nội bộ, thủ quỹ / thủ kho tiền
+  ('PGD_PGD', 'external', 'Phó Giám đốc Phòng giao dịch',  'Deputy Manager, Transaction Office', '营业部副经理', '營業部副經理', '부출장소장', '出張所副所長'),
+  ('CV',      'external', 'Chuyên viên',                   'Officer',                       '专员',         '專員',         '담당자',        '担当'),
+  ('TQ',      'external', 'Thủ quỹ',                       'Cashier',                       '出纳',         '出納',         '출납 담당',     '出納担当')
 ON CONFLICT (code) DO NOTHING;
 
 -- ---------------------------------------------------------------------------

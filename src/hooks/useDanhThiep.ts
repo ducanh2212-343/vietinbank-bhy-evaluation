@@ -3,7 +3,7 @@
  * đọc qua đây để cùng một khóa cache, sửa ở tab này thì tab kia tự tươi.
  */
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { db, goiRpc } from '@/lib/danhThiep/db';
+import { db, goiRpc, thuLaiNc } from '@/lib/danhThiep/db';
 import type { CanBo, ChucDanh, ChucDanhRieng, DonVi, Kenh, TheDaPhatHanh } from '@/lib/danhThiep/kieu';
 
 export const KHOA = {
@@ -18,26 +18,34 @@ export const KHOA = {
 
 async function docBang<T>(bang: string, sapXep: string, tang = true): Promise<T[]> {
   const { data, error } = await db.from(bang).select('*').order(sapXep, { ascending: tang });
-  if (error) throw new Error(error.message);
+  if (error) throw nemLoi(error);
   return (data ?? []) as T[];
 }
 
+/** Giữ mã lỗi PostgREST trên Error để laChuaKichHoat() nhận diện được. */
+function nemLoi(error: { message: string; code?: string }): Error {
+  const e = new Error(error.message) as Error & { code?: string };
+  e.code = error.code;
+  return e;
+}
+
 export function useDonVi() {
-  return useQuery({ queryKey: KHOA.donVi, queryFn: () => docBang<DonVi>('nc_org_unit', 'sort_order') });
+  return useQuery({ queryKey: KHOA.donVi, queryFn: () => docBang<DonVi>('nc_org_unit', 'sort_order'), retry: thuLaiNc });
 }
 
 export function useChucDanh() {
-  return useQuery({ queryKey: KHOA.chucDanh, queryFn: () => docBang<ChucDanh>('nc_title', 'code') });
+  return useQuery({ queryKey: KHOA.chucDanh, queryFn: () => docBang<ChucDanh>('nc_title', 'code'), retry: thuLaiNc });
 }
 
 export function useCanBoDanhThiep() {
-  return useQuery({ queryKey: KHOA.canBo, queryFn: () => docBang<CanBo>('nc_staff', 'full_name') });
+  return useQuery({ queryKey: KHOA.canBo, queryFn: () => docBang<CanBo>('nc_staff', 'full_name'), retry: thuLaiNc });
 }
 
 export function useChucDanhRieng() {
   return useQuery({
     queryKey: KHOA.chucDanhRieng,
     queryFn: () => docBang<ChucDanhRieng>('nc_custom_title', 'requested_at', false),
+    retry: thuLaiNc,
   });
 }
 
@@ -51,6 +59,7 @@ export function useSoCanBoTheoChucDanh() {
       for (const r of rows ?? []) m[r.title_id] = Number(r.so_can_bo);
       return m;
     },
+    retry: thuLaiNc,
   });
 }
 
@@ -59,11 +68,12 @@ export function useCauHinhDanhThiep() {
     queryKey: KHOA.cauHinh,
     queryFn: async () => {
       const { data, error } = await db.from('nc_cau_hinh').select('khoa, gia_tri');
-      if (error) throw new Error(error.message);
+      if (error) throw nemLoi(error);
       const m: Record<string, unknown> = {};
       for (const r of data ?? []) m[r.khoa] = r.gia_tri;
       return m;
     },
+    retry: thuLaiNc,
   });
 }
 
@@ -72,9 +82,10 @@ export function useDanhThiepCuaToi(userId: string | null | undefined) {
   return useQuery({
     queryKey: [...KHOA.cuaToi, userId],
     enabled: !!userId,
+    retry: thuLaiNc,
     queryFn: async () => {
       const { data: cb, error } = await db.from('nc_staff').select('*').eq('user_id', userId).maybeSingle();
-      if (error) throw new Error(error.message);
+      if (error) throw nemLoi(error);
       if (!cb) return null;
       const [kenh, the, rieng] = await Promise.all([
         db.from('nc_channel').select('*').eq('staff_id', cb.id).order('sort_order'),

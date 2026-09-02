@@ -23,11 +23,14 @@ interface Props {
   onDong: () => void;
 }
 
-export function XemTruocThe({ slug, payload, tieuDe, onDong }: Props) {
+/**
+ * Lõi xem thẻ (nút ngôn ngữ + tấm thẻ) — dùng inline ở «Danh thiếp số của tôi»
+ * để cán bộ thấy ngay thẻ của mình, và trong hộp thoại ở màn quản trị.
+ */
+export function KhungXemThe({ slug, payload, gon }: { slug: string | null; payload?: PayloadThe | null; gon?: boolean }) {
   const [lang, setLang] = useState<MaNgonNgu>('vi');
   const [the, setThe] = useState<PayloadThe | null>(payload ?? null);
   const [loi, setLoi] = useState<string | null>(null);
-  const mo = !!slug || !!payload;
 
   useEffect(() => {
     if (payload) { setThe(payload); return; }
@@ -46,6 +49,32 @@ export function XemTruocThe({ slug, payload, tieuDe, onDong }: Props) {
   }, [slug, payload]);
 
   return (
+    <>
+      <div className="flex flex-wrap justify-center gap-1.5">
+        {CAC_NGON_NGU.map((l) => (
+          <Button key={l} type="button" size="sm" variant={l === lang ? 'default' : 'outline'}
+            className={l === lang ? 'bg-[#A8763E] hover:bg-[#8f6233]' : 'border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white'}
+            onClick={() => setLang(l)}>
+            {TEN_NGON_NGU[l]}
+          </Button>
+        ))}
+      </div>
+      <div className={gon ? 'py-3' : 'max-h-[70vh] overflow-y-auto py-2'}>
+        {loi ? (
+          <p className="rounded-lg bg-white p-4 text-center text-sm text-destructive">{loi}</p>
+        ) : the ? (
+          <TheDanhThiep the={the} lang={lang} chuoi={CHUOI[lang]} />
+        ) : (
+          <p className="flex items-center justify-center gap-2 py-10 text-white/80"><Loader2 className="h-4 w-4 animate-spin" /> Đang dựng thẻ…</p>
+        )}
+      </div>
+    </>
+  );
+}
+
+export function XemTruocThe({ slug, payload, tieuDe, onDong }: Props) {
+  const mo = !!slug || !!payload;
+  return (
     <Dialog open={mo} onOpenChange={(o) => { if (!o) onDong(); }}>
       <DialogContent className="max-w-lg bg-[#12202E] p-4 sm:p-6">
         <DialogHeader>
@@ -54,24 +83,7 @@ export function XemTruocThe({ slug, payload, tieuDe, onDong }: Props) {
             Đúng những gì khách thấy sau khi quét — đổi ngôn ngữ để rà bản dịch.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex flex-wrap justify-center gap-1.5">
-          {CAC_NGON_NGU.map((l) => (
-            <Button key={l} type="button" size="sm" variant={l === lang ? 'default' : 'outline'}
-              className={l === lang ? 'bg-[#A8763E] hover:bg-[#8f6233]' : 'border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white'}
-              onClick={() => setLang(l)}>
-              {TEN_NGON_NGU[l]}
-            </Button>
-          ))}
-        </div>
-        <div className="max-h-[70vh] overflow-y-auto py-2">
-          {loi ? (
-            <p className="rounded-lg bg-white p-4 text-center text-sm text-destructive">{loi}</p>
-          ) : the ? (
-            <TheDanhThiep the={the} lang={lang} chuoi={CHUOI[lang]} />
-          ) : (
-            <p className="flex items-center justify-center gap-2 py-10 text-white/80"><Loader2 className="h-4 w-4 animate-spin" /> Đang dựng thẻ…</p>
-          )}
-        </div>
+        {mo && <KhungXemThe slug={slug} payload={payload} />}
       </DialogContent>
     </Dialog>
   );
