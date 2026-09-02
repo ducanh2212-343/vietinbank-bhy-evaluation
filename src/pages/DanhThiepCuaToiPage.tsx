@@ -1,5 +1,5 @@
 /**
- * DANH THIẾP CỦA TÔI — trang tự phục vụ (Mục 6 đặc tả).
+ * BẮC HƯNG YÊN VCARD — DANH THIẾP CỦA TÔI, trang tự phục vụ (Mục 6 đặc tả).
  *
  * Cán bộ chỉ tự sửa được: số di động, ảnh, tên tiếng nước ngoài (xác nhận mặt
  * chữ), các kênh chat và ảnh QR WeChat/Kakao. Chức danh, đơn vị, email, loại
@@ -177,6 +177,7 @@ export default function DanhThiepCuaToiPage() {
   if (loiTai && laChuaKichHoat(loiTai)) {
     return (
       <div className="space-y-4 animate-fade-in">
+        <p className="text-xs font-semibold uppercase tracking-wider text-[#A8763E]">Bắc Hưng Yên VCard</p>
         <h1 className="page-header">Danh thiếp số của tôi</h1>
         <Card><CardContent className="p-6 text-sm text-muted-foreground">
           Phân hệ danh thiếp số chưa được kích hoạt trên máy chủ (Phòng TCTH chưa áp cập nhật cơ sở dữ liệu). Bạn sẽ thấy thẻ của mình ngay sau khi kích hoạt.
@@ -187,6 +188,7 @@ export default function DanhThiepCuaToiPage() {
   if (loiTai) {
     return (
       <div className="space-y-4 animate-fade-in">
+        <p className="text-xs font-semibold uppercase tracking-wider text-[#A8763E]">Bắc Hưng Yên VCard</p>
         <h1 className="page-header">Danh thiếp số của tôi</h1>
         <Card><CardContent className="p-6 text-sm text-destructive">Không đọc được hồ sơ danh thiếp: {(loiTai as Error).message}</CardContent></Card>
       </div>
@@ -195,6 +197,7 @@ export default function DanhThiepCuaToiPage() {
   if (!cb) {
     return (
       <div className="space-y-4 animate-fade-in">
+        <p className="text-xs font-semibold uppercase tracking-wider text-[#A8763E]">Bắc Hưng Yên VCard</p>
         <h1 className="page-header">Danh thiếp số của tôi</h1>
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-base">Bạn chưa có hồ sơ danh thiếp</CardTitle>
@@ -215,6 +218,7 @@ export default function DanhThiepCuaToiPage() {
   return (
     <div className="space-y-5 animate-fade-in">
       <div>
+        <p className="text-xs font-semibold uppercase tracking-wider text-[#A8763E]">Bắc Hưng Yên VCard</p>
         <h1 className="page-header">Danh thiếp số của tôi</h1>
         <p className="page-subtitle">Khách quét QR sẽ thấy thẻ đúng ngôn ngữ của họ và lưu được liên hệ trong vài giây.</p>
       </div>

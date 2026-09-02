@@ -1,9 +1,9 @@
 /**
- * QUẢN TRỊ DANH THIẾP SỐ — bốn tab theo Mục 6 đặc tả:
- *   /quan-tri-danh-thiep/don-vi          từ điển đơn vị
- *   /quan-tri-danh-thiep/chuc-danh       từ điển chức danh (TCTH dùng nhiều nhất)
- *   /quan-tri-danh-thiep/chuc-danh-rieng hàng chờ duyệt chức danh riêng (Giám đốc / TCTH)
- *   /quan-tri-danh-thiep/can-bo          cán bộ và phát hành thẻ
+ * QUẢN TRỊ BẮC HƯNG YÊN VCARD — bốn tab theo Mục 6 đặc tả:
+ *   /quan-tri-vcard/don-vi          từ điển đơn vị
+ *   /quan-tri-vcard/chuc-danh       từ điển chức danh (TCTH dùng nhiều nhất)
+ *   /quan-tri-vcard/chuc-danh-rieng hàng chờ duyệt chức danh riêng (Giám đốc / TCTH)
+ *   /quan-tri-vcard/can-bo          cán bộ và phát hành thẻ
  * Tab nằm trên URL để gửi link thẳng vào đúng việc (VD: nhắc Giám đốc duyệt).
  */
 import { useState } from 'react';
@@ -83,7 +83,8 @@ export default function DanhThiepAdminPage() {
     <div className="space-y-5 animate-fade-in">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="page-header flex items-center gap-2"><IdCard className="h-6 w-6 text-primary" /> Danh thiếp số đa ngôn ngữ</h1>
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#A8763E]">Bắc Hưng Yên Ways</p>
+          <h1 className="page-header flex items-center gap-2"><IdCard className="h-6 w-6 text-primary" /> Quản trị Bắc Hưng Yên VCard</h1>
           <p className="page-subtitle">
             Thẻ được <b>ghép</b> từ tên cán bộ + từ điển chức danh + từ điển đơn vị (6 ngôn ngữ). Sửa một dòng từ điển là mọi thẻ liên quan đổi theo;
             chức danh nội bộ không bao giờ lên thẻ; nhân sự thuê ngoài dùng mẫu riêng.
@@ -92,7 +93,7 @@ export default function DanhThiepAdminPage() {
         {laQuanTri && <CauHinhHeThong />}
       </div>
 
-      <Tabs value={hienTai} onValueChange={(v) => navigate(`/quan-tri-danh-thiep/${v}`)}>
+      <Tabs value={hienTai} onValueChange={(v) => navigate(`/quan-tri-vcard/${v}`)}>
         <TabsList className="flex h-auto w-full flex-wrap justify-start">
           <TabsTrigger value="don-vi"><Building2 className="mr-1.5 h-4 w-4" /> Từ điển đơn vị</TabsTrigger>
           <TabsTrigger value="chuc-danh"><UserSquare2 className="mr-1.5 h-4 w-4" /> Từ điển chức danh</TabsTrigger>

@@ -334,6 +334,32 @@ export const NAV_SECTIONS: NavSection[] = [
           },
         ],
       },
+      // Bắc Hưng Yên VCard — danh thiếp số đa ngôn ngữ, là một thương hiệu của
+      // Ways (chốt 02/09/2026), không rải vào «Cá nhân» và «Quản trị chung» nữa.
+      // Hai màn: cán bộ xem / tự sửa thẻ của mình; Phòng TCTH + Giám đốc quản
+      // từ điển, duyệt chức danh riêng, phát hành và thu hồi thẻ.
+      {
+        id: 'ways-vcard',
+        folder: 'Bắc Hưng Yên VCard',
+        icon: IdCard,
+        items: [
+          {
+            label: 'Danh thiếp của tôi',
+            icon: IdCard,
+            path: '/vcard',
+            end: true,
+            keywords: ['vcard', 'danh thiep', 'name card', 'qr', 'zalo', 'wechat', 'kakao', 'the', 'lien he'],
+          },
+          {
+            label: 'Quản trị VCard',
+            icon: SettingsIcon,
+            path: '/quan-tri-vcard',
+            minRole: 'admin',
+            keywords: ['quan tri vcard', 'danh thiep', 'chuc danh doi ngoai', 'tu dien', 'phat hanh the', 'thu hoi the'],
+            extraPaths: ['/quan-tri-vcard/'],
+          },
+        ],
+      },
     ],
   },
   {
@@ -424,14 +450,6 @@ export const NAV_SECTIONS: NavSection[] = [
             path: '/ho-so-ca-nhan',
             keywords: ['profile', 'thong tin ca nhan'],
             extraPaths: ['/ho-so-ca-nhan/'],
-          },
-          {
-            // Danh thiếp số đa ngôn ngữ: cán bộ xem thẻ của mình, tải QR, tự sửa
-            // số di động / ảnh / kênh chat; chức danh do Phòng TCTH gán
-            label: 'Danh thiếp số của tôi',
-            icon: IdCard,
-            path: '/danh-thiep-cua-toi',
-            keywords: ['danh thiep', 'name card', 'qr', 'vcard', 'zalo', 'wechat', 'kakao', 'the'],
           },
           {
             // KHÔNG đặt guestScreen: khu 'Phát triển nhân sự 343' vốn đã đóng với
@@ -590,17 +608,6 @@ export const NAV_SECTIONS: NavSection[] = [
           { label: 'Phân quyền', icon: Shield, path: '/phan-quyen', minRole: 'admin', keywords: ['vai tro', 'role'] },
           { label: 'Duyệt yêu cầu user', icon: UserCheck, path: '/duyet-yeu-cau-user', minRole: 'admin' },
           { label: 'Tài khoản khách đối tác', icon: UserCheck, path: '/quan-tri-khach', minRole: 'admin', keywords: ['guest', 'doi tac'] },
-          // Danh thiếp số đa ngôn ngữ: từ điển đơn vị / chức danh, hàng chờ duyệt
-          // chức danh riêng (Giám đốc hoặc TCTH), phát hành và thu hồi thẻ.
-          // minRole 'admin' gồm bgd — Giám đốc vào để duyệt.
-          {
-            label: 'Danh thiếp số',
-            icon: IdCard,
-            path: '/quan-tri-danh-thiep',
-            minRole: 'admin',
-            keywords: ['danh thiep', 'name card', 'chuc danh doi ngoai', 'tu dien', 'qr', 'phat hanh the', 'thu hoi the'],
-            extraPaths: ['/quan-tri-danh-thiep/'],
-          },
         ],
       },
       {

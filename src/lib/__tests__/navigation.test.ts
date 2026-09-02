@@ -102,6 +102,7 @@ describe('Cấu trúc cây điều hướng', () => {
     expect(thuMuc.map((f) => f.folder)).toEqual([
       'Bắc Hưng Yên Ideas',
       'Bắc Hưng Yên Quizzi',
+      'Bắc Hưng Yên VCard',
     ]);
   });
 
@@ -121,6 +122,12 @@ describe('Cấu trúc cây điều hướng', () => {
       '/quizzi/chien-dich',
       '/quan-tri-quizzi',
     ]);
+    // VCard (chốt 02/09/2026): thẻ của tôi + quản trị, gom một chỗ thay vì rải
+    // vào «Cá nhân» của Chiêu thức 3 và «Quản trị chung»
+    expect(trongThuMuc('Bắc Hưng Yên VCard')).toEqual([
+      '/vcard',
+      '/quan-tri-vcard',
+    ]);
   });
 
   it('mọi mục con của Ways đều dẫn thẳng tới nơi làm việc thật', () => {
@@ -138,14 +145,20 @@ describe('Cấu trúc cây điều hướng', () => {
       '/quizzi',
       '/quizzi/chien-dich',
       '/quan-tri-quizzi',
+      '/vcard',
+      '/quan-tri-vcard',
     ]);
   });
 
-  it('màn vận hành Ideas và quản trị Quizzi chỉ quản trị viên thấy', () => {
+  it('màn vận hành Ideas, quản trị Quizzi và quản trị VCard chỉ quản trị viên thấy', () => {
     expect(moiDuongDan(canBoThuong)).not.toContain('/one/y-tuong/van-hanh');
     expect(moiDuongDan(canBoThuong)).not.toContain('/quan-tri-quizzi');
+    expect(moiDuongDan(canBoThuong)).not.toContain('/quan-tri-vcard');
     expect(moiDuongDan(quanTri)).toContain('/one/y-tuong/van-hanh');
     expect(moiDuongDan(quanTri)).toContain('/quan-tri-quizzi');
+    expect(moiDuongDan(quanTri)).toContain('/quan-tri-vcard');
+    // Thẻ của tôi mở cho mọi cán bộ
+    expect(moiDuongDan(canBoThuong)).toContain('/vcard');
     // Cán bộ thường vẫn vào được hai màn dùng chung của cùng thương hiệu
     expect(moiDuongDan(canBoThuong)).toContain('/one/y-tuong/gui');
     expect(moiDuongDan(canBoThuong)).toContain('/one/y-tuong/hoi-dong');

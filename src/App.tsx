@@ -214,8 +214,8 @@ const App = () => (
               <Route path="/ho-so-ca-nhan/sua" element={<EditMyProfile />} />
               <Route path="/doi-mat-khau" element={<ChangePassword />} />
               <Route path="/ho-so-ca-nhan/:id" element={<PersonalProfile />} />
-              {/* Danh thiếp số của tôi — cán bộ tự sửa SĐT/ảnh/kênh chat, gửi đề nghị chức danh riêng */}
-              <Route path="/danh-thiep-cua-toi" element={<DanhThiepCuaToiPage />} />
+              {/* Bắc Hưng Yên VCard — thẻ của tôi: cán bộ tự sửa SĐT/ảnh/kênh chat, gửi đề nghị chức danh riêng */}
+              <Route path="/vcard" element={<DanhThiepCuaToiPage />} />
               <Route path="/skill-loi-theo-vi-tri" element={<CoreSkillsByPosition />} />
               <Route path="/skill-bo-sung" element={<ExtraSkillsPage />} />
               <Route path="/tu-danh-gia" element={<SelfAssessmentPage />} />
@@ -340,9 +340,9 @@ const App = () => (
                 {/* Tiếp nhận góp ý cải thiện BHY One — Phòng TCTH + Ban Giám đốc
                     (AdminRoute đã bao gồm bgd/tcth_admin/system_admin) */}
                 <Route path="/gop-y-he-thong" element={<GopYAdminPage />} />
-                {/* Danh thiếp số: từ điển đơn vị / chức danh, hàng chờ duyệt chức danh riêng, phát hành thẻ.
-                    AdminRoute gồm bgd để Giám đốc vào duyệt; RLS + trigger phân việc TCTH/GĐ. */}
-                <Route path="/quan-tri-danh-thiep/:tab?" element={<DanhThiepAdminPage />} />
+                {/* Quản trị Bắc Hưng Yên VCard: từ điển đơn vị / chức danh, hàng chờ duyệt chức danh riêng,
+                    phát hành thẻ. AdminRoute gồm bgd để Giám đốc vào duyệt; RLS + trigger phân việc TCTH/GĐ. */}
+                <Route path="/quan-tri-vcard/:tab?" element={<DanhThiepAdminPage />} />
               </Route>
 
               </Route>

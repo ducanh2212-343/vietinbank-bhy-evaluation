@@ -4,10 +4,10 @@ const muc: MucLichSu = {
   ma: '2026-09-02-danh-thiep-so-cua-toi',
   ngay: '2026-09-02',
   loai: 'tinh-nang',
-  phanHe: 'hr-343',
-  tieuDe: 'Danh thiếp số của tôi: khách quét QR là lưu được liên hệ đúng ngôn ngữ',
+  phanHe: 'bhy-ways',
+  tieuDe: 'Bắc Hưng Yên VCard: khách quét QR là lưu được liên hệ đúng ngôn ngữ',
   tomTat:
-    'Màn «Danh thiếp số của tôi» (Chiêu thức 3 → Cá nhân) cho cán bộ xem thẻ của '
+    'Bắc Hưng Yên VCard (menu Bắc Hưng Yên Ways → «Danh thiếp của tôi») cho cán bộ xem thẻ của '
     + 'mình ở 6 ngôn ngữ, tải mã QR để in name card hoặc gắn chữ ký email, và tự '
     + 'cập nhật số di động, ảnh chân dung, kênh chat. Khách quét mã sẽ thấy thẻ '
     + 'đúng ngôn ngữ điện thoại của họ và bấm một nút là lưu vào danh bạ.',
@@ -18,7 +18,7 @@ const muc: MucLichSu = {
     'Kênh chat trên thẻ: Zalo, LINE, WhatsApp mở thẳng; WeChat và KakaoTalk hiện ảnh QR cá nhân bạn tải lên.',
     'Muốn chức danh đối ngoại khác từ điển (kiêm nhiệm, dự án) thì gửi đề nghị ngay trên màn — Giám đốc hoặc Phòng TCTH duyệt; xem được lượt quét thẻ 30 ngày qua.',
   ],
-  duongDan: '/danh-thiep-cua-toi',
+  duongDan: '/vcard',
 };
 
 export default muc;

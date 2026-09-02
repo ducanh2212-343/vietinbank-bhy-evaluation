@@ -1,4 +1,4 @@
-# Danh thiếp số đa ngôn ngữ — giai đoạn 1 (09/2026)
+# Bắc Hưng Yên VCard — danh thiếp số đa ngôn ngữ, giai đoạn 1 (09/2026)
 
 Bản triển khai đặc tả **«Module danh thiếp số đa ngôn ngữ — BHY ONE» v1.0 (02/09/2026)**
 của Giám đốc Chi nhánh. Tài liệu này ghi lại: đã làm gì, làm KHÁC đặc tả ở đâu và
@@ -11,7 +11,7 @@ vì sao, phải làm gì khi triển khai, và những điểm cần Giám đố
 | 1 | Schema + RLS + `nc_resolve_card(slug)` | `supabase/migrations/20261004090000_danh_thiep_so_nen_tang.sql` (+ rollback). **Chưa áp** vào project. Kèm `20261004090200_..._tu_tao_ban_nhap.sql` (dựng nháp từ hồ sơ 343, mục 5b). |
 | 2 | Dữ liệu mồi Mục 11, toàn bộ `draft` | `supabase/migrations/20261004090100_danh_thiep_so_du_lieu_moi.sql` (+ rollback). Phồn thể sinh máy bằng OpenCC s2twp. **Chưa áp**. |
 | 3 | Trang `/card/<slug>` + đo ngân sách | Entry riêng `card.html`; đo trên bản build: **~58 KB gzip / 180 KB thô** lần tải đầu (chưa tính font), **LCP 964 ms** ở 4G + CPU chậm ×4 — dưới trần 300 KB / 1,5 s. |
-| 4 | Tab 2 từ điển chức danh | `/quan-tri-danh-thiep/chuc-danh` — kèm luôn Tab 1, 3, 4 và màn tự phục vụ vì không có chúng thì không phát hành nổi một tấm thẻ để nghiệm thu. |
+| 4 | Tab 2 từ điển chức danh | `/quan-tri-vcard/chuc-danh` — kèm luôn Tab 1, 3, 4 và màn tự phục vụ vì không có chúng thì không phát hành nổi một tấm thẻ để nghiệm thu. |
 | 5 | Google Wallet | **Chưa làm** — đúng thứ tự đặc tả (sau khi 1–4 chạy được). Cột `google_object_id`, `wallet_override` đã có sẵn. |
 
 Ngoài ra: vCard 6 ngôn ngữ (edge function `danh-thiep-vcard`), QR mức H có logo
@@ -36,7 +36,7 @@ có» của chính đặc tả được ưu tiên hơn từng chi tiết kỹ th
 | Ràng buộc 1: `external_title_id` phải trỏ chức danh `approved` | Chức danh phải đúng scope + đúng loại nhân sự **luôn luôn**; điều kiện «đã duyệt» bắt buộc khi **hồ sơ cán bộ `approved` hoặc bật thẻ** | Để TCTH soạn hồ sơ song song với rà soát từ điển. Bất biến quan trọng vẫn giữ: **không thẻ nào phát hành với chức danh chưa duyệt** (đã kiểm thử). |
 | Tab 1 «sửa inline» | Sửa qua hộp thoại (6 tên + 6 địa chỉ + bản đồ + điện thoại) | Địa chỉ dài, sửa inline trong bảng 12 cột không dùng được trên màn nhỏ. |
 | Job hết hạn chức danh riêng «gửi thông báo cho cán bộ và TCTH» | Job thu hồi chạy 0h30 hằng ngày, thẻ tự lùi về chức danh chuẩn; **không phát push** — cột cảnh báo «hết hạn sau N ngày» ở Tab 4 | Quyết định của Giám đốc 02/09/2026: chỉ cảnh báo ở màn quản trị (cán bộ đã nhận 21+ loại push). |
-| Đường dẫn quản trị `/admin/danh-thiep/...`, tự phục vụ `/toi/danh-thiep` | `/quan-tri-danh-thiep/{don-vi,chuc-danh,chuc-danh-rieng,can-bo}` và `/danh-thiep-cua-toi` | Theo quy ước đường dẫn tiếng Việt của cổng (`/quan-tri-khach`, `/quan-tri-ky-yeu`…). |
+| Đường dẫn quản trị `/admin/danh-thiep/...`, tự phục vụ `/toi/danh-thiep` | `/quan-tri-vcard/{don-vi,chuc-danh,chuc-danh-rieng,can-bo}` và `/vcard` — gom thành thương hiệu **Bắc Hưng Yên VCard** trong nhóm menu Bắc Hưng Yên Ways (chốt 02/09/2026) | Theo quy ước đường dẫn tiếng Việt của cổng (`/quan-tri-khach`, `/quan-tri-ky-yeu`…). |
 
 ## 3. Mô hình dữ liệu và luật ở tầng CSDL
 
@@ -141,6 +141,7 @@ font CJK, đồng bộ HRM.
   Bản sao cho edge function: `supabase/functions/_shared/danhThiepNgonNgu.ts`, `_shared/vcard.ts`
   (kiểm thử so hai tệp từng byte).
 - Edge function: `supabase/functions/danh-thiep-vcard/index.ts`.
+- Menu: thư mục «Bắc Hưng Yên VCard» trong khu Bắc Hưng Yên Ways (`src/lib/navigation.ts`), thẻ giới thiệu trong dải Ways (`src/data/one/bhyWays.ts`).
 - Quản trị: `src/pages/DanhThiepAdminPage.tsx`, `src/components/danh-thiep/Tab*.tsx`, `XemTruocThe.tsx`,
   `NhapSauNgonNgu.tsx`; tự phục vụ: `src/pages/DanhThiepCuaToiPage.tsx`; hook `src/hooks/useDanhThiep.ts`.
 - Định tuyến `/card/*`: `public/_redirects`, `vercel.json`, middleware trong `vite.config.ts`, lưới đỡ trong `App.tsx`.

@@ -4,8 +4,8 @@ const muc: MucLichSu = {
   ma: '2026-09-02-danh-thiep-so-quan-tri',
   ngay: '2026-09-02',
   loai: 'tinh-nang',
-  phanHe: 'user-admin',
-  tieuDe: 'Danh thiếp số đa ngôn ngữ: từ điển chức danh, đơn vị và phát hành thẻ QR',
+  phanHe: 'bhy-ways',
+  tieuDe: 'Bắc Hưng Yên VCard: từ điển chức danh, đơn vị và phát hành thẻ QR',
   tomTat:
     'Mỗi cán bộ có một danh thiếp số duy nhất, hiện đúng ngôn ngữ của khách '
     + '(Việt, Anh, Trung giản thể/phồn thể, Hàn, Nhật). Thẻ được GHÉP từ tên cán bộ '
@@ -19,7 +19,7 @@ const muc: MucLichSu = {
     'Nhân sự thuê ngoài, cộng tác viên, thực tập sinh dùng mẫu thẻ riêng: không logo, không chức danh và email VietinBank.',
     'Phát hành / thu hồi thẻ một thao tác; xuất QR (PNG + SVG) và CSV cho nhà in. Thẻ thu hồi hiện trang «đã chuyển công tác» kèm liên hệ Chi nhánh.',
   ],
-  duongDan: '/quan-tri-danh-thiep',
+  duongDan: '/quan-tri-vcard',
   danhCho: ['system_admin', 'tcth_admin', 'bgd'],
 };
 
