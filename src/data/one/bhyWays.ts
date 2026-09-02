@@ -1,5 +1,5 @@
 import {
-  BookOpen, Zap, Lightbulb, Share2, Star, ShieldAlert, IdCard, type LucideIcon,
+  BookOpen, Zap, Lightbulb, Share2, Star, ShieldAlert, type LucideIcon,
 } from 'lucide-react';
 
 /**
@@ -107,18 +107,5 @@ export const BHY_WAYS: WayItem[] = [
     accent: '#059669',
     duongDan: '/one/credit-360',
     nhanNut: 'Đăng ký phiên',
-  },
-  {
-    id: 'vcard',
-    ten: 'Bắc Hưng Yên VCard',
-    dinhVi: 'Chuyên nghiệp trước khách hàng',
-    moTa:
-      'Danh thiếp số của từng cán bộ: khách quét QR là thấy thẻ đúng ngôn ngữ của họ (Việt, Anh, ' +
-      'Trung, Hàn, Nhật) và lưu liên hệ trong vài giây. Chức danh, đơn vị ghép từ từ điển chuẩn ' +
-      'của Chi nhánh — không còn mỗi tấm name card một kiểu.',
-    icon: IdCard,
-    accent: '#A8763E',
-    duongDan: '/vcard',
-    nhanNut: 'Xem thẻ của tôi',
   },
 ];

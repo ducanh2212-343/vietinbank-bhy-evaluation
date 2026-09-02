@@ -4,7 +4,7 @@ const muc: MucLichSu = {
   ma: '2026-09-02-danh-thiep-so-quan-tri',
   ngay: '2026-09-02',
   loai: 'tinh-nang',
-  phanHe: 'bhy-ways',
+  phanHe: 'one-home',
   tieuDe: 'Bắc Hưng Yên VCard: từ điển chức danh, đơn vị và phát hành thẻ QR',
   tomTat:
     'Mỗi cán bộ có một danh thiếp số duy nhất, hiện đúng ngôn ngữ của khách '

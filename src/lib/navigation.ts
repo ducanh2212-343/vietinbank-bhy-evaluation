@@ -161,6 +161,33 @@ export const NAV_SECTIONS: NavSection[] = [
         bleed: true,
         keywords: ['tin tuc', 'ban tin', 'dong chia se', 'thong bao', 'news'],
       },
+      // Bắc Hưng Yên VCard — danh thiếp số đa ngôn ngữ. Là TIỆN ÍCH nhỏ cho mọi
+      // cán bộ, không phải một «cách vận hành» nên không đứng trong Bắc Hưng Yên
+      // Ways (chốt 02/09/2026); gom hai màn vào một thư mục để nhìn là thấy đây
+      // là một thứ. Cán bộ xem / tự sửa thẻ của mình; Phòng TCTH + Giám đốc quản
+      // từ điển, duyệt chức danh riêng, phát hành và thu hồi thẻ.
+      {
+        id: 'vcard',
+        folder: 'Bắc Hưng Yên VCard',
+        icon: IdCard,
+        items: [
+          {
+            label: 'Danh thiếp của tôi',
+            icon: IdCard,
+            path: '/vcard',
+            end: true,
+            keywords: ['vcard', 'danh thiep', 'name card', 'qr', 'zalo', 'wechat', 'kakao', 'the', 'lien he'],
+          },
+          {
+            label: 'Quản trị VCard',
+            icon: SettingsIcon,
+            path: '/quan-tri-vcard',
+            minRole: 'admin',
+            keywords: ['quan tri vcard', 'danh thiep', 'chuc danh doi ngoai', 'tu dien', 'phat hanh the', 'thu hoi the'],
+            extraPaths: ['/quan-tri-vcard/'],
+          },
+        ],
+      },
     ],
   },
   {
@@ -331,32 +358,6 @@ export const NAV_SECTIONS: NavSection[] = [
             path: '/quan-tri-quizzi',
             minRole: 'admin',
             keywords: ['quan tri quiz', 'ngan hang cau hoi'],
-          },
-        ],
-      },
-      // Bắc Hưng Yên VCard — danh thiếp số đa ngôn ngữ, là một thương hiệu của
-      // Ways (chốt 02/09/2026), không rải vào «Cá nhân» và «Quản trị chung» nữa.
-      // Hai màn: cán bộ xem / tự sửa thẻ của mình; Phòng TCTH + Giám đốc quản
-      // từ điển, duyệt chức danh riêng, phát hành và thu hồi thẻ.
-      {
-        id: 'ways-vcard',
-        folder: 'Bắc Hưng Yên VCard',
-        icon: IdCard,
-        items: [
-          {
-            label: 'Danh thiếp của tôi',
-            icon: IdCard,
-            path: '/vcard',
-            end: true,
-            keywords: ['vcard', 'danh thiep', 'name card', 'qr', 'zalo', 'wechat', 'kakao', 'the', 'lien he'],
-          },
-          {
-            label: 'Quản trị VCard',
-            icon: SettingsIcon,
-            path: '/quan-tri-vcard',
-            minRole: 'admin',
-            keywords: ['quan tri vcard', 'danh thiep', 'chuc danh doi ngoai', 'tu dien', 'phat hanh the', 'thu hoi the'],
-            extraPaths: ['/quan-tri-vcard/'],
           },
         ],
       },

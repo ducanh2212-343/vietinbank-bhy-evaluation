@@ -36,7 +36,7 @@ có» của chính đặc tả được ưu tiên hơn từng chi tiết kỹ th
 | Ràng buộc 1: `external_title_id` phải trỏ chức danh `approved` | Chức danh phải đúng scope + đúng loại nhân sự **luôn luôn**; điều kiện «đã duyệt» bắt buộc khi **hồ sơ cán bộ `approved` hoặc bật thẻ** | Để TCTH soạn hồ sơ song song với rà soát từ điển. Bất biến quan trọng vẫn giữ: **không thẻ nào phát hành với chức danh chưa duyệt** (đã kiểm thử). |
 | Tab 1 «sửa inline» | Sửa qua hộp thoại (6 tên + 6 địa chỉ + bản đồ + điện thoại) | Địa chỉ dài, sửa inline trong bảng 12 cột không dùng được trên màn nhỏ. |
 | Job hết hạn chức danh riêng «gửi thông báo cho cán bộ và TCTH» | Job thu hồi chạy 0h30 hằng ngày, thẻ tự lùi về chức danh chuẩn; **không phát push** — cột cảnh báo «hết hạn sau N ngày» ở Tab 4 | Quyết định của Giám đốc 02/09/2026: chỉ cảnh báo ở màn quản trị (cán bộ đã nhận 21+ loại push). |
-| Đường dẫn quản trị `/admin/danh-thiep/...`, tự phục vụ `/toi/danh-thiep` | `/quan-tri-vcard/{don-vi,chuc-danh,chuc-danh-rieng,can-bo}` và `/vcard` — gom thành thương hiệu **Bắc Hưng Yên VCard** trong nhóm menu Bắc Hưng Yên Ways (chốt 02/09/2026) | Theo quy ước đường dẫn tiếng Việt của cổng (`/quan-tri-khach`, `/quan-tri-ky-yeu`…). |
+| Đường dẫn quản trị `/admin/danh-thiep/...`, tự phục vụ `/toi/danh-thiep` | `/quan-tri-vcard/{don-vi,chuc-danh,chuc-danh-rieng,can-bo}` và `/vcard` — gom thành thư mục **Bắc Hưng Yên VCard** trong menu Trang chủ — tiện ích nhỏ cho mọi cán bộ, không phải một cách vận hành nên không đứng trong Bắc Hưng Yên Ways (chốt 02/09/2026) | Theo quy ước đường dẫn tiếng Việt của cổng (`/quan-tri-khach`, `/quan-tri-ky-yeu`…). |
 
 ## 3. Mô hình dữ liệu và luật ở tầng CSDL
 
@@ -141,7 +141,7 @@ font CJK, đồng bộ HRM.
   Bản sao cho edge function: `supabase/functions/_shared/danhThiepNgonNgu.ts`, `_shared/vcard.ts`
   (kiểm thử so hai tệp từng byte).
 - Edge function: `supabase/functions/danh-thiep-vcard/index.ts`.
-- Menu: thư mục «Bắc Hưng Yên VCard» trong khu Bắc Hưng Yên Ways (`src/lib/navigation.ts`), thẻ giới thiệu trong dải Ways (`src/data/one/bhyWays.ts`).
+- Menu: thư mục «Bắc Hưng Yên VCard» trong khu Trang chủ (`src/lib/navigation.ts`).
 - Quản trị: `src/pages/DanhThiepAdminPage.tsx`, `src/components/danh-thiep/Tab*.tsx`, `XemTruocThe.tsx`,
   `NhapSauNgonNgu.tsx`; tự phục vụ: `src/pages/DanhThiepCuaToiPage.tsx`; hook `src/hooks/useDanhThiep.ts`.
 - Định tuyến `/card/*`: `public/_redirects`, `vercel.json`, middleware trong `vite.config.ts`, lưới đỡ trong `App.tsx`.

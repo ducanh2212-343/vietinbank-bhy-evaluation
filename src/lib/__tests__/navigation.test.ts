@@ -102,8 +102,18 @@ describe('Cấu trúc cây điều hướng', () => {
     expect(thuMuc.map((f) => f.folder)).toEqual([
       'Bắc Hưng Yên Ideas',
       'Bắc Hưng Yên Quizzi',
-      'Bắc Hưng Yên VCard',
     ]);
+  });
+
+  it('Bắc Hưng Yên VCard là tiện ích ở Trang chủ, KHÔNG phải một cách vận hành trong Ways', () => {
+    // Chốt 02/09/2026: danh thiếp số là tiện ích nhỏ cho mọi cán bộ; gom hai màn
+    // (thẻ của tôi + quản trị) vào một thư mục để nhìn là thấy đây là một thứ.
+    const home = NAV_SECTIONS.find((s) => s.id === 'one-home')!;
+    const vcard = (home.items ?? []).filter(isFolder).find((f) => f.id === 'vcard');
+    expect(vcard?.folder).toBe('Bắc Hưng Yên VCard');
+    expect(vcard!.items.map((l) => l.path)).toEqual(['/vcard', '/quan-tri-vcard']);
+    const ways = NAV_SECTIONS.find((s) => s.id === 'bhy-ways')!;
+    expect(leavesOf(ways).map((l) => l.path)).not.toContain('/vcard');
   });
 
   it('mọi màn hình của Ideas và Quizzi đều có mục menu riêng', () => {
@@ -122,12 +132,6 @@ describe('Cấu trúc cây điều hướng', () => {
       '/quizzi/chien-dich',
       '/quan-tri-quizzi',
     ]);
-    // VCard (chốt 02/09/2026): thẻ của tôi + quản trị, gom một chỗ thay vì rải
-    // vào «Cá nhân» của Chiêu thức 3 và «Quản trị chung»
-    expect(trongThuMuc('Bắc Hưng Yên VCard')).toEqual([
-      '/vcard',
-      '/quan-tri-vcard',
-    ]);
   });
 
   it('mọi mục con của Ways đều dẫn thẳng tới nơi làm việc thật', () => {
@@ -145,8 +149,6 @@ describe('Cấu trúc cây điều hướng', () => {
       '/quizzi',
       '/quizzi/chien-dich',
       '/quan-tri-quizzi',
-      '/vcard',
-      '/quan-tri-vcard',
     ]);
   });
 

@@ -198,7 +198,7 @@ Mỗi cán bộ một danh thiếp số tại `bachungyenone.com/card/<slug>`, h
 khách (VI/EN/ZH giản–phồn/KO/JA), bấm một nút là lưu danh bạ. Thẻ được **ghép** từ tên
 cán bộ + từ điển chức danh + từ điển đơn vị (bảng `nc_*`), chức danh nội bộ không bao giờ
 lên thẻ, nhân sự thuê ngoài dùng mẫu riêng — mọi luật thực thi ở CSDL qua
-`nc_resolve_card()`. Là một thương hiệu trong nhóm menu Bắc Hưng Yên Ways. Quản trị: `/quan-tri-vcard`
+`nc_resolve_card()`. Tiện ích nhỏ, gom một thư mục trong menu Trang chủ (không thuộc Ways). Quản trị: `/quan-tri-vcard`
 (TCTH + Giám đốc duyệt chức danh riêng); thẻ của tôi: `/vcard`. Trang công khai là entry riêng `card.html`
 (~58 KB gzip, LCP < 1 s trên 4G), ánh xạ `/card/*` bằng `public/_redirects`.
 

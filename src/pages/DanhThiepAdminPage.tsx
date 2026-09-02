@@ -83,8 +83,8 @@ export default function DanhThiepAdminPage() {
     <div className="space-y-5 animate-fade-in">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-[#A8763E]">Bắc Hưng Yên Ways</p>
-          <h1 className="page-header flex items-center gap-2"><IdCard className="h-6 w-6 text-primary" /> Quản trị Bắc Hưng Yên VCard</h1>
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#A8763E]">Bắc Hưng Yên VCard</p>
+          <h1 className="page-header flex items-center gap-2"><IdCard className="h-6 w-6 text-primary" /> Quản trị danh thiếp số</h1>
           <p className="page-subtitle">
             Thẻ được <b>ghép</b> từ tên cán bộ + từ điển chức danh + từ điển đơn vị (6 ngôn ngữ). Sửa một dòng từ điển là mọi thẻ liên quan đổi theo;
             chức danh nội bộ không bao giờ lên thẻ; nhân sự thuê ngoài dùng mẫu riêng.
