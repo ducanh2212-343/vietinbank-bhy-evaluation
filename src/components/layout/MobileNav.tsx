@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, LogOut, User, KeyRound } from 'lucide-react';
+import { IdCard, Menu, X, LogOut, User, KeyRound } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
 import { useAuth } from '@/hooks/useAuth';
 import { nhanDangNhap } from '@/lib/taiKhoanKhach';
@@ -230,6 +230,18 @@ export function MobileNav() {
                       >
                         <User className="h-[18px] w-[18px] shrink-0" />
                         Hồ sơ cá nhân
+                      </button>
+                    )}
+                    {/* Bắc Hưng Yên VCard — danh thiếp số của chính mình, đặt cạnh hồ sơ
+                        cá nhân theo chốt 02/09/2026 (tiện ích cá nhân, không phải mục menu) */}
+                    {!isGuest && (
+                      <button
+                        type="button"
+                        onClick={() => { setMoMenu(false); navigate('/vcard'); }}
+                        className="flex min-h-[44px] w-full items-center gap-3 rounded-xl px-2.5 py-2 text-sm active:bg-muted"
+                      >
+                        <IdCard className="h-[18px] w-[18px] shrink-0" />
+                        Danh thiếp VCard của tôi
                       </button>
                     )}
                     <button

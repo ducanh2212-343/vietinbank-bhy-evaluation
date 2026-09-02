@@ -105,15 +105,21 @@ describe('Cấu trúc cây điều hướng', () => {
     ]);
   });
 
-  it('Bắc Hưng Yên VCard nằm trong «Tính năng khác» ở Trang chủ, KHÔNG phải một cách vận hành trong Ways', () => {
-    // Chốt 02/09/2026: danh thiếp số là tiện ích nhỏ cho mọi cán bộ; thư mục
-    // «Tính năng khác» là chỗ cho các tiện ích như vậy, hai màn VCard gom một chỗ.
-    const home = NAV_SECTIONS.find((s) => s.id === 'one-home')!;
-    const khac = (home.items ?? []).filter(isFolder).find((f) => f.id === 'tinh-nang-khac');
-    expect(khac?.folder).toBe('Tính năng khác');
-    expect(khac!.items.map((l) => l.path)).toEqual(['/vcard', '/quan-tri-vcard']);
+  it('Bắc Hưng Yên VCard là tiện ích cá nhân: /vcard gắn với Hồ sơ cá nhân, quản trị ở Quản trị chung', () => {
+    // Chốt 02/09/2026: danh thiếp số không phải một cách vận hành (không vào Ways),
+    // cũng không cần mục menu riêng — màn «thẻ của tôi» nằm trong khối tài khoản
+    // (ngăn «Thêm» / menu tài khoản) cạnh Hồ sơ cá nhân; trên cây chỉ cần tra được.
+    const viTri = resolveLocation('/vcard');
+    expect(viTri.section?.id).toBe('hr-343');
+    expect(viTri.folder?.folder).toBe('Cá nhân');
+    expect(viTri.leaf?.label).toBe('Hồ sơ cá nhân');
+    expect(moiDuongDan(canBoThuong)).not.toContain('/vcard');
     const ways = NAV_SECTIONS.find((s) => s.id === 'bhy-ways')!;
     expect(leavesOf(ways).map((l) => l.path)).not.toContain('/vcard');
+    // Quản trị VCard: chỉ quản trị viên, nằm ở khu Quản trị chung
+    expect(resolveLocation('/quan-tri-vcard/chuc-danh').section?.id).toBe('user-admin');
+    expect(moiDuongDan(canBoThuong)).not.toContain('/quan-tri-vcard');
+    expect(moiDuongDan(quanTri)).toContain('/quan-tri-vcard');
   });
 
   it('mọi màn hình của Ideas và Quizzi đều có mục menu riêng', () => {
