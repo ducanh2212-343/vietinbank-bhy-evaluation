@@ -7,7 +7,7 @@ const muc: MucLichSu = {
   phanHe: 'one-home',
   tieuDe: 'Bắc Hưng Yên VCard: khách quét QR là lưu được liên hệ đúng ngôn ngữ',
   tomTat:
-    'Bắc Hưng Yên VCard (menu Trang chủ → «Danh thiếp của tôi») cho cán bộ xem thẻ của '
+    'Bắc Hưng Yên VCard (menu Trang chủ → Tính năng khác → «VCard — Danh thiếp của tôi») cho cán bộ xem thẻ của '
     + 'mình ở 6 ngôn ngữ, tải mã QR để in name card hoặc gắn chữ ký email, và tự '
     + 'cập nhật số di động, ảnh chân dung, kênh chat. Khách quét mã sẽ thấy thẻ '
     + 'đúng ngôn ngữ điện thoại của họ và bấm một nút là lưu vào danh bạ.',

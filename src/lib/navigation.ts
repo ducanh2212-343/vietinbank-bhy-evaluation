@@ -6,7 +6,7 @@ import {
   CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag, GitBranch,
   ListChecks, Building2, Gavel, TrendingUp, Zap, Lightbulb,
   Home, BookOpen, Compass, Layers, Share2, CalendarDays, NotebookPen, Sprout, TreeDeciduous,
-  Sparkles as SparklesIcon, IdCard,
+  Sparkles as SparklesIcon, IdCard, Puzzle,
   type LucideIcon,
 } from 'lucide-react';
 import type { MaManHinhKhach } from './manHinhKhach';
@@ -161,18 +161,18 @@ export const NAV_SECTIONS: NavSection[] = [
         bleed: true,
         keywords: ['tin tuc', 'ban tin', 'dong chia se', 'thong bao', 'news'],
       },
-      // Bắc Hưng Yên VCard — danh thiếp số đa ngôn ngữ. Là TIỆN ÍCH nhỏ cho mọi
-      // cán bộ, không phải một «cách vận hành» nên không đứng trong Bắc Hưng Yên
-      // Ways (chốt 02/09/2026); gom hai màn vào một thư mục để nhìn là thấy đây
-      // là một thứ. Cán bộ xem / tự sửa thẻ của mình; Phòng TCTH + Giám đốc quản
-      // từ điển, duyệt chức danh riêng, phát hành và thu hồi thẻ.
+      // «Tính năng khác» — chỗ cho các TIỆN ÍCH nhỏ dùng chung, không phải một
+      // «cách vận hành» (không đứng trong Bắc Hưng Yên Ways) và không thuộc riêng
+      // phân hệ nào (chốt 02/09/2026). Tiện ích đầu tiên: Bắc Hưng Yên VCard —
+      // danh thiếp số đa ngôn ngữ. Cán bộ xem / tự sửa thẻ của mình; Phòng TCTH +
+      // Giám đốc quản từ điển, duyệt chức danh riêng, phát hành và thu hồi thẻ.
       {
-        id: 'vcard',
-        folder: 'Bắc Hưng Yên VCard',
-        icon: IdCard,
+        id: 'tinh-nang-khac',
+        folder: 'Tính năng khác',
+        icon: Puzzle,
         items: [
           {
-            label: 'Danh thiếp của tôi',
+            label: 'VCard — Danh thiếp của tôi',
             icon: IdCard,
             path: '/vcard',
             end: true,
