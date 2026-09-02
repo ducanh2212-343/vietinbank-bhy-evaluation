@@ -6,7 +6,7 @@ import {
   CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag, GitBranch,
   ListChecks, Building2, Gavel, TrendingUp, Zap, Lightbulb,
   Home, BookOpen, Compass, Layers, Share2, CalendarDays, NotebookPen, Sprout, TreeDeciduous,
-  Sparkles as SparklesIcon,
+  Sparkles as SparklesIcon, IdCard,
   type LucideIcon,
 } from 'lucide-react';
 import type { MaManHinhKhach } from './manHinhKhach';
@@ -426,6 +426,14 @@ export const NAV_SECTIONS: NavSection[] = [
             extraPaths: ['/ho-so-ca-nhan/'],
           },
           {
+            // Danh thiếp số đa ngôn ngữ: cán bộ xem thẻ của mình, tải QR, tự sửa
+            // số di động / ảnh / kênh chat; chức danh do Phòng TCTH gán
+            label: 'Danh thiếp số của tôi',
+            icon: IdCard,
+            path: '/danh-thiep-cua-toi',
+            keywords: ['danh thiep', 'name card', 'qr', 'vcard', 'zalo', 'wechat', 'kakao', 'the'],
+          },
+          {
             // KHÔNG đặt guestScreen: khu 'Phát triển nhân sự 343' vốn đã đóng với
             // khách đối tác nên cờ ở đây không bao giờ có hiệu lực — để lại chỉ gây
             // hiểu nhầm là khách thấy được mục này. Khách đổi mật khẩu bằng nút
@@ -582,6 +590,17 @@ export const NAV_SECTIONS: NavSection[] = [
           { label: 'Phân quyền', icon: Shield, path: '/phan-quyen', minRole: 'admin', keywords: ['vai tro', 'role'] },
           { label: 'Duyệt yêu cầu user', icon: UserCheck, path: '/duyet-yeu-cau-user', minRole: 'admin' },
           { label: 'Tài khoản khách đối tác', icon: UserCheck, path: '/quan-tri-khach', minRole: 'admin', keywords: ['guest', 'doi tac'] },
+          // Danh thiếp số đa ngôn ngữ: từ điển đơn vị / chức danh, hàng chờ Giám
+          // đốc duyệt chức danh riêng, phát hành và thu hồi thẻ (QR / Wallet / NFC).
+          // minRole 'admin' gồm bgd — Giám đốc vào để duyệt.
+          {
+            label: 'Danh thiếp số',
+            icon: IdCard,
+            path: '/quan-tri-danh-thiep',
+            minRole: 'admin',
+            keywords: ['danh thiep', 'name card', 'chuc danh doi ngoai', 'tu dien', 'qr', 'phat hanh the', 'thu hoi the'],
+            extraPaths: ['/quan-tri-danh-thiep/'],
+          },
         ],
       },
       {

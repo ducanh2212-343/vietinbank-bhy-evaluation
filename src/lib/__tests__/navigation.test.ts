@@ -375,8 +375,10 @@ describe('Mọi route khai trong App.tsx đều tra được trên cây', () => 
     .filter((m) => !m[2].includes('<Navigate'))
     .map((m) => m[1])
     .filter((p) => p !== '*' && p !== '/')
-    // Trang ngoài khung đăng nhập không thuộc cây menu
-    .filter((p) => !['/dang-nhap', '/dang-ky-tai-khoan', '/quen-mat-khau', '/dat-lai-mat-khau', '/unsubscribe'].includes(p));
+    // Trang ngoài khung đăng nhập không thuộc cây menu. /card/* là danh thiếp số
+    // công khai cho KHÁCH quét QR — phục vụ bằng entry riêng card.html, route này
+    // chỉ là lưới đỡ chuyển tiếp (xem DanhThiepChuyenTiep trong App.tsx).
+    .filter((p) => !['/dang-nhap', '/dang-ky-tai-khoan', '/quen-mat-khau', '/dat-lai-mat-khau', '/unsubscribe', '/card/*'].includes(p));
 
   it('tìm được ít nhất 60 route để kiểm', () => {
     expect(duongDan.length).toBeGreaterThan(60);
