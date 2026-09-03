@@ -5111,6 +5111,10 @@ export type Database = {
           bo_sung_luc: string | null
           bo_sung_ghi_chu: string | null
           so_lan_bo_sung: number
+          ly_do_ket_luan: string | null
+          ket_luan_luc: string | null
+          phoi_hop_voi: string[] | null
+          phoi_hop_ten: string[] | null
         }[]
       }
       bhy_ideas_viec_cua_giam_doc: {
@@ -5162,6 +5166,58 @@ export type Database = {
           so_lan_bo_sung: number
           bo_sung_luc: string | null
           bo_sung_ghi_chu: string | null
+          ly_do_ket_luan: string | null
+          ket_luan_luc: string | null
+          phoi_hop_ten: string[] | null
+          muc_thuong: number
+          ghi_nhan_kpi: boolean
+          duyet_cn: boolean
+          duyet_tsc: boolean
+          y_kien_gd: string | null
+          duyet_luc: string | null
+          trinh_luc: string | null
+        }[]
+      }
+      bhy_ideas_ket_luan_tcth: {
+        Args: { _idea_id: string; _ket_luan: string; _ly_do: string; _phoi_hop_voi?: string[] | null }
+        Returns: Json
+      }
+      bhy_ideas_so_ghi_nhan_day_du: {
+        Args: never
+        Returns: {
+          idea_id: string
+          title: string
+          proposer: string
+          phong: string
+          has_demo: boolean
+          cap_de_xuat: string | null
+          linh_vuc: string | null
+          development_level: string | null
+          cap_do: string
+          trang_thai: string
+          nguon_cong_nhan: string
+          duyet_cn: boolean
+          duyet_tsc: boolean
+          ghi_nhan_kpi: boolean
+          muc_thuong: number
+          ly_do_thuong: string
+          tuan_chon: string | null
+          nguoi_duyet: string | null
+          duyet_luc: string | null
+          nguoi_ghi_nhan: string | null
+          ghi_nhan_luc: string | null
+          smp_ma: string | null
+          smp_trang_thai: string | null
+          diem_tcth: number | null
+          diem_gd: number | null
+          y_kien_gd: string | null
+          ghi_chu: string | null
+          tra_ve_boi: string | null
+          ly_do_tra_ve: string | null
+          so_lan_bo_sung: number
+          ly_do_ket_luan: string | null
+          ly_do_thu_hoi: string | null
+          created_at: string
         }[]
       }
       bhy_ideas_so_ben_re: {
@@ -5194,6 +5250,9 @@ export type Database = {
           diem_gd: number | null
           y_kien_gd: string | null
           moc_gan_nhat: string | null
+          ly_do_ket_luan: string | null
+          ket_luan_luc: string | null
+          phoi_hop_ten: string[] | null
         }[]
       }
       bhy_ideas_gd_da_quyet_gan_day: {

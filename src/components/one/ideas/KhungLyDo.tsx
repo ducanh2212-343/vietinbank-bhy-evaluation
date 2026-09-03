@@ -12,9 +12,11 @@ export const KhungLyDo: React.FC<{
   heQua: string[];
   icon: LucideIcon;
   onXacNhan: (lyDo: string) => Promise<boolean>;
-  mau?: 'amber' | 'slate' | 'orange';
+  mau?: 'amber' | 'slate' | 'orange' | 'teal';
   placeholder?: string;
-}> = ({ nhan, heQua, icon: Icon, onXacNhan, mau = 'amber', placeholder }) => {
+  /** Ô bổ sung hiện phía trên ô lý do (VD chọn ý tưởng phối hợp) */
+  themVao?: React.ReactNode;
+}> = ({ nhan, heQua, icon: Icon, onXacNhan, mau = 'amber', placeholder, themVao }) => {
   const [mo, setMo] = useState(false);
   const [lyDo, setLyDo] = useState('');
   const [dangGui, setDangGui] = useState(false);
@@ -32,11 +34,15 @@ export const KhungLyDo: React.FC<{
   const lopNut = {
     amber: 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100',
     orange: 'border-orange-300 bg-orange-50 text-orange-800 hover:bg-orange-100',
+    teal: 'border-teal-300 bg-teal-50 text-teal-800 hover:bg-teal-100',
     slate: 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50',
   }[mau];
-  const lopKhung = mau === 'orange'
-    ? { vien: 'border-orange-300 bg-orange-50/70', chu: 'text-orange-900', tieuDe: 'text-orange-800', nut: 'bg-orange-600 hover:bg-orange-700', o: 'border-orange-300 focus:border-orange-500' }
-    : { vien: 'border-amber-300 bg-amber-50/70', chu: 'text-amber-900', tieuDe: 'text-amber-800', nut: 'bg-amber-600 hover:bg-amber-700', o: 'border-amber-300 focus:border-amber-500' };
+  const lopKhung = {
+    orange: { vien: 'border-orange-300 bg-orange-50/70', chu: 'text-orange-900', tieuDe: 'text-orange-800', nut: 'bg-orange-600 hover:bg-orange-700', o: 'border-orange-300 focus:border-orange-500' },
+    teal: { vien: 'border-teal-300 bg-teal-50/70', chu: 'text-teal-900', tieuDe: 'text-teal-800', nut: 'bg-teal-600 hover:bg-teal-700', o: 'border-teal-300 focus:border-teal-500' },
+    amber: { vien: 'border-amber-300 bg-amber-50/70', chu: 'text-amber-900', tieuDe: 'text-amber-800', nut: 'bg-amber-600 hover:bg-amber-700', o: 'border-amber-300 focus:border-amber-500' },
+    slate: { vien: 'border-slate-300 bg-slate-50', chu: 'text-slate-800', tieuDe: 'text-slate-700', nut: 'bg-slate-700 hover:bg-slate-800', o: 'border-slate-300 focus:border-slate-500' },
+  }[mau];
 
   if (!mo) {
     return (
@@ -56,6 +62,7 @@ export const KhungLyDo: React.FC<{
       <ul className={`list-disc space-y-0.5 pl-4 text-2xs ${lopKhung.chu}`}>
         {heQua.map(h => <li key={h}>{h}</li>)}
       </ul>
+      {themVao}
       <textarea
         autoFocus
         rows={2}

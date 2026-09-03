@@ -188,6 +188,40 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, hoSo, onGuiLai, isContentAdmi
             ⏳ Phòng TCTH đã trình — đang chờ Giám đốc công nhận Bén rễ
           </p>
         )}
+        {/* Mọi bước đổi cấp / từ chối đều hiện ở đây — cán bộ mở bảng tra cứu là
+            biết ý tưởng mình đang được xem xét tới đâu (yêu cầu 03/09/2026) */}
+        {hoSo?.trangThai === 'nuoi_duong' && (
+          <div className="space-y-1 rounded-lg border border-teal-300 bg-teal-50 p-3 text-xs text-teal-900">
+            <p>
+              <b>🌱 Đang nuôi dưỡng — Phòng TCTH{hoSo.ketLuanLuc ? ` (${new Date(hoSo.ketLuanLuc).toLocaleDateString('vi-VN')})` : ''}:</b>{' '}
+              «{hoSo.lyDoKetLuan ?? '—'}»
+            </p>
+            {hoSo.phoiHopTen.length > 0 && (
+              <p className="text-2xs">🔗 Ghép cùng: {hoSo.phoiHopTen.map(t => `«${t}»`).join(', ')}</p>
+            )}
+            <p className="text-2xs">Mời anh/chị góp thêm ý kiến ở phần trao đổi bên dưới để hoàn thiện ý tưởng.</p>
+          </div>
+        )}
+        {hoSo?.trangThai === 'dung' && (
+          <p className="rounded-lg border border-slate-300 bg-slate-100 px-3 py-2 text-2xs text-slate-700">
+            <b>⏹️ Dừng ươm mầm{hoSo.ketLuanLuc ? ` (${new Date(hoSo.ketLuanLuc).toLocaleDateString('vi-VN')})` : ''} — Phòng TCTH:</b>{' '}
+            «{hoSo.lyDoKetLuan ?? '—'}»
+          </p>
+        )}
+        {hoSo?.trangThai === 'da_ghi_nhan' && (
+          <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-2xs font-bold text-emerald-800">
+            🎉 Đã công nhận Bén rễ{hoSo.duyetLuc ? ` ngày ${new Date(hoSo.duyetLuc).toLocaleDateString('vi-VN')}` : ''} —{' '}
+            {hoSo.duyetCn && hoSo.duyetTsc ? 'Giám đốc và Trụ sở chính' : hoSo.duyetTsc ? 'Trụ sở chính đồng ý' : 'Giám đốc duyệt'}
+            {hoSo.mucThuong > 0 ? ` · thưởng ${hoSo.mucThuong.toLocaleString('vi-VN')}đ` : ''}
+            {hoSo.yKienGd ? <span className="block font-normal">Ý kiến Giám đốc: «{hoSo.yKienGd}»</span> : null}
+          </p>
+        )}
+        {hoSo?.trangThai === 'tu_choi' && (
+          <p className="rounded-lg border border-slate-300 bg-slate-100 px-3 py-2 text-2xs text-slate-700">
+            <b>Giám đốc kết luận chưa đạt Bén rễ{hoSo.duyetLuc ? ` (${new Date(hoSo.duyetLuc).toLocaleDateString('vi-VN')})` : ''}</b>
+            {hoSo.yKienGd ? <span className="block">Ý kiến: «{hoSo.yKienGd}»</span> : null}
+          </p>
+        )}
         {/* Lớp 1: hàng badge */}
         <div className="flex flex-wrap gap-1.5 items-center justify-between">
           <div className="flex flex-wrap gap-1">

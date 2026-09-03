@@ -25,6 +25,10 @@ describe('Sổ Bén rễ — phân loại theo nguồn công nhận', () => {
     expect(phanLoaiSoBenRe(d({ trangThai: 'tu_choi' }))).toBe('chua_dat');
     expect(phanLoaiSoBenRe(d({ trangThai: 'thu_hoi' }))).toBe('da_rut');
   });
+  it('kết luận của TCTH: nuôi dưỡng và dừng ươm mầm là hai nhóm riêng', () => {
+    expect(phanLoaiSoBenRe(d({ trangThai: 'nuoi_duong' }))).toBe('nuoi_duong');
+    expect(phanLoaiSoBenRe(d({ trangThai: 'dung' }))).toBe('dung');
+  });
   it('đếm đủ mọi nhóm kể cả nhóm trống, tổng bằng số dòng', () => {
     const ds = [d({ duyetTsc: true }), d({ duyetTsc: true }), d({ duyetCn: true }), d({ trangThai: 'tra_ve', traVeBoi: 'gd' })];
     const dem = demTheoNhom(ds);

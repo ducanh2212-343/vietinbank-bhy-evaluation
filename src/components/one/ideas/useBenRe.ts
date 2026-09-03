@@ -46,10 +46,11 @@ export interface ViecGiamDoc {
   traVeBoi: 'tcth' | 'gd' | null;
 }
 
-export type TrangThaiSoBenRe = 'cho_gd_duyet' | 'da_ghi_nhan' | 'tu_choi' | 'thu_hoi' | 'tra_ve' | 'da_bo_sung';
+export type TrangThaiSoBenRe =
+  | 'cho_gd_duyet' | 'da_ghi_nhan' | 'tu_choi' | 'thu_hoi' | 'tra_ve' | 'da_bo_sung' | 'nuoi_duong' | 'dung';
 
 const docTrangThaiSo = (s: string | null | undefined): TrangThaiSoBenRe | null =>
-  (['cho_gd_duyet', 'da_ghi_nhan', 'tu_choi', 'thu_hoi', 'tra_ve', 'da_bo_sung'] as const)
+  (['cho_gd_duyet', 'da_ghi_nhan', 'tu_choi', 'thu_hoi', 'tra_ve', 'da_bo_sung', 'nuoi_duong', 'dung'] as const)
     .find(t => t === s) ?? null;
 
 const docTraVeBoi = (s: string | null | undefined): 'tcth' | 'gd' | null =>
@@ -84,6 +85,9 @@ export interface DongSoBenReDayDu {
   diemGd: number | null;
   yKienGd: string | null;
   mocGanNhat: string | null;
+  lyDoKetLuan: string | null;
+  ketLuanLuc: string | null;
+  phoiHopTen: string[];
 }
 
 /** Hồ sơ Bén rễ của chính mình — bảng tra cứu dùng để hiện «cần bổ sung» */
@@ -96,6 +100,17 @@ export interface HoSoBenReCuaToi {
   soLanBoSung: number;
   boSungLuc: string | null;
   boSungGhiChu: string | null;
+  /** Kết luận của TCTH (nuôi dưỡng / dừng) và các ý tưởng được ghép cùng */
+  lyDoKetLuan: string | null;
+  ketLuanLuc: string | null;
+  phoiHopTen: string[];
+  mucThuong: number;
+  ghiNhanKpi: boolean;
+  duyetCn: boolean;
+  duyetTsc: boolean;
+  yKienGd: string | null;
+  duyetLuc: string | null;
+  trinhLuc: string | null;
 }
 
 /** Quyết định gần đây của Giám đốc — để tìm lại hồ sơ bấm nhầm */
@@ -150,6 +165,10 @@ export interface UngVienBenRe {
   boSungLuc: string | null;
   boSungGhiChu: string | null;
   soLanBoSung: number;
+  lyDoKetLuan: string | null;
+  ketLuanLuc: string | null;
+  phoiHopVoi: string[];
+  phoiHopTen: string[];
 }
 
 const viecKey = ['bhy-ideas-viec-giam-doc'];
@@ -264,6 +283,10 @@ export function useUngVienBenRe(enabled = true) {
         boSungLuc: r.bo_sung_luc ?? null,
         boSungGhiChu: r.bo_sung_ghi_chu ?? null,
         soLanBoSung: r.so_lan_bo_sung ?? 0,
+        lyDoKetLuan: r.ly_do_ket_luan ?? null,
+        ketLuanLuc: r.ket_luan_luc ?? null,
+        phoiHopVoi: r.phoi_hop_voi ?? [],
+        phoiHopTen: r.phoi_hop_ten ?? [],
       }));
     },
   });
@@ -310,6 +333,9 @@ export function useSoBenRe(enabled = true) {
         diemGd: r.diem_gd,
         yKienGd: r.y_kien_gd ?? null,
         mocGanNhat: r.moc_gan_nhat ?? null,
+        lyDoKetLuan: r.ly_do_ket_luan ?? null,
+        ketLuanLuc: r.ket_luan_luc ?? null,
+        phoiHopTen: r.phoi_hop_ten ?? [],
       }));
     },
   });
@@ -334,11 +360,108 @@ export function useHoSoBenReCuaToi(enabled = true) {
         soLanBoSung: r.so_lan_bo_sung ?? 0,
         boSungLuc: r.bo_sung_luc ?? null,
         boSungGhiChu: r.bo_sung_ghi_chu ?? null,
+        lyDoKetLuan: r.ly_do_ket_luan ?? null,
+        ketLuanLuc: r.ket_luan_luc ?? null,
+        phoiHopTen: r.phoi_hop_ten ?? [],
+        mucThuong: r.muc_thuong ?? 0,
+        ghiNhanKpi: !!r.ghi_nhan_kpi,
+        duyetCn: !!r.duyet_cn,
+        duyetTsc: !!r.duyet_tsc,
+        yKienGd: r.y_kien_gd ?? null,
+        duyetLuc: r.duyet_luc ?? null,
+        trinhLuc: r.trinh_luc ?? null,
       }));
     },
   });
   const theoIdea = Object.fromEntries(data.map(h => [h.ideaId, h])) as Record<string, HoSoBenReCuaToi>;
   return { hoSo: data, theoIdea, isLoading };
+}
+
+/** Một dòng sổ ghi nhận mọi cấp — dùng cho kết xuất Excel */
+export interface DongSoGhiNhan {
+  ideaId: string;
+  title: string;
+  proposer: string;
+  phong: string;
+  coDemo: boolean;
+  capDeXuat: string | null;
+  linhVuc: string | null;
+  developmentLevel: string | null;
+  capDo: string;
+  trangThai: string;
+  nguonCongNhan: 'giam_doc' | 'tsc' | 'ca_hai' | 'chi_nhanh' | 'hoi_dong' | '';
+  duyetCn: boolean;
+  duyetTsc: boolean;
+  ghiNhanKpi: boolean;
+  mucThuong: number;
+  lyDoThuong: string;
+  tuanChon: string | null;
+  nguoiDuyet: string | null;
+  duyetLuc: string | null;
+  nguoiGhiNhan: string | null;
+  ghiNhanLuc: string | null;
+  smpMa: string | null;
+  smpTrangThai: string | null;
+  diemTcth: number | null;
+  diemGd: number | null;
+  yKienGd: string | null;
+  ghiChu: string | null;
+  traVeBoi: string | null;
+  lyDoTraVe: string | null;
+  soLanBoSung: number;
+  lyDoKetLuan: string | null;
+  lyDoThuHoi: string | null;
+  createdAt: string;
+}
+
+const soDayDuKey = ['bhy-ideas-so-ghi-nhan-day-du'];
+
+export function useSoGhiNhanDayDu(enabled = true) {
+  const { data = [], isLoading } = useQuery({
+    queryKey: soDayDuKey,
+    enabled,
+    staleTime: 60 * 1000,
+    queryFn: async (): Promise<DongSoGhiNhan[]> => {
+      const { data: rows, error } = await supabase.rpc('bhy_ideas_so_ghi_nhan_day_du');
+      if (error) throw error;
+      return (rows ?? []).map(r => ({
+        ideaId: r.idea_id,
+        title: r.title,
+        proposer: r.proposer,
+        phong: r.phong,
+        coDemo: !!r.has_demo,
+        capDeXuat: r.cap_de_xuat ?? null,
+        linhVuc: r.linh_vuc ?? null,
+        developmentLevel: r.development_level ?? null,
+        capDo: r.cap_do,
+        trangThai: r.trang_thai,
+        nguonCongNhan: (r.nguon_cong_nhan as DongSoGhiNhan['nguonCongNhan']) ?? '',
+        duyetCn: r.duyet_cn,
+        duyetTsc: r.duyet_tsc,
+        ghiNhanKpi: r.ghi_nhan_kpi,
+        mucThuong: r.muc_thuong,
+        lyDoThuong: r.ly_do_thuong,
+        tuanChon: r.tuan_chon ?? null,
+        nguoiDuyet: r.nguoi_duyet ?? null,
+        duyetLuc: r.duyet_luc ?? null,
+        nguoiGhiNhan: r.nguoi_ghi_nhan ?? null,
+        ghiNhanLuc: r.ghi_nhan_luc ?? null,
+        smpMa: r.smp_ma ?? null,
+        smpTrangThai: r.smp_trang_thai ?? null,
+        diemTcth: r.diem_tcth,
+        diemGd: r.diem_gd,
+        yKienGd: r.y_kien_gd ?? null,
+        ghiChu: r.ghi_chu ?? null,
+        traVeBoi: r.tra_ve_boi ?? null,
+        lyDoTraVe: r.ly_do_tra_ve ?? null,
+        soLanBoSung: r.so_lan_bo_sung ?? 0,
+        lyDoKetLuan: r.ly_do_ket_luan ?? null,
+        lyDoThuHoi: r.ly_do_thu_hoi ?? null,
+        createdAt: r.created_at,
+      }));
+    },
+  });
+  return { soGhiNhan: data, isLoading };
 }
 
 export function useBenReActions() {
@@ -349,6 +472,7 @@ export function useBenReActions() {
     queryClient.invalidateQueries({ queryKey: ungVienKey });
     queryClient.invalidateQueries({ queryKey: daQuyetKey });
     queryClient.invalidateQueries({ queryKey: soBenReKey });
+    queryClient.invalidateQueries({ queryKey: soDayDuKey });
     queryClient.invalidateQueries({ queryKey: hoSoCuaToiKey });
     queryClient.invalidateQueries({ queryKey: ['idea-comments'] });
     queryClient.invalidateQueries({ queryKey: ['idea-awards'] });
@@ -490,5 +614,32 @@ export function useBenReActions() {
     return true;
   }, [refresh]);
 
-  return { trinh, duyet, thuHoiQuyetDinh, rutHoSo, traVeBoSung, guiLaiBoSung };
+  /**
+   * Kết luận của TCTH trước khi trình: NUÔI DƯỠNG (có thể ghép với ý tưởng
+   * khác, mời chủ ý tưởng góp ý) hoặc DỪNG ƯƠM MẦM (chưa khả thi). CSDL ghi
+   * nhật ký lên ý tưởng và báo cho chủ ý tưởng (và chủ các ý tưởng được ghép).
+   */
+  const ketLuanTcth = useCallback(async (
+    ideaId: string, ketLuan: 'nuoi_duong' | 'dung', lyDo: string, phoiHopVoi: string[] = [],
+  ): Promise<boolean> => {
+    const { data, error } = await supabase.rpc('bhy_ideas_ket_luan_tcth', {
+      _idea_id: ideaId,
+      _ket_luan: ketLuan,
+      _ly_do: lyDo.trim(),
+      _phoi_hop_voi: phoiHopVoi.length ? phoiHopVoi : null,
+    });
+    if (error) {
+      toast.error(error.message);
+      return false;
+    }
+    const kq = data as { so_phoi_hop?: number; so_bao_phoi_hop?: number } | null;
+    toast.success(ketLuan === 'nuoi_duong'
+      ? `Đã đưa vào nuôi dưỡng — chủ ý tưởng nhận thông báo mời góp ý${
+          kq?.so_phoi_hop ? `; ${kq.so_phoi_hop} ý tưởng ghép cùng cũng được báo` : ''}`
+      : 'Đã dừng ươm mầm — chủ ý tưởng nhận thông báo kèm lý do');
+    refresh();
+    return true;
+  }, [refresh]);
+
+  return { trinh, duyet, thuHoiQuyetDinh, rutHoSo, traVeBoSung, guiLaiBoSung, ketLuanTcth };
 }

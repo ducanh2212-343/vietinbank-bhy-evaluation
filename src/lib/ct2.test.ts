@@ -773,4 +773,7 @@ describe('Đường dẫn tin BHY Ideas', () => {
     // Không có mã thẻ/hồ sơ nào để trỏ sâu hơn; thiếu nhánh riêng là rơi về CT2
     expect(duongDanThongBao({ ma_su_kien: 'IDEA_TRA_VE', dau_viec_id: null })).toBe('/one/y-tuong/gui');
   });
+  it('tin tiến trình (trình GĐ, công nhận, chưa đạt, nuôi dưỡng…) cũng mở bảng tra cứu', () => {
+    expect(duongDanThongBao({ ma_su_kien: 'IDEA_TIEN_TRINH', dau_viec_id: null })).toBe('/one/y-tuong/gui');
+  });
 });

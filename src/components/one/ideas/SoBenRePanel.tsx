@@ -1,8 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { BookOpen, Search } from 'lucide-react';
+import { BookOpen, FileSpreadsheet, Search } from 'lucide-react';
+import { toast } from 'sonner';
+import { downloadSoGhiNhanExcel } from './soGhiNhanExcel';
 import { khopTimKiem } from '@/lib/vietnamese';
 import { NHOM_SO_BEN_RE, demTheoNhom, phanLoaiSoBenRe, type NhomSoBenRe } from '@/lib/ideaSoBenRe';
-import { useSoBenRe, type DongSoBenReDayDu } from './useBenRe';
+import { useSoBenRe, useSoGhiNhanDayDu, type DongSoBenReDayDu } from './useBenRe';
 
 // Sổ Bén rễ — Giám đốc và Phòng TCTH cùng nhìn một sổ.
 //
@@ -32,6 +34,10 @@ function DongMoTa({ d }: { d: DongSoBenReDayDu }) {
       return <>Trả về ngày {ngay(d.traVeLuc)}: «{d.lyDoTraVe ?? '—'}» · đang chờ cán bộ bổ sung</>;
     case 'da_bo_sung':
       return <>Cán bộ bổ sung ngày {ngay(d.boSungLuc)} (lần {d.soLanBoSung}) · chờ TCTH chấm lại</>;
+    case 'nuoi_duong':
+      return <>TCTH đưa vào nuôi dưỡng ngày {ngay(d.ketLuanLuc)}: «{d.lyDoKetLuan ?? '—'}»{d.phoiHopTen.length ? ` · ghép cùng ${d.phoiHopTen.map(t => `«${t}»`).join(', ')}` : ''}</>;
+    case 'dung':
+      return <>TCTH dừng ươm mầm ngày {ngay(d.ketLuanLuc)}: «{d.lyDoKetLuan ?? '—'}»</>;
     case 'chua_dat':
       return <>Giám đốc kết luận chưa đạt ngày {ngay(d.duyetLuc)}{d.yKienGd ? ` — «${d.yKienGd}»` : ''}</>;
     case 'da_rut':
@@ -41,7 +47,21 @@ function DongMoTa({ d }: { d: DongSoBenReDayDu }) {
 
 export const SoBenRePanel: React.FC = () => {
   const { soBenRe, isLoading } = useSoBenRe();
+  const { soGhiNhan, isLoading: dangTaiSoDayDu } = useSoGhiNhanDayDu();
+  const [dangXuat, setDangXuat] = useState(false);
   const [nhomChon, setNhomChon] = useState<NhomSoBenRe | 'tat_ca'>('tat_ca');
+
+  const ketXuat = async () => {
+    setDangXuat(true);
+    try {
+      await downloadSoGhiNhanExcel(soGhiNhan);
+      toast.success(`Đã kết xuất ${soGhiNhan.length} dòng sổ ghi nhận (mọi cấp) — 3 sheet: theo nguồn, theo phòng, chi tiết`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Không kết xuất được');
+    } finally {
+      setDangXuat(false);
+    }
+  };
   const [tim, setTim] = useState('');
   const [xemHet, setXemHet] = useState(false);
 
@@ -65,6 +85,17 @@ export const SoBenRePanel: React.FC = () => {
         <span className="ml-auto rounded-full bg-slate-100 px-2.5 py-1 text-2xs font-black text-slate-600">
           {soBenRe.length} hồ sơ
         </span>
+        {/* Kết xuất MỌI cấp (Ươm mầm → Lan tỏa), không chỉ Bén rễ — sheet tổng
+            hợp tách Bén rễ do Giám đốc CN duyệt và do TSC đồng ý */}
+        <button
+          type="button"
+          disabled={dangXuat || dangTaiSoDayDu}
+          onClick={() => void ketXuat()}
+          className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-2xs font-black text-white transition-all hover:bg-emerald-700 disabled:opacity-50"
+        >
+          <FileSpreadsheet className="h-3.5 w-3.5" />
+          {dangXuat ? 'Đang kết xuất…' : `Kết xuất Excel (${soGhiNhan.length} dòng, mọi cấp)`}
+        </button>
       </div>
 
       {/* Dải tổng: câu trả lời trực tiếp cho «bao nhiêu do Giám đốc, bao nhiêu do TSC» */}
@@ -83,7 +114,7 @@ export const SoBenRePanel: React.FC = () => {
           <p className="text-2xs font-black uppercase tracking-wider text-slate-500">Đã công nhận Bén rễ</p>
           <p className="text-2xl font-black text-slate-800">{tongCongNhan}</p>
           <p className="text-2xs text-slate-500">
-            đang luân chuyển: {dem.cho_gd} chờ GĐ · {dem.tcth_tra_ve + dem.gd_tra_ve} trả về · {dem.da_bo_sung} đã bổ sung
+            đang luân chuyển: {dem.cho_gd} chờ GĐ · {dem.tcth_tra_ve + dem.gd_tra_ve} trả về · {dem.da_bo_sung} đã bổ sung · {dem.nuoi_duong} nuôi dưỡng · {dem.dung} dừng
           </p>
         </div>
       </div>

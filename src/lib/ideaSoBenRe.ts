@@ -15,10 +15,12 @@ export type NhomSoBenRe =
   | 'gd_tra_ve'         // Giám đốc trả về cán bộ bổ sung
   | 'da_bo_sung'        // cán bộ đã gửi lại, chờ TCTH đánh giá lại
   | 'chua_dat'          // Giám đốc kết luận chưa đạt (dừng)
+  | 'nuoi_duong'        // TCTH đưa vào nuôi dưỡng, có thể ghép với ý tưởng khác
+  | 'dung'              // TCTH dừng ươm mầm (chưa khả thi)
   | 'da_rut';           // TCTH rút / thu hồi theo đường TSC
 
 export interface DongSoBenRe {
-  trangThai: 'cho_gd_duyet' | 'da_ghi_nhan' | 'tu_choi' | 'thu_hoi' | 'tra_ve' | 'da_bo_sung';
+  trangThai: 'cho_gd_duyet' | 'da_ghi_nhan' | 'tu_choi' | 'thu_hoi' | 'tra_ve' | 'da_bo_sung' | 'nuoi_duong' | 'dung';
   duyetCn: boolean;
   duyetTsc: boolean;
   traVeBoi: 'tcth' | 'gd' | null;
@@ -32,6 +34,8 @@ export const NHOM_SO_BEN_RE: { ma: NhomSoBenRe; ten: string; mau: string }[] = [
   { ma: 'da_bo_sung', ten: 'Đã bổ sung', mau: 'bg-violet-100 text-violet-800' },
   { ma: 'tcth_tra_ve', ten: 'TCTH trả về', mau: 'bg-orange-100 text-orange-800' },
   { ma: 'gd_tra_ve', ten: 'Giám đốc trả về', mau: 'bg-rose-100 text-rose-800' },
+  { ma: 'nuoi_duong', ten: 'Đang nuôi dưỡng', mau: 'bg-teal-100 text-teal-800' },
+  { ma: 'dung', ten: 'Dừng ươm mầm', mau: 'bg-slate-200 text-slate-600' },
   { ma: 'chua_dat', ten: 'Chưa đạt', mau: 'bg-slate-200 text-slate-700' },
   { ma: 'da_rut', ten: 'Đã rút', mau: 'bg-slate-100 text-slate-500' },
 ];
@@ -46,6 +50,8 @@ export function phanLoaiSoBenRe(d: DongSoBenRe): NhomSoBenRe {
     case 'tra_ve': return d.traVeBoi === 'gd' ? 'gd_tra_ve' : 'tcth_tra_ve';
     case 'da_bo_sung': return 'da_bo_sung';
     case 'tu_choi': return 'chua_dat';
+    case 'nuoi_duong': return 'nuoi_duong';
+    case 'dung': return 'dung';
     case 'thu_hoi': return 'da_rut';
   }
 }

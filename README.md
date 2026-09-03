@@ -176,7 +176,9 @@ trần 10MB cho bucket `bhy-one` vốn đang để không giới hạn.
   quyết định Bén rễ, đảo ngược đường TSC, sửa điểm 0 giả; `20261005090000_bhy_ideas_tra_ve_bo_sung_va_so_ben_re`
   **đã áp** (03/09/2026) — trả về bổ sung, gửi lại, sổ Bén rễ. Tin đẩy `IDEA_TRA_VE` đi qua hàng đợi
   `ct2_thong_bao`; đường dẫn mở tin thêm ở cả `src/lib/ct2.ts` lẫn `supabase/functions/notify-ct2` —
-  **cần deploy lại `notify-ct2`** sau khi gộp. Tên file mang số thứ tự tăng dần
+  `20261006090000_bhy_ideas_ket_luan_tcth_va_bao_chu_y_tuong` **đã áp** (03/09/2026) — kết luận
+  TCTH (nuôi dưỡng / dừng), báo chủ ý tưởng ở mọi bước qua mã `IDEA_TIEN_TRINH` (mức NHE/KHEN) và
+  `IDEA_TRA_VE` (mức DO), hàm sổ đầy đủ để kết xuất. **Cần deploy lại `notify-ct2`** sau khi gộp. Tên file mang số thứ tự tăng dần
   chứ không phải ngày lịch (chuỗi Ideas đã vượt quá ngày thật từ 08/2026); mỗi file đều có
   bản gỡ ở `supabase/rollbacks/`.
 
