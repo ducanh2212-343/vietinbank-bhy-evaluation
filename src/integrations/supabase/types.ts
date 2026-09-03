@@ -5253,6 +5253,15 @@ export type Database = {
           ly_do_ket_luan: string | null
           ket_luan_luc: string | null
           phoi_hop_ten: string[] | null
+          current_status: string | null
+          proposed_solution: string | null
+          expected_benefits: string | null
+          danh_gia_tcth: Json | null
+          ghi_chu: string | null
+          bo_sung_ghi_chu: string | null
+          ly_do_thu_hoi: string | null
+          thu_hoi_luc: string | null
+          so_lan_thu_hoi: number
         }[]
       }
       bhy_ideas_gd_da_quyet_gan_day: {

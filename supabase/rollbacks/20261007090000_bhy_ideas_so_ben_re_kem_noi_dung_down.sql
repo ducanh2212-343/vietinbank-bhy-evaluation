@@ -1,0 +1,2 @@
+-- Gỡ 20261007090000: đưa bhy_ideas_so_ben_re() về bản 20261006090000
+-- (chạy lại đoạn 4) «so_ben_re» của migration đó). Không có cột/dữ liệu nào đổi.

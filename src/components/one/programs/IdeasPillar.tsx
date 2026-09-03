@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowRight, ClipboardList, Search, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { EditableText } from '@/components/one/AdminEditableContext';
@@ -101,6 +101,9 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
   const [filterNhom, setFilterNhom] = useState<'all' | IdeaLinhVuc>('all');
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<PortalIdea | null>(null);
+  // ?y_tuong=<id>: mở từ Sổ Bén rễ / thông báo — chỉ hiện đúng ý tưởng đó
+  const [thamSo, datThamSo] = useSearchParams();
+  const yTuongChon = thamSo.get('y_tuong');
   const formRef = useRef<HTMLDivElement | null>(null);
 
   // Trang đặc trưng (introOnly) và khách đối tác: chỉ xem giới thiệu tĩnh.
@@ -130,7 +133,8 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
 
   // Lọc theo cấp + tìm kiếm không dấu trên toàn bộ nội dung phiếu.
   // Mục đích chính: cán bộ tra trước khi gửi để tránh đề xuất trùng ý tưởng đã có.
-  const byLevel = filterLevel === 'all' ? ideas : ideas.filter(i => i.level === filterLevel);
+  const chiMotYTuong = yTuongChon ? ideas.filter(i => i.id === yTuongChon) : ideas;
+  const byLevel = filterLevel === 'all' ? chiMotYTuong : chiMotYTuong.filter(i => i.level === filterLevel);
   const byNhom = filterNhom === 'all' ? byLevel : byLevel.filter(i => i.linhVuc === filterNhom);
   const filteredIdeas = search.trim()
     ? byNhom.filter(i =>
@@ -263,11 +267,23 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
           </div>
         </div>
 
+        {yTuongChon && (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[#005a9c]/30 bg-sky-50 px-3 py-2 text-xs text-sky-900">
+            <span>Đang xem <b>một ý tưởng</b> mở từ sổ / thông báo.</span>
+            <button
+              type="button"
+              onClick={() => { thamSo.delete('y_tuong'); datThamSo(thamSo, { replace: true }); }}
+              className="cursor-pointer rounded-md bg-white px-2 py-1 text-2xs font-bold text-[#005a9c] hover:bg-sky-100"
+            >
+              Xem toàn bộ bảng
+            </button>
+          </div>
+        )}
         <IdeaList
           ideas={filteredIdeas}
           hoSoBenRe={hoSoBenRe}
           onGuiLai={handleGuiLai}
-          isFiltered={!!search.trim() || filterLevel !== 'all' || filterNhom !== 'all'}
+          isFiltered={!!yTuongChon || !!search.trim() || filterLevel !== 'all' || filterNhom !== 'all'}
           isLoading={isLoading}
           isContentAdmin={isContentAdmin}
           myName={myName}

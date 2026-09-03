@@ -88,6 +88,17 @@ export interface DongSoBenReDayDu {
   lyDoKetLuan: string | null;
   ketLuanLuc: string | null;
   phoiHopTen: string[];
+  /** Nội dung ý tưởng — để mở ngay trên sổ, không phải sang tab khác tìm lại */
+  currentStatus: string | null;
+  proposedSolution: string | null;
+  expectedBenefits: string | null;
+  danhGiaTcth: PhieuBenRe;
+  /** Lời trình của TCTH */
+  ghiChu: string | null;
+  boSungGhiChu: string | null;
+  lyDoThuHoi: string | null;
+  thuHoiLuc: string | null;
+  soLanThuHoi: number;
 }
 
 /** Hồ sơ Bén rễ của chính mình — bảng tra cứu dùng để hiện «cần bổ sung» */
@@ -336,6 +347,15 @@ export function useSoBenRe(enabled = true) {
         lyDoKetLuan: r.ly_do_ket_luan ?? null,
         ketLuanLuc: r.ket_luan_luc ?? null,
         phoiHopTen: r.phoi_hop_ten ?? [],
+        currentStatus: r.current_status ?? null,
+        proposedSolution: r.proposed_solution ?? null,
+        expectedBenefits: r.expected_benefits ?? null,
+        danhGiaTcth: docPhieuBenRe(r.danh_gia_tcth),
+        ghiChu: r.ghi_chu ?? null,
+        boSungGhiChu: r.bo_sung_ghi_chu ?? null,
+        lyDoThuHoi: r.ly_do_thu_hoi ?? null,
+        thuHoiLuc: r.thu_hoi_luc ?? null,
+        soLanThuHoi: r.so_lan_thu_hoi ?? 0,
       }));
     },
   });

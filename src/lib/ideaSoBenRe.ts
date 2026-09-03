@@ -66,3 +66,54 @@ export function demTheoNhom(ds: DongSoBenRe[]): Record<NhomSoBenRe, number> {
   for (const d of ds) dem[phanLoaiSoBenRe(d)] += 1;
   return dem;
 }
+
+// ---------------------------------------------------------------------------
+// HÀNH ĐỘNG NGAY TRÊN SỔ — Giám đốc (03/09/2026): «ấn vào sáng kiến luôn hoặc
+// có nút thu hồi». Bảng này quyết mỗi dòng sổ bày nút gì cho ai; điều kiện
+// trùng với các hàm gác CSDL (gd_thu_hoi, rut_ho_so, tra_ve_bo_sung,
+// ket_luan_tcth) để nút không hiện ở chỗ CSDL sẽ từ chối.
+// ---------------------------------------------------------------------------
+
+export type HanhDongSo =
+  | 'thu_hoi_cong_nhan'  // GĐ gỡ công nhận → về hàng chờ
+  | 'mo_lai'             // GĐ mở lại hồ sơ đã kết luận chưa đạt → về hàng chờ
+  | 'rut_ho_so'          // rút khỏi hàng chờ
+  | 'tra_ve'             // trả về cán bộ bổ sung
+  | 'nuoi_duong'
+  | 'dung'
+  | 'sang_hang_cho'      // liên kết sang tab duyệt (quyết định dứt điểm ở đó, có đồng hồ 3s)
+  | 'sang_danh_gia';     // liên kết sang tab TCTH (chấm phiếu, trình)
+
+export interface QuyenSo {
+  laGiamDoc: boolean;
+  laQuanTri: boolean;
+}
+
+export function hanhDongSoBenRe(
+  d: DongSoBenRe & { daLenCapCaoHon?: boolean },
+  q: QuyenSo,
+): HanhDongSo[] {
+  const ra: HanhDongSo[] = [];
+  const tcthSuaDuoc = q.laQuanTri && !['da_ghi_nhan', 'cho_gd_duyet'].includes(d.trangThai);
+  switch (d.trangThai) {
+    case 'da_ghi_nhan':
+      if (q.laGiamDoc && d.duyetCn && !d.duyetTsc && !d.daLenCapCaoHon) ra.push('thu_hoi_cong_nhan');
+      break;
+    case 'tu_choi':
+      if (q.laGiamDoc) ra.push('mo_lai');
+      if (q.laQuanTri) ra.push('sang_danh_gia');
+      break;
+    case 'cho_gd_duyet':
+      if (q.laGiamDoc) ra.push('sang_hang_cho', 'tra_ve');
+      if (q.laGiamDoc || q.laQuanTri) ra.push('rut_ho_so');
+      break;
+    default:
+      if (q.laQuanTri) ra.push('sang_danh_gia');
+  }
+  if (tcthSuaDuoc) {
+    if (d.trangThai !== 'tra_ve') ra.push('tra_ve');
+    if (d.trangThai !== 'nuoi_duong') ra.push('nuoi_duong');
+    if (d.trangThai !== 'dung') ra.push('dung');
+  }
+  return ra;
+}
