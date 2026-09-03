@@ -389,7 +389,7 @@ export interface DongSoGhiNhan {
   developmentLevel: string | null;
   capDo: string;
   trangThai: string;
-  nguonCongNhan: 'giam_doc' | 'tsc' | 'ca_hai' | 'chi_nhanh' | 'hoi_dong' | '';
+  nguonCongNhan: 'giam_doc' | 'tsc' | 'ca_hai' | 'chi_nhanh' | 'hoi_to' | 'luy_ke' | 'hoi_dong' | '';
   duyetCn: boolean;
   duyetTsc: boolean;
   ghiNhanKpi: boolean;

@@ -831,7 +831,8 @@ GRANT EXECUTE ON FUNCTION public.bhy_ideas_so_ben_re() TO authenticated, service
 -- ---------------------------------------------------------------------------
 -- 5) Sổ ghi nhận ĐẦY ĐỦ mọi cấp — để kết xuất Excel
 --    nguon_cong_nhan: 'giam_doc' | 'tsc' | 'ca_hai' | 'chi_nhanh' (Ươm mầm do
---    TCTH/TP chốt) | 'hoi_dong' (Vươn cành/Lan tỏa) | '' (chưa công nhận)
+--    TCTH/TP chốt) | 'hoi_to' (thưởng khuyến khích trước 16/08, chưa KPI) |
+--    'luy_ke' (tiền bù khi lên cấp) | 'hoi_dong' (Vươn cành/Lan tỏa) | '' (chưa công nhận)
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.bhy_ideas_so_ghi_nhan_day_du()
 RETURNS TABLE (
@@ -855,6 +856,9 @@ AS $$
       WHEN a.cap_do = 'Bén rễ' AND a.duyet_tsc THEN 'tsc'
       WHEN a.cap_do = 'Bén rễ' AND a.duyet_cn THEN 'giam_doc'
       WHEN a.cap_do = 'Ươm mầm' AND (a.duyet_cn OR a.duyet_tsc) THEN 'chi_nhanh'
+      -- 134 dòng nạp trước 16/08/2026: chỉ có tiền khuyến khích, chưa ai chốt KPI
+      WHEN a.cap_do = 'Ươm mầm' AND a.ly_do_thuong = 'hoi_to_khuyen_khich' THEN 'hoi_to'
+      WHEN a.cap_do = 'Ươm mầm' AND a.ghi_chu LIKE 'Thưởng lũy kế%' THEN 'luy_ke'
       WHEN a.cap_do IN ('Vươn cành', 'Lan tỏa') THEN 'hoi_dong'
       ELSE ''
     END,

@@ -11,7 +11,9 @@ export const TEN_NGUON: Record<DongSoGhiNhan['nguonCongNhan'], string> = {
   giam_doc: 'Giám đốc CN duyệt (nội bộ)',
   tsc: 'Trụ sở chính đồng ý (SMP)',
   ca_hai: 'Cả Giám đốc CN và TSC',
-  chi_nhanh: 'Chi nhánh ghi nhận',
+  chi_nhanh: 'Chi nhánh chốt (tính KPI)',
+  hoi_to: 'Thưởng khuyến khích trước 16/08 (chưa chốt KPI)',
+  luy_ke: 'Tiền bù lũy kế khi lên cấp',
   hoi_dong: 'Hội đồng BHY Ideas',
   '': '',
 };

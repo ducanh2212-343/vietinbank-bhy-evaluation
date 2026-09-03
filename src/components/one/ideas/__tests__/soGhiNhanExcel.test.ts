@@ -26,6 +26,17 @@ describe('Kết xuất sổ ghi nhận — tổng hợp theo cấp × nguồn', 
     ]);
   });
 
+  it('134 dòng Ươm mầm thưởng hồi tố tách riêng, không rơi vào «Khác» hay lẫn với chốt KPI', () => {
+    const rows = [
+      dong({ capDo: 'Ươm mầm', nguonCongNhan: 'hoi_to', ghiNhanKpi: false, mucThuong: 100000 }),
+      dong({ capDo: 'Ươm mầm', nguonCongNhan: 'chi_nhanh', mucThuong: 100000 }),
+    ];
+    const th = tongHopSoGhiNhan(rows);
+    expect(th.map(d => d.nguon)).toEqual(expect.arrayContaining([TEN_NGUON.hoi_to, TEN_NGUON.chi_nhanh]));
+    expect(th.find(d => d.nguon === TEN_NGUON.hoi_to)?.tinhKpi).toBe(0);
+    expect(th.some(d => d.nguon === 'Khác')).toBe(false);
+  });
+
   it('dòng chưa công nhận (chờ GĐ, trả về, dừng…) KHÔNG lọt vào bảng tổng hợp', () => {
     const rows = [dong({ trangThai: 'cho_gd_duyet', nguonCongNhan: '', mucThuong: 0 }), dong({ trangThai: 'dung', nguonCongNhan: '', mucThuong: 0 })];
     expect(tongHopSoGhiNhan(rows)).toEqual([]);
