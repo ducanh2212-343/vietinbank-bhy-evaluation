@@ -94,10 +94,16 @@ export const SmpTracker: React.FC = () => {
         toast.error(error.message);
         return;
       }
-      const kq = data as { ghi_nhan_ben_re?: boolean } | null;
-      toast.success(kq?.ghi_nhan_ben_re
-        ? 'Đã lưu — TSC phê duyệt nên ý tưởng được ghi nhận cấp Bén rễ theo quy chế'
-        : 'Đã lưu trạng thái SMP');
+      const kq = data as { ghi_nhan_ben_re?: boolean; thu_hoi_ben_re?: boolean } | null;
+      if (kq?.ghi_nhan_ben_re) {
+        toast.success('Đã lưu — TSC phê duyệt nên ý tưởng được ghi nhận cấp Bén rễ theo quy chế');
+      } else if (kq?.thu_hoi_ben_re) {
+        // TSC không còn đồng ý thì công nhận theo đường TSC cũng rút — nói rõ vì
+        // đây là gỡ KPI và tiền, không phải chỉ đổi một chữ trạng thái
+        toast.warning('Đã lưu — TSC không còn đồng ý nên ghi nhận Bén rễ, KPI và tiền thưởng theo đường TSC đã được gỡ; cấp độ ý tưởng trả về trước đó');
+      } else {
+        toast.success('Đã lưu trạng thái SMP');
+      }
       queryClient.invalidateQueries({ queryKey: smpKey });
       queryClient.invalidateQueries({ queryKey: ['one-portal-ideas'] });
       queryClient.invalidateQueries({ queryKey: ['idea-awards'] });

@@ -168,6 +168,15 @@ luôn ảnh (Storage không cascade theo dòng bảng). Helper:
 `20260929090000_gop_y_dinh_kem_anh.sql` **đã áp** (20/08/2026) — nhân tiện đặt
 trần 10MB cho bucket `bhy-one` vốn đang để không giới hạn.
 
+- **BHY Ideas — sổ ghi nhận Bén rễ (08–09/2026):** migration `20260924090000` (chấm điểm
+  Hội đồng), `20260926090000` (sổ ghi nhận, khoán gọn), `20260928090000_bhy_ideas_danh_gia_ben_re`,
+  `20260930090000_bhy_ideas_tam_dung_kpi_va_nhom_linh_vuc`, `20261002090000_bhy_ideas_sua_nguon_cong_nhan_ben_re`,
+  `20261003090000_bhy_ideas_ung_vien_kem_cap_de_xuat` **đã áp** (27/08/2026), và
+  `20261004090000_bhy_ideas_thu_hoi_quyet_dinh_va_hien_demo` **đã áp** (03/09/2026) — thu hồi
+  quyết định Bén rễ, đảo ngược đường TSC, sửa điểm 0 giả. Tên file mang số thứ tự tăng dần
+  chứ không phải ngày lịch (chuỗi Ideas đã vượt quá ngày thật từ 08/2026); mỗi file đều có
+  bản gỡ ở `supabase/rollbacks/`.
+
 **Bản tin sáng báo góp ý mới (08/2026)** — trước đó ba người tiếp nhận chỉ biết
 có góp ý khi tự mở trang, nên có phiếu nằm «Mới gửi» nhiều ngày. Nay cron
 `gop-y-ban-tin-sang` chạy **9h10 thứ 2–6** (`10 2 * * 1-5` giờ UTC) gọi

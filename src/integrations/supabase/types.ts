@@ -5103,6 +5103,7 @@ export type Database = {
           danh_gia_tcth: Json | null
           diem_tcth: number | null
           cap_de_xuat: string | null
+          has_demo: boolean
         }[]
       }
       bhy_ideas_viec_cua_giam_doc: {
@@ -5122,7 +5123,43 @@ export type Database = {
           so_ngay_cho: number
           danh_gia_tcth: Json | null
           diem_tcth: number | null
+          has_demo: boolean
+          cap_de_xuat: string | null
+          development_level: string | null
+          so_lan_thu_hoi: number
+          ly_do_thu_hoi: string | null
+          thu_hoi_luc: string | null
         }[]
+      }
+      bhy_ideas_gd_da_quyet_gan_day: {
+        Args: { _so_ngay?: number }
+        Returns: {
+          idea_id: string
+          title: string
+          proposer: string
+          phong: string
+          has_demo: boolean
+          cap_de_xuat: string | null
+          development_level: string | null
+          trang_thai: string
+          duyet_cn: boolean
+          duyet_tsc: boolean
+          muc_thuong: number
+          nguoi_duyet: string | null
+          duyet_luc: string
+          diem_tcth: number | null
+          diem_gd: number | null
+          y_kien_gd: string | null
+          so_lan_thu_hoi: number
+        }[]
+      }
+      bhy_ideas_gd_thu_hoi_ben_re: {
+        Args: { _idea_id: string; _ly_do: string }
+        Returns: Json
+      }
+      bhy_ideas_rut_ho_so_ben_re: {
+        Args: { _idea_id: string; _ly_do: string }
+        Returns: Json
       }
       bhy_ideas_so_cb_tinh_kpi: {
         Args: { _phong_ideas: string }

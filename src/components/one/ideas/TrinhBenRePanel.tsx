@@ -80,6 +80,12 @@ function TheUngVien({ uv, onXong }: { uv: UngVienBenRe; onXong: () => void }) {
                 TSC đã duyệt trên SMP — ghi nhận ở màn Đối chiếu SMP, khỏi qua Giám đốc
               </span>
             )}
+            {/* Cán bộ đã khai có demo khi gửi — bày ra đây, khỏi quay lại bảng tra cứu */}
+            <span className={`rounded-full px-2 py-0.5 text-2xs font-bold ${
+              uv.coDemo ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+            }`}>
+              {uv.coDemo ? '🧪 Có demo' : 'Chưa có demo'}
+            </span>
             {uv.capDeXuat && (
               <span className={`rounded-full px-2 py-0.5 text-2xs font-bold ${
                 uv.capDeXuat === 'Đề xuất TSC'
