@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { usePortalIdeas, type PortalIdea } from '@/components/one/ideas/usePortalIdeas';
 import { IdeaForm } from '@/components/one/ideas/IdeaForm';
 import { IdeaList } from '@/components/one/ideas/IdeaList';
+import { useBenReActions, useHoSoBenReCuaToi } from '@/components/one/ideas/useBenRe';
 import { IdeaStatsPanel } from '@/components/one/ideas/IdeaStatsPanel';
 import { khopTimKiem } from '@/lib/vietnamese';
 import { IDEA_LINH_VUC, IDEA_LINH_VUC_INFO, type IdeaLevel, type IdeaLinhVuc } from '@/data/one/ideasConfig';
@@ -91,6 +92,10 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
   const { isGuest } = useAuth();
   const { ideas, isLoading, isContentAdmin, createIdea, updateIdea, deleteIdea, setVote, adminUpdateStatus } = usePortalIdeas();
   const myName = useMyFullName();
+  // Hồ sơ Bén rễ của chính mình — để thẻ ý tưởng hiện «cần bổ sung» và nút gửi lại
+  const { theoIdea: hoSoBenRe } = useHoSoBenReCuaToi();
+  const { guiLaiBoSung } = useBenReActions();
+  const [boSungCho, setBoSungCho] = useState<PortalIdea | null>(null);
 
   const [filterLevel, setFilterLevel] = useState<'all' | IdeaLevel>('all');
   const [filterNhom, setFilterNhom] = useState<'all' | IdeaLinhVuc>('all');
@@ -136,9 +141,20 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
     : byNhom;
 
   const handleStartEdit = (idea: PortalIdea) => {
+    setBoSungCho(null);
     setEditing(idea);
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+
+  // Sửa & gửi lại: cùng form sửa, nhưng bật chế độ bổ sung để sau khi lưu nội
+  // dung thì chuyển hồ sơ về Phòng TCTH chấm lại
+  const handleGuiLai = (idea: PortalIdea) => {
+    setBoSungCho(idea);
+    setEditing(idea);
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const hoSoDangBoSung = editing && boSungCho?.id === editing.id ? hoSoBenRe[editing.id] : undefined;
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -161,7 +177,12 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
             onCreate={createIdea}
             onUpdate={updateIdea}
             editing={editing}
-            onDone={() => setEditing(null)}
+            onDone={() => { setEditing(null); setBoSungCho(null); }}
+            boSung={hoSoDangBoSung?.trangThai === 'tra_ve' && editing ? {
+              lyDo: hoSoDangBoSung.lyDoTraVe ?? '',
+              boi: hoSoDangBoSung.traVeBoi ?? 'tcth',
+              onGuiLai: ghiChu => guiLaiBoSung(editing.id, ghiChu),
+            } : undefined}
           />
         </div>
       </div>
@@ -244,6 +265,8 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
 
         <IdeaList
           ideas={filteredIdeas}
+          hoSoBenRe={hoSoBenRe}
+          onGuiLai={handleGuiLai}
           isFiltered={!!search.trim() || filterLevel !== 'all' || filterNhom !== 'all'}
           isLoading={isLoading}
           isContentAdmin={isContentAdmin}

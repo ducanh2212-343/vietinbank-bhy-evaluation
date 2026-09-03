@@ -38,6 +38,64 @@ export interface ViecGiamDoc {
   soLanThuHoi: number;
   lyDoThuHoi: string | null;
   thuHoiLuc: string | null;
+  /** Đã bị trả về rồi cán bộ bổ sung — «trình lần n» */
+  soLanBoSung: number;
+  boSungLuc: string | null;
+  boSungGhiChu: string | null;
+  lyDoTraVe: string | null;
+  traVeBoi: 'tcth' | 'gd' | null;
+}
+
+export type TrangThaiSoBenRe = 'cho_gd_duyet' | 'da_ghi_nhan' | 'tu_choi' | 'thu_hoi' | 'tra_ve' | 'da_bo_sung';
+
+const docTrangThaiSo = (s: string | null | undefined): TrangThaiSoBenRe | null =>
+  (['cho_gd_duyet', 'da_ghi_nhan', 'tu_choi', 'thu_hoi', 'tra_ve', 'da_bo_sung'] as const)
+    .find(t => t === s) ?? null;
+
+const docTraVeBoi = (s: string | null | undefined): 'tcth' | 'gd' | null =>
+  s === 'tcth' || s === 'gd' ? s : null;
+
+/** Một dòng sổ Bén rễ đầy đủ — tab «Sổ Bén rễ» */
+export interface DongSoBenReDayDu {
+  ideaId: string;
+  title: string;
+  proposer: string;
+  phong: string;
+  coDemo: boolean;
+  capDeXuat: IdeaLevel | null;
+  developmentLevel: string | null;
+  trangThai: TrangThaiSoBenRe;
+  duyetCn: boolean;
+  duyetTsc: boolean;
+  ghiNhanKpi: boolean;
+  mucThuong: number;
+  traVeBoi: 'tcth' | 'gd' | null;
+  lyDoTraVe: string | null;
+  traVeLuc: string | null;
+  soLanBoSung: number;
+  boSungLuc: string | null;
+  nguoiDuyet: string | null;
+  duyetLuc: string | null;
+  nguoiTrinh: string | null;
+  trinhLuc: string | null;
+  smpMa: string | null;
+  smpTrangThai: string | null;
+  diemTcth: number | null;
+  diemGd: number | null;
+  yKienGd: string | null;
+  mocGanNhat: string | null;
+}
+
+/** Hồ sơ Bén rễ của chính mình — bảng tra cứu dùng để hiện «cần bổ sung» */
+export interface HoSoBenReCuaToi {
+  ideaId: string;
+  trangThai: TrangThaiSoBenRe;
+  traVeBoi: 'tcth' | 'gd' | null;
+  lyDoTraVe: string | null;
+  traVeLuc: string | null;
+  soLanBoSung: number;
+  boSungLuc: string | null;
+  boSungGhiChu: string | null;
 }
 
 /** Quyết định gần đây của Giám đốc — để tìm lại hồ sơ bấm nhầm */
@@ -84,6 +142,14 @@ export interface UngVienBenRe {
    */
   capDeXuat: IdeaLevel | null;
   coDemo: boolean;
+  /** Trạng thái dòng sổ (null = chưa có dòng nào) — để gom «đã bổ sung» lên đầu */
+  trangThaiSo: TrangThaiSoBenRe | null;
+  traVeBoi: 'tcth' | 'gd' | null;
+  lyDoTraVe: string | null;
+  traVeLuc: string | null;
+  boSungLuc: string | null;
+  boSungGhiChu: string | null;
+  soLanBoSung: number;
 }
 
 const viecKey = ['bhy-ideas-viec-giam-doc'];
@@ -118,6 +184,11 @@ export function useViecCuaGiamDoc(enabled = true) {
         soLanThuHoi: r.so_lan_thu_hoi ?? 0,
         lyDoThuHoi: r.ly_do_thu_hoi ?? null,
         thuHoiLuc: r.thu_hoi_luc ?? null,
+        soLanBoSung: r.so_lan_bo_sung ?? 0,
+        boSungLuc: r.bo_sung_luc ?? null,
+        boSungGhiChu: r.bo_sung_ghi_chu ?? null,
+        lyDoTraVe: r.ly_do_tra_ve ?? null,
+        traVeBoi: docTraVeBoi(r.tra_ve_boi),
       }));
     },
   });
@@ -186,10 +257,88 @@ export function useUngVienBenRe(enabled = true) {
         danhGiaTcth: docPhieuBenRe(r.danh_gia_tcth),
         capDeXuat: (r.cap_de_xuat as IdeaLevel | null) ?? null,
         coDemo: !!r.has_demo,
+        trangThaiSo: docTrangThaiSo(r.trang_thai_so),
+        traVeBoi: docTraVeBoi(r.tra_ve_boi),
+        lyDoTraVe: r.ly_do_tra_ve ?? null,
+        traVeLuc: r.tra_ve_luc ?? null,
+        boSungLuc: r.bo_sung_luc ?? null,
+        boSungGhiChu: r.bo_sung_ghi_chu ?? null,
+        soLanBoSung: r.so_lan_bo_sung ?? 0,
       }));
     },
   });
   return { ungVien: data, isLoading };
+}
+
+const soBenReKey = ['bhy-ideas-so-ben-re'];
+const hoSoCuaToiKey = ['bhy-ideas-ho-so-ben-re-cua-toi'];
+
+/** Sổ Bén rễ đầy đủ — Giám đốc và TCTH */
+export function useSoBenRe(enabled = true) {
+  const { data = [], isLoading } = useQuery({
+    queryKey: soBenReKey,
+    enabled,
+    staleTime: 60 * 1000,
+    queryFn: async (): Promise<DongSoBenReDayDu[]> => {
+      const { data: rows, error } = await supabase.rpc('bhy_ideas_so_ben_re');
+      if (error) throw error;
+      return (rows ?? []).map(r => ({
+        ideaId: r.idea_id,
+        title: r.title,
+        proposer: r.proposer,
+        phong: r.phong,
+        coDemo: !!r.has_demo,
+        capDeXuat: (r.cap_de_xuat as IdeaLevel | null) ?? null,
+        developmentLevel: r.development_level ?? null,
+        trangThai: docTrangThaiSo(r.trang_thai) ?? 'thu_hoi',
+        duyetCn: r.duyet_cn,
+        duyetTsc: r.duyet_tsc,
+        ghiNhanKpi: r.ghi_nhan_kpi,
+        mucThuong: r.muc_thuong,
+        traVeBoi: docTraVeBoi(r.tra_ve_boi),
+        lyDoTraVe: r.ly_do_tra_ve ?? null,
+        traVeLuc: r.tra_ve_luc ?? null,
+        soLanBoSung: r.so_lan_bo_sung ?? 0,
+        boSungLuc: r.bo_sung_luc ?? null,
+        nguoiDuyet: r.nguoi_duyet ?? null,
+        duyetLuc: r.duyet_luc ?? null,
+        nguoiTrinh: r.nguoi_trinh ?? null,
+        trinhLuc: r.trinh_luc ?? null,
+        smpMa: r.smp_ma ?? null,
+        smpTrangThai: r.smp_trang_thai ?? null,
+        diemTcth: r.diem_tcth,
+        diemGd: r.diem_gd,
+        yKienGd: r.y_kien_gd ?? null,
+        mocGanNhat: r.moc_gan_nhat ?? null,
+      }));
+    },
+  });
+  return { soBenRe: data, isLoading };
+}
+
+/** Hồ sơ Bén rễ của chính mình — tra theo ideaId ở bảng tra cứu */
+export function useHoSoBenReCuaToi(enabled = true) {
+  const { data = [], isLoading } = useQuery({
+    queryKey: hoSoCuaToiKey,
+    enabled,
+    staleTime: 60 * 1000,
+    queryFn: async (): Promise<HoSoBenReCuaToi[]> => {
+      const { data: rows, error } = await supabase.rpc('bhy_ideas_ho_so_ben_re_cua_toi');
+      if (error) throw error;
+      return (rows ?? []).map(r => ({
+        ideaId: r.idea_id,
+        trangThai: docTrangThaiSo(r.trang_thai) ?? 'thu_hoi',
+        traVeBoi: docTraVeBoi(r.tra_ve_boi),
+        lyDoTraVe: r.ly_do_tra_ve ?? null,
+        traVeLuc: r.tra_ve_luc ?? null,
+        soLanBoSung: r.so_lan_bo_sung ?? 0,
+        boSungLuc: r.bo_sung_luc ?? null,
+        boSungGhiChu: r.bo_sung_ghi_chu ?? null,
+      }));
+    },
+  });
+  const theoIdea = Object.fromEntries(data.map(h => [h.ideaId, h])) as Record<string, HoSoBenReCuaToi>;
+  return { hoSo: data, theoIdea, isLoading };
 }
 
 export function useBenReActions() {
@@ -199,6 +348,9 @@ export function useBenReActions() {
     queryClient.invalidateQueries({ queryKey: viecKey });
     queryClient.invalidateQueries({ queryKey: ungVienKey });
     queryClient.invalidateQueries({ queryKey: daQuyetKey });
+    queryClient.invalidateQueries({ queryKey: soBenReKey });
+    queryClient.invalidateQueries({ queryKey: hoSoCuaToiKey });
+    queryClient.invalidateQueries({ queryKey: ['idea-comments'] });
     queryClient.invalidateQueries({ queryKey: ['idea-awards'] });
     queryClient.invalidateQueries({ queryKey: ['one-portal-ideas'] });
   }, [queryClient]);
@@ -300,5 +452,43 @@ export function useBenReActions() {
     return true;
   }, [refresh]);
 
-  return { trinh, duyet, thuHoiQuyetDinh, rutHoSo };
+  /**
+   * Trả về để cán bộ bổ sung — TCTH (trước khi trình) hoặc Giám đốc (từ hàng
+   * chờ). Khác «Chưa đạt»: đây là mở đường cho cán bộ sửa rồi gửi lại. CSDL tự
+   * ghi nhật ký lên ý tưởng và báo đẩy cho cán bộ.
+   */
+  const traVeBoSung = useCallback(async (ideaId: string, lyDo: string, vai: 'tcth' | 'gd'): Promise<boolean> => {
+    const { data, error } = await supabase.rpc('bhy_ideas_tra_ve_bo_sung', {
+      _idea_id: ideaId,
+      _ly_do: lyDo.trim(),
+      _vai: vai,
+    });
+    if (error) {
+      toast.error(error.message);
+      return false;
+    }
+    const kq = data as { da_bao?: boolean } | null;
+    toast.success(kq?.da_bao
+      ? 'Đã trả về — cán bộ sẽ nhận thông báo và thấy khuyến nghị ở bảng tra cứu'
+      : 'Đã trả về — cán bộ thấy khuyến nghị ở bảng tra cứu (tin đẩy chờ tới giờ làm việc hoặc người nhận là chính bạn)');
+    refresh();
+    return true;
+  }, [refresh]);
+
+  /** Cán bộ gửi lại sau khi đã sửa nội dung — về tay TCTH chấm lại */
+  const guiLaiBoSung = useCallback(async (ideaId: string, ghiChu: string): Promise<boolean> => {
+    const { error } = await supabase.rpc('bhy_ideas_gui_lai_bo_sung', {
+      _idea_id: ideaId,
+      _ghi_chu: ghiChu.trim(),
+    });
+    if (error) {
+      toast.error(error.message);
+      return false;
+    }
+    toast.success('Đã gửi lại — Phòng TCTH sẽ đánh giá lại và trình Giám đốc');
+    refresh();
+    return true;
+  }, [refresh]);
+
+  return { trinh, duyet, thuHoiQuyetDinh, rutHoSo, traVeBoSung, guiLaiBoSung };
 }

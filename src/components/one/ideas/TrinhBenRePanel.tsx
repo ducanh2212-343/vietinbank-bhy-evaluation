@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ChevronDown, ChevronUp, ClipboardPen, Globe, Info, Search, Send } from 'lucide-react';
+import { ArrowRight, ChevronDown, ChevronUp, ClipboardPen, CornerDownLeft, Globe, Info, Search, Send } from 'lucide-react';
+import { KhungLyDo } from './KhungLyDo';
 import { khopTimKiem } from '@/lib/vietnamese';
 import type { IdeaLevel } from '@/data/one/ideasConfig';
 import { canChamPhieuBenRe, chamPhieuBenRe, duongLenBenRe, phieuBenReRong, phieuCoNoiDung, type PhieuBenRe } from '@/lib/ideaBenRe';
@@ -37,12 +38,17 @@ const CAC_LOC: { ma: MaLoc; nhan: string; capDeXuat: IdeaLevel | null }[] = [
 
 const ngay = (iso: string) => new Date(iso).toLocaleDateString('vi-VN');
 
+const ngayGio = (iso: string) =>
+  new Date(iso).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
+
 function TheUngVien({ uv, onXong }: { uv: UngVienBenRe; onXong: () => void }) {
-  const [mo, setMo] = useState(false);
+  const [mo, setMo] = useState(uv.trangThaiSo === 'da_bo_sung');
   const [phieu, setPhieu] = useState<PhieuBenRe>(() =>
     phieuCoNoiDung(uv.danhGiaTcth) ? uv.danhGiaTcth : phieuBenReRong());
   const [dangGui, setDangGui] = useState(false);
-  const { trinh } = useBenReActions();
+  const { trinh, traVeBoSung } = useBenReActions();
+  const dangChoCanBo = uv.trangThaiSo === 'tra_ve';
+  const daBoSung = uv.trangThaiSo === 'da_bo_sung';
 
   const kq = chamPhieuBenRe(phieu);
   const daTsc = uv.smpTrangThai === 'dong_y' || uv.smpTrangThai === 'dong_y_mot_phan';
@@ -78,6 +84,16 @@ function TheUngVien({ uv, onXong }: { uv: UngVienBenRe; onXong: () => void }) {
             {daTsc && (
               <span className="rounded-full bg-sky-100 px-2 py-0.5 text-2xs font-bold text-sky-700">
                 TSC đã duyệt trên SMP — ghi nhận ở màn Đối chiếu SMP, khỏi qua Giám đốc
+              </span>
+            )}
+            {daBoSung && (
+              <span className="rounded-full bg-violet-100 px-2 py-0.5 text-2xs font-bold text-violet-700">
+                📝 Đã bổ sung lần {uv.soLanBoSung}{uv.boSungLuc ? ` — ${ngayGio(uv.boSungLuc)}` : ''} · chờ đánh giá lại
+              </span>
+            )}
+            {dangChoCanBo && (
+              <span className="rounded-full bg-orange-100 px-2 py-0.5 text-2xs font-bold text-orange-700">
+                ↩️ {uv.traVeBoi === 'gd' ? 'Giám đốc' : 'TCTH'} trả về{uv.traVeLuc ? ` ${ngayGio(uv.traVeLuc)}` : ''} — đang chờ cán bộ bổ sung
               </span>
             )}
             {/* Cán bộ đã khai có demo khi gửi — bày ra đây, khỏi quay lại bảng tra cứu */}
@@ -118,6 +134,21 @@ function TheUngVien({ uv, onXong }: { uv: UngVienBenRe; onXong: () => void }) {
             </p>
           ))}
 
+          {(daBoSung || dangChoCanBo) && (
+            <div className="space-y-1 rounded-lg border border-violet-200 bg-violet-50 p-2.5 text-2xs text-violet-900">
+              <p>
+                <b>Khuyến nghị đã gửi cán bộ ({uv.traVeBoi === 'gd' ? 'Giám đốc' : 'Phòng TCTH'}):</b>{' '}
+                {uv.lyDoTraVe ?? '—'}
+              </p>
+              {daBoSung && (
+                <p><b>Cán bộ đã bổ sung:</b> {uv.boSungGhiChu ?? '—'}</p>
+              )}
+              {dangChoCanBo && (
+                <p className="italic">Cán bộ chưa gửi lại — vẫn trình được nếu Phòng TCTH thấy đủ, hoặc chờ.</p>
+              )}
+            </div>
+          )}
+
           {/* Ý tưởng đi đường 2 thì mở ra vẫn xem được nội dung, nhưng không
               bày phiếu chấm — chấm ở đây là làm thừa một việc quy chế không
               đòi, và dễ tưởng đã trình rồi trong khi chưa. */}
@@ -156,6 +187,28 @@ function TheUngVien({ uv, onXong }: { uv: UngVienBenRe; onXong: () => void }) {
                 Gợi ý là chưa nên trình — nếu vẫn trình, nên ghi rõ lý do ở ô ý kiến.
               </span>
             )}
+            {/* TCTH trả về TRƯỚC khi trình — chốt (2) ngày 03/09/2026. Đang chờ cán
+                bộ thì không bày nút nữa, trả về hai lần liên tiếp chỉ làm rối */}
+            {!dangChoCanBo && (
+              <div className="ml-auto">
+                <KhungLyDo
+                  nhan="Trả về cán bộ bổ sung"
+                  icon={CornerDownLeft}
+                  mau="orange"
+                  placeholder="Khuyến nghị cụ thể cho cán bộ (bắt buộc, cán bộ sẽ đọc nguyên văn)…"
+                  heQua={[
+                    'Ý tưởng về tay cán bộ đề xuất để sửa; phiếu chấm dở của Phòng TCTH giữ nguyên',
+                    'Cán bộ nhận thông báo kèm nguyên văn khuyến nghị',
+                    'Gửi lại xong, ý tưởng nổi lên đầu danh sách này để chấm lại',
+                  ]}
+                  onXacNhan={async lyDo => {
+                    const ok = await traVeBoSung(uv.ideaId, lyDo, 'tcth');
+                    if (ok) onXong();
+                    return ok;
+                  }}
+                />
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -188,7 +241,12 @@ export const TrinhBenRePanel: React.FC = () => {
       [u.title, u.proposer, u.phong, u.proposedSolution ?? ''].join(' '), tim));
   }, [conLai, tim, maLoc]);
 
-  const hien = xemHet ? loc : loc.slice(0, SO_HIEN_MAC_DINH);
+  // Hồ sơ cán bộ vừa gửi lại nổi lên đầu — đây là việc có người đang đợi
+  const daBoSungTruoc = useMemo(
+    () => [...loc].sort((a, b) => Number(b.trangThaiSo === 'da_bo_sung') - Number(a.trangThaiSo === 'da_bo_sung')),
+    [loc]);
+  const soDaBoSung = loc.filter(u => u.trangThaiSo === 'da_bo_sung').length;
+  const hien = xemHet ? daBoSungTruoc : daBoSungTruoc.slice(0, Math.max(SO_HIEN_MAC_DINH, soDaBoSung));
 
   return (
     <div className="space-y-3 text-sm">
@@ -288,12 +346,21 @@ export const TrinhBenRePanel: React.FC = () => {
         </p>
       ) : (
         <div className="space-y-1.5">
-          {hien.map(uv => (
-            <TheUngVien
-              key={uv.ideaId}
-              uv={uv}
-              onXong={() => setVuaTrinh(v => [...v, uv.ideaId])}
-            />
+          {soDaBoSung > 0 && (
+            <p className="rounded-lg bg-violet-100 px-2.5 py-1 text-2xs font-black uppercase tracking-wider text-violet-800">
+              📝 {soDaBoSung} ý tưởng cán bộ đã bổ sung — chấm lại trước
+            </p>
+          )}
+          {hien.map((uv, i) => (
+            <React.Fragment key={uv.ideaId}>
+              {soDaBoSung > 0 && i === soDaBoSung && (
+                <p className="pt-1 text-2xs font-black uppercase tracking-wider text-slate-400">Còn lại</p>
+              )}
+              <TheUngVien
+                uv={uv}
+                onXong={() => setVuaTrinh(v => [...v, uv.ideaId])}
+              />
+            </React.Fragment>
           ))}
           {!xemHet && loc.length > SO_HIEN_MAC_DINH && (
             <button

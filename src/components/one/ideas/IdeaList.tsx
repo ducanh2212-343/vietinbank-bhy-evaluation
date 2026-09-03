@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import type { HoSoBenReCuaToi } from './useBenRe';
 import { ChevronDown, ChevronUp, Edit, Lightbulb, MessageSquare, Send, ThumbsDown, ThumbsUp, Trash2 } from 'lucide-react';
 import {
   IDEA_DEPARTMENTS,
@@ -22,6 +23,10 @@ interface AdminPatch {
 }
 
 interface IdeaListProps {
+  /** Hồ sơ Bén rễ của chính người xem, tra theo id ý tưởng — để hiện «cần bổ sung» */
+  hoSoBenRe?: Record<string, HoSoBenReCuaToi>;
+  /** Cán bộ bấm «Sửa & gửi lại» trên ý tưởng bị trả về */
+  onGuiLai?: (idea: PortalIdea) => void;
   /** Danh sách đã lọc theo cấp đề xuất (Tất cả / Nội bộ CN / Đề xuất TSC) và ô tìm kiếm */
   ideas: PortalIdea[];
   /** Đang áp bộ lọc/tìm kiếm — đổi thông báo khi rỗng để khỏi hiểu nhầm là chưa có dữ liệu */
@@ -129,6 +134,8 @@ const IdeaCommentsBlock: React.FC<{ ideaId: string; myName: string }> = ({ ideaI
 
 interface IdeaCardProps {
   idea: PortalIdea;
+  hoSo?: HoSoBenReCuaToi;
+  onGuiLai?: (idea: PortalIdea) => void;
   isContentAdmin: boolean;
   myName: string;
   onEdit: (idea: PortalIdea) => void;
@@ -137,7 +144,7 @@ interface IdeaCardProps {
   onAdminUpdate: (ideaId: string, patch: AdminPatch) => void;
 }
 
-const IdeaCard: React.FC<IdeaCardProps> = ({ idea, isContentAdmin, myName, onEdit, onDelete, onVote, onAdminUpdate }) => {
+const IdeaCard: React.FC<IdeaCardProps> = ({ idea, hoSo, onGuiLai, isContentAdmin, myName, onEdit, onDelete, onVote, onAdminUpdate }) => {
   const [detailOpen, setDetailOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const canManage = isContentAdmin || idea.isMine;
@@ -147,8 +154,40 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, isContentAdmin, myName, onEdi
   );
 
   return (
-    <div className="group relative bg-white border border-slate-200 hover:border-amber-400 rounded-xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+    <div className={`group relative bg-white border rounded-xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between ${
+      hoSo?.trangThai === 'tra_ve' ? 'border-orange-400' : 'border-slate-200 hover:border-amber-400'
+    }`}>
       <div className="space-y-3">
+        {/* Ý tưởng bị trả về: khuyến nghị hiện NGUYÊN VĂN ngay trên thẻ, kèm nút
+            gửi lại — không bắt cán bộ đi tìm trong bình luận hay hỏi TCTH */}
+        {hoSo?.trangThai === 'tra_ve' && (
+          <div className="space-y-2 rounded-lg border border-orange-300 bg-orange-50 p-3 text-xs text-orange-900">
+            <p>
+              <b>↩️ Cần bổ sung — {hoSo.traVeBoi === 'gd' ? 'Giám đốc' : 'Phòng TCTH'} trả về
+              {hoSo.traVeLuc ? ` ngày ${new Date(hoSo.traVeLuc).toLocaleDateString('vi-VN')}` : ''}:</b>{' '}
+              «{hoSo.lyDoTraVe ?? '—'}»
+            </p>
+            {idea.isMine && onGuiLai && (
+              <button
+                type="button"
+                onClick={() => onGuiLai(idea)}
+                className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-orange-600 px-3 py-1.5 text-2xs font-black text-white transition-all hover:bg-orange-700"
+              >
+                <Edit className="h-3.5 w-3.5" /> Sửa & gửi lại
+              </button>
+            )}
+          </div>
+        )}
+        {hoSo?.trangThai === 'da_bo_sung' && (
+          <p className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-2xs font-bold text-violet-800">
+            📝 Đã bổ sung{hoSo.boSungLuc ? ` ngày ${new Date(hoSo.boSungLuc).toLocaleDateString('vi-VN')}` : ''} — Phòng TCTH đang đánh giá lại
+          </p>
+        )}
+        {hoSo?.trangThai === 'cho_gd_duyet' && (
+          <p className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-2xs font-bold text-sky-800">
+            ⏳ Phòng TCTH đã trình — đang chờ Giám đốc công nhận Bén rễ
+          </p>
+        )}
         {/* Lớp 1: hàng badge */}
         <div className="flex flex-wrap gap-1.5 items-center justify-between">
           <div className="flex flex-wrap gap-1">
@@ -374,7 +413,7 @@ const OTHER_DEPT_KEY = 'Bộ phận khác';
  */
 const SO_THE_HIEN_SAN = 6;
 
-export const IdeaList: React.FC<IdeaListProps> = ({ ideas, isFiltered = false, isLoading, isContentAdmin, myName, onEdit, onDelete, onVote, onAdminUpdate }) => {
+export const IdeaList: React.FC<IdeaListProps> = ({ ideas, hoSoBenRe, onGuiLai, isFiltered = false, isLoading, isContentAdmin, myName, onEdit, onDelete, onVote, onAdminUpdate }) => {
   // Mặc định THU GỌN mọi nhóm: bảng có hơn trăm ý tưởng, mở sẵn hết thì trang
   // dài mấy chục màn và người tra cứu phải cuộn qua phòng khác mới tới phòng
   // mình. Riêng khi đang lọc/tìm kiếm thì mở sẵn — lúc đó danh sách đã hẹp và
@@ -449,6 +488,8 @@ export const IdeaList: React.FC<IdeaListProps> = ({ ideas, isFiltered = false, i
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                   {dsHien.map(idea => (
                     <IdeaCard
+                      hoSo={hoSoBenRe?.[idea.id]}
+                      onGuiLai={onGuiLai}
                       key={idea.id}
                       idea={idea}
                       isContentAdmin={isContentAdmin}

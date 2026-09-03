@@ -5104,6 +5104,13 @@ export type Database = {
           diem_tcth: number | null
           cap_de_xuat: string | null
           has_demo: boolean
+          trang_thai_so: string | null
+          tra_ve_boi: string | null
+          ly_do_tra_ve: string | null
+          tra_ve_luc: string | null
+          bo_sung_luc: string | null
+          bo_sung_ghi_chu: string | null
+          so_lan_bo_sung: number
         }[]
       }
       bhy_ideas_viec_cua_giam_doc: {
@@ -5129,6 +5136,64 @@ export type Database = {
           so_lan_thu_hoi: number
           ly_do_thu_hoi: string | null
           thu_hoi_luc: string | null
+          so_lan_bo_sung: number
+          bo_sung_luc: string | null
+          bo_sung_ghi_chu: string | null
+          ly_do_tra_ve: string | null
+          tra_ve_boi: string | null
+        }[]
+      }
+      bhy_ideas_tra_ve_bo_sung: {
+        Args: { _idea_id: string; _ly_do: string; _vai: string }
+        Returns: Json
+      }
+      bhy_ideas_gui_lai_bo_sung: {
+        Args: { _idea_id: string; _ghi_chu: string }
+        Returns: Json
+      }
+      bhy_ideas_ho_so_ben_re_cua_toi: {
+        Args: never
+        Returns: {
+          idea_id: string
+          trang_thai: string
+          tra_ve_boi: string | null
+          ly_do_tra_ve: string | null
+          tra_ve_luc: string | null
+          so_lan_bo_sung: number
+          bo_sung_luc: string | null
+          bo_sung_ghi_chu: string | null
+        }[]
+      }
+      bhy_ideas_so_ben_re: {
+        Args: never
+        Returns: {
+          idea_id: string
+          title: string
+          proposer: string
+          phong: string
+          has_demo: boolean
+          cap_de_xuat: string | null
+          development_level: string | null
+          trang_thai: string
+          duyet_cn: boolean
+          duyet_tsc: boolean
+          ghi_nhan_kpi: boolean
+          muc_thuong: number
+          tra_ve_boi: string | null
+          ly_do_tra_ve: string | null
+          tra_ve_luc: string | null
+          so_lan_bo_sung: number
+          bo_sung_luc: string | null
+          nguoi_duyet: string | null
+          duyet_luc: string | null
+          nguoi_trinh: string | null
+          trinh_luc: string | null
+          smp_ma: string | null
+          smp_trang_thai: string | null
+          diem_tcth: number | null
+          diem_gd: number | null
+          y_kien_gd: string | null
+          moc_gan_nhat: string | null
         }[]
       }
       bhy_ideas_gd_da_quyet_gan_day: {

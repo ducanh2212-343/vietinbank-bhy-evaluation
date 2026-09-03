@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import {
-  CheckCircle2, ChevronDown, ChevronUp, ClipboardCheck, Clock, History, Info, RotateCcw, Undo2, XCircle,
+  CheckCircle2, ChevronDown, ChevronUp, ClipboardCheck, Clock, CornerDownLeft, History, Info, RotateCcw, Undo2, XCircle,
 } from 'lucide-react';
+import { KhungLyDo } from './KhungLyDo';
+import { NutXacNhanCham } from './NutXacNhanCham';
 import { phieuBenReRong, phieuCoNoiDung, type PhieuBenRe } from '@/lib/ideaBenRe';
 import { heQuaThuHoi, rutHoSo as luatRutHoSo, thuHoiQuyetDinh as luatThuHoi, type DongSoBenRe } from '@/lib/ideaThuHoi';
 import { BenReDanhGiaForm, BenReDanhGiaTomTat } from './BenReDanhGiaForm';
@@ -79,89 +81,13 @@ function BangKe({ dong }: { dong: { nhan: string; giaTri: React.ReactNode }[] })
   );
 }
 
-/**
- * Khung «bấm rồi ghi lý do rồi mới xác nhận» dùng chung cho thu hồi và rút hồ sơ.
- * Không dùng hộp thoại confirm() của trình duyệt: cần chỗ ghi lý do và cần liệt
- * kê hệ quả ngay trước mắt người bấm.
- */
-function KhungLyDo({ nhan, heQua, icon: Icon, onXacNhan, mau = 'amber' }: {
-  nhan: string;
-  heQua: string[];
-  icon: typeof RotateCcw;
-  onXacNhan: (lyDo: string) => Promise<boolean>;
-  mau?: 'amber' | 'slate';
-}) {
-  const [mo, setMo] = useState(false);
-  const [lyDo, setLyDo] = useState('');
-  const [dangGui, setDangGui] = useState(false);
-
-  const xacNhan = async () => {
-    setDangGui(true);
-    try {
-      const ok = await onXacNhan(lyDo);
-      if (ok) { setMo(false); setLyDo(''); }
-    } finally {
-      setDangGui(false);
-    }
-  };
-
-  if (!mo) {
-    return (
-      <button
-        type="button"
-        onClick={() => setMo(true)}
-        className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-2 text-2xs font-bold transition-all ${
-          mau === 'amber'
-            ? 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100'
-            : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
-        }`}
-      >
-        <Icon className="h-3.5 w-3.5" /> {nhan}
-      </button>
-    );
-  }
-
-  return (
-    <div className="w-full space-y-2 rounded-xl border border-amber-300 bg-amber-50/70 p-3">
-      <p className="text-2xs font-black uppercase tracking-wider text-amber-800">{nhan} — hệ thống sẽ:</p>
-      <ul className="list-disc space-y-0.5 pl-4 text-2xs text-amber-900">
-        {heQua.map(h => <li key={h}>{h}</li>)}
-      </ul>
-      <input
-        type="text"
-        autoFocus
-        value={lyDo}
-        onChange={e => setLyDo(e.target.value)}
-        placeholder="Lý do (bắt buộc, sẽ lưu vào sổ)…"
-        className="w-full rounded-lg border border-amber-300 bg-white p-2 text-2xs outline-none focus:border-amber-500"
-      />
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          disabled={dangGui || !lyDo.trim()}
-          onClick={() => void xacNhan()}
-          className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-2 text-2xs font-black text-white transition-all hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Icon className="h-3.5 w-3.5" /> {dangGui ? 'Đang xử lý…' : `Xác nhận ${nhan.toLowerCase()}`}
-        </button>
-        <button
-          type="button"
-          onClick={() => { setMo(false); setLyDo(''); }}
-          className="cursor-pointer rounded-lg px-3 py-2 text-2xs font-bold text-slate-500 hover:bg-slate-100"
-        >
-          Hủy
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function TheViec({ v, laGiamDoc, laQuanTri, onQuyet, onRut }: {
+function TheViec({ v, laGiamDoc, laQuanTri, onQuyet, onRut, onTraVe }: {
   v: ViecGiamDoc;
   laGiamDoc: boolean;
   laQuanTri: boolean;
   onQuyet: (ideaId: string, dongY: boolean, phieu: PhieuBenRe) => Promise<void>;
   onRut: (ideaId: string, lyDo: string) => Promise<boolean>;
+  onTraVe: (ideaId: string, lyDo: string) => Promise<boolean>;
 }) {
   const [phieu, setPhieu] = useState<PhieuBenRe>(phieuBenReRong());
   const [moDayDu, setMoDayDu] = useState(false);
@@ -199,6 +125,11 @@ function TheViec({ v, laGiamDoc, laQuanTri, onQuyet, onRut }: {
         {v.soLanThuHoi > 0 && (
           <span className="rounded-full bg-rose-100 px-2 py-0.5 text-2xs font-bold text-rose-700">
             Đã thu hồi {v.soLanThuHoi} lần
+          </span>
+        )}
+        {v.soLanBoSung > 0 && (
+          <span className="rounded-full bg-violet-100 px-2 py-0.5 text-2xs font-bold text-violet-700">
+            Trình lần {v.soLanBoSung + 1} — đã bổ sung
           </span>
         )}
         <span
@@ -274,6 +205,21 @@ function TheViec({ v, laGiamDoc, laQuanTri, onQuyet, onRut }: {
         </p>
       )}
 
+      {/* Hồ sơ trình lại sau khi bị trả về — Giám đốc đọc khuyến nghị cũ và phần
+          cán bộ đã sửa trước, khỏi phải nhớ lại mình đã yêu cầu gì */}
+      {v.soLanBoSung > 0 && (
+        <div className="space-y-1 rounded-lg border border-violet-200 bg-violet-50 p-2.5 text-2xs text-violet-900">
+          <p>
+            <b>Khuyến nghị lần trước{v.traVeBoi === 'gd' ? ' (Giám đốc)' : v.traVeBoi === 'tcth' ? ' (Phòng TCTH)' : ''}:</b>{' '}
+            {v.lyDoTraVe ?? '—'}
+          </p>
+          <p>
+            <b>Cán bộ đã bổ sung{v.boSungLuc ? ` ngày ${ngay(v.boSungLuc)}` : ''}:</b>{' '}
+            {v.boSungGhiChu ?? '—'}
+          </p>
+        </div>
+      )}
+
       {v.soLanThuHoi > 0 && (
         <p className="flex gap-1.5 rounded-lg border border-rose-200 bg-rose-50 p-2 text-2xs text-rose-800">
           <History className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -318,22 +264,35 @@ function TheViec({ v, laGiamDoc, laQuanTri, onQuyet, onRut }: {
       <div className="flex flex-wrap items-center gap-2 pt-0.5">
         {laGiamDoc && (
           <>
-            <button
-              type="button"
+            {/* Hai quyết định dứt điểm đi qua nút hai nhịp có đồng hồ 3 giây —
+                ca 03/09/2026 Giám đốc ấn nhầm «Công nhận» khi định từ chối */}
+            <NutXacNhanCham
+              nhan="Công nhận Bén rễ"
+              icon={CheckCircle2}
               disabled={dangGui}
-              onClick={() => void quyet(true)}
-              className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-2xs font-black text-white transition-all hover:bg-emerald-700 disabled:opacity-50"
-            >
-              <CheckCircle2 className="h-3.5 w-3.5" /> Công nhận Bén rễ
-            </button>
-            <button
-              type="button"
+              onXacNhan={() => quyet(true)}
+              lop="bg-emerald-600 text-white hover:bg-emerald-700"
+            />
+            <NutXacNhanCham
+              nhan="Chưa đạt"
+              icon={XCircle}
               disabled={dangGui}
-              onClick={() => void quyet(false)}
-              className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-2xs font-bold text-slate-600 transition-all hover:bg-slate-50 disabled:opacity-50"
-            >
-              <XCircle className="h-3.5 w-3.5" /> Chưa đạt
-            </button>
+              onXacNhan={() => quyet(false)}
+              lop="border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+            />
+            {/* Quyết định thứ ba, khác hẳn «Chưa đạt»: cán bộ được sửa rồi gửi lại */}
+            <KhungLyDo
+              nhan="Trả về bổ sung"
+              icon={CornerDownLeft}
+              mau="orange"
+              placeholder="Khuyến nghị cụ thể cho cán bộ (bắt buộc, cán bộ sẽ đọc nguyên văn)…"
+              heQua={[
+                'Hồ sơ rời hàng chờ, về tay cán bộ đề xuất để sửa',
+                'Cán bộ nhận thông báo kèm nguyên văn khuyến nghị',
+                'Gửi lại xong, Phòng TCTH chấm lại rồi mới trình lên anh/chị',
+              ]}
+              onXacNhan={lyDo => onTraVe(v.ideaId, lyDo)}
+            />
           </>
         )}
         {luatRut.duoc && (
@@ -425,7 +384,7 @@ export const GiamDocDuyetBenRe: React.FC = () => {
   const duocXem = laGiamDoc || laQuanTri;
   const { viec, isLoading } = useViecCuaGiamDoc(duocXem);
   const { daQuyet, isLoading: dangTaiDaQuyet } = useGdDaQuyetGanDay(duocXem);
-  const { duyet, thuHoiQuyetDinh, rutHoSo } = useBenReActions();
+  const { duyet, thuHoiQuyetDinh, rutHoSo, traVeBoSung } = useBenReActions();
   const [moDaQuyet, setMoDaQuyet] = useState(false);
 
   if (!duocXem) return null;
@@ -454,8 +413,9 @@ export const GiamDocDuyetBenRe: React.FC = () => {
           Theo quy chế, cấp <b>Bén rễ</b> do <b>Giám đốc chi nhánh</b> quyết định. Phòng TCTH
           trình <b>liên tục</b> kèm phiếu đánh giá 5 câu — đó là báo cáo trình. Ý tưởng được công
           nhận thì thưởng <b>300.000đ</b> và cộng bù các cấp dưới chưa từng được thưởng.
-          Bấm nhầm thì <b>thu hồi được</b> ở mục «Quyết định gần đây» bên dưới — hồ sơ về hàng chờ,
-          tiền và ghi nhận tự gỡ.
+          Ba lựa chọn: <b>Công nhận</b> · <b>Chưa đạt</b> (dừng) · <b>Trả về bổ sung</b> (cán bộ
+          sửa rồi gửi lại, TCTH chấm lại). Hai nút dứt điểm cần bấm hai nhịp cách 3 giây; bấm
+          nhầm vẫn <b>thu hồi được</b> ở mục «Quyết định gần đây» bên dưới.
         </span>
       </div>
 
@@ -475,6 +435,7 @@ export const GiamDocDuyetBenRe: React.FC = () => {
               laQuanTri={laQuanTri}
               onQuyet={quyet}
               onRut={rutHoSo}
+              onTraVe={(ideaId, lyDo) => traVeBoSung(ideaId, lyDo, 'gd')}
             />
           ))}
         </div>
