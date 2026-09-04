@@ -135,7 +135,9 @@ export function useAwardablePeople(enabled: boolean) {
 }
 
 export interface AwardStarInput {
-  entryMode: 'self' | 'proxy' | 'program';
+  /** 'backfill' = nhập bù sao ĐÃ trao ngoài đời mà cổng chưa có phiếu (giai đoạn
+   *  chuyển đổi sau khi dừng đường Excel 04/09) — chỉ Phòng TCTH dùng được. */
+  entryMode: 'self' | 'proxy' | 'program' | 'backfill';
   serials: number[];
   isCollective: boolean;
   recipientProfileId?: string | null;

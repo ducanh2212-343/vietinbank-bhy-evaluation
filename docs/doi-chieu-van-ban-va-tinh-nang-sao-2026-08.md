@@ -29,12 +29,13 @@ số hỏng → `void`. Gỡ phiếu → số quay về trạng thái trước �
 Số hóa mục 6 văn bản: TCTH bàn giao dải số cho từng lãnh đạo theo quý. Chỉ bàn giao
 được số đang tồn kho; thu hồi trả số chưa tặng về kho, số đã tặng giữ nguyên.
 
-### Tặng sao (RPC `award_star`) — 3 chế độ
+### Tặng sao (RPC `award_star`) — 4 chế độ
 | Chế độ | Ai dùng | Người tặng trên phiếu | Nguồn số serial |
 |---|---|---|---|
 | `self` — Tôi tặng | TP / PGĐ / BGĐ / TCTH | **Tự nhận diện theo tài khoản đăng nhập** | Pool sao của chính người tặng |
 | `proxy` — Nhập hộ | TCTH | Lãnh đạo được chọn (từ danh sách đang giữ sao) | Pool sao của lãnh đạo đó |
 | `program` — Sao chương trình động lực | TCTH | Tên chương trình/chiến dịch | Kho TCTH (`in_stock`) |
+| `backfill` — Nhập bù sao đã trao (04/09) | TCTH | Lãnh đạo chọn từ **toàn danh bạ** | Gõ tay; nhận cả `in_stock` lẫn `handed_over` |
 
 Chống trùng nằm trong giao dịch của RPC: ghi phiếu + `UPDATE` từng số với điều kiện
 trạng thái; thiếu một số là hủy toàn bộ, báo lỗi liệt kê số hỏng. Hai người cùng bấm
@@ -206,6 +207,56 @@ thấy gì ghi nhận, nhập lại vẫn thế. Log máy chủ cho thấy **hai
 bao giờ ra [object Object]"); và khu bàn giao **soát dải số ngay khi gõ** — liệt kê
 số đã tặng / đã bàn giao / chưa khai báo và khóa nút gửi cho tới khi dải sạch, để
 TCTH không phải gửi rồi mới biết.
+
+## 3e. Nhập bù sao đã trao + bước xác nhận (04/09, sau khi dừng đường Excel)
+
+**Vì sao có chế độ thứ tư.** Đường nhập Excel dừng hẳn ngày 04/09, nhưng chi nhánh
+vẫn phát sao thật ngoài đời và một số phiếu chưa kịp vào cổng. Đối chiếu tin Lark đẩy
+ra nhóm Zalo chi nhánh thấy 12 phiếu gần nhất, trong đó **6 phiếu cổng chưa có**
+(serial 64, 65, 75, 241, 250, 287). Không có đường nhập bù thì giai đoạn chuyển đổi
+sẽ **mất sao của cán bộ** — đúng thứ chương trình không được phép làm.
+
+Chế độ `backfill` khác ba chế độ cũ ở ba điểm, mỗi điểm có lý do vận hành:
+
+| Điểm khác | Vì sao |
+|---|---|
+| Số serial **gõ tay**, không chọn từ pool | Sao đã trao rồi; số có thể còn nằm trong kho (chưa kịp ghi bàn giao) **hoặc** đang ở tay lãnh đạo — hai pool khác nhau, không gộp thành một ô chọn được |
+| Người tặng chọn từ **toàn danh bạ** | Sao trao từ lâu, pool của lãnh đạo đó có thể đã hết sạch nên họ không còn trong danh sách "đang giữ sao" |
+| Vế «đem lại» **không bắt buộc** | Mẫu Lark cũ không có trường này; 6 phiếu Zalo cũng không có. Chế độ `self` (lãnh đạo đang trao) vẫn bắt buộc đủ ba vế theo văn bản mục 3 |
+
+Bù lại phần nới lỏng, số gõ tay được soi từng con ngay trên trình duyệt
+(`phanLoaiSerialNhapBu`, cùng luật với nhánh `backfill` trong RPC): số đã gắn phiếu
+khác, số đã hủy, số chưa khai báo lô in đều báo đỏ tại chỗ và khóa nút gửi. Hàng rào
+thật vẫn nằm trong giao dịch của RPC — bản trên máy chỉ để người nhập biết trước.
+
+**Bước xác nhận cho MỌI chế độ.** Phiếu ghi xong thì số serial bị khóa vĩnh viễn vào
+phiếu, chỉ TCTH gỡ được, và con số đó là ngôi sao vật lý đã ở tay cán bộ. Nay nút
+chính là «Xem lại & xác nhận», mở bảng liệt kê đủ: cách ghi nhận · người tặng (chế độ
+"Tôi tặng" hiện **tên chính mình** — máy dùng chung, quên đăng xuất là ghi nhầm) ·
+người/tập thể nhận · phòng ghi nhận · tổ · hai vế nội dung · ngày trao · số Sao và
+serial. Bấm «Đúng rồi» mới ghi.
+
+**Rà lại trường nhập theo văn bản** (yêu cầu 04/09): trường bắt buộc gắn dấu `*`;
+ngày trao chặn ngày tương lai ngay trên ô chọn (`max`) **và** trong kiểm tra trước khi
+gửi, khớp với `p_awarded_on > current_date` phía RPC; nhãn vế «đem lại» nói rõ khi nào
+được để trống; chế độ nhập bù tự đếm số Sao theo số serial gõ vào (1 sao = 1 số) thay
+vì bắt chọn lại; sau khi ghi xong **giữ nguyên người tặng và chế độ** vì nhập bù
+thường là một loạt phiếu của cùng một lãnh đạo.
+
+**Sáu phiếu Zalo đã nhập bù ngày 04/09** (`entry_mode='backfill'`, đã kiểm tra lại đủ
+6 dòng, cả 6 số ở trạng thái `awarded` và gắn đúng người giữ):
+
+| Serial | Người/tập thể nhận | Người tặng |
+|---|---|---|
+| 64, 65 | Tập thể PGD Ocean City | Phạm Minh Hải |
+| 75 | Phạm Minh Huế | Đỗ Việt Anh |
+| 241, 250 | Phạm Thị Diễm Ly | Nguyễn Đức Thái Hoàng |
+| 287 | Chu Hồng Hải | Nguyễn Thị Huyền |
+
+Hai điểm phải nói rõ để TCTH biết mà sửa: tin Zalo **không có ngày trao** nên cả 6
+phiếu ghi ngày 04/09 (ngày nhập) — quý thống kê vẫn đúng nhưng ngày thì không phải
+ngày trao thật; và phiếu serial 75 **tin Lark bỏ trống lý do**, tạm ghi
+"(Tin Lark để trống lý do — chờ Phòng KHDN bổ sung)", cần Phòng KHDN điền lại.
 
 ## 4. Trình tự đưa vào vận hành
 

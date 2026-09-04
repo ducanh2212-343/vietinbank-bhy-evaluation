@@ -199,3 +199,55 @@ export const phanLoaiDaiBanGiao = (
 export const daiBanGiaoGuiDuoc = (pl: PhanLoaiBanGiao): boolean =>
   pl.chan.length === 0 && pl.chuaKhaiBao.length === 0 && pl.daHuy.length === 0
   && (pl.moi.length > 0 || pl.hoiTo.length > 0);
+
+export interface SerialNhapBu {
+  so: number;
+  /** 'chua-khai-bao' = số chưa có trong sổ (chưa khai báo lô in) */
+  trangThai: SerialStatus | 'chua-khai-bao';
+  /** Có ghi phiếu nhập bù lên số này được không */
+  dungDuoc: boolean;
+  /** Hồ sơ đang giữ số (khi status = handed_over) */
+  nguoiGiuId: string | null;
+  /** Câu giải thích ngắn hiện trên chip */
+  giaiThich: string;
+}
+
+/**
+ * Phân loại từng số serial người dùng GÕ TAY ở chế độ nhập bù — bản chạy trên
+ * trình duyệt của luật trong RPC `award_star` nhánh 'backfill'.
+ *
+ * VÌ SAO GÕ TAY chứ không chọn từ pool: sao nhập bù là sao ĐÃ TRAO ngoài đời rồi,
+ * người nhập cầm tờ phiếu / tin Zalo có sẵn con số. Số đó có thể còn nằm trong kho
+ * (chưa kịp ghi bàn giao) hoặc đang ở tay lãnh đạo — hai pool khác nhau, không
+ * gộp thành một ô chọn được. Đổi lại phải soi từng số ngay khi gõ để người nhập
+ * biết trước số nào vướng, thay vì gửi lên rồi mới nhận lỗi.
+ */
+export const phanLoaiSerialNhapBu = (
+  nums: number[],
+  rows: StarSerialRow[],
+): SerialNhapBu[] => {
+  const theoSo = new Map(rows.map((r) => [r.serialNo, r]));
+  return [...new Set(nums)].sort((a, b) => a - b).map((so) => {
+    const r = theoSo.get(so);
+    if (!r) {
+      return {
+        so, trangThai: 'chua-khai-bao' as const, dungDuoc: false, nguoiGiuId: null,
+        giaiThich: 'chưa khai báo lô in — khai báo ở Quản lý Sao trước',
+      };
+    }
+    if (r.status === 'void') {
+      return { so, trangThai: r.status, dungDuoc: false, nguoiGiuId: null, giaiThich: 'số đã hủy (sao hỏng)' };
+    }
+    if (r.status === 'awarded') {
+      return { so, trangThai: r.status, dungDuoc: false, nguoiGiuId: r.holderProfileId, giaiThich: 'đã gắn một phiếu khác' };
+    }
+    if (r.status === 'handed_over') {
+      return { so, trangThai: r.status, dungDuoc: true, nguoiGiuId: r.holderProfileId, giaiThich: 'đang ở tay lãnh đạo' };
+    }
+    return { so, trangThai: r.status, dungDuoc: true, nguoiGiuId: null, giaiThich: 'còn trong kho TCTH' };
+  });
+};
+
+/** Số serial nhập bù dùng được hết chưa (điều kiện để bật nút xác nhận) */
+export const nhapBuDungDuoc = (ds: SerialNhapBu[]): boolean =>
+  ds.length > 0 && ds.every((x) => x.dungDuoc);

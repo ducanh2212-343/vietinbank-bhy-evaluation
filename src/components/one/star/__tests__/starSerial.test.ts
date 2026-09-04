@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildHolderPools, buildStockPool, chuanHoaTen, daiBanGiaoGuiDuoc, deriveSerialStats,
-  formatRanges, formatSerialList, parseSerialText, phanLoaiDaiBanGiao, suggestSerials,
+  formatRanges, formatSerialList, nhapBuDungDuoc, parseSerialText, phanLoaiDaiBanGiao,
+  phanLoaiSerialNhapBu, suggestSerials,
   type StarSerialRow,
 } from '../starSerial';
 import { getKpiPoints, formatKpi } from '../starMath';
@@ -158,5 +159,44 @@ describe('phanLoaiDaiBanGiao — bàn giao giữa kỳ, dải lẫn cả sao đ�
     const pl = phanLoaiDaiBanGiao(300, 300, r, new Map([[300, 'Dương Thị Thanh Thuý']]),
       'Dương Thị Thanh Thúy', 'tp-1');
     expect(pl.hoiTo).toEqual([300]);
+  });
+});
+
+describe('phanLoaiSerialNhapBu — soi số serial gõ tay ở chế độ nhập bù', () => {
+  const soSao: StarSerialRow[] = [
+    row(64, 'in_stock'),
+    row(241, 'handed_over', 'gd-1'),
+    row(184, 'awarded'),
+    row(260, 'void'),
+  ];
+
+  it('nhận cả số còn trong kho lẫn số đang ở tay lãnh đạo — sao đã trao ngoài đời ra từ cả hai nơi', () => {
+    const ds = phanLoaiSerialNhapBu([64, 241], soSao);
+    expect(ds.map((x) => x.so)).toEqual([64, 241]);
+    expect(ds.every((x) => x.dungDuoc)).toBe(true);
+    expect(ds[1].nguoiGiuId).toBe('gd-1');
+    expect(nhapBuDungDuoc(ds)).toBe(true);
+  });
+
+  it('chặn số đã gắn phiếu khác — đây chính là lỗi trùng sao đang phải đi sửa tay', () => {
+    const ds = phanLoaiSerialNhapBu([184], soSao);
+    expect(ds[0].dungDuoc).toBe(false);
+    expect(ds[0].giaiThich).toContain('phiếu khác');
+    expect(nhapBuDungDuoc(ds)).toBe(false);
+  });
+
+  it('chặn số đã hủy và số chưa khai báo lô in', () => {
+    expect(phanLoaiSerialNhapBu([260], soSao)[0].dungDuoc).toBe(false);
+    const chua = phanLoaiSerialNhapBu([999], soSao)[0];
+    expect(chua.trangThai).toBe('chua-khai-bao');
+    expect(chua.dungDuoc).toBe(false);
+  });
+
+  it('khử số lặp và sắp tăng dần — người nhập gõ "241, 64, 64"', () => {
+    expect(phanLoaiSerialNhapBu([241, 64, 64], soSao).map((x) => x.so)).toEqual([64, 241]);
+  });
+
+  it('chưa gõ số nào thì chưa cho gửi', () => {
+    expect(nhapBuDungDuoc([])).toBe(false);
   });
 });
