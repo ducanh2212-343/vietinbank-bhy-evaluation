@@ -6,6 +6,7 @@ import {
   CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag, GitBranch,
   ListChecks, Building2, Gavel, TrendingUp, Zap, Lightbulb,
   Home, BookOpen, Compass, Layers, Share2, CalendarDays, NotebookPen, Sprout, TreeDeciduous,
+  Boxes,
   Sparkles as SparklesIcon,
   type LucideIcon,
 } from 'lucide-react';
@@ -238,12 +239,49 @@ export const NAV_SECTIONS: NavSection[] = [
         keywords: ['connect', 'hoi nghi khach hang', 'ket noi', 'he sinh thai doanh nghiep'],
       },
       {
-        label: 'Sao Xứng Đáng',
+        id: 'ways-sao',
+        folder: 'Sao Xứng Đáng',
         icon: Star,
-        path: '/one/ghi-nhan',
-        bleed: true,
-        guestScreen: 'ghi-nhan',
-        keywords: ['sao xung dang', 'khen thuong', 'vinh danh', 'tu qua', 'ghi nhan'],
+        items: [
+          {
+            // Trang đầu của thương hiệu: giới thiệu chương trình, phân bổ sao và
+            // tủ quà — không nhúng form/dữ liệu (một chức năng một cửa)
+            label: 'Giới thiệu chương trình',
+            icon: Compass,
+            path: '/one/ghi-nhan',
+            end: true,
+            bleed: true,
+            // Chỉ TRANG GIỚI THIỆU nằm trong danh mục mở được cho khách, và vẫn
+            // phải Phòng TCTH bật cho đúng tài khoản. Ba màn còn lại là nghiệp vụ
+            // nội bộ — manHinhKhach.ts khớp đường dẫn chính xác nên tự đóng.
+            guestScreen: 'ghi-nhan',
+            keywords: ['sao xung dang', 'khen thuong', 'vinh danh', 'tu qua', 'ghi nhan', 'gioi thieu'],
+          },
+          {
+            label: 'Ghi nhận Sao',
+            icon: Star,
+            path: '/one/ghi-nhan/tang-sao',
+            bleed: true,
+            // Không gác bằng minRole: cán bộ thường vào vẫn có ích — màn hiện cấu
+            // trúc ba vế và quyền phát sao để họ đề xuất với Trưởng phòng.
+            keywords: ['tang sao', 'ghi nhan sao', 'trao sao', 'serial', 'cam on'],
+          },
+          {
+            label: 'Bảng tổng hợp & thi đua',
+            icon: BarChart3,
+            path: '/one/ghi-nhan/tong-hop',
+            bleed: true,
+            keywords: ['tong hop sao', 'thi dua', 'bang xep hang', 'kpi', 'moc qua', 'doi soat'],
+          },
+          {
+            label: 'Quản lý & bàn giao (TCTH)',
+            icon: Boxes,
+            path: '/one/ghi-nhan/quan-ly',
+            bleed: true,
+            minRole: 'admin',
+            keywords: ['quan ly sao', 'ban giao', 'kho sao', 'lo in', 'so serial', 'to fdi', 'ton kho'],
+          },
+        ],
       },
       {
         label: 'Bắc Hưng Yên Credit 360',

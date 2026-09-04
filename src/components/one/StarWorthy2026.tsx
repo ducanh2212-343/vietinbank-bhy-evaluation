@@ -1,10 +1,6 @@
 import React from 'react';
 import { Star, Gift, Award, Sparkles, Coffee, ShoppingBag, Headphones, Briefcase, Watch, Plane, Smartphone, ChevronRight, AlertCircle } from 'lucide-react';
 import { EditableText } from './AdminEditableContext';
-import { useAuth } from '@/hooks/useAuth';
-import { StarRecognitionForm } from './star/StarRecognitionForm';
-import { StarManagementPanel } from './star/StarManagementPanel';
-import { StarAnalytics } from './star/StarAnalytics';
 
 interface RewardTier {
   stars: number;
@@ -26,8 +22,15 @@ const REWARDS_2026: RewardTier[] = [
   { stars: 20, name: 'iPhone 18 Pro Max mới nhất', maxVal: '45,000,000 đ', icon: <Smartphone className="w-5 h-5 text-amber-500" />, color: 'bg-gradient-to-br from-amber-500 via-amber-600 to-yellow-700 text-white shadow-lg border-amber-400', isHighTier: true },
 ];
 
+/**
+ * Phần GIỚI THIỆU chương trình Sao Xứng Đáng — chỉ nội dung đọc.
+ *
+ * Ô tặng sao, bảng tổng hợp và khu quản lý kho sao đã tách sang các màn riêng
+ * (/one/ghi-nhan/tang-sao, /tong-hop, /quan-ly) — xem StarNav.tsx. Trước đây cả
+ * bốn nằm chồng trong một trang: cán bộ muốn xem sao của mình phải cuộn qua khu
+ * quản trị của Phòng TCTH.
+ */
 export const StarWorthy2026: React.FC = () => {
-  const { isGuest } = useAuth();
 
   return (
     <div className="mt-12 bg-gradient-to-b from-amber-50/50 via-white to-amber-50/30 rounded-3xl p-6 sm:p-8 border-2 border-amber-300 shadow-xl text-left animate-fade-in">
@@ -79,10 +82,8 @@ export const StarWorthy2026: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-        {/* LEFT COLUMN: QR GHI NHẬN SIMULATOR */}
+        {/* CỘT TRÁI: PHÂN BỔ SAO THEO ĐƠN VỊ */}
         <div className="lg:col-span-6 space-y-6">
-          {!isGuest && <StarRecognitionForm />}
-
           {/* QUOTA BREAKDOWN TABLE (PAGE 3 PDF) */}
           <div className="bg-white p-6 sm:p-7 rounded-3xl border border-slate-200 shadow-sm space-y-4">
             <div className="flex items-center justify-between pb-3 border-b">
@@ -207,12 +208,6 @@ export const StarWorthy2026: React.FC = () => {
         </div>
 
       </div>
-
-      {/* Khu quản lý sao & bàn giao — component tự ẩn nếu không phải TCTH admin */}
-      {!isGuest && <StarManagementPanel />}
-
-      {/* Khối phân tích Sao (dữ liệu nội bộ — ẩn với khách đối tác) */}
-      {!isGuest && <StarAnalytics />}
 
     </div>
   );
