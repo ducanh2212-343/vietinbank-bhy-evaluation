@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   ArrowRight, CheckCircle2, Clock, Download, FileText, Info, ShieldAlert, Users,
 } from 'lucide-react';
-import { timVaiTro, type BieuMauChuongTrinh, type MoHinhVanHanh } from '@/data/one/vanHanhChuongTrinh';
+import { timVaiTro, type TepTaiVe, type MoHinhVanHanh } from '@/data/one/vanHanhChuongTrinh';
 import { SoDoLuongViec } from './SoDoLuongViec';
 import { SoDoPhatBieu } from './SoDoPhatBieu';
 
@@ -52,7 +52,7 @@ function KhoiTieuDe({ so, tieuDe, phu }: { so: string; tieuDe: string; phu: stri
 }
 
 /** Nút tải một biểu mẫu; biểu mẫu chưa có tệp thì nói thẳng là chưa có */
-function TheBieuMau({ bieuMau }: { bieuMau: BieuMauChuongTrinh }) {
+function TheBieuMau({ bieuMau, nhanMa }: { bieuMau: TepTaiVe; nhanMa?: string }) {
   const coTep = !!bieuMau.tep;
   return (
     <div
@@ -70,7 +70,7 @@ function TheBieuMau({ bieuMau }: { bieuMau: BieuMauChuongTrinh }) {
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-black leading-snug text-slate-900">
-          Mẫu biểu {bieuMau.ma} — {bieuMau.ten}
+          {nhanMa ?? `Mẫu biểu ${bieuMau.ma}`} — {bieuMau.ten}
         </p>
         <p className="mt-1 text-xs leading-relaxed text-slate-600">{bieuMau.moTa}</p>
       </div>
@@ -81,7 +81,7 @@ function TheBieuMau({ bieuMau }: { bieuMau: BieuMauChuongTrinh }) {
           className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-black text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-emerald-700"
         >
           <Download className="h-4 w-4" />
-          Tải mẫu {bieuMau.ma}
+          Tải {nhanMa ? 'văn bản' : `mẫu ${bieuMau.ma}`}
           {bieuMau.kichCo && <span className="font-bold opacity-80">· {bieuMau.kichCo}</span>}
         </a>
       ) : (
@@ -119,7 +119,7 @@ export const SoDoVanHanh: React.FC<{ moHinh: MoHinhVanHanh }> = ({ moHinh }) => 
         <KhoiTieuDe
           so="1"
           tieuDe="Hồ sơ nào phải vào phiên"
-          phu="Đủ các điều kiện dưới đây là hồ sơ thuộc diện bắt buộc đưa ra thảo luận."
+          phu="Phạm vi áp dụng và ngưỡng GHTD theo từng phân khúc (mục 3 của văn bản)."
         />
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {moHinh.dieuKien.map((dk) => (
@@ -139,7 +139,7 @@ export const SoDoVanHanh: React.FC<{ moHinh: MoHinhVanHanh }> = ({ moHinh }) => 
         <KhoiTieuDe
           so="2"
           tieuDe="Đường đi của một hồ sơ"
-          phu={`${moHinh.buoc.length} bước, từ lúc sàng lọc tới lúc ghi nhật ký. Mỗi cột là một vai trò — nhìn sơ đồ là thấy việc chuyền tay qua mấy người.`}
+          phu="Bốn bước của quy trình (mục 5 của văn bản); Bước 3 «Tổ chức phiên» tách thành năm việc (i)–(v). Mỗi cột là một vai trò — nhìn sơ đồ là thấy việc chuyền tay qua mấy người."
         />
         <SoDoLuongViec moHinh={moHinh} />
 
@@ -167,7 +167,7 @@ export const SoDoVanHanh: React.FC<{ moHinh: MoHinhVanHanh }> = ({ moHinh }) => 
 
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-[10px] font-black text-slate-400">BƯỚC {i + 1}</span>
+                      <span className="text-[10px] font-black uppercase text-slate-400">{buoc.soVanBan}</span>
                       <h4 className="text-sm font-black text-slate-900">{buoc.ten}</h4>
                       <NhanVaiTro ten={vaiTro.tenNgan} />
                       {buoc.moc && (
@@ -178,6 +178,18 @@ export const SoDoVanHanh: React.FC<{ moHinh: MoHinhVanHanh }> = ({ moHinh }) => 
                       )}
                     </div>
                     <p className="mt-1.5 text-xs leading-relaxed text-slate-600">{buoc.moTa}</p>
+                    {/* Danh sách con — VD chín nội dung tối thiểu của bộ tài liệu 360°.
+                        Đánh số để cán bộ tự tích được từng mục trước khi gửi */}
+                    {buoc.danhSach && (
+                      <ol className="mt-2 grid gap-1 text-xs leading-relaxed text-slate-700 sm:grid-cols-2">
+                        {buoc.danhSach.map((d, k) => (
+                          <li key={k} className="flex gap-2">
+                            <span className="shrink-0 font-black text-emerald-700">{k + 1}.</span>
+                            <span>{d}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    )}
 
                     <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px]">
                       {/* «Kết quả:» phải liền một khối — trên màn 390px nó từng bị
@@ -228,14 +240,18 @@ export const SoDoVanHanh: React.FC<{ moHinh: MoHinhVanHanh }> = ({ moHinh }) => 
         <KhoiTieuDe
           so="3"
           tieuDe="Thứ tự phát biểu trong phiên"
-          phu={`${moHinh.phatBieu.length} vị trí quanh bàn, cất lời theo chiều kim đồng hồ — từ người gần hồ sơ nhất tới người kết luận. Bấm vào từng ghế để xem việc của vị trí đó.`}
+          phu={`Trình tự trao đổi, phát biểu tại Bước 3 (iii) của văn bản — ${moHinh.phatBieu.length} vị trí quanh bàn, theo chiều kim đồng hồ từ người gần hồ sơ nhất tới Người điều phối. Bấm vào từng ghế để xem việc của vị trí đó.`}
         />
         <SoDoPhatBieu moHinh={moHinh} />
       </section>
 
       {/* ---- 4. Ai làm gì ---- */}
       <section>
-        <KhoiTieuDe so="4" tieuDe="Ai làm gì" phu="Sáu vai trò trong một phiên và trách nhiệm của từng vai." />
+        <KhoiTieuDe
+          so="4"
+          tieuDe="Ai làm gì"
+          phu={`${moHinh.vaiTro.length} vai trò của một phiên — là ai và trách nhiệm gì, theo mục 4 của văn bản.`}
+        />
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {moHinh.vaiTro.map((v) => (
             <div key={v.ma} className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -245,6 +261,7 @@ export const SoDoVanHanh: React.FC<{ moHinh: MoHinhVanHanh }> = ({ moHinh }) => 
                 <span aria-hidden className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: v.mau }} />
                 {v.ten}
               </p>
+              {v.laAi && <p className="mt-1 text-xs font-semibold leading-relaxed text-slate-500">{v.laAi}</p>}
               <p className="mt-1.5 text-xs leading-relaxed text-slate-600">{v.trachNhiem}</p>
             </div>
           ))}
@@ -253,8 +270,9 @@ export const SoDoVanHanh: React.FC<{ moHinh: MoHinhVanHanh }> = ({ moHinh }) => 
 
       {/* ---- 5. Biểu mẫu ---- */}
       <section>
-        <KhoiTieuDe so="5" tieuDe="Biểu mẫu dùng trong phiên" phu="Tải về, điền tại phiên, lưu cùng hồ sơ trình duyệt." />
+        <KhoiTieuDe so="5" tieuDe="Văn bản và biểu mẫu" phu="Toàn văn chương trình để đọc đối chiếu; biểu mẫu tải về, điền tại phiên, lưu cùng hồ sơ trình duyệt." />
         <div className="space-y-3">
+          <TheBieuMau bieuMau={moHinh.vanBan} nhanMa="Văn bản gốc" />
           {moHinh.bieuMau.map((bm) => (
             <TheBieuMau key={bm.ma} bieuMau={bm} />
           ))}
@@ -263,7 +281,7 @@ export const SoDoVanHanh: React.FC<{ moHinh: MoHinhVanHanh }> = ({ moHinh }) => 
 
       {/* ---- Nguyên tắc + nguồn ---- */}
       <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Bốn nguyên tắc giữ chất lượng phiên</p>
+        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Nguyên tắc thực hiện (mục 2 của văn bản)</p>
         <ul className="mt-3 grid gap-2 sm:grid-cols-2">
           {moHinh.nguyenTac.map((nt) => (
             <li key={nt} className="flex items-start gap-2 text-xs leading-relaxed text-slate-700">

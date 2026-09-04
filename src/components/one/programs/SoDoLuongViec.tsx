@@ -24,11 +24,11 @@ import { timVaiTro, type MoHinhVanHanh } from '@/data/one/vanHanhChuongTrinh';
 /** Chiều rộng một làn */
 const RONG_LAN = 196;
 /** Chiều cao một hàng bước */
-const CAO_HANG = 96;
+const CAO_HANG = 108;
 /** Chiều cao dải tên làn ở đầu sơ đồ */
 const CAO_DAU = 58;
 const RONG_O = 172;
-const CAO_O = 66;
+const CAO_O = 78;
 
 /** Cắt nhãn thành tối đa 2 dòng để chữ không tràn khỏi ô */
 export function catDong(text: string, moiDong = 22, toiDa = 2): string[] {
@@ -257,14 +257,17 @@ export const SoDoLuongViec: React.FC<Props> = ({ moHinh }) => {
                 ))}
                 {/* Ô sơ đồ hẹp nên dùng bản mốc rút gọn; câu đầy đủ vẫn nằm ở
                     danh sách chi tiết ngay dưới sơ đồ */}
+                {/* Mốc giờ và nhãn biểu mẫu mỗi thứ MỘT DÒNG, cùng canh trái. Bản
+                    trước đặt chung một dòng (mốc trái, mẫu phải) — ô Bước 4 có cả
+                    hai nên «Ký ngay khi kết phiên» đâm thẳng vào «Mẫu 01, 02». */}
                 {(buoc.mocNgan ?? buoc.moc) && (
-                  <text x={x + 12} y={y + CAO_O - 12} fontSize={9.5} fontWeight={700} fill="#64748B">
-                    ⏱ {buoc.mocNgan ?? buoc.moc}
+                  <text x={x + 12} y={y + CAO_O - 26} fontSize={9.5} fontWeight={700} fill="#64748B">
+                    ⏱ {catDong(buoc.mocNgan ?? buoc.moc ?? '', 26, 1)[0]}
                   </text>
                 )}
                 {buoc.bieuMau?.length ? (
-                  <text x={x + RONG_O - 12} y={y + CAO_O - 12} textAnchor="end" fontSize={9.5} fontWeight={800} fill="#047857">
-                    ▤ Mẫu {buoc.bieuMau.join(', ')}
+                  <text x={x + 12} y={y + CAO_O - 10} fontSize={9.5} fontWeight={800} fill="#047857">
+                    ▤ Mẫu biểu {buoc.bieuMau.join(', ')}
                   </text>
                 ) : null}
               </g>

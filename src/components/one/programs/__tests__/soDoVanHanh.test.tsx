@@ -46,13 +46,28 @@ describe('Mô hình vận hành Credit 360', () => {
     }
   });
 
-  it('vẽ đủ số bước và giữ đúng thứ tự khai trong dữ liệu', () => {
+  it('vẽ đủ số bước, giữ đúng SỐ HIỆU của văn bản chứ không đánh số lại', () => {
+    // Cán bộ cầm văn bản đối chiếu: «Bước 3 · (iii)» phải tìm thấy đúng chữ đó
     dung();
-    const buoc = screen.getAllByText(/^BƯỚC \d+$/);
-    expect(buoc).toHaveLength(CREDIT_360_VAN_HANH.buoc.length);
-    expect(buoc.map((e) => e.textContent)).toEqual(
-      CREDIT_360_VAN_HANH.buoc.map((_, i) => `BƯỚC ${i + 1}`),
-    );
+    for (const b of CREDIT_360_VAN_HANH.buoc) {
+      expect(screen.getAllByText(b.soVanBan).length).toBeGreaterThan(0);
+    }
+    expect(CREDIT_360_VAN_HANH.buoc.map((b) => b.soVanBan)).toEqual([
+      'Bước 1', 'Bước 2', 'Bước 3 · (i)', 'Bước 3 · (ii)', 'Bước 3 · (iii)', 'Bước 3 · (iv)', 'Bước 3 · (v)', 'Bước 4',
+    ]);
+  });
+
+  it('bộ tài liệu 360° liệt kê đủ 9 nội dung tối thiểu của Bước 2', () => {
+    dung();
+    const chuanBi = CREDIT_360_VAN_HANH.buoc.find((b) => b.ma === 'chuan-bi');
+    expect(chuanBi?.danhSach).toHaveLength(9);
+    expect(screen.getByText(/Tổng hợp thông tin đánh giá 360° khách hàng từ CRM 1.0/)).toBeInTheDocument();
+  });
+
+  it('văn bản gốc tải được ngay trên trang', () => {
+    dung();
+    const nut = screen.getByRole('link', { name: /Tải văn bản/ });
+    expect(nut).toHaveAttribute('href', CREDIT_360_VAN_HANH.vanBan.tep);
   });
 
   it('cả hai biểu mẫu đều tải được, đúng tệp đã đặt trên cổng', () => {
@@ -81,7 +96,8 @@ describe('Mô hình vận hành Credit 360', () => {
     // Hiểu nhầm đắt nhất của một hội đồng tham vấn là «họp xong coi như đã duyệt»
     dung();
     expect(screen.getByText(/Chương trình KHÔNG làm gì/)).toBeInTheDocument();
-    expect(screen.getByText(/KHÔNG thay quyền phê duyệt/)).toBeInTheDocument();
+    // Đúng chữ văn bản, mục 2 — nguyên tắc đầu tiên
+    expect(screen.getByText(/không phải Hội đồng \/ ban \/ tổ chức có chức năng quyết định, phê duyệt tín dụng/)).toBeInTheDocument();
   });
 
   it('bước làm trên cổng dẫn thẳng tới sổ đăng ký', () => {
@@ -96,15 +112,19 @@ describe('Mô hình vận hành Credit 360', () => {
     expect(v.tenNgan).toBe('khong-co-that');
   });
 
-  it('sơ đồ phát biểu bày đủ chín vị trí theo đúng thứ tự Giám đốc chốt', () => {
+  it('sơ đồ phát biểu bày đủ mười vị trí theo đúng trình tự Bước 3 (iii) của văn bản', () => {
     dung();
     const luot = CREDIT_360_VAN_HANH.phatBieu;
-    expect(luot.map((l) => l.thuTu)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
-    // Đi từ người gần hồ sơ nhất tới người kết luận
-    expect(luot[0].viTri).toBe('Cán bộ Phòng đề xuất');
-    expect(luot[luot.length - 1].viTri).toBe('Giám đốc Chi nhánh');
+    expect(luot.map((l) => l.thuTu)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    // Đi từ người gần hồ sơ nhất tới Người điều phối
+    expect(luot[0].viTri).toBe('Cán bộ trình bày');
+    expect(luot[luot.length - 1].viTri).toMatch(/Giám đốc Chi nhánh/);
+    // «Phòng đầu mối theo phân khúc (nếu có)» là ghế tuỳ chọn, đúng chữ văn bản
+    expect(luot.find((l) => l.tuyChon)?.viTri).toBe('Phòng đầu mối theo phân khúc (nếu có)');
     for (const l of luot) {
-      expect(screen.getAllByRole('button', { name: new RegExp(l.viTri) }).length).toBeGreaterThan(0);
+      // Tên vị trí có dấu ngoặc «(nếu có)» — phải thoát ký tự regex
+      const an = l.viTri.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      expect(screen.getAllByRole('button', { name: new RegExp(an) }).length).toBeGreaterThan(0);
     }
   });
 
@@ -119,7 +139,7 @@ describe('Mô hình vận hành Credit 360', () => {
     dung();
     // Dòng nguồn của cả mô hình (dưới bốn nguyên tắc) — khác với dòng nguồn
     // từng vị trí phát biểu, nên tìm theo tên văn bản đầy đủ
-    expect(screen.getByText(/Nguồn: Chương trình Bac Hung Yen Credit 360/)).toBeInTheDocument();
+    expect(screen.getByText(/Nguồn: Thông báo số .*TB-CNBHY-TCTH ngày 16\/06\/2026/)).toBeInTheDocument();
   });
 });
 
@@ -143,8 +163,9 @@ describe('Sơ đồ luồng việc (SVG)', () => {
     // phải nhảy ngược lại để tìm chỗ bắt đầu
     render(<MemoryRouter><SoDoLuongViec moHinh={CREDIT_360_VAN_HANH} /></MemoryRouter>);
     const vaiTroDauTien = timVaiTro(CREDIT_360_VAN_HANH, CREDIT_360_VAN_HANH.buoc[0].vaiTro);
+    // Tên làn dài được cắt thành 2 dòng <text>; dòng đầu phải là phần mở đầu của tên
     const tenLan = screen.getByRole('img').querySelectorAll('text');
-    expect(tenLan[0].textContent).toBe(vaiTroDauTien.ten);
+    expect(vaiTroDauTien.ten.startsWith(tenLan[0].textContent ?? '')).toBe(true);
   });
 
   it('sơ đồ có nhãn cho trình đọc màn hình, không phải một hình câm', () => {
@@ -160,7 +181,7 @@ describe('Sơ đồ luồng việc (SVG)', () => {
     // câu không ai chịu trách nhiệm
     for (const l of CREDIT_360_VAN_HANH.phatBieu) {
       expect(l.nhiemVu.length, `lượt ${l.thuTu}`).toBeGreaterThan(20);
-      expect(l.nguon, `lượt ${l.thuTu}`).toMatch(/Mẫu biểu 01/);
+      expect(l.nguon, `lượt ${l.thuTu}`).toMatch(/Văn bản mục/);
     }
   });
 
@@ -177,17 +198,16 @@ describe('Sơ đồ phát biểu (bàn tròn)', () => {
 
   it('mặc định chọn lượt 1 và hiện đúng việc của vị trí đó', () => {
     dungBan();
-    expect(screen.getByRole('heading', { level: 4 })).toHaveTextContent('Cán bộ Phòng đề xuất');
+    expect(screen.getByRole('heading', { level: 4 })).toHaveTextContent('Cán bộ trình bày');
     expect(screen.getByText(/trình chiếu tài liệu kèm theo/)).toBeInTheDocument();
   });
 
   it('bấm vào ghế thì thẻ chi tiết đổi sang vị trí đó', () => {
     dungBan();
-    fireEvent.click(screen.getByRole('button', { name: 'Lượt 9: Giám đốc Chi nhánh' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Lượt 10: Giám đốc Chi nhánh (Người điều phối)' }));
     expect(screen.getByRole('heading', { level: 4 })).toHaveTextContent('Giám đốc Chi nhánh');
-    // Trích dẫn nằm trong blockquote; «Người điều phối phiên» còn xuất hiện ở
-    // chú giải màu và tooltip nên phải nhắm đúng thẻ trích
-    expect(screen.getByText(/ký biên bản với tư cách Người điều hành phiên/)).toBeInTheDocument();
+    // Trích dẫn nằm trong blockquote — nhắm câu chỉ có ở đó
+    expect(screen.getByText(/không áp đặt kết luận mang tính phê duyệt\. Kết phiên/)).toBeInTheDocument();
   });
 
   it('ghế chọn được bằng bàn phím — Enter hoặc dấu cách', () => {
@@ -202,7 +222,7 @@ describe('Sơ đồ phát biểu (bàn tròn)', () => {
     const so = CREDIT_360_VAN_HANH.phatBieu.length;
     const sau = screen.getByRole('button', { name: /Lượt sau/ });
     for (let i = 0; i < so; i++) fireEvent.click(sau);
-    expect(screen.getByRole('heading', { level: 4 })).toHaveTextContent('Cán bộ Phòng đề xuất');
+    expect(screen.getByRole('heading', { level: 4 })).toHaveTextContent('Cán bộ trình bày');
   });
 
   it('ghế cuối cùng là người điều phối — người kết luận ngồi đầu bàn', () => {

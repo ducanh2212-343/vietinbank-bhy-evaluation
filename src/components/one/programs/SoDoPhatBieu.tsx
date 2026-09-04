@@ -143,6 +143,8 @@ export const SoDoPhatBieu: React.FC<{ moHinh: MoHinhVanHanh }> = ({ moHinh }) =>
                 {dangChonGhe && (
                   <circle cx={g.x} cy={g.y} r={GHE_BAN_KINH + 7} fill={vt.mau} fillOpacity={0.18} />
                 )}
+                {/* Ghế «nếu có» (VD Phòng đầu mối theo phân khúc) vẽ nét đứt: có
+                    trong văn bản nhưng không phải phiên nào cũng có người ngồi */}
                 <circle
                   cx={g.x}
                   cy={g.y}
@@ -150,6 +152,7 @@ export const SoDoPhatBieu: React.FC<{ moHinh: MoHinhVanHanh }> = ({ moHinh }) =>
                   fill={dangChonGhe ? vt.mau : '#FFFFFF'}
                   stroke={vt.mau}
                   strokeWidth={dangChonGhe ? 0 : 3}
+                  strokeDasharray={l.tuyChon && !dangChonGhe ? '5 4' : undefined}
                   filter="url(#bong-ghe)"
                   className="transition-[fill] duration-200"
                 />
@@ -293,6 +296,7 @@ export const SoDoPhatBieu: React.FC<{ moHinh: MoHinhVanHanh }> = ({ moHinh }) =>
                   {l.thuTu}
                 </span>
                 <span className="min-w-0 flex-1 truncate font-bold">{l.viTri}</span>
+                {l.tuyChon && <span className="shrink-0 text-[10px] font-bold opacity-70">nếu có</span>}
               </button>
             </li>
           );

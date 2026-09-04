@@ -1,6 +1,6 @@
 import {
-  ClipboardCheck, CalendarPlus, FileUp, Users, MessagesSquare, FileSignature,
-  Send, BookOpen, type LucideIcon,
+  ClipboardCheck, FolderOpen, Play, Presentation, MessagesSquare, ListChecks, Flag, FileSignature,
+  type LucideIcon,
 } from 'lucide-react';
 
 /**
@@ -19,8 +19,10 @@ import {
  *      nằm rải trong JSX của Credit360Pillar.tsx, sửa quy chế phải đi dò từng
  *      chỗ trong mã.
  *
- * NGUỒN của từng con số ghi ngay trong `nguon` để người sau đối chiếu được với
- * văn bản gốc, không phải tin vào trí nhớ của người viết mã.
+ * NGUYÊN TẮC VIẾT: chữ trong file này là chữ của VĂN BẢN, không phải diễn giải
+ * của người viết mã. Mỗi khối ghi rõ lấy từ mục nào để người rà soát dò được về
+ * tận dòng. Cái gì văn bản không nói thì không bịa — bản đầu từng tự gán «~15
+ * phút» cho mỗi lượt phát biểu và cán bộ đã có thể tưởng đó là quy định.
  */
 
 /** Ai làm bước này — dùng cho cả huy hiệu trên sơ đồ lẫn bảng phân vai */
@@ -29,17 +31,18 @@ export interface VaiTroVanHanh {
   ten: string;
   /** Tên ngắn hiện trên sơ đồ (≤ 14 ký tự) */
   tenNgan: string;
-  /** Trách nhiệm chính, viết cho cán bộ đọc chứ không phải trích quy chế */
+  /** Là ai — trích văn bản */
+  laAi: string;
+  /** Trách nhiệm — trích văn bản */
   trachNhiem: string;
   /**
    * Màu nhận diện của vai trò trên sơ đồ.
    *
    * Đặt trong DỮ LIỆU chứ không phát sinh theo thứ tự lúc vẽ: nguyên tắc «màu đi
-   * theo đối tượng, không đi theo thứ hạng». Người điều phối phát biểu ở lượt 1
-   * và lượt 5 — hai lượt đó phải cùng màu thì người xem mới thấy là cùng một
-   * người, còn tô theo thứ tự lượt thì thành hai màu khác nhau.
+   * theo đối tượng, không đi theo thứ hạng». Người điều phối mở phiên và kết
+   * phiên — hai lần đó phải cùng màu thì người xem mới thấy là cùng một người.
    *
-   * Sáu màu đã qua bộ kiểm bảng màu (dải sáng, sàn chroma, tách bạch với mắt mù
+   * Các màu đã qua bộ kiểm bảng màu (dải sáng, sàn chroma, tách bạch với mắt mù
    * màu deutan/tritan ΔE ≥ 9, tương phản ≥ 3:1 trên nền trắng). Đổi màu thì phải
    * chạy lại bộ kiểm, đừng chọn bằng mắt.
    */
@@ -48,12 +51,16 @@ export interface VaiTroVanHanh {
 
 export interface BuocVanHanh {
   ma: string;
+  /** Số hiệu đúng như văn bản: «Bước 1», «Bước 3 · (iii)» — không đánh số lại */
+  soVanBan: string;
   ten: string;
   icon: LucideIcon;
   /** Mã vai trò chịu trách nhiệm chính ở bước này */
   vaiTro: string;
-  /** Làm gì — một câu, cán bộ đọc là biết phải làm gì */
+  /** Làm gì — trích văn bản */
   moTa: string;
+  /** Danh sách con (VD nội dung tối thiểu phải chuẩn bị) — trích văn bản */
+  danhSach?: string[];
   /** Bước này kết thúc bằng cái gì: giấy tờ, dữ liệu, quyết định */
   dauRa: string;
   /** Mốc thời gian ràng buộc (nếu có) */
@@ -66,44 +73,40 @@ export interface BuocVanHanh {
   duongDan?: string;
   /**
    * Nhánh rẽ khỏi dòng chảy chính. Sơ đồ chỉ vẽ một dòng thẳng thì người đọc
-   * tưởng mọi hồ sơ đều phải qua phiên — nhánh «không đủ ngưỡng» phải nhìn thấy
-   * được, nếu không cán bộ sẽ đưa cả hồ sơ nhỏ ra họp cho chắc.
+   * tưởng mọi hồ sơ đều phải qua phiên — nhánh «không thuộc đối tượng» phải nhìn
+   * thấy được, nếu không cán bộ sẽ đưa cả hồ sơ nhỏ ra họp cho chắc.
    */
   nhanhRe?: { nhan: string; ketQua: string };
 }
 
 /**
  * Một lượt phát biểu trong phiên — một VỊ TRÍ ngồi, theo đúng thứ tự cất lời.
- *
- * Không có thời lượng phút: bản đầu tự gán 5–20 phút cho mỗi lượt để vẽ dải
- * thời gian, nhưng con số đó không có trong văn bản nào. Cán bộ nhìn thấy
- * «~15 phút» trên cổng sẽ tin đó là quy định — thà không bày còn hơn bày số
- * bịa. Muốn có thì phải lấy từ văn bản chương trình, không tự đặt.
+ * Không có thời lượng từng lượt: văn bản chỉ khuyến nghị thời lượng cho cả phần
+ * trình bày (10–15 phút) và cả phần trao đổi (30–45 phút), không chia cho từng
+ * người — nên sơ đồ cũng không chia.
  */
 export interface LuotPhatBieu {
   thuTu: number;
-  /** Tên vị trí — đúng chữ Chi nhánh dùng (VD «Phó Giám đốc phụ trách Phòng đề xuất») */
+  /** Tên vị trí — đúng chữ văn bản dùng */
   viTri: string;
-  /** Nhãn ngắn hiện trên ghế trong sơ đồ (≤ 12 ký tự) */
+  /** Nhãn ngắn hiện trên ghế trong sơ đồ (≤ 14 ký tự) */
   viTriNgan: string;
   /** Mã vai trò trong `MoHinhVanHanh.vaiTro` — quyết định màu và nhóm */
   vaiTro: string;
-  /**
-   * Việc của vị trí này trong phiên — TRÍCH NGUYÊN VĂN từ văn bản, không diễn
-   * lại. Mỗi câu ghi rõ nguồn ở `nguon` để người rà soát dò được về tận dòng.
-   */
+  /** Việc của vị trí này trong phiên — TRÍCH NGUYÊN VĂN, không diễn lại */
   nhiemVu: string;
   nguon: string;
+  /** Vị trí chỉ có mặt trong một số phiên («nếu có» trong văn bản) */
+  tuyChon?: boolean;
 }
 
-export interface BieuMauChuongTrinh {
+export interface TepTaiVe {
   ma: string;
   ten: string;
   moTa: string;
   /**
-   * Đường dẫn tệp trong `public/`. Bỏ trống = biểu mẫu đã có trong quy chế
-   * nhưng CHƯA có tệp trên cổng — giao diện nói rõ như vậy thay vì bày một nút
-   * bấm vào không tải được.
+   * Đường dẫn tệp trong `public/`. Bỏ trống = văn bản có nhắc nhưng CHƯA có tệp
+   * trên cổng — giao diện nói rõ như vậy thay vì bày một nút bấm vào không tải được.
    */
   tep?: string;
   /** Cỡ tệp hiện trên nút, để cán bộ biết trước khi bấm */
@@ -119,7 +122,7 @@ export interface DieuKienVao {
 export interface MoHinhVanHanh {
   maChuongTrinh: string;
   ten: string;
-  /** Một câu trả lời «chương trình này để làm gì» */
+  /** Một câu trả lời «chương trình này để làm gì» — trích mục đích trong văn bản */
   mucTieu: string;
   /** Ranh giới — cái chương trình KHÔNG làm. Chống hiểu nhầm về thẩm quyền */
   khongLam: string;
@@ -128,194 +131,226 @@ export interface MoHinhVanHanh {
   vaiTro: VaiTroVanHanh[];
   buoc: BuocVanHanh[];
   phatBieu: LuotPhatBieu[];
-  bieuMau: BieuMauChuongTrinh[];
+  /** Văn bản gốc — để cán bộ tải về đọc toàn văn */
+  vanBan: TepTaiVe;
+  bieuMau: TepTaiVe[];
   /** Điểm dừng của dòng chảy — nơi hồ sơ rời khỏi phạm vi chương trình */
   ketThuc: { vaiTro: string; nhan: string };
-  /** Văn bản gốc mà mô hình này chép lại */
+  /** Tóm tắt nguồn, hiện ở chân sơ đồ */
   nguon: string;
 }
 
+// =====================================================================
+// BẮC HƯNG YÊN CREDIT 360
+// Nguồn: Thông báo số …/TB-CNBHY-TCTH ngày 16/06/2026 của Giám đốc Chi nhánh
+// v/v Triển khai chương trình «Bac Hung Yen Credit 360», hiệu lực từ 22/06/2026;
+// Mẫu biểu 01 (Biên bản thảo luận) và Mẫu biểu 02 (Biên bản ghi nhận ý kiến)
+// đính kèm văn bản. Số mục dưới đây (mục 1–6, Bước 1–4, (i)–(v)) là của văn bản.
+// =====================================================================
+
 const VAI_TRO_C360: VaiTroVanHanh[] = [
   {
-    ma: 'dieu-phoi',
-    ten: 'Người điều phối phiên',
-    tenNgan: 'Điều phối',
+    ma: 'phong-qlkh',
+    ten: 'Phòng quản lý Khách hàng',
+    tenNgan: 'Phòng QLKH',
+    laAi:
+      'Phòng khách hàng / Phòng giao dịch có hồ sơ đề xuất; lãnh đạo Phòng gồm Trưởng Phòng và Phó trưởng Phòng kiểm soát hồ sơ (nếu có).',
     trachNhiem:
-      'Giám đốc Chi nhánh (hoặc Phó Giám đốc được ủy quyền): mở phiên, giữ nhịp thảo luận, chốt kết luận và các việc phải hoàn thiện.',
-    mau: '#1D4ED8',
-  },
-  {
-    ma: 'phong-de-xuat',
-    ten: 'Phòng đề xuất',
-    tenNgan: 'Phòng đề xuất',
-    trachNhiem:
-      'Phòng/PGD có hồ sơ (Mẫu biểu 02 gọi là Phòng quản lý Khách hàng): đăng ký phiên, gửi hồ sơ trước, cử cán bộ trình bày, giải trình và tiếp thu để hoàn thiện tờ trình; ghi Ý kiến của Phòng quản lý KH vào Biên bản ghi nhận ý kiến và lưu 01 bản.',
+      'Lãnh đạo Phòng có trách nhiệm kiểm soát hồ sơ trước khi đề xuất tham gia phiên; Trưởng Phòng đăng ký lịch thảo luận với Người điều phối (đối với các KH phòng KHDN) hoặc thông qua phòng TCTH (với các Phòng còn lại). Lập biên bản ghi nhận phiên, trình ký ngay khi kết thúc phiên, lưu trữ 01 bản.',
     mau: '#0D9488',
   },
   {
-    ma: 'can-bo-trinh-bay',
-    ten: 'Cán bộ trình bày',
-    tenNgan: 'CB trình bày',
+    ma: 'nguoi-trinh-bay',
+    ten: 'Người trình bày',
+    tenNgan: 'Người trình bày',
+    laAi: 'Là cán bộ phụ trách, quản lý khách hàng hoặc lãnh đạo Phòng kiểm soát hồ sơ.',
     trachNhiem:
-      'Cán bộ đánh giá trực tiếp hồ sơ: trình bày, trình chiếu tài liệu kèm theo và báo cáo giải trình các vấn đề mà các thành viên đưa ra.',
+      'Chuẩn bị nội dung trình bày một cách trung thực, khách quan; gửi tài liệu cho các thành viên tham gia phiên thảo luận trước; phản biện, làm rõ các vấn đề phát sinh; tiếp thu, ghi nhận ý kiến của các thành viên tham dự và hoàn thiện hồ sơ trên cơ sở ghi nhận các ý kiến phù hợp tại phiên thảo luận.',
     mau: '#B45309',
   },
   {
-    ma: 'thanh-vien',
-    ten: 'Thành viên phiên',
-    tenNgan: 'Thành viên',
+    ma: 'dieu-phoi',
+    ten: 'Người điều phối',
+    tenNgan: 'Điều phối',
+    laAi: 'Là Giám đốc Chi nhánh hoặc PGĐ được GĐ phân công.',
     trachNhiem:
-      'Phó Giám đốc, lãnh đạo phòng và cán bộ được mời: phản biện từ góc nhìn của mình, ghi ý kiến vào phiếu đính kèm biên bản.',
+      'Điều hành phiên thảo luận, bảo đảm tinh thần trao đổi cởi mở, không áp đặt kết luận mang tính phê duyệt; khuyến khích, tạo điều kiện cho các thành viên đưa ra ý kiến, góc nhìn đa chiều từ thông tin trình bày, hồ sơ cán bộ cung cấp, các nội dung trao đổi, thảo luận; và kết thúc phiên.',
+    mau: '#1D4ED8',
+  },
+  {
+    ma: 'thanh-vien',
+    ten: 'Thành viên tham dự',
+    tenNgan: 'Thành viên',
+    laAi:
+      'Ban Giám đốc Chi nhánh (để vận hành phiên cần tối thiểu Giám đốc và Phó Giám đốc phụ trách Phòng); Lãnh đạo Phòng khách hàng/Phòng giao dịch; cán bộ tín dụng liên quan; đại diện lãnh đạo Phòng KHDN/KHBL đầu mối theo phân khúc; các thành phần khác: TCTH, HTTD.',
+    trachNhiem:
+      'Nghiên cứu hồ sơ trước khi tham dự. Đưa ra ý kiến, quan điểm, góp ý bổ sung các nội dung cần đánh giá, làm rõ, nhận diện các vấn đề tiềm ẩn (nếu có) và đề xuất các biện pháp kiểm soát trên tinh thần xây dựng và chia sẻ kinh nghiệm thực tiễn (khuyến khích có ý kiến trước khi tham dự phiên theo mẫu biểu 02, gửi trước cho Phòng quản lý Khách hàng). Bảo mật thông tin khách hàng và nội dung thảo luận trong phiên.',
     mau: '#7C3AED',
   },
   {
-    ma: 'thu-ky',
-    ten: 'Thư ký phiên',
-    tenNgan: 'Thư ký',
-    trachNhiem:
-      'Ghi biên bản thảo luận theo Mẫu biểu 01, đính kèm Biên bản ghi nhận ý kiến (Mẫu biểu 02), ghi nhật ký phiên lên cổng sau khi kết thúc.',
-    mau: '#0284C7',
-  },
-  {
     ma: 'cap-tham-quyen',
-    ten: 'Cấp thẩm quyền phê duyệt',
+    ten: 'Cấp có thẩm quyền',
     tenNgan: 'Cấp phê duyệt',
+    laAi: 'Cấp phê duyệt hoặc quyết định cấp tín dụng theo quy định hiện hành của NHCT.',
     trachNhiem:
-      'Người/cấp có thẩm quyền cấp GHTD theo quy định. Phiên Credit 360 KHÔNG thay quyền này.',
+      'Chương trình không thay thế quy trình thẩm định, đề xuất, kiểm soát hoặc quyết định/phê duyệt tín dụng theo quy định hiện hành của NHCT.',
     mau: '#BE123C',
   },
 ];
 
+/**
+ * Bốn bước của mục 5 văn bản; Bước 3 «Tổ chức phiên» có năm việc (i)–(v) nên
+ * sơ đồ tách thành năm hàng để thấy được tay chuyền qua ai. Số hiệu giữ NGUYÊN
+ * của văn bản — đánh số lại 1–8 thì cán bộ cầm văn bản đối chiếu sẽ lạc.
+ */
 const BUOC_C360: BuocVanHanh[] = [
   {
-    ma: 'sang-loc',
-    ten: 'Sàng lọc hồ sơ',
+    ma: 'de-xuat',
+    soVanBan: 'Bước 1',
+    ten: 'Đề xuất đưa hồ sơ vào phiên',
     icon: ClipboardCheck,
-    vaiTro: 'phong-de-xuat',
+    vaiTro: 'phong-qlkh',
     moTa:
-      'Đối chiếu hồ sơ với ngưỡng GHTD của phân khúc và các điều kiện bắt buộc. Đủ ngưỡng là phải vào phiên, không phải tùy chọn.',
-    dauRa: 'Kết luận hồ sơ có thuộc diện đưa vào phiên hay không',
+      'CBQHKH/LĐP rà soát hồ sơ trình cấp GHTD/tái cấp GHTD thuộc đối tượng áp dụng và đăng ký với Người điều phối (phòng KHDN) hoặc thông qua phòng TCTH (với các Phòng còn lại). Ghi vào sổ đăng ký Credit 360 trên cổng để cả Chi nhánh cùng thấy lịch.',
+    dauRa: 'Hồ sơ đã đăng ký lịch phiên với Người điều phối / phòng TCTH',
+    moc: 'Đề xuất chậm nhất trước tối thiểu 03 ngày dự kiến tổ chức phiên',
+    mocNgan: 'Trước phiên ≥ 03 ngày',
+    duongDan: '/one/credit-360',
     nhanhRe: {
-      nhan: 'Chưa đủ ngưỡng',
+      nhan: 'Không thuộc đối tượng áp dụng',
       ketQua: 'Trình theo quy trình thường',
     },
   },
   {
-    ma: 'dang-ky',
-    ten: 'Đăng ký phiên',
-    icon: CalendarPlus,
-    vaiTro: 'phong-de-xuat',
-    moTa:
-      'Ghi hồ sơ vào sổ đăng ký Credit 360 trên cổng: ngày phiên, khách hàng, ngành nghề, GHTD đề xuất, cán bộ và lãnh đạo phòng.',
-    dauRa: 'Một dòng trong sổ đăng ký, ai cũng tra được',
-    duongDan: '/one/credit-360',
+    ma: 'chuan-bi',
+    soVanBan: 'Bước 2',
+    ten: 'Chuẩn bị nội dung',
+    icon: FolderOpen,
+    vaiTro: 'nguoi-trinh-bay',
+    moTa: 'Người trình bày chuẩn bị nội dung theo nguyên tắc 360° về khách hàng, tối thiểu gồm các nội dung:',
+    danhSach: [
+      'Tổng quan thông tin pháp lý và năng lực / mô hình kinh doanh của khách hàng (yêu cầu hình ảnh cơ sở kinh doanh của Khách hàng chụp Timemark)',
+      'Tình hình quan hệ tín dụng / lịch sử quan hệ tín dụng của khách hàng',
+      'Đánh giá tình hình tài chính, hoạt động kinh doanh, dòng tiền (nguồn trả nợ) của KH',
+      'Ngành nghề, thị trường và nhu cầu cấp tín dụng',
+      'Lợi ích đem lại từ Khách hàng, các sản phẩm dịch vụ sử dụng, báo cáo rà soát các điều khoản hợp đồng bảo hiểm liên quan tổn thất (nếu có)',
+      'Báo cáo chi tiết danh mục Tài sản bảo đảm (yêu cầu hình ảnh chụp Timemark)',
+      'Tổng hợp thông tin đánh giá 360° khách hàng từ CRM 1.0',
+      'Những vấn đề cần lưu ý (nếu có)',
+      'Đề xuất / nội dung cần xin ý kiến',
+    ],
+    dauRa: 'Bộ tài liệu 360° đã tới tay các thành viên tham dự',
+    moc: 'Tài liệu gửi trước cho các thành viên tham dự tối thiểu 03 ngày trước khi phiên trao đổi diễn ra',
+    mocNgan: 'Gửi trước ≥ 03 ngày',
   },
   {
-    ma: 'gui-ho-so',
-    ten: 'Gửi hồ sơ trước phiên',
-    icon: FileUp,
-    vaiTro: 'phong-de-xuat',
-    moTa:
-      'Gửi hồ sơ tới thành viên để đọc trước. Thành viên đọc trước thì phiên dành thời gian cho phản biện, không dành cho việc đọc lại hồ sơ.',
-    dauRa: 'Hồ sơ nằm trong tay thành viên trước giờ họp',
-    moc: 'Trước tối thiểu 01 ngày',
-  },
-  {
-    ma: 'trieu-tap',
-    ten: 'Triệu tập & mở phiên',
-    icon: Users,
+    ma: 'mo-phien',
+    soVanBan: 'Bước 3 · (i)',
+    ten: 'Mở phiên',
+    icon: Play,
     vaiTro: 'dieu-phoi',
-    moTa:
-      'Chốt giờ trong khung ưu tiên, xác định thành phần dự và cử thư ký. Người điều phối mở phiên và nêu phạm vi thảo luận.',
-    dauRa: 'Phiên bắt đầu, thành phần dự đã được ghi nhận',
-    moc: 'Chiều thứ 2 · sáng thứ 3 · thứ 5 hằng tuần',
+    moTa: 'Người điều phối nêu mục tiêu, nguyên tắc trao đổi, thời lượng phiên.',
+    dauRa: 'Phiên bắt đầu, mọi người cùng một khung nguyên tắc',
+    moc: 'Ưu tiên khung giờ chiều thứ 2, sáng thứ 3 hoặc ngày thứ 5 hàng tuần; trường hợp cần thiết, Phòng báo cáo và đề xuất Giám đốc triệu tập phiên đột xuất',
     mocNgan: 'T2 chiều · T3 sáng · T5',
   },
   {
-    ma: 'thao-luan',
-    ten: 'Thảo luận 360°',
+    ma: 'trinh-bay',
+    soVanBan: 'Bước 3 · (ii)',
+    ten: 'Trình bày hồ sơ',
+    icon: Presentation,
+    vaiTro: 'nguoi-trinh-bay',
+    moTa: 'Người trình bày giới thiệu các nội dung đã chuẩn bị tại Bước 2.',
+    dauRa: 'Thành viên nắm được hồ sơ và nội dung cần xin ý kiến',
+    moc: 'Thời lượng khuyến nghị: 10–15 phút',
+    mocNgan: 'Khuyến nghị 10–15 phút',
+  },
+  {
+    ma: 'trao-doi',
+    soVanBan: 'Bước 3 · (iii)',
+    ten: 'Trao đổi đa chiều',
     icon: MessagesSquare,
     vaiTro: 'thanh-vien',
     moTa:
-      'Cán bộ trình bày, thành viên phản biện theo lượt, lãnh đạo phòng giải trình. Ý kiến chia sẻ / cần bổ sung / làm rõ của từng thành viên và ý kiến của Phòng quản lý KH được ghi vào Biên bản ghi nhận ý kiến.',
-    dauRa: 'Biên bản ghi nhận ý kiến (Mẫu biểu 02): từng thành viên – chức danh, ý kiến, và phản hồi của Phòng',
+      'Các thành viên tham dự phiên đặt câu hỏi để làm rõ các nội dung, hoặc đưa ra những góp ý, chia sẻ kinh nghiệm, những vấn đề cần lưu ý / kiểm soát, khuyến nghị đối với khách hàng — theo trình tự phát biểu ở sơ đồ bàn tròn bên dưới. Cán bộ, lãnh đạo Phòng kiểm soát hồ sơ phản biện / giải trình làm rõ đầy đủ những ý kiến của thành viên tham dự hoặc ghi nhận / tiếp thu để hoàn thiện hồ sơ.',
+    dauRa: 'Ý kiến, góp ý, khuyến nghị của từng thành viên đã được nêu và được giải trình',
+    moc: 'Thời lượng khuyến nghị: 30–45 phút',
+    mocNgan: 'Khuyến nghị 30–45 phút',
+  },
+  {
+    ma: 'tong-hop',
+    soVanBan: 'Bước 3 · (iv)',
+    ten: 'Tổng hợp ý kiến',
+    icon: ListChecks,
+    vaiTro: 'nguoi-trinh-bay',
+    moTa:
+      'Trong quá trình trao đổi, người trình bày / lãnh đạo phòng kiểm soát hồ sơ chủ động lập bảng ghi nhận nhanh các ý kiến của các thành viên tham dự, xác định các vấn đề cần lưu ý để hoàn thiện hồ sơ trình GHTD.',
+    dauRa: 'Bảng ghi nhận ý kiến các thành viên tham dự (Mẫu biểu 02)',
     bieuMau: ['02'],
   },
   {
-    ma: 'ket-luan',
-    ten: 'Kết luận & lập biên bản',
+    ma: 'ket-phien',
+    soVanBan: 'Bước 3 · (v)',
+    ten: 'Kết phiên',
+    icon: Flag,
+    vaiTro: 'dieu-phoi',
+    moTa:
+      'Người điều phối tóm tắt các nội dung chính, xác định các vấn đề cần lưu ý, đề nghị hoàn thiện hồ sơ trước khi trình các cấp có thẩm quyền (nếu có).',
+    dauRa: 'Danh mục vấn đề cần lưu ý / hoàn thiện trước khi trình',
+  },
+  {
+    ma: 'lap-bien-ban',
+    soVanBan: 'Bước 4',
+    ten: 'Lập biên bản ghi nhận phiên',
     icon: FileSignature,
-    vaiTro: 'thu-ky',
+    vaiTro: 'phong-qlkh',
     moTa:
-      'Người điều phối chốt các vấn đề phải bổ sung, hoàn thiện. Thư ký lập biên bản thảo luận (Mẫu biểu 01), đính kèm Biên bản ghi nhận ý kiến (Mẫu biểu 02).',
-    dauRa: 'Biên bản thảo luận có chữ ký thư ký và người điều hành phiên, kèm Biên bản ghi nhận ý kiến — lưu 01 bản tại Phòng quản lý Khách hàng, 01 bản tại Phòng HTTD',
+      'Người trình bày / lãnh đạo phòng kiểm soát hồ sơ lập biên bản ghi nhận phiên (đính kèm Mẫu biểu 02 ghi nhận ý kiến các thành viên tham dự) và trình ký ngay khi kết thúc phiên; lưu trữ tại Phòng quản lý khách hàng 01 bản, chuyển bộ phận HTTD lưu trữ 01 bản photo. Cập nhật kết quả vào sổ Credit 360 trên cổng để tra cứu lâu dài.',
+    dauRa: 'Biên bản (Mẫu biểu 01) đã ký, kèm Mẫu biểu 02 — 01 bản tại Phòng QLKH, 01 bản photo tại HTTD',
+    moc: 'Trình ký ngay khi kết thúc phiên',
+    mocNgan: 'Ký ngay sau phiên',
     bieuMau: ['01', '02'],
-  },
-  {
-    ma: 'trinh-duyet',
-    ten: 'Hoàn thiện & trình phê duyệt',
-    icon: Send,
-    vaiTro: 'phong-de-xuat',
-    moTa:
-      'Phòng tiếp thu ý kiến, bổ sung nội dung đánh giá vào tờ trình thẩm định rồi trình cấp thẩm quyền theo quy định hiện hành.',
-    dauRa: 'Tờ trình đã bổ sung, trình đúng cấp thẩm quyền',
-    moc: 'Theo ngày đã chốt tại phiên',
-    mocNgan: 'Theo ngày chốt tại phiên',
-  },
-  {
-    ma: 'ghi-so',
-    ten: 'Ghi nhật ký phiên',
-    icon: BookOpen,
-    vaiTro: 'thu-ky',
-    moTa:
-      'Cập nhật kết quả vào sổ Credit 360 trên cổng để cả Chi nhánh tra cứu được hồ sơ nào đã qua phiên, GHTD bao nhiêu, ai thẩm định.',
-    dauRa: 'Nhật ký phiên tra cứu được lâu dài',
     duongDan: '/one/credit-360',
   },
 ];
 
 /**
- * Thứ tự phát biểu trong phiên — chín vị trí, theo thứ tự Giám đốc Chi nhánh
- * chốt ngày 04/09/2026.
+ * Trình tự trao đổi, phát biểu sau khi cán bộ trình bày — Bước 3 (iii) văn bản:
+ *   (Cán bộ trình bày, LĐP kiểm soát hồ sơ có ý kiến) → Trưởng Phòng → Phòng
+ *   HTTD → Phòng TCTH → Phòng đầu mối theo phân khúc (nếu có) → PGĐ phụ trách
+ *   Phòng → PGĐ 2 phụ trách Phòng → PGĐ còn lại → Giám đốc (Người điều phối).
  *
- * Vì sao phải quy định: phiên đầu tiên nào cũng rơi vào cảnh người nói nhiều
- * nhất là người biết ít nhất về hồ sơ, còn cán bộ trực tiếp làm thì chỉ trả lời
- * nhát gừng. Thứ tự đi từ người GẦN hồ sơ nhất tới người có thẩm quyền cao nhất:
- * Phòng đề xuất nói trước (cán bộ → Phó Phòng → Trưởng Phòng), rồi các Phòng
- * tham gia, rồi Ban Giám đốc, và Giám đốc — người điều phối — kết luận sau cùng.
- * Nhờ vậy ý kiến cấp trên không «đóng khung» phần trình bày của cấp dưới.
- *
- * `nhiemVu` trích nguyên văn Mẫu biểu 01-BHYC360 (Biên bản thảo luận phiên) và
- * lời chốt của Giám đốc. Văn bản chương trình gốc chưa có trên Drive; khi có,
- * đối chiếu lại từng dòng ở đây.
+ * Đi từ người GẦN hồ sơ nhất tới người có thẩm quyền cao nhất, để ý kiến cấp
+ * trên không đóng khung phần trình bày của cấp dưới. Giám đốc — Người điều phối
+ * — nói sau cùng và kết phiên.
  */
 const PHAT_BIEU_C360: LuotPhatBieu[] = [
   {
     thuTu: 1,
-    viTri: 'Cán bộ Phòng đề xuất',
+    viTri: 'Cán bộ trình bày',
     viTriNgan: 'Cán bộ',
-    vaiTro: 'can-bo-trinh-bay',
+    vaiTro: 'nguoi-trinh-bay',
     nhiemVu:
-      'Trình bày, trình chiếu tài liệu kèm theo; báo cáo giải trình các vấn đề mà các thành viên đưa ra.',
-    nguon: 'Mẫu biểu 01, mục II.3; thứ tự do Giám đốc chốt 04/09/2026',
+      'Giới thiệu các nội dung đã chuẩn bị tại Bước 2 (trình chiếu tài liệu kèm theo; thời lượng khuyến nghị 10–15 phút). Trong phần trao đổi: phản biện / giải trình làm rõ đầy đủ những ý kiến của thành viên tham dự hoặc ghi nhận / tiếp thu để hoàn thiện hồ sơ.',
+    nguon: 'Văn bản mục 5, Bước 3 (ii) và (iii)',
   },
   {
     thuTu: 2,
-    viTri: 'Phó Phòng phụ trách',
-    viTriNgan: 'Phó Phòng',
-    vaiTro: 'phong-de-xuat',
+    viTri: 'Lãnh đạo Phòng kiểm soát hồ sơ (Phó Phòng phụ trách)',
+    viTriNgan: 'LĐP kiểm soát',
+    vaiTro: 'phong-qlkh',
     nhiemVu:
-      'Chia sẻ thêm sau phần trình bày của cán bộ; cùng cán bộ báo cáo giải trình các vấn đề mà các thành viên đưa ra.',
-    nguon: 'Mẫu biểu 01, mục II.3 («cán bộ và LĐP … trình bày, báo cáo giải trình»)',
+      'Có ý kiến ngay sau cán bộ trình bày. Kiểm soát hồ sơ trước khi đề xuất tham gia phiên; cùng cán bộ phản biện / giải trình làm rõ đầy đủ những ý kiến của thành viên tham dự hoặc ghi nhận / tiếp thu để hoàn thiện hồ sơ; chủ động lập bảng ghi nhận nhanh các ý kiến (Mẫu biểu 02).',
+    nguon: 'Văn bản mục 4 (Người trình bày), mục 5 Bước 3 (iii)–(iv)',
   },
   {
     thuTu: 3,
     viTri: 'Trưởng Phòng',
     viTriNgan: 'Trưởng Phòng',
-    vaiTro: 'phong-de-xuat',
+    vaiTro: 'phong-qlkh',
     nhiemVu:
-      'Chia sẻ thêm; đưa ra quan điểm của Phòng, tiếp thu những ý kiến góp ý và làm rõ, hoàn thiện nội dung trình bày, trình cấp có thẩm quyền. Ý kiến của Phòng quản lý KH được ghi vào Biên bản ghi nhận ý kiến.',
-    nguon: 'Mẫu biểu 01, mục II.3; Mẫu biểu 02 (cột «Ý kiến của Phòng quản lý KH»)',
+      'Phát biểu đầu tiên sau phần có ý kiến của cán bộ và LĐP kiểm soát hồ sơ. Đăng ký lịch thảo luận với Người điều phối (đối với các KH phòng KHDN) hoặc thông qua phòng TCTH (với các Phòng còn lại); chịu trách nhiệm kiểm soát hồ sơ trước khi đề xuất tham gia phiên.',
+    nguon: 'Văn bản mục 4 (Người trình bày), mục 5 Bước 3 (iii)',
   },
   {
     thuTu: 4,
@@ -323,8 +358,8 @@ const PHAT_BIEU_C360: LuotPhatBieu[] = [
     viTriNgan: 'P. HTTD',
     vaiTro: 'thanh-vien',
     nhiemVu:
-      'Chia sẻ, đánh giá các điều kiện cấp GHTD và tình hình tài chính, sản xuất kinh doanh của Khách hàng; đưa ra các ý kiến được ghi nhận tại Phiếu đính kèm biên bản. Lưu 01 bản Biên bản ghi nhận ý kiến tại phòng HTTD.',
-    nguon: 'Mẫu biểu 01, mục II.3; Mẫu biểu 02 (nơi lưu)',
+      'Nghiên cứu hồ sơ trước khi tham dự; đưa ra ý kiến, quan điểm, góp ý bổ sung các nội dung cần đánh giá, làm rõ, nhận diện các vấn đề tiềm ẩn (nếu có) và đề xuất các biện pháp kiểm soát. Sau phiên: lưu trữ 01 bản photo biên bản ghi nhận phiên.',
+    nguon: 'Văn bản mục 4 (Yêu cầu đối với các thành viên), mục 5 Bước 4',
   },
   {
     thuTu: 5,
@@ -332,53 +367,72 @@ const PHAT_BIEU_C360: LuotPhatBieu[] = [
     viTriNgan: 'P. TCTH',
     vaiTro: 'thanh-vien',
     nhiemVu:
-      'Chia sẻ, đánh giá các điều kiện cấp GHTD và tình hình tài chính, sản xuất kinh doanh của Khách hàng; đưa ra các ý kiến được ghi nhận tại Phiếu đính kèm biên bản.',
-    nguon: 'Mẫu biểu 01, mục II.3',
+      'Nghiên cứu hồ sơ trước khi tham dự; đưa ra ý kiến, quan điểm, góp ý bổ sung các nội dung cần đánh giá, làm rõ, nhận diện các vấn đề tiềm ẩn (nếu có) và đề xuất các biện pháp kiểm soát. Là đầu mối nhận đăng ký lịch phiên của các Phòng ngoài KHDN.',
+    nguon: 'Văn bản mục 4 (Yêu cầu đối với các thành viên), mục 5 Bước 1',
   },
   {
     thuTu: 6,
-    viTri: 'Phó Giám đốc phụ trách Phòng đề xuất',
-    viTriNgan: 'PGĐ phụ trách',
+    viTri: 'Phòng đầu mối theo phân khúc (nếu có)',
+    viTriNgan: 'Phòng đầu mối',
     vaiTro: 'thanh-vien',
+    tuyChon: true,
     nhiemVu:
-      'Thành viên phiên: trao đổi, chia sẻ các góc nhìn, nhận diện các vấn đề và những lưu ý cần bổ sung, hoàn thiện; ý kiến được ghi nhận tại Phiếu đính kèm biên bản.',
-    nguon: 'Mẫu biểu 01, mục I và mục III',
+      'Đại diện lãnh đạo Phòng KHDN/KHBL đầu mối theo phân khúc. Nghiên cứu hồ sơ trước khi tham dự; đưa ra ý kiến, quan điểm, góp ý bổ sung các nội dung cần đánh giá, làm rõ, nhận diện các vấn đề tiềm ẩn (nếu có) và đề xuất các biện pháp kiểm soát trên tinh thần xây dựng và chia sẻ kinh nghiệm thực tiễn.',
+    nguon: 'Văn bản mục 4 (Người tham gia), mục 5 Bước 3 (iii)',
   },
   {
     thuTu: 7,
-    viTri: 'Phó Giám đốc hỗ trợ PGĐ phụ trách Phòng',
-    viTriNgan: 'PGĐ hỗ trợ',
+    viTri: 'Phó Giám đốc phụ trách Phòng',
+    viTriNgan: 'PGĐ phụ trách',
     vaiTro: 'thanh-vien',
     nhiemVu:
-      'Thành viên phiên: trao đổi, chia sẻ các góc nhìn, nhận diện các vấn đề và những lưu ý cần bổ sung, hoàn thiện; ý kiến được ghi nhận tại Phiếu đính kèm biên bản.',
-    nguon: 'Mẫu biểu 01, mục I và mục III',
+      'Thành viên Ban Giám đốc bắt buộc có mặt để vận hành phiên (cùng Giám đốc). Nghiên cứu hồ sơ trước khi tham dự; đưa ra ý kiến, quan điểm, góp ý bổ sung các nội dung cần đánh giá, làm rõ, nhận diện các vấn đề tiềm ẩn (nếu có) và đề xuất các biện pháp kiểm soát. Có thể đề nghị đưa hồ sơ dưới ngưỡng vào phiên.',
+    nguon: 'Văn bản mục 3, mục 4, mục 5 Bước 3 (iii)',
   },
   {
     thuTu: 8,
+    viTri: 'Phó Giám đốc 2 phụ trách Phòng (PGĐ hỗ trợ PGĐ phụ trách Phòng)',
+    viTriNgan: 'PGĐ 2',
+    vaiTro: 'thanh-vien',
+    nhiemVu:
+      'Nghiên cứu hồ sơ trước khi tham dự; đưa ra ý kiến, quan điểm, góp ý bổ sung các nội dung cần đánh giá, làm rõ, nhận diện các vấn đề tiềm ẩn (nếu có) và đề xuất các biện pháp kiểm soát trên tinh thần xây dựng và chia sẻ kinh nghiệm thực tiễn.',
+    nguon: 'Văn bản mục 4 (Yêu cầu đối với các thành viên), mục 5 Bước 3 (iii)',
+  },
+  {
+    thuTu: 9,
     viTri: 'Phó Giám đốc còn lại',
     viTriNgan: 'PGĐ còn lại',
     vaiTro: 'thanh-vien',
     nhiemVu:
-      'Thành viên phiên: trao đổi, chia sẻ các góc nhìn, nhận diện các vấn đề và những lưu ý cần bổ sung, hoàn thiện; ý kiến được ghi nhận tại Phiếu đính kèm biên bản.',
-    nguon: 'Mẫu biểu 01, mục I và mục III',
+      'Nghiên cứu hồ sơ trước khi tham dự; đưa ra ý kiến, quan điểm, góp ý bổ sung các nội dung cần đánh giá, làm rõ, nhận diện các vấn đề tiềm ẩn (nếu có) và đề xuất các biện pháp kiểm soát trên tinh thần xây dựng và chia sẻ kinh nghiệm thực tiễn.',
+    nguon: 'Văn bản mục 4 (Yêu cầu đối với các thành viên), mục 5 Bước 3 (iii)',
   },
   {
-    thuTu: 9,
-    viTri: 'Giám đốc Chi nhánh',
+    thuTu: 10,
+    viTri: 'Giám đốc Chi nhánh (Người điều phối)',
     viTriNgan: 'Giám đốc',
     vaiTro: 'dieu-phoi',
     nhiemVu:
-      'Người điều phối phiên. Kết luận: chốt các vấn đề và những lưu ý cần bổ sung, hoàn thiện để Phòng đề xuất trình cấp thẩm quyền cấp GHTD theo quy định; ký biên bản với tư cách Người điều hành phiên.',
-    nguon: 'Mẫu biểu 01, mục I, mục III và phần ký',
+      'Mở phiên: nêu mục tiêu, nguyên tắc trao đổi, thời lượng phiên. Điều hành phiên thảo luận, bảo đảm tinh thần trao đổi cởi mở, không áp đặt kết luận mang tính phê duyệt. Kết phiên: tóm tắt các nội dung chính, xác định các vấn đề cần lưu ý, đề nghị hoàn thiện hồ sơ trước khi trình các cấp có thẩm quyền (nếu có).',
+    nguon: 'Văn bản mục 4 (Người điều phối), mục 5 Bước 3 (i) và (v)',
   },
 ];
 
-const BIEU_MAU_C360: BieuMauChuongTrinh[] = [
+const VAN_BAN_C360: TepTaiVe = {
+  ma: 'VB',
+  ten: 'Thông báo triển khai chương trình «Bac Hung Yen Credit 360»',
+  moTa:
+    'Số …/TB-CNBHY-TCTH ngày 16/06/2026 của Giám đốc Chi nhánh, hiệu lực từ 22/06/2026 cho đến khi có văn bản khác thay thế. Toàn văn 4 trang: mục đích, nguyên tắc, phạm vi, thành phần, quy trình 4 bước và tổ chức thực hiện.',
+  tep: '/bieu-mau/credit-360/thong-bao-trien-khai-bhy-credit-360.pdf',
+  kichCo: '375 KB · .pdf',
+};
+
+const BIEU_MAU_C360: TepTaiVe[] = [
   {
     ma: '01',
     ten: 'Biên bản thảo luận phiên BHY Credit 360',
     moTa:
-      'Thư ký ghi tại phiên: thành phần dự, thông tin khách hàng, đề xuất GHTD, ý kiến thảo luận và kết luận. Ký bởi thư ký và người điều hành phiên.',
+      'Lập theo Bước 4: thành phần dự, thông tin khách hàng, đề xuất cấp GHTD, ý kiến thảo luận và kết luận. Ký bởi thư ký và người điều hành phiên, trình ký ngay khi kết thúc phiên. Lưu 01 bản tại Phòng quản lý khách hàng, chuyển HTTD 01 bản photo.',
     tep: '/bieu-mau/credit-360/mau-bieu-01-bien-ban-phien-bhyc360.doc',
     kichCo: '86 KB · .doc',
   },
@@ -386,8 +440,7 @@ const BIEU_MAU_C360: BieuMauChuongTrinh[] = [
     ma: '02',
     ten: 'Biên bản ghi nhận ý kiến phiên BHY Credit 360',
     moTa:
-      'Lập theo Phòng: ghi từng Thành viên – Chức danh, Ý kiến chia sẻ / cần bổ sung / làm rõ, và Ý kiến của Phòng quản lý KH. ' +
-      'Đính kèm biên bản thảo luận Mẫu biểu 01; lưu 01 bản tại Phòng quản lý Khách hàng, 01 bản tại Phòng HTTD.',
+      'Bảng ba cột: Thành viên – Chức danh · Ý kiến chia sẻ / cần bổ sung / làm rõ · Ý kiến của Phòng quản lý KH. Dùng ở hai lúc: thành viên được khuyến khích có ý kiến trước khi tham dự phiên theo mẫu này và gửi trước cho Phòng quản lý Khách hàng; trong phiên, người trình bày / LĐP lập bảng ghi nhận nhanh. Đính kèm Mẫu biểu 01.',
     tep: '/bieu-mau/credit-360/mau-bieu-02-bien-ban-ghi-nhan-y-kien-bhyc360.docx',
     kichCo: '18 KB · .docx',
   },
@@ -397,48 +450,50 @@ export const CREDIT_360_VAN_HANH: MoHinhVanHanh = {
   maChuongTrinh: 'credit-360',
   ten: 'Bắc Hưng Yên Credit 360',
   mucTieu:
-    'Soi hồ sơ đề xuất giới hạn tín dụng từ nhiều góc nhìn — quan hệ khách hàng, hỗ trợ tín dụng, lãnh đạo phòng và Ban Giám đốc — TRƯỚC khi trình cấp thẩm quyền, để rủi ro được nhận diện sớm và cán bộ rèn được tư duy trình bày, phản biện.',
+    'Tạo môi trường trao đổi nghiệp vụ nội bộ, chia sẻ kinh nghiệm và góc nhìn đa chiều đối với các hồ sơ cấp / tái cấp GHTD tại Chi nhánh; hỗ trợ nhận diện rủi ro, đánh giá tính phù hợp của phương án đề xuất cấp tín dụng và nâng cao chất lượng hồ sơ trình các cấp theo thẩm quyền; giúp cán bộ QHKH phát triển năng lực phân tích, thẩm định và kỹ năng nhận diện rủi ro, tư duy trình bày, phản biện.',
   khongLam:
-    'Phiên KHÔNG thay quyền phê duyệt. Kết luận phiên là ý kiến tham vấn để hoàn thiện tờ trình; thẩm quyền cấp GHTD vẫn theo quy định hiện hành.',
+    'Bac Hung Yen Credit 360 là chương trình trao đổi nghiệp vụ nội bộ, không phải Hội đồng / ban / tổ chức có chức năng quyết định, phê duyệt tín dụng; không thay thế quy trình thẩm định, đề xuất, kiểm soát hoặc quyết định / phê duyệt tín dụng theo quy định hiện hành của NHCT.',
   nguyenTac: [
-    'Đủ ngưỡng là phải vào phiên — không chọn hồ sơ dễ để họp cho có',
-    'Đọc hồ sơ trước, đến phiên chỉ phản biện',
-    'Ý kiến thành viên phải ghi thành văn bản, không chỉ nói miệng',
-    'Mọi phiên đều để lại dấu vết: biên bản, phiếu ý kiến và một dòng trong sổ trên cổng',
+    'Các ý kiến ghi nhận tại chương trình mang tính chất tham khảo, góp ý, chia sẻ kinh nghiệm / góc nhìn khách quan và nhận diện các rủi ro (nếu có) từ hồ sơ khách hàng và nội dung trình bày, phản biện của cán bộ',
+    'Việc tham gia chia sẻ, đóng góp ý kiến không làm phát sinh trách nhiệm của người tham dự đối với các quyết định tín dụng liên quan GHTD của Khách hàng, không làm thay đổi trách nhiệm của các cá nhân, bộ phận theo chức năng, nhiệm vụ được giao',
+    'Các thành viên tham dự có trách nhiệm bảo mật toàn bộ thông tin Khách hàng theo quy định và nội dung phiên thảo luận',
+    'Thành viên nghiên cứu hồ sơ trước khi tham dự; khuyến khích có ý kiến trước theo mẫu biểu 02, gửi trước cho Phòng quản lý Khách hàng',
   ],
   dieuKien: [
     {
-      ma: 'nguong-khdn',
-      nhan: 'KHDN từ 15 tỷ đồng',
-      moTa: 'Hồ sơ cấp mới hoặc tái cấp có tổng giới hạn tín dụng từ 15 tỷ đồng trở lên.',
+      ma: 'khdn',
+      nhan: 'KHDN: tổng GHTD từ 15 tỷ đồng',
+      moTa: 'Phân khúc Khách hàng doanh nghiệp — hồ sơ cấp mới / tái cấp có tổng GHTD từ 15 tỷ đồng trở lên.',
     },
     {
-      ma: 'nguong-khbl',
-      nhan: 'KHBL từ 10 tỷ đồng',
-      moTa: 'Hồ sơ cấp mới hoặc tái cấp có tổng giới hạn tín dụng từ 10 tỷ đồng trở lên.',
+      ma: 'khbl',
+      nhan: 'KHBL: tổng GHTD từ 10 tỷ đồng',
+      moTa: 'Phân khúc khách hàng bán lẻ — hồ sơ cấp mới / tái cấp có tổng GHTD từ 10 tỷ đồng trở lên.',
     },
     {
-      ma: 'timemark',
-      nhan: 'Ảnh Timemark',
-      moTa: 'Bắt buộc có ảnh cơ sở kinh doanh hoặc tài sản bảo đảm chụp qua ứng dụng Timemark để xác thực vị trí và thời điểm.',
+      ma: 'de-nghi',
+      nhan: 'Hoặc theo đề nghị của Giám đốc / PGĐ phụ trách Phòng',
+      moTa: 'Hồ sơ dưới ngưỡng vẫn vào phiên nếu Giám đốc hoặc Phó Giám đốc phụ trách Phòng đề nghị — áp dụng cho cả hai phân khúc.',
     },
     {
-      ma: 'crm360',
-      nhan: 'Đánh giá 360° từ CRM',
-      moTa: 'Đã thu thập thông tin đánh giá khách hàng 360° trên CRM trước khi đưa hồ sơ ra phiên.',
+      ma: 'pham-vi',
+      nhan: 'Tất cả Phòng khách hàng và Phòng giao dịch',
+      moTa: 'Áp dụng trước khi trình cấp có thẩm quyền phê duyệt hoặc quyết định cấp tín dụng.',
     },
   ],
   vaiTro: VAI_TRO_C360,
   buoc: BUOC_C360,
   phatBieu: PHAT_BIEU_C360,
+  vanBan: VAN_BAN_C360,
   bieuMau: BIEU_MAU_C360,
   ketThuc: {
     vaiTro: 'cap-tham-quyen',
-    nhan: 'Cấp thẩm quyền quyết định cấp GHTD',
+    nhan: 'Trình cấp có thẩm quyền phê duyệt / quyết định',
   },
   nguon:
-    'Chương trình Bac Hung Yen Credit 360 (ban hành 06/2026), Mẫu biểu 01-BHYC360 (Biên bản thảo luận) và Mẫu biểu 02-BHYC360 (Biên bản ghi nhận ý kiến). ' +
-    'Ngưỡng GHTD, khung giờ triệu tập và yêu cầu Timemark chép lại từ nội dung đang công bố trên cổng.',
+    'Thông báo số …/TB-CNBHY-TCTH ngày 16/06/2026 của Giám đốc Chi nhánh v/v Triển khai chương trình «Bac Hung Yen Credit 360» (hiệu lực từ 22/06/2026), ' +
+    'Mẫu biểu 01-BHYC360 (Biên bản thảo luận) và Mẫu biểu 02-BHYC360 (Biên bản ghi nhận ý kiến) đính kèm. ' +
+    'Văn bản ghi hai mốc gửi tài liệu: «trước tối thiểu 01 ngày» (mục 4) và «tối thiểu 03 ngày» (mục 5, Bước 2) — sơ đồ dùng mốc 03 ngày của phần quy trình.',
 };
 
 /** Tra mô hình vận hành theo mã chương trình — chỗ để cắm 5 thương hiệu còn lại */
@@ -453,6 +508,7 @@ export function timVaiTro(moHinh: MoHinhVanHanh, ma: string): VaiTroVanHanh {
       ma,
       ten: ma,
       tenNgan: ma,
+      laAi: '',
       trachNhiem: '',
       mau: '#64748B',
     }
