@@ -170,14 +170,57 @@ thiếu tài khoản với Google. Phần đã có:
 - `nc_resolve_card()` trả thêm cờ `wallet_ready`; nút chỉ hiện khi cờ này bật, nên
   không bao giờ có nút bấm vào chỉ để báo lỗi.
 
-Bốn việc Phòng TCTH phải làm để bật:
-
-1. Đăng ký tài khoản phát hành tại Google Wallet Business Console, lấy **Issuer ID**.
-2. Tạo **Generic class** một lần, hậu tố mặc định `danh_thiep_v1`
-   (classId = `<issuerId>.danh_thiep_v1`).
-3. Tạo service account trong Google Cloud, bật Google Wallet API, cấp quyền cho service
-   account trong Business Console, rồi đặt ba biến bí mật của edge function:
-   `GOOGLE_WALLET_SA_EMAIL`, `GOOGLE_WALLET_SA_KEY` (PEM PKCS#8), `GOOGLE_WALLET_ORIGIN`.
-4. Vào Quản trị VCard → nút Cấu hình: dán Issuer ID rồi bật công tắc.
-
 Khoá riêng **không** lưu trong `nc_cau_hinh`: bảng đó mọi cán bộ đọc được.
+
+### Bảy giai đoạn Phòng TCTH phải làm
+
+Giao diện của Google là tiếng Anh; nhãn nguyên văn ghi trong `code`.
+
+**A. Tạo tài khoản phát hành** — tại <https://pay.google.com/business/console>, đăng nhập
+bằng **hộp thư công vụ của Chi nhánh** (tài khoản này vĩnh viễn mang vai trò Admin của
+Issuer; dùng Gmail cá nhân là mất quyền khi cán bộ chuyển công tác). Khai
+`Public business name` = «VietinBank – Chi nhánh Bắc Hưng Yên» (tên khách nhìn thấy trên
+thẻ). Dashboard → thẻ `Google Wallet API` → `Create a pass` → `Build your first pass` →
+chấp thuận `Google Wallet API Terms of Service`. Xong thì **Issuer ID** (≈19 chữ số) hiện
+ở tab `Google Wallet API` — chép lại.
+
+**B. Tạo chìa khoá cho máy chủ** — tại <https://console.cloud.google.com>: tạo dự án
+(`bhy-vcard`), `APIs & Services → Library` → bật **Google Wallet API**;
+`IAM & Admin → Service Accounts → Create service account` (**không cấp quyền IAM nào** —
+quyền cấp bên Console của Wallet ở bước C); `Keys → Add key → Create new key → JSON` để
+tải tệp. Lấy `client_email` và `private_key` trong tệp đó.
+
+**C. Cho máy chủ quyền phát hành** — bước hay bị bỏ sót nhất. Về Google Pay & Wallet
+Console → `Users` → `Invite a user` → dán `client_email` (đuôi `.iam.gserviceaccount.com`)
+→ `Access level` = **`Developer`** → `Invite`.
+
+**D. Tạo lớp thẻ** — loại **`Generic`** (danh thiếp không phải thẻ tích điểm hay phiếu
+giảm giá; khai sai loại thì Google từ chối duyệt). Ghi lại mã lớp đầy đủ dạng
+`<issuerId>.<hậu tố>`.
+
+**E. Cất chìa khoá** — Supabase → `Edge Functions → Secrets` của dự án
+`whlysprzsguehxmrjwha`, khai ba biến: `GOOGLE_WALLET_SA_EMAIL` = `client_email`;
+`GOOGLE_WALLET_SA_KEY` = `private_key` dán nguyên vẹn cả dòng BEGIN/END;
+`GOOGLE_WALLET_ORIGIN` = `https://bachungyenone.com`. Rồi xoá tệp JSON khỏi máy.
+
+**F. Bật trong cổng** — Quản trị VCard → nút Cấu hình: dán Issuer ID, kiểm ô **Hậu tố lớp
+thẻ** cho khớp bước D (mặc định `danh_thiep_v1`), rồi gạt công tắc.
+
+**G. Thử rồi xin mở rộng** — tài khoản mới luôn ở `demo mode`: chỉ tài khoản Admin,
+Developer hoặc tài khoản thử đã khai mới lưu được thẻ. Thử xong thì xin
+`Get publishing access` trong Wallet API Dashboard; **trước khi Google duyệt, không đưa
+nút này vào tài liệu giới thiệu cho khách**.
+
+### Bấm nút mà báo lỗi
+
+| Câu báo trên màn | Thiếu bước |
+| --- | --- |
+| Chưa cấu hình Google Wallet: thiếu biến bí mật… | E — chưa khai đủ ba biến |
+| Chưa cấu hình Issuer ID… ở màn Quản trị VCard | F — chưa dán Issuer ID |
+| Khoá Google Wallet không hợp lệ | E — `private_key` dán thiếu dòng BEGIN/END |
+| Thẻ không tồn tại hoặc đã thu hồi | Thẻ chưa phát hành ở Tab 4 |
+| Thẻ này không mở tính năng Google Wallet | Nhân sự thuê ngoài — Giám đốc bật riêng từng trường hợp |
+| Google báo lớp thẻ không tồn tại | F — hậu tố lớp thẻ chưa khớp bên Google |
+
+Bản có thể tick từng bước (26 bước, lưu tiến độ trên máy người dùng):
+<https://claude.ai/code/artifact/1007fbbd-575c-4ce3-9c81-9800e94fa868>

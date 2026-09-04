@@ -34,10 +34,12 @@ function CauHinhHeThong() {
   const { user } = useAuth();
   const [baseUrl, setBaseUrl] = useState<string | null>(null);
   const [issuer, setIssuer] = useState<string | null>(null);
+  const [hauTo, setHauTo] = useState<string | null>(null);
   const logo = cauHinh.logo_enabled !== false;
   const goc = typeof cauHinh.card_base_url === 'string' ? cauHinh.card_base_url : 'https://bachungyenone.com/card/';
   const walletBat = cauHinh.google_wallet_bat === true;
   const issuerLuu = typeof cauHinh.google_wallet_issuer_id === 'string' ? cauHinh.google_wallet_issuer_id : '';
+  const hauToLuu = typeof cauHinh.google_wallet_class_suffix === 'string' ? cauHinh.google_wallet_class_suffix : 'danh_thiep_v1';
 
   const luu = async (khoa: string, giaTri: unknown) => {
     const { error } = await db.from('nc_cau_hinh').upsert({ khoa, gia_tri: giaTri, cap_nhat_boi: user?.id ?? null, cap_nhat_luc: new Date().toISOString() });
@@ -86,6 +88,19 @@ function CauHinhHeThong() {
             onClick={() => issuer !== null && luu('google_wallet_issuer_id', issuer.trim()).then(() => setIssuer(null))}>
             Lưu Issuer ID
           </Button>
+
+          <Label htmlFor="nc-hauto" className="mt-3 block text-xs">Hậu tố lớp thẻ</Label>
+          <Input id="nc-hauto" className="font-mono text-xs" placeholder="danh_thiep_v1"
+            value={hauTo ?? hauToLuu} onChange={(e) => setHauTo(e.target.value)} />
+          <Button size="sm" className="mt-2"
+            disabled={hauTo === null || hauTo.trim() === hauToLuu || !/^[A-Za-z0-9_.-]{1,60}$/.test(hauTo.trim())}
+            onClick={() => hauTo !== null && luu('google_wallet_class_suffix', hauTo.trim()).then(() => setHauTo(null))}>
+            Lưu hậu tố
+          </Button>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Phải trùng hậu tố lớp thẻ đã tạo bên Google: mã lớp đầy đủ là{' '}
+            <span className="font-mono">{(issuerLuu || '<Issuer ID>')}.{hauTo ?? hauToLuu}</span>. Sai hậu tố thì Google từ chối lưu thẻ.
+          </p>
         </div>
       </PopoverContent>
     </Popover>
