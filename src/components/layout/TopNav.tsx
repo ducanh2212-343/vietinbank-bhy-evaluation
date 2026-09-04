@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import * as NavMenu from '@radix-ui/react-navigation-menu';
-import { ChevronDown, Search, LogOut, User, KeyRound } from 'lucide-react';
+import { ChevronDown, ChevronRight, Search, LogOut, User, KeyRound } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +18,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { nhanDangNhap } from '@/lib/taiKhoanKhach';
 import { useNavTree } from '@/hooks/useNavTree';
 import { isFolder, matchesLeaf, leavesOf, type NavSection } from '@/lib/navigation';
+import { TieuDeDauMuc, lopKhungDauMuc, lopTieuDeDauMuc } from '@/components/layout/KhungDauMuc';
 import { cn } from '@/lib/utils';
 import vtbLogo from '@/assets/vietinbank-bhy-logo.png';
 
@@ -64,21 +65,39 @@ function beNgangBang(section: NavSection): string {
     : 'w-[min(20rem,calc(100vw-12rem))]';
 }
 
+/**
+ * Lớp cho MỘT khung trong bảng chia cột: `break-inside-avoid` để một nhóm không
+ * bị cắt đôi giữa hai cột, `inline-block w-full` vì Safari và Firefox vẫn cắt
+ * khối `block` dù đã khai break-inside.
+ */
+const lopKhoiCot = 'mb-4 inline-block w-full min-w-0 break-inside-avoid align-top';
+
 /** Bảng menu bung xuống: một cột cho khu ít mục, nhiều cột cho phân hệ lớn. */
 function BangMenu({ section, onDieuHuong }: { section: NavSection; onDieuHuong: () => void }) {
   const { pathname } = useLocation();
-  const folders = (section.items ?? []).filter(isFolder);
-  const leavesTrucTiep = (section.items ?? []).filter((e) => !isFolder(e));
   const laMega = laMegaMenu(section);
+  const entries = section.items ?? [];
 
   return (
     <div className="p-4 sm:p-5">
-      {/* Tiêu đề tầng: nói rõ đây là các mục CON của khu nào — hai tầng không lẫn */}
-      <div className="mb-4 border-b pb-3">
-        <p className="text-2xs font-semibold uppercase tracking-widest text-primary">{section.label}</p>
-        {section.desc && (
-          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">{section.desc}</p>
-        )}
+      {/*
+        Tiêu đề tầng: nói rõ đây là các mục CON của khu nào — hai tầng không lẫn.
+        Đây là bậc CAO NHẤT trong bảng nên phải to hơn khoang đầu mục bên dưới;
+        bản cũ để 11px chữ hoa nên nó chìm dưới cả nhãn mục con cỡ 14px.
+      */}
+      <div className="mb-4 flex items-start gap-3 border-b pb-3">
+        <span
+          aria-hidden
+          className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-soft"
+        >
+          <section.icon className="h-[18px] w-[18px]" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[15px] font-bold leading-snug tracking-tight text-foreground">{section.label}</p>
+          {section.desc && (
+            <p className="mt-0.5 max-w-2xl text-xs leading-relaxed text-muted-foreground">{section.desc}</p>
+          )}
+        </div>
       </div>
 
       <div
@@ -89,66 +108,111 @@ function BangMenu({ section, onDieuHuong }: { section: NavSection; onDieuHuong: 
           // — để 3 cột ở mốc lg thì dải này chỉ được 2 cột và bảng cao hơn
           // 1300px. Ngược lại ở 768px bảng chỉ rộng 576px, chia 3 cột thì cột
           // còn 176px, nhãn nào cũng cụt.
+          //
+          // Chia cột bằng CSS columns chứ KHÔNG phải grid: các khung cao thấp
+          // rất lệch nhau (Quản trị đội ngũ 8 mục, Khung năng lực 1 mục). Grid
+          // căn hàng nên hàng nào cũng cao bằng khung cao nhất — bảng Chiêu thức
+          // 3 phình lên 2400px với gần một nửa là khoảng trắng, phải cuộn mới
+          // thấy hết. Columns rót khung xuống chỗ trống gần nhất, bảng gọn lại
+          // còn khoảng chiều cao cũ. Đổi lại thứ tự đọc là dọc theo cột — đúng
+          // thói quen đọc một bảng menu nhiều cột.
           laMega
-            ? 'grid gap-x-6 gap-y-5 sm:grid-cols-2 min-[900px]:grid-cols-3 xl:grid-cols-4'
-            : 'flex flex-col gap-0.5',
+            ? 'gap-x-5 columns-1 sm:columns-2 min-[900px]:columns-3 xl:columns-4'
+            : 'flex flex-col gap-1.5',
         )}
       >
-        {leavesTrucTiep.map((leaf) => {
-          if (isFolder(leaf)) return null;
-          const dangXem = matchesLeaf(pathname, leaf);
+        {/*
+          Giữ NGUYÊN thứ tự khai trong navigation.ts, không dồn mục lẻ lên trước
+          thư mục như bản cũ. Bắc Hưng Yên Ways trộn 3 thương hiệu một-màn (mục
+          lẻ) với 3 thương hiệu nhiều-màn (thư mục); dồn nhóm làm sáu thương hiệu
+          vỡ thành hai cụm rời, người dùng không còn thấy "sáu thương hiệu" nữa.
+          Nay cả sáu đều là một khung bo góc viền xanh giống hệt nhau.
+        */}
+        {entries.map((entry) => {
+          if (!isFolder(entry)) {
+            const dangXem = matchesLeaf(pathname, entry);
+            // Trong bảng nhiều cột, mục lẻ cấp 1 CŨNG là một đầu mục lớn (mỗi
+            // mục là một thương hiệu) nên mang khung xanh y như thư mục; bảng
+            // một cột chỉ có một cụm, không có gì để lẫn — giữ dòng thường.
+            if (!laMega) {
+              return (
+                <NavMenu.Link asChild key={entry.path}>
+                  <Link
+                    to={entry.path}
+                    onClick={onDieuHuong}
+                    aria-current={dangXem ? 'page' : undefined}
+                    className={cn(
+                      'group flex min-h-[44px] items-start gap-3 rounded-xl px-3 py-2.5 transition-colors duration-fast',
+                      dangXem ? 'bg-accent text-accent-foreground' : 'text-foreground/85 hover:bg-muted hover:text-foreground',
+                    )}
+                  >
+                    <entry.icon className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium leading-snug">{entry.label}</span>
+                    </span>
+                  </Link>
+                </NavMenu.Link>
+              );
+            }
+            // Thương hiệu một-màn: CẢ KHUNG là liên kết, để sáu thương hiệu
+            // Ways có sáu khung giống hệt nhau — không phải năm khung và một
+            // dòng chữ lạc lõng.
+            return (
+              <NavMenu.Link asChild key={entry.path}>
+                <Link
+                  to={entry.path}
+                  onClick={onDieuHuong}
+                  aria-current={dangXem ? 'page' : undefined}
+                  className={cn(lopKhungDauMuc('sang', { bamDuoc: true, dangXem }), lopKhoiCot)}
+                >
+                  <span className={lopTieuDeDauMuc('sang')}>
+                    <TieuDeDauMuc
+                      icon={entry.icon}
+                      nhan={entry.label}
+                      dangXem={dangXem}
+                      duoi={<ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-primary/60" />}
+                    />
+                  </span>
+                </Link>
+              </NavMenu.Link>
+            );
+          }
+
+          const folder = entry;
+          const chuaTrangHienTai = folder.items.some((l) => matchesLeaf(pathname, l));
           return (
-            <NavMenu.Link asChild key={leaf.path}>
-              <Link
-                to={leaf.path}
-                onClick={onDieuHuong}
-                aria-current={dangXem ? 'page' : undefined}
-                className={cn(
-                  'group flex min-h-[44px] items-start gap-3 rounded-xl px-3 py-2.5 transition-colors duration-fast',
-                  dangXem ? 'bg-accent text-accent-foreground' : 'text-foreground/85 hover:bg-muted hover:text-foreground',
-                )}
-              >
-                <leaf.icon className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                <span className="min-w-0">
-                  <span className="block text-sm font-medium leading-snug">{leaf.label}</span>
-                </span>
-              </Link>
-            </NavMenu.Link>
+            <div key={folder.id} className={cn(lopKhungDauMuc('sang', { dangXem: chuaTrangHienTai }), lopKhoiCot)}>
+              <div className={lopTieuDeDauMuc('sang')}>
+                <TieuDeDauMuc icon={folder.icon} nhan={folder.folder} dangXem={chuaTrangHienTai} />
+              </div>
+              {/* Vạch ngang mảnh tách tiêu đề khỏi mục con — trong cùng một khung
+                  nên vẫn đọc ra là "của nhau", không cần thụt lề thêm */}
+              <div className="mt-1 flex flex-col gap-0.5 border-t border-primary/15 pt-1">
+                {folder.items.map((leaf) => {
+                  const dangXem = matchesLeaf(pathname, leaf);
+                  return (
+                    <NavMenu.Link asChild key={leaf.path}>
+                      <Link
+                        to={leaf.path}
+                        onClick={onDieuHuong}
+                        aria-current={dangXem ? 'page' : undefined}
+                        className={cn(
+                          'flex min-h-[36px] items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors duration-fast',
+                          dangXem
+                            ? 'bg-accent font-semibold text-accent-foreground'
+                            : 'text-foreground/75 hover:bg-muted hover:text-foreground',
+                        )}
+                      >
+                        <leaf.icon className="h-[15px] w-[15px] shrink-0 opacity-70" />
+                        <span className="truncate">{leaf.label}</span>
+                      </Link>
+                    </NavMenu.Link>
+                  );
+                })}
+              </div>
+            </div>
           );
         })}
-
-        {folders.map((folder) => (
-          <div key={folder.id} className="min-w-0">
-            <div className="mb-2 flex items-center gap-2 px-3 text-2xs font-semibold uppercase tracking-wider text-foreground/60">
-              <span aria-hidden className="h-3.5 w-0.5 rounded-full bg-primary/40" />
-              <folder.icon className="h-3.5 w-3.5" />
-              {folder.folder}
-            </div>
-            <div className="flex flex-col gap-0.5">
-              {folder.items.map((leaf) => {
-                const dangXem = matchesLeaf(pathname, leaf);
-                return (
-                  <NavMenu.Link asChild key={leaf.path}>
-                    <Link
-                      to={leaf.path}
-                      onClick={onDieuHuong}
-                      aria-current={dangXem ? 'page' : undefined}
-                      className={cn(
-                        'flex min-h-[36px] items-center gap-2.5 rounded-lg px-3 py-1.5 text-sm transition-colors duration-fast',
-                        dangXem
-                          ? 'bg-accent font-semibold text-accent-foreground'
-                          : 'text-foreground/80 hover:bg-muted hover:text-foreground',
-                      )}
-                    >
-                      <leaf.icon className="h-[15px] w-[15px] shrink-0 opacity-70" />
-                      <span className="truncate">{leaf.label}</span>
-                    </Link>
-                  </NavMenu.Link>
-                );
-              })}
-            </div>
-          </div>
-        ))}
       </div>
     </div>
   );
