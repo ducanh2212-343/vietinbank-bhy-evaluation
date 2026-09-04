@@ -131,8 +131,6 @@ export interface MoHinhVanHanh {
   vaiTro: VaiTroVanHanh[];
   buoc: BuocVanHanh[];
   phatBieu: LuotPhatBieu[];
-  /** Văn bản gốc — để cán bộ tải về đọc toàn văn */
-  vanBan: TepTaiVe;
   bieuMau: TepTaiVe[];
   /** Điểm dừng của dòng chảy — nơi hồ sơ rời khỏi phạm vi chương trình */
   ketThuc: { vaiTro: string; nhan: string };
@@ -211,11 +209,10 @@ const BUOC_C360: BuocVanHanh[] = [
     icon: ClipboardCheck,
     vaiTro: 'phong-qlkh',
     moTa:
-      'CBQHKH/LĐP rà soát hồ sơ trình cấp GHTD/tái cấp GHTD thuộc đối tượng áp dụng và đăng ký với Người điều phối (phòng KHDN) hoặc thông qua phòng TCTH (với các Phòng còn lại). Ghi vào sổ đăng ký Credit 360 trên cổng để cả Chi nhánh cùng thấy lịch.',
+      'CBQHKH/LĐP rà soát hồ sơ trình cấp GHTD/tái cấp GHTD thuộc đối tượng áp dụng và đăng ký với Người điều phối (phòng KHDN) hoặc thông qua phòng TCTH (với các Phòng còn lại).',
     dauRa: 'Hồ sơ đã đăng ký lịch phiên với Người điều phối / phòng TCTH',
     moc: 'Đề xuất chậm nhất trước tối thiểu 03 ngày dự kiến tổ chức phiên',
     mocNgan: 'Trước phiên ≥ 03 ngày',
-    duongDan: '/one/credit-360',
     nhanhRe: {
       nhan: 'Không thuộc đối tượng áp dụng',
       ketQua: 'Trình theo quy trình thường',
@@ -305,12 +302,11 @@ const BUOC_C360: BuocVanHanh[] = [
     icon: FileSignature,
     vaiTro: 'phong-qlkh',
     moTa:
-      'Phòng phụ trách khoản vay — thư ký phiên — lập biên bản ghi nhận phiên (đính kèm Mẫu biểu 02 ghi nhận ý kiến các thành viên tham dự) và trình ký ngay khi kết thúc phiên; lưu trữ tại Phòng quản lý khách hàng 01 bản, chuyển bộ phận HTTD lưu trữ 01 bản photo. Cập nhật kết quả vào sổ Credit 360 trên cổng để tra cứu lâu dài.',
+      'Phòng phụ trách khoản vay — thư ký phiên — lập biên bản ghi nhận phiên (đính kèm Mẫu biểu 02 ghi nhận ý kiến các thành viên tham dự) và trình ký ngay khi kết thúc phiên; lưu trữ tại Phòng quản lý khách hàng 01 bản, chuyển bộ phận HTTD lưu trữ 01 bản photo.',
     dauRa: 'Biên bản (Mẫu biểu 01) đã ký, kèm Mẫu biểu 02 — 01 bản tại Phòng QLKH, 01 bản photo tại HTTD',
     moc: 'Trình ký ngay khi kết thúc phiên',
     mocNgan: 'Ký ngay sau phiên',
     bieuMau: ['01', '02'],
-    duongDan: '/one/credit-360',
   },
 ];
 
@@ -418,15 +414,6 @@ const PHAT_BIEU_C360: LuotPhatBieu[] = [
   },
 ];
 
-const VAN_BAN_C360: TepTaiVe = {
-  ma: 'VB',
-  ten: 'Thông báo triển khai chương trình «Bac Hung Yen Credit 360»',
-  moTa:
-    'Số …/TB-CNBHY-TCTH ngày 16/06/2026 của Giám đốc Chi nhánh, hiệu lực từ 22/06/2026 cho đến khi có văn bản khác thay thế. Toàn văn 4 trang: mục đích, nguyên tắc, phạm vi, thành phần, quy trình 4 bước và tổ chức thực hiện.',
-  tep: '/bieu-mau/credit-360/thong-bao-trien-khai-bhy-credit-360.pdf',
-  kichCo: '375 KB · .pdf',
-};
-
 const BIEU_MAU_C360: TepTaiVe[] = [
   {
     ma: '01',
@@ -484,7 +471,6 @@ export const CREDIT_360_VAN_HANH: MoHinhVanHanh = {
   vaiTro: VAI_TRO_C360,
   buoc: BUOC_C360,
   phatBieu: PHAT_BIEU_C360,
-  vanBan: VAN_BAN_C360,
   bieuMau: BIEU_MAU_C360,
   ketThuc: {
     vaiTro: 'cap-tham-quyen',

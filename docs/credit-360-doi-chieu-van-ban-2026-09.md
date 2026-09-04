@@ -7,13 +7,13 @@ lý — không phải để mã tự quyết.
 
 ## Nguồn
 
-| Tệp trên cổng (`public/bieu-mau/credit-360/`) | Là gì |
+| Nguồn | Là gì |
 | --- | --- |
-| `thong-bao-trien-khai-bhy-credit-360.pdf` | Thông báo số …/TB-CNBHY-TCTH ngày 16/06/2026, hiệu lực 22/06/2026 |
+| Thông báo số …/TB-CNBHY-TCTH ngày 16/06/2026 (hiệu lực 22/06/2026) | Văn bản triển khai — lưu tại Phòng TCTH, KHÔNG đăng trên cổng theo yêu cầu Giám đốc 04/09/2026 |
 | `mau-bieu-01-bien-ban-phien-bhyc360.doc` | Mẫu biểu 01 — Biên bản thảo luận phiên |
 | `mau-bieu-02-bien-ban-ghi-nhan-y-kien-bhyc360.docx` | Mẫu biểu 02 — Biên bản ghi nhận ý kiến |
 
-Mọi câu trong dữ liệu đều trích từ ba tệp này; mỗi khối ghi rõ mục. Số hiệu
+Mọi câu trong dữ liệu đều trích từ ba nguồn này; mỗi khối ghi rõ mục. Số hiệu
 bước («Bước 3 · (iii)») giữ nguyên của văn bản, không đánh số lại.
 
 ## Chỗ văn bản không thống nhất — Giám đốc đã chốt ngày 04/09/2026
@@ -40,3 +40,12 @@ sửa của quản trị viên ngay trên trang.
   phút cho phần trình bày và 30–45 phút cho phần trao đổi.
 - Mẫu biểu 02 dùng ở **hai lúc**: thành viên gửi ý kiến trước phiên, và người
   trình bày / LĐP lập bảng ghi nhận nhanh trong phiên.
+
+## Đã gỡ khỏi trang theo yêu cầu Giám đốc (04/09/2026)
+
+- **Nút tải toàn văn Thông báo** — văn bản lưu tại TCTH, không đăng trên cổng.
+- **Sổ nhật ký phiên** (form đăng ký + bảng tra cứu, bảng `portal_credit_sessions`)
+  — không ai dùng: phiên đăng ký với Người điều phối / phòng TCTH và ghi biên bản
+  giấy theo Mẫu biểu 01. Mã giao diện và hook đã xoá; **bảng dữ liệu vẫn còn**
+  trên máy chủ, gỡ là việc của một migration riêng khi Chi nhánh xác nhận không
+  cần giữ dữ liệu cũ.

@@ -52,7 +52,7 @@ function KhoiTieuDe({ so, tieuDe, phu }: { so: string; tieuDe: string; phu: stri
 }
 
 /** Nút tải một biểu mẫu; biểu mẫu chưa có tệp thì nói thẳng là chưa có */
-function TheBieuMau({ bieuMau, nhanMa }: { bieuMau: TepTaiVe; nhanMa?: string }) {
+function TheBieuMau({ bieuMau }: { bieuMau: TepTaiVe }) {
   const coTep = !!bieuMau.tep;
   return (
     <div
@@ -70,7 +70,7 @@ function TheBieuMau({ bieuMau, nhanMa }: { bieuMau: TepTaiVe; nhanMa?: string })
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-black leading-snug text-slate-900">
-          {nhanMa ?? `Mẫu biểu ${bieuMau.ma}`} — {bieuMau.ten}
+          Mẫu biểu {bieuMau.ma} — {bieuMau.ten}
         </p>
         <p className="mt-1 text-xs leading-relaxed text-slate-600">{bieuMau.moTa}</p>
       </div>
@@ -81,7 +81,7 @@ function TheBieuMau({ bieuMau, nhanMa }: { bieuMau: TepTaiVe; nhanMa?: string })
           className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-black text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-emerald-700"
         >
           <Download className="h-4 w-4" />
-          Tải {nhanMa ? 'văn bản' : `mẫu ${bieuMau.ma}`}
+          Tải mẫu {bieuMau.ma}
           {bieuMau.kichCo && <span className="font-bold opacity-80">· {bieuMau.kichCo}</span>}
         </a>
       ) : (
@@ -270,9 +270,8 @@ export const SoDoVanHanh: React.FC<{ moHinh: MoHinhVanHanh }> = ({ moHinh }) => 
 
       {/* ---- 5. Biểu mẫu ---- */}
       <section>
-        <KhoiTieuDe so="5" tieuDe="Văn bản và biểu mẫu" phu="Toàn văn chương trình để đọc đối chiếu; biểu mẫu tải về, điền tại phiên, lưu cùng hồ sơ trình duyệt." />
+        <KhoiTieuDe so="5" tieuDe="Biểu mẫu dùng trong phiên" phu="Tải về, điền tại phiên, lưu cùng hồ sơ trình duyệt." />
         <div className="space-y-3">
-          <TheBieuMau bieuMau={moHinh.vanBan} nhanMa="Văn bản gốc" />
           {moHinh.bieuMau.map((bm) => (
             <TheBieuMau key={bm.ma} bieuMau={bm} />
           ))}
