@@ -27,7 +27,8 @@ import { useAuth } from '@/hooks/useAuth';
 import {
   useCanBoDanhThiep, useCauHinhDanhThiep, useChucDanh, useChucDanhRieng, useDonVi, useLamTuoiDanhThiep,
 } from '@/hooks/useDanhThiep';
-import { db, goiRpc } from '@/lib/danhThiep/db';
+import { db, goiRpc, laChuaKichHoat } from '@/lib/danhThiep/db';
+import { goiYTuHoSo343, nhanSongNgu, type GoiY343 } from '@/lib/danhThiep/anhXa343';
 import {
   CAC_LOAI_NHAN_SU, TEN_LOAI_NHAN_SU, TEN_MAU_THE, banDichTen, mauTheTheoLoai,
   type CanBo, type ChucDanh, type LoaiNhanSu, type TrangThaiDuyet,
@@ -49,6 +50,8 @@ interface HoSo343 {
   avatar_url: string | null;
   employee_code: string | null;
   position: string | null;
+  /** Tên phòng lấy qua departments.name — dùng để đoán đơn vị danh thiếp. */
+  department: string | null;
 }
 
 interface FormCanBo {
@@ -137,11 +140,15 @@ export function TabCanBo() {
   const [moChonHoSo, setMoChonHoSo] = useState(false);
   const [dangDongBo, setDangDongBo] = useState(false);
   const [ketQuaDongBo, setKetQuaDongBo] = useState<{ tao_moi: number; loi: number; chua_anh_xa_chuc_danh: string[]; chi_tiet_loi: string[] } | null>(null);
+  const [goiY, setGoiY] = useState<(GoiY343 & { hoSo: HoSo343 }) | null>(null);
 
   const chucDanhMap = useMemo(() => new Map(chucDanh.map((c) => [c.id, c])), [chucDanh]);
   const donViMap = useMemo(() => new Map(donVi.map((d) => [d.code, d])), [donVi]);
   const hanRieng = useMemo(() => new Map(rieng.filter((r) => r.status === 'approved').map((r) => [r.id, r.expires_on])), [rieng]);
   const daCoProfile = useMemo(() => new Set(ds.map((c) => c.profile_id).filter(Boolean)), [ds]);
+  // Chi nhánh đứng đầu danh sách khi nhập tay: hầu hết trường hợp còn lại là Ban Giám đốc
+  const donViMacDinh = donVi.find((d) => d.code === 'CN_BHY')?.code ?? donVi[0]?.code ?? '';
+  const tuDienTrong = donVi.length === 0 || chucDanh.length === 0;
   const logoBat = cauHinh.logo_enabled !== false;
   const baseUrl = typeof cauHinh.card_base_url === 'string' ? cauHinh.card_base_url : 'https://bachungyenone.com/card/';
 
@@ -161,32 +168,49 @@ export function TabCanBo() {
   const chucDanhNoiBo = chucDanh.filter((c) => c.scope === 'internal' && c.status !== 'retired');
 
   // ---- Tạo / sửa -----------------------------------------------------------
-  const moThemTay = () => setForm({ ...FORM_TRONG, org_unit_code: donVi[0]?.code ?? '' });
+  const moThemTay = () => { setGoiY(null); setForm({ ...FORM_TRONG, org_unit_code: donViMacDinh }); };
   const moChonTuHoSo = async () => {
     setMoChonHoSo(true);
     if (hoSo) return;
+    // Kèm departments(name): tên phòng là đầu vào duy nhất để đoán đơn vị danh thiếp
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, user_id, full_name, email, phone, avatar_url, employee_code, position')
+      .select('id, user_id, full_name, email, phone, avatar_url, employee_code, position, departments(name)')
       .eq('status', 'active')
       .order('full_name');
     if (error) { toast.error(`Không đọc được hồ sơ nhân sự: ${error.message}`); setMoChonHoSo(false); return; }
-    setHoSo((data ?? []) as HoSo343[]);
+    const ds343 = ((data ?? []) as Record<string, unknown>[]).map((r) => {
+      const p = r.departments as { name?: string } | { name?: string }[] | null;
+      const ten = Array.isArray(p) ? p[0]?.name : p?.name;
+      return { ...r, department: ten ?? null } as unknown as HoSo343;
+    });
+    setHoSo(ds343);
   };
+  /**
+   * Chọn một hồ sơ 343 → điền sẵn đơn vị và chức danh đối ngoại theo bảng ánh xạ.
+   * Trước đây form mở ra với đơn vị là dòng đầu từ điển và chức danh «Chưa gán»,
+   * nên người nhập phải tự dịch «Phó phòng KHDN» sang một mã tiếng Anh — sai
+   * chức danh trên thẻ là lỗi khó thu hồi, nên máy gợi ý còn người chỉ xác nhận.
+   */
   const chonHoSo = (h: HoSo343) => {
     setMoChonHoSo(false);
+    const gy = goiYTuHoSo343(h, donVi, chucDanh, 'bien_che');
+    setGoiY({ ...gy, hoSo: h });
     setForm({
       ...FORM_TRONG, profile_id: h.id, user_id: h.user_id, employee_code: h.employee_code ?? '', full_name: h.full_name,
-      email: h.email ?? '', phone_mobile: h.phone ?? '', org_unit_code: donVi[0]?.code ?? '', note_internal: h.position ? `Chức danh 343: ${h.position}` : '',
+      email: h.email ?? '', phone_mobile: h.phone ?? '',
+      org_unit_code: gy.maDonVi || donViMacDinh,
+      external_title_id: gy.chucDanh?.id ?? '',
+      note_internal: h.position ? `Chức danh 343: ${h.position}` : '',
     });
   };
-  const moSua = (c: CanBo) => setForm({
+  const moSua = (c: CanBo) => { setGoiY(null); setForm({
     id: c.id, profile_id: c.profile_id, user_id: c.user_id, employee_code: c.employee_code ?? '', full_name: c.full_name,
     name_zh: c.name_zh ?? '', name_ko: c.name_ko ?? '', name_ja: c.name_ja ?? '', employment_type: c.employment_type,
     org_unit_code: c.org_unit_code, internal_title_id: c.internal_title_id ?? '', external_title_id: c.external_title_id ?? '',
     email: c.email ?? '', phone_mobile: c.phone_mobile ?? '', phone_office: c.phone_office ?? '', phone_office_public: c.phone_office_public,
     slug: c.slug, tuDatSlug: true, note_internal: c.note_internal ?? '',
-  });
+  }); };
 
   const luu = async () => {
     if (!form) return;
@@ -226,7 +250,16 @@ export function TabCanBo() {
       toast.success(`Đã dựng ${kq.tao_moi} bản nháp từ hồ sơ 343`);
       lamTuoi();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      // Nói đúng nguyên nhân thay vì ném mã lỗi Postgres: ba tình huống thật đã
+      // gặp là (1) chưa áp migration nên hàm chưa tồn tại, (2) đã áp phần nền
+      // nhưng chưa chạy dữ liệu mồi nên từ điển rỗng, (3) lỗi nghiệp vụ thật.
+      if (laChuaKichHoat(e)) {
+        toast.error('Phân hệ danh thiếp chưa được kích hoạt trên cơ sở dữ liệu — phòng TCTH cần áp ba migration «danh_thiep_so_*» trước.');
+      } else if (tuDienTrong) {
+        toast.error('Từ điển đơn vị / chức danh đang rỗng — chạy migration dữ liệu mồi «danh_thiep_so_du_lieu_moi» trước khi dựng nháp.');
+      } else {
+        toast.error(e instanceof Error ? e.message : String(e));
+      }
     } finally {
       setDangDongBo(false);
     }
@@ -330,10 +363,23 @@ export function TabCanBo() {
   };
 
   const tatCaDangLoc = daLoc.length > 0 && daLoc.every((c) => chon.has(c.id));
-  const hoSoLoc = (hoSo ?? []).filter((h) => !daCoProfile.has(h.id) && (!timHoSo || khopTimKiem(`${h.full_name} ${h.employee_code ?? ''} ${h.position ?? ''}`, timHoSo)));
+  const hoSoLoc = (hoSo ?? []).filter((h) => !daCoProfile.has(h.id) && (!timHoSo || khopTimKiem(`${h.full_name} ${h.employee_code ?? ''} ${h.position ?? ''} ${h.department ?? ''}`, timHoSo)));
 
   return (
     <div className="space-y-4">
+      {tuDienTrong && (
+        <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
+          <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+          <div>
+            <p className="font-medium">Từ điển đơn vị / chức danh đang rỗng — chưa dựng nháp hay gán chức danh được.</p>
+            <p className="mt-0.5">
+              Phòng TCTH cần áp ba migration <code>20261004090000_danh_thiep_so_nen_tang</code>,{' '}
+              <code>20261004090100_danh_thiep_so_du_lieu_moi</code> và <code>20261004090200_danh_thiep_so_tu_tao_ban_nhap</code>{' '}
+              theo đúng thứ tự, rồi tải lại trang.
+            </p>
+          </div>
+        </div>
+      )}
       <div className="flex flex-wrap items-end gap-2">
         <div className="min-w-[180px] flex-1">
           <Label htmlFor="cb-tim" className="text-xs">Tìm</Label>
@@ -374,7 +420,7 @@ export function TabCanBo() {
         </div>
         {laQuanTri && (
           <>
-            <Button variant="outline" onClick={dongBoTu343} disabled={dangDongBo} title="Dựng bản nháp cho mọi cán bộ chưa có hồ sơ danh thiếp">
+            <Button variant="outline" onClick={dongBoTu343} disabled={dangDongBo || tuDienTrong} title={tuDienTrong ? 'Cần áp migration dữ liệu mồi trước' : 'Dựng bản nháp cho mọi cán bộ chưa có hồ sơ danh thiếp'}>
               {dangDongBo ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1.5 h-4 w-4" />} Dựng nháp toàn bộ từ 343
             </Button>
             <Button variant="outline" onClick={moChonTuHoSo}><UserPlus className="mr-1.5 h-4 w-4" /> Tạo từ hồ sơ 343</Button>
@@ -514,16 +560,26 @@ export function TabCanBo() {
         <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Tạo hồ sơ danh thiếp từ hồ sơ nhân sự 343</DialogTitle>
-            <DialogDescription>Kéo sẵn tên, email, điện thoại; đơn vị và chức danh đối ngoại gán ở bước sau. Cán bộ đã có danh thiếp không hiện ở đây.</DialogDescription>
+            <DialogDescription>Kéo sẵn tên, email, điện thoại; đơn vị và chức danh đối ngoại được gợi ý sẵn theo phòng và chức danh 343. Cán bộ đã có danh thiếp không hiện ở đây.</DialogDescription>
           </DialogHeader>
-          <Input placeholder="Tìm theo tên / mã / chức danh 343" value={timHoSo} onChange={(e) => setTimHoSo(e.target.value)} />
+          <Input placeholder="Tìm theo tên / mã / chức danh / phòng" value={timHoSo} onChange={(e) => setTimHoSo(e.target.value)} />
           <div className="max-h-[50vh] divide-y overflow-y-auto rounded-md border">
             {!hoSo && <p className="p-3 text-sm text-muted-foreground">Đang tải…</p>}
             {hoSo && hoSoLoc.length === 0 && <p className="p-3 text-sm text-muted-foreground">Không còn hồ sơ nào phù hợp.</p>}
             {hoSoLoc.slice(0, 200).map((h) => (
-              <button key={h.id} type="button" className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-muted" onClick={() => chonHoSo(h)}>
-                <span><span className="font-medium">{h.full_name}</span> <span className="text-xs text-muted-foreground">{h.employee_code ?? ''}</span></span>
-                <span className="truncate text-xs text-muted-foreground">{h.position ?? ''}</span>
+              <button key={h.id} type="button" className="w-full px-3 py-2 text-left text-sm hover:bg-muted" onClick={() => chonHoSo(h)}>
+                <span className="flex items-center justify-between gap-2">
+                  <span><span className="font-medium">{h.full_name}</span> <span className="text-xs text-muted-foreground">{h.employee_code ?? ''}</span></span>
+                  <span className="truncate text-xs text-muted-foreground">{h.position ?? ''}</span>
+                </span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  {(() => {
+                    const gy = goiYTuHoSo343(h, donVi, chucDanh, 'bien_che');
+                    return gy.chucDanh
+                      ? `Gợi ý: ${gy.donVi ? gy.donVi.name_vi : '—'} · ${nhanSongNgu(gy.chucDanh)}`
+                      : `Gợi ý: ${gy.donVi ? gy.donVi.name_vi : '—'} · chức danh phải chọn tay`;
+                  })()}
+                </span>
               </button>
             ))}
           </div>
@@ -541,6 +597,26 @@ export function TabCanBo() {
           </DialogHeader>
           {form && (
             <div className="space-y-4">
+              {goiY && (
+                <div className="rounded-lg border bg-muted/40 p-3 text-sm">
+                  <p className="font-medium">Máy đã điền sẵn theo hồ sơ 343 — xin xác nhận trước khi lưu</p>
+                  <ul className="mt-1 space-y-0.5 text-muted-foreground">
+                    <li>
+                      Phòng «{goiY.hoSo.department ?? 'chưa ghi'}» → đơn vị{' '}
+                      <span className="font-medium text-foreground">{goiY.donVi ? nhanSongNgu(goiY.donVi) : '—'}</span>
+                    </li>
+                    <li>
+                      Chức danh 343 «{goiY.hoSo.position ?? 'chưa ghi'}» →{' '}
+                      {goiY.chucDanh
+                        ? <span className="font-medium text-foreground">{nhanSongNgu(goiY.chucDanh)}</span>
+                        : <span className="text-amber-700 dark:text-amber-400">{goiY.lyDoTrongChucDanh}</span>}
+                    </li>
+                  </ul>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Chữ in trên thẻ lấy từ từ điển, không phải từ chữ trong hồ sơ 343. Sửa lại ở hai ô bên dưới nếu chưa đúng.
+                  </p>
+                </div>
+              )}
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="sm:col-span-2">
                   <Label htmlFor="cb-ten">Họ tên (tiếng Việt có dấu) *</Label>
@@ -564,7 +640,13 @@ export function TabCanBo() {
                 </div>
                 <div>
                   <Label>Loại nhân sự *</Label>
-                  <Select value={form.employment_type} onValueChange={(v) => setForm({ ...form, employment_type: v as LoaiNhanSu, external_title_id: '' })}>
+                  <Select value={form.employment_type} onValueChange={(v) => {
+                    const loai = v as LoaiNhanSu;
+                    // Chức danh phải hợp với loại nhân sự mới; nếu tạo từ hồ sơ 343 thì gợi ý lại
+                    const gy = goiY ? goiYTuHoSo343(goiY.hoSo, donVi, chucDanh, loai) : null;
+                    if (gy && goiY) setGoiY({ ...gy, hoSo: goiY.hoSo });
+                    setForm({ ...form, employment_type: loai, external_title_id: gy?.chucDanh?.id ?? '' });
+                  }}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>{CAC_LOAI_NHAN_SU.map((l) => <SelectItem key={l} value={l}>{TEN_LOAI_NHAN_SU[l]}</SelectItem>)}</SelectContent>
                   </Select>
@@ -574,7 +656,7 @@ export function TabCanBo() {
                   <Label>Đơn vị *</Label>
                   <Select value={form.org_unit_code} onValueChange={(v) => setForm({ ...form, org_unit_code: v })}>
                     <SelectTrigger><SelectValue placeholder="Chọn đơn vị" /></SelectTrigger>
-                    <SelectContent>{donVi.map((d) => <SelectItem key={d.code} value={d.code}>{d.name_vi}</SelectItem>)}</SelectContent>
+                    <SelectContent>{donVi.map((d) => <SelectItem key={d.code} value={d.code}>{nhanSongNgu(d)}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div>
@@ -584,7 +666,7 @@ export function TabCanBo() {
                     <SelectContent>
                       <SelectItem value="__none">— Chưa gán —</SelectItem>
                       {chucDanhDoiNgoai(form.employment_type).map((c) => (
-                        <SelectItem key={c.id} value={c.id}>{c.name_vi}{c.name_en ? ` · ${c.name_en}` : ''}{c.status !== 'approved' ? ' (chưa duyệt)' : ''}</SelectItem>
+                        <SelectItem key={c.id} value={c.id}>{nhanSongNgu(c)}{c.status !== 'approved' ? ' (chưa duyệt)' : ''}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

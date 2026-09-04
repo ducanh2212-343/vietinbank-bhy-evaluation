@@ -165,8 +165,9 @@ describe('Cấu trúc cây điều hướng', () => {
     expect(moiDuongDan(quanTri)).toContain('/one/y-tuong/van-hanh');
     expect(moiDuongDan(quanTri)).toContain('/quan-tri-quizzi');
     expect(moiDuongDan(quanTri)).toContain('/quan-tri-vcard');
-    // Thẻ của tôi mở cho mọi cán bộ
-    expect(moiDuongDan(canBoThuong)).toContain('/vcard');
+    // «Danh thiếp của tôi» mở cho mọi cán bộ nhưng không phải một mục menu riêng:
+    // nó là đường phụ của Hồ sơ cá nhân (xem test «Bắc Hưng Yên VCard» ở trên)
+    expect(resolveLocation('/vcard').leaf?.label).toBe('Hồ sơ cá nhân');
     // Cán bộ thường vẫn vào được hai màn dùng chung của cùng thương hiệu
     expect(moiDuongDan(canBoThuong)).toContain('/one/y-tuong/gui');
     expect(moiDuongDan(canBoThuong)).toContain('/one/y-tuong/hoi-dong');
