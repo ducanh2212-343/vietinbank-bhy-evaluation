@@ -135,6 +135,20 @@ gộp vào app này thành cổng thông tin thương hiệu sau đăng nhập:
   Riêng Cây Ký Ức còn cần RLS: helper `guest_screen_allowed()` mở
   `ky_yeu_an_pham` + bucket `ky-yeu` đúng cho khách được bật màn này.
 
+- **Sao Xứng Đáng — sổ sao theo số serial (08–09/2026):** tặng sao ngay trên cổng,
+  số serial chọn từ pool đã bàn giao và bị khóa trong giao dịch (RPC `award_star`)
+  nên không trùng được; Phòng TCTH khai báo lô in, bàn giao dải số theo quý, quản
+  danh mục tổ / tập thể nhỏ ở `/one/ghi-nhan`. **Đã áp lên project
+  `whlysprzsguehxmrjwha`**: `20260829043218_star_serial_registry_and_award_rpcs`,
+  `20260829043235_seed_star_serials_from_records`,
+  `20260829120000_star_rpcs_thu_hoi_quyen_anon_va_khoa_search_path`,
+  `20260829130000_phong_yen_my_doi_ten_pgd_ocean_city` (29/08) và
+  `20260904090000_tap_the_nho_va_ban_giam_doc` (04/09). Đường nhập Excel cũ đang
+  khóa (`starImportLock.ts`); bài học: bản khóa nằm trên nhánh chưa merge thì
+  production vẫn nhập đè được — bảng phiếu đã bị ghi đè hai lần trong tháng 8.
+  Đối chiếu văn bản và quyết định thiết kế:
+  `docs/doi-chieu-van-ban-va-tinh-nang-sao-2026-08.md`.
+
 ## Góp ý cải thiện hệ thống BHY One (08/2026)
 
 Nút «Góp ý» (biểu tượng bong bóng thoại) trên thanh điều hướng — hiện ở **mọi

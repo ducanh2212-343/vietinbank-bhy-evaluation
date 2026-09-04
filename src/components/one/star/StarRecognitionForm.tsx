@@ -1,158 +1,64 @@
-import React, { useState } from 'react';
-import { Star, QrCode, Send, CheckCircle2 } from 'lucide-react';
-import confetti from 'canvas-confetti';
-import { useStarRecords } from './useStarRecords';
-import { isCollectiveName } from './starParser';
-import { useMyFullName } from '../useMyFullName';
+import React from 'react';
+import { Info, Star } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { StarAwardForm } from './StarAwardForm';
 
-// Form "Mô phỏng ghi nhận QR" — khác bản gốc: phiếu được GHI THẬT vào star_records
-// (source='form', hiện trong tab Chi tiết của khối phân tích), không chỉ confetti rồi mất.
+// Khu "Ghi nhận Sao Xứng Đáng" trên cổng.
+//
+// Từ 08/2026 đường nhập qua form Lark TẠM HOÃN — cổng là nơi ghi nhận trực tiếp:
+// lãnh đạo (Trưởng phòng / PGĐ / Ban Giám đốc / TCTH) thấy form tặng Sao thật
+// (StarAwardForm) với số serial chọn từ pool đã bàn giao, chống trùng ở tầng CSDL.
+// Cán bộ thường thấy khối giới thiệu cấu trúc ghi nhận + quyền phát Sao để đề
+// xuất với Trưởng phòng.
+//
+// (Link form Lark cũ đã gỡ; nếu chi nhánh nối lại Lark, xem lịch sử git.)
+
 export const StarRecognitionForm: React.FC = () => {
-  const { submitFormRecord } = useStarRecords();
-  const myName = useMyFullName();
-  const [recipient, setRecipient] = useState('');
-  const [action, setAction] = useState('');
-  const [result, setResult] = useState('');
-  const [givenStars, setGivenStars] = useState(1);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const { isAdmin, isManager, isPgd } = useAuth();
+  // Quyền phát Sao theo văn bản mục 2: Trưởng phòng (cán bộ phòng mình) và Ban
+  // Giám đốc (toàn chi nhánh). TCTH là đầu mối tổng hợp, nhập hộ.
+  const coQuyenPhatSao = isAdmin || isManager || isPgd;
 
-  const handleGiveStar = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (submitting) return;
-    setSubmitting(true);
-    // Tách "Đ/c Nguyễn Văn A - Phòng KHDN" thành tên + phòng TRƯỚC khi xét tập thể
-    const cleaned = recipient.replace(/^Đ\/c\s+/i, '');
-    const parts = cleaned.split('-');
-    const name = parts[0]?.trim() || 'Cán bộ ẩn danh';
-    const department = parts.slice(1).join('-').trim() || 'Phòng KHDN';
-    const ok = await submitFormRecord({
-      name,
-      department,
-      stars: givenStars,
-      reason: action,
-      result,
-      date: new Date().toISOString().slice(0, 10),
-      sender: myName,
-      serial: '',
-      isCollective: isCollectiveName(name),
-    });
-    setSubmitting(false);
-    if (!ok) return;
-    confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
-    setShowSuccess(true);
-    setRecipient('');
-    setAction('');
-    setResult('');
-    setGivenStars(1);
-    setTimeout(() => setShowSuccess(false), 4000);
-  };
+  if (coQuyenPhatSao) return <StarAwardForm />;
 
   return (
-    <div className="bg-white p-6 sm:p-7 rounded-3xl border border-amber-200 shadow-md relative">
-      <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-5">
+    <div className="bg-white p-6 sm:p-7 rounded-3xl border border-amber-200 shadow-md">
+      <div className="flex flex-wrap items-center justify-between gap-2 pb-4 border-b border-slate-100 mb-5">
         <div className="flex items-center gap-2 text-slate-800 font-black text-sm uppercase tracking-wide">
-          <QrCode className="w-5 h-5 text-brand-navy" />
+          <Star className="w-5 h-5 fill-amber-400 text-amber-600" />
           <span>Ghi Nhận Sao Xứng Đáng</span>
         </div>
         <span className="text-[10px] font-mono font-black px-2 py-0.5 rounded bg-blue-100 text-brand-navy">
-          Lưu vào hệ thống đối soát
+          Ghi nhận trên cổng
         </span>
       </div>
 
-      <form onSubmit={handleGiveStar} className="space-y-4 text-xs">
-        <div>
-          <label className="block font-bold text-slate-700 mb-1">Cảm ơn (Cá nhân / Tập thể):</label>
-          <input
-            type="text"
-            value={recipient}
-            onChange={e => setRecipient(e.target.value)}
-            placeholder="Đ/c Nguyễn Văn A - Phòng KHDN, hoặc Tập thể phòng..."
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-brand-navy outline-none font-semibold text-slate-800"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block font-bold text-slate-700 mb-1">Vì đã (Hành vi / Hành động cụ thể):</label>
-          <input
-            type="text"
-            value={action}
-            onChange={e => setAction(e.target.value)}
-            placeholder="Hành động xuất sắc cụ thể..."
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-brand-navy outline-none font-semibold text-slate-800"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block font-bold text-slate-700 mb-1">Đem lại (Kết quả / Thành tích định lượng):</label>
-          <input
-            type="text"
-            value={result}
-            onChange={e => setResult(e.target.value)}
-            placeholder="Kết quả kinh doanh hoặc vận hành..."
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-brand-navy outline-none font-semibold text-slate-800"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block font-bold text-slate-700 mb-1">Số lượng Sao ghi nhận:</label>
-          <div className="flex gap-2">
-            {[1, 2, 3].map((num) => (
-              <button
-                key={num}
-                type="button"
-                onClick={() => setGivenStars(num)}
-                className={`flex-1 py-2 rounded-xl border font-black transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                  givenStars === num ? 'bg-amber-500 text-white border-amber-600 shadow' : 'bg-slate-50 text-slate-600 border-slate-200'
-                }`}
-              >
-                <Star className={`w-3.5 h-3.5 ${givenStars === num ? 'fill-white' : 'fill-slate-400'}`} />
-                <span>{num} Sao</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Bản xem trước phiếu vàng */}
-        <div className="mt-6 pt-4 border-t border-dashed border-amber-300">
-          <span className="text-[10px] font-extrabold uppercase text-amber-700 block mb-2">🎫 Bản xem trước Phiếu Ghi Nhận:</span>
-          <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-50 via-yellow-50 to-amber-100 border-2 border-amber-300 text-slate-800 shadow-inner relative overflow-hidden">
-            <div className="absolute top-2 right-2 flex">
-              {Array.from({ length: givenStars }).map((_, i) => (
-                <Star key={i} className="w-4 h-4 fill-amber-500 text-amber-600" />
-              ))}
-            </div>
-            <p className="text-xs leading-relaxed font-serif">
-              “<strong className="text-brand-navy font-sans font-black">CẢM ƠN </strong> <span className="font-bold underline decoration-amber-500">{recipient || '...'}</span> <br />
-              <strong className="text-slate-900 font-sans font-bold">vì đã: </strong> <span>{action || '...'}</span> <br />
-              <strong className="text-emerald-800 font-sans font-bold">đem lại: </strong> <span className="font-bold text-red-600">{result || '...'}</span>”
+      <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4 text-[11px] leading-relaxed text-slate-600">
+        <div className="flex items-start gap-2">
+          <Info className="w-4 h-4 text-brand-navy shrink-0 mt-0.5" />
+          <div className="space-y-1.5">
+            <p>
+              <strong className="text-slate-800">Quyền phát Sao</strong> (văn bản triển khai, mục 2):
+              Trưởng phòng ghi nhận và phát Sao cho cán bộ trong phòng mình; Ban Giám đốc phát Sao
+              cho hành vi/kết quả nổi trội toàn Chi nhánh. Phòng TCTH là đầu mối theo dõi, đối soát.
             </p>
-            <div className="mt-3 flex items-center justify-between text-[10px] font-mono text-slate-500 border-t border-amber-200/80 pt-2">
-              <span>Quyển ghi nhận Phòng TCTH</span>
-              <span className="text-emerald-700 font-bold">+ {givenStars * 0.5} Điểm KPI</span>
-            </div>
+            <p>
+              Mỗi Sao gắn với một hành vi/kết quả cụ thể, ghi theo cấu trúc ba vế:
+              <strong className="text-slate-800"> “Cảm ơn [cá nhân/tập thể] — vì đã [hành vi cụ thể] — đem lại [kết quả cụ thể]”</strong>,
+              và mang một <strong className="text-slate-800">số serial riêng</strong> in trên sao vật lý.
+            </p>
+            <p>
+              Bạn có thành tích hoặc chứng kiến đồng nghiệp xứng đáng được ghi nhận?
+              Hãy đề xuất với <strong className="text-slate-800">Trưởng phòng phụ trách</strong> —
+              người có quyền ghi nhận sẽ vào chính trang này để trao Sao.
+            </p>
+            <p className="text-emerald-700 font-bold">
+              Mỗi Sao hợp lệ: +0,5 điểm KPI (tối đa 10 điểm/năm) và tích lũy đổi quà trong
+              Tủ Quà Tặng của Chi nhánh.
+            </p>
           </div>
         </div>
-
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full py-3.5 rounded-xl bg-gradient-to-r from-brand-navy via-blue-700 to-brand-royal text-white font-black text-xs sm:text-sm shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
-        >
-          <Send className="w-4 h-4 text-amber-300" />
-          <span>{submitting ? 'Đang gửi...' : 'Xác Nhận & Ghi Nhận Sao'}</span>
-        </button>
-
-        {showSuccess && (
-          <div className="p-3 rounded-xl bg-emerald-100 text-emerald-900 border border-emerald-300 flex items-center gap-2 text-xs font-bold animate-bounce">
-            <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
-            <span>Đã ghi nhận thành công! Phiếu đã lưu vào hệ thống đối soát (tab Chi tiết).</span>
-          </div>
-        )}
-      </form>
+      </div>
     </div>
   );
 };

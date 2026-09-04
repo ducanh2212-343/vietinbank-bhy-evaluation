@@ -1,11 +1,18 @@
-import { useCallback } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
-// Phiếu Sao Xứng Đáng — bảng star_records (mỗi phiếu một dòng).
-// Cán bộ gửi phiếu từ form (source='form'); admin nhập/thay thế hàng loạt từ Excel/CSV.
+// Phiếu Sao Xứng Đáng — bảng star_records (mỗi phiếu một dòng). CHỈ ĐỌC.
+//
+// Từ 04/09/2026 hook này không còn hàm ghi nào: đường nhập Excel (replaceAll)
+// đã dừng hẳn sau ba lần phá dữ liệu, và policy trên star_records nay chỉ còn
+// quyền đọc. Mọi thao tác ghi đi qua RPC trong useStarSerials:
+//   ghi phiếu  → award_star          (số serial khóa trong cùng giao dịch)
+//   gỡ phiếu   → revoke_star_record  (số serial quay về đúng nơi giữ)
+//   đối soát   → doi_soat_so_sao
+//
+// Cột `source` vẫn phân biệt phiếu cũ nhập từ Excel ('import') với phiếu ghi
+// trên cổng ('form') — dữ liệu lịch sử, không còn đường tạo mới 'import'.
 
 export interface StarRecord {
   id: string;
@@ -20,25 +27,14 @@ export interface StarRecord {
   serial: string;
   isCollective: boolean;
   source: 'import' | 'form';
-}
-
-export interface StarRecordInput {
-  name: string;
-  department: string;
-  stars: number;
-  reason: string;
-  result: string;
-  date: string;
-  sender: string;
-  serial: string;
-  isCollective: boolean;
+  /** Tổ / tập thể nhỏ gắn phiếu (VD "Tổ FDI") — null với đa số phiếu */
+  subUnit: string | null;
 }
 
 const KEY = ['one-star-records'];
 
 export function useStarRecords() {
   const { roles } = useAuth();
-  const queryClient = useQueryClient();
   const isContentAdmin = roles.includes('tcth_admin') || roles.includes('system_admin');
 
   const { data: records = [], isLoading } = useQuery({
@@ -61,91 +57,11 @@ export function useStarRecords() {
         serial: r.serial ?? '',
         isCollective: r.is_collective,
         source: r.source as 'import' | 'form',
+        subUnit: r.sub_unit ?? null,
       }));
     },
     staleTime: 30 * 1000,
   });
 
-  const refresh = useCallback(
-    () => queryClient.invalidateQueries({ queryKey: KEY }),
-    [queryClient],
-  );
-
-  // Phiếu ghi nhận từ form (mọi cán bộ) — ghi THẬT, khác bản gốc chỉ confetti rồi mất
-  const submitFormRecord = useCallback(async (rec: StarRecordInput): Promise<boolean> => {
-    const { error } = await supabase.from('star_records').insert({
-      name: rec.name,
-      department: rec.department,
-      stars: rec.stars,
-      reason: rec.reason || null,
-      result: rec.result || null,
-      awarded_on: rec.date,
-      sender: rec.sender || null,
-      serial: rec.serial || null,
-      is_collective: rec.isCollective,
-      source: 'form',
-    });
-    if (error) {
-      toast.error(`Không lưu được phiếu: ${error.message}`);
-      return false;
-    }
-    refresh();
-    return true;
-  }, [refresh]);
-
-  // Admin: thay thế TOÀN BỘ dữ liệu bằng kết quả nhập file (như bản gốc, nhưng có preview trước đó)
-  const replaceAll = useCallback(async (recs: StarRecordInput[]): Promise<boolean> => {
-    const { error: delErr } = await supabase.from('star_records')
-      .delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    if (delErr) {
-      toast.error(`Không xóa được dữ liệu cũ: ${delErr.message}`);
-      return false;
-    }
-    // Insert theo lô 200 dòng
-    for (let i = 0; i < recs.length; i += 200) {
-      const batch = recs.slice(i, i + 200).map(rec => ({
-        name: rec.name,
-        department: rec.department,
-        stars: rec.stars,
-        reason: rec.reason || null,
-        result: rec.result || null,
-        awarded_on: rec.date,
-        sender: rec.sender || null,
-        serial: rec.serial || null,
-        is_collective: rec.isCollective,
-        source: 'import' as const,
-      }));
-      const { error } = await supabase.from('star_records').insert(batch);
-      if (error) {
-        toast.error(`Lỗi khi ghi lô ${i / 200 + 1}: ${error.message}`);
-        refresh();
-        return false;
-      }
-    }
-    toast.success(`Đã nhập ${recs.length} phiếu sao (thay thế toàn bộ dữ liệu cũ)`);
-    refresh();
-    return true;
-  }, [refresh]);
-
-  const deleteRecord = useCallback(async (id: string) => {
-    const { error } = await supabase.from('star_records').delete().eq('id', id);
-    if (error) {
-      toast.error(`Không xóa được: ${error.message}`);
-      return;
-    }
-    refresh();
-  }, [refresh]);
-
-  const deleteAll = useCallback(async () => {
-    const { error } = await supabase.from('star_records')
-      .delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    if (error) {
-      toast.error(`Không xóa được: ${error.message}`);
-      return;
-    }
-    toast.success('Đã xóa toàn bộ phiếu sao');
-    refresh();
-  }, [refresh]);
-
-  return { records, isLoading, isContentAdmin, submitFormRecord, replaceAll, deleteRecord, deleteAll };
+  return { records, isLoading, isContentAdmin };
 }

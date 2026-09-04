@@ -6,7 +6,25 @@
 // Mọi lần dùng giá trị fallback đều phát ra một cảnh báo (warnings) để admin soát lại
 // trước khi xác nhận nhập — bản gốc nhập thẳng không có bước xem trước.
 
-import type { StarRecordInput } from './useStarRecords';
+/**
+ * Một phiếu đọc được từ file. Trước đây mượn kiểu StarRecordInput của
+ * useStarRecords, nhưng từ 04/09/2026 hook đó chỉ còn đọc (đường nhập Excel đã
+ * dừng) nên kiểu về ở đây — nơi duy nhất còn dùng.
+ *
+ * Bộ đọc giữ lại làm ĐẶC TẢ định dạng kết xuất Lark (có bộ kiểm thử riêng), phòng
+ * khi cần nạp bù dữ liệu cũ bằng một đợt migration.
+ */
+export interface StarRecordInput {
+  name: string;
+  department: string;
+  stars: number;
+  reason: string;
+  result: string;
+  date: string;
+  sender: string;
+  serial: string;
+  isCollective: boolean;
+}
 
 export interface ParseWarning {
   /** Số dòng trong sheet (đánh số từ 1 như Excel) */
@@ -27,7 +45,10 @@ export const DEPT_QUOTAS: Record<string, number> = {
   'Phòng Khoái Châu': 24,
   'Phòng Văn Giang': 24,
   'Phòng Văn Lâm': 24,
-  'Phòng Yên Mỹ': 24,
+  // Phòng Yên Mỹ chuyển trụ sở và đổi tên thành PGD Ocean City (08/2026).
+  // Cùng một đơn vị: quota giữ nguyên, phiếu cũ ghi "Phòng Yên Mỹ" được quy về
+  // nhãn mới khi chuẩn hóa để thi đua không bị tách làm hai dòng.
+  'PGD Ocean City': 24,
   'Phòng Bán lẻ': 20,
   'Phòng Ân Thi': 20,
   'Phòng HTTD': 20,
@@ -42,7 +63,7 @@ const KNOWN_STAFF_DEPTS: Record<string, string> = {
   'Hoàng Văn Hải': 'Phòng Khoái Châu',
   'Bùi Thị Lan': 'Phòng Bán lẻ',
   'Đặng Văn Hùng': 'Phòng Văn Giang',
-  'Nguyễn Thị Thùy': 'Phòng Yên Mỹ',
+  'Nguyễn Thị Thùy': 'PGD Ocean City',
   'Trần Văn Long': 'Phòng Văn Lâm',
   'Lê Thị Thảo': 'Phòng HTTD',
   'Nguyễn Thị Bình': 'Phòng KHDN',
@@ -66,13 +87,18 @@ const DEFAULT_DEPT = 'Phòng KHDN';
 export const standardizeDepartment = (deptStr: string): string | null => {
   const s = deptStr.toLowerCase().trim();
   if (!s) return null;
+  // Ban Giám đốc là một tập thể trong chương trình Sao (ý kiến TCTH 04/09/2026):
+  // trước đó PGĐ nhận sao cá nhân bị xếp vào phòng mình phụ trách. Chỉ bắt đúng
+  // cụm "ban giám đốc" / mã BGĐ — KHÔNG bắt "giám đốc" trần vì chức danh
+  // "Phó giám đốc phụ trách KHDN" cũng chứa cụm đó.
+  if (s.includes('ban giám đốc') || s.includes('ban giam doc') || /(^|\s)bg[dđ](\s|$)/.test(s)) return 'Ban Giám đốc';
   if (s.includes('tcth') || s.includes('tổng hợp') || s.includes('hành chính') || s.includes('tổ chức')) return 'Phòng TCTH';
   if (s.includes('khdn') || s.includes('doanh nghiệp') || s.includes('khách hàng doanh nghiệp')) return 'Phòng KHDN';
   if (s.includes('dvkh') || s.includes('dịch vụ khách hàng')) return 'Phòng DVKH';
   if (s.includes('khoái châu') || s.includes('khoai chau')) return 'Phòng Khoái Châu';
   if (s.includes('văn giang') || s.includes('van giang')) return 'Phòng Văn Giang';
   if (s.includes('văn lâm') || s.includes('van lam')) return 'Phòng Văn Lâm';
-  if (s.includes('yên mỹ') || s.includes('yen my')) return 'Phòng Yên Mỹ';
+  if (s.includes('yên mỹ') || s.includes('yen my') || s.includes('ocean')) return 'PGD Ocean City';
   if (s.includes('bán lẻ') || s.includes('khbl') || s.includes('cá nhân') || s.includes('ban le')) return 'Phòng Bán lẻ';
   if (s.includes('ân thi') || s.includes('an thi')) return 'Phòng Ân Thi';
   if (s.includes('httd') || s.includes('hỗ trợ tín dụng') || s.includes('hỗ trợ')) return 'Phòng HTTD';
@@ -122,8 +148,10 @@ const SHORT_CODES: Record<string, string> = {
   'van giang': 'Phòng Văn Giang',
   'văn lâm': 'Phòng Văn Lâm',
   'van lam': 'Phòng Văn Lâm',
-  'yên mỹ': 'Phòng Yên Mỹ',
-  'yen my': 'Phòng Yên Mỹ',
+  'yên mỹ': 'PGD Ocean City',
+  'yen my': 'PGD Ocean City',
+  'ocean city': 'PGD Ocean City',
+  'ocean': 'PGD Ocean City',
   'ân thi': 'Phòng Ân Thi',
   'an thi': 'Phòng Ân Thi',
 };
@@ -269,7 +297,7 @@ const parseRows2D = (rows2D: Cell[][]): ParseResult => {
           colScores[idx].starsScore += 1;
         }
 
-        if (cellLower.includes('phòng') || cellLower.includes('tập thể') || cellLower.includes('khdn') || cellLower.includes('tcth') || cellLower.includes('dvkh') || cellLower.includes('bán lẻ') || cellLower.includes('yên mỹ') || cellLower.includes('văn giang')) {
+        if (cellLower.includes('phòng') || cellLower.includes('tập thể') || cellLower.includes('khdn') || cellLower.includes('tcth') || cellLower.includes('dvkh') || cellLower.includes('bán lẻ') || cellLower.includes('yên mỹ') || cellLower.includes('ocean') || cellLower.includes('văn giang')) {
           colScores[idx].recipientScore += 3;
         } else if (cellStr.split(' ').length >= 2 && cellStr.split(' ').length <= 5 && !cellLower.includes('đại diện') && !cellLower.includes('thi đua') && !cellLower.includes('xứng đáng')) {
           colScores[idx].recipientScore += 1;

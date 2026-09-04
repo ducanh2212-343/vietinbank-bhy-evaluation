@@ -20,9 +20,26 @@ export interface IndividualStat {
   records: StarRecord[];
 }
 
+/** Tổ / tập thể nhỏ trong danh mục (bảng star_sub_units): nhãn + phòng cha (null = liên phòng) */
+export interface ToDanhMuc {
+  nhan: string;
+  phongCha: string | null;
+}
+
+/**
+ * Tên hiển thị của tập thể. Ban Giám đốc là tập thể đặc biệt — không phải "Tập
+ * thể Ban Giám đốc"; phòng và tổ đều mang tiền tố "Tập thể".
+ */
+export const tenTapThe = (nhan: string): string =>
+  nhan === 'Ban Giám đốc' ? nhan : `Tập thể ${nhan}`;
+
 export interface DepartmentStat {
   department: string;
   collectiveName: string;
+  /** Phòng cha khi dòng này là tổ/tập thể nhỏ; null = liên phòng (hoặc chính là phòng) */
+  parent: string | null;
+  /** true = tổ/tập thể nhỏ — hiện lồng dưới phòng cha, KHÔNG xếp hạng cùng phòng */
+  isSubUnit: boolean;
   /** Sao TẬP THỂ phòng nhận được — căn cứ duy nhất để xếp hạng thi đua phòng ban */
   collectiveStars: number;
   /** Số phiếu ghi cho tập thể phòng */
@@ -67,8 +84,26 @@ export const buildIndividualStats = (records: StarRecord[]): IndividualStat[] =>
  * từng cán bộ trong phòng để riêng ở `staffStars`: người nhận là cán bộ, phần
  * thưởng quy đổi cũng về cán bộ, nên cộng vào bảng tập thể là nhầm chủ thể (và
  * khiến phòng đông người luôn thắng phòng ít người).
+ *
+ * TỔ / TẬP THỂ NHỎ (ý kiến TCTH 04/09/2026 — Tổ FDI thuộc KHDN, Tổ truyền thông
+ * liên phòng): mỗi tổ là một dòng riêng, `isSubUnit=true`, hiện lồng dưới phòng
+ * cha và không tham gia xếp hạng phòng. Sao tập thể của tổ là phiếu ghi cho
+ * "Tập thể Tổ …" (department = tên tổ). Sao cá nhân của cán bộ thuộc tổ (phiếu
+ * có `subUnit`) hiện THÊM ở dòng tổ để tham khảo — cán bộ vẫn thuộc phòng, không
+ * rời khỏi bảng phòng.
  */
-export const buildDepartmentStats = (records: StarRecord[]): DepartmentStat[] => {
+export const buildDepartmentStats = (
+  records: StarRecord[],
+  /**
+   * Nhãn các phòng phải xuất hiện trong bảng thi đua kể cả khi chưa có phiếu.
+   * Truyền từ DANH BẠ (useStarDepartments) để đổi tên / thêm / ngừng phòng trên
+   * màn Quản lý Phòng ban là bảng thi đua đổi theo. Bỏ trống thì dùng danh sách
+   * trong DEPT_QUOTAS như trước (dùng cho kiểm thử và khi chưa tải xong danh bạ).
+   */
+  danhSachPhong?: string[],
+  /** Danh mục tổ / tập thể nhỏ (star_sub_units) — bỏ trống thì không có dòng tổ nào */
+  toDanhMuc: ToDanhMuc[] = [],
+): DepartmentStat[] => {
   const statsMap: Record<string, {
     collectiveStars: number;
     collectiveRecords: number;
@@ -82,9 +117,11 @@ export const buildDepartmentStats = (records: StarRecord[]): DepartmentStat[] =>
     }
     return statsMap[dept];
   };
+  const toMap = new Map(toDanhMuc.map((t) => [t.nhan, t.phongCha]));
 
-  // Phòng chưa có phiếu nào vẫn phải xuất hiện trong bảng thi đua (0 sao)
-  Object.keys(DEPT_QUOTAS).forEach(ensure);
+  // Phòng / tổ chưa có phiếu nào vẫn phải xuất hiện trong bảng thi đua (0 sao)
+  (danhSachPhong && danhSachPhong.length > 0 ? danhSachPhong : Object.keys(DEPT_QUOTAS)).forEach(ensure);
+  toDanhMuc.forEach((t) => ensure(t.nhan));
 
   records.forEach((rec) => {
     const dept = rec.department || 'Phòng KHDN';
@@ -93,16 +130,25 @@ export const buildDepartmentStats = (records: StarRecord[]): DepartmentStat[] =>
     if (rec.isCollective) {
       s.collectiveStars += Number(rec.stars) || 0;
       s.collectiveRecords += 1;
-    } else {
-      s.staffStars += Number(rec.stars) || 0;
-      s.staff.add(normalizeName(rec.name));
+      return;
+    }
+    s.staffStars += Number(rec.stars) || 0;
+    s.staff.add(normalizeName(rec.name));
+    // Cán bộ thuộc tổ: sao cá nhân hiện thêm ở dòng tổ (tham khảo)
+    if (rec.subUnit && rec.subUnit !== dept) {
+      const t = ensure(rec.subUnit);
+      t.recordsCount += 1;
+      t.staffStars += Number(rec.stars) || 0;
+      t.staff.add(normalizeName(rec.name));
     }
   });
 
   return Object.entries(statsMap)
     .map(([dept, s]) => ({
       department: dept,
-      collectiveName: dept === 'Ban Giám đốc' ? dept : `Tập thể ${dept}`,
+      collectiveName: tenTapThe(dept),
+      parent: toMap.has(dept) ? (toMap.get(dept) ?? null) : null,
+      isSubUnit: toMap.has(dept),
       collectiveStars: s.collectiveStars,
       collectiveRecords: s.collectiveRecords,
       staffStars: s.staffStars,

@@ -123,6 +123,9 @@ const OneIdeaOpsPage = lazyWithRetry(() => import("./pages/one/OneIdeaOpsPage"))
 const OneIdeaSubmitPage = lazyWithRetry(() => import("./pages/one/OneIdeaSubmitPage"));
 const OneCreditPage = lazyWithRetry(() => import("./pages/one/OneCreditPage"));
 const OneRecognitionPage = lazyWithRetry(() => import("./pages/one/OneRecognitionPage"));
+const OneStarAwardPage = lazyWithRetry(() => import("./pages/one/OneStarAwardPage"));
+const OneStarStatsPage = lazyWithRetry(() => import("./pages/one/OneStarStatsPage"));
+const OneStarAdminPage = lazyWithRetry(() => import("./pages/one/OneStarAdminPage"));
 const OneKyYeuPage = lazyWithRetry(() => import("./pages/one/OneKyYeuPage"));
 const KyYeuAdminPage = lazyWithRetry(() => import("./pages/KyYeuAdminPage"));
 const GuestAccessAdminPage = lazyWithRetry(() => import("./pages/GuestAccessAdminPage"));
@@ -244,6 +247,9 @@ const App = () => (
               <Route path="/one/y-tuong/van-hanh" element={<OneIdeaOpsPage />} />
               <Route path="/one/credit-360" element={<OneCreditPage />} />
               <Route path="/one/ghi-nhan" element={<OneRecognitionPage />} />
+              <Route path="/one/ghi-nhan/tang-sao" element={<OneStarAwardPage />} />
+              <Route path="/one/ghi-nhan/tong-hop" element={<OneStarStatsPage />} />
+              <Route path="/one/ghi-nhan/quan-ly" element={<OneStarAdminPage />} />
               {/* Cây Ký Ức — kỷ yếu số 20 năm dạng flipbook, đọc PDF từ bucket ky-yeu */}
               <Route path="/one/cay-ky-uc" element={<OneKyYeuPage />} />
               {/* Tên cũ "Kỷ yếu số" — giữ để không gãy link đã gửi cho cán bộ */}

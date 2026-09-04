@@ -1,9 +1,6 @@
 import React from 'react';
 import { Star, Gift, Award, Sparkles, Coffee, ShoppingBag, Headphones, Briefcase, Watch, Plane, Smartphone, ChevronRight, AlertCircle } from 'lucide-react';
 import { EditableText } from './AdminEditableContext';
-import { useAuth } from '@/hooks/useAuth';
-import { StarRecognitionForm } from './star/StarRecognitionForm';
-import { StarAnalytics } from './star/StarAnalytics';
 
 interface RewardTier {
   stars: number;
@@ -25,8 +22,15 @@ const REWARDS_2026: RewardTier[] = [
   { stars: 20, name: 'iPhone 18 Pro Max mới nhất', maxVal: '45,000,000 đ', icon: <Smartphone className="w-5 h-5 text-amber-500" />, color: 'bg-gradient-to-br from-amber-500 via-amber-600 to-yellow-700 text-white shadow-lg border-amber-400', isHighTier: true },
 ];
 
+/**
+ * Phần GIỚI THIỆU chương trình Sao Xứng Đáng — chỉ nội dung đọc.
+ *
+ * Ô tặng sao, bảng tổng hợp và khu quản lý kho sao đã tách sang các màn riêng
+ * (/one/ghi-nhan/tang-sao, /tong-hop, /quan-ly) — xem StarNav.tsx. Trước đây cả
+ * bốn nằm chồng trong một trang: cán bộ muốn xem sao của mình phải cuộn qua khu
+ * quản trị của Phòng TCTH.
+ */
 export const StarWorthy2026: React.FC = () => {
-  const { isGuest } = useAuth();
 
   return (
     <div className="mt-12 bg-gradient-to-b from-amber-50/50 via-white to-amber-50/30 rounded-3xl p-6 sm:p-8 border-2 border-amber-300 shadow-xl text-left animate-fade-in">
@@ -78,15 +82,13 @@ export const StarWorthy2026: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-        {/* LEFT COLUMN: QR GHI NHẬN SIMULATOR */}
+        {/* CỘT TRÁI: PHÂN BỔ SAO THEO ĐƠN VỊ */}
         <div className="lg:col-span-6 space-y-6">
-          {!isGuest && <StarRecognitionForm />}
-
           {/* QUOTA BREAKDOWN TABLE (PAGE 3 PDF) */}
           <div className="bg-white p-6 sm:p-7 rounded-3xl border border-slate-200 shadow-sm space-y-4">
             <div className="flex items-center justify-between pb-3 border-b">
               <span className="font-black text-xs uppercase text-brand-navy">📦 Phân Bổ 412 Sao Năm 2026 Theo Đơn Vị</span>
-              <span className="text-[10px] font-mono text-slate-500">Họp quý giao trước mồng 5</span>
+              <span className="text-[10px] font-mono text-slate-500">Giao trước mồng 5 đầu quý · Quý 1: trước 10/03/2026</span>
             </div>
 
             <div className="overflow-x-auto">
@@ -95,7 +97,7 @@ export const StarWorthy2026: React.FC = () => {
                   <tr className="bg-slate-100 text-slate-700 font-bold border-b">
                     <th className="p-2.5 rounded-l-xl">Quy mô nhân sự</th>
                     <th className="p-2.5">Nhóm Phòng / Lãnh đạo</th>
-                    <th className="p-2.5 text-right rounded-r-xl">Cả năm</th>
+                    <th className="p-2.5 text-right rounded-r-xl">Sao <span className="font-black">phát ra</span> / năm</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-600">
@@ -106,12 +108,12 @@ export const StarWorthy2026: React.FC = () => {
                   </tr>
                   <tr>
                     <td className="p-2.5 font-bold text-slate-800">10 - 13 người (6 Sao/quý)</td>
-                    <td className="p-2.5">Phòng DVKH, P. Khoái Châu, Văn Giang, Văn Lâm, Yên Mỹ</td>
+                    <td className="p-2.5">Phòng DVKH (13), P. Văn Lâm (12), P. Khoái Châu (10), P. Văn Giang (10), PGD Ocean City (10, tên cũ: P. Yên Mỹ)</td>
                     <td className="p-2.5 text-right font-black text-brand-navy">24 Sao / phòng</td>
                   </tr>
                   <tr>
                     <td className="p-2.5 font-bold text-slate-800">7 - 9 người (5 Sao/quý)</td>
-                    <td className="p-2.5">Phòng Bán lẻ, P. Ân Thi, P. HTTD</td>
+                    <td className="p-2.5">Phòng Bán lẻ (9), P. Ân Thi (8), P. HTTD (7)</td>
                     <td className="p-2.5 text-right font-black text-brand-navy">20 Sao / phòng</td>
                   </tr>
                   <tr className="bg-amber-50/60">
@@ -127,8 +129,12 @@ export const StarWorthy2026: React.FC = () => {
                 </tbody>
               </table>
             </div>
-            <p className="text-[11px] text-slate-500 italic">
-              *Tập thể được nhận Sao có thể phân bổ lại cho các cá nhân trong phòng tham gia trực tiếp thương vụ.
+            <p className="text-[11px] text-slate-500 italic leading-relaxed">
+              *Đây là số Sao mỗi đơn vị được <strong>phát ra</strong> trong năm, không phải chỉ tiêu Sao phải nhận về.
+              Ngoài mức phân bổ này, cá nhân/tập thể còn được nhận Sao từ các chương trình, chiến dịch có gắn cơ chế Sao Xứng Đáng.
+              <br />
+              *Tập thể được nhận Sao có thể họp bàn và trao lại cho cán bộ trong phòng có đóng góp, tối đa bằng số Sao tập thể được nhận.
+              Khi đã phân bổ, tập thể vẫn giữ nguyên điểm KPI nhưng <strong>số Sao đã phân bổ không còn giá trị quy đổi quà</strong> cho tập thể.
             </p>
           </div>
         </div>
@@ -202,9 +208,6 @@ export const StarWorthy2026: React.FC = () => {
         </div>
 
       </div>
-
-      {/* Khối phân tích Sao (dữ liệu nội bộ — ẩn với khách đối tác) */}
-      {!isGuest && <StarAnalytics />}
 
     </div>
   );

@@ -112,3 +112,18 @@ export const getMilestoneInfo = (totalStars: number): MilestoneInfo => {
 /** Định dạng tiền VND theo locale vi-VN, ví dụ 3.400.000 ₫ */
 export const formatVnd = (n: number): string =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
+
+// ---- Điểm KPI (văn bản triển khai mục 5.1) ----
+// 0,5 điểm KPI cho mỗi sao hợp lệ, cộng dồn cuối năm; TRẦN 10 điểm cho mỗi
+// cá nhân / tập thể.
+
+export const KPI_PER_STAR = 0.5;
+export const KPI_CAP = 10;
+
+/** Điểm KPI tích lũy từ số sao, đã áp trần 10 điểm */
+export const getKpiPoints = (stars: number): number =>
+  Math.min(Math.max(stars, 0) * KPI_PER_STAR, KPI_CAP);
+
+/** Hiển thị điểm KPI kiểu Việt Nam: 0,5 / 1 / 1,5 … */
+export const formatKpi = (points: number): string =>
+  points.toLocaleString('vi-VN', { maximumFractionDigits: 1 });
