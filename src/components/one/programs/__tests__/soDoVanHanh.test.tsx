@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { SoDoVanHanh } from '../SoDoVanHanh';
+import { SoDoLuongViec, catDong } from '../SoDoLuongViec';
 import {
   CREDIT_360_VAN_HANH, MO_HINH_VAN_HANH, timVaiTro, tongThoiLuongPhien,
 } from '@/data/one/vanHanhChuongTrinh';
@@ -113,5 +114,55 @@ describe('Mô hình vận hành Credit 360', () => {
     dung();
     const nguon = screen.getByText(/^Nguồn:/);
     expect(within(nguon).getByText(/Mẫu biểu 01-BHYC360/)).toBeInTheDocument();
+  });
+});
+
+describe('Sơ đồ luồng việc (SVG)', () => {
+  it('cắt nhãn thành đúng số dòng, không nuốt chữ khi vừa đủ chỗ', () => {
+    // Lỗi cũ: vòng lặp thoát sớm nên «Hoàn thiện & trình phê duyệt» ra thành
+    // «Hoàn thiện & trình / phê duyệt…» dù hai dòng thừa sức chứa hết
+    expect(catDong('Hoàn thiện & trình phê duyệt', 20, 2)).toEqual([
+      'Hoàn thiện & trình',
+      'phê duyệt',
+    ]);
+    expect(catDong('Đăng ký phiên', 20, 2)).toEqual(['Đăng ký phiên']);
+    // Quá dài thật thì mới được cắt, và phải có dấu «…» để người đọc biết còn nữa
+    const dai = catDong('Một nhãn rất dài vượt quá hai dòng cho phép của ô sơ đồ', 12, 2);
+    expect(dai).toHaveLength(2);
+    expect(dai[1].endsWith('…')).toBe(true);
+  });
+
+  it('làn xếp theo thứ tự vai trò nhận việc, bước 1 nằm ở làn đầu tiên', () => {
+    // Xếp theo thứ tự khai trong mô hình thì bước 1 rơi vào cột thứ hai và mắt
+    // phải nhảy ngược lại để tìm chỗ bắt đầu
+    render(<MemoryRouter><SoDoLuongViec moHinh={CREDIT_360_VAN_HANH} /></MemoryRouter>);
+    const vaiTroDauTien = timVaiTro(CREDIT_360_VAN_HANH, CREDIT_360_VAN_HANH.buoc[0].vaiTro);
+    const tenLan = screen.getByRole('img').querySelectorAll('text');
+    expect(tenLan[0].textContent).toBe(vaiTroDauTien.ten);
+  });
+
+  it('sơ đồ có nhãn cho trình đọc màn hình, không phải một hình câm', () => {
+    render(<MemoryRouter><SoDoLuongViec moHinh={CREDIT_360_VAN_HANH} /></MemoryRouter>);
+    expect(screen.getByRole('img')).toHaveAttribute(
+      'aria-label',
+      expect.stringContaining(`${CREDIT_360_VAN_HANH.buoc.length} bước`),
+    );
+  });
+
+  it('dải thời gian: màu đi theo VAI TRÒ, hai lượt của cùng một người cùng màu', () => {
+    // Người điều phối nói ở lượt 1 và lượt 5. Tô theo thứ tự lượt thì thành hai
+    // màu khác nhau và người xem tưởng là hai người.
+    const luot = CREDIT_360_VAN_HANH.phatBieu;
+    const dauTien = luot[0];
+    const cuoiCung = luot[luot.length - 1];
+    expect(dauTien.vaiTro).toBe(cuoiCung.vaiTro);
+    expect(timVaiTro(CREDIT_360_VAN_HANH, dauTien.vaiTro).mau).toBe(
+      timVaiTro(CREDIT_360_VAN_HANH, cuoiCung.vaiTro).mau,
+    );
+  });
+
+  it('mỗi vai trò có một màu riêng — không hai vai trò trùng màu', () => {
+    const mau = CREDIT_360_VAN_HANH.vaiTro.map((v) => v.mau);
+    expect(new Set(mau).size).toBe(mau.length);
   });
 });

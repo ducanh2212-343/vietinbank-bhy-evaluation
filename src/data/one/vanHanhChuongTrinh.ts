@@ -31,6 +31,19 @@ export interface VaiTroVanHanh {
   tenNgan: string;
   /** Trách nhiệm chính, viết cho cán bộ đọc chứ không phải trích quy chế */
   trachNhiem: string;
+  /**
+   * Màu nhận diện của vai trò trên sơ đồ.
+   *
+   * Đặt trong DỮ LIỆU chứ không phát sinh theo thứ tự lúc vẽ: nguyên tắc «màu đi
+   * theo đối tượng, không đi theo thứ hạng». Người điều phối phát biểu ở lượt 1
+   * và lượt 5 — hai lượt đó phải cùng màu thì người xem mới thấy là cùng một
+   * người, còn tô theo thứ tự lượt thì thành hai màu khác nhau.
+   *
+   * Sáu màu đã qua bộ kiểm bảng màu (dải sáng, sàn chroma, tách bạch với mắt mù
+   * màu deutan/tritan ΔE ≥ 9, tương phản ≥ 3:1 trên nền trắng). Đổi màu thì phải
+   * chạy lại bộ kiểm, đừng chọn bằng mắt.
+   */
+  mau: string;
 }
 
 export interface BuocVanHanh {
@@ -45,10 +58,18 @@ export interface BuocVanHanh {
   dauRa: string;
   /** Mốc thời gian ràng buộc (nếu có) */
   moc?: string;
+  /** Bản rút gọn của `moc` cho ô sơ đồ (≤ 24 ký tự) — ô hẹp không chứa nổi câu đầy đủ */
+  mocNgan?: string;
   /** Mã biểu mẫu dùng ở bước này */
   bieuMau?: string[];
   /** Bước làm ngay trên cổng — dẫn thẳng tới màn hình đó */
   duongDan?: string;
+  /**
+   * Nhánh rẽ khỏi dòng chảy chính. Sơ đồ chỉ vẽ một dòng thẳng thì người đọc
+   * tưởng mọi hồ sơ đều phải qua phiên — nhánh «không đủ ngưỡng» phải nhìn thấy
+   * được, nếu không cán bộ sẽ đưa cả hồ sơ nhỏ ra họp cho chắc.
+   */
+  nhanhRe?: { nhan: string; ketQua: string };
 }
 
 /** Một lượt phát biểu trong phiên — dựng sơ đồ thứ tự phát biểu */
@@ -94,6 +115,8 @@ export interface MoHinhVanHanh {
   buoc: BuocVanHanh[];
   phatBieu: LuotPhatBieu[];
   bieuMau: BieuMauChuongTrinh[];
+  /** Điểm dừng của dòng chảy — nơi hồ sơ rời khỏi phạm vi chương trình */
+  ketThuc: { vaiTro: string; nhan: string };
   /** Văn bản gốc mà mô hình này chép lại */
   nguon: string;
 }
@@ -105,6 +128,7 @@ const VAI_TRO_C360: VaiTroVanHanh[] = [
     tenNgan: 'Điều phối',
     trachNhiem:
       'Giám đốc Chi nhánh (hoặc Phó Giám đốc được ủy quyền): mở phiên, giữ nhịp thảo luận, chốt kết luận và các việc phải hoàn thiện.',
+    mau: '#1D4ED8',
   },
   {
     ma: 'phong-de-xuat',
@@ -112,6 +136,7 @@ const VAI_TRO_C360: VaiTroVanHanh[] = [
     tenNgan: 'Phòng đề xuất',
     trachNhiem:
       'Phòng/PGD có hồ sơ: đăng ký phiên, gửi hồ sơ trước, cử cán bộ trình bày, giải trình và tiếp thu để hoàn thiện tờ trình.',
+    mau: '#0D9488',
   },
   {
     ma: 'can-bo-trinh-bay',
@@ -119,6 +144,7 @@ const VAI_TRO_C360: VaiTroVanHanh[] = [
     tenNgan: 'CB trình bày',
     trachNhiem:
       'Cán bộ QHKH/thẩm định trực tiếp hồ sơ: trình bày khách hàng, phương án và rủi ro đã nhận diện; trả lời phản biện.',
+    mau: '#B45309',
   },
   {
     ma: 'thanh-vien',
@@ -126,6 +152,7 @@ const VAI_TRO_C360: VaiTroVanHanh[] = [
     tenNgan: 'Thành viên',
     trachNhiem:
       'Phó Giám đốc, lãnh đạo phòng và cán bộ được mời: phản biện từ góc nhìn của mình, ghi ý kiến vào phiếu đính kèm biên bản.',
+    mau: '#7C3AED',
   },
   {
     ma: 'thu-ky',
@@ -133,6 +160,7 @@ const VAI_TRO_C360: VaiTroVanHanh[] = [
     tenNgan: 'Thư ký',
     trachNhiem:
       'Ghi biên bản theo Mẫu biểu 01, thu phiếu ý kiến thành viên, ghi nhật ký phiên lên cổng sau khi kết thúc.',
+    mau: '#0284C7',
   },
   {
     ma: 'cap-tham-quyen',
@@ -140,6 +168,7 @@ const VAI_TRO_C360: VaiTroVanHanh[] = [
     tenNgan: 'Cấp phê duyệt',
     trachNhiem:
       'Người/cấp có thẩm quyền cấp GHTD theo quy định. Phiên Credit 360 KHÔNG thay quyền này.',
+    mau: '#BE123C',
   },
 ];
 
@@ -152,6 +181,10 @@ const BUOC_C360: BuocVanHanh[] = [
     moTa:
       'Đối chiếu hồ sơ với ngưỡng GHTD của phân khúc và các điều kiện bắt buộc. Đủ ngưỡng là phải vào phiên, không phải tùy chọn.',
     dauRa: 'Kết luận hồ sơ có thuộc diện đưa vào phiên hay không',
+    nhanhRe: {
+      nhan: 'Chưa đủ ngưỡng',
+      ketQua: 'Trình theo quy trình thường',
+    },
   },
   {
     ma: 'dang-ky',
@@ -182,6 +215,7 @@ const BUOC_C360: BuocVanHanh[] = [
       'Chốt giờ trong khung ưu tiên, xác định thành phần dự và cử thư ký. Người điều phối mở phiên và nêu phạm vi thảo luận.',
     dauRa: 'Phiên bắt đầu, thành phần dự đã được ghi nhận',
     moc: 'Chiều thứ 2 · sáng thứ 3 · thứ 5 hằng tuần',
+    mocNgan: 'T2 chiều · T3 sáng · T5',
   },
   {
     ma: 'thao-luan',
@@ -212,6 +246,7 @@ const BUOC_C360: BuocVanHanh[] = [
       'Phòng tiếp thu ý kiến, bổ sung nội dung đánh giá vào tờ trình thẩm định rồi trình cấp thẩm quyền theo quy định hiện hành.',
     dauRa: 'Tờ trình đã bổ sung, trình đúng cấp thẩm quyền',
     moc: 'Theo ngày đã chốt tại phiên',
+    mocNgan: 'Theo ngày chốt tại phiên',
   },
   {
     ma: 'ghi-so',
@@ -299,6 +334,10 @@ export const CREDIT_360_VAN_HANH: MoHinhVanHanh = {
   buoc: BUOC_C360,
   phatBieu: PHAT_BIEU_C360,
   bieuMau: BIEU_MAU_C360,
+  ketThuc: {
+    vaiTro: 'cap-tham-quyen',
+    nhan: 'Cấp thẩm quyền quyết định cấp GHTD',
+  },
   nguon:
     'Chương trình Bac Hung Yen Credit 360 (ban hành 06/2026) và Mẫu biểu 01-BHYC360. ' +
     'Ngưỡng GHTD, khung giờ triệu tập và yêu cầu Timemark chép lại từ nội dung đang công bố trên cổng.',
@@ -317,6 +356,7 @@ export function timVaiTro(moHinh: MoHinhVanHanh, ma: string): VaiTroVanHanh {
       ten: ma,
       tenNgan: ma,
       trachNhiem: '',
+      mau: '#64748B',
     }
   );
 }

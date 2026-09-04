@@ -1,12 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ArrowRight, CheckCircle2, Clock, Download, FileText, Info, ShieldAlert, Timer, Users,
+  ArrowRight, CheckCircle2, Clock, Download, FileText, Info, ShieldAlert, Users,
 } from 'lucide-react';
 import {
   timVaiTro, tongThoiLuongPhien,
   type BieuMauChuongTrinh, type MoHinhVanHanh,
 } from '@/data/one/vanHanhChuongTrinh';
+import { DaiThoiGianPhien, SoDoLuongViec } from './SoDoLuongViec';
 
 /**
  * SƠ ĐỒ VẬN HÀNH của một chương trình Bắc Hưng Yên Ways.
@@ -145,8 +146,13 @@ export const SoDoVanHanh: React.FC<{ moHinh: MoHinhVanHanh }> = ({ moHinh }) => 
         <KhoiTieuDe
           so="2"
           tieuDe="Đường đi của một hồ sơ"
-          phu={`${moHinh.buoc.length} bước, từ lúc sàng lọc tới lúc ghi nhật ký. Mỗi bước ghi rõ ai làm và kết thúc bằng cái gì.`}
+          phu={`${moHinh.buoc.length} bước, từ lúc sàng lọc tới lúc ghi nhật ký. Mỗi cột là một vai trò — nhìn sơ đồ là thấy việc chuyền tay qua mấy người.`}
         />
+        <SoDoLuongViec moHinh={moHinh} />
+
+        <p className="mb-3 mt-6 text-[10px] font-black uppercase tracking-widest text-slate-500">
+          Chi tiết từng bước
+        </p>
         <ol>
           {moHinh.buoc.map((buoc, i) => {
             const vaiTro = timVaiTro(moHinh, buoc.vaiTro);
@@ -231,42 +237,7 @@ export const SoDoVanHanh: React.FC<{ moHinh: MoHinhVanHanh }> = ({ moHinh }) => 
           tieuDe="Thứ tự phát biểu trong phiên"
           phu={`Gợi ý cho một phiên khoảng ${tongPhut} phút. Biết trước lượt của mình thì ai cũng chuẩn bị được đúng phần mình nói.`}
         />
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          {moHinh.phatBieu.map((luot, i) => {
-            const vaiTro = timVaiTro(moHinh, luot.vaiTro);
-            // Bề rộng dải thời lượng tỉ lệ với số phút — nhìn là thấy phần thảo
-            // luận chiếm nhiều thời gian nhất, không phải phần trình bày
-            const tiLe = Math.round((luot.phut / tongPhut) * 100);
-            return (
-              <div
-                key={luot.thuTu}
-                className={`flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:gap-4 ${
-                  i > 0 ? 'border-t border-slate-100' : ''
-                }`}
-              >
-                <span
-                  aria-hidden
-                  className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-slate-900 text-[11px] font-black text-white"
-                >
-                  {luot.thuTu}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-black text-slate-900">{vaiTro.ten}</span>
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500">
-                      <Timer className="h-3.5 w-3.5" />
-                      ~{luot.phut} phút
-                    </span>
-                  </div>
-                  <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{luot.noiDung}</p>
-                </div>
-                <div className="hidden h-2 w-40 shrink-0 overflow-hidden rounded-full bg-slate-100 sm:block">
-                  <div className="h-full rounded-full bg-emerald-500" style={{ width: `${tiLe}%` }} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <DaiThoiGianPhien moHinh={moHinh} />
       </section>
 
       {/* ---- 4. Ai làm gì ---- */}
@@ -275,7 +246,12 @@ export const SoDoVanHanh: React.FC<{ moHinh: MoHinhVanHanh }> = ({ moHinh }) => 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {moHinh.vaiTro.map((v) => (
             <div key={v.ma} className="rounded-2xl border border-slate-200 bg-white p-4">
-              <p className="text-sm font-black text-slate-900">{v.ten}</p>
+              {/* Chấm màu trùng với màu vai trò trên sơ đồ — bảng này là chú giải
+                  của sơ đồ, không phải một danh sách rời */}
+              <p className="flex items-center gap-2 text-sm font-black text-slate-900">
+                <span aria-hidden className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: v.mau }} />
+                {v.ten}
+              </p>
               <p className="mt-1.5 text-xs leading-relaxed text-slate-600">{v.trachNhiem}</p>
             </div>
           ))}
