@@ -253,10 +253,20 @@ thường là một loạt phiếu của cùng một lãnh đạo.
 | 241, 250 | Phạm Thị Diễm Ly | Nguyễn Đức Thái Hoàng |
 | 287 | Chu Hồng Hải | Nguyễn Thị Huyền |
 
-Hai điểm phải nói rõ để TCTH biết mà sửa: tin Zalo **không có ngày trao** nên cả 6
-phiếu ghi ngày 04/09 (ngày nhập) — quý thống kê vẫn đúng nhưng ngày thì không phải
-ngày trao thật; và phiếu serial 75 **tin Lark bỏ trống lý do**, tạm ghi
-"(Tin Lark để trống lý do — chờ Phòng KHDN bổ sung)", cần Phòng KHDN điền lại.
+Hai điểm đã hỏi lại chủ chương trình ngày 04/09 và **đã chốt**:
+
+- **Ngày trao**: tin Zalo không có ngày nên cả 6 phiếu ghi ngày 04/09 (ngày nhập).
+  Chủ chương trình chốt *"lấy ngày hôm nay cũng được"* — giữ nguyên, không truy ngày cũ.
+- **Phiếu serial 75 không có lý do**: tin Lark bỏ trống ô này. Không phải sơ suất của
+  người trao mà là **điểm yếu của form Lark — nó không bắt nhập được**. Vì vậy KHÔNG
+  chờ ai bổ sung: phiếu ghi thẳng *"Ghi nhận từ đợt trao qua Lark — mẫu cũ không bắt
+  buộc nên phiếu gốc không lưu nội dung"*, nói đúng chuyện đã xảy ra thay vì treo một
+  việc không có người làm.
+
+  Đây chính là lỗ mà cổng đã bịt sẵn: `award_star` bắt buộc vế «vì đã» cho **mọi** chế
+  độ, kể cả nhập bù — phiếu trống lý do không ghi được. Đối chiếu lại toàn bộ 179 phiếu:
+  **0 phiếu trống lý do**; 6 phiếu trống vế «đem lại» đúng bằng 6 phiếu nhập bù từ Lark,
+  vì mẫu cũ không có ô đó.
 
 ## 3f. Số sao của đợt bàn giao hụt so với dải (TCTH báo 04/09)
 
