@@ -74,12 +74,20 @@ riêng, Giám đốc duyệt được, trigger chặn bản hết hạn · resol
 riêng rồi lùi về chuẩn sau khi job thu hồi · thu hồi thẻ → `revoked` kèm liên hệ Chi
 nhánh · cán bộ sửa được SĐT, không sửa được chức danh · audit có vết · cron đăng ký.
 
+### Đã áp vào CSDL thật (04/09/2026)
+
+Cả ba migration đã áp vào project `whlysprzsguehxmrjwha` theo đúng thứ tự. Sau khi áp:
+12 đơn vị, 19 chức danh đối ngoại, 15 chức danh nội bộ — **toàn bộ còn `draft`**, chờ rà
+bản dịch rồi duyệt. Chạy khô `nc_dong_bo_hang_loat_tu_343()` trên 100 hồ sơ nhân sự thật
+rồi ROLLBACK: **100/100 dựng được bản nháp, 0 lỗi, 0 người thiếu chức danh đối ngoại** —
+nghĩa là nút «Dựng nháp toàn bộ từ 343» chạy được ngay, chưa có hồ sơ danh thiếp nào
+được tạo thật (TCTH bấm nút khi muốn).
+
 ## 4. Việc phải làm khi triển khai (theo thứ tự)
 
-1. **Áp migration** `20261004090000_danh_thiep_so_nen_tang.sql`, `20261004090100_danh_thiep_so_du_lieu_moi.sql`
-   rồi `20261004090200_danh_thiep_so_tu_tao_ban_nhap.sql` vào project `whlysprzsguehxmrjwha`
-   (SQL Editor). Ghi lại vào README. Regenerate `src/integrations/supabase/types.ts`
-   (sau đó có thể đổi `db` trong `src/lib/danhThiep/db.ts` về `supabase`).
+1. ~~**Áp migration**~~ — đã xong 04/09/2026 (xem trên). Còn lại: regenerate
+   `src/integrations/supabase/types.ts` (sau đó có thể đổi `db` trong
+   `src/lib/danhThiep/db.ts` về `supabase`).
 2. **Deploy edge function** `danh-thiep-vcard` (`config.toml` đã khai `verify_jwt = false`).
    Kiểm: `curl -I "https://whlysprzsguehxmrjwha.supabase.co/functions/v1/danh-thiep-vcard?slug=abc"` → 404 (chưa có thẻ) chứ không phải 401/500.
 3. **Phát hành bản web** (Cloudflare Workers Builds). Kiểm định tuyến:

@@ -202,9 +202,14 @@ lên thẻ, nhân sự thuê ngoài dùng mẫu riêng — mọi luật thực t
 (TCTH + Giám đốc duyệt chức danh riêng); thẻ của tôi: `/vcard`. Trang công khai là entry riêng `card.html`
 (~58 KB gzip, LCP < 1 s trên 4G), ánh xạ `/card/*` bằng `public/_redirects`.
 
-**Trạng thái (02/09/2026):** migration `20261004090000_danh_thiep_so_nen_tang.sql`,
-`20261004090100_danh_thiep_so_du_lieu_moi.sql` và `20261004090200_danh_thiep_so_tu_tao_ban_nhap.sql` **chưa áp** (đã chạy khô 27 kịch bản trên
-project thật, rollback, đạt 27/27); edge function `danh-thiep-vcard` **chưa deploy**.
+**Trạng thái (04/09/2026):** cả ba migration `20261004090000_danh_thiep_so_nen_tang.sql`,
+`20261004090100_danh_thiep_so_du_lieu_moi.sql` và `20261004090200_danh_thiep_so_tu_tao_ban_nhap.sql`
+**đã áp** vào project `whlysprzsguehxmrjwha` (04/09/2026) — 12 đơn vị, 19 chức danh đối
+ngoại, 15 chức danh nội bộ, tất cả ở trạng thái `draft` chờ rà bản dịch rồi duyệt. Chạy
+khô `nc_dong_bo_hang_loat_tu_343()` trên dữ liệu thật rồi rollback: 100/100 hồ sơ dựng
+được bản nháp, 0 lỗi, 0 người thiếu chức danh đối ngoại. Còn lại: edge function
+`danh-thiep-vcard` **chưa deploy**; địa chỉ và số điện thoại Chi nhánh (`CN_BHY`) mới có
+tên đường, **chưa có số nhà và hotline**.
 Checklist triển khai và các điểm cần Giám đốc quyết: `docs/danh-thiep-so-2026-09.md`.
 
 ## Rà soát bảo mật & chống bot đăng nhập (24/08/2026)
