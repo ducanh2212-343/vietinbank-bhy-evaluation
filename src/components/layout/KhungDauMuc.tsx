@@ -87,9 +87,17 @@ export function TieuDeDauMuc({ icon: Icon, nhan, tong = 'sang', dangXem = false,
       >
         <Icon className="h-4 w-4" />
       </span>
+      {/*
+        Tên nhóm XUỐNG DÒNG chứ không cắt bằng «…». Ở bảng 4 cột mỗi khung chỉ
+        rộng ~230px, trừ ô biểu tượng, khoảng đệm và mũi tên thì phần chữ còn
+        ~138px — vừa đủ cắt cụt đúng những tên dài nhất và cũng là những tên
+        quan trọng nhất ("Bắc Hưng Yên Sharing", "…Connect", "…Credit 360").
+        Đầu mục lớn mà phải rê chuột lên mới biết tên đầy đủ thì hỏng mục đích.
+        Mục CON vẫn cắt một dòng — chúng nhiều và ngắn, giữ nhịp quét mắt.
+      */}
       <span
         className={cn(
-          'min-w-0 flex-1 truncate text-[13.5px] font-bold leading-snug tracking-tight',
+          'min-w-0 flex-1 text-balance break-words text-[13.5px] font-bold leading-snug tracking-tight',
           tong === 'sang' ? 'text-primary' : 'text-white',
         )}
       >

@@ -59,10 +59,27 @@ function laMegaMenu(section: NavSection): boolean {
  * mép này đã lùi vào 60–146px vì logo. Trừ ít quá thì ở dải 1024–1100px bảng thò
  * ra khỏi màn hình, sinh thanh cuộn ngang cho cả trang.
  */
+/**
+ * Số cột tối đa bám theo SỐ KHUNG của khu, không cố định.
+ *
+ * Bắc Hưng Yên Ways chỉ có 6 khung: ép bốn cột thì trình duyệt cân chiều cao
+ * xong vẫn bỏ trống hẳn cột thứ tư, bảng rộng 1280px mà một phần tư là khoảng
+ * trắng. Chiêu thức 3 có 8 khung, thiếu cột thứ tư là bảng dài thêm 400px.
+ */
+function coCotThuTu(section: NavSection): boolean {
+  return (section.items ?? []).length >= 7;
+}
+
 function beNgangBang(section: NavSection): string {
-  return laMegaMenu(section)
-    ? 'w-[min(64rem,calc(100vw-12rem))]'
-    : 'w-[min(20rem,calc(100vw-12rem))]';
+  if (!laMegaMenu(section)) return 'w-[min(20rem,calc(100vw-12rem))]';
+  // Bảng nới lên 80rem đúng ở mốc bật cột thứ tư (1536px): giữ 64rem mà chia
+  // bốn thì mỗi khung chỉ còn ~230px, tên thương hiệu phải xuống hai dòng còn
+  // nhãn mục con thì cụt («Bảng tổng hợp & thi đ…»). Màn hình đủ rộng để chia
+  // bốn cột thì cũng đủ rộng để cho bảng thêm 256px. Khu ba cột giữ 64rem —
+  // nới thêm chỉ làm khung dài ra chứ không thêm được mục nào.
+  return coCotThuTu(section)
+    ? 'w-[min(64rem,calc(100vw-12rem))] 2xl:w-[min(80rem,calc(100vw-12rem))]'
+    : 'w-[min(64rem,calc(100vw-12rem))]';
 }
 
 /**
@@ -116,9 +133,16 @@ function BangMenu({ section, onDieuHuong }: { section: NavSection; onDieuHuong: 
           // thấy hết. Columns rót khung xuống chỗ trống gần nhất, bảng gọn lại
           // còn khoảng chiều cao cũ. Đổi lại thứ tự đọc là dọc theo cột — đúng
           // thói quen đọc một bảng menu nhiều cột.
-          laMega
-            ? 'gap-x-5 columns-1 sm:columns-2 min-[900px]:columns-3 xl:columns-4'
-            : 'flex flex-col gap-1.5',
+          //
+          // Cột thứ tư chỉ bật từ 1536px chứ không phải 1280px, và đúng ở mốc đó
+          // bảng cũng nới lên 80rem (xem beNgangBang) — hai thứ phải đi cùng
+          // nhau thì khung mới đủ ~305px cho tên nhóm và nhãn mục con dài nhất.
+          // Dải 1280–1535px giữ ba cột: khung ~330px, cũng vừa.
+          laMega && coCotThuTu(section)
+            ? 'gap-x-5 columns-1 sm:columns-2 min-[900px]:columns-3 2xl:columns-4'
+            : laMega
+              ? 'gap-x-5 columns-1 sm:columns-2 min-[900px]:columns-3'
+              : 'flex flex-col gap-1.5',
         )}
       >
         {/*
