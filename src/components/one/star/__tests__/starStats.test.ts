@@ -10,6 +10,7 @@ import type { StarRecord } from '../useStarRecords';
 let seq = 0;
 const rec = (p: Partial<StarRecord> & { name: string; department: string }): StarRecord => ({
   id: `r${++seq}`,
+  departmentGoc: p.department,
   stars: 1,
   reason: '',
   result: '',

@@ -304,6 +304,50 @@ số nằm cạnh nhau; lần sau chưa chắc.
 được nối lại — 64, 65 (Phạm Minh Hải Q2), 75 (Đỗ Việt Anh Q1), 287 (Nguyễn Thị Huyền
 Q3). Kiểm lại toàn bộ: **không còn đợt nào có số gắn khác số trong dải**.
 
+## 3g. Tên phòng trên phiếu: bốn hệ tên, và chỗ chúng đá nhau (TCTH báo 04/09)
+
+**Hiện tượng.** Bảng thi đua có **hai dòng cho Phòng Dịch vụ khách hàng** — một dòng
+"Phòng DVKH" và một dòng "Phòng Dịch vụ khách hàng".
+
+**Nguyên nhân.** Cổng đang có **bốn hệ tên phòng** song song:
+
+| Hệ tên | Ví dụ | Nguồn |
+|---|---|---|
+| Danh bạ (`departments`) | "Phòng Dịch vụ khách hàng", "Phòng giao dịch Ocean City" | màn Quản lý Phòng ban & Chức danh |
+| Sao Xứng Đáng | "Phòng DVKH", "PGD Ocean City" | `standardizeDepartment` |
+| Ideas / Credit 360 | "Phòng DVKH", **"PGD Yên Mỹ"** | `IDEA_DEPARTMENTS` (danh sách cứng) |
+| Cấu hình site | "PGD Yên Mỹ" | `site_content.departments_config` |
+
+Phiếu Sao lưu tên phòng dạng **bản chụp** lúc ghi, còn `buildDepartmentStats` gộp theo
+đúng chuỗi đó, nên mỗi cách viết đẻ ra một dòng. Phiếu nhập bù 04/09 (serial 287) rơi
+vào nhánh dự phòng của `award_star` — nhánh này lấy `departments.name`, tức **tên danh
+bạ đầy đủ** — nên nó thành dòng thứ hai bên cạnh 19 phiếu ghi "Phòng DVKH".
+
+**Sửa: quy nhãn NGAY TẠI CỬA ĐỌC.** `useStarRecords` cho mọi phiếu đi qua
+`quyVeNhanSao` (chính là `standardizeDepartment`, không đẻ luật thứ hai) rồi mới trả
+ra. Sửa một chỗ thì bảng thi đua, bảng cá nhân, ô lọc và file kết xuất cùng đúng —
+thay vì mỗi màn tự nhớ phải chuẩn hóa. Không nhận ra tên thì **trả nguyên chuỗi**,
+không đoán bừa: phiếu vẫn hiện, và bộ dò lệch vẫn báo được «nhãn không còn phòng».
+
+Đây cũng chính là cách phòng **đổi tên** lan sang toàn bộ tab Sao: tên danh bạ và tên
+trên phiếu cùng đi qua một luật, nên hai bên luôn gặp nhau ở một nhãn.
+
+**Không gộp ngầm.** Phiếu giữ thêm `departmentGoc` (chữ đang lưu thật), và khu Quản lý
+Sao có khối *«Phiếu còn lưu tên phòng cũ»* liệt kê từng cặp `chữ cũ → nhãn mới` kèm số
+phiếu. Gộp ở tầng hiển thị sửa được con số trên màn mà **không** sửa bảng dữ liệu; im
+lặng thì lần truy vấn tay hay kết xuất tiếp theo vẫn ra hai dòng và không ai hiểu vì sao.
+
+**Dữ liệu đã dọn:** 1 phiếu (serial 287, anh Chu Hồng Hải) đổi "Phòng Dịch vụ khách
+hàng" → "Phòng DVKH". Đối chiếu lại: 12 nhãn còn lại trên phiếu **khớp hết** danh mục
+chuẩn (11 phòng + Tổ FDI), không còn nhãn lạ.
+
+**Còn lại — ngoài phạm vi Sao:** "PGD Yên Mỹ" vẫn sống trong hệ tên **Ideas / Credit
+360 / Kho dữ liệu** (`IDEA_DEPARTMENTS`, `types.ts`, `site_content.departments_config`)
+và trên **2 ý tưởng** trong `portal_ideas`. Đổi tên ở đó phải sửa đồng thời hàm SQL
+`bhy_phong_ideas_sang_ho_so` — hàm này đang được `bhy_ideas_la_truong_phong` dùng để
+xét quyền Trưởng phòng bên Ideas, nên sai một nhịp là mất quyền duyệt. Vì vậy tách
+thành một việc riêng, chưa làm trong đợt này.
+
 ## 4. Trình tự đưa vào vận hành
 
 1. **Merge + deploy nhánh này** — chừng nào chưa deploy, màn nhập Excel cũ còn sống

@@ -15,7 +15,7 @@ import {
   type KetQuaDoiSoat, type StaffOption,
 } from './useStarSerials';
 import { useStarRecords } from './useStarRecords';
-import { laLechCanXuLy, type LoaiLech } from './starDepartments';
+import { gomNhanPhongCu, laLechCanXuLy, type LoaiLech } from './starDepartments';
 
 /** Nhãn hiển thị cho từng loại lệch giữa danh bạ và chương trình Sao */
 const NHAN_LECH: Record<LoaiLech, { tieuDe: string; mau: string }> = {
@@ -85,6 +85,10 @@ export const StarManagementPanel: React.FC = () => {
   // Lệch làm sai dữ liệu (phải xử lý) tách khỏi chênh quân số (chỉ tham khảo) —
   // chi nhánh giữ hạn mức cũ cả năm là hợp lệ, không nên báo đỏ mãi.
   const lechCanXuLy = useMemo(() => lechDanhMuc.filter(laLechCanXuLy), [lechDanhMuc]);
+  // Phiếu còn LƯU chữ phòng khác nhãn chuẩn. Màn hình đã gộp đúng khi hiển thị
+  // (useStarRecords quy nhãn ngay tại cửa đọc), nhưng bảng dữ liệu thì chưa sạch —
+  // im lặng thì lần kết xuất Excel tiếp theo vẫn ra hai dòng và không ai hiểu vì sao.
+  const nhanCuTrenPhieu = useMemo(() => gomNhanPhongCu(records), [records]);
   const chenhQuanSo = useMemo(() => lechDanhMuc.filter((l) => !laLechCanXuLy(l)), [lechDanhMuc]);
 
 
@@ -292,6 +296,28 @@ export const StarManagementPanel: React.FC = () => {
                   Phòng ban sửa ở màn <strong>Tổ chức &amp; Phân quyền → Quản lý Phòng ban &amp; Chức danh</strong>.
                   Nếu là phòng đổi tên, các phiếu Sao cũ cần được quy về nhãn mới thì bảng thi đua mới gộp làm một dòng.
                 </p>
+              </div>
+            )}
+
+            {nhanCuTrenPhieu.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-slate-100 space-y-1.5">
+                <p className="text-[10px] font-black uppercase text-slate-500">
+                  Phiếu còn lưu tên phòng cũ — bảng đã gộp đúng, dữ liệu thì chưa
+                </p>
+                <p className="text-[10px] text-slate-500 leading-relaxed">
+                  Các phiếu dưới đây lưu một cách viết khác của cùng một đơn vị (tên danh bạ đầy đủ,
+                  hoặc tên trước khi đổi). Mọi bảng trên cổng đã quy về nhãn chuẩn nên
+                  <strong> số liệu đang đúng</strong>; dòng này để Phòng TCTH biết còn phiếu nào cần
+                  dọn nếu muốn bảng dữ liệu gốc cũng sạch.
+                </p>
+                {nhanCuTrenPhieu.map((n) => (
+                  <div key={`${n.nhanCu}-${n.nhanMoi}`} className="flex flex-wrap items-center gap-2 text-[11px] p-2 rounded-lg bg-slate-50 border border-slate-100">
+                    <span className="font-bold text-slate-500 line-through">{n.nhanCu}</span>
+                    <span className="text-slate-400">→</span>
+                    <span className="font-black text-slate-800">{n.nhanMoi}</span>
+                    <span className="text-slate-600">· {n.soPhieu} phiếu</span>
+                  </div>
+                ))}
               </div>
             )}
 
