@@ -119,8 +119,12 @@ describe('Mô hình vận hành Credit 360', () => {
     // Đi từ người gần hồ sơ nhất tới Người điều phối
     expect(luot[0].viTri).toBe('Cán bộ trình bày');
     expect(luot[luot.length - 1].viTri).toMatch(/Giám đốc Chi nhánh/);
-    // «Phòng đầu mối theo phân khúc (nếu có)» là ghế tuỳ chọn, đúng chữ văn bản
-    expect(luot.find((l) => l.tuyChon)?.viTri).toBe('Phòng đầu mối theo phân khúc (nếu có)');
+    // Giám đốc chốt 04/09/2026: Phòng đầu mối theo phân khúc là ghế chính thức,
+    // ngay sau Phòng TCTH — không còn «nếu có»
+    const tcth = luot.findIndex((l) => l.viTri === 'Phòng Tổ chức tổng hợp');
+    expect(luot[tcth + 1].viTri).toBe('Phòng đầu mối theo phân khúc');
+    expect(luot.some((l) => l.tuyChon)).toBe(false);
+    expect(luot.find((l) => l.thuTu === 8)?.viTri).toBe('Phó Giám đốc 2 phụ trách Phòng');
     for (const l of luot) {
       // Tên vị trí có dấu ngoặc «(nếu có)» — phải thoát ký tự regex
       const an = l.viTri.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -228,5 +232,13 @@ describe('Sơ đồ phát biểu (bàn tròn)', () => {
   it('ghế cuối cùng là người điều phối — người kết luận ngồi đầu bàn', () => {
     const cuoi = CREDIT_360_VAN_HANH.phatBieu[CREDIT_360_VAN_HANH.phatBieu.length - 1];
     expect(cuoi.vaiTro).toBe('dieu-phoi');
+  });
+
+  it('thư ký phiên là Phòng phụ trách khoản vay — người lập biểu mẫu', () => {
+    // Giám đốc chốt 04/09/2026, thay cho dòng ký «THƯ KÝ» không có chủ trên Mẫu biểu 01
+    const phong = CREDIT_360_VAN_HANH.vaiTro.find((v) => v.ma === 'phong-qlkh');
+    expect(phong?.trachNhiem).toMatch(/THƯ KÝ phiên: Phòng phụ trách khoản vay lập Mẫu biểu 01 và 02/);
+    const buoc4 = CREDIT_360_VAN_HANH.buoc.find((b) => b.soVanBan === 'Bước 4');
+    expect(buoc4?.moTa).toMatch(/thư ký phiên/);
   });
 });

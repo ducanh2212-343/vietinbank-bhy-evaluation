@@ -16,23 +16,20 @@ lý — không phải để mã tự quyết.
 Mọi câu trong dữ liệu đều trích từ ba tệp này; mỗi khối ghi rõ mục. Số hiệu
 bước («Bước 3 · (iii)») giữ nguyên của văn bản, không đánh số lại.
 
-## Chỗ văn bản không thống nhất — cần Giám đốc chốt
+## Chỗ văn bản không thống nhất — Giám đốc đã chốt ngày 04/09/2026
 
-1. **Mốc gửi tài liệu trước phiên**: mục 4 (Người trình bày) ghi «trước tối
-   thiểu 01 ngày»; mục 5 Bước 1 và Bước 2 ghi «tối thiểu 03 ngày». Cổng đang
-   dùng **03 ngày** (phần quy trình cụ thể hơn) và ghi chú lệch ở dòng Nguồn.
-   Phần giới thiệu cũ của trang (EditableText `programs.credit360.schedule_content`)
-   vẫn ghi 01 ngày — sửa nội dung đó qua chế độ chỉnh sửa của quản trị.
-2. **Tên vị trí thứ 8 trong trình tự phát biểu**: văn bản ghi «PGĐ 2 Phụ trách
-   Phòng»; Giám đốc diễn giải ngày 04/09/2026 là «Phó Giám đốc hỗ trợ PGĐ phụ
-   trách Phòng». Cổng ghi cả hai.
-3. **«Phòng đầu mối theo phân khúc (nếu có)»** có trong trình tự phát biểu của
-   văn bản (giữa TCTH và PGĐ phụ trách) nhưng không có trong thứ tự Giám đốc nêu
-   ngày 04/09. Cổng giữ theo văn bản, vẽ ghế nét đứt và ghi «nếu có».
-4. **Thư ký**: Mẫu biểu 01 có dòng ký «THƯ KÝ», nhưng văn bản mục 5 Bước 4 giao
-   Người trình bày / lãnh đạo phòng kiểm soát hồ sơ lập biên bản, không có vai
-   trò thư ký riêng. Cổng theo văn bản: không có làn «Thư ký», biên bản thuộc
-   làn Phòng quản lý Khách hàng.
+| # | Vấn đề | Văn bản | Quyết định | Cổng đang thể hiện |
+| --- | --- | --- | --- | --- |
+| 1 | Mốc gửi tài liệu trước phiên | Mục 4: «01 ngày»; mục 5: «03 ngày» | **03 ngày** | Bước 1, Bước 2 và phần giới thiệu đều ghi 03 ngày |
+| 2 | Phòng đầu mối theo phân khúc | «(nếu có)», sau TCTH | **Có**, phát biểu sau Phòng TCTH | Ghế số 6, ghế chính thức |
+| 3 | Tên vị trí thứ 8 | «PGĐ 2 Phụ trách Phòng» | Dùng **«Phó Giám đốc 2 phụ trách Phòng»** | Ghế số 8 |
+| 4 | Thư ký | Mẫu biểu 01 có dòng ký «THƯ KÝ», văn bản không nêu | **Thư ký là Phòng phụ trách khoản vay**, là người lập biểu mẫu | Vai trò Phòng quản lý Khách hàng, Bước 4, mô tả Mẫu biểu 01 |
+
+Ghi chú kỹ thuật cho điểm 1: dòng «01 ngày» còn nằm ở phần giới thiệu cũ của
+trang (`EditableText` khoá `programs.credit360.schedule_content`). Giá trị mặc
+định trong mã đã đổi thành 03 ngày; nếu quản trị viên từng lưu đè nội dung này
+vào bảng `site_content` thì bản lưu đè thắng — phải sửa lại bằng chế độ chỉnh
+sửa của quản trị viên ngay trên trang.
 
 ## Những chỗ bản đầu trên cổng đã đoán sai và đã sửa theo văn bản
 

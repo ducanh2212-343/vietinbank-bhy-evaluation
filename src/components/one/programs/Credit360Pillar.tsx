@@ -476,7 +476,7 @@ export const Credit360Pillar: React.FC<Credit360PillarProps> = ({ images, onImag
             <p className="text-xs text-slate-600">
               <EditableText
                 id="programs.credit360.schedule_content"
-                defaultVal="Chiều thứ 2, Sáng thứ 3 hoặc ngày thứ 5 hằng tuần. Cán bộ trình bày gửi hồ sơ trước tối thiểu 01 ngày. Bắt buộc minh chứng ảnh cơ sở kinh doanh/TSBĐ chụp qua ứng dụng Timemark."
+                defaultVal="Chiều thứ 2, Sáng thứ 3 hoặc ngày thứ 5 hằng tuần. Cán bộ trình bày gửi hồ sơ trước tối thiểu 03 ngày. Bắt buộc minh chứng ảnh cơ sở kinh doanh/TSBĐ chụp qua ứng dụng Timemark."
                 multiline={true}
                 as="span"
                 className="text-xs"

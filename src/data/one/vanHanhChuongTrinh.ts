@@ -156,7 +156,7 @@ const VAI_TRO_C360: VaiTroVanHanh[] = [
     laAi:
       'Phòng khách hàng / Phòng giao dịch có hồ sơ đề xuất; lãnh đạo Phòng gồm Trưởng Phòng và Phó trưởng Phòng kiểm soát hồ sơ (nếu có).',
     trachNhiem:
-      'Lãnh đạo Phòng có trách nhiệm kiểm soát hồ sơ trước khi đề xuất tham gia phiên; Trưởng Phòng đăng ký lịch thảo luận với Người điều phối (đối với các KH phòng KHDN) hoặc thông qua phòng TCTH (với các Phòng còn lại). Lập biên bản ghi nhận phiên, trình ký ngay khi kết thúc phiên, lưu trữ 01 bản.',
+      'Lãnh đạo Phòng có trách nhiệm kiểm soát hồ sơ trước khi đề xuất tham gia phiên; Trưởng Phòng đăng ký lịch thảo luận với Người điều phối (đối với các KH phòng KHDN) hoặc thông qua phòng TCTH (với các Phòng còn lại). Là THƯ KÝ phiên: Phòng phụ trách khoản vay lập Mẫu biểu 01 và 02, trình ký ngay khi kết thúc phiên, ký với tư cách Thư ký, lưu trữ 01 bản.',
     mau: '#0D9488',
   },
   {
@@ -305,7 +305,7 @@ const BUOC_C360: BuocVanHanh[] = [
     icon: FileSignature,
     vaiTro: 'phong-qlkh',
     moTa:
-      'Người trình bày / lãnh đạo phòng kiểm soát hồ sơ lập biên bản ghi nhận phiên (đính kèm Mẫu biểu 02 ghi nhận ý kiến các thành viên tham dự) và trình ký ngay khi kết thúc phiên; lưu trữ tại Phòng quản lý khách hàng 01 bản, chuyển bộ phận HTTD lưu trữ 01 bản photo. Cập nhật kết quả vào sổ Credit 360 trên cổng để tra cứu lâu dài.',
+      'Phòng phụ trách khoản vay — thư ký phiên — lập biên bản ghi nhận phiên (đính kèm Mẫu biểu 02 ghi nhận ý kiến các thành viên tham dự) và trình ký ngay khi kết thúc phiên; lưu trữ tại Phòng quản lý khách hàng 01 bản, chuyển bộ phận HTTD lưu trữ 01 bản photo. Cập nhật kết quả vào sổ Credit 360 trên cổng để tra cứu lâu dài.',
     dauRa: 'Biên bản (Mẫu biểu 01) đã ký, kèm Mẫu biểu 02 — 01 bản tại Phòng QLKH, 01 bản photo tại HTTD',
     moc: 'Trình ký ngay khi kết thúc phiên',
     mocNgan: 'Ký ngay sau phiên',
@@ -372,13 +372,13 @@ const PHAT_BIEU_C360: LuotPhatBieu[] = [
   },
   {
     thuTu: 6,
-    viTri: 'Phòng đầu mối theo phân khúc (nếu có)',
+    viTri: 'Phòng đầu mối theo phân khúc',
     viTriNgan: 'Phòng đầu mối',
     vaiTro: 'thanh-vien',
-    tuyChon: true,
+    // Văn bản ghi «(nếu có)»; Giám đốc chốt 04/09/2026: có, phát biểu sau TCTH
     nhiemVu:
       'Đại diện lãnh đạo Phòng KHDN/KHBL đầu mối theo phân khúc. Nghiên cứu hồ sơ trước khi tham dự; đưa ra ý kiến, quan điểm, góp ý bổ sung các nội dung cần đánh giá, làm rõ, nhận diện các vấn đề tiềm ẩn (nếu có) và đề xuất các biện pháp kiểm soát trên tinh thần xây dựng và chia sẻ kinh nghiệm thực tiễn.',
-    nguon: 'Văn bản mục 4 (Người tham gia), mục 5 Bước 3 (iii)',
+    nguon: 'Văn bản mục 4 (Người tham gia), mục 5 Bước 3 (iii); Giám đốc chốt 04/09/2026',
   },
   {
     thuTu: 7,
@@ -391,7 +391,7 @@ const PHAT_BIEU_C360: LuotPhatBieu[] = [
   },
   {
     thuTu: 8,
-    viTri: 'Phó Giám đốc 2 phụ trách Phòng (PGĐ hỗ trợ PGĐ phụ trách Phòng)',
+    viTri: 'Phó Giám đốc 2 phụ trách Phòng',
     viTriNgan: 'PGĐ 2',
     vaiTro: 'thanh-vien',
     nhiemVu:
@@ -432,7 +432,7 @@ const BIEU_MAU_C360: TepTaiVe[] = [
     ma: '01',
     ten: 'Biên bản thảo luận phiên BHY Credit 360',
     moTa:
-      'Lập theo Bước 4: thành phần dự, thông tin khách hàng, đề xuất cấp GHTD, ý kiến thảo luận và kết luận. Ký bởi thư ký và người điều hành phiên, trình ký ngay khi kết thúc phiên. Lưu 01 bản tại Phòng quản lý khách hàng, chuyển HTTD 01 bản photo.',
+      'Lập theo Bước 4 bởi thư ký phiên — Phòng phụ trách khoản vay: thành phần dự, thông tin khách hàng, đề xuất cấp GHTD, ý kiến thảo luận và kết luận. Ký bởi Thư ký và Người điều hành phiên, trình ký ngay khi kết thúc phiên. Lưu 01 bản tại Phòng quản lý khách hàng, chuyển HTTD 01 bản photo.',
     tep: '/bieu-mau/credit-360/mau-bieu-01-bien-ban-phien-bhyc360.doc',
     kichCo: '86 KB · .doc',
   },
@@ -493,7 +493,7 @@ export const CREDIT_360_VAN_HANH: MoHinhVanHanh = {
   nguon:
     'Thông báo số …/TB-CNBHY-TCTH ngày 16/06/2026 của Giám đốc Chi nhánh v/v Triển khai chương trình «Bac Hung Yen Credit 360» (hiệu lực từ 22/06/2026), ' +
     'Mẫu biểu 01-BHYC360 (Biên bản thảo luận) và Mẫu biểu 02-BHYC360 (Biên bản ghi nhận ý kiến) đính kèm. ' +
-    'Văn bản ghi hai mốc gửi tài liệu: «trước tối thiểu 01 ngày» (mục 4) và «tối thiểu 03 ngày» (mục 5, Bước 2) — sơ đồ dùng mốc 03 ngày của phần quy trình.',
+    'Bốn điểm văn bản chưa thống nhất đã được Giám đốc chốt ngày 04/09/2026: gửi tài liệu trước 03 ngày; có Phòng đầu mối theo phân khúc phát biểu sau Phòng TCTH; dùng «Phó Giám đốc 2 phụ trách Phòng»; thư ký phiên là Phòng phụ trách khoản vay, lập biểu mẫu.',
 };
 
 /** Tra mô hình vận hành theo mã chương trình — chỗ để cắm 5 thương hiệu còn lại */
