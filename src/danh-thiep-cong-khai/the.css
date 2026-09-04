@@ -70,6 +70,12 @@
 }
 .nc-cta:active { transform: translateY(1px); }
 .nc-cta--mo { opacity: .55; cursor: default; }
+/* Nút phụ «Thêm vào Google Wallet»: viền thay vì nền đặc, để «Lưu vào danh bạ»
+   vẫn là hành động chính — phần lớn khách nước ngoài không dùng Google Wallet. */
+.nc-cta--wallet {
+  margin-top: 8px; background: #fff; color: var(--nc-navy);
+  border: 1.5px solid var(--nc-navy); box-shadow: none; font-size: 15px;
+}
 
 .nc-contacts { list-style: none; margin: 8px 0 0; padding: 4px 22px 8px; }
 .nc-contacts li { display: flex; flex-direction: column; padding: 10px 0; border-top: 1px solid var(--nc-line); }

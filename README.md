@@ -207,9 +207,15 @@ lên thẻ, nhân sự thuê ngoài dùng mẫu riêng — mọi luật thực t
 **đã áp** vào project `whlysprzsguehxmrjwha` (04/09/2026) — 12 đơn vị, 19 chức danh đối
 ngoại, 15 chức danh nội bộ, tất cả ở trạng thái `draft` chờ rà bản dịch rồi duyệt. Chạy
 khô `nc_dong_bo_hang_loat_tu_343()` trên dữ liệu thật rồi rollback: 100/100 hồ sơ dựng
-được bản nháp, 0 lỗi, 0 người thiếu chức danh đối ngoại. Còn lại: edge function
-`danh-thiep-vcard` **chưa deploy**; địa chỉ và số điện thoại Chi nhánh (`CN_BHY`) mới có
-tên đường, **chưa có số nhà và hotline**.
+được bản nháp, 0 lỗi, 0 người thiếu chức danh đối ngoại.
+Migration `20261005090000_danh_thiep_google_wallet.sql` (cấu hình Google Wallet + cờ
+`wallet_ready` trong `nc_resolve_card`) **đã áp** (04/09/2026). Hai edge function
+`danh-thiep-vcard` và `danh-thiep-wallet` **đã deploy** (04/09/2026, `verify_jwt = false`).
+
+Còn lại: địa chỉ và số điện thoại Chi nhánh (`CN_BHY`) mới có tên đường, **chưa có số nhà
+và hotline**; Google Wallet **chưa dùng được** cho tới khi có Issuer ID (nhập ở nút Cấu
+hình màn Quản trị VCard) và ba biến bí mật `GOOGLE_WALLET_SA_EMAIL`,
+`GOOGLE_WALLET_SA_KEY`, `GOOGLE_WALLET_ORIGIN` — chưa có thì nút Wallet tự ẩn.
 Checklist triển khai và các điểm cần Giám đốc quyết: `docs/danh-thiep-so-2026-09.md`.
 
 ## Rà soát bảo mật & chống bot đăng nhập (24/08/2026)

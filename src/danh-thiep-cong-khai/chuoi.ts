@@ -7,6 +7,7 @@ import type { MaNgonNgu } from '@/lib/danhThiep/ngonNgu';
 
 export interface ChuoiGiaoDien {
   luuDanhBa: string;
+  themVaoWallet: string;
   goi: string;
   guiEmail: string;
   chiDuong: string;
@@ -32,6 +33,7 @@ export interface ChuoiGiaoDien {
 export const CHUOI: Record<MaNgonNgu, ChuoiGiaoDien> = {
   vi: {
     luuDanhBa: 'Lưu vào danh bạ',
+    themVaoWallet: 'Thêm vào Google Wallet',
     goi: 'Gọi điện',
     guiEmail: 'Gửi email',
     chiDuong: 'Chỉ đường',
@@ -55,6 +57,7 @@ export const CHUOI: Record<MaNgonNgu, ChuoiGiaoDien> = {
   },
   en: {
     luuDanhBa: 'Save contact',
+    themVaoWallet: 'Add to Google Wallet',
     goi: 'Call',
     guiEmail: 'Email',
     chiDuong: 'Directions',
@@ -78,6 +81,7 @@ export const CHUOI: Record<MaNgonNgu, ChuoiGiaoDien> = {
   },
   zh_hans: {
     luuDanhBa: '保存到通讯录',
+    themVaoWallet: '添加到 Google Wallet',
     goi: '拨打电话',
     guiEmail: '发送邮件',
     chiDuong: '导航',
@@ -101,6 +105,7 @@ export const CHUOI: Record<MaNgonNgu, ChuoiGiaoDien> = {
   },
   zh_hant: {
     luuDanhBa: '儲存至通訊錄',
+    themVaoWallet: '加入 Google Wallet',
     goi: '撥打電話',
     guiEmail: '寄送郵件',
     chiDuong: '導航',
@@ -124,6 +129,7 @@ export const CHUOI: Record<MaNgonNgu, ChuoiGiaoDien> = {
   },
   ko: {
     luuDanhBa: '연락처 저장',
+    themVaoWallet: 'Google Wallet에 추가',
     goi: '전화 걸기',
     guiEmail: '이메일 보내기',
     chiDuong: '길찾기',
@@ -147,6 +153,7 @@ export const CHUOI: Record<MaNgonNgu, ChuoiGiaoDien> = {
   },
   ja: {
     luuDanhBa: '連絡先に保存',
+    themVaoWallet: 'Google ウォレットに追加',
     goi: '電話をかける',
     guiEmail: 'メールを送る',
     chiDuong: '道順',

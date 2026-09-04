@@ -9,7 +9,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Camera, Copy, Download, Eye, Loader2, Plus, QrCode, Send, Trash2 } from 'lucide-react';
+import { Camera, Copy, Download, Eye, Loader2, Plus, QrCode, Send, Trash2, Wallet } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +29,9 @@ import { taiTepVeMay, taoQrPng } from '@/lib/danhThiep/qr';
 import { HuyHieuTrangThai } from '@/components/danh-thiep/HuyHieuTrangThai';
 import { GIA_TRI_6_TRONG, NhapSauNgonNgu, raCotTen, type GiaTri6 } from '@/components/danh-thiep/NhapSauNgonNgu';
 import { KhungXemThe } from '@/components/danh-thiep/XemTruocThe';
+import { chuanBiAnhQr } from '@/lib/danhThiep/anhQrKenh';
+import { walletSanSang } from '@/lib/danhThiep/googleWallet';
+import { MaQrCuaThe } from '@/components/danh-thiep/MaQrCuaThe';
 
 const SUPABASE_URL: string = import.meta.env.VITE_SUPABASE_URL ?? 'https://whlysprzsguehxmrjwha.supabase.co';
 
@@ -48,13 +51,6 @@ async function nenAnh(file: File, maxPx: number, kieu: 'image/jpeg' | 'image/png
   return new Promise((ok, loi) => canvas.toBlob((b) => (b ? ok(b) : loi(new Error('Không nén được ảnh'))), kieu, 0.85));
 }
 
-async function kiemQrVuong(file: File): Promise<void> {
-  if (file.size > 500 * 1024) throw new Error('Ảnh QR phải ≤ 500 KB');
-  const bm = await createImageBitmap(file).catch(() => null);
-  if (!bm) throw new Error('Không đọc được ảnh');
-  if (bm.width < 500 || bm.height < 500) throw new Error('Ảnh QR phải ≥ 500×500 px');
-  if (Math.abs(bm.width - bm.height) > bm.width * 0.05) throw new Error('Ảnh QR phải vuông');
-}
 
 export default function DanhThiepCuaToiPage() {
   const { user } = useAuth();
@@ -73,6 +69,11 @@ export default function DanhThiepCuaToiPage() {
   const cb = data?.canBo ?? null;
   const hoatDong = !!cb && cb.card_enabled && !cb.revoked_at;
   const url = cb ? `${baseUrl}${cb.slug}` : '';
+  // Logo chỉ gắn vào giữa mã của thẻ cán bộ chính thức (mẫu đối tác không mang logo)
+  const logoTrenQr = cauHinh.logo_enabled !== false && !!cb && mauTheTheoLoai(cb.employment_type) === 'TPL_OFFICIAL';
+  // Nút Google Wallet chỉ hiện khi Chi nhánh đã đăng ký Issuer với Google —
+  // nút bấm vào chỉ để báo lỗi còn tệ hơn là không có nút
+  const walletBat = walletSanSang(cauHinh as Record<string, unknown>);
 
   const { data: luotQuet } = useQuery({
     queryKey: ['nc', 'luot-quet', cb?.id],
@@ -107,8 +108,13 @@ export default function DanhThiepCuaToiPage() {
       if (loai === 'anh') {
         blob = await nenAnh(file, 512, 'image/jpeg'); ten = `${cb.id}/anh.jpg`; kieu = 'image/jpeg';
       } else {
-        await kiemQrVuong(file);
-        blob = await nenAnh(file, 800, 'image/png'); ten = `${cb.id}/qr-${loai}.png`; kieu = 'image/png';
+        // Ảnh WeChat/Kakao là ảnh dọc có avatar và tên phía trên: máy tự dò mã QR
+        // rồi cắt đúng vùng mã, không bắt cán bộ tự cắt cho vuông nữa
+        const kq = await chuanBiAnhQr(file);
+        if (!kq.doDuoc) {
+          toast.warning('Chưa dò được mã QR trong ảnh — vẫn lưu ảnh đã cắt, xin quét thử bằng máy khác để chắc chắn.');
+        }
+        blob = kq.blob; ten = `${cb.id}/qr-${loai}.png`; kieu = 'image/png';
       }
       const { error } = await supabase.storage.from('nc-danh-thiep').upload(ten, blob, { upsert: true, contentType: kieu, cacheControl: '3600' });
       if (error) throw new Error(error.message);
@@ -233,7 +239,10 @@ export default function DanhThiepCuaToiPage() {
             </span>
           )}
         </div>
-        <KhungXemThe slug={cb.slug} gon />
+        <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
+          <KhungXemThe slug={cb.slug} gon />
+          <MaQrCuaThe url={`${url}?c=qr`} logo={logoTrenQr} hoatDong={hoatDong} />
+        </div>
         {!cb.external_title_id && !cb.custom_title_id && (
           <p className="mt-2 text-xs text-amber-200">Chưa gán được chức danh đối ngoại từ chức danh 343 của bạn — Phòng TCTH sẽ gán khi duyệt.</p>
         )}
@@ -256,12 +265,19 @@ export default function DanhThiepCuaToiPage() {
             {hoatDong && (
               <>
                 <Button size="sm" variant="outline" onClick={async () => {
-                  try { taiTepVeMay(await taoQrPng(`${url}?c=qr`, { logo: cauHinh.logo_enabled !== false && mauTheTheoLoai(cb.employment_type) === 'TPL_OFFICIAL' }), `${(cb.full_name_latin ?? cb.slug).replace(/[^A-Za-z0-9]+/g, '')}-QR.png`); }
+                  try { taiTepVeMay(await taoQrPng(`${url}?c=qr`, { logo: logoTrenQr }), `${(cb.full_name_latin ?? cb.slug).replace(/[^A-Za-z0-9]+/g, '')}-QR.png`); }
                   catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
                 }}><QrCode className="mr-1 h-4 w-4" /> Tải QR (chữ ký email)</Button>
                 <Button size="sm" variant="outline" asChild>
                   <a href={`${SUPABASE_URL}/functions/v1/danh-thiep-vcard?slug=${cb.slug}&lang=vi&c=direct`}><Download className="mr-1 h-4 w-4" /> Tệp .vcf</a>
                 </Button>
+                {walletBat && (
+                  <Button size="sm" variant="outline" asChild>
+                    <a href={`${SUPABASE_URL}/functions/v1/danh-thiep-wallet?slug=${cb.slug}&lang=vi`}>
+                      <Wallet className="mr-1 h-4 w-4" /> Thêm vào Google Wallet
+                    </a>
+                  </Button>
+                )}
               </>
             )}
           </div>
@@ -315,13 +331,16 @@ export default function DanhThiepCuaToiPage() {
 
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-base">Kênh chat trên thẻ</CardTitle>
-            <CardDescription>Zalo/LINE/WhatsApp mở thẳng khung chat; WeChat và KakaoTalk không có link nên cần ảnh QR cá nhân.</CardDescription></CardHeader>
+            <CardDescription>Zalo/LINE/WhatsApp mở thẳng khung chat; WeChat và KakaoTalk không có link nên cần ảnh QR cá nhân. Cứ tải ảnh chụp màn hình nguyên bản — máy tự tìm mã QR trong ảnh và cắt ra.</CardDescription></CardHeader>
           <CardContent className="space-y-3">
             <ul className="divide-y rounded-md border">
               {(data?.kenh ?? []).length === 0 && <li className="p-3 text-sm text-muted-foreground">Chưa có kênh nào.</li>}
               {(data?.kenh ?? []).map((k) => (
                 <li key={k.id} className="flex items-center justify-between gap-2 p-2.5 text-sm">
-                  <span><b>{TEN_KENH[k.type]}</b> <span className="text-muted-foreground">{k.value ?? (k.qr_image_url ? 'ảnh QR đã tải' : '')}</span></span>
+                  <span className="flex items-center gap-2">
+                    {k.qr_image_url && <img src={k.qr_image_url} alt={`QR ${TEN_KENH[k.type]}`} className="h-10 w-10 rounded border bg-white object-contain" />}
+                    <span><b>{TEN_KENH[k.type]}</b> <span className="text-muted-foreground">{k.value ?? (k.qr_image_url ? 'ảnh QR đã tải' : '')}</span></span>
+                  </span>
                   <div className="flex items-center gap-1">
                     {kenhCanQr(k.type) && (
                       <Label htmlFor={`qr-${k.type}`} className="cursor-pointer rounded border px-2 py-1 text-xs hover:bg-muted">Đổi QR</Label>

@@ -8,11 +8,11 @@ vì sao, phải làm gì khi triển khai, và những điểm cần Giám đố
 
 | # | Việc | Kết quả |
 |---|---|---|
-| 1 | Schema + RLS + `nc_resolve_card(slug)` | `supabase/migrations/20261004090000_danh_thiep_so_nen_tang.sql` (+ rollback). **Chưa áp** vào project. Kèm `20261004090200_..._tu_tao_ban_nhap.sql` (dựng nháp từ hồ sơ 343, mục 5b). |
-| 2 | Dữ liệu mồi Mục 11, toàn bộ `draft` | `supabase/migrations/20261004090100_danh_thiep_so_du_lieu_moi.sql` (+ rollback). Phồn thể sinh máy bằng OpenCC s2twp. **Chưa áp**. |
+| 1 | Schema + RLS + `nc_resolve_card(slug)` | `supabase/migrations/20261004090000_danh_thiep_so_nen_tang.sql` (+ rollback). **Đã áp** 04/09/2026. Kèm `20261004090200_..._tu_tao_ban_nhap.sql` (dựng nháp từ hồ sơ 343, mục 5b). |
+| 2 | Dữ liệu mồi Mục 11, toàn bộ `draft` | `supabase/migrations/20261004090100_danh_thiep_so_du_lieu_moi.sql` (+ rollback). Phồn thể sinh máy bằng OpenCC s2twp. **Đã áp** 04/09/2026, toàn bộ còn `draft`. |
 | 3 | Trang `/card/<slug>` + đo ngân sách | Entry riêng `card.html`; đo trên bản build: **~58 KB gzip / 180 KB thô** lần tải đầu (chưa tính font), **LCP 964 ms** ở 4G + CPU chậm ×4 — dưới trần 300 KB / 1,5 s. |
 | 4 | Tab 2 từ điển chức danh | `/quan-tri-vcard/chuc-danh` — kèm luôn Tab 1, 3, 4 và màn tự phục vụ vì không có chúng thì không phát hành nổi một tấm thẻ để nghiệm thu. |
-| 5 | Google Wallet | **Chưa làm** — đúng thứ tự đặc tả (sau khi 1–4 chạy được). Cột `google_object_id`, `wallet_override` đã có sẵn. |
+| 5 | Google Wallet | **Đã dựng xong phần mã** 04/09/2026 (edge function `danh-thiep-wallet` ký JWT, nút trên thẻ và màn của cán bộ, cấu hình ở Quản trị VCard) — **chưa chạy được** vì Chi nhánh chưa có Issuer ID và khoá tài khoản dịch vụ của Google. Xem mục 6. |
 
 Ngoài ra: vCard 6 ngôn ngữ (edge function `danh-thiep-vcard`), QR mức H có logo
 (PNG 1024 + SVG), nhật ký quét ẩn danh, audit, job hằng ngày thu hồi chức danh
@@ -88,7 +88,8 @@ nghĩa là nút «Dựng nháp toàn bộ từ 343» chạy được ngay, chưa
 1. ~~**Áp migration**~~ — đã xong 04/09/2026 (xem trên). Còn lại: regenerate
    `src/integrations/supabase/types.ts` (sau đó có thể đổi `db` trong
    `src/lib/danhThiep/db.ts` về `supabase`).
-2. **Deploy edge function** `danh-thiep-vcard` (`config.toml` đã khai `verify_jwt = false`).
+2. ~~**Deploy edge function** `danh-thiep-vcard`~~ — đã deploy 04/09/2026, cùng với
+   `danh-thiep-wallet` (cả hai `verify_jwt = false`).
    Kiểm: `curl -I "https://whlysprzsguehxmrjwha.supabase.co/functions/v1/danh-thiep-vcard?slug=abc"` → 404 (chưa có thẻ) chứ không phải 401/500.
 3. **Phát hành bản web** (Cloudflare Workers Builds). Kiểm định tuyến:
    `curl -s https://bachungyenone.com/card/abc | grep -c card-` phải > 0 (nhận `card.html`,
@@ -154,3 +155,29 @@ font CJK, đồng bộ HRM.
   `NhapSauNgonNgu.tsx`; tự phục vụ: `src/pages/DanhThiepCuaToiPage.tsx`; hook `src/hooks/useDanhThiep.ts`.
 - Định tuyến `/card/*`: `public/_redirects`, `vercel.json`, middleware trong `vite.config.ts`, lưới đỡ trong `App.tsx`.
 - Logo: `public/brand/logo-cn-bhy.svg`.
+
+
+## 6. Google Wallet (bổ sung 04/09/2026)
+
+Nút «Thêm vào Google Wallet» đã dựng xong cả hai đầu nhưng **chưa dùng được** vì còn
+thiếu tài khoản với Google. Phần đã có:
+
+- `supabase/functions/danh-thiep-wallet` ký JWT RS256 rồi chuyển hướng sang
+  `pay.google.com/gp/v/save/<jwt>`; loại thẻ là **Generic pass** (danh thiếp không phải
+  thẻ khách hàng thân thiết — khai sai loại thì Google từ chối duyệt lớp thẻ).
+- Đối tượng thẻ dựng ở `src/lib/danhThiep/googleWallet.ts`, bản sao y hệt ở
+  `supabase/functions/_shared/googleWallet.ts` (test so byte). Trình duyệt KHÔNG giữ khoá.
+- `nc_resolve_card()` trả thêm cờ `wallet_ready`; nút chỉ hiện khi cờ này bật, nên
+  không bao giờ có nút bấm vào chỉ để báo lỗi.
+
+Bốn việc Phòng TCTH phải làm để bật:
+
+1. Đăng ký tài khoản phát hành tại Google Wallet Business Console, lấy **Issuer ID**.
+2. Tạo **Generic class** một lần, hậu tố mặc định `danh_thiep_v1`
+   (classId = `<issuerId>.danh_thiep_v1`).
+3. Tạo service account trong Google Cloud, bật Google Wallet API, cấp quyền cho service
+   account trong Business Console, rồi đặt ba biến bí mật của edge function:
+   `GOOGLE_WALLET_SA_EMAIL`, `GOOGLE_WALLET_SA_KEY` (PEM PKCS#8), `GOOGLE_WALLET_ORIGIN`.
+4. Vào Quản trị VCard → nút Cấu hình: dán Issuer ID rồi bật công tắc.
+
+Khoá riêng **không** lưu trong `nc_cau_hinh`: bảng đó mọi cán bộ đọc được.

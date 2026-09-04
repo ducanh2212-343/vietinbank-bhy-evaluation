@@ -81,3 +81,8 @@ project_id = "whlysprzsguehxmrjwha"
   # được hàm đó. Bật verify_jwt là khách (không có phiên) tải không được.
   [functions.danh-thiep-vcard]
     verify_jwt = false
+
+  # Nút «Thêm vào Google Wallet»: cũng phải công khai vì khách quét thẻ không
+  # đăng nhập. Hàm tự kiểm cờ wallet trong payload trước khi ký.
+  [functions.danh-thiep-wallet]
+    verify_jwt = false

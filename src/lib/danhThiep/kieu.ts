@@ -78,8 +78,8 @@ export const HUONG_DAN_KENH: Record<LoaiKenh, string> = {
   line: 'LINE ID (khách mở màn thêm bạn).',
   whatsapp: 'Số điện thoại quốc tế, ví dụ 84966503279.',
   linkedin: 'Đường dẫn hồ sơ LinkedIn.',
-  wechat: 'WeChat không có link thêm bạn — tải ảnh QR cá nhân (vuông, ≥ 500 px, ≤ 500 KB).',
-  kakaotalk: 'KakaoTalk không có link theo số — tải ảnh QR cá nhân hoặc link Open Chat.',
+  wechat: 'WeChat không có link thêm bạn — tải ảnh mã QR cá nhân; ảnh chụp màn hình nguyên bản cũng được, máy tự cắt lấy mã.',
+  kakaotalk: 'KakaoTalk không có link theo số — tải ảnh mã QR cá nhân; ảnh chụp màn hình nguyên bản cũng được.',
 };
 
 // ---------------------------------------------------------------------------
@@ -236,7 +236,10 @@ export interface PayloadThe {
   bank_line: boolean;
   affiliation?: 'thue_ngoai' | 'ctv' | 'thuc_tap';
   channels: KenhTrenThe[];
+  /** Loại nhân sự này được mang thẻ Wallet không (ma trận Mục 5) */
   wallet: boolean;
+  /** Chi nhánh đã cấu hình Google Wallet chưa — chưa thì không hiện nút */
+  wallet_ready?: boolean;
   nfc: boolean;
 }
 

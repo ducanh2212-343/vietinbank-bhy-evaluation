@@ -18,6 +18,8 @@ export interface TheDanhThiepProps {
   chuoi: ChuoiGiaoDien;
   /** Không có = nút «Lưu danh bạ» chỉ để xem (màn xem trước). */
   vcardUrl?: string;
+  /** Có = hiện nút «Thêm vào Google Wallet» (chỉ khi Chi nhánh đã cấu hình Issuer). */
+  walletUrl?: string;
   onHanhDong?: (action: string) => void;
   onMoQr?: (kenh: KenhTrenThe) => void;
 }
@@ -91,7 +93,7 @@ export function lienKetKenh(k: KenhTrenThe): string | undefined {
   }
 }
 
-export function TheDanhThiep({ the, lang, chuoi, vcardUrl, onHanhDong, onMoQr }: TheDanhThiepProps) {
+export function TheDanhThiep({ the, lang, chuoi, vcardUrl, walletUrl, onHanhDong, onMoQr }: TheDanhThiepProps) {
   const ten = tenTheoNgonNgu(the, lang);
   const chucDanh = chonBanDich(the.title, lang);
   const { donVi: laDonVi, toChuc } = dongToChuc(the, lang);
@@ -130,6 +132,14 @@ export function TheDanhThiep({ the, lang, chuoi, vcardUrl, onHanhDong, onMoQr }:
         <span className="nc-cta nc-cta--mo" aria-disabled="true">
           <span aria-hidden="true">＋</span> {chuoi.luuDanhBa}
         </span>
+      )}
+
+      {/* Google Wallet: chỉ hiện khi payload cho phép VÀ Chi nhánh đã cấu hình
+          Issuer. Nút dẫn sang edge function ký JWT rồi chuyển tiếp sang Google. */}
+      {the.wallet && walletUrl && (
+        <a className="nc-cta nc-cta--wallet" href={walletUrl} onClick={bao('save_wallet_click')}>
+          <span aria-hidden="true">▣</span> {chuoi.themVaoWallet}
+        </a>
       )}
 
       <ul className="nc-contacts">

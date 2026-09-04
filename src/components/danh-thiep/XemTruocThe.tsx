@@ -4,11 +4,12 @@
  * xem_truoc = true) — nghĩa là xem trước cả hồ sơ chưa phát hành, theo đúng
  * ma trận quyền hiển thị mà khách sẽ thấy.
  */
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { goiRpc } from '@/lib/danhThiep/db';
+import { goiRpc, thuLaiNc } from '@/lib/danhThiep/db';
 import type { KetQuaResolve, PayloadThe } from '@/lib/danhThiep/kieu';
 import { CAC_NGON_NGU, TEN_NGON_NGU, type MaNgonNgu } from '@/lib/danhThiep/ngonNgu';
 import { CHUOI } from '@/danh-thiep-cong-khai/chuoi';
@@ -29,24 +30,27 @@ interface Props {
  */
 export function KhungXemThe({ slug, payload, gon }: { slug: string | null; payload?: PayloadThe | null; gon?: boolean }) {
   const [lang, setLang] = useState<MaNgonNgu>('vi');
-  const [the, setThe] = useState<PayloadThe | null>(payload ?? null);
-  const [loi, setLoi] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (payload) { setThe(payload); return; }
-    if (!slug) return;
-    let huy = false;
-    setThe(null);
-    setLoi(null);
-    goiRpc<KetQuaResolve>('nc_resolve_card', { _slug: slug, _xem_truoc: true })
-      .then((r) => {
-        if (huy) return;
-        if (r.status === 'ok' || r.status === 'preview') setThe(r);
-        else setLoi(r.status === 'revoked' ? 'Thẻ này đã thu hồi — khách sẽ thấy trang «đã chuyển công tác».' : 'Không đọc được hồ sơ này.');
-      })
-      .catch((e: Error) => { if (!huy) setLoi(e.message); });
-    return () => { huy = true; };
-  }, [slug, payload]);
+  // Dùng React Query (không phải useEffect + useState) để mọi thao tác lưu gọi
+  // useLamTuoiDanhThiep() đều kéo lại tấm thẻ. Trước đây khung này chỉ nạp một
+  // lần theo slug, nên cán bộ đổi số điện thoại hay ảnh xong vẫn thấy thẻ cũ và
+  // tưởng hệ thống không lưu được.
+  const { data: tai, error: loiTai } = useQuery({
+    queryKey: ['nc', 'the', slug],
+    enabled: !!slug && !payload,
+    retry: thuLaiNc,
+    queryFn: () => goiRpc<KetQuaResolve>('nc_resolve_card', { _slug: slug, _xem_truoc: true }),
+  });
+
+  const the: PayloadThe | null = payload
+    ?? (tai && (tai.status === 'ok' || tai.status === 'preview') ? tai : null);
+  const loi = loiTai
+    ? (loiTai as Error).message
+    : tai && tai.status === 'revoked'
+      ? 'Thẻ này đã thu hồi — khách sẽ thấy trang «đã chuyển công tác».'
+      : tai && tai.status === 'not_found'
+        ? 'Không đọc được hồ sơ này.'
+        : null;
 
   return (
     <>

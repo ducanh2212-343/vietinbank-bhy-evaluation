@@ -13,7 +13,7 @@ import {
   CAC_NGON_NGU, MA_BCP47, TEN_NGON_NGU, chonBanDich, laMaNgonNgu, suyNgonNgu, suyQuocGia,
   type MaNgonNgu,
 } from '@/lib/danhThiep/ngonNgu';
-import { chuanHoaKenh, ghiQuet, taiThe, urlVcard, type KenhQuet } from './api';
+import { chuanHoaKenh, ghiQuet, taiThe, urlVcard, urlWallet, type KenhQuet } from './api';
 import { CHUOI, tenKenh } from './chuoi';
 import { TheDanhThiep, tenTheoNgonNgu } from './TheDanhThiep';
 
@@ -184,6 +184,7 @@ function App() {
         lang={lang}
         chuoi={c}
         vcardUrl={urlVcard(slug, lang, kenhQuet)}
+        walletUrl={kq.wallet_ready ? urlWallet(slug, lang) : undefined}
         onHanhDong={(a) => { if (a !== 'save_vcard_click') ghiQuet(slug, lang, kenhQuet, a, quocGia); }}
         onMoQr={setQr}
       />

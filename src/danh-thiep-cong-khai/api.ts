@@ -53,3 +53,12 @@ export function urlVcard(slug: string, lang: MaNgonNgu, channel: KenhQuet): stri
   const q = new URLSearchParams({ slug, lang, c: channel });
   return `${SUPABASE_URL}/functions/v1/danh-thiep-vcard?${q.toString()}`;
 }
+
+/**
+ * Đường dẫn «Thêm vào Google Wallet». Edge function ký JWT bằng khoá riêng của
+ * Chi nhánh rồi chuyển hướng sang Google — trình duyệt không giữ khoá nào.
+ */
+export function urlWallet(slug: string, lang: MaNgonNgu): string {
+  const q = new URLSearchParams({ slug, lang });
+  return `${SUPABASE_URL}/functions/v1/danh-thiep-wallet?${q.toString()}`;
+}

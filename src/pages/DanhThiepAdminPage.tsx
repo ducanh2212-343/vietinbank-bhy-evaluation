@@ -33,8 +33,11 @@ function CauHinhHeThong() {
   const lamTuoi = useLamTuoiDanhThiep();
   const { user } = useAuth();
   const [baseUrl, setBaseUrl] = useState<string | null>(null);
+  const [issuer, setIssuer] = useState<string | null>(null);
   const logo = cauHinh.logo_enabled !== false;
   const goc = typeof cauHinh.card_base_url === 'string' ? cauHinh.card_base_url : 'https://bachungyenone.com/card/';
+  const walletBat = cauHinh.google_wallet_bat === true;
+  const issuerLuu = typeof cauHinh.google_wallet_issuer_id === 'string' ? cauHinh.google_wallet_issuer_id : '';
 
   const luu = async (khoa: string, giaTri: unknown) => {
     const { error } = await db.from('nc_cau_hinh').upsert({ khoa, gia_tri: giaTri, cap_nhat_boi: user?.id ?? null, cap_nhat_luc: new Date().toISOString() });
@@ -64,6 +67,25 @@ function CauHinhHeThong() {
             Lưu gốc đường dẫn
           </Button>
           <p className="mt-1 text-xs text-muted-foreground">Phải bắt đầu bằng https:// và kết thúc bằng «/». QR đã in KHÔNG đổi theo — chỉ đổi khi chuyển tên miền.</p>
+        </div>
+
+        <div className="border-t pt-3">
+          <label className="flex items-start gap-3 text-sm">
+            <Switch checked={walletBat} disabled={!issuerLuu.trim()} onCheckedChange={(v) => luu('google_wallet_bat', v)} />
+            <span>
+              <b>Nút «Thêm vào Google Wallet»</b>
+              <span className="block text-xs text-muted-foreground">
+                Chỉ bật được sau khi điền Issuer ID. Khoá riêng của tài khoản dịch vụ KHÔNG nhập ở đây — đặt trong biến bí mật của máy chủ.
+              </span>
+            </span>
+          </label>
+          <Label htmlFor="nc-issuer" className="mt-2 block text-xs">Issuer ID (Google Wallet Business Console)</Label>
+          <Input id="nc-issuer" className="font-mono text-xs" placeholder="3388000000012345678"
+            value={issuer ?? issuerLuu} onChange={(e) => setIssuer(e.target.value)} />
+          <Button size="sm" className="mt-2" disabled={issuer === null || issuer.trim() === issuerLuu}
+            onClick={() => issuer !== null && luu('google_wallet_issuer_id', issuer.trim()).then(() => setIssuer(null))}>
+            Lưu Issuer ID
+          </Button>
         </div>
       </PopoverContent>
     </Popover>
