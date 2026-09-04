@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildHolderPools, buildStockPool, chuanHoaTen, daiBanGiaoGuiDuoc, deriveSerialStats,
   formatRanges, formatSerialList, nhapBuDungDuoc, parseSerialText, phanLoaiDaiBanGiao,
-  phanLoaiSerialNhapBu, suggestSerials,
+  phanLoaiSerialNhapBu, suggestSerials, tienDoDotBanGiao,
   type StarSerialRow,
 } from '../starSerial';
 import { getKpiPoints, formatKpi } from '../starMath';
@@ -198,5 +198,37 @@ describe('phanLoaiSerialNhapBu — soi số serial gõ tay ở chế độ nhậ
 
   it('chưa gõ số nào thì chưa cho gửi', () => {
     expect(nhapBuDungDuoc([])).toBe(false);
+  });
+});
+
+describe('tienDoDotBanGiao — số của đợt phải khớp dải, lệch thì phải hiện ra', () => {
+  const dot = { id: 'dot-q3', serialFrom: 285, serialTo: 290 };
+  const gan = (n: number, st: StarSerialRow['status'], hid: string | null): StarSerialRow => ({
+    ...row(n, st), handoverId: hid,
+  });
+
+  it('đợt đầy đủ: đã tặng + còn giữ = dải, không lệch', () => {
+    const rows = [285, 286, 287, 288, 289, 290].map((n) =>
+      gan(n, n === 287 ? 'awarded' : 'handed_over', 'dot-q3'));
+    expect(tienDoDotBanGiao(dot, rows)).toEqual({ daTang: 1, conGiu: 5, trongDai: 6, ngoaiDot: 0 });
+  });
+
+  it('ca thật 04/09: số nhập bù chưa gắn đợt thì đếm vào ngoaiDot, không biến mất', () => {
+    const rows = [
+      ...[285, 286, 288, 289, 290].map((n) => gan(n, 'handed_over', 'dot-q3')),
+      gan(287, 'awarded', null), // sao nhập bù, người giữ đúng nhưng chưa gắn đợt
+    ];
+    const kq = tienDoDotBanGiao(dot, rows);
+    expect(kq.conGiu).toBe(5);
+    expect(kq.trongDai).toBe(6);
+    expect(kq.ngoaiDot).toBe(1); // đúng con số TCTH nhìn thấy hụt
+  });
+
+  it('không tính số của đợt khác nằm trong cùng dải', () => {
+    const rows = [
+      ...[285, 286, 287].map((n) => gan(n, 'handed_over', 'dot-q3')),
+      ...[288, 289, 290].map((n) => gan(n, 'awarded', 'dot-q2-cu')),
+    ];
+    expect(tienDoDotBanGiao(dot, rows).ngoaiDot).toBe(3);
   });
 });

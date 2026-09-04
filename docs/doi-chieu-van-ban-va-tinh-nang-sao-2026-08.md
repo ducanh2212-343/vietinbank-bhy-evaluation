@@ -258,6 +258,42 @@ phiếu ghi ngày 04/09 (ngày nhập) — quý thống kê vẫn đúng nhưng 
 ngày trao thật; và phiếu serial 75 **tin Lark bỏ trống lý do**, tạm ghi
 "(Tin Lark để trống lý do — chờ Phòng KHDN bổ sung)", cần Phòng KHDN điền lại.
 
+## 3f. Số sao của đợt bàn giao hụt so với dải (TCTH báo 04/09)
+
+**Hiện tượng.** Đợt Quý III giao cho chị Nguyễn Thị Huyền (Phòng DVKH) ghi dải
+285–290; dòng tổng phía trên đếm đúng 6 sao, dòng chi tiết phía dưới chỉ ra 5.
+
+**Nguyên nhân.** Dòng chi tiết đếm theo `star_serials.handover_id`, và số 287 không
+thuộc đợt nào. 287 là sao **nhập bù** (phiếu Chu Hồng Hải, người tặng chính chị
+Huyền, nhập cùng ngày từ tin Lark). Nhánh `backfill` của `award_star` ghi
+`holder_profile_id` để biết sao ra từ túi ai nhưng không gắn `handover_id`; sau đó
+`handover_stars` bàn giao dải 285–290, nhánh ghi hồi tố của nó có điều kiện
+`holder_profile_id is null` nên bỏ qua đúng số này.
+
+**Điểm đáng ngại hơn cả con số sai:** 287 rơi ra khỏi *mọi* ô đếm của
+`handover_stars` — không phải `moi`, không `hoi_to`, không `bo_qua` (người giữ đúng
+là chị Huyền), không `da_giu` (trạng thái `awarded` chứ không `handed_over`). Máy báo
+bàn giao thành công mà không hé một chữ về số bị rớt. Lần này TCTH nhìn ra vì hai con
+số nằm cạnh nhau; lần sau chưa chắc.
+
+**Sửa ba lớp** (migration `20260904140000`, **đã áp**):
+
+1. `handover_stars` — ghi hồi tố nhận thêm số đã tặng mà **người giữ đã đúng là lãnh
+   đạo này**, miễn số chưa thuộc đợt nào (`handover_id is null`). Cố ý không giành số
+   của đợt cũ: đợt cũ mới là nơi sao đó thật sự phát ra. `da_giu` cũng bỏ điều kiện
+   trạng thái để không còn ô nào lọt.
+2. `award_star` nhánh `backfill` — số lấy từ kho mà rơi vào một đợt đang mở của chính
+   người tặng thì gắn luôn vào đợt đó; số đang ở tay lãnh đạo giữ nguyên `handover_id`.
+   Hai đầu này phủ cả hai thứ tự thao tác (nhập bù trước hay bàn giao trước).
+3. Giao diện — `tienDoDotBanGiao` đếm thêm `ngoaiDot` (số trong dải nhưng không thuộc
+   đợt) và bảng các đợt hiện nhãn đỏ «lệch N». Luật ở CSDL đã chặn nguyên nhân, nhưng
+   vẫn phải đếm phần lệch: thà hiện một con số lạ còn hơn hai con số không khớp mà
+   không ai giải thích được.
+
+**Dữ liệu đã vá:** 4 số nhập bù nằm trong dải một đợt đang mở của chính người tặng đã
+được nối lại — 64, 65 (Phạm Minh Hải Q2), 75 (Đỗ Việt Anh Q1), 287 (Nguyễn Thị Huyền
+Q3). Kiểm lại toàn bộ: **không còn đợt nào có số gắn khác số trong dải**.
+
 ## 4. Trình tự đưa vào vận hành
 
 1. **Merge + deploy nhánh này** — chừng nào chưa deploy, màn nhập Excel cũ còn sống

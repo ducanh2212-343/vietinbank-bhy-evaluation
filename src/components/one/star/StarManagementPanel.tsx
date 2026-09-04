@@ -6,7 +6,8 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import {
   daiBanGiaoGuiDuoc, formatRanges, phanLoaiDaiBanGiao,
-  QUARTERLY_ALLOCATION, TOTAL_ALLOCATED_2026,
+  QUARTERLY_ALLOCATION, TOTAL_ALLOCATED_2026, tienDoDotBanGiao,
+  type TienDoDotBanGiao,
 } from './starSerial';
 import {
   useAwardablePeople, useProfileNames, useStarDepartments, useStarHandovers,
@@ -131,18 +132,14 @@ export const StarManagementPanel: React.FC = () => {
     return people.filter((p) => normalize(p.fullName).includes(q)).slice(0, 8);
   }, [people, holderQuery]);
 
-  // Tiến độ từng đợt bàn giao: còn giữ / đã tặng (đếm theo handover_id trong sổ)
+  // Tiến độ từng đợt bàn giao: còn giữ / đã tặng, KÈM phần lệch so với dải khai báo.
+  // TCTH báo 04/09: đợt 285–290 dòng trên đếm 6, dòng dưới ra 5 — số nhập bù rơi ra
+  // khỏi đợt mà không ai thấy. Nay phần lệch có chỗ hiện, không im lặng nữa.
   const handoverProgress = useMemo(() => {
-    const map = new Map<string, { holding: number; awarded: number }>();
-    rows.forEach((r) => {
-      if (!r.handoverId) return;
-      const p = map.get(r.handoverId) ?? { holding: 0, awarded: 0 };
-      if (r.status === 'handed_over') p.holding += 1;
-      if (r.status === 'awarded') p.awarded += 1;
-      map.set(r.handoverId, p);
-    });
+    const map = new Map<string, TienDoDotBanGiao>();
+    handovers.forEach((h) => map.set(h.id, tienDoDotBanGiao(h, rows)));
     return map;
-  }, [rows]);
+  }, [handovers, rows]);
 
   const visibleRows = useMemo(
     () => (statusFilter === 'all' ? rows : rows.filter((r) => r.status === statusFilter)),
@@ -694,7 +691,8 @@ export const StarManagementPanel: React.FC = () => {
                   </thead>
                   <tbody>
                     {handovers.map((h) => {
-                      const progress = handoverProgress.get(h.id) ?? { holding: 0, awarded: 0 };
+                      const progress = handoverProgress.get(h.id)
+                        ?? { daTang: 0, conGiu: 0, trongDai: 0, ngoaiDot: 0 };
                       const info = holderNames.get(h.holderProfileId);
                       return (
                         <tr key={h.id} className={`border-b border-slate-50 ${h.revokedAt ? 'opacity-50' : ''}`}>
@@ -703,18 +701,26 @@ export const StarManagementPanel: React.FC = () => {
                           <td className="p-2 text-center">{h.quarter ?? '—'}</td>
                           <td className="p-2 text-center font-mono">{h.handedAt}</td>
                           <td className="p-2 text-center">
-                            <span className="font-bold text-amber-600">{progress.awarded}</span>
+                            <span className="font-bold text-amber-600">{progress.daTang}</span>
                             <span className="text-slate-400"> / </span>
-                            <span className="font-bold text-blue-700">{progress.holding}</span>
+                            <span className="font-bold text-blue-700">{progress.conGiu}</span>
+                            {progress.ngoaiDot > 0 && (
+                              <span
+                                className="ml-1.5 inline-block px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-black text-[9px]"
+                                title={`Dải khai báo có ${progress.trongDai} số nhưng sổ chỉ gắn ${progress.trongDai - progress.ngoaiDot} số vào đợt này. Chạy «Đối soát sổ sao với phiếu» để nối lại.`}
+                              >
+                                lệch {progress.ngoaiDot}
+                              </span>
+                            )}
                           </td>
                           <td className="p-2 text-center">
                             {h.revokedAt ? (
                               <span className="text-[9px] font-black uppercase text-slate-400">Đã thu hồi</span>
-                            ) : progress.holding > 0 ? (
+                            ) : progress.conGiu > 0 ? (
                               <button
                                 type="button"
                                 onClick={() => {
-                                  if (window.confirm(`Thu hồi ${progress.holding} số chưa tặng của đợt này về kho?`)) {
+                                  if (window.confirm(`Thu hồi ${progress.conGiu} số chưa tặng của đợt này về kho?`)) {
                                     void revokeHandover(h.id);
                                   }
                                 }}

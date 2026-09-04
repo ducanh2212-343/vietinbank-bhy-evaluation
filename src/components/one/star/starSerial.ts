@@ -251,3 +251,42 @@ export const phanLoaiSerialNhapBu = (
 /** Số serial nhập bù dùng được hết chưa (điều kiện để bật nút xác nhận) */
 export const nhapBuDungDuoc = (ds: SerialNhapBu[]): boolean =>
   ds.length > 0 && ds.every((x) => x.dungDuoc);
+
+export interface TienDoDotBanGiao {
+  /** Số của đợt đã tặng đi */
+  daTang: number;
+  /** Số của đợt còn trong tay lãnh đạo */
+  conGiu: number;
+  /** Số lượng số trong dải khai báo của đợt */
+  trongDai: number;
+  /** Số nằm trong dải nhưng KHÔNG thuộc đợt này — dấu hiệu lệch, phải hiện ra */
+  ngoaiDot: number;
+}
+
+/**
+ * Tiến độ một đợt bàn giao, kèm phần lệch giữa dải khai báo và sổ sao.
+ *
+ * VÌ SAO PHẢI ĐẾM CẢ `ngoaiDot`: ngày 04/09 Phòng TCTH phát hiện đợt Quý III của
+ * chị Nguyễn Thị Huyền ghi dải 285–290 (6 sao) nhưng dòng chi tiết chỉ ra 5. Số
+ * 287 là sao nhập bù, có người giữ đúng là chị nhưng chưa gắn `handover_id`, nên
+ * rơi ra khỏi mọi ô đếm — cả ở máy chủ lẫn trên màn. Luật ở CSDL đã sửa
+ * (migration 20260904140000), nhưng vẫn phải đếm phần lệch ở đây: lệch ÂM THẦM là
+ * loại lỗi khó thấy nhất, thà hiện một con số lạ còn hơn hai con số không khớp mà
+ * không ai giải thích được.
+ */
+export const tienDoDotBanGiao = (
+  dot: { id: string; serialFrom: number; serialTo: number },
+  rows: StarSerialRow[],
+): TienDoDotBanGiao => {
+  const trongDai = Math.max(0, dot.serialTo - dot.serialFrom + 1);
+  let daTang = 0;
+  let conGiu = 0;
+  let thuocDot = 0;
+  rows.forEach((r) => {
+    if (r.handoverId !== dot.id) return;
+    thuocDot += 1;
+    if (r.status === 'awarded') daTang += 1;
+    else if (r.status === 'handed_over') conGiu += 1;
+  });
+  return { daTang, conGiu, trongDai, ngoaiDot: Math.max(0, trongDai - thuocDot) };
+};
