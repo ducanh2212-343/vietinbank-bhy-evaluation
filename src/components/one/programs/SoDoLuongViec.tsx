@@ -1,8 +1,8 @@
 import React from 'react';
-import { timVaiTro, tongThoiLuongPhien, type MoHinhVanHanh } from '@/data/one/vanHanhChuongTrinh';
+import { timVaiTro, type MoHinhVanHanh } from '@/data/one/vanHanhChuongTrinh';
 
 /**
- * SƠ ĐỒ LUỒNG VIỆC (swimlane) và DẢI THỜI GIAN PHIÊN — vẽ bằng SVG.
+ * SƠ ĐỒ LUỒNG VIỆC (swimlane) — vẽ bằng SVG.
  *
  * Vì sao là SVG chứ không phải thẻ xếp dọc như bản trước: danh sách thẻ trả lời
  * được «bước này làm gì» nhưng KHÔNG trả lời được hai câu mà chỉ hình vẽ mới nói
@@ -302,91 +302,6 @@ export const SoDoLuongViec: React.FC<Props> = ({ moHinh }) => {
         Mỗi cột là một vai trò. Đường liền là dòng chảy chính, đường đứt là nhánh hồ sơ không thuộc diện
         phải qua phiên. Chi tiết từng bước ở ngay bên dưới.
       </figcaption>
-    </figure>
-  );
-};
-
-/**
- * DẢI THỜI GIAN PHIÊN — một thanh xếp chồng thay cho vòng tròn.
- *
- * Chọn thanh ngang chứ không phải biểu đồ tròn: dữ liệu ở đây vừa có TỈ LỆ vừa
- * có THỨ TỰ. Vòng tròn diễn được tỉ lệ nhưng làm mất thứ tự (không có điểm bắt
- * đầu tự nhiên), mà thứ tự mới là thứ cán bộ cần — «đến lượt tôi là lúc nào».
- * Thanh ngang chạy trái sang phải đúng như phiên họp chạy theo thời gian.
- *
- * Màu đi theo VAI TRÒ chứ không theo lượt: người điều phối nói ở lượt 1 và lượt
- * 5, hai đoạn cùng màu thì mới thấy là một người quay lại.
- */
-export const DaiThoiGianPhien: React.FC<Props> = ({ moHinh }) => {
-  const tong = tongThoiLuongPhien(moHinh);
-  // Mốc 15 phút một, luôn kết thúc bằng chính tổng thời lượng của phiên
-  const moc = [...new Set([...[0, 15, 30, 45, 60, 75, 90].filter((m) => m < tong), tong])];
-
-  return (
-    <figure className="m-0 rounded-2xl border border-slate-200 bg-white p-4">
-      {/* Vạch mốc đặt theo ĐÚNG tỉ lệ phút, không chia đều: phiên không phải lúc
-          nào cũng tròn 60 phút, chia đều thì mốc 15′ rơi sai chỗ ngay khi tổng
-          thời lượng đổi, mà sai vạch mốc thì cả dải đọc ra số khác */}
-      <div className="relative mb-1.5 h-4 text-[10px] font-bold text-slate-400">
-        {moc.map((m, i) => (
-          <span
-            key={m}
-            className="absolute whitespace-nowrap"
-            style={{
-              left: `${(m / tong) * 100}%`,
-              transform: i === 0 ? 'none' : i === moc.length - 1 ? 'translateX(-100%)' : 'translateX(-50%)',
-            }}
-          >
-            {m === 0 ? 'Bắt đầu' : `${m}′`}
-          </span>
-        ))}
-      </div>
-      {/* gap-[2px]: khe nền giữa hai đoạn để ranh giới không phải chỉ nhờ màu */}
-      <div className="flex h-11 w-full gap-[2px] overflow-hidden rounded-lg">
-        {moHinh.phatBieu.map((luot) => {
-          const vt = timVaiTro(moHinh, luot.vaiTro);
-          const tiLe = (luot.phut / tong) * 100;
-          return (
-            <div
-              key={luot.thuTu}
-              className="flex items-center justify-center"
-              style={{ width: `${tiLe}%`, backgroundColor: vt.mau }}
-              title={`Lượt ${luot.thuTu} · ${vt.ten} · ~${luot.phut} phút`}
-            >
-              {/* Đoạn hẹp thì bỏ nhãn thay vì bóp chữ cho vừa — số lượt vẫn đọc
-                  được ở danh sách ngay dưới */}
-              {tiLe >= 12 && (
-                <span className="text-[11px] font-black text-white">
-                  {luot.thuTu} · {luot.phut}′
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      <ol className="mt-3 space-y-1.5">
-        {moHinh.phatBieu.map((luot) => {
-          const vt = timVaiTro(moHinh, luot.vaiTro);
-          return (
-            <li key={luot.thuTu} className="flex items-start gap-2.5">
-              <span
-                aria-hidden
-                className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md text-[10px] font-black text-white"
-                style={{ backgroundColor: vt.mau }}
-              >
-                {luot.thuTu}
-              </span>
-              <p className="min-w-0 text-xs leading-relaxed text-slate-600">
-                <span className="font-black text-slate-900">{vt.ten}</span>
-                <span className="font-bold text-slate-400"> · ~{luot.phut} phút</span>
-                <br />
-                {luot.noiDung}
-              </p>
-            </li>
-          );
-        })}
-      </ol>
     </figure>
   );
 };

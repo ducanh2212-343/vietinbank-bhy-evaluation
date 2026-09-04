@@ -3,11 +3,9 @@ import { Link } from 'react-router-dom';
 import {
   ArrowRight, CheckCircle2, Clock, Download, FileText, Info, ShieldAlert, Users,
 } from 'lucide-react';
-import {
-  timVaiTro, tongThoiLuongPhien,
-  type BieuMauChuongTrinh, type MoHinhVanHanh,
-} from '@/data/one/vanHanhChuongTrinh';
-import { DaiThoiGianPhien, SoDoLuongViec } from './SoDoLuongViec';
+import { timVaiTro, type BieuMauChuongTrinh, type MoHinhVanHanh } from '@/data/one/vanHanhChuongTrinh';
+import { SoDoLuongViec } from './SoDoLuongViec';
+import { SoDoPhatBieu } from './SoDoPhatBieu';
 
 /**
  * SƠ ĐỒ VẬN HÀNH của một chương trình Bắc Hưng Yên Ways.
@@ -17,13 +15,10 @@ import { DaiThoiGianPhien, SoDoLuongViec } from './SoDoLuongViec';
  * «tôi làm gì, đến lượt ai?», «xong nộp giấy gì?». Ba câu đó thành ba khối có
  * hình: điều kiện vào, sơ đồ bước, sơ đồ phát biểu — rồi mới tới biểu mẫu.
  *
- * Vì sao vẽ bằng thẻ + đường kẻ CSS chứ không phải một tấm SVG hay ảnh:
- *   - Tên phòng, mốc giờ và ngưỡng GHTD còn đổi theo quy chế. Ảnh thì mỗi lần
- *     sửa phải vẽ lại và ai đó phải nhớ thay tệp; thẻ thì sửa dữ liệu là xong.
- *   - Sơ đồ phải đọc được trên điện thoại — 150 cán bộ phần lớn mở bằng điện
- *     thoại. Một tấm SVG ngang 8 bước trên màn 390px là không đọc nổi; thẻ thì
- *     xếp dọc lại được.
- *   - Trình đọc màn hình đọc được chữ thật, không phải một tấm ảnh câm.
+ * Hai sơ đồ (làn bơi ở SoDoLuongViec, bàn tròn ở SoDoPhatBieu) đều là SVG dựng
+ * từ dữ liệu chứ không phải ảnh: quy chế đổi thì sơ đồ đổi theo, chữ là chữ thật
+ * nên trình đọc màn hình đọc được. Danh sách thẻ «chi tiết từng bước» giữ lại
+ * dưới sơ đồ vì điện thoại co sơ đồ nhỏ, cần một bản đọc được bằng chữ.
  *
  * Toàn bộ nội dung đọc từ `src/data/one/vanHanhChuongTrinh.ts` nên thêm chương
  * trình thứ hai (Ideas, Quizzi…) chỉ là thêm dữ liệu, không sửa file này.
@@ -100,8 +95,6 @@ function TheBieuMau({ bieuMau }: { bieuMau: BieuMauChuongTrinh }) {
 }
 
 export const SoDoVanHanh: React.FC<{ moHinh: MoHinhVanHanh }> = ({ moHinh }) => {
-  const tongPhut = tongThoiLuongPhien(moHinh);
-
   return (
     <div className="space-y-10">
       {/* ---- Mục tiêu và ranh giới ---- */}
@@ -235,9 +228,9 @@ export const SoDoVanHanh: React.FC<{ moHinh: MoHinhVanHanh }> = ({ moHinh }) => 
         <KhoiTieuDe
           so="3"
           tieuDe="Thứ tự phát biểu trong phiên"
-          phu={`Gợi ý cho một phiên khoảng ${tongPhut} phút. Biết trước lượt của mình thì ai cũng chuẩn bị được đúng phần mình nói.`}
+          phu={`${moHinh.phatBieu.length} vị trí quanh bàn, cất lời theo chiều kim đồng hồ — từ người gần hồ sơ nhất tới người kết luận. Bấm vào từng ghế để xem việc của vị trí đó.`}
         />
-        <DaiThoiGianPhien moHinh={moHinh} />
+        <SoDoPhatBieu moHinh={moHinh} />
       </section>
 
       {/* ---- 4. Ai làm gì ---- */}

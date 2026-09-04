@@ -72,14 +72,28 @@ export interface BuocVanHanh {
   nhanhRe?: { nhan: string; ketQua: string };
 }
 
-/** Một lượt phát biểu trong phiên — dựng sơ đồ thứ tự phát biểu */
+/**
+ * Một lượt phát biểu trong phiên — một VỊ TRÍ ngồi, theo đúng thứ tự cất lời.
+ *
+ * Không có thời lượng phút: bản đầu tự gán 5–20 phút cho mỗi lượt để vẽ dải
+ * thời gian, nhưng con số đó không có trong văn bản nào. Cán bộ nhìn thấy
+ * «~15 phút» trên cổng sẽ tin đó là quy định — thà không bày còn hơn bày số
+ * bịa. Muốn có thì phải lấy từ văn bản chương trình, không tự đặt.
+ */
 export interface LuotPhatBieu {
   thuTu: number;
+  /** Tên vị trí — đúng chữ Chi nhánh dùng (VD «Phó Giám đốc phụ trách Phòng đề xuất») */
+  viTri: string;
+  /** Nhãn ngắn hiện trên ghế trong sơ đồ (≤ 12 ký tự) */
+  viTriNgan: string;
+  /** Mã vai trò trong `MoHinhVanHanh.vaiTro` — quyết định màu và nhóm */
   vaiTro: string;
-  /** Nói về cái gì */
-  noiDung: string;
-  /** Thời lượng gợi ý, phút */
-  phut: number;
+  /**
+   * Việc của vị trí này trong phiên — TRÍCH NGUYÊN VĂN từ văn bản, không diễn
+   * lại. Mỗi câu ghi rõ nguồn ở `nguon` để người rà soát dò được về tận dòng.
+   */
+  nhiemVu: string;
+  nguon: string;
 }
 
 export interface BieuMauChuongTrinh {
@@ -143,7 +157,7 @@ const VAI_TRO_C360: VaiTroVanHanh[] = [
     ten: 'Cán bộ trình bày',
     tenNgan: 'CB trình bày',
     trachNhiem:
-      'Cán bộ QHKH/thẩm định trực tiếp hồ sơ: trình bày khách hàng, phương án và rủi ro đã nhận diện; trả lời phản biện.',
+      'Cán bộ đánh giá trực tiếp hồ sơ: trình bày, trình chiếu tài liệu kèm theo và báo cáo giải trình các vấn đề mà các thành viên đưa ra.',
     mau: '#B45309',
   },
   {
@@ -261,21 +275,102 @@ const BUOC_C360: BuocVanHanh[] = [
 ];
 
 /**
- * Thứ tự phát biểu trong phiên.
+ * Thứ tự phát biểu trong phiên — chín vị trí, theo thứ tự Giám đốc Chi nhánh
+ * chốt ngày 04/09/2026.
  *
  * Vì sao phải quy định: phiên đầu tiên nào cũng rơi vào cảnh người nói nhiều
  * nhất là người biết ít nhất về hồ sơ, còn cán bộ trực tiếp làm thì chỉ trả lời
- * nhát gừng. Cho thứ tự và thời lượng trước thì ai cũng biết lượt mình ở đâu và
- * chuẩn bị đúng phần của mình.
+ * nhát gừng. Thứ tự đi từ người GẦN hồ sơ nhất tới người có thẩm quyền cao nhất:
+ * Phòng đề xuất nói trước (cán bộ → Phó Phòng → Trưởng Phòng), rồi các Phòng
+ * tham gia, rồi Ban Giám đốc, và Giám đốc — người điều phối — kết luận sau cùng.
+ * Nhờ vậy ý kiến cấp trên không «đóng khung» phần trình bày của cấp dưới.
  *
- * Thời lượng là GỢI Ý cho một phiên ~60 phút, không phải mức trần cứng.
+ * `nhiemVu` trích nguyên văn Mẫu biểu 01-BHYC360 (Biên bản thảo luận phiên) và
+ * lời chốt của Giám đốc. Văn bản chương trình gốc chưa có trên Drive; khi có,
+ * đối chiếu lại từng dòng ở đây.
  */
 const PHAT_BIEU_C360: LuotPhatBieu[] = [
-  { thuTu: 1, vaiTro: 'dieu-phoi', noiDung: 'Mở phiên: nêu hồ sơ, phạm vi thảo luận và thời lượng', phut: 5 },
-  { thuTu: 2, vaiTro: 'can-bo-trinh-bay', noiDung: 'Trình bày khách hàng, phương án, rủi ro đã nhận diện và đề xuất GHTD', phut: 15 },
-  { thuTu: 3, vaiTro: 'thanh-vien', noiDung: 'Phản biện theo lượt — mỗi thành viên một góc nhìn, không nói lại ý người trước', phut: 20 },
-  { thuTu: 4, vaiTro: 'phong-de-xuat', noiDung: 'Lãnh đạo phòng giải trình, làm rõ những điểm còn treo', phut: 10 },
-  { thuTu: 5, vaiTro: 'dieu-phoi', noiDung: 'Kết luận: chốt việc phải bổ sung, hoàn thiện và ngày trình', phut: 10 },
+  {
+    thuTu: 1,
+    viTri: 'Cán bộ Phòng đề xuất',
+    viTriNgan: 'Cán bộ',
+    vaiTro: 'can-bo-trinh-bay',
+    nhiemVu:
+      'Trình bày, trình chiếu tài liệu kèm theo; báo cáo giải trình các vấn đề mà các thành viên đưa ra.',
+    nguon: 'Mẫu biểu 01, mục II.3; thứ tự do Giám đốc chốt 04/09/2026',
+  },
+  {
+    thuTu: 2,
+    viTri: 'Phó Phòng phụ trách',
+    viTriNgan: 'Phó Phòng',
+    vaiTro: 'phong-de-xuat',
+    nhiemVu:
+      'Chia sẻ thêm sau phần trình bày của cán bộ; cùng cán bộ báo cáo giải trình các vấn đề mà các thành viên đưa ra.',
+    nguon: 'Mẫu biểu 01, mục II.3 («cán bộ và LĐP … trình bày, báo cáo giải trình»)',
+  },
+  {
+    thuTu: 3,
+    viTri: 'Trưởng Phòng',
+    viTriNgan: 'Trưởng Phòng',
+    vaiTro: 'phong-de-xuat',
+    nhiemVu:
+      'Chia sẻ thêm; đưa ra quan điểm của Phòng, tiếp thu những ý kiến góp ý và làm rõ, hoàn thiện nội dung trình bày, trình cấp có thẩm quyền.',
+    nguon: 'Mẫu biểu 01, mục II.3',
+  },
+  {
+    thuTu: 4,
+    viTri: 'Phòng Hỗ trợ tín dụng',
+    viTriNgan: 'P. HTTD',
+    vaiTro: 'thanh-vien',
+    nhiemVu:
+      'Chia sẻ, đánh giá các điều kiện cấp GHTD và tình hình tài chính, sản xuất kinh doanh của Khách hàng; đưa ra các ý kiến được ghi nhận tại Phiếu đính kèm biên bản.',
+    nguon: 'Mẫu biểu 01, mục II.3',
+  },
+  {
+    thuTu: 5,
+    viTri: 'Phòng Tổ chức tổng hợp',
+    viTriNgan: 'P. TCTH',
+    vaiTro: 'thanh-vien',
+    nhiemVu:
+      'Chia sẻ, đánh giá các điều kiện cấp GHTD và tình hình tài chính, sản xuất kinh doanh của Khách hàng; đưa ra các ý kiến được ghi nhận tại Phiếu đính kèm biên bản.',
+    nguon: 'Mẫu biểu 01, mục II.3',
+  },
+  {
+    thuTu: 6,
+    viTri: 'Phó Giám đốc phụ trách Phòng đề xuất',
+    viTriNgan: 'PGĐ phụ trách',
+    vaiTro: 'thanh-vien',
+    nhiemVu:
+      'Thành viên phiên: trao đổi, chia sẻ các góc nhìn, nhận diện các vấn đề và những lưu ý cần bổ sung, hoàn thiện; ý kiến được ghi nhận tại Phiếu đính kèm biên bản.',
+    nguon: 'Mẫu biểu 01, mục I và mục III',
+  },
+  {
+    thuTu: 7,
+    viTri: 'Phó Giám đốc hỗ trợ PGĐ phụ trách Phòng',
+    viTriNgan: 'PGĐ hỗ trợ',
+    vaiTro: 'thanh-vien',
+    nhiemVu:
+      'Thành viên phiên: trao đổi, chia sẻ các góc nhìn, nhận diện các vấn đề và những lưu ý cần bổ sung, hoàn thiện; ý kiến được ghi nhận tại Phiếu đính kèm biên bản.',
+    nguon: 'Mẫu biểu 01, mục I và mục III',
+  },
+  {
+    thuTu: 8,
+    viTri: 'Phó Giám đốc còn lại',
+    viTriNgan: 'PGĐ còn lại',
+    vaiTro: 'thanh-vien',
+    nhiemVu:
+      'Thành viên phiên: trao đổi, chia sẻ các góc nhìn, nhận diện các vấn đề và những lưu ý cần bổ sung, hoàn thiện; ý kiến được ghi nhận tại Phiếu đính kèm biên bản.',
+    nguon: 'Mẫu biểu 01, mục I và mục III',
+  },
+  {
+    thuTu: 9,
+    viTri: 'Giám đốc Chi nhánh',
+    viTriNgan: 'Giám đốc',
+    vaiTro: 'dieu-phoi',
+    nhiemVu:
+      'Người điều phối phiên. Kết luận: chốt các vấn đề và những lưu ý cần bổ sung, hoàn thiện để Phòng đề xuất trình cấp thẩm quyền cấp GHTD theo quy định; ký biên bản với tư cách Người điều hành phiên.',
+    nguon: 'Mẫu biểu 01, mục I, mục III và phần ký',
+  },
 ];
 
 const BIEU_MAU_C360: BieuMauChuongTrinh[] = [
@@ -359,9 +454,4 @@ export function timVaiTro(moHinh: MoHinhVanHanh, ma: string): VaiTroVanHanh {
       mau: '#64748B',
     }
   );
-}
-
-/** Tổng thời lượng gợi ý của một phiên, phút */
-export function tongThoiLuongPhien(moHinh: MoHinhVanHanh): number {
-  return moHinh.phatBieu.reduce((tong, l) => tong + l.phut, 0);
 }
