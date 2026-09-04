@@ -1,11 +1,12 @@
 import { Link, useSearchParams } from 'react-router-dom';
-import { ClipboardCheck, ClipboardPen, Globe, Lightbulb, ShieldCheck, Sprout, Tags, Wallet, type LucideIcon } from 'lucide-react';
+import { BookOpen, ClipboardCheck, ClipboardPen, Globe, Lightbulb, ShieldCheck, Sprout, Tags, Wallet, type LucideIcon } from 'lucide-react';
 import { OnePageShell } from '@/components/one/OnePageShell';
 import { chonViec, cacViecHienThi, quyenTuVaiTro, type MaViecVanHanh } from '@/lib/ideaVanHanh';
 import { useAuth } from '@/hooks/useAuth';
 import { IdeaHero, IdeaTabs } from '@/components/one/ideas/IdeaNav';
 import { GiamDocDuyetBenRe } from '@/components/one/ideas/GiamDocDuyetBenRe';
 import { TrinhBenRePanel } from '@/components/one/ideas/TrinhBenRePanel';
+import { SoBenRePanel } from '@/components/one/ideas/SoBenRePanel';
 import { UomMamPicker } from '@/components/one/ideas/UomMamPicker';
 import { PhanNhomPanel } from '@/components/one/ideas/PhanNhomPanel';
 import { SmpTracker } from '@/components/one/ideas/SmpTracker';
@@ -30,6 +31,7 @@ import { useCauHinhIdeas, useLaGiamDoc } from '@/components/one/ideas/useUomMamP
 const HINH_VIEC: Record<MaViecVanHanh, { icon: LucideIcon; khung: string }> = {
   duyet_ben_re: { icon: ClipboardCheck, khung: 'border-sky-200' },
   trinh_ben_re: { icon: ClipboardPen, khung: 'border-slate-200' },
+  so_ben_re: { icon: BookOpen, khung: 'border-teal-200' },
   uom_mam: { icon: Sprout, khung: 'border-emerald-200' },
   phan_nhom: { icon: Tags, khung: 'border-violet-200' },
   doi_chieu_smp: { icon: Globe, khung: 'border-slate-200' },
@@ -137,6 +139,7 @@ export default function OneIdeaOpsPage() {
             <div className={`rounded-2xl border bg-white p-4 shadow-sm sm:p-6 ${HINH_VIEC[viecDangChon].khung}`}>
               {viecDangChon === 'duyet_ben_re' && <GiamDocDuyetBenRe />}
               {viecDangChon === 'trinh_ben_re' && <TrinhBenRePanel />}
+              {viecDangChon === 'so_ben_re' && <SoBenRePanel />}
               {viecDangChon === 'uom_mam' && <UomMamPicker />}
               {viecDangChon === 'phan_nhom' && <PhanNhomPanel ideas={ideas} />}
               {viecDangChon === 'doi_chieu_smp' && <SmpTracker />}

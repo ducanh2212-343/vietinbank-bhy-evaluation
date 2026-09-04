@@ -84,6 +84,16 @@ interface IdeaFormProps {
   onDone?: () => void;
   /** Quản trị (TCTH/hệ thống) được nhập hộ cán bộ khác */
   canSubmitForOthers?: boolean;
+  /**
+   * Chế độ «bổ sung & gửi lại»: ý tưởng đã bị TCTH/Giám đốc trả về kèm khuyến
+   * nghị. Form hiện khuyến nghị lên đầu, bắt ghi «đã bổ sung gì», và sau khi
+   * lưu nội dung thì chuyển hồ sơ về tay TCTH chấm lại.
+   */
+  boSung?: {
+    lyDo: string;
+    boi: 'tcth' | 'gd';
+    onGuiLai: (ghiChu: string) => Promise<boolean>;
+  };
 }
 
 export const IdeaForm: React.FC<IdeaFormProps> = ({
@@ -92,9 +102,11 @@ export const IdeaForm: React.FC<IdeaFormProps> = ({
   editing = null,
   onDone,
   canSubmitForOthers = false,
+  boSung,
 }) => {
   const { staff, me, isLoading: loadingStaff } = useStaffDirectory();
   const [values, setValues] = useState<FormValues>(emptyValues);
+  const [ghiChuBoSung, setGhiChuBoSung] = useState('');
   const [proposerId, setProposerId] = useState('');
   const [coAuthorIds, setCoAuthorIds] = useState<string[]>([]);
   const [submitError, setSubmitError] = useState('');
@@ -105,6 +117,7 @@ export const IdeaForm: React.FC<IdeaFormProps> = ({
     setValues(editing ? valuesFromIdea(editing) : emptyValues());
     if (!editing) setCoAuthorIds([]);
     setSubmitError('');
+    setGhiChuBoSung('');
   }, [editing]);
 
   // Mặc định người đề xuất là chính mình, ngay khi danh bạ tải xong
@@ -139,6 +152,11 @@ export const IdeaForm: React.FC<IdeaFormProps> = ({
       }
     }
 
+    if (boSung && !ghiChuBoSung.trim()) {
+      setSubmitError('Vui lòng ghi ngắn gọn đã bổ sung những gì theo khuyến nghị — người đánh giá lại sẽ đọc dòng này trước.');
+      return;
+    }
+
     // Người đề xuất & phòng lấy từ hồ sơ nhân sự — chặn gửi khi hồ sơ chưa đủ
     if (!editing && !proposer) {
       setSubmitError('Chưa đọc được hồ sơ cán bộ của bạn. Vui lòng tải lại trang hoặc báo Phòng TCTH.');
@@ -169,7 +187,14 @@ export const IdeaForm: React.FC<IdeaFormProps> = ({
 
       if (editing) {
         const ok = await onUpdate(editing.id, input);
-        if (ok) onDone?.();
+        // Bổ sung & gửi lại: lưu nội dung xong mới chuyển hồ sơ về TCTH — nếu
+        // bước hai hỏng thì nội dung đã sửa vẫn còn, cán bộ chỉ cần bấm gửi lại
+        if (ok && boSung) {
+          const ok2 = await boSung.onGuiLai(ghiChuBoSung);
+          if (ok2) onDone?.();
+        } else if (ok) {
+          onDone?.();
+        }
       } else {
         const ok = await onCreate(input);
         if (ok) {
@@ -194,7 +219,7 @@ export const IdeaForm: React.FC<IdeaFormProps> = ({
         <div>
           <h4 className="font-black text-slate-800 text-base flex items-center gap-2">
             <Lightbulb className="w-5 h-5 text-amber-500" />
-            <span>{editing ? '✏️ Cập Nhật Ý Tưởng Sáng Kiến' : 'Đăng Ký Ý Tưởng Sáng Kiến Mới'}</span>
+            <span>{boSung ? '↩️ Bổ Sung & Gửi Lại Ý Tưởng' : editing ? '✏️ Cập Nhật Ý Tưởng Sáng Kiến' : 'Đăng Ký Ý Tưởng Sáng Kiến Mới'}</span>
           </h4>
           <p className="text-2xs text-slate-500 mt-1">
             Các ý tưởng được lưu trữ trên hệ thống và hiển thị trong báo cáo thống kê của chi nhánh.
@@ -212,6 +237,17 @@ export const IdeaForm: React.FC<IdeaFormProps> = ({
           </button>
         )}
       </div>
+
+      {boSung && (
+        <div className="flex gap-2 rounded-xl border border-orange-300 bg-orange-50 p-3 text-xs text-orange-900">
+          <span className="shrink-0">↩️</span>
+          <span>
+            <b>{boSung.boi === 'gd' ? 'Giám đốc' : 'Phòng TCTH'} trả về để bổ sung:</b> «{boSung.lyDo}»
+            <br />
+            <span className="text-2xs">Sửa nội dung bên dưới theo khuyến nghị, ghi đã bổ sung gì, rồi bấm gửi lại.</span>
+          </span>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4 text-xs">
         {/* Người đề xuất & Phòng/Ban lấy từ hồ sơ cán bộ đang đăng nhập, không gõ tay */}
@@ -310,6 +346,24 @@ export const IdeaForm: React.FC<IdeaFormProps> = ({
           );
         })}
 
+        {boSung && (
+          <div className="space-y-1.5 rounded-xl border border-violet-300 bg-violet-50 p-3">
+            <label className="block text-xs font-black text-violet-900">
+              Đã bổ sung những gì theo khuyến nghị? <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              rows={3}
+              value={ghiChuBoSung}
+              onChange={e => setGhiChuBoSung(e.target.value)}
+              placeholder="VD: Đã nêu rõ 3 bước triển khai và thời gian thử nghiệm 2 tuần tại PGD…"
+              className="w-full rounded-xl border border-violet-300 bg-white p-2.5 text-xs outline-none focus:border-violet-500"
+            />
+            <p className="text-2xs text-violet-800">
+              Phòng TCTH sẽ đọc dòng này trước khi chấm lại. Gửi xong, ý tưởng quay về Phòng TCTH đánh giá rồi trình Giám đốc.
+            </p>
+          </div>
+        )}
+
         {submitError && (
           <div className="p-3 bg-red-50 text-red-600 rounded-lg border border-red-200 flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
@@ -327,7 +381,7 @@ export const IdeaForm: React.FC<IdeaFormProps> = ({
           ) : (
             <Sparkles className="w-4 h-4" />
           )}
-          <span>{editing ? 'CẬP NHẬT Ý TƯỞNG SÁNG KIẾN' : 'GỬI Ý TƯỞNG SÁNG KIẾN LÊN HỆ THỐNG'}</span>
+          <span>{boSung ? 'GỬI LẠI ĐỂ PHÒNG TCTH ĐÁNH GIÁ' : editing ? 'CẬP NHẬT Ý TƯỞNG SÁNG KIẾN' : 'GỬI Ý TƯỞNG SÁNG KIẾN LÊN HỆ THỐNG'}</span>
         </button>
       </form>
     </div>

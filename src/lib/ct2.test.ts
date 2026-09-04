@@ -767,3 +767,13 @@ describe('Bằng chứng tuần của dấu ấn cũng phải nằm trên dòng 
       .toBe('Bằng chứng tuần 17/08');
   });
 });
+
+describe('Đường dẫn tin BHY Ideas', () => {
+  it('ý tưởng bị trả về mở thẳng bảng tra cứu — thẻ ý tưởng tự hiện dải «cần bổ sung»', () => {
+    // Không có mã thẻ/hồ sơ nào để trỏ sâu hơn; thiếu nhánh riêng là rơi về CT2
+    expect(duongDanThongBao({ ma_su_kien: 'IDEA_TRA_VE', dau_viec_id: null })).toBe('/one/y-tuong/gui');
+  });
+  it('tin tiến trình (trình GĐ, công nhận, chưa đạt, nuôi dưỡng…) cũng mở bảng tra cứu', () => {
+    expect(duongDanThongBao({ ma_su_kien: 'IDEA_TIEN_TRINH', dau_viec_id: null })).toBe('/one/y-tuong/gui');
+  });
+});

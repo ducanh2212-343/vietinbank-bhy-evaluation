@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ChevronDown, ChevronUp, ClipboardPen, Globe, Info, Search, Send } from 'lucide-react';
+import { ArrowRight, ChevronDown, ChevronUp, ClipboardPen, CornerDownLeft, Globe, Info, Search, Send, Sprout, StopCircle, X } from 'lucide-react';
+import { KhungLyDo } from './KhungLyDo';
 import { khopTimKiem } from '@/lib/vietnamese';
 import type { IdeaLevel } from '@/data/one/ideasConfig';
 import { canChamPhieuBenRe, chamPhieuBenRe, duongLenBenRe, phieuBenReRong, phieuCoNoiDung, type PhieuBenRe } from '@/lib/ideaBenRe';
@@ -37,12 +38,70 @@ const CAC_LOC: { ma: MaLoc; nhan: string; capDeXuat: IdeaLevel | null }[] = [
 
 const ngay = (iso: string) => new Date(iso).toLocaleDateString('vi-VN');
 
-function TheUngVien({ uv, onXong }: { uv: UngVienBenRe; onXong: () => void }) {
-  const [mo, setMo] = useState(false);
+const ngayGio = (iso: string) =>
+  new Date(iso).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
+
+/** Ô chọn ý tưởng để ghép nuôi dưỡng — tìm không dấu trong chính danh sách ứng viên */
+function ChonPhoiHop({ tatCa, loaiTru, chon, onChon }: {
+  tatCa: UngVienBenRe[]; loaiTru: string; chon: string[]; onChon: (ids: string[]) => void;
+}) {
+  const [tim, setTim] = useState('');
+  const goiY = tim.trim()
+    ? tatCa.filter(u => u.ideaId !== loaiTru && !chon.includes(u.ideaId)
+        && khopTimKiem([u.title, u.proposer, u.phong].join(' '), tim)).slice(0, 6)
+    : [];
+  return (
+    <div className="space-y-1.5">
+      <p className="text-2xs font-bold text-teal-900">Ghép nuôi dưỡng cùng ý tưởng nào? (không bắt buộc)</p>
+      {chon.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {chon.map(id => {
+            const u = tatCa.find(x => x.ideaId === id);
+            return (
+              <span key={id} className="flex items-center gap-1 rounded-full bg-teal-100 px-2 py-0.5 text-2xs font-bold text-teal-800">
+                {u?.title ?? id}
+                <button type="button" onClick={() => onChon(chon.filter(x => x !== id))} className="cursor-pointer"><X className="h-3 w-3" /></button>
+              </span>
+            );
+          })}
+        </div>
+      )}
+      <input
+        type="search"
+        value={tim}
+        onChange={e => setTim(e.target.value)}
+        placeholder="Gõ tên ý tưởng / người / phòng để tìm (VD: Hải, Văn Lâm)…"
+        className="w-full rounded-lg border border-teal-300 bg-white p-2 text-2xs outline-none focus:border-teal-500"
+      />
+      {goiY.length > 0 && (
+        <div className="max-h-40 space-y-0.5 overflow-auto rounded-lg border border-teal-200 bg-white p-1">
+          {goiY.map(u => (
+            <button
+              key={u.ideaId}
+              type="button"
+              onClick={() => { onChon([...chon, u.ideaId]); setTim(''); }}
+              className="block w-full cursor-pointer rounded px-2 py-1 text-left text-2xs hover:bg-teal-50"
+            >
+              <b>{u.title}</b> <span className="text-slate-500">— {u.phong} · {u.proposer}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TheUngVien({ uv, tatCa, onXong }: { uv: UngVienBenRe; tatCa: UngVienBenRe[]; onXong: () => void }) {
+  const [mo, setMo] = useState(uv.trangThaiSo === 'da_bo_sung');
   const [phieu, setPhieu] = useState<PhieuBenRe>(() =>
     phieuCoNoiDung(uv.danhGiaTcth) ? uv.danhGiaTcth : phieuBenReRong());
   const [dangGui, setDangGui] = useState(false);
-  const { trinh } = useBenReActions();
+  const [phoiHop, setPhoiHop] = useState<string[]>(uv.phoiHopVoi ?? []);
+  const { trinh, traVeBoSung, ketLuanTcth } = useBenReActions();
+  const dangChoCanBo = uv.trangThaiSo === 'tra_ve';
+  const daBoSung = uv.trangThaiSo === 'da_bo_sung';
+  const dangNuoiDuong = uv.trangThaiSo === 'nuoi_duong';
+  const daDung = uv.trangThaiSo === 'dung';
 
   const kq = chamPhieuBenRe(phieu);
   const daTsc = uv.smpTrangThai === 'dong_y' || uv.smpTrangThai === 'dong_y_mot_phan';
@@ -80,6 +139,32 @@ function TheUngVien({ uv, onXong }: { uv: UngVienBenRe; onXong: () => void }) {
                 TSC đã duyệt trên SMP — ghi nhận ở màn Đối chiếu SMP, khỏi qua Giám đốc
               </span>
             )}
+            {daBoSung && (
+              <span className="rounded-full bg-violet-100 px-2 py-0.5 text-2xs font-bold text-violet-700">
+                📝 Đã bổ sung lần {uv.soLanBoSung}{uv.boSungLuc ? ` — ${ngayGio(uv.boSungLuc)}` : ''} · chờ đánh giá lại
+              </span>
+            )}
+            {dangChoCanBo && (
+              <span className="rounded-full bg-orange-100 px-2 py-0.5 text-2xs font-bold text-orange-700">
+                ↩️ {uv.traVeBoi === 'gd' ? 'Giám đốc' : 'TCTH'} trả về{uv.traVeLuc ? ` ${ngayGio(uv.traVeLuc)}` : ''} — đang chờ cán bộ bổ sung
+              </span>
+            )}
+            {dangNuoiDuong && (
+              <span className="rounded-full bg-teal-100 px-2 py-0.5 text-2xs font-bold text-teal-800">
+                🌱 Đang nuôi dưỡng{uv.phoiHopTen.length ? ` · ghép cùng ${uv.phoiHopTen.length} ý tưởng` : ''}
+              </span>
+            )}
+            {daDung && (
+              <span className="rounded-full bg-slate-200 px-2 py-0.5 text-2xs font-bold text-slate-600">
+                ⏹️ Đã dừng ươm mầm{uv.ketLuanLuc ? ` ${ngayGio(uv.ketLuanLuc)}` : ''}
+              </span>
+            )}
+            {/* Cán bộ đã khai có demo khi gửi — bày ra đây, khỏi quay lại bảng tra cứu */}
+            <span className={`rounded-full px-2 py-0.5 text-2xs font-bold ${
+              uv.coDemo ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+            }`}>
+              {uv.coDemo ? '🧪 Có demo' : 'Chưa có demo'}
+            </span>
             {uv.capDeXuat && (
               <span className={`rounded-full px-2 py-0.5 text-2xs font-bold ${
                 uv.capDeXuat === 'Đề xuất TSC'
@@ -111,6 +196,28 @@ function TheUngVien({ uv, onXong }: { uv: UngVienBenRe; onXong: () => void }) {
               <b className="text-slate-500">{k.nhan}:</b> {k.giaTri}
             </p>
           ))}
+
+          {(dangNuoiDuong || daDung) && (
+            <div className={`space-y-1 rounded-lg border p-2.5 text-2xs ${dangNuoiDuong ? 'border-teal-200 bg-teal-50 text-teal-900' : 'border-slate-200 bg-slate-100 text-slate-700'}`}>
+              <p><b>Kết luận TCTH{uv.ketLuanLuc ? ` (${ngayGio(uv.ketLuanLuc)})` : ''}:</b> {uv.lyDoKetLuan ?? '—'}</p>
+              {uv.phoiHopTen.length > 0 && <p>🔗 Ghép cùng: {uv.phoiHopTen.map(t => `«${t}»`).join(', ')}</p>}
+            </div>
+          )}
+
+          {(daBoSung || dangChoCanBo) && (
+            <div className="space-y-1 rounded-lg border border-violet-200 bg-violet-50 p-2.5 text-2xs text-violet-900">
+              <p>
+                <b>Khuyến nghị đã gửi cán bộ ({uv.traVeBoi === 'gd' ? 'Giám đốc' : 'Phòng TCTH'}):</b>{' '}
+                {uv.lyDoTraVe ?? '—'}
+              </p>
+              {daBoSung && (
+                <p><b>Cán bộ đã bổ sung:</b> {uv.boSungGhiChu ?? '—'}</p>
+              )}
+              {dangChoCanBo && (
+                <p className="italic">Cán bộ chưa gửi lại — vẫn trình được nếu Phòng TCTH thấy đủ, hoặc chờ.</p>
+              )}
+            </div>
+          )}
 
           {/* Ý tưởng đi đường 2 thì mở ra vẫn xem được nội dung, nhưng không
               bày phiếu chấm — chấm ở đây là làm thừa một việc quy chế không
@@ -150,6 +257,62 @@ function TheUngVien({ uv, onXong }: { uv: UngVienBenRe; onXong: () => void }) {
                 Gợi ý là chưa nên trình — nếu vẫn trình, nên ghi rõ lý do ở ô ý kiến.
               </span>
             )}
+            {/* TCTH trả về TRƯỚC khi trình — chốt (2) ngày 03/09/2026. Đang chờ cán
+                bộ thì không bày nút nữa, trả về hai lần liên tiếp chỉ làm rối */}
+            {/* Kết luận của TCTH (bổ sung 03/09/2026): ý tưởng có triển vọng nhưng
+                cần phát triển / ghép với ý tưởng khác → NUÔI DƯỠNG; không khả thi →
+                DỪNG ƯƠM MẦM. Cả hai đều báo cho chủ ý tưởng kèm lý do. */}
+            <KhungLyDo
+              nhan={dangNuoiDuong ? 'Cập nhật nuôi dưỡng' : 'Nuôi dưỡng'}
+              icon={Sprout}
+              mau="teal"
+              placeholder="Hướng phát triển / vì sao đáng nuôi (bắt buộc, cán bộ đọc nguyên văn)…"
+              heQua={[
+                'Ý tưởng được đánh dấu đang nuôi dưỡng, chưa trình Giám đốc',
+                'Chủ ý tưởng nhận thông báo, được mời góp thêm ý kiến ở phần trao đổi',
+                'Chủ các ý tưởng được ghép cùng cũng được báo',
+              ]}
+              themVao={<ChonPhoiHop tatCa={tatCa} loaiTru={uv.ideaId} chon={phoiHop} onChon={setPhoiHop} />}
+              onXacNhan={lyDo => ketLuanTcth(uv.ideaId, 'nuoi_duong', lyDo, phoiHop)}
+            />
+            {!daDung && (
+              <KhungLyDo
+                nhan="Dừng ươm mầm"
+                icon={StopCircle}
+                mau="slate"
+                placeholder="Vì sao chưa khả thi (bắt buộc, cán bộ đọc nguyên văn)…"
+                heQua={[
+                  'Ý tưởng dừng ở cấp Ươm mầm, không trình Bén rễ',
+                  'Chủ ý tưởng nhận thông báo kèm lý do',
+                  'Vẫn mở lại được sau này: nuôi dưỡng hoặc trình',
+                ]}
+                onXacNhan={async lyDo => {
+                  const ok = await ketLuanTcth(uv.ideaId, 'dung', lyDo);
+                  if (ok) onXong();
+                  return ok;
+                }}
+              />
+            )}
+            {!dangChoCanBo && (
+              <div className="ml-auto">
+                <KhungLyDo
+                  nhan="Trả về cán bộ bổ sung"
+                  icon={CornerDownLeft}
+                  mau="orange"
+                  placeholder="Khuyến nghị cụ thể cho cán bộ (bắt buộc, cán bộ sẽ đọc nguyên văn)…"
+                  heQua={[
+                    'Ý tưởng về tay cán bộ đề xuất để sửa; phiếu chấm dở của Phòng TCTH giữ nguyên',
+                    'Cán bộ nhận thông báo kèm nguyên văn khuyến nghị',
+                    'Gửi lại xong, ý tưởng nổi lên đầu danh sách này để chấm lại',
+                  ]}
+                  onXacNhan={async lyDo => {
+                    const ok = await traVeBoSung(uv.ideaId, lyDo, 'tcth');
+                    if (ok) onXong();
+                    return ok;
+                  }}
+                />
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -164,9 +327,11 @@ export const TrinhBenRePanel: React.FC = () => {
   const [xemHet, setXemHet] = useState(false);
   const [vuaTrinh, setVuaTrinh] = useState<string[]>([]);
 
+  const [hienDaDung, setHienDaDung] = useState(false);
+  const soDaDung = useMemo(() => ungVien.filter(u => u.trangThaiSo === 'dung').length, [ungVien]);
   const conLai = useMemo(
-    () => ungVien.filter(u => !vuaTrinh.includes(u.ideaId)),
-    [ungVien, vuaTrinh]);
+    () => ungVien.filter(u => !vuaTrinh.includes(u.ideaId) && (hienDaDung || u.trangThaiSo !== 'dung')),
+    [ungVien, vuaTrinh, hienDaDung]);
 
   const demTheoLoc = useMemo(() => ({
     noi_bo: conLai.filter(u => u.capDeXuat === 'Nội bộ CN').length,
@@ -182,7 +347,15 @@ export const TrinhBenRePanel: React.FC = () => {
       [u.title, u.proposer, u.phong, u.proposedSolution ?? ''].join(' '), tim));
   }, [conLai, tim, maLoc]);
 
-  const hien = xemHet ? loc : loc.slice(0, SO_HIEN_MAC_DINH);
+  // Hồ sơ cán bộ vừa gửi lại nổi lên đầu — đây là việc có người đang đợi
+  // Thứ tự: đã bổ sung (có người đợi) → đang nuôi dưỡng (đang theo dõi) → còn lại
+  const hangUuTien = (u: UngVienBenRe) => u.trangThaiSo === 'da_bo_sung' ? 0 : u.trangThaiSo === 'nuoi_duong' ? 1 : 2;
+  const daBoSungTruoc = useMemo(
+    () => [...loc].sort((a, b) => hangUuTien(a) - hangUuTien(b)),
+    [loc]);
+  const soDaBoSung = loc.filter(u => u.trangThaiSo === 'da_bo_sung').length;
+  const soNuoiDuong = loc.filter(u => u.trangThaiSo === 'nuoi_duong').length;
+  const hien = xemHet ? daBoSungTruoc : daBoSungTruoc.slice(0, Math.max(SO_HIEN_MAC_DINH, soDaBoSung + soNuoiDuong));
 
   return (
     <div className="space-y-3 text-sm">
@@ -282,13 +455,37 @@ export const TrinhBenRePanel: React.FC = () => {
         </p>
       ) : (
         <div className="space-y-1.5">
-          {hien.map(uv => (
-            <TheUngVien
-              key={uv.ideaId}
-              uv={uv}
-              onXong={() => setVuaTrinh(v => [...v, uv.ideaId])}
-            />
+          {soDaBoSung > 0 && (
+            <p className="rounded-lg bg-violet-100 px-2.5 py-1 text-2xs font-black uppercase tracking-wider text-violet-800">
+              📝 {soDaBoSung} ý tưởng cán bộ đã bổ sung — chấm lại trước
+            </p>
+          )}
+          {hien.map((uv, i) => (
+            <React.Fragment key={uv.ideaId}>
+              {soNuoiDuong > 0 && i === soDaBoSung && (
+                <p className="rounded-lg bg-teal-100 px-2.5 py-1 text-2xs font-black uppercase tracking-wider text-teal-800">
+                  🌱 {soNuoiDuong} ý tưởng đang nuôi dưỡng
+                </p>
+              )}
+              {(soDaBoSung + soNuoiDuong) > 0 && i === soDaBoSung + soNuoiDuong && (
+                <p className="pt-1 text-2xs font-black uppercase tracking-wider text-slate-400">Còn lại</p>
+              )}
+              <TheUngVien
+                uv={uv}
+                tatCa={ungVien}
+                onXong={() => setVuaTrinh(v => [...v, uv.ideaId])}
+              />
+            </React.Fragment>
           ))}
+          {soDaDung > 0 && (
+            <button
+              type="button"
+              onClick={() => setHienDaDung(h => !h)}
+              className="w-full cursor-pointer rounded-lg border border-dashed border-slate-300 py-1.5 text-2xs font-bold text-slate-500 hover:border-slate-400"
+            >
+              {hienDaDung ? 'Ẩn' : 'Hiện'} {soDaDung} ý tưởng đã dừng ươm mầm
+            </button>
+          )}
           {!xemHet && loc.length > SO_HIEN_MAC_DINH && (
             <button
               type="button"

@@ -18,6 +18,7 @@
 export type MaViecVanHanh =
   | 'duyet_ben_re'
   | 'trinh_ben_re'
+  | 'so_ben_re'
   | 'uom_mam'
   | 'phan_nhom'
   | 'doi_chieu_smp'
@@ -57,6 +58,15 @@ export const CAC_VIEC_VAN_HANH: readonly ViecVanHanh[] = [
     ten: 'Đánh giá & trình',
     moTa: 'Phòng TCTH chấm phiếu 5 câu cho từng ý tưởng rồi trình Giám đốc công nhận Bén rễ.',
     hien: q => q.laQuanTri,
+  },
+  {
+    // Sổ đầy đủ mọi hồ sơ Bén rễ — Giám đốc và TCTH cùng nhìn được ý tưởng nào
+    // lên cấp do Giám đốc duyệt, ý tưởng nào do Trụ sở chính đồng ý, và hồ sơ
+    // nào đang bị trả về / đã bổ sung (yêu cầu vận hành 03/09/2026)
+    ma: 'so_ben_re',
+    ten: 'Sổ Bén rễ',
+    moTa: 'Toàn bộ hồ sơ Bén rễ theo nguồn công nhận: Giám đốc duyệt hay Trụ sở chính đồng ý; hồ sơ trả về, đã bổ sung, chưa đạt.',
+    hien: q => q.laGiamDoc || q.laQuanTri,
   },
   {
     ma: 'uom_mam',

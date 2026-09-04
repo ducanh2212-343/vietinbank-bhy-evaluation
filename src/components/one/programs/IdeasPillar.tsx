@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowRight, ClipboardList, Search, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { EditableText } from '@/components/one/AdminEditableContext';
@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { usePortalIdeas, type PortalIdea } from '@/components/one/ideas/usePortalIdeas';
 import { IdeaForm } from '@/components/one/ideas/IdeaForm';
 import { IdeaList } from '@/components/one/ideas/IdeaList';
+import { useBenReActions, useHoSoBenReCuaToi } from '@/components/one/ideas/useBenRe';
 import { IdeaStatsPanel } from '@/components/one/ideas/IdeaStatsPanel';
 import { khopTimKiem } from '@/lib/vietnamese';
 import { IDEA_LINH_VUC, IDEA_LINH_VUC_INFO, type IdeaLevel, type IdeaLinhVuc } from '@/data/one/ideasConfig';
@@ -91,11 +92,18 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
   const { isGuest } = useAuth();
   const { ideas, isLoading, isContentAdmin, createIdea, updateIdea, deleteIdea, setVote, adminUpdateStatus } = usePortalIdeas();
   const myName = useMyFullName();
+  // Hồ sơ Bén rễ của chính mình — để thẻ ý tưởng hiện «cần bổ sung» và nút gửi lại
+  const { theoIdea: hoSoBenRe } = useHoSoBenReCuaToi();
+  const { guiLaiBoSung } = useBenReActions();
+  const [boSungCho, setBoSungCho] = useState<PortalIdea | null>(null);
 
   const [filterLevel, setFilterLevel] = useState<'all' | IdeaLevel>('all');
   const [filterNhom, setFilterNhom] = useState<'all' | IdeaLinhVuc>('all');
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<PortalIdea | null>(null);
+  // ?y_tuong=<id>: mở từ Sổ Bén rễ / thông báo — chỉ hiện đúng ý tưởng đó
+  const [thamSo, datThamSo] = useSearchParams();
+  const yTuongChon = thamSo.get('y_tuong');
   const formRef = useRef<HTMLDivElement | null>(null);
 
   // Trang đặc trưng (introOnly) và khách đối tác: chỉ xem giới thiệu tĩnh.
@@ -125,7 +133,8 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
 
   // Lọc theo cấp + tìm kiếm không dấu trên toàn bộ nội dung phiếu.
   // Mục đích chính: cán bộ tra trước khi gửi để tránh đề xuất trùng ý tưởng đã có.
-  const byLevel = filterLevel === 'all' ? ideas : ideas.filter(i => i.level === filterLevel);
+  const chiMotYTuong = yTuongChon ? ideas.filter(i => i.id === yTuongChon) : ideas;
+  const byLevel = filterLevel === 'all' ? chiMotYTuong : chiMotYTuong.filter(i => i.level === filterLevel);
   const byNhom = filterNhom === 'all' ? byLevel : byLevel.filter(i => i.linhVuc === filterNhom);
   const filteredIdeas = search.trim()
     ? byNhom.filter(i =>
@@ -136,9 +145,20 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
     : byNhom;
 
   const handleStartEdit = (idea: PortalIdea) => {
+    setBoSungCho(null);
     setEditing(idea);
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+
+  // Sửa & gửi lại: cùng form sửa, nhưng bật chế độ bổ sung để sau khi lưu nội
+  // dung thì chuyển hồ sơ về Phòng TCTH chấm lại
+  const handleGuiLai = (idea: PortalIdea) => {
+    setBoSungCho(idea);
+    setEditing(idea);
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const hoSoDangBoSung = editing && boSungCho?.id === editing.id ? hoSoBenRe[editing.id] : undefined;
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -161,7 +181,12 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
             onCreate={createIdea}
             onUpdate={updateIdea}
             editing={editing}
-            onDone={() => setEditing(null)}
+            onDone={() => { setEditing(null); setBoSungCho(null); }}
+            boSung={hoSoDangBoSung?.trangThai === 'tra_ve' && editing ? {
+              lyDo: hoSoDangBoSung.lyDoTraVe ?? '',
+              boi: hoSoDangBoSung.traVeBoi ?? 'tcth',
+              onGuiLai: ghiChu => guiLaiBoSung(editing.id, ghiChu),
+            } : undefined}
           />
         </div>
       </div>
@@ -242,9 +267,23 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
           </div>
         </div>
 
+        {yTuongChon && (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[#005a9c]/30 bg-sky-50 px-3 py-2 text-xs text-sky-900">
+            <span>Đang xem <b>một ý tưởng</b> mở từ sổ / thông báo.</span>
+            <button
+              type="button"
+              onClick={() => { thamSo.delete('y_tuong'); datThamSo(thamSo, { replace: true }); }}
+              className="cursor-pointer rounded-md bg-white px-2 py-1 text-2xs font-bold text-[#005a9c] hover:bg-sky-100"
+            >
+              Xem toàn bộ bảng
+            </button>
+          </div>
+        )}
         <IdeaList
           ideas={filteredIdeas}
-          isFiltered={!!search.trim() || filterLevel !== 'all' || filterNhom !== 'all'}
+          hoSoBenRe={hoSoBenRe}
+          onGuiLai={handleGuiLai}
+          isFiltered={!!yTuongChon || !!search.trim() || filterLevel !== 'all' || filterNhom !== 'all'}
           isLoading={isLoading}
           isContentAdmin={isContentAdmin}
           myName={myName}

@@ -24,12 +24,12 @@ const TP_KHONG_QUYEN = quyen({});
 
 describe('Màn vận hành — ai thấy việc gì', () => {
   it('Giám đốc chỉ thấy việc của mình: duyệt Bén rễ và ngân sách', () => {
-    expect(cacViecHienThi(GIAM_DOC).map(v => v.ma)).toEqual(['duyet_ben_re', 'ngan_sach']);
+    expect(cacViecHienThi(GIAM_DOC).map(v => v.ma)).toEqual(['duyet_ben_re', 'so_ben_re', 'ngan_sach']);
   });
 
   it('TCTH thấy đủ chuỗi việc chuẩn bị, kể cả hàng chờ của Giám đốc để đôn đốc', () => {
     expect(cacViecHienThi(TCTH).map(v => v.ma)).toEqual([
-      'duyet_ben_re', 'trinh_ben_re', 'uom_mam', 'phan_nhom', 'doi_chieu_smp', 'ngan_sach',
+      'duyet_ben_re', 'trinh_ben_re', 'so_ben_re', 'uom_mam', 'phan_nhom', 'doi_chieu_smp', 'ngan_sach',
     ]);
   });
 
