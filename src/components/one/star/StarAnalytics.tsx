@@ -182,7 +182,7 @@ export const StarAnalytics: React.FC = () => {
       </div>
 
       {isContentAdmin && (
-        <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-[11px] leading-relaxed text-slate-600">
+        <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-2xs leading-relaxed text-slate-600">
           <strong className="text-slate-800">Nguồn dữ liệu:</strong> {STAR_WRITE_LOCK_REASON}
         </div>
       )}
@@ -191,7 +191,7 @@ export const StarAnalytics: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
         <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
           <div>
-            <span className="text-[11px] font-bold text-slate-500 block">Tổng số sao tích lũy</span>
+            <span className="text-2xs font-bold text-slate-500 block">Tổng số sao tích lũy</span>
             <span className="text-xl sm:text-2xl font-black text-brand-navy">{totalStars} ⭐</span>
           </div>
           <div className="p-2.5 rounded-xl bg-amber-50 text-amber-600">
@@ -201,7 +201,7 @@ export const StarAnalytics: React.FC = () => {
 
         <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
           <div>
-            <span className="text-[11px] font-bold text-slate-500 block">Tổng phiếu ghi nhận</span>
+            <span className="text-2xs font-bold text-slate-500 block">Tổng phiếu ghi nhận</span>
             <span className="text-xl sm:text-2xl font-black text-emerald-600">{records.length} phiếu</span>
           </div>
           <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-700">
@@ -211,10 +211,10 @@ export const StarAnalytics: React.FC = () => {
 
         <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
           <div>
-            <span className="text-[11px] font-bold text-slate-500 block">Dự trù kinh phí quà</span>
+            <span className="text-2xs font-bold text-slate-500 block">Dự trù kinh phí quà</span>
             <span className="text-xl sm:text-2xl font-black text-rose-600">{formatVnd(totalBudget)}</span>
           </div>
-          <div className="p-2 rounded-xl bg-rose-50 text-rose-700 text-[10px] font-bold" title="Tổng kinh phí quy đổi tích lũy của từng cá nhân (không gồm phiếu tập thể)">
+          <div className="p-2 rounded-xl bg-rose-50 text-rose-700 text-2xs font-bold" title="Tổng kinh phí quy đổi tích lũy của từng cá nhân (không gồm phiếu tập thể)">
             Dự trù ngân sách
           </div>
         </div>
@@ -257,7 +257,7 @@ export const StarAnalytics: React.FC = () => {
 
         <div className="p-5">
           {isLoading ? (
-            <div className="flex items-center justify-center gap-2 py-12 text-slate-400 text-xs font-bold">
+            <div className="flex items-center justify-center gap-2 py-12 text-slate-500 text-xs font-bold">
               <Loader2 className="w-4 h-4 animate-spin" />
               <span>Đang tải dữ liệu sao từ hệ thống...</span>
             </div>
@@ -268,13 +268,13 @@ export const StarAnalytics: React.FC = () => {
                 <div className="space-y-4">
                   <div className="flex flex-col sm:flex-row gap-3">
                     <div className="relative flex-1">
-                      <Search className="absolute top-2.5 left-3 w-4 h-4 text-slate-400" />
+                      <Search className="absolute top-2.5 left-3 w-4 h-4 text-slate-500" />
                       <input
                         type="text"
                         placeholder="Tìm kiếm họ tên cán bộ..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 outline-none focus:border-brand-navy"
+                        className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-800 outline-none focus:border-brand-navy placeholder:text-slate-400"
                       />
                     </div>
 
@@ -319,7 +319,7 @@ export const StarAnalytics: React.FC = () => {
                                 </div>
                                 <div>
                                   <h5 className="font-extrabold text-slate-800 text-xs sm:text-sm">{staff.name}</h5>
-                                  <span className="text-[10px] text-slate-500 font-bold bg-slate-200/60 px-2 py-0.5 rounded-md mt-0.5 inline-block">
+                                  <span className="text-2xs text-slate-500 font-bold bg-slate-200/60 px-2 py-0.5 rounded-md mt-0.5 inline-block">
                                     🏢 {staff.department}
                                   </span>
                                 </div>
@@ -332,7 +332,7 @@ export const StarAnalytics: React.FC = () => {
                                 </div>
 
                                 <div
-                                  className="px-3 py-1.5 rounded-xl bg-sky-50 border border-sky-200 text-sky-700 font-black text-[10px] shrink-0"
+                                  className="px-3 py-1.5 rounded-xl bg-sky-50 border border-sky-200 text-sky-700 font-black text-2xs shrink-0"
                                   title="0,5 điểm KPI mỗi sao hợp lệ, trần 10 điểm/năm (văn bản mục 5.1)"
                                 >
                                   +{formatKpi(getKpiPoints(staff.totalStars))} KPI
@@ -344,18 +344,18 @@ export const StarAnalytics: React.FC = () => {
                                 </div>
 
                                 {nextTier ? (
-                                  <div className="px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-[10px] font-bold flex items-center gap-1 shrink-0">
+                                  <div className="px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-2xs font-bold flex items-center gap-1 shrink-0">
                                     <TrendingUp className="w-3 h-3 text-blue-600" />
                                     <span>Cần thêm {nextTier.stars - staff.totalStars} ⭐ (Lên {nextTier.stars}⭐)</span>
                                   </div>
                                 ) : (
-                                  <div className="px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-[10px] font-bold flex items-center gap-1 shrink-0">
+                                  <div className="px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-2xs font-bold flex items-center gap-1 shrink-0">
                                     <Sparkles className="w-3 h-3 text-rose-500 animate-pulse" />
                                     <span>Đã đạt mốc tối đa 🎉</span>
                                   </div>
                                 )}
 
-                                <span className="text-slate-400 ml-1">
+                                <span className="text-slate-500 ml-1">
                                   {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                                 </span>
                               </div>
@@ -365,7 +365,7 @@ export const StarAnalytics: React.FC = () => {
                               <div className="px-4 pb-4 pt-2 border-t border-slate-200/60 bg-white space-y-4">
                                 {/* Bảng quy đổi 5 dòng */}
                                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/60 space-y-2">
-                                  <h6 className="text-[10px] font-black text-brand-navy uppercase flex items-center gap-1.5">
+                                  <h6 className="text-2xs font-black text-brand-navy uppercase flex items-center gap-1.5">
                                     <Gift className="w-3.5 h-3.5 text-amber-500" />
                                     BẢNG PHÂN TÍCH QUY ĐỔI GIÁ TRỊ THƯỞNG TÍCH LŨY:
                                   </h6>
@@ -404,21 +404,21 @@ export const StarAnalytics: React.FC = () => {
 
                                 {/* Lịch sử phiếu */}
                                 <div className="space-y-2">
-                                  <span className="text-[10px] font-black text-brand-navy uppercase block">
+                                  <span className="text-2xs font-black text-brand-navy uppercase block">
                                     📋 LỊCH SỬ THÀNH TÍCH GHI NHẬN ({staff.records.length} lần):
                                   </span>
 
                                   <div className="space-y-2.5">
                                     {staff.records.map((r) => (
-                                      <div key={r.id} className="p-3 bg-amber-50/30 border border-amber-200/40 rounded-xl space-y-1.5 text-[11px] leading-relaxed">
+                                      <div key={r.id} className="p-3 bg-amber-50/30 border border-amber-200/40 rounded-xl space-y-1.5 text-2xs leading-relaxed">
                                         <div className="flex items-center justify-between font-bold text-slate-700">
                                           <span className="flex items-center gap-1 text-amber-700 font-black">
                                             <Star className="w-3 h-3 fill-amber-500 text-amber-600" />
                                             <span>+{r.stars} Sao tích lũy</span>
                                           </span>
-                                          <span className="text-[10px] text-slate-400 font-mono">📅 {r.date}</span>
+                                          <span className="text-2xs text-slate-500 font-mono">📅 {r.date}</span>
                                         </div>
-                                        <p className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-slate-600">
+                                        <p className="flex flex-wrap gap-x-3 gap-y-0.5 text-2xs text-slate-600">
                                           <span>🎁 Người tặng: <strong className="text-slate-800">{r.sender || '—'}</strong></span>
                                           <span>🔢 Serial: <strong className="font-mono text-brand-navy">{r.serial || '—'}</strong></span>
                                           {r.subUnit && r.subUnit !== r.department && (
@@ -449,7 +449,7 @@ export const StarAnalytics: React.FC = () => {
               {/* TAB 2: PHÒNG BAN */}
               {activeTab === 'department' && (
                 <div className="space-y-4">
-                  <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-3 text-[11px] leading-relaxed text-slate-600">
+                  <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-3 text-2xs leading-relaxed text-slate-600">
                     <strong className="text-brand-navy">Cách xếp hạng:</strong> thi đua tập thể tính trên
                     {' '}<strong>số sao mà TẬP THỂ phòng được ghi nhận</strong> (phiếu ghi cho "Tập thể Phòng…").
                     Sao của từng cán bộ trong phòng là thành tích và phần thưởng của chính cán bộ đó —
@@ -464,7 +464,7 @@ export const StarAnalytics: React.FC = () => {
                           <th className="p-3 text-center">Sao tập thể nhận được</th>
                           <th className="p-3">So với phòng dẫn đầu</th>
                           <th className="p-3 text-center" title="Chỉ để tham khảo — sao của cá nhân không cộng vào thi đua tập thể">
-                            Sao cán bộ trong phòng<br /><span className="font-bold text-[9px] uppercase text-slate-400">(tham khảo)</span>
+                            Sao cán bộ trong phòng<br /><span className="font-bold text-2xs uppercase text-slate-500">(tham khảo)</span>
                           </th>
                           <th className="p-3 text-center">Số CB được ghi nhận</th>
                           <th className="p-3">Mốc quà của tập thể</th>
@@ -486,11 +486,11 @@ export const StarAnalytics: React.FC = () => {
                           return (
                             <tr
                               key={dept.department}
-                              className={`hover:bg-slate-50 transition-colors ${dept.isSubUnit ? 'bg-slate-50/70 text-[11px]' : ''}`}
+                              className={`hover:bg-slate-50 transition-colors ${dept.isSubUnit ? 'bg-slate-50/70 text-2xs' : ''}`}
                             >
                               <td className="p-3 font-black text-slate-800 text-center w-12">
                                 {rank !== null && rank <= 3 ? (
-                                  <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-white font-mono text-[10px] font-black ${
+                                  <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-white font-mono text-2xs font-black ${
                                     rank === 1 ? 'bg-amber-500' : rank === 2 ? 'bg-slate-400' : 'bg-amber-700'
                                   }`}>
                                     {rank}
@@ -504,18 +504,18 @@ export const StarAnalytics: React.FC = () => {
                               <td className={`p-3 font-extrabold text-slate-800 ${dept.isSubUnit ? 'pl-7' : ''}`}>
                                 {dept.collectiveName}
                                 {dept.isSubUnit && (
-                                  <span className="block text-[9px] font-bold text-slate-400 uppercase">
+                                  <span className="block text-2xs font-bold text-slate-500 uppercase">
                                     {dept.parent ? `Tổ thuộc ${dept.parent}` : 'Tập thể liên phòng'}
                                   </span>
                                 )}
                               </td>
                               <td className="p-3 text-center font-black text-brand-navy text-sm">
                                 {dept.collectiveStars} ⭐
-                                <span className="block text-[9px] font-bold text-slate-400">
+                                <span className="block text-2xs font-bold text-slate-500">
                                   {dept.collectiveRecords} phiếu tập thể
                                 </span>
                                 <span
-                                  className="block text-[9px] font-black text-sky-600"
+                                  className="block text-2xs font-black text-sky-600"
                                   title="0,5 điểm KPI mỗi sao tập thể hợp lệ, trần 10 điểm/năm"
                                 >
                                   +{formatKpi(getKpiPoints(dept.collectiveStars))} KPI
@@ -531,7 +531,7 @@ export const StarAnalytics: React.FC = () => {
                                       style={{ width: `${barPct}%` }}
                                     />
                                   </div>
-                                  <span className="text-[10px] font-black shrink-0 w-10">{barPct}%</span>
+                                  <span className="text-2xs font-black shrink-0 w-10">{barPct}%</span>
                                 </div>
                               </td>
                               <td className="p-3 text-center font-bold text-slate-500">{dept.staffStars} ⭐</td>
@@ -539,19 +539,19 @@ export const StarAnalytics: React.FC = () => {
                               <td className="p-3">
                                 <div className="flex flex-col gap-1">
                                   {achievedTier ? (
-                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500 text-white font-black text-[10px] shadow-sm w-fit">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500 text-white font-black text-2xs shadow-sm w-fit">
                                       <Gift className="w-3 h-3" />
                                       <span>{achievedTier.name} ({achievedTier.stars}⭐)</span>
                                     </span>
                                   ) : (
-                                    <span className="text-slate-400 font-semibold italic text-[10px]">Chưa đạt mốc</span>
+                                    <span className="text-slate-500 font-semibold italic text-2xs">Chưa đạt mốc</span>
                                   )}
                                   {nextTier ? (
-                                    <span className="text-[9px] text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded-md w-fit">
+                                    <span className="text-2xs text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded-md w-fit">
                                       Cần thêm {nextTier.stars - dept.collectiveStars} ⭐ (Lên {nextTier.stars}⭐)
                                     </span>
                                   ) : (
-                                    <span className="text-[9px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md w-fit animate-pulse">
+                                    <span className="text-2xs text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md w-fit animate-pulse">
                                       Đã đạt mốc tối đa 🎉
                                     </span>
                                   )}
@@ -562,13 +562,13 @@ export const StarAnalytics: React.FC = () => {
                                   <span className="font-black text-emerald-600 text-xs sm:text-sm">
                                     {formatVnd(breakdown.totalValue)}
                                   </span>
-                                  <span className="text-[9px] text-slate-400 font-mono text-right leading-tight max-w-[220px]" title="Chi tiết: Gốc + Mốc 3 Sao + Mốc 6 Sao + Mốc Cao Nhất >= 8 Sao">
+                                  <span className="text-2xs text-slate-500 text-right max-w-[220px]" title="Chi tiết: Gốc + Mốc 3 Sao + Mốc 6 Sao + Mốc Cao Nhất >= 8 Sao">
                                     ({dept.collectiveStars}×100k + {breakdown.threeStarCount}×300k + {breakdown.sixStarValue > 0 ? '500k' : '0'} + {breakdown.highTierValue > 0 ? formatVnd(breakdown.highTierValue) : '0'})
                                   </span>
                                 </div>
                               </td>
                               <td className="p-3 pl-4">
-                                <span className="text-[10px] bg-amber-50 text-amber-900 border border-amber-200/50 px-2 py-1 rounded-md font-bold">
+                                <span className="text-2xs bg-amber-50 text-amber-900 border border-amber-200/50 px-2 py-1 rounded-md font-bold">
                                   {getTopIndividualForDept(dept.department, dept.isSubUnit)}
                                 </span>
                               </td>
@@ -591,7 +591,7 @@ export const StarAnalytics: React.FC = () => {
                   </div>
 
                   <div className="overflow-x-auto max-h-[400px] border border-slate-100 rounded-xl">
-                    <table className="w-full text-[11px] text-left border-collapse">
+                    <table className="w-full text-2xs text-left border-collapse">
                       <thead>
                         <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 font-black sticky top-0">
                           <th className="p-2.5">Họ và tên</th>
@@ -609,7 +609,7 @@ export const StarAnalytics: React.FC = () => {
                       <tbody className="divide-y divide-slate-100 font-medium text-slate-600">
                         {records.length === 0 ? (
                           <tr>
-                            <td colSpan={isContentAdmin ? 10 : 9} className="p-8 text-center text-slate-400 font-bold italic">
+                            <td colSpan={isContentAdmin ? 10 : 9} className="p-8 text-center text-slate-500 font-bold italic">
                               Chưa có dữ liệu đối soát. Vui lòng liên hệ Quản trị viên để cập nhật dữ liệu thi đua của Chi nhánh.
                             </td>
                           </tr>
@@ -620,7 +620,7 @@ export const StarAnalytics: React.FC = () => {
                               <td className="p-2.5">
                                 {rec.department}
                                 {rec.subUnit && rec.subUnit !== rec.department && (
-                                  <span className="block text-[9px] text-slate-400">↳ {rec.subUnit}</span>
+                                  <span className="block text-2xs text-slate-500">↳ {rec.subUnit}</span>
                                 )}
                               </td>
                               <td className="p-2.5 text-center font-bold text-amber-600">+{rec.stars} ⭐</td>
@@ -630,7 +630,7 @@ export const StarAnalytics: React.FC = () => {
                               <td className="p-2.5 max-w-xs truncate" title={rec.result}>{rec.result}</td>
                               <td className="p-2.5 text-center font-mono">{rec.date}</td>
                               <td className="p-2.5 text-center">
-                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${
+                                <span className={`px-1.5 py-0.5 rounded text-2xs font-black uppercase ${
                                   rec.source === 'form' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
                                 }`}>
                                   {rec.source === 'form' ? 'Form' : 'Import'}
