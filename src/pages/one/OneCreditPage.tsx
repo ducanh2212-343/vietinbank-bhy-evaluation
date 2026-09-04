@@ -4,8 +4,8 @@ import { Credit360Pillar } from '@/components/one/programs/Credit360Pillar';
 import { SoDoVanHanh } from '@/components/one/programs/SoDoVanHanh';
 import { CREDIT_360_VAN_HANH } from '@/data/one/vanHanhChuongTrinh';
 
-// Nơi làm việc thật của BHY Credit 360 (menu Sáng kiến & Nghiệp vụ):
-// đăng ký phiên họp + sổ tra cứu. Trang đặc trưng chỉ giới thiệu và dẫn về đây.
+// Trang Bắc Hưng Yên Credit 360: giới thiệu + cách thức vận hành (sơ đồ luồng
+// việc, thứ tự phát biểu, biểu mẫu). Sổ nhật ký phiên từng ở đây đã gỡ 09/2026.
 export default function OneCreditPage() {
   const { pillarImages, handlePillarImageUpload } = usePillarImages();
 

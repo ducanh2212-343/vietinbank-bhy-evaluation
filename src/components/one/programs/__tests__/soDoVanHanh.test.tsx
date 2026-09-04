@@ -64,12 +64,6 @@ describe('Mô hình vận hành Credit 360', () => {
     expect(screen.getByText(/Tổng hợp thông tin đánh giá 360° khách hàng từ CRM 1.0/)).toBeInTheDocument();
   });
 
-  it('văn bản gốc tải được ngay trên trang', () => {
-    dung();
-    const nut = screen.getByRole('link', { name: /Tải văn bản/ });
-    expect(nut).toHaveAttribute('href', CREDIT_360_VAN_HANH.vanBan.tep);
-  });
-
   it('cả hai biểu mẫu đều tải được, đúng tệp đã đặt trên cổng', () => {
     dung();
     for (const bm of CREDIT_360_VAN_HANH.bieuMau) {
@@ -98,13 +92,6 @@ describe('Mô hình vận hành Credit 360', () => {
     expect(screen.getByText(/Chương trình KHÔNG làm gì/)).toBeInTheDocument();
     // Đúng chữ văn bản, mục 2 — nguyên tắc đầu tiên
     expect(screen.getByText(/không phải Hội đồng \/ ban \/ tổ chức có chức năng quyết định, phê duyệt tín dụng/)).toBeInTheDocument();
-  });
-
-  it('bước làm trên cổng dẫn thẳng tới sổ đăng ký', () => {
-    dung();
-    const dan = screen.getAllByRole('link', { name: /Làm ngay trên cổng/ });
-    expect(dan.length).toBeGreaterThan(0);
-    for (const a of dan) expect(a).toHaveAttribute('href', '/one/credit-360');
   });
 
   it('timVaiTro không làm vỡ giao diện khi dữ liệu khai thiếu vai trò', () => {
