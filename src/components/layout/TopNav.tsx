@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import * as NavMenu from '@radix-ui/react-navigation-menu';
-import { ChevronDown, Search, LogOut, User, KeyRound } from 'lucide-react';
+import { IdCard, ChevronDown, Search, LogOut, User, KeyRound } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -433,6 +433,13 @@ export function TopNav({ onMoBangLenh }: Props) {
               <DropdownMenuItem onSelect={() => navigate('/ho-so-ca-nhan')}>
                 <User className="mr-2 h-4 w-4" />
                 Hồ sơ cá nhân
+              </DropdownMenuItem>
+            )}
+            {/* Bắc Hưng Yên VCard — cùng khối tài khoản với hồ sơ cá nhân (chốt 02/09/2026) */}
+            {!isGuest && (
+              <DropdownMenuItem onSelect={() => navigate('/vcard')}>
+                <IdCard className="mr-2 h-4 w-4" />
+                Danh thiếp VCard của tôi
               </DropdownMenuItem>
             )}
             <DropdownMenuItem onSelect={() => navigate('/doi-mat-khau')}>

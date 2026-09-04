@@ -207,6 +207,21 @@ thiếu là bấm vào tin rơi về Kanban. Migration
 vốn đang chờ deploy, vô hại vì migration lịch sử phiên bản chưa áp nên chưa có
 tin `PHIEN_BAN` nào phát sinh.
 
+## Bắc Hưng Yên VCard — danh thiếp số đa ngôn ngữ (09/2026)
+
+Mỗi cán bộ một danh thiếp số tại `bachungyenone.com/card/<slug>`, hiện đúng ngôn ngữ của
+khách (VI/EN/ZH giản–phồn/KO/JA), bấm một nút là lưu danh bạ. Thẻ được **ghép** từ tên
+cán bộ + từ điển chức danh + từ điển đơn vị (bảng `nc_*`), chức danh nội bộ không bao giờ
+lên thẻ, nhân sự thuê ngoài dùng mẫu riêng — mọi luật thực thi ở CSDL qua
+`nc_resolve_card()`. Tiện ích cá nhân: nút «Danh thiếp VCard của tôi» cạnh Hồ sơ cá nhân trong ngăn «Thêm» / menu tài khoản (không thuộc Ways). Quản trị: `/quan-tri-vcard`
+(TCTH + Giám đốc duyệt chức danh riêng); thẻ của tôi: `/vcard`. Trang công khai là entry riêng `card.html`
+(~58 KB gzip, LCP < 1 s trên 4G), ánh xạ `/card/*` bằng `public/_redirects`.
+
+**Trạng thái (02/09/2026):** migration `20261004090000_danh_thiep_so_nen_tang.sql`,
+`20261004090100_danh_thiep_so_du_lieu_moi.sql` và `20261004090200_danh_thiep_so_tu_tao_ban_nhap.sql` **chưa áp** (đã chạy khô 27 kịch bản trên
+project thật, rollback, đạt 27/27); edge function `danh-thiep-vcard` **chưa deploy**.
+Checklist triển khai và các điểm cần Giám đốc quyết: `docs/danh-thiep-so-2026-09.md`.
+
 ## Rà soát bảo mật & chống bot đăng nhập (24/08/2026)
 
 Báo cáo đầy đủ, viết cho người không chuyên: `docs/kiem-tra-bao-mat-toan-dien-2026-08.md`.

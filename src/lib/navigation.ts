@@ -6,7 +6,7 @@ import {
   CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag, GitBranch,
   ListChecks, Building2, Gavel, TrendingUp, Zap, Lightbulb,
   Home, BookOpen, Compass, Layers, Share2, CalendarDays, NotebookPen, Sprout, TreeDeciduous,
-  Sparkles as SparklesIcon,
+  Sparkles as SparklesIcon, IdCard,
   type LucideIcon,
 } from 'lucide-react';
 import type { MaManHinhKhach } from './manHinhKhach';
@@ -422,8 +422,12 @@ export const NAV_SECTIONS: NavSection[] = [
             label: 'Hồ sơ cá nhân',
             icon: User,
             path: '/ho-so-ca-nhan',
-            keywords: ['profile', 'thong tin ca nhan'],
-            extraPaths: ['/ho-so-ca-nhan/'],
+            keywords: ['profile', 'thong tin ca nhan', 'vcard', 'danh thiep'],
+            // /vcard (Bắc Hưng Yên VCard — danh thiếp số của tôi) KHÔNG có mục menu
+            // riêng: chốt 02/09/2026 đặt nó trong khối tài khoản cá nhân (ngăn «Thêm»
+            // trên điện thoại, menu tài khoản trên máy tính) cạnh «Hồ sơ cá nhân».
+            // Gắn vào đây để breadcrumb và mục sáng vẫn đúng khi đang ở /vcard.
+            extraPaths: ['/ho-so-ca-nhan/', '/vcard'],
           },
           {
             // KHÔNG đặt guestScreen: khu 'Phát triển nhân sự 343' vốn đã đóng với
@@ -582,6 +586,18 @@ export const NAV_SECTIONS: NavSection[] = [
           { label: 'Phân quyền', icon: Shield, path: '/phan-quyen', minRole: 'admin', keywords: ['vai tro', 'role'] },
           { label: 'Duyệt yêu cầu user', icon: UserCheck, path: '/duyet-yeu-cau-user', minRole: 'admin' },
           { label: 'Tài khoản khách đối tác', icon: UserCheck, path: '/quan-tri-khach', minRole: 'admin', keywords: ['guest', 'doi tac'] },
+          // Quản trị Bắc Hưng Yên VCard: từ điển đơn vị / chức danh, hàng chờ duyệt
+          // chức danh riêng (Giám đốc hoặc TCTH), phát hành và thu hồi thẻ.
+          // minRole 'admin' gồm bgd — Giám đốc vào để duyệt. Màn «thẻ của tôi»
+          // của cán bộ nằm ở khối tài khoản cá nhân, không ở đây.
+          {
+            label: 'Quản trị VCard',
+            icon: IdCard,
+            path: '/quan-tri-vcard',
+            minRole: 'admin',
+            keywords: ['quan tri vcard', 'danh thiep', 'name card', 'chuc danh doi ngoai', 'tu dien', 'phat hanh the', 'thu hoi the'],
+            extraPaths: ['/quan-tri-vcard/'],
+          },
         ],
       },
       {

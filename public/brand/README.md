@@ -16,3 +16,11 @@ Cách 1 (khuyến nghị): gửi ảnh cho Claude Code, sẽ tự chuyển sang 
 Cách 2: tự tạo file WebP cùng tên rồi upload đè (giữ nền sáng/trong suốt; web tự bọc khung trắng bo tròn khi đặt trên nền navy).
 
 Vị trí hiển thị: panel trang Đăng nhập, banner trang Tổng quan, dải 20 năm trên sidebar.
+
+## Logo Chi nhánh cho danh thiếp số
+
+| File | Nội dung | Dùng ở |
+|---|---|---|
+| `logo-cn-bhy.svg` | Logo VietinBank + «Chi Nhánh Bắc Hưng Yên» trên nền xanh nhạt bo góc (vector, ~10 KB, tách từ tệp PDF logo do Chi nhánh cung cấp) | Trang danh thiếp số công khai (`/card/<slug>`, chỉ mẫu thẻ cán bộ) và chèn giữa mã QR |
+
+Đổi logo: thay đúng tên tệp, giữ tỉ lệ khung 144 × 88 (hằng số `KHUNG_LOGO` trong `src/lib/danhThiep/qr.ts` tính vùng trắng giữa mã QR theo tỉ lệ này).

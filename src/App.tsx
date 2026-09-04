@@ -131,6 +131,8 @@ const ChangePassword = lazyWithRetry(() => import("./pages/ChangePassword"));
 const ForgotPassword = lazyWithRetry(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
+const DanhThiepAdminPage = lazyWithRetry(() => import("./pages/DanhThiepAdminPage"));
+const DanhThiepCuaToiPage = lazyWithRetry(() => import("./pages/DanhThiepCuaToiPage"));
 
 
 const queryClient = new QueryClient();
@@ -169,6 +171,22 @@ function HomeRedirect() {
   return <Navigate to="/one" replace />;
 }
 
+/**
+ * Lưới đỡ cho trang danh thiếp số công khai. Ở production, /card/<slug> được
+ * phục vụ bằng entry riêng card.html (public/_redirects trên Cloudflare,
+ * vercel.json trên Vercel) và KHÔNG bao giờ tới đây. Nếu quy tắc ấy không được
+ * áp (nền tảng khác, cấu hình thiếu), SPA vẫn rơi vào route này và chuyển tiếp
+ * sang card.html?s=<slug> — khách vẫn thấy thẻ, chỉ chậm hơn một lượt tải.
+ */
+function DanhThiepChuyenTiep() {
+  const location = useLocation();
+  const slug = location.pathname.replace(/^\/card\/?/, "").split("/")[0];
+  const q = new URLSearchParams(location.search);
+  q.set("s", slug);
+  window.location.replace(`/card.html?${q.toString()}`);
+  return null;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
@@ -184,6 +202,8 @@ const App = () => (
             <Route path="/quen-mat-khau" element={<Suspense fallback={null}><ForgotPassword /></Suspense>} />
             <Route path="/dat-lai-mat-khau" element={<Suspense fallback={null}><ResetPassword /></Suspense>} />
             <Route path="/unsubscribe" element={<Suspense fallback={null}><Unsubscribe /></Suspense>} />
+            {/* Danh thiếp số công khai — xem DanhThiepChuyenTiep */}
+            <Route path="/card/*" element={<DanhThiepChuyenTiep />} />
             <Route element={<ProtectedRoutes />}>
               <Route element={<GuestGate />}>
               <Route path="/" element={<HomeRedirect />} />
@@ -194,6 +214,8 @@ const App = () => (
               <Route path="/ho-so-ca-nhan/sua" element={<EditMyProfile />} />
               <Route path="/doi-mat-khau" element={<ChangePassword />} />
               <Route path="/ho-so-ca-nhan/:id" element={<PersonalProfile />} />
+              {/* Bắc Hưng Yên VCard — thẻ của tôi: cán bộ tự sửa SĐT/ảnh/kênh chat, gửi đề nghị chức danh riêng */}
+              <Route path="/vcard" element={<DanhThiepCuaToiPage />} />
               <Route path="/skill-loi-theo-vi-tri" element={<CoreSkillsByPosition />} />
               <Route path="/skill-bo-sung" element={<ExtraSkillsPage />} />
               <Route path="/tu-danh-gia" element={<SelfAssessmentPage />} />
@@ -318,6 +340,9 @@ const App = () => (
                 {/* Tiếp nhận góp ý cải thiện BHY One — Phòng TCTH + Ban Giám đốc
                     (AdminRoute đã bao gồm bgd/tcth_admin/system_admin) */}
                 <Route path="/gop-y-he-thong" element={<GopYAdminPage />} />
+                {/* Quản trị Bắc Hưng Yên VCard: từ điển đơn vị / chức danh, hàng chờ duyệt chức danh riêng,
+                    phát hành thẻ. AdminRoute gồm bgd để Giám đốc vào duyệt; RLS + trigger phân việc TCTH/GĐ. */}
+                <Route path="/quan-tri-vcard/:tab?" element={<DanhThiepAdminPage />} />
               </Route>
 
               </Route>

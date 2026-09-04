@@ -105,6 +105,23 @@ describe('Cấu trúc cây điều hướng', () => {
     ]);
   });
 
+  it('Bắc Hưng Yên VCard là tiện ích cá nhân: /vcard gắn với Hồ sơ cá nhân, quản trị ở Quản trị chung', () => {
+    // Chốt 02/09/2026: danh thiếp số không phải một cách vận hành (không vào Ways),
+    // cũng không cần mục menu riêng — màn «thẻ của tôi» nằm trong khối tài khoản
+    // (ngăn «Thêm» / menu tài khoản) cạnh Hồ sơ cá nhân; trên cây chỉ cần tra được.
+    const viTri = resolveLocation('/vcard');
+    expect(viTri.section?.id).toBe('hr-343');
+    expect(viTri.folder?.folder).toBe('Cá nhân');
+    expect(viTri.leaf?.label).toBe('Hồ sơ cá nhân');
+    expect(moiDuongDan(canBoThuong)).not.toContain('/vcard');
+    const ways = NAV_SECTIONS.find((s) => s.id === 'bhy-ways')!;
+    expect(leavesOf(ways).map((l) => l.path)).not.toContain('/vcard');
+    // Quản trị VCard: chỉ quản trị viên, nằm ở khu Quản trị chung
+    expect(resolveLocation('/quan-tri-vcard/chuc-danh').section?.id).toBe('user-admin');
+    expect(moiDuongDan(canBoThuong)).not.toContain('/quan-tri-vcard');
+    expect(moiDuongDan(quanTri)).toContain('/quan-tri-vcard');
+  });
+
   it('mọi màn hình của Ideas và Quizzi đều có mục menu riêng', () => {
     const ways = NAV_SECTIONS.find((s) => s.id === 'bhy-ways')!;
     const trongThuMuc = (ten: string) =>
@@ -141,11 +158,15 @@ describe('Cấu trúc cây điều hướng', () => {
     ]);
   });
 
-  it('màn vận hành Ideas và quản trị Quizzi chỉ quản trị viên thấy', () => {
+  it('màn vận hành Ideas, quản trị Quizzi và quản trị VCard chỉ quản trị viên thấy', () => {
     expect(moiDuongDan(canBoThuong)).not.toContain('/one/y-tuong/van-hanh');
     expect(moiDuongDan(canBoThuong)).not.toContain('/quan-tri-quizzi');
+    expect(moiDuongDan(canBoThuong)).not.toContain('/quan-tri-vcard');
     expect(moiDuongDan(quanTri)).toContain('/one/y-tuong/van-hanh');
     expect(moiDuongDan(quanTri)).toContain('/quan-tri-quizzi');
+    expect(moiDuongDan(quanTri)).toContain('/quan-tri-vcard');
+    // Thẻ của tôi mở cho mọi cán bộ
+    expect(moiDuongDan(canBoThuong)).toContain('/vcard');
     // Cán bộ thường vẫn vào được hai màn dùng chung của cùng thương hiệu
     expect(moiDuongDan(canBoThuong)).toContain('/one/y-tuong/gui');
     expect(moiDuongDan(canBoThuong)).toContain('/one/y-tuong/hoi-dong');
@@ -375,8 +396,10 @@ describe('Mọi route khai trong App.tsx đều tra được trên cây', () => 
     .filter((m) => !m[2].includes('<Navigate'))
     .map((m) => m[1])
     .filter((p) => p !== '*' && p !== '/')
-    // Trang ngoài khung đăng nhập không thuộc cây menu
-    .filter((p) => !['/dang-nhap', '/dang-ky-tai-khoan', '/quen-mat-khau', '/dat-lai-mat-khau', '/unsubscribe'].includes(p));
+    // Trang ngoài khung đăng nhập không thuộc cây menu. /card/* là danh thiếp số
+    // công khai cho KHÁCH quét QR — phục vụ bằng entry riêng card.html, route này
+    // chỉ là lưới đỡ chuyển tiếp (xem DanhThiepChuyenTiep trong App.tsx).
+    .filter((p) => !['/dang-nhap', '/dang-ky-tai-khoan', '/quen-mat-khau', '/dat-lai-mat-khau', '/unsubscribe', '/card/*'].includes(p));
 
   it('tìm được ít nhất 60 route để kiểm', () => {
     expect(duongDan.length).toBeGreaterThan(60);

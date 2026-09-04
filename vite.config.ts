@@ -2,6 +2,7 @@ import { defineConfig, type PluginOption } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
+import type { IncomingMessage, ServerResponse } from "http";
 
 /**
  * Gom thư viện nhà cung cấp thành các gói ổn định, có thể cache lâu dài.
@@ -87,6 +88,35 @@ function nonBlockingCss(): PluginOption {
   };
 }
 
+/**
+ * Trang danh thiếp số công khai /card/<slug> là một ENTRY RIÊNG (card.html).
+ *
+ * Vì sao không đặt làm route trong SPA: khách hàng quét QR là người ngoài, chưa
+ * đăng nhập, nhiều người dùng 4G. Vỏ ứng dụng nội bộ (AuthProvider, React
+ * Query, supabase-js, toàn bộ CSS Tailwind) nặng gấp nhiều lần ngân sách 300 KB
+ * của trang thẻ, và index.html còn tự nhận là «cổng quản trị nội bộ» — sai với
+ * thứ khách cần thấy. Entry riêng chỉ mang React + vài KB mã + font subset.
+ *
+ * Ở production, /card/* được ánh xạ về card.html bằng public/_redirects
+ * (Cloudflare) và vercel.json (Vercel). Middleware dưới đây làm việc tương tự
+ * cho `vite dev` / `vite preview`.
+ */
+function dinhTuyenDanhThiep(): PluginOption {
+  const chuyen = (req: IncomingMessage, _res: ServerResponse, next: () => void) => {
+    if (req.url && /^\/card(\/|$|\?)/.test(req.url)) req.url = "/card.html";
+    next();
+  };
+  return {
+    name: "bhy-dinh-tuyen-danh-thiep",
+    configureServer(server) {
+      server.middlewares.use(chuyen);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(chuyen);
+    },
+  };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
@@ -99,12 +129,17 @@ export default defineConfig(({ mode }) => ({
   optimizeDeps: {
     include: ["@radix-ui/react-collapsible", "@radix-ui/react-alert-dialog"],
   },
-  plugins: [react(), nonBlockingCss(), mode === "development" && componentTagger()].filter(Boolean),
+  plugins: [react(), nonBlockingCss(), dinhTuyenDanhThiep(), mode === "development" && componentTagger()].filter(Boolean),
   build: {
     // Gói nhà cung cấp lớn nhất sau khi tách còn ~200 kB — nâng ngưỡng cảnh báo
     // để cảnh báo chỉ nổi lên khi có hồi quy thật.
     chunkSizeWarningLimit: 700,
     rollupOptions: {
+      // Hai entry: cổng nội bộ và trang danh thiếp công khai (xem dinhTuyenDanhThiep)
+      input: {
+        main: path.resolve(__dirname, "index.html"),
+        card: path.resolve(__dirname, "card.html"),
+      },
       output: {
         manualChunks,
       },
