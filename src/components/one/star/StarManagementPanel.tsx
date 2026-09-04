@@ -15,7 +15,8 @@ import {
   type KetQuaDoiSoat, type StaffOption,
 } from './useStarSerials';
 import { useStarRecords } from './useStarRecords';
-import { laLechCanXuLy, type LoaiLech } from './starDepartments';
+import { gomNhanPhongCu, laLechCanXuLy, type LoaiLech } from './starDepartments';
+import { StarPersonPicker } from './StarPersonPicker';
 
 /** Nhãn hiển thị cho từng loại lệch giữa danh bạ và chương trình Sao */
 const NHAN_LECH: Record<LoaiLech, { tieuDe: string; mau: string }> = {
@@ -85,6 +86,10 @@ export const StarManagementPanel: React.FC = () => {
   // Lệch làm sai dữ liệu (phải xử lý) tách khỏi chênh quân số (chỉ tham khảo) —
   // chi nhánh giữ hạn mức cũ cả năm là hợp lệ, không nên báo đỏ mãi.
   const lechCanXuLy = useMemo(() => lechDanhMuc.filter(laLechCanXuLy), [lechDanhMuc]);
+  // Phiếu còn LƯU chữ phòng khác nhãn chuẩn. Màn hình đã gộp đúng khi hiển thị
+  // (useStarRecords quy nhãn ngay tại cửa đọc), nhưng bảng dữ liệu thì chưa sạch —
+  // im lặng thì lần kết xuất Excel tiếp theo vẫn ra hai dòng và không ai hiểu vì sao.
+  const nhanCuTrenPhieu = useMemo(() => gomNhanPhongCu(records), [records]);
   const chenhQuanSo = useMemo(() => lechDanhMuc.filter((l) => !laLechCanXuLy(l)), [lechDanhMuc]);
 
 
@@ -95,7 +100,6 @@ export const StarManagementPanel: React.FC = () => {
 
   // Bàn giao
   const [holder, setHolder] = useState<StaffOption | null>(null);
-  const [holderQuery, setHolderQuery] = useState('');
   const [hoFrom, setHoFrom] = useState('');
   const [hoTo, setHoTo] = useState('');
   const [quarter, setQuarter] = useState(currentQuarter());
@@ -125,12 +129,6 @@ export const StarManagementPanel: React.FC = () => {
     [handovers],
   );
   const holderNames = useProfileNames(holderIds, isTcthAdmin);
-
-  const holderMatches = useMemo(() => {
-    const q = normalize(holderQuery);
-    if (!q) return [];
-    return people.filter((p) => normalize(p.fullName).includes(q)).slice(0, 8);
-  }, [people, holderQuery]);
 
   // Tiến độ từng đợt bàn giao: còn giữ / đã tặng, KÈM phần lệch so với dải khai báo.
   // TCTH báo 04/09: đợt 285–290 dòng trên đếm 6, dòng dưới ra 5 — số nhập bù rơi ra
@@ -223,7 +221,7 @@ export const StarManagementPanel: React.FC = () => {
           <Boxes className="w-5 h-5 text-brand-navy" />
           <span>Quản Lý Sao & Bàn Giao (Phòng TCTH)</span>
         </div>
-        <span className="text-[10px] font-mono font-black px-2 py-0.5 rounded bg-blue-100 text-brand-navy">
+        <span className="text-2xs font-black px-2 py-0.5 rounded bg-blue-100 text-brand-navy">
           Sổ sao theo số serial
         </span>
       </div>
@@ -243,13 +241,13 @@ export const StarManagementPanel: React.FC = () => {
             ].map((c) => (
               <div key={c.label} className="p-3 rounded-2xl border border-slate-100 bg-slate-50/60">
                 <span className={`block text-xl font-black ${c.cls}`}>{c.value}</span>
-                <span className="text-[10px] font-bold text-slate-500">{c.label}</span>
+                <span className="text-2xs font-bold text-slate-500">{c.label}</span>
               </div>
             ))}
           </div>
 
           {/* ĐỐI SOÁT KHO THẬT */}
-          <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-[11px] leading-relaxed text-slate-700">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-2xs leading-relaxed text-slate-700">
             <div className="flex items-start gap-2">
               <ShieldCheck className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
               <div>
@@ -269,44 +267,66 @@ export const StarManagementPanel: React.FC = () => {
             </h6>
 
             {lechCanXuLy.length === 0 ? (
-              <p className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-bold">
+              <p className="flex items-center gap-1.5 text-2xs text-emerald-700 font-bold">
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 Danh mục phòng của chương trình Sao đang khớp danh bạ ({danhSachPhong.length} phòng).
               </p>
             ) : (
               <div className="space-y-2">
-                <p className="flex items-center gap-1.5 text-[11px] text-amber-800 font-bold">
+                <p className="flex items-center gap-1.5 text-2xs text-amber-800 font-bold">
                   <AlertTriangle className="w-3.5 h-3.5" />
                   {lechCanXuLy.length} điểm cần xử lý — danh bạ và chương trình Sao đang lệch nhau:
                 </p>
                 {lechCanXuLy.map((l) => (
-                  <div key={`${l.loai}-${l.ten}`} className="flex flex-wrap items-start gap-2 text-[11px] p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-                    <span className={`px-2 py-0.5 rounded-md border font-black uppercase text-[9px] shrink-0 ${NHAN_LECH[l.loai].mau}`}>
+                  <div key={`${l.loai}-${l.ten}`} className="flex flex-wrap items-start gap-2 text-2xs p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className={`px-2 py-0.5 rounded-md border font-black uppercase text-2xs shrink-0 ${NHAN_LECH[l.loai].mau}`}>
                       {NHAN_LECH[l.loai].tieuDe}
                     </span>
                     <span className="font-bold text-slate-800 shrink-0">{l.ten}</span>
                     <span className="text-slate-600 flex-1 min-w-40">{l.moTa}</span>
                   </div>
                 ))}
-                <p className="text-[10px] text-slate-500 leading-relaxed">
+                <p className="text-2xs text-slate-500 leading-relaxed">
                   Phòng ban sửa ở màn <strong>Tổ chức &amp; Phân quyền → Quản lý Phòng ban &amp; Chức danh</strong>.
                   Nếu là phòng đổi tên, các phiếu Sao cũ cần được quy về nhãn mới thì bảng thi đua mới gộp làm một dòng.
                 </p>
               </div>
             )}
 
+            {nhanCuTrenPhieu.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-slate-100 space-y-1.5">
+                <p className="text-2xs font-black uppercase text-slate-500">
+                  Phiếu còn lưu tên phòng cũ — bảng đã gộp đúng, dữ liệu thì chưa
+                </p>
+                <p className="text-2xs text-slate-500 leading-relaxed">
+                  Các phiếu dưới đây lưu một cách viết khác của cùng một đơn vị (tên danh bạ đầy đủ,
+                  hoặc tên trước khi đổi). Mọi bảng trên cổng đã quy về nhãn chuẩn nên
+                  <strong> số liệu đang đúng</strong>; dòng này để Phòng TCTH biết còn phiếu nào cần
+                  dọn nếu muốn bảng dữ liệu gốc cũng sạch.
+                </p>
+                {nhanCuTrenPhieu.map((n) => (
+                  <div key={`${n.nhanCu}-${n.nhanMoi}`} className="flex flex-wrap items-center gap-2 text-2xs p-2 rounded-lg bg-slate-50 border border-slate-100">
+                    <span className="font-bold text-slate-500 line-through">{n.nhanCu}</span>
+                    <span className="text-slate-500">→</span>
+                    <span className="font-black text-slate-800">{n.nhanMoi}</span>
+                    <span className="text-slate-600">· {n.soPhieu} phiếu</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {chenhQuanSo.length > 0 && (
               <div className="mt-3 pt-3 border-t border-slate-100 space-y-1.5">
-                <p className="text-[10px] font-black uppercase text-slate-500">
+                <p className="text-2xs font-black uppercase text-slate-500">
                   Chênh quân số so với văn bản — tham khảo, không phải lỗi
                 </p>
-                <p className="text-[10px] text-slate-500 leading-relaxed">
+                <p className="text-2xs text-slate-500 leading-relaxed">
                   Hạn mức sao/quý giao từ đầu năm theo văn bản. <strong>Giữ nguyên mức cũ cả năm là
                   hợp lệ</strong> — hệ thống không chặn bàn giao theo mức nào. Các dòng dưới chỉ để
                   cân nhắc khi giao quý sau.
                 </p>
                 {chenhQuanSo.map((l) => (
-                  <div key={`${l.loai}-${l.ten}`} className="flex flex-wrap items-start gap-2 text-[11px] p-2 rounded-lg bg-blue-50/60 border border-blue-100">
+                  <div key={`${l.loai}-${l.ten}`} className="flex flex-wrap items-start gap-2 text-2xs p-2 rounded-lg bg-blue-50/60 border border-blue-100">
                     <span className="font-bold text-slate-800 shrink-0">{l.ten}</span>
                     <span className="text-slate-600 flex-1 min-w-40">{l.moTa}</span>
                   </div>
@@ -314,11 +334,11 @@ export const StarManagementPanel: React.FC = () => {
               </div>
             )}
             <details className="mt-3">
-              <summary className="text-[10px] font-black uppercase text-slate-500 cursor-pointer">
+              <summary className="text-2xs font-black uppercase text-slate-500 cursor-pointer">
                 Xem bảng ánh xạ phòng ({danhSachPhong.length})
               </summary>
               <div className="overflow-x-auto mt-2 border border-slate-100 rounded-xl">
-                <table className="w-full text-[11px] text-left border-collapse">
+                <table className="w-full text-2xs text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-100 text-slate-700 font-black">
                       <th className="p-2">Nhãn trên phiếu Sao</th>
@@ -335,8 +355,8 @@ export const StarManagementPanel: React.FC = () => {
                         <td className="p-2 text-slate-600">{p.tenDanhBa}</td>
                         <td className="p-2 text-center">{p.quanSo}</td>
                         <td className="p-2 text-center font-bold text-brand-navy">{p.hanMucNam ?? '—'}</td>
-                        <td className="p-2 text-center text-[10px] font-black uppercase">
-                          {p.dangDung ? <span className="text-emerald-600">Đang dùng</span> : <span className="text-slate-400">Ngừng dùng</span>}
+                        <td className="p-2 text-center text-2xs font-black uppercase">
+                          {p.dangDung ? <span className="text-emerald-600">Đang dùng</span> : <span className="text-slate-500">Ngừng dùng</span>}
                         </td>
                       </tr>
                     ))}
@@ -351,7 +371,7 @@ export const StarManagementPanel: React.FC = () => {
             <h6 className="flex items-center gap-1.5 font-black text-xs text-slate-800 uppercase mb-1">
               <ShieldCheck className="w-4 h-4 text-brand-navy" /> Đối soát sổ sao với phiếu
             </h6>
-            <p className="text-[10px] text-slate-500 mb-3 leading-relaxed">
+            <p className="text-2xs text-slate-500 mb-3 leading-relaxed">
               Kiểm tra mỗi số serial trên phiếu có được sổ đánh dấu đúng không. Bấm
               <strong> Kiểm tra</strong> để xem trước, chỉ khi thấy đúng mới bấm <strong>Nối lại</strong>.
               Số bị hai phiếu cùng dùng thì hệ thống không tự sửa — phải tra sao vật lý mới chốt được.
@@ -362,7 +382,7 @@ export const StarManagementPanel: React.FC = () => {
                 type="button"
                 onClick={() => void runDoiSoat(false)}
                 disabled={busy === 'doi-soat'}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-black transition-all cursor-pointer disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-2xs font-black transition-all cursor-pointer disabled:opacity-50"
               >
                 {busy === 'doi-soat' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
                 Kiểm tra
@@ -372,7 +392,7 @@ export const StarManagementPanel: React.FC = () => {
                   type="button"
                   onClick={() => void runDoiSoat(true)}
                   disabled={busy === 'doi-soat'}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-navy text-white text-[11px] font-black hover:bg-blue-800 transition-all cursor-pointer disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-navy text-white text-2xs font-black hover:bg-blue-800 transition-all cursor-pointer disabled:opacity-50"
                 >
                   Nối lại {doiSoat.thieu_lien_ket.length + doiSoat.mo_coi.length} số
                 </button>
@@ -380,7 +400,7 @@ export const StarManagementPanel: React.FC = () => {
             </div>
 
             {doiSoat && (
-              <div className="mt-3 space-y-1.5 text-[11px]">
+              <div className="mt-3 space-y-1.5 text-2xs">
                 {doiSoat.thieu_lien_ket.length === 0 && doiSoat.mo_coi.length === 0 && (
                   <p className="flex items-center gap-1.5 font-bold text-emerald-700">
                     <CheckCircle2 className="w-3.5 h-3.5" /> Sổ sao khớp phiếu.
@@ -417,7 +437,7 @@ export const StarManagementPanel: React.FC = () => {
             <h6 className="flex items-center gap-1.5 font-black text-xs text-slate-800 uppercase mb-1">
               <Users className="w-4 h-4 text-brand-navy" /> Tổ / tập thể nhỏ ({toRows.length})
             </h6>
-            <p className="text-[10px] text-slate-500 mb-3 leading-relaxed">
+            <p className="text-2xs text-slate-500 mb-3 leading-relaxed">
               Tập thể không phải phòng trong danh bạ: tổ thuộc một phòng (VD Tổ FDI thuộc Phòng KHDN)
               hoặc liên phòng (VD Tổ truyền thông). Tổ nhận được sao tập thể, và phiếu cá nhân của cán bộ
               thuộc tổ hiện thêm ở dòng tổ trong bảng thi đua. Ngừng dùng thì tổ rời ô chọn, phiếu cũ giữ nguyên.
@@ -428,7 +448,7 @@ export const StarManagementPanel: React.FC = () => {
                 {toRows.map((t) => (
                   <div
                     key={t.id}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-[11px] ${
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-2xs ${
                       t.dangDung ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-100 opacity-60'
                     }`}
                   >
@@ -437,7 +457,7 @@ export const StarManagementPanel: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => void toggleSubUnit(t.id, !t.dangDung)}
-                      className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase cursor-pointer ${
+                      className={`px-2 py-0.5 rounded-md text-2xs font-black uppercase cursor-pointer ${
                         t.dangDung ? 'bg-slate-100 text-slate-600 hover:bg-red-50 hover:text-red-700' : 'bg-emerald-50 text-emerald-700'
                       }`}
                       title={t.dangDung ? 'Ngừng dùng — phiếu cũ vẫn giữ' : 'Kích hoạt lại'}
@@ -455,7 +475,7 @@ export const StarManagementPanel: React.FC = () => {
                 value={toMoi}
                 onChange={(e) => setToMoi(e.target.value)}
                 placeholder="Tên tổ mới, VD: Tổ Bancas"
-                className="flex-1 min-w-40 px-3 py-2 rounded-xl border border-slate-200 focus:border-brand-navy outline-none font-semibold"
+                className="flex-1 min-w-40 px-3 py-2 rounded-xl border border-slate-200 bg-white focus:border-brand-navy outline-none font-semibold text-slate-800"
               />
               <select
                 value={toMoiPhongCha}
@@ -471,7 +491,7 @@ export const StarManagementPanel: React.FC = () => {
                 type="button"
                 onClick={() => void runAddSubUnit()}
                 disabled={busy === 'sub-unit' || !toMoi.trim()}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-navy text-white text-[11px] font-black hover:bg-blue-800 transition-all cursor-pointer disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-navy text-white text-2xs font-black hover:bg-blue-800 transition-all cursor-pointer disabled:opacity-50"
               >
                 {busy === 'sub-unit' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Users className="w-3.5 h-3.5" />}
                 Thêm tổ
@@ -485,20 +505,20 @@ export const StarManagementPanel: React.FC = () => {
               <h6 className="flex items-center gap-1.5 font-black text-xs text-slate-800 uppercase mb-3">
                 <PackagePlus className="w-4 h-4 text-brand-navy" /> Khai báo lô sao đã in
               </h6>
-              <p className="text-[10px] text-slate-500 mb-3 leading-relaxed">
+              <p className="text-2xs text-slate-500 mb-3 leading-relaxed">
                 Nhập dải số của quyển sao vừa in + đóng số. Số đã có trong sổ sẽ tự bỏ qua.
               </p>
               <div className="flex items-center gap-2 text-xs">
                 <input type="number" min={1} value={batchFrom} onChange={(e) => setBatchFrom(e.target.value)} placeholder="Từ số"
-                  className="w-24 px-3 py-2 rounded-xl border border-slate-200 focus:border-brand-navy outline-none font-semibold" />
-                <span className="text-slate-400 font-bold">→</span>
+                  className="w-24 px-3 py-2 rounded-xl border border-slate-200 bg-white focus:border-brand-navy outline-none font-semibold text-slate-800" />
+                <span className="text-slate-500 font-bold">→</span>
                 <input type="number" min={1} value={batchTo} onChange={(e) => setBatchTo(e.target.value)} placeholder="Đến số"
-                  className="w-24 px-3 py-2 rounded-xl border border-slate-200 focus:border-brand-navy outline-none font-semibold" />
+                  className="w-24 px-3 py-2 rounded-xl border border-slate-200 bg-white focus:border-brand-navy outline-none font-semibold text-slate-800" />
                 <button
                   type="button"
                   onClick={() => void runBatch()}
                   disabled={busy === 'batch' || !batchFrom || !batchTo}
-                  className="ml-auto inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-navy text-white text-[11px] font-black hover:bg-blue-800 transition-all cursor-pointer disabled:opacity-50"
+                  className="ml-auto inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-navy text-white text-2xs font-black hover:bg-blue-800 transition-all cursor-pointer disabled:opacity-50"
                 >
                   {busy === 'batch' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <PackagePlus className="w-3.5 h-3.5" />}
                   Khai báo
@@ -512,40 +532,19 @@ export const StarManagementPanel: React.FC = () => {
                 <ArrowRightLeft className="w-4 h-4 text-brand-navy" /> Bàn giao sao cho lãnh đạo
               </h6>
               <div className="space-y-2 text-xs">
-                {holder ? (
-                  <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50/60">
-                    <span className="font-bold text-slate-800">{holder.fullName}
-                      <span className="text-slate-500 font-semibold"> — {holder.starDept ?? holder.rawDept ?? ''}{holder.position ? ` · ${holder.position}` : ''}</span>
-                    </span>
-                    <button type="button" onClick={() => setHolder(null)} className="p-1 rounded hover:bg-emerald-100 cursor-pointer"><X className="w-3.5 h-3.5 text-slate-500" /></button>
-                  </div>
-                ) : (
-                  <div className="relative">
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 focus-within:border-brand-navy">
-                      <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <input type="text" value={holderQuery} onChange={(e) => setHolderQuery(e.target.value)}
-                        placeholder="Tìm Trưởng phòng / PGĐ / Giám đốc nhận bàn giao…"
-                        className="w-full outline-none font-semibold text-slate-800" />
-                    </div>
-                    {holderMatches.length > 0 && (
-                      <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
-                        {holderMatches.map((p) => (
-                          <button key={p.profileId} type="button" onClick={() => { setHolder(p); setHolderQuery(''); }}
-                            className="w-full text-left px-3 py-2 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0">
-                            <span className="font-bold text-slate-800">{p.fullName}</span>
-                            <span className="text-slate-500"> — {p.starDept ?? p.rawDept ?? ''}{p.position ? ` · ${p.position}` : ''}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
+                <StarPersonPicker
+                  id="sxd-nguoi-nhan-ban-giao"
+                  value={holder}
+                  onChange={setHolder}
+                  people={people}
+                  placeholder="Tìm Trưởng phòng / PGĐ / Giám đốc nhận bàn giao…"
+                />
                 <div className="flex flex-wrap items-center gap-2">
                   <input type="number" min={1} value={hoFrom} onChange={(e) => setHoFrom(e.target.value)} placeholder="Từ số"
-                    className="w-24 px-3 py-2 rounded-xl border border-slate-200 focus:border-brand-navy outline-none font-semibold" />
-                  <span className="text-slate-400 font-bold">→</span>
+                    className="w-24 px-3 py-2 rounded-xl border border-slate-200 bg-white focus:border-brand-navy outline-none font-semibold text-slate-800" />
+                  <span className="text-slate-500 font-bold">→</span>
                   <input type="number" min={1} value={hoTo} onChange={(e) => setHoTo(e.target.value)} placeholder="Đến số"
-                    className="w-24 px-3 py-2 rounded-xl border border-slate-200 focus:border-brand-navy outline-none font-semibold" />
+                    className="w-24 px-3 py-2 rounded-xl border border-slate-200 bg-white focus:border-brand-navy outline-none font-semibold text-slate-800" />
                   <select value={quarter} onChange={(e) => setQuarter(e.target.value)}
                     className="px-3 py-2 rounded-xl border border-slate-200 focus:border-brand-navy outline-none font-semibold bg-white cursor-pointer">
                     {QUARTER_OPTIONS.map((q) => <option key={q} value={q}>{q}</option>)}
@@ -554,19 +553,19 @@ export const StarManagementPanel: React.FC = () => {
                     type="button"
                     onClick={() => void runHandover()}
                     disabled={busy === 'handover' || !guiDuoc}
-                    className="ml-auto inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-navy text-white text-[11px] font-black hover:bg-blue-800 transition-all cursor-pointer disabled:opacity-50"
+                    className="ml-auto inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-navy text-white text-2xs font-black hover:bg-blue-800 transition-all cursor-pointer disabled:opacity-50"
                   >
                     {busy === 'handover' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRightLeft className="w-3.5 h-3.5" />}
                     Bàn giao
                   </button>
                 </div>
                 {quaDai && (
-                  <p className="text-[11px] font-bold text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">
+                  <p className="text-2xs font-bold text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">
                     Tối đa 500 số một lần bàn giao.
                   </p>
                 )}
                 {phanLoai && (
-                  <div className={`text-[11px] rounded-lg px-3 py-2 space-y-0.5 border ${
+                  <div className={`text-2xs rounded-lg px-3 py-2 space-y-0.5 border ${
                     guiDuoc ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-700'
                   }`}>
                     {phanLoai.moi.length > 0 && (
@@ -607,7 +606,7 @@ export const StarManagementPanel: React.FC = () => {
                       )}
                   </div>
                 )}
-                <p className="text-[10px] text-slate-500">
+                <p className="text-2xs text-slate-500">
                   Cứ nhập <strong>đúng dải đã đưa thực tế</strong>, kể cả khi trong đó có sao đã phát:
                   số còn trong kho thì bàn giao, số lãnh đạo này đã tặng thì ghi nhận nguồn gốc, số của
                   người khác thì tự bỏ qua. Hệ thống <strong>không giới hạn theo hạn mức</strong> —
@@ -616,17 +615,17 @@ export const StarManagementPanel: React.FC = () => {
 
                 {/* Đã giao trong quý: đối chiếu với mức phân bổ đang áp (cũ hay mới đều được) */}
                 <div className="pt-2 border-t border-slate-100">
-                  <p className="text-[10px] font-black uppercase text-slate-500 mb-1.5">
+                  <p className="text-2xs font-black uppercase text-slate-500 mb-1.5">
                     Đã bàn giao {quarter}: {tongDaGiaoTrongQuy} sao cho {daGiaoTrongQuy.length} lãnh đạo
                   </p>
                   {daGiaoTrongQuy.length === 0 ? (
-                    <p className="text-[10px] text-slate-500 italic">
+                    <p className="text-2xs text-slate-500 italic">
                       Quý này chưa bàn giao đợt nào.
                     </p>
                   ) : (
                     <div className="flex flex-wrap gap-1.5">
                       {daGiaoTrongQuy.map(([id, soSao]) => (
-                        <span key={id} className="px-2 py-1 rounded-lg bg-blue-50 border border-blue-100 text-[10px] font-bold text-slate-700">
+                        <span key={id} className="px-2 py-1 rounded-lg bg-blue-50 border border-blue-100 text-2xs font-bold text-slate-700">
                           {holderNames.get(id)?.name ?? '…'}
                           <span className="text-brand-navy font-black"> · {soSao} sao</span>
                         </span>
@@ -643,7 +642,7 @@ export const StarManagementPanel: React.FC = () => {
             <summary className="flex items-center gap-1.5 font-black text-xs text-slate-800 uppercase cursor-pointer">
               <BookOpen className="w-4 h-4 text-brand-navy" /> Mức phân bổ sao/quý theo văn bản (tham chiếu khi bàn giao)
             </summary>
-            <table className="w-full text-[11px] text-left border-collapse mt-3">
+            <table className="w-full text-2xs text-left border-collapse mt-3">
               <thead>
                 <tr className="bg-slate-100 text-slate-700 font-black">
                   <th className="p-2">Nhóm được phân bổ</th>
@@ -661,7 +660,7 @@ export const StarManagementPanel: React.FC = () => {
                 ))}
               </tbody>
             </table>
-            <p className="text-[10px] text-slate-500 mt-2">
+            <p className="text-2xs text-slate-500 mt-2">
               Ngoài phân bổ trên, cá nhân/tập thể còn có thể nhận Sao từ các chương trình thi đua /
               chiến dịch gắn cơ chế Sao xứng đáng (ghi ở chế độ “Sao chương trình động lực”).
             </p>
@@ -673,12 +672,12 @@ export const StarManagementPanel: React.FC = () => {
               <Archive className="w-4 h-4 text-brand-navy" /> Các đợt bàn giao ({handovers.length})
             </h6>
             {handovers.length === 0 ? (
-              <p className="text-[11px] text-slate-500 italic">
+              <p className="text-2xs text-slate-500 italic">
                 Chưa có đợt bàn giao nào — bàn giao dải số đầu tiên cho lãnh đạo để mở đường tặng Sao trên cổng.
               </p>
             ) : (
               <div className="overflow-x-auto max-h-64 border border-slate-100 rounded-xl">
-                <table className="w-full text-[11px] text-left border-collapse">
+                <table className="w-full text-2xs text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-100 text-slate-700 font-black sticky top-0">
                       <th className="p-2">Lãnh đạo</th>
@@ -702,11 +701,11 @@ export const StarManagementPanel: React.FC = () => {
                           <td className="p-2 text-center font-mono">{h.handedAt}</td>
                           <td className="p-2 text-center">
                             <span className="font-bold text-amber-600">{progress.daTang}</span>
-                            <span className="text-slate-400"> / </span>
+                            <span className="text-slate-500"> / </span>
                             <span className="font-bold text-blue-700">{progress.conGiu}</span>
                             {progress.ngoaiDot > 0 && (
                               <span
-                                className="ml-1.5 inline-block px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-black text-[9px]"
+                                className="ml-1.5 inline-block px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-black text-2xs"
                                 title={`Dải khai báo có ${progress.trongDai} số nhưng sổ chỉ gắn ${progress.trongDai - progress.ngoaiDot} số vào đợt này. Chạy «Đối soát sổ sao với phiếu» để nối lại.`}
                               >
                                 lệch {progress.ngoaiDot}
@@ -715,7 +714,7 @@ export const StarManagementPanel: React.FC = () => {
                           </td>
                           <td className="p-2 text-center">
                             {h.revokedAt ? (
-                              <span className="text-[9px] font-black uppercase text-slate-400">Đã thu hồi</span>
+                              <span className="text-2xs font-black uppercase text-slate-500">Đã thu hồi</span>
                             ) : progress.conGiu > 0 ? (
                               <button
                                 type="button"
@@ -729,7 +728,7 @@ export const StarManagementPanel: React.FC = () => {
                                 <Undo2 className="w-3 h-3" /> Thu hồi
                               </button>
                             ) : (
-                              <span className="text-[9px] font-black uppercase text-emerald-600">Đã tặng hết</span>
+                              <span className="text-2xs font-black uppercase text-emerald-600">Đã tặng hết</span>
                             )}
                           </td>
                         </tr>
@@ -750,7 +749,7 @@ export const StarManagementPanel: React.FC = () => {
               <div className="flex flex-wrap gap-1.5">
                 {['all', 'in_stock', 'handed_over', 'awarded', 'void'].map((s) => (
                   <button key={s} type="button" onClick={() => setStatusFilter(s)}
-                    className={`px-2.5 py-1 rounded-lg text-[10px] font-black border transition-all cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-lg text-2xs font-black border transition-all cursor-pointer ${
                       statusFilter === s ? 'bg-brand-navy text-white border-brand-navy' : 'bg-white text-slate-600 border-slate-200'
                     }`}>
                     {s === 'all' ? 'Tất cả' : STATUS_META[s].label}
@@ -771,7 +770,7 @@ export const StarManagementPanel: React.FC = () => {
                     type="button"
                     title={title}
                     onClick={() => { if (r.status === 'in_stock') void askVoid(r.serialNo); }}
-                    className={`px-2 py-0.5 rounded-md border font-mono font-bold text-[10px] ${STATUS_META[r.status].chip} ${
+                    className={`px-2 py-0.5 rounded-md border font-bold text-2xs ${STATUS_META[r.status].chip} ${
                       r.status === 'in_stock' ? 'cursor-pointer hover:border-red-400' : 'cursor-default'
                     }`}
                   >
@@ -780,7 +779,7 @@ export const StarManagementPanel: React.FC = () => {
                 );
               })}
             </div>
-            <div className="flex flex-wrap gap-3 mt-2 text-[10px] text-slate-500 font-bold">
+            <div className="flex flex-wrap gap-3 mt-2 text-2xs text-slate-500 font-bold">
               {Object.entries(STATUS_META).map(([k, m]) => (
                 <span key={k} className="inline-flex items-center gap-1">
                   <span className={`inline-block w-3 h-3 rounded border ${m.chip}`} /> {m.label}

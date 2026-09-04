@@ -181,3 +181,49 @@ export const dungDanhMucPhongSao = (
 /** Nhãn của các phòng đang dùng — dùng cho ô chọn tập thể và bảng thi đua */
 export const nhanPhongDangDung = (danhSach: PhongSao[]): string[] =>
   danhSach.filter((p) => p.dangDung).map((p) => p.nhan);
+
+/**
+ * Quy một tên phòng bất kỳ về NHÃN CHUẨN của chương trình Sao.
+ *
+ * VÌ SAO CẦN MỘT CỬA DUY NHẤT: phiếu Sao lưu tên phòng dạng BẢN CHỤP lúc ghi, nên
+ * trong bảng có đủ loại chữ cho cùng một đơn vị — tên danh bạ đầy đủ ("Phòng Dịch
+ * vụ khách hàng"), nhãn Sao rút gọn ("Phòng DVKH"), và tên cũ trước khi đổi ("Phòng
+ * Yên Mỹ" → "PGD Ocean City"). Bảng thi đua gộp theo chuỗi thô nên mỗi cách viết
+ * đẻ ra một dòng riêng: đúng ca Phòng TCTH báo ngày 04/09 — DVKH ra hai dòng.
+ *
+ * Không nhận ra thì TRẢ NGUYÊN chuỗi, không đoán bừa: phiếu vẫn hiện trên bảng, và
+ * bộ dò lệch danh mục vẫn báo được «nhãn không còn phòng» để TCTH xử lý.
+ */
+export const quyVeNhanSao = (tenPhong: string): string =>
+  standardizeDepartment(tenPhong) ?? tenPhong.trim();
+
+export interface NhanPhongCu {
+  /** Chữ đang lưu trên phiếu */
+  nhanCu: string;
+  /** Nhãn chuẩn phiếu được quy về khi hiển thị */
+  nhanMoi: string;
+  soPhieu: number;
+}
+
+/**
+ * Các phiếu đang lưu tên phòng KHÁC nhãn chuẩn — đã được gộp đúng khi hiển thị,
+ * nhưng dữ liệu thì chưa sạch.
+ *
+ * Phải hiện ra cho Phòng TCTH: gộp ngầm ở tầng hiển thị sửa được con số trên bảng
+ * mà không sửa được bảng dữ liệu, nên nếu im lặng thì lần kết xuất Excel hay lần
+ * truy vấn tay tiếp theo vẫn ra hai dòng, và không ai hiểu vì sao.
+ */
+export const gomNhanPhongCu = (
+  phieu: Array<{ departmentGoc: string; department: string }>,
+): NhanPhongCu[] => {
+  const dem = new Map<string, NhanPhongCu>();
+  phieu.forEach((p) => {
+    const goc = (p.departmentGoc ?? '').trim();
+    if (!goc || goc === p.department) return;
+    const key = `${goc}→${p.department}`;
+    const cu = dem.get(key);
+    if (cu) cu.soPhieu += 1;
+    else dem.set(key, { nhanCu: goc, nhanMoi: p.department, soPhieu: 1 });
+  });
+  return [...dem.values()].sort((a, b) => b.soPhieu - a.soPhieu || a.nhanCu.localeCompare(b.nhanCu, 'vi'));
+};

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
-  BadgeCheck, Building2, Check, Copy, Gift, History, Loader2, Search, ShieldCheck,
+  BadgeCheck, Building2, Check, Copy, Gift, History, Loader2, ShieldCheck,
   Sparkles, Star, User, Users, X,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -9,6 +9,7 @@ import { getKpiPoints, formatKpi } from './starMath';
 import {
   nhapBuDungDuoc, parseSerialText, phanLoaiSerialNhapBu, suggestSerials,
 } from './starSerial';
+import { StarPersonPicker } from './StarPersonPicker';
 import { tenTapThe } from './starStats';
 import {
   useAwardablePeople, useProfileNames, useStarDepartments, useStarOps, useStarSerials,
@@ -68,13 +69,11 @@ export const StarAwardForm: React.FC = () => {
   /** Nhập bù: người tặng chọn từ TOÀN danh bạ, không giới hạn ở người đang giữ sao —
    *  sao đã trao từ lâu, số của lãnh đạo đó có thể đã hết sạch trong sổ. */
   const [backfillSender, setBackfillSender] = useState<StaffOption | null>(null);
-  const [senderQuery, setSenderQuery] = useState('');
   /** Nhập bù: số serial gõ tay (chép từ phiếu giấy / tin Lark) */
   const [serialText, setSerialText] = useState('');
 
   const [recipientType, setRecipientType] = useState<RecipientType>('person');
   const [recipient, setRecipient] = useState<StaffOption | null>(null);
-  const [personQuery, setPersonQuery] = useState('');
   const [collectiveDept, setCollectiveDept] = useState<string>('');
   /** Tổ / tập thể nhỏ gắn phiếu cá nhân ('' = không thuộc tổ nào) */
   const [subUnit, setSubUnit] = useState<string>('');
@@ -140,22 +139,6 @@ export const StarAwardForm: React.FC = () => {
     setSerialText('');
     setDangXacNhan(false);
   };
-
-  // Gợi ý người nhận theo tên không dấu; RLS đã giới hạn danh bạ đúng phạm vi từng cấp
-  const personMatches = useMemo(() => {
-    const q = normalize(personQuery);
-    if (!q) return [];
-    return people
-      .filter((p) => normalize(p.fullName).includes(q))
-      .slice(0, 8);
-  }, [people, personQuery]);
-
-  // Nhập bù: chọn người tặng trong toàn danh bạ (TCTH thấy hết theo RLS)
-  const senderMatches = useMemo(() => {
-    const q = normalize(senderQuery);
-    if (!q) return [];
-    return people.filter((p) => normalize(p.fullName).includes(q)).slice(0, 8);
-  }, [people, senderQuery]);
 
   const recipientLabel = recipientType === 'person'
     ? (recipient ? recipient.fullName : '')
@@ -244,7 +227,6 @@ export const StarAwardForm: React.FC = () => {
     if (ok) {
       confetti({ particleCount: 120, spread: 75, origin: { y: 0.7 } });
       setRecipient(null);
-      setPersonQuery('');
       setCollectiveDept('');
       setSubUnit('');
       setReason('');
@@ -272,7 +254,7 @@ export const StarAwardForm: React.FC = () => {
           <Star className="w-5 h-5 fill-amber-400 text-amber-600" />
           <span>Ghi Nhận Sao Xứng Đáng</span>
         </div>
-        <span className="text-[10px] font-mono font-black px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">
+        <span className="text-2xs font-black px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">
           Số serial kiểm soát tự động
         </span>
       </div>
@@ -284,7 +266,7 @@ export const StarAwardForm: React.FC = () => {
             key={t.key}
             type="button"
             onClick={() => switchMode(t.key)}
-            className={`px-3.5 py-2 rounded-xl text-[11px] font-black transition-all cursor-pointer border ${
+            className={`px-3.5 py-2 rounded-xl text-2xs font-black transition-all cursor-pointer border ${
               mode === t.key
                 ? 'bg-brand-navy text-white border-brand-navy shadow'
                 : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
@@ -298,7 +280,7 @@ export const StarAwardForm: React.FC = () => {
       <div className="space-y-4 text-xs">
         {/* Người tặng theo chế độ */}
         {mode === 'self' && (
-          <div className="rounded-xl bg-blue-50/60 border border-blue-100 p-3 flex items-center gap-2 text-[11px]">
+          <div className="rounded-xl bg-blue-50/60 border border-blue-100 p-3 flex items-center gap-2 text-2xs">
             <BadgeCheck className="w-4 h-4 text-brand-navy shrink-0" />
             <span className="text-slate-700">
               Người tặng: <strong>chính bạn</strong> — hệ thống tự nhận diện theo tài khoản đăng nhập,
@@ -324,7 +306,7 @@ export const StarAwardForm: React.FC = () => {
                     key={id}
                     type="button"
                     onClick={() => { setHolderId(id); setSelectedSerials([]); }}
-                    className={`px-3 py-1.5 rounded-lg border text-[11px] font-bold transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-lg border text-2xs font-bold transition-all cursor-pointer ${
                       holderId === id
                         ? 'bg-brand-navy text-white border-brand-navy'
                         : 'bg-white text-slate-700 border-slate-200 hover:border-brand-navy/40'
@@ -349,9 +331,9 @@ export const StarAwardForm: React.FC = () => {
               value={programName}
               onChange={(e) => setProgramName(e.target.value)}
               placeholder="VD: Chiến dịch thúc đẩy Huy động vốn Quý 3/2026"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-brand-navy outline-none font-semibold text-slate-800"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-brand-navy outline-none font-semibold text-slate-800 placeholder:font-normal placeholder:text-slate-400"
             />
-            <p className="text-[10px] text-slate-500 mt-1">
+            <p className="text-2xs text-slate-500 mt-1">
               Sao chương trình nằm ngoài phân bổ quý của lãnh đạo, lấy số trực tiếp từ kho TCTH;
               người tặng trên phiếu là tên chương trình.
             </p>
@@ -360,7 +342,7 @@ export const StarAwardForm: React.FC = () => {
 
         {laNhapBu && (
           <>
-            <div className="rounded-xl bg-violet-50 border border-violet-200 p-3 text-[11px] text-slate-700 flex items-start gap-2">
+            <div className="rounded-xl bg-violet-50 border border-violet-200 p-3 text-2xs text-slate-700 flex items-start gap-2">
               <History className="w-4 h-4 text-violet-700 shrink-0 mt-0.5" />
               <span>
                 <strong>Nhập bù sao đã trao.</strong> Dùng cho sao đã phát ra tay cán bộ ngoài đời
@@ -374,45 +356,14 @@ export const StarAwardForm: React.FC = () => {
               <span className="block font-bold text-slate-700 mb-1">
                 Người đã tặng Sao (đứng tên trên phiếu): <span className="text-red-500">*</span>
               </span>
-              {backfillSender ? (
-                <div className="flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border border-violet-200 bg-violet-50/60">
-                  <span className="font-bold text-slate-800">
-                    {backfillSender.fullName}
-                    <span className="text-slate-500 font-semibold"> — {backfillSender.starDept ?? backfillSender.rawDept ?? 'chưa rõ phòng'}</span>
-                  </span>
-                  <button type="button" onClick={() => setBackfillSender(null)} className="p-1 rounded hover:bg-violet-100 cursor-pointer" title="Chọn người khác">
-                    <X className="w-3.5 h-3.5 text-slate-500" />
-                  </button>
-                </div>
-              ) : (
-                <div className="relative">
-                  <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200 focus-within:border-brand-navy">
-                    <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <input
-                      type="text"
-                      value={senderQuery}
-                      onChange={(e) => setSenderQuery(e.target.value)}
-                      placeholder="Gõ tên lãnh đạo đã trao sao này…"
-                      className="w-full outline-none font-semibold text-slate-800"
-                    />
-                  </div>
-                  {senderMatches.length > 0 && (
-                    <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
-                      {senderMatches.map((p) => (
-                        <button
-                          key={p.profileId}
-                          type="button"
-                          onClick={() => { setBackfillSender(p); setSenderQuery(''); }}
-                          className="w-full text-left px-3.5 py-2 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0"
-                        >
-                          <span className="font-bold text-slate-800">{p.fullName}</span>
-                          <span className="text-slate-500"> — {p.starDept ?? p.rawDept ?? 'chưa rõ phòng'}{p.position ? ` · ${p.position}` : ''}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+              <StarPersonPicker
+                id="sxd-nguoi-tang-bu"
+                value={backfillSender}
+                onChange={setBackfillSender}
+                people={people}
+                tone="violet"
+                placeholder="Gõ tên lãnh đạo đã trao sao này…"
+              />
             </div>
           </>
         )}
@@ -444,55 +395,19 @@ export const StarAwardForm: React.FC = () => {
           </div>
 
           {recipientType === 'person' && (
-            recipient ? (
-              <div className="flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border border-emerald-200 bg-emerald-50/60">
-                <span className="font-bold text-slate-800">
-                  {recipient.fullName}
-                  <span className="text-slate-500 font-semibold"> — {recipient.starDept ?? recipient.rawDept ?? 'chưa rõ phòng'}{recipient.position ? ` · ${recipient.position}` : ''}</span>
-                </span>
-                <button type="button" onClick={() => setRecipient(null)} className="p-1 rounded hover:bg-emerald-100 cursor-pointer" title="Chọn người khác">
-                  <X className="w-3.5 h-3.5 text-slate-500" />
-                </button>
-              </div>
-            ) : (
-              <div className="relative">
-                <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200 focus-within:border-brand-navy">
-                  <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  <input
-                    type="text"
-                    value={personQuery}
-                    onChange={(e) => setPersonQuery(e.target.value)}
-                    placeholder="Gõ tên cán bộ để tìm trong danh bạ (đúng phạm vi phụ trách của bạn)…"
-                    className="w-full outline-none font-semibold text-slate-800"
-                  />
-                </div>
-                {personMatches.length > 0 && (
-                  <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
-                    {personMatches.map((p) => (
-                      <button
-                        key={p.profileId}
-                        type="button"
-                        onClick={() => { setRecipient(p); setPersonQuery(''); }}
-                        className="w-full text-left px-3.5 py-2 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0"
-                      >
-                        <span className="font-bold text-slate-800">{p.fullName}</span>
-                        <span className="text-slate-500"> — {p.starDept ?? p.rawDept ?? 'chưa rõ phòng'}{p.position ? ` · ${p.position}` : ''}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {personQuery && personMatches.length === 0 && (
-                  <p className="text-[10px] text-amber-700 mt-1">
-                    Không thấy trong phạm vi danh bạ của bạn — Trưởng phòng chỉ tặng được cán bộ phòng mình (theo văn bản triển khai).
-                  </p>
-                )}
-              </div>
-            )
+            <StarPersonPicker
+              id="sxd-nguoi-nhan"
+              value={recipient}
+              onChange={setRecipient}
+              people={people}
+              placeholder="Gõ tên cán bộ, hoặc bấm vào đây để xem danh sách…"
+              emptyHint="Trưởng phòng chỉ tặng được cán bộ phòng mình (theo văn bản triển khai)."
+            />
           )}
 
           {recipientType === 'person' && recipient && toDangDung.length > 0 && (
             <div className="mt-2 flex items-center gap-2">
-              <Users className="w-4 h-4 text-slate-400 shrink-0" />
+              <Users className="w-4 h-4 text-slate-500 shrink-0" />
               <select
                 value={subUnit}
                 onChange={(e) => setSubUnit(e.target.value)}
@@ -511,7 +426,7 @@ export const StarAwardForm: React.FC = () => {
 
           {recipientType === 'collective' && (
             <div className="flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-slate-400 shrink-0" />
+              <Building2 className="w-4 h-4 text-slate-500 shrink-0" />
               <select
                 value={collectiveDept}
                 onChange={(e) => setCollectiveDept(e.target.value)}
@@ -548,7 +463,7 @@ export const StarAwardForm: React.FC = () => {
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="Hành động xuất sắc, ngắn gọn…"
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-brand-navy outline-none font-semibold text-slate-800"
+            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-brand-navy outline-none font-semibold text-slate-800 placeholder:font-normal placeholder:text-slate-400"
           />
         </div>
         <div>
@@ -566,7 +481,7 @@ export const StarAwardForm: React.FC = () => {
             placeholder={ketQuaBatBuoc
               ? 'Kết quả định lượng: số dư, khách hàng, tiến độ…'
               : 'Để trống nếu phiếu gốc không ghi kết quả'}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-brand-navy outline-none font-semibold text-slate-800"
+            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-brand-navy outline-none font-semibold text-slate-800 placeholder:font-normal placeholder:text-slate-400"
           />
         </div>
 
@@ -579,7 +494,7 @@ export const StarAwardForm: React.FC = () => {
             {laNhapBu ? (
               <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 font-black text-slate-700">
                 {Array.from({ length: Math.max(soSao, 1) }).map((_, i) => (
-                  <Star key={i} className={`w-3.5 h-3.5 ${soSao > 0 ? 'fill-amber-500 text-amber-600' : 'fill-slate-300 text-slate-400'}`} />
+                  <Star key={i} className={`w-3.5 h-3.5 ${soSao > 0 ? 'fill-amber-500 text-amber-600' : 'fill-slate-300 text-slate-500'}`} />
                 ))}
                 <span className="ml-1">{soSao} sao</span>
               </div>
@@ -614,7 +529,7 @@ export const StarAwardForm: React.FC = () => {
               className="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:border-brand-navy outline-none font-semibold text-slate-800 bg-white"
             />
             {laNhapBu && (
-              <p className="text-[10px] text-slate-500 mt-1">
+              <p className="text-2xs text-slate-500 mt-1">
                 Ghi <strong>ngày trao thật</strong> trên phiếu gốc. Không rõ ngày thì để hôm nay
                 và ghi chú lại — thống kê theo quý dựa vào ngày này.
               </p>
@@ -634,14 +549,14 @@ export const StarAwardForm: React.FC = () => {
               onChange={(e) => setSerialText(e.target.value)}
               placeholder="VD: 241 hoặc 241, 250"
               inputMode="numeric"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-brand-navy outline-none font-mono font-black text-slate-800 tracking-wide"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-brand-navy outline-none font-mono font-black text-slate-800 tracking-wide placeholder:font-normal placeholder:text-slate-400"
             />
             {nhapBu.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {nhapBu.map((x) => (
                   <span
                     key={x.so}
-                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border font-mono font-black text-[11px] ${
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border font-mono font-black text-2xs ${
                       x.dungDuoc
                         ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
                         : 'bg-red-50 text-red-700 border-red-300'
@@ -655,7 +570,7 @@ export const StarAwardForm: React.FC = () => {
                 ))}
               </div>
             )}
-            <p className="text-[10px] text-slate-500 mt-1.5">
+            <p className="text-2xs text-slate-500 mt-1.5">
               Mỗi số soi ngay với sổ sao: số đã gắn phiếu khác, số đã hủy hoặc số chưa khai báo lô in
               đều bị chặn — đúng luật của bước ghi phía máy chủ.
             </p>
@@ -670,7 +585,7 @@ export const StarAwardForm: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setSelectedSerials(suggestSerials(activePool, starsCount))}
-                className="text-[10px] font-black text-brand-navy hover:underline cursor-pointer"
+                className="text-2xs font-black text-brand-navy hover:underline cursor-pointer"
               >
                 Chọn giúp {starsCount} số nhỏ nhất
               </button>
@@ -680,7 +595,7 @@ export const StarAwardForm: React.FC = () => {
           {serialsLoading ? (
             <div className="flex items-center gap-2 text-slate-500 py-3"><Loader2 className="w-4 h-4 animate-spin" /> Đang tải sổ sao…</div>
           ) : activePool.length === 0 ? (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] text-slate-700">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-2xs text-slate-700">
               {mode === 'self' && (
                 <>Bạn <strong>chưa được bàn giao sao</strong> (hoặc đã tặng hết số được giao).
                 Liên hệ Phòng TCTH để nhận bàn giao sao của quý này trước khi ghi nhận.</>
@@ -697,7 +612,7 @@ export const StarAwardForm: React.FC = () => {
                     key={n}
                     type="button"
                     onClick={() => toggleSerial(n)}
-                    className={`px-2.5 py-1 rounded-lg border font-mono font-black text-[11px] transition-all cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-lg border font-mono font-black text-2xs transition-all cursor-pointer ${
                       chosen
                         ? 'bg-amber-500 text-white border-amber-600 shadow'
                         : 'bg-white text-slate-700 border-slate-200 hover:border-amber-400'
@@ -716,11 +631,11 @@ export const StarAwardForm: React.FC = () => {
         {/* Xem trước phiếu */}
         <div className="mt-2 pt-4 border-t border-dashed border-amber-300">
           <div className="flex items-center justify-between gap-2 mb-2">
-            <span className="text-[10px] font-extrabold uppercase text-amber-700">🎫 Bản xem trước Phiếu Ghi Nhận:</span>
+            <span className="text-2xs font-extrabold uppercase text-amber-700">🎫 Bản xem trước Phiếu Ghi Nhận:</span>
             <button
               type="button"
               onClick={handleCopy}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-black transition-all cursor-pointer"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-2xs font-black transition-all cursor-pointer"
               title="Copy lời ghi nhận (để ghi tay lên sao / đăng vinh danh)"
             >
               {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
@@ -744,7 +659,7 @@ export const StarAwardForm: React.FC = () => {
                 </>
               )}”
             </p>
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-1.5 text-[10px] font-mono text-slate-500 border-t border-amber-200/80 pt-2">
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-1.5 text-2xs font-mono text-slate-500 border-t border-amber-200/80 pt-2">
               <span>
                 Serial: {serials.length > 0 ? serials.join(', ') : '—'}
                 {mode === 'program' && programName.trim() ? ` · ${programName.trim()}` : ''}
@@ -755,7 +670,7 @@ export const StarAwardForm: React.FC = () => {
         </div>
 
         {validationError && (
-          <p className="text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
+          <p className="text-2xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
             {validationError}
           </p>
         )}
@@ -803,7 +718,7 @@ export const StarAwardForm: React.FC = () => {
                 </div>
               </dl>
 
-              <p className="mx-5 mb-3 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] text-slate-700">
+              <p className="mx-5 mb-3 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-2xs text-slate-700">
                 Ghi xong, <strong>số serial trên bị khóa vĩnh viễn vào phiếu này</strong> — chỉ Phòng
                 TCTH gỡ được. Đối chiếu lại số trên ngôi sao vật lý trước khi bấm.
               </p>
@@ -831,8 +746,8 @@ export const StarAwardForm: React.FC = () => {
           </div>
         )}
 
-        <p className="text-[10px] text-slate-500 leading-relaxed flex items-start gap-1.5">
-          <Gift className="w-3.5 h-3.5 shrink-0 mt-0.5 text-slate-400" />
+        <p className="text-2xs text-slate-500 leading-relaxed flex items-start gap-1.5">
+          <Gift className="w-3.5 h-3.5 shrink-0 mt-0.5 text-slate-500" />
           <span>
             Dấu <span className="text-red-500 font-bold">*</span> là trường bắt buộc. Phiếu ghi xong
             vào thẳng bảng tổng hợp — đối soát của Phòng TCTH; số serial được khóa ngay khi ghi nên

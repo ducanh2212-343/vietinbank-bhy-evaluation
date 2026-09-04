@@ -28,12 +28,12 @@ export const StarRecognitionForm: React.FC = () => {
           <Star className="w-5 h-5 fill-amber-400 text-amber-600" />
           <span>Ghi Nhận Sao Xứng Đáng</span>
         </div>
-        <span className="text-[10px] font-mono font-black px-2 py-0.5 rounded bg-blue-100 text-brand-navy">
+        <span className="text-2xs font-black px-2 py-0.5 rounded bg-blue-100 text-brand-navy">
           Ghi nhận trên cổng
         </span>
       </div>
 
-      <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4 text-[11px] leading-relaxed text-slate-600">
+      <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4 text-2xs leading-relaxed text-slate-600">
         <div className="flex items-start gap-2">
           <Info className="w-4 h-4 text-brand-navy shrink-0 mt-0.5" />
           <div className="space-y-1.5">

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { quyVeNhanSao } from './starDepartments';
 
 // Phiếu Sao Xứng Đáng — bảng star_records (mỗi phiếu một dòng). CHỈ ĐỌC.
 //
@@ -17,7 +18,17 @@ import { useAuth } from '@/hooks/useAuth';
 export interface StarRecord {
   id: string;
   name: string;
+  /**
+   * NHÃN CHUẨN của chương trình Sao ("Phòng DVKH"), đã quy về từ chữ lưu trên phiếu.
+   *
+   * Phiếu lưu tên phòng dạng bản chụp lúc ghi, nên cùng một đơn vị có nhiều cách
+   * viết: tên danh bạ đầy đủ, nhãn Sao rút gọn, và tên cũ trước khi đổi. Bảng thi
+   * đua gộp theo chuỗi này nên phải quy về một mối NGAY TẠI CỬA ĐỌC — sửa ở đây là
+   * mọi màn (thi đua, cá nhân, ô lọc, kết xuất) cùng đúng, thay vì mỗi nơi tự nhớ.
+   */
   department: string;
+  /** Chữ đang lưu thật trong CSDL — để khu Quản lý Sao chỉ ra phiếu cần dọn */
+  departmentGoc: string;
   stars: number;
   reason: string;
   result: string;
@@ -48,7 +59,8 @@ export function useStarRecords() {
       return (data ?? []).map(r => ({
         id: r.id,
         name: r.name,
-        department: r.department,
+        department: quyVeNhanSao(r.department ?? ''),
+        departmentGoc: r.department ?? '',
         stars: Number(r.stars),
         reason: r.reason ?? '',
         result: r.result ?? '',
