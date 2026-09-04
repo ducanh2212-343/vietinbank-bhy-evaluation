@@ -25,15 +25,52 @@ khiến cán bộ tắt push — mất luôn cả các tin điều hành đang c
 
 Đã hỏi và **chủ chương trình chốt phương án gộp ngày**.
 
-## 2. Hai loại tin, không phải một
+## 2. Chốt lại: chung vui NGAY, không gộp cuối ngày
 
-| Mã tin | Tới ai | Khi nào | Mức |
+Bản đầu tôi dựng phương án gộp: người nhận có tin riêng, cả chi nhánh đọc một bản tin
+cuối ngày. Chủ chương trình đọc con số ở mục 1 và **vẫn chọn phát ngay**, với lý do
+đúng và tôi ghi lại đây để người sau không "tối ưu" ngược:
+
+> *Mục tiêu của Sao Xứng Đáng không phải là ít tin, mà là truyền thông và để cán bộ
+> được ghi nhận thấy tự hào. Tin vui đọc sau 8 tiếng thì hết là tin vui.*
+
+Ba loại tin, trong đó **loại gộp đã tắt** (giữ hàm làm đường lui):
+
+| Mã tin | Tới ai | Khi nào | Trạng thái |
 |---|---|---|---|
-| `SAO_NHAN` | đúng người vừa được tặng | ngay khi phiếu ghi xong | `KHEN` (🔥) |
-| `SAO_BAN_TIN` | mọi cán bộ đang hoạt động | 16h30 mỗi ngày làm việc | `KHEN` (🔥) |
+| `SAO_NHAN` | đúng người vừa được tặng | ngay khi phiếu ghi xong | đang chạy |
+| `SAO_CHUNG_VUI` | toàn chi nhánh (trừ người nhận và người ghi phiếu) | ngay khi phiếu ghi xong | đang chạy |
+| `SAO_BAN_TIN` | mọi cán bộ | 16h30 ngày làm việc | **đã tắt lịch** |
 
-Kết quả: **~30 tin/người/tháng** thay vì 3.500, mà toàn chi nhánh vẫn biết ai được
-ghi nhận.
+Chi phí thực tế: ~35 phiếu/tháng × ~98 người ≈ **3.400 tin/tháng**, tăng ~70% tổng
+lượng thông báo của cổng. Đây là lựa chọn đã cân nhắc, không phải sơ suất.
+
+**Đường lui đã dựng sẵn.** Nếu sau vài tuần số người tắt push tăng, chạy
+`supabase/rollbacks/20260904160000_sao_chung_vui_toan_chi_nhanh_down.sql` là quay về
+phương án gộp — một lệnh, không sửa mã, người nhận vẫn giữ tin riêng.
+
+### `SAO_CHUNG_VUI` — tin cả chi nhánh cùng đọc
+
+> **🔥 Chu Hồng Hải vừa nhận 1 Sao Xứng Đáng**
+> Phòng: Phòng DVKH
+> Vì đã: Nỗ lực trong công tác Huy động vốn tháng 8. FD tăng 14 tỷ
+> Người tặng: Nguyễn Thị Huyền
+
+- **Tên đứng đầu tiêu đề**, không phải chữ "Có người được tặng Sao": vinh danh là gọi
+  đúng tên. Đây là thứ làm nên phần "tự hào".
+- **Vế «vì đã» giữ nguyên trên thân tin** — đó chính là nội dung được truyền thông, và
+  là lý do văn bản bắt ghi nhận theo cấu trúc ba vế.
+- Phiếu **tập thể cũng chung vui** (đã thử: «Tập thể PGD Ocean City vừa nhận 2 Sao»);
+  chỉ tin riêng mới bỏ qua tập thể vì không có "người nhận" để gửi tới.
+- **Không báo hai lần**: người được tặng nhận tin riêng, bị loại khỏi tin chung. Người
+  vừa bấm ghi phiếu cũng bị loại — họ vừa gõ xong, biết rồi.
+- **Một câu `INSERT` cho ~98 người**, không gọi `ct2_dat_thong_bao` 98 lần: lệnh chạy
+  bên trong giao dịch ghi phiếu, nên vòng lặp là bắt lãnh đạo ngồi nhìn nút «Ghi nhận
+  Sao» quay xong 98 lần chèn.
+- **Vẫn theo luật giờ yên tĩnh**: sao trao ngoài giờ thì tin nằm chờ tới 07h00 buổi làm
+  việc kế tiếp. Không mở ngoại lệ, kể cả cho tin vui.
+- **Phiếu nhập bù không chung vui**: chép lại lịch sử mà báo "vừa nhận" là làm cả chi
+  nhánh mừng nhầm chuyện của tháng trước.
 
 ### `SAO_NHAN` — và đây cũng là việc (3)
 
@@ -109,8 +146,10 @@ tải sẵn nên **không thêm một lượt gọi mạng nào** cho trang ch�
 
 ## 6. Việc còn lại
 
-- Theo dõi số người tắt push sau 2–3 tuần. Nếu bản tin ngày bị kêu là nhiều, hạ xuống
-  bản tin tuần chỉ cần đổi lịch cron, không phải sửa mã.
+- **Theo dõi số người tắt push sau 2–3 tuần** — đây là rủi ro đã biết của phương án
+  phát ngay. Truy vấn để theo dõi:
+  `select count(distinct profile_id) from push_subscriptions where is_active;`
+  (mốc ngày 04/09: **71/100 người**). Tụt đáng kể thì cân nhắc chạy file gỡ ở mục 2.
 - Mốc quà lấy theo `STAR_REWARD_TIERS` (văn bản mục 5.2). Nếu chủ chương trình chốt luật
   "từ mốc 8 Sao đóng dấu ĐÃ ĐỔI QUÀ, dừng tích lũy" như văn bản ghi, thì cả `starMath.ts`
   lẫn `sao_moc_qua_ke_tiep()` phải sửa cùng lúc.

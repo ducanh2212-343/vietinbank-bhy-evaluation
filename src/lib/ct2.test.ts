@@ -426,6 +426,8 @@ describe('Thông báo — bấm vào phải mở đúng thứ nó nói tới', (
     // Ghi nhận Sao. Quy tắc này trùng với duongDan() trong notify-ct2.
     expect(duongDanThongBao({ ma_su_kien: 'SAO_NHAN', dau_viec_id: null }))
       .toBe('/one/ghi-nhan/tong-hop');
+    expect(duongDanThongBao({ ma_su_kien: 'SAO_CHUNG_VUI', dau_viec_id: null }))
+      .toBe('/one/ghi-nhan/tong-hop');
     expect(duongDanThongBao({ ma_su_kien: 'SAO_BAN_TIN', dau_viec_id: null }))
       .toBe('/one/ghi-nhan/tong-hop');
   });
