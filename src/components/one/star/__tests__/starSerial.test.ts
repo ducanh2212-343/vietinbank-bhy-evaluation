@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildHolderPools, buildStockPool, deriveSerialStats, formatRanges,
-  formatSerialList, parseSerialText, suggestSerials, type StarSerialRow,
+  buildHolderPools, buildStockPool, chuanHoaTen, daiBanGiaoGuiDuoc, deriveSerialStats,
+  formatRanges, formatSerialList, parseSerialText, phanLoaiDaiBanGiao, suggestSerials,
+  type StarSerialRow,
 } from '../starSerial';
 import { getKpiPoints, formatKpi } from '../starMath';
 
@@ -92,5 +93,70 @@ describe('điểm KPI theo văn bản mục 5.1 — 0,5đ/sao, trần 10 điểm
   it('hiển thị kiểu Việt Nam', () => {
     expect(formatKpi(0.5)).toBe('0,5');
     expect(formatKpi(10)).toBe('10');
+  });
+});
+
+describe('phanLoaiDaiBanGiao — bàn giao giữa kỳ, dải lẫn cả sao đã tặng', () => {
+  const GD = 'gd-1';       // Giám đốc Trần Đức Anh
+  const PGD = 'pgd-1';     // PGĐ Nguyễn Đức Thái Hoàng
+  // Dải LIỀN MẠCH 205–210 (số nào cũng đã khai báo lô) + vài số rời để thử ca chặn
+  const rows: StarSerialRow[] = [
+    row(205, 'awarded'), row(206, 'awarded'),   // Giám đốc tặng
+    row(207, 'awarded'),                        // người khác tặng
+    row(208, 'in_stock'), row(209, 'in_stock'), row(210, 'in_stock'),
+    row(241, 'handed_over', PGD),               // PGĐ đang giữ
+    row(250, 'handed_over', GD),                // chính Giám đốc đang giữ
+    row(260, 'void'),
+  ];
+  const nguoiTang = new Map<number, string>([
+    [205, 'Trần Đức Anh'], [206, 'Trần Đức Anh'], [207, 'Nguyễn Thị Vân Vĩnh'],
+  ]);
+
+  it('phân đúng bốn nhóm — dải 205–210 cho Giám đốc, lẫn cả sao đã tặng', () => {
+    const pl = phanLoaiDaiBanGiao(205, 210, rows, nguoiTang, 'Trần Đức Anh', GD);
+    expect(pl.hoiTo).toEqual([205, 206]);
+    expect(pl.boQua).toEqual([207]);
+    expect(pl.moi).toEqual([208, 209, 210]);
+    expect(pl.chan).toHaveLength(0);
+    expect(daiBanGiaoGuiDuoc(pl)).toBe(true);
+  });
+
+  it('số chưa khai báo lô nằm giữa dải thì chặn — không bàn giao qua khoảng trống', () => {
+    const pl = phanLoaiDaiBanGiao(205, 212, rows, nguoiTang, 'Trần Đức Anh', GD);
+    expect(pl.chuaKhaiBao).toEqual([211, 212]);
+    expect(daiBanGiaoGuiDuoc(pl)).toBe(false);
+  });
+
+  it('giao nhầm người: sao của Giám đốc KHÔNG bị gán cho PGĐ', () => {
+    const pl = phanLoaiDaiBanGiao(205, 207, rows, nguoiTang, 'Nguyễn Đức Thái Hoàng', PGD);
+    expect(pl.hoiTo).toHaveLength(0);
+    expect(pl.boQua).toEqual([205, 206, 207]);
+    expect(daiBanGiaoGuiDuoc(pl)).toBe(false); // không có gì để ghi
+  });
+
+  it('lãnh đạo khác đang giữ thì chặn cả dải', () => {
+    const pl = phanLoaiDaiBanGiao(241, 241, rows, nguoiTang, 'Trần Đức Anh', GD);
+    expect(pl.chan).toEqual([241]);
+    expect(daiBanGiaoGuiDuoc(pl)).toBe(false);
+  });
+
+  it('số đã hủy (sao hỏng) thì chặn', () => {
+    const pl = phanLoaiDaiBanGiao(260, 260, rows, nguoiTang, 'Trần Đức Anh', GD);
+    expect(pl.daHuy).toEqual([260]);
+    expect(daiBanGiaoGuiDuoc(pl)).toBe(false);
+  });
+
+  it('số chính người đó đang giữ thì bỏ qua, không tính là xung đột', () => {
+    const pl = phanLoaiDaiBanGiao(250, 250, rows, nguoiTang, 'Trần Đức Anh', GD);
+    expect(pl.daGiu).toEqual([250]);
+    expect(pl.chan).toHaveLength(0);
+  });
+
+  it('khớp tên phải bỏ dấu — ca thật "Thuý" trên phiếu vs "Thúy" trong danh bạ', () => {
+    expect(chuanHoaTen('Dương Thị Thanh Thuý')).toBe(chuanHoaTen('Dương Thị Thanh Thúy'));
+    const r = [row(300, 'awarded')];
+    const pl = phanLoaiDaiBanGiao(300, 300, r, new Map([[300, 'Dương Thị Thanh Thuý']]),
+      'Dương Thị Thanh Thúy', 'tp-1');
+    expect(pl.hoiTo).toEqual([300]);
   });
 });

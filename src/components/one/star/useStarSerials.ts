@@ -210,8 +210,14 @@ export function useStarOps() {
       toast.error(rpcErrorMessage(error));
       return false;
     }
-    const res = data as { count?: number } | null;
-    toast.success(`Đã bàn giao ${res?.count ?? 0} sao (số ${from}–${to})`);
+    // RPC phân loại từng số: mới bàn giao / ghi hồi tố sao đã tặng / bỏ qua sao của
+    // người khác — nói đủ để TCTH biết thực tế đã ghi những gì.
+    const res = data as { moi?: number; hoi_to?: number; bo_qua?: number } | null;
+    const phan: string[] = [];
+    if ((res?.moi ?? 0) > 0) phan.push(`${res?.moi} sao bàn giao mới`);
+    if ((res?.hoi_to ?? 0) > 0) phan.push(`${res?.hoi_to} sao đã tặng được ghi nhận nguồn gốc`);
+    if ((res?.bo_qua ?? 0) > 0) phan.push(`bỏ qua ${res?.bo_qua} sao của người khác`);
+    toast.success(`Dải ${from}–${to}: ${phan.join(', ') || 'không có thay đổi'}`);
     refreshAll();
     return true;
   }, [refreshAll]);

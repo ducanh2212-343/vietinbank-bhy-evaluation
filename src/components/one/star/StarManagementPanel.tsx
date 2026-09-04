@@ -4,7 +4,10 @@ import {
   Loader2, PackagePlus, Search, ShieldCheck, Star, Undo2, Users, X,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { formatRanges, QUARTERLY_ALLOCATION, TOTAL_ALLOCATED_2026 } from './starSerial';
+import {
+  daiBanGiaoGuiDuoc, formatRanges, phanLoaiDaiBanGiao,
+  QUARTERLY_ALLOCATION, TOTAL_ALLOCATED_2026,
+} from './starSerial';
 import {
   useAwardablePeople, useProfileNames, useStarDepartments, useStarHandovers,
   useStarOps, useStarSerials, useStarSubUnits, type StaffOption,
@@ -144,27 +147,33 @@ export const StarManagementPanel: React.FC = () => {
     [rows, statusFilter],
   );
 
-  // Soát dải bàn giao NGAY KHI GÕ: số chưa khai báo / đã bàn giao / đã tặng / đã hủy
-  // chỉ ra trên màn trước khi bấm gửi. Máy chủ vẫn kiểm lại trong RPC handover_stars
-  // — đây chỉ là lớp báo sớm. Ca thật 04/09/2026: TCTH gõ 209–220 (toàn số đã nằm
-  // trên phiếu), gửi 5 lần, lần nào cũng bị từ chối mà không thấy lý do.
-  const soatDaiBanGiao = useMemo(() => {
+  // Bản chạy trên trình duyệt của luật phân loại trong RPC handover_stars, để TCTH
+  // thấy trước khi bấm. BÀN GIAO GIỮA KỲ: dải TCTH thực tế đã đưa cho lãnh đạo luôn
+  // lẫn cả số đã tặng — chặn cứng cả dải bắt họ tự dò từng đoạn trống, rất nặng.
+  const nguoiTangTheoSo = useMemo(() => {
+    const m = new Map<number, string>();
+    const phieuTheoId = new Map(records.map((r) => [r.id, r.sender]));
+    rows.forEach((r) => {
+      if (r.status !== 'awarded' || !r.recordId) return;
+      const sender = phieuTheoId.get(r.recordId);
+      if (sender) m.set(r.serialNo, sender);
+    });
+    return m;
+  }, [rows, records]);
+
+  const phanLoai = useMemo(() => {
     const from = parseInt(hoFrom, 10);
     const to = parseInt(hoTo, 10);
-    if (!Number.isFinite(from) || !Number.isFinite(to) || from < 1 || to < from) return null;
-    if (to - from >= 500) return { loi: 'Tối đa 500 số một lần bàn giao', chuaKhaiBao: [] as number[], khongTonKho: [] as number[], tong: 0 };
-    const theoSo = new Map(rows.map((r) => [r.serialNo, r]));
-    const chuaKhaiBao: number[] = [];
-    const khongTonKho: number[] = [];
-    for (let n = from; n <= to; n += 1) {
-      const r = theoSo.get(n);
-      if (!r) chuaKhaiBao.push(n);
-      else if (r.status !== 'in_stock') khongTonKho.push(n);
-    }
-    return { loi: null as string | null, chuaKhaiBao, khongTonKho, tong: to - from + 1 };
-  }, [hoFrom, hoTo, rows]);
-  const daiBanGiaoHopLe = soatDaiBanGiao !== null && !soatDaiBanGiao.loi
-    && soatDaiBanGiao.chuaKhaiBao.length === 0 && soatDaiBanGiao.khongTonKho.length === 0;
+    if (!holder || !Number.isFinite(from) || !Number.isFinite(to) || from < 1 || to < from) return null;
+    if (to - from >= 500) return null;
+    return phanLoaiDaiBanGiao(from, to, rows, nguoiTangTheoSo, holder.fullName, holder.profileId);
+  }, [hoFrom, hoTo, holder, rows, nguoiTangTheoSo]);
+  const quaDai = useMemo(() => {
+    const from = parseInt(hoFrom, 10);
+    const to = parseInt(hoTo, 10);
+    return Number.isFinite(from) && Number.isFinite(to) && to - from >= 500;
+  }, [hoFrom, hoTo]);
+  const guiDuoc = phanLoai !== null && daiBanGiaoGuiDuoc(phanLoai);
 
   if (!isTcthAdmin) return null;
 
@@ -472,44 +481,65 @@ export const StarManagementPanel: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => void runHandover()}
-                    disabled={busy === 'handover' || !holder || !daiBanGiaoHopLe}
+                    disabled={busy === 'handover' || !guiDuoc}
                     className="ml-auto inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-navy text-white text-[11px] font-black hover:bg-blue-800 transition-all cursor-pointer disabled:opacity-50"
                   >
                     {busy === 'handover' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRightLeft className="w-3.5 h-3.5" />}
                     Bàn giao
                   </button>
                 </div>
-                {soatDaiBanGiao && (
-                  soatDaiBanGiao.loi ? (
-                    <p className="text-[11px] font-bold text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">
-                      {soatDaiBanGiao.loi}
-                    </p>
-                  ) : daiBanGiaoHopLe ? (
-                    <p className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5">
-                      Cả {soatDaiBanGiao.tong} số đang tồn kho — bàn giao được.
-                    </p>
-                  ) : (
-                    <div className="text-[11px] text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 space-y-0.5">
-                      <p className="font-bold">Dải này chưa bàn giao được:</p>
-                      {soatDaiBanGiao.khongTonKho.length > 0 && (
-                        <p>
-                          Số <strong>đã tặng / đã bàn giao / đã hủy</strong>: {formatRanges(soatDaiBanGiao.khongTonKho)}
-                          {' '}— chọn dải khác, xem số còn tồn ở mục Đối soát tồn kho phía trên.
-                        </p>
+                {quaDai && (
+                  <p className="text-[11px] font-bold text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">
+                    Tối đa 500 số một lần bàn giao.
+                  </p>
+                )}
+                {phanLoai && (
+                  <div className={`text-[11px] rounded-lg px-3 py-2 space-y-0.5 border ${
+                    guiDuoc ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-700'
+                  }`}>
+                    {phanLoai.moi.length > 0 && (
+                      <p><strong>{phanLoai.moi.length} số</strong> còn trong kho — sẽ bàn giao.</p>
+                    )}
+                    {phanLoai.hoiTo.length > 0 && (
+                      <p>
+                        <strong>{phanLoai.hoiTo.length} số</strong> đã tặng bởi chính {holder?.fullName}
+                        {' '}— ghi nhận là sao ra từ đợt này (không đổi phiếu): {formatRanges(phanLoai.hoiTo)}
+                      </p>
+                    )}
+                    {phanLoai.daGiu.length > 0 && (
+                      <p>{phanLoai.daGiu.length} số {holder?.fullName} vốn đã giữ — bỏ qua.</p>
+                    )}
+                    {phanLoai.boQua.length > 0 && (
+                      <p>
+                        <strong>{phanLoai.boQua.length} số</strong> đã tặng bởi người khác — bỏ qua, không gán:
+                        {' '}{formatRanges(phanLoai.boQua)}
+                      </p>
+                    )}
+                    {phanLoai.chan.length > 0 && (
+                      <p className="font-bold">
+                        Lãnh đạo khác đang giữ {formatRanges(phanLoai.chan)} — phải thu hồi trước.
+                      </p>
+                    )}
+                    {phanLoai.chuaKhaiBao.length > 0 && (
+                      <p className="font-bold">
+                        Chưa khai báo lô in: {formatRanges(phanLoai.chuaKhaiBao)} — khai báo lô trước.
+                      </p>
+                    )}
+                    {phanLoai.daHuy.length > 0 && (
+                      <p className="font-bold">Số đã hủy: {formatRanges(phanLoai.daHuy)} — bỏ các số này khỏi dải.</p>
+                    )}
+                    {guiDuoc
+                      ? <p className="font-bold">Bàn giao được.</p>
+                      : phanLoai.chan.length === 0 && phanLoai.chuaKhaiBao.length === 0 && phanLoai.daHuy.length === 0 && (
+                        <p className="font-bold">Cả dải không có số nào bàn giao được — chọn dải khác.</p>
                       )}
-                      {soatDaiBanGiao.chuaKhaiBao.length > 0 && (
-                        <p>
-                          Số <strong>chưa khai báo lô in</strong>: {formatRanges(soatDaiBanGiao.chuaKhaiBao)}
-                          {' '}— khai báo lô trước.
-                        </p>
-                      )}
-                    </div>
-                  )
+                  </div>
                 )}
                 <p className="text-[10px] text-slate-500">
-                  Chỉ bàn giao được số đang tồn kho; số đã bàn giao/đã tặng sẽ báo lỗi kèm danh sách.
-                  Hệ thống <strong>không giới hạn theo hạn mức</strong> — giao đúng mức chi nhánh
-                  đang áp, bảng dưới để đối chiếu.
+                  Cứ nhập <strong>đúng dải đã đưa thực tế</strong>, kể cả khi trong đó có sao đã phát:
+                  số còn trong kho thì bàn giao, số lãnh đạo này đã tặng thì ghi nhận nguồn gốc, số của
+                  người khác thì tự bỏ qua. Hệ thống <strong>không giới hạn theo hạn mức</strong> —
+                  giao đúng mức chi nhánh đang áp, bảng dưới để đối chiếu.
                 </p>
 
                 {/* Đã giao trong quý: đối chiếu với mức phân bổ đang áp (cũ hay mới đều được) */}

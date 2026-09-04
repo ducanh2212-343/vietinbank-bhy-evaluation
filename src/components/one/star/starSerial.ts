@@ -115,3 +115,87 @@ export const QUARTERLY_ALLOCATION: Array<{ group: string; perQuarter: number; pe
 
 /** Tổng sao phát ra trong năm theo văn bản (412) — đối chiếu tổng khai báo lô */
 export const TOTAL_ALLOCATED_2026 = 412;
+
+/**
+ * Chuẩn hóa họ tên để so khớp: bỏ dấu, bỏ hoa/thường, gộp khoảng trắng.
+ *
+ * Phải BỎ DẤU: phiếu ghi "Dương Thị Thanh Thuý" còn danh bạ ghi "Dương Thị Thanh
+ * Thúy" (dấu sắc ở u thay vì y) — so thẳng chuỗi thì bỏ sót 16 sao của chị. Đối
+ * xứng với hàm SQL `bhy_chuan_hoa_ten` mà RPC handover_stars dùng; hai bên phải
+ * cho cùng kết quả, nếu sửa thì sửa cả hai.
+ */
+export const chuanHoaTen = (s: string): string =>
+  s.trim().toLowerCase().replace(/\s+/g, ' ')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
+
+export interface PhanLoaiBanGiao {
+  /** Còn trong kho → bàn giao bình thường */
+  moi: number[];
+  /** Đã tặng bởi CHÍNH lãnh đạo này → ghi hồi tố nguồn gốc, giữ trạng thái đã tặng */
+  hoiTo: number[];
+  /** Đã tặng bởi người khác → bỏ qua, không gán bừa */
+  boQua: number[];
+  /** Chính lãnh đạo này đang giữ từ đợt trước */
+  daGiu: number[];
+  /** Lãnh đạo KHÁC đang giữ (chưa tặng) → chặn cả lệnh */
+  chan: number[];
+  /** Chưa khai báo lô in → chặn */
+  chuaKhaiBao: number[];
+  /** Đã hủy (sao hỏng) → chặn */
+  daHuy: number[];
+}
+
+/**
+ * Phân loại từng số trong dải bàn giao — bản chạy trên trình duyệt của luật trong
+ * RPC `handover_stars`, để TCTH thấy trước khi bấm thay vì gửi rồi mới biết.
+ *
+ * BÀN GIAO GIỮA KỲ: sổ sao ra đời khi hàng trăm sao đã phát từ trước, nên dải số
+ * TCTH thực tế đã đưa cho một lãnh đạo luôn lẫn cả số đã tặng. Chặn cứng cả dải
+ * (bản đầu) bắt TCTH tự dò từng đoạn trống — rất nặng. Thay vào đó phân loại và
+ * chỉ chặn khi có xung đột thật.
+ *
+ * @param nguoiTangTheoSo  số serial → tên người tặng trên phiếu (rỗng nếu chưa rõ)
+ * @param tenLanhDao       họ tên lãnh đạo nhận bàn giao
+ */
+export const phanLoaiDaiBanGiao = (
+  from: number,
+  to: number,
+  rows: StarSerialRow[],
+  nguoiTangTheoSo: Map<number, string>,
+  tenLanhDao: string,
+  profileIdLanhDao: string | null,
+): PhanLoaiBanGiao => {
+  const kq: PhanLoaiBanGiao = {
+    moi: [], hoiTo: [], boQua: [], daGiu: [], chan: [], chuaKhaiBao: [], daHuy: [],
+  };
+  const theoSo = new Map(rows.map((r) => [r.serialNo, r]));
+  const tenChuan = chuanHoaTen(tenLanhDao);
+
+  for (let n = from; n <= to; n += 1) {
+    const r = theoSo.get(n);
+    if (!r) { kq.chuaKhaiBao.push(n); continue; }
+    if (r.status === 'void') { kq.daHuy.push(n); continue; }
+    if (r.status === 'in_stock') { kq.moi.push(n); continue; }
+    if (r.status === 'handed_over') {
+      if (profileIdLanhDao && r.holderProfileId === profileIdLanhDao) kq.daGiu.push(n);
+      else kq.chan.push(n);
+      continue;
+    }
+    // awarded
+    if (r.holderProfileId) {
+      // đã biết ra từ túi ai rồi
+      if (profileIdLanhDao && r.holderProfileId === profileIdLanhDao) kq.daGiu.push(n);
+      else kq.boQua.push(n);
+      continue;
+    }
+    const nguoiTang = nguoiTangTheoSo.get(n) ?? '';
+    if (nguoiTang && tenChuan && chuanHoaTen(nguoiTang) === tenChuan) kq.hoiTo.push(n);
+    else kq.boQua.push(n);
+  }
+  return kq;
+};
+
+/** Dải có gửi được không: không xung đột cứng, và có ít nhất một số đóng góp */
+export const daiBanGiaoGuiDuoc = (pl: PhanLoaiBanGiao): boolean =>
+  pl.chan.length === 0 && pl.chuaKhaiBao.length === 0 && pl.daHuy.length === 0
+  && (pl.moi.length > 0 || pl.hoiTo.length > 0);
