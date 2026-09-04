@@ -55,15 +55,25 @@ describe('Mô hình vận hành Credit 360', () => {
     );
   });
 
-  it('biểu mẫu CÓ tệp cho tải về, biểu mẫu chưa có tệp thì nói thẳng là chưa có', () => {
-    // Bày nút tải cho một tệp không tồn tại là đẩy cán bộ vào trang 404 rồi tự
-    // hỏi mình làm sai ở đâu — thà nói thẳng.
+  it('cả hai biểu mẫu đều tải được, đúng tệp đã đặt trên cổng', () => {
     dung();
-    const nutTai = screen.getByRole('link', { name: /Tải mẫu 01/ });
-    expect(nutTai).toHaveAttribute('href', CREDIT_360_VAN_HANH.bieuMau[0].tep);
-    expect(nutTai).toHaveAttribute('download');
+    for (const bm of CREDIT_360_VAN_HANH.bieuMau) {
+      const nut = screen.getByRole('link', { name: new RegExp(`Tải mẫu ${bm.ma}`) });
+      expect(nut).toHaveAttribute('href', bm.tep);
+      expect(nut).toHaveAttribute('download');
+    }
+    expect(screen.queryByText('Chưa đăng tải tệp')).not.toBeInTheDocument();
+  });
 
-    expect(screen.queryByRole('link', { name: /Tải mẫu 02/ })).not.toBeInTheDocument();
+  it('biểu mẫu chưa có tệp thì nói thẳng là chưa có, không bày nút bấm vào ra 404', () => {
+    // Giữ hành vi này cho thương hiệu sau: quy chế có thể nhắc một mẫu mà tệp
+    // chưa kịp đăng — thà nói thẳng còn hơn đẩy cán bộ vào trang 404
+    const moHinh = {
+      ...CREDIT_360_VAN_HANH,
+      bieuMau: [{ ma: '09', ten: 'Mẫu thử', moTa: 'chưa có tệp' }],
+    };
+    render(<MemoryRouter><SoDoVanHanh moHinh={moHinh} /></MemoryRouter>);
+    expect(screen.queryByRole('link', { name: /Tải mẫu 09/ })).not.toBeInTheDocument();
     expect(screen.getByText('Chưa đăng tải tệp')).toBeInTheDocument();
   });
 

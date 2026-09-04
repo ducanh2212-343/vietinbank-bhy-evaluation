@@ -149,7 +149,7 @@ const VAI_TRO_C360: VaiTroVanHanh[] = [
     ten: 'Phòng đề xuất',
     tenNgan: 'Phòng đề xuất',
     trachNhiem:
-      'Phòng/PGD có hồ sơ: đăng ký phiên, gửi hồ sơ trước, cử cán bộ trình bày, giải trình và tiếp thu để hoàn thiện tờ trình.',
+      'Phòng/PGD có hồ sơ (Mẫu biểu 02 gọi là Phòng quản lý Khách hàng): đăng ký phiên, gửi hồ sơ trước, cử cán bộ trình bày, giải trình và tiếp thu để hoàn thiện tờ trình; ghi Ý kiến của Phòng quản lý KH vào Biên bản ghi nhận ý kiến và lưu 01 bản.',
     mau: '#0D9488',
   },
   {
@@ -173,7 +173,7 @@ const VAI_TRO_C360: VaiTroVanHanh[] = [
     ten: 'Thư ký phiên',
     tenNgan: 'Thư ký',
     trachNhiem:
-      'Ghi biên bản theo Mẫu biểu 01, thu phiếu ý kiến thành viên, ghi nhật ký phiên lên cổng sau khi kết thúc.',
+      'Ghi biên bản thảo luận theo Mẫu biểu 01, đính kèm Biên bản ghi nhận ý kiến (Mẫu biểu 02), ghi nhật ký phiên lên cổng sau khi kết thúc.',
     mau: '#0284C7',
   },
   {
@@ -237,8 +237,8 @@ const BUOC_C360: BuocVanHanh[] = [
     icon: MessagesSquare,
     vaiTro: 'thanh-vien',
     moTa:
-      'Cán bộ trình bày, thành viên phản biện theo lượt, lãnh đạo phòng giải trình. Mỗi thành viên ghi ý kiến của mình vào phiếu.',
-    dauRa: 'Phiếu ý kiến của từng thành viên',
+      'Cán bộ trình bày, thành viên phản biện theo lượt, lãnh đạo phòng giải trình. Ý kiến chia sẻ / cần bổ sung / làm rõ của từng thành viên và ý kiến của Phòng quản lý KH được ghi vào Biên bản ghi nhận ý kiến.',
+    dauRa: 'Biên bản ghi nhận ý kiến (Mẫu biểu 02): từng thành viên – chức danh, ý kiến, và phản hồi của Phòng',
     bieuMau: ['02'],
   },
   {
@@ -247,8 +247,8 @@ const BUOC_C360: BuocVanHanh[] = [
     icon: FileSignature,
     vaiTro: 'thu-ky',
     moTa:
-      'Người điều phối chốt các vấn đề phải bổ sung, hoàn thiện. Thư ký lập biên bản, đính kèm phiếu ý kiến của thành viên.',
-    dauRa: 'Biên bản phiên có chữ ký thư ký và người điều hành',
+      'Người điều phối chốt các vấn đề phải bổ sung, hoàn thiện. Thư ký lập biên bản thảo luận (Mẫu biểu 01), đính kèm Biên bản ghi nhận ý kiến (Mẫu biểu 02).',
+    dauRa: 'Biên bản thảo luận có chữ ký thư ký và người điều hành phiên, kèm Biên bản ghi nhận ý kiến — lưu 01 bản tại Phòng quản lý Khách hàng, 01 bản tại Phòng HTTD',
     bieuMau: ['01', '02'],
   },
   {
@@ -314,8 +314,8 @@ const PHAT_BIEU_C360: LuotPhatBieu[] = [
     viTriNgan: 'Trưởng Phòng',
     vaiTro: 'phong-de-xuat',
     nhiemVu:
-      'Chia sẻ thêm; đưa ra quan điểm của Phòng, tiếp thu những ý kiến góp ý và làm rõ, hoàn thiện nội dung trình bày, trình cấp có thẩm quyền.',
-    nguon: 'Mẫu biểu 01, mục II.3',
+      'Chia sẻ thêm; đưa ra quan điểm của Phòng, tiếp thu những ý kiến góp ý và làm rõ, hoàn thiện nội dung trình bày, trình cấp có thẩm quyền. Ý kiến của Phòng quản lý KH được ghi vào Biên bản ghi nhận ý kiến.',
+    nguon: 'Mẫu biểu 01, mục II.3; Mẫu biểu 02 (cột «Ý kiến của Phòng quản lý KH»)',
   },
   {
     thuTu: 4,
@@ -323,8 +323,8 @@ const PHAT_BIEU_C360: LuotPhatBieu[] = [
     viTriNgan: 'P. HTTD',
     vaiTro: 'thanh-vien',
     nhiemVu:
-      'Chia sẻ, đánh giá các điều kiện cấp GHTD và tình hình tài chính, sản xuất kinh doanh của Khách hàng; đưa ra các ý kiến được ghi nhận tại Phiếu đính kèm biên bản.',
-    nguon: 'Mẫu biểu 01, mục II.3',
+      'Chia sẻ, đánh giá các điều kiện cấp GHTD và tình hình tài chính, sản xuất kinh doanh của Khách hàng; đưa ra các ý kiến được ghi nhận tại Phiếu đính kèm biên bản. Lưu 01 bản Biên bản ghi nhận ý kiến tại phòng HTTD.',
+    nguon: 'Mẫu biểu 01, mục II.3; Mẫu biểu 02 (nơi lưu)',
   },
   {
     thuTu: 5,
@@ -384,9 +384,12 @@ const BIEU_MAU_C360: BieuMauChuongTrinh[] = [
   },
   {
     ma: '02',
-    ten: 'Phiếu ghi ý kiến thành viên phiên',
+    ten: 'Biên bản ghi nhận ý kiến phiên BHY Credit 360',
     moTa:
-      'Phiếu đính kèm biên bản — mỗi thành viên tự ghi nhận xét và khuyến nghị của mình. Mẫu biểu 01 dẫn chiếu tới phiếu này ở mục II.3.',
+      'Lập theo Phòng: ghi từng Thành viên – Chức danh, Ý kiến chia sẻ / cần bổ sung / làm rõ, và Ý kiến của Phòng quản lý KH. ' +
+      'Đính kèm biên bản thảo luận Mẫu biểu 01; lưu 01 bản tại Phòng quản lý Khách hàng, 01 bản tại Phòng HTTD.',
+    tep: '/bieu-mau/credit-360/mau-bieu-02-bien-ban-ghi-nhan-y-kien-bhyc360.docx',
+    kichCo: '18 KB · .docx',
   },
 ];
 
@@ -434,7 +437,7 @@ export const CREDIT_360_VAN_HANH: MoHinhVanHanh = {
     nhan: 'Cấp thẩm quyền quyết định cấp GHTD',
   },
   nguon:
-    'Chương trình Bac Hung Yen Credit 360 (ban hành 06/2026) và Mẫu biểu 01-BHYC360. ' +
+    'Chương trình Bac Hung Yen Credit 360 (ban hành 06/2026), Mẫu biểu 01-BHYC360 (Biên bản thảo luận) và Mẫu biểu 02-BHYC360 (Biên bản ghi nhận ý kiến). ' +
     'Ngưỡng GHTD, khung giờ triệu tập và yêu cầu Timemark chép lại từ nội dung đang công bố trên cổng.',
 };
 
