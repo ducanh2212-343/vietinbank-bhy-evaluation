@@ -149,6 +149,18 @@ export interface AwardStarInput {
   subUnit?: string | null;         // tổ / tập thể nhỏ gắn phiếu (phải có trong star_sub_units)
 }
 
+export interface KetQuaDoiSoat {
+  da_sua: boolean;
+  /** Phiếu có số serial nhưng sổ chưa đánh dấu số đó đã tặng */
+  thieu_lien_ket: Array<{ serial: number; phieu: string; nguoi_tang: string | null; trang_thai_so: string }>;
+  /** Sổ ghi đã tặng nhưng không phiếu nào còn dùng số đó */
+  mo_coi: Array<{ serial: number }>;
+  /** Một số bị hai phiếu trở lên cùng dùng — phải tra sao vật lý, không tự sửa */
+  trung_phieu: Array<{ serial: number; so_phieu: number; cac_phieu: string }>;
+  so_da_noi: number;
+  so_da_tra_ve: number;
+}
+
 /** Các thao tác ghi của chương trình Sao — tất cả qua RPC, tất cả invalidate đủ 3 khối dữ liệu */
 export function useStarOps() {
   const queryClient = useQueryClient();
@@ -267,7 +279,31 @@ export function useStarOps() {
     return true;
   }, [refreshAll]);
 
-  return { awardStar, declareBatch, handover, revokeHandover, revokeFormRecord, voidSerial };
+  /**
+   * Đối soát sổ sao với phiếu. Đường nhập Excel xóa sạch star_records rồi ghi lại,
+   * nên MỖI LẦN nhập là một lần sổ đứt liên kết (đã xảy ra 21/08, 28/08, 03/09).
+   * `sua=false` chỉ xem, `sua=true` mới nối lại.
+   */
+  const doiSoatSoSao = useCallback(async (sua: boolean): Promise<KetQuaDoiSoat | null> => {
+    const { data, error } = await supabase.rpc('doi_soat_so_sao', { p_sua: sua });
+    if (error) {
+      toast.error(rpcErrorMessage(error));
+      return null;
+    }
+    const kq = data as unknown as KetQuaDoiSoat;
+    if (sua) {
+      toast.success(
+        `Đã nối lại ${kq.so_da_noi} số, trả về nơi giữ ${kq.so_da_tra_ve} số`,
+      );
+      refreshAll();
+    }
+    return kq;
+  }, [refreshAll]);
+
+  return {
+    awardStar, declareBatch, handover, revokeHandover, revokeFormRecord, voidSerial,
+    doiSoatSoSao,
+  };
 }
 
 /** Tên + phòng của một tập hồ sơ (giải nghĩa holder trong sổ sao) — dùng ở khu admin */

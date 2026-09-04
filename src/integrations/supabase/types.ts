@@ -5136,6 +5136,10 @@ export type Database = {
         }
         Returns: string
       }
+      doi_soat_so_sao: {
+        Args: { p_sua?: boolean }
+        Returns: Json
+      }
       declare_star_batch: {
         Args: { p_from: number; p_to: number; p_note?: string | null }
         Returns: Json

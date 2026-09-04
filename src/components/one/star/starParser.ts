@@ -6,7 +6,25 @@
 // Mọi lần dùng giá trị fallback đều phát ra một cảnh báo (warnings) để admin soát lại
 // trước khi xác nhận nhập — bản gốc nhập thẳng không có bước xem trước.
 
-import type { StarRecordInput } from './useStarRecords';
+/**
+ * Một phiếu đọc được từ file. Trước đây mượn kiểu StarRecordInput của
+ * useStarRecords, nhưng từ 04/09/2026 hook đó chỉ còn đọc (đường nhập Excel đã
+ * dừng) nên kiểu về ở đây — nơi duy nhất còn dùng.
+ *
+ * Bộ đọc giữ lại làm ĐẶC TẢ định dạng kết xuất Lark (có bộ kiểm thử riêng), phòng
+ * khi cần nạp bù dữ liệu cũ bằng một đợt migration.
+ */
+export interface StarRecordInput {
+  name: string;
+  department: string;
+  stars: number;
+  reason: string;
+  result: string;
+  date: string;
+  sender: string;
+  serial: string;
+  isCollective: boolean;
+}
 
 export interface ParseWarning {
   /** Số dòng trong sheet (đánh số từ 1 như Excel) */

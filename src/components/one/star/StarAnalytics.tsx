@@ -4,40 +4,28 @@ import {
   Gift, Loader2, Lock, Search, Sparkles, Star, Trash2, TrendingUp, Upload, Users, X,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { toast } from 'sonner';
 import { useStarRecords } from './useStarRecords';
-import { STAR_WRITE_LOCKED, STAR_WRITE_LOCK_REASON } from './starImportLock';
+import { STAR_WRITE_LOCK_REASON } from './starImportLock';
 import {
   calculateRewardValue, formatKpi, formatVnd, getKpiPoints, getMilestoneInfo, getRewardBreakdown,
 } from './starMath';
 import { useStarDepartments, useStarOps, useStarSubUnits } from './useStarSerials';
-import {
-  DEPT_QUOTAS, buildTemplateWorkbook, parseStarWorkbook, type ParseResult,
-} from './starParser';
+import { DEPT_QUOTAS } from './starParser';
 import { buildDepartmentStats, buildIndividualStats, individualKey, type DepartmentStat } from './starStats';
 
 // Trình tổng hợp & phân tích Sao tích lũy — port từ app "Sao Xứng Đáng" đã triển khai,
 // dữ liệu thật từ Supabase (bảng star_records) thay cho Firestore.
 
-interface PreviewState extends ParseResult {
-  fileName: string;
-}
-
 export const StarAnalytics: React.FC = () => {
-  const {
-    records, isLoading, isContentAdmin, replaceAll, deleteRecord, deleteAll,
-  } = useStarRecords();
-  // Gỡ phiếu ghi trên cổng: qua RPC để số serial quay về pool người giữ —
-  // hoạt động cả khi đường nhập Excel đang khóa (khóa chỉ chặn replaceAll/xóa import)
+  const { records, isLoading, isContentAdmin } = useStarRecords();
+  // Gỡ phiếu đi qua RPC để số serial luôn quay về đúng nơi giữ, không mồ côi.
   const { revokeFormRecord } = useStarOps();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [deptFilter, setDeptFilter] = useState('all');
   const [expandedStaff, setExpandedStaff] = useState<Record<string, boolean>>({});
   const [activeTab, setActiveTab] = useState<'individual' | 'department' | 'details'>('individual');
-  const [uploadError, setUploadError] = useState('');
-  const [preview, setPreview] = useState<PreviewState | null>(null);
-  const [importing, setImporting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ---- Tổng hợp cá nhân: gộp theo (tên, phòng), LOẠI phiếu tập thể ----
   const individualStats = useMemo(() => buildIndividualStats(records), [records]);
@@ -99,54 +87,6 @@ export const StarAnalytics: React.FC = () => {
     [individualStats],
   );
 
-  // ---- Nhập file (admin): đọc → xem trước → xác nhận thay thế toàn bộ ----
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    setUploadError('');
-
-    const ok = /\.(xlsx|xls|csv)$/i.test(file.name);
-    if (!ok) {
-      setUploadError('Hệ thống hỗ trợ file Excel (.xlsx, .xls) hoặc file CSV (.csv).');
-      return;
-    }
-
-    try {
-      const buffer = await file.arrayBuffer();
-      const result = await parseStarWorkbook(buffer);
-      if (result.records.length === 0) {
-        setUploadError('Không tìm thấy dữ liệu hợp lệ trong file. Vui lòng kiểm tra lại cấu trúc cột (tải file mẫu để đối chiếu).');
-        return;
-      }
-      setPreview({ ...result, fileName: file.name });
-    } catch (err) {
-      setUploadError(`Lỗi đọc file: ${(err as Error).message}`);
-    }
-  };
-
-  const confirmImport = async () => {
-    if (!preview) return;
-    setImporting(true);
-    const ok = await replaceAll(preview.records);
-    setImporting(false);
-    if (ok) {
-      setPreview(null);
-      confetti({ particleCount: 100, spread: 70, origin: { y: 0.8 } });
-    }
-  };
-
-  const downloadTemplate = async () => {
-    const buf = await buildTemplateWorkbook();
-    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'File_mau_Sao_Xung_Dang.xlsx';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   // ---- Xuất Excel 3 sheet (cấu trúc như exportToExcel bản gốc, số liệu live) ----
   const exportToExcel = async () => {
     try {
@@ -206,7 +146,7 @@ export const StarAnalytics: React.FC = () => {
       XLSX.writeFile(wb, `Bao_cao_Sao_Xung_Dang_2026_${new Date().toISOString().split('T')[0]}.xlsx`);
       confetti({ particleCount: 30 });
     } catch (err) {
-      setUploadError(`Lỗi xuất file Excel: ${(err as Error).message}`);
+      toast.error(`Lỗi xuất file Excel: ${(err as Error).message}`);
     }
   };
 
@@ -230,15 +170,6 @@ export const StarAnalytics: React.FC = () => {
           <div className="flex items-center gap-2 self-start md:self-auto shrink-0">
             <button
               type="button"
-              onClick={downloadTemplate}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black transition-all cursor-pointer"
-              title="Tải file Excel mẫu đúng cấu trúc cột C→J"
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>Tải file mẫu</span>
-            </button>
-            <button
-              type="button"
               onClick={exportToExcel}
               className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition-all shadow-md cursor-pointer"
               title="Xuất dữ liệu đối soát ra file Excel (3 sheet)"
@@ -250,172 +181,9 @@ export const StarAnalytics: React.FC = () => {
         )}
       </div>
 
-      {/* Khu nhập file (admin) / banner khóa ghi / banner chế độ xem (cán bộ) */}
-      {isContentAdmin && STAR_WRITE_LOCKED ? (
-        <div className="p-5 sm:p-6 rounded-2xl border-2 border-amber-300 bg-amber-50/70 flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-6 shadow-sm">
-          <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 shrink-0">
-            <Lock className="w-5 h-5" />
-          </div>
-          <div className="text-left flex-1">
-            <h5 className="font-black text-xs sm:text-sm text-slate-800">Đã tạm khóa nhập dữ liệu Sao</h5>
-            <p className="text-[11px] sm:text-xs text-slate-600 mt-1 leading-relaxed">{STAR_WRITE_LOCK_REASON}</p>
-            <p className="text-[11px] sm:text-xs text-slate-600 mt-1 leading-relaxed">
-              Phần xem, thống kê và <strong>Xuất file đối soát (Excel)</strong> vẫn dùng bình thường.
-            </p>
-          </div>
-          <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black uppercase shrink-0">
-            Chỉ đọc
-          </span>
-        </div>
-      ) : isContentAdmin ? (
-        <div className="relative p-6 sm:p-8 rounded-2xl border-2 border-dashed border-slate-300 hover:border-brand-navy/50 bg-slate-50/60 hover:bg-slate-50 transition-all text-center">
-          <input
-            ref={fileInputRef}
-            type="file"
-            id="star-file-upload"
-            className="hidden"
-            accept=".csv,.xlsx,.xls"
-            onChange={handleFileChange}
-          />
-          <label htmlFor="star-file-upload" className="cursor-pointer block">
-            <div className="mx-auto w-12 h-12 rounded-full bg-brand-navy/10 flex items-center justify-center text-brand-navy mb-3">
-              <Upload className="w-6 h-6" />
-            </div>
-            <p className="text-xs sm:text-sm font-black text-slate-800">
-              Chọn file Excel (.xlsx, .xls) hoặc CSV (.csv) để nhập dữ liệu sao — hệ thống sẽ hiển thị bản xem trước để đối soát trước khi ghi đè
-            </p>
-            <div className="mt-3">
-              <span className="px-4 py-2 inline-flex items-center gap-1.5 rounded-xl bg-brand-navy text-white text-xs font-bold transition-all shadow-md hover:bg-blue-800 cursor-pointer">
-                Chọn file dữ liệu Excel/CSV
-              </span>
-            </div>
-            <div className="text-[10px] text-slate-500 mt-3 max-w-2xl mx-auto leading-relaxed bg-slate-100 p-2.5 rounded-lg border border-slate-200">
-              <p className="font-bold text-slate-600 mb-1">Cấu hình ánh xạ cột tự động (header "1." → "8." tại cột C → J):</p>
-              <p className="font-mono text-[9.5px] text-slate-700">
-                C: Dấu thời gian | D: Người tặng sao | F: Phòng ban | G: Cán bộ/Tập thể nhận sao | I: Số lượng sao | J: Serial
-              </p>
-            </div>
-          </label>
-
-          {uploadError && (
-            <p className="mt-3 text-xs text-red-600 font-bold bg-red-50 py-1.5 px-3 rounded-lg inline-block border border-red-200">
-              ⚠️ {uploadError}
-            </p>
-          )}
-        </div>
-      ) : (
-        <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 mb-6 shadow-sm">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-brand-navy/10 flex items-center justify-center text-brand-navy shrink-0">
-              <CheckCircle2 className="w-5 h-5 text-brand-navy" />
-            </div>
-            <div className="text-left">
-              <h5 className="font-extrabold text-xs sm:text-sm text-slate-800">Chế độ Xem Báo Cáo & Tra Cứu (NV)</h5>
-              <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5">
-                Số liệu sao tích lũy được đồng bộ chính xác trực tiếp từ hệ thống đối soát chính thức của Chi nhánh Bắc Hưng Yên do Ban Quản trị cập nhật.
-              </p>
-            </div>
-          </div>
-          <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase shrink-0 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            ĐÃ ĐỐI SOÁT CHÍNH THỨC
-          </span>
-        </div>
-      )}
-
-      {/* BẢN XEM TRƯỚC dữ liệu nhập (chỉ hiện sau khi đọc file, trước khi ghi đè) */}
-      {isContentAdmin && preview && (
-        <div className="mt-4 bg-white rounded-2xl border-2 border-amber-300 shadow-lg overflow-hidden">
-          <div className="flex items-center justify-between gap-3 p-4 bg-amber-50 border-b border-amber-200">
-            <div>
-              <h5 className="font-black text-sm text-slate-800 flex items-center gap-1.5">
-                <FileText className="w-4 h-4 text-amber-600" />
-                Xem trước dữ liệu nhập: {preview.fileName}
-              </h5>
-              <p className="text-[11px] text-slate-600 mt-0.5">
-                Đọc được <strong>{preview.records.length} phiếu sao</strong>
-                {preview.warnings.length > 0 && (
-                  <> — <strong className="text-amber-700">{preview.warnings.length} cảnh báo</strong> cần soát lại</>
-                )}
-                . Khi xác nhận, dữ liệu này sẽ <strong className="text-red-600">THAY THẾ TOÀN BỘ</strong> dữ liệu sao hiện có trên hệ thống.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setPreview(null)}
-              className="p-1.5 rounded-lg hover:bg-amber-100 text-slate-500 cursor-pointer shrink-0"
-              title="Đóng bản xem trước"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          {preview.warnings.length > 0 && (
-            <div className="p-4 bg-amber-50/50 border-b border-amber-100 max-h-40 overflow-y-auto">
-              <span className="text-[10px] font-black uppercase text-amber-700 block mb-1.5">⚠️ Cảnh báo dữ liệu (đã dùng giá trị mặc định):</span>
-              <ul className="space-y-1 text-[11px] text-slate-700">
-                {preview.warnings.map((w, i) => (
-                  <li key={i}>
-                    <span className="font-mono font-bold text-amber-700">Dòng {w.row}:</span> {w.message}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <div className="overflow-x-auto max-h-72">
-            <table className="w-full text-[11px] text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 font-black sticky top-0">
-                  <th className="p-2.5">#</th>
-                  <th className="p-2.5">Họ và tên / Tập thể</th>
-                  <th className="p-2.5">Phòng ban</th>
-                  <th className="p-2.5 text-center">Sao</th>
-                  <th className="p-2.5">Lý do</th>
-                  <th className="p-2.5 text-center">Ngày</th>
-                  <th className="p-2.5">Người gửi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium text-slate-600">
-                {preview.records.map((rec, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50">
-                    <td className="p-2.5 font-mono text-slate-400">{idx + 1}</td>
-                    <td className="p-2.5 font-bold text-slate-800">
-                      {rec.name}
-                      {rec.isCollective && (
-                        <span className="ml-1.5 px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 text-[9px] font-black uppercase">Tập thể</span>
-                      )}
-                    </td>
-                    <td className="p-2.5">{rec.department}</td>
-                    <td className="p-2.5 text-center font-bold text-amber-600">{rec.stars} ⭐</td>
-                    <td className="p-2.5 max-w-xs truncate" title={rec.reason}>{rec.reason}</td>
-                    <td className="p-2.5 text-center font-mono">{rec.date}</td>
-                    <td className="p-2.5">{rec.sender}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="flex items-center justify-end gap-2 p-4 bg-slate-50 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={() => setPreview(null)}
-              disabled={importing}
-              className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-100 transition-all cursor-pointer disabled:opacity-50"
-            >
-              Hủy bỏ
-            </button>
-            <button
-              type="button"
-              onClick={confirmImport}
-              disabled={importing}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black transition-all shadow-md cursor-pointer disabled:opacity-50"
-            >
-              {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-              <span>Xác nhận nhập {preview.records.length} phiếu (thay thế toàn bộ)</span>
-            </button>
-          </div>
+      {isContentAdmin && (
+        <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-[11px] leading-relaxed text-slate-600">
+          <strong className="text-slate-800">Nguồn dữ liệu:</strong> {STAR_WRITE_LOCK_REASON}
         </div>
       )}
 
@@ -820,20 +588,6 @@ export const StarAnalytics: React.FC = () => {
                     <span className="text-slate-500 font-bold">
                       Danh sách hiển thị toàn bộ các phiếu ghi nhận trong hệ thống đối soát:
                     </span>
-                    {isContentAdmin && !STAR_WRITE_LOCKED && records.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (window.confirm('Bạn có chắc chắn muốn xóa toàn bộ dữ liệu hiện tại để nhập mới không?')) {
-                            void deleteAll();
-                          }
-                        }}
-                        className="inline-flex items-center gap-1 text-red-600 hover:text-red-800 font-bold hover:underline cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Xóa toàn bộ ({records.length})</span>
-                      </button>
-                    )}
                   </div>
 
                   <div className="overflow-x-auto max-h-[400px] border border-slate-100 rounded-xl">
@@ -884,31 +638,18 @@ export const StarAnalytics: React.FC = () => {
                               </td>
                               {isContentAdmin && (
                                 <td className="p-2.5 text-center">
-                                  {rec.source === 'form' ? (
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        if (window.confirm(`Gỡ phiếu của ${rec.name} (serial ${rec.serial})? Số sao sẽ quay về nơi đang giữ để tặng lại.`)) {
-                                          void revokeFormRecord(rec.id);
-                                        }
-                                      }}
-                                      className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 transition-colors cursor-pointer"
-                                      title="Gỡ phiếu ghi trên cổng — trả số serial về pool người giữ"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  ) : STAR_WRITE_LOCKED ? (
-                                    <span className="text-[9px] text-slate-400 font-bold" title="Phiếu nhập từ Excel đang được khóa để rà soát">—</span>
-                                  ) : (
-                                    <button
-                                      type="button"
-                                      onClick={() => void deleteRecord(rec.id)}
-                                      className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 transition-colors cursor-pointer"
-                                      title="Xóa dòng này"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (window.confirm(`Gỡ phiếu của ${rec.name} (serial ${rec.serial || '—'})? Số sao sẽ quay về nơi đang giữ để tặng lại.`)) {
+                                        void revokeFormRecord(rec.id);
+                                      }
+                                    }}
+                                    className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 transition-colors cursor-pointer"
+                                    title="Gỡ phiếu — trả số serial về nơi giữ"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
                                 </td>
                               )}
                             </tr>

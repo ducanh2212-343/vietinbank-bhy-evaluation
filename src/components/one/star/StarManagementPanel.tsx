@@ -10,7 +10,8 @@ import {
 } from './starSerial';
 import {
   useAwardablePeople, useProfileNames, useStarDepartments, useStarHandovers,
-  useStarOps, useStarSerials, useStarSubUnits, type StaffOption,
+  useStarOps, useStarSerials, useStarSubUnits,
+  type KetQuaDoiSoat, type StaffOption,
 } from './useStarSerials';
 import { useStarRecords } from './useStarRecords';
 import { laLechCanXuLy, type LoaiLech } from './starDepartments';
@@ -55,7 +56,8 @@ export const StarManagementPanel: React.FC = () => {
 
   const { rows, stats, stockPool, isLoading } = useStarSerials();
   const { handovers } = useStarHandovers();
-  const { declareBatch, handover, revokeHandover, voidSerial } = useStarOps();
+  const { declareBatch, handover, revokeHandover, voidSerial, doiSoatSoSao } = useStarOps();
+  const [doiSoat, setDoiSoat] = useState<KetQuaDoiSoat | null>(null);
   const { people } = useAwardablePeople(isTcthAdmin);
   const { records } = useStarRecords();
 
@@ -195,6 +197,13 @@ export const StarManagementPanel: React.FC = () => {
     const ok = await handover(holder.profileId, from, to, quarter);
     setBusy(null);
     if (ok) { setHoFrom(''); setHoTo(''); }
+  };
+
+  const runDoiSoat = async (sua: boolean) => {
+    setBusy('doi-soat');
+    const kq = await doiSoatSoSao(sua);
+    setBusy(null);
+    if (kq) setDoiSoat(kq);
   };
 
   const runAddSubUnit = async () => {
@@ -338,6 +347,72 @@ export const StarManagementPanel: React.FC = () => {
                 </table>
               </div>
             </details>
+          </div>
+
+          {/* ĐỐI SOÁT SỔ SAO ↔ PHIẾU */}
+          <div className="rounded-2xl border border-slate-200 p-4">
+            <h6 className="flex items-center gap-1.5 font-black text-xs text-slate-800 uppercase mb-1">
+              <ShieldCheck className="w-4 h-4 text-brand-navy" /> Đối soát sổ sao với phiếu
+            </h6>
+            <p className="text-[10px] text-slate-500 mb-3 leading-relaxed">
+              Kiểm tra mỗi số serial trên phiếu có được sổ đánh dấu đúng không. Bấm
+              <strong> Kiểm tra</strong> để xem trước, chỉ khi thấy đúng mới bấm <strong>Nối lại</strong>.
+              Số bị hai phiếu cùng dùng thì hệ thống không tự sửa — phải tra sao vật lý mới chốt được.
+            </p>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void runDoiSoat(false)}
+                disabled={busy === 'doi-soat'}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-black transition-all cursor-pointer disabled:opacity-50"
+              >
+                {busy === 'doi-soat' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                Kiểm tra
+              </button>
+              {doiSoat && (doiSoat.thieu_lien_ket.length > 0 || doiSoat.mo_coi.length > 0) && (
+                <button
+                  type="button"
+                  onClick={() => void runDoiSoat(true)}
+                  disabled={busy === 'doi-soat'}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-navy text-white text-[11px] font-black hover:bg-blue-800 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  Nối lại {doiSoat.thieu_lien_ket.length + doiSoat.mo_coi.length} số
+                </button>
+              )}
+            </div>
+
+            {doiSoat && (
+              <div className="mt-3 space-y-1.5 text-[11px]">
+                {doiSoat.thieu_lien_ket.length === 0 && doiSoat.mo_coi.length === 0 && (
+                  <p className="flex items-center gap-1.5 font-bold text-emerald-700">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Sổ sao khớp phiếu.
+                  </p>
+                )}
+                {doiSoat.thieu_lien_ket.length > 0 && (
+                  <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900">
+                    <strong>{doiSoat.thieu_lien_ket.length} số</strong> có trên phiếu nhưng sổ chưa đánh dấu đã tặng:
+                    {' '}{formatRanges(doiSoat.thieu_lien_ket.map((x) => x.serial))}
+                  </p>
+                )}
+                {doiSoat.mo_coi.length > 0 && (
+                  <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900">
+                    <strong>{doiSoat.mo_coi.length} số</strong> sổ ghi đã tặng nhưng không phiếu nào dùng:
+                    {' '}{formatRanges(doiSoat.mo_coi.map((x) => x.serial))}
+                  </p>
+                )}
+                {doiSoat.trung_phieu.length > 0 && (
+                  <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-700 space-y-0.5">
+                    <p className="font-bold">
+                      {doiSoat.trung_phieu.length} số bị nhiều phiếu cùng dùng — tra sao vật lý rồi sửa phiếu:
+                    </p>
+                    {doiSoat.trung_phieu.map((t) => (
+                      <p key={t.serial}>Số {t.serial}: {t.cac_phieu}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* TỔ / TẬP THỂ NHỎ — ý kiến TCTH 04/09/2026 */}

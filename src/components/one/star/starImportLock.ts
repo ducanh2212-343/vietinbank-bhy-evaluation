@@ -1,23 +1,25 @@
-// Khóa tạm thời đường ghi dữ liệu Sao Xứng Đáng trên cổng.
+// Đường nhập dữ liệu Sao bằng file Excel đã DỪNG HẲN (quyết định 04/09/2026).
 //
-// Lý do khóa (08/2026): đợt rà soát dữ liệu phát hiện bảng star_records có phiếu
-// nhập lặp và số serial bị dùng lại (xem docs/ra-soat-du-lieu-sao.md). Toàn bộ
-// đường ghi hiện nay đi qua replaceAll — XÓA SẠCH bảng rồi ghi lại từ file Excel
-// kết xuất tay. Chừng nào chưa chốt được bản dữ liệu gốc đã làm sạch, mỗi lần
-// nhập đè lên là một lần chồng thêm sai số và xóa mất bản đang có để đối chiếu.
+// Lịch sử: đường này là `replaceAll` — XÓA SẠCH bảng star_records rồi ghi lại từ
+// bản kết xuất Lark. Nó đã ba lần phá dữ liệu (21/08, 28/08, 03/09): mỗi lần đều
+// làm đứt liên kết sổ sao ↔ phiếu (khóa ngoại `on delete set null`) và xóa luôn
+// các bản sửa dữ liệu trước đó — lần 03/09 trả tên "PGD Ocean City" về lại
+// "Phòng Yên Mỹ" cho 16 phiếu.
 //
-// Khóa này CHỈ chặn ghi/xóa. Toàn bộ phần xem, thống kê, xuất Excel đối soát vẫn
-// chạy bình thường — đây là thứ Phòng TCTH đang cần để rà soát.
+// Từ nay mọi phiếu chỉ vào bằng màn Ghi nhận Sao trên cổng, nơi số serial được
+// chọn từ sổ và bị khóa trong cùng một giao dịch nên không thể trùng.
 //
-// Mở lại: đổi STAR_WRITE_LOCKED thành false. Không cần sửa chỗ nào khác.
-// Kiểu khai báo là boolean (không để TS suy ra literal `true`), nếu không nhánh
-// sau lệnh chặn trong useStarRecords sẽ bị coi là code không bao giờ chạy tới.
+// KHÓA THẬT NẰM Ở TẦNG CSDL, không phải ở đây: migration
+// `20260904120000_dung_han_duong_nhap_excel_sao` đã bỏ policy ALL của quản trị
+// trên star_records, chỉ còn quyền đọc — mọi thao tác ghi đi qua RPC security
+// definer. Cờ dưới đây chỉ để giao diện không mời người dùng vào cửa đã xây kín.
 export const STAR_WRITE_LOCKED: boolean = true;
 
-/** Câu giải thích hiển thị trên giao diện khi khóa đang bật. */
+/** Câu giải thích hiển thị trên giao diện */
 export const STAR_WRITE_LOCK_REASON =
-  'Đang tạm khóa để rà soát dữ liệu. Chức năng nhập file và xóa phiếu sẽ mở lại sau khi chốt bản dữ liệu gốc đã làm sạch.';
+  'Đường nhập dữ liệu Sao bằng file Excel đã dừng. Mọi phiếu ghi nhận nay đi qua '
+  + 'màn «Ghi nhận Sao» trên cổng — số serial chọn từ sổ sao và được khóa ngay khi ghi.';
 
-/** Câu báo khi có thao tác ghi bị chặn (dùng cho toast). */
+/** Câu báo khi có thao tác ghi bị chặn (dùng cho toast) */
 export const STAR_WRITE_LOCK_TOAST =
-  'Chức năng nhập/xóa phiếu Sao đang tạm khóa để rà soát dữ liệu.';
+  'Đường nhập/xóa phiếu Sao bằng Excel đã dừng — ghi nhận Sao trên cổng.';
