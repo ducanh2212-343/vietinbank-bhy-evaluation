@@ -191,3 +191,40 @@ export const selectMyStarRecords = (
   if (!myDepartment) return [];
   return sameName.filter((r) => r.department === myDepartment);
 };
+
+export interface SaoCuaThang {
+  name: string;
+  department: string;
+  stars: number;
+}
+
+/**
+ * Cá nhân nhận Sao trong MỘT tháng, nhiều sao xếp trước (yêu cầu 04/09/2026: đưa
+ * lên trang chủ những cá nhân nhận sao của tháng).
+ *
+ * CHỈ CÁ NHÂN, bỏ phiếu tập thể: đây là chỗ vinh danh người, và một dòng «Tập thể
+ * Phòng KHDN» chen giữa các tên người làm hỏng đúng thứ nó định làm.
+ *
+ * Gộp theo (tên, phòng) như bảng cá nhân — chi nhánh có cán bộ trùng họ tên (hai
+ * chị Nguyễn Thị Phượng ở TCTH và Ân Thi), gộp theo mỗi tên là cộng nhầm sao.
+ *
+ * @param thang chuỗi 'YYYY-MM'
+ */
+export const saoCuaThang = (records: StarRecord[], thang: string): SaoCuaThang[] => {
+  const map = new Map<string, SaoCuaThang>();
+  records.forEach((r) => {
+    if (r.isCollective) return;
+    if (!r.date || r.date.slice(0, 7) !== thang) return;
+    const key = individualKey(r.name, r.department);
+    const cu = map.get(key);
+    if (cu) cu.stars += Number(r.stars) || 0;
+    else map.set(key, { name: r.name, department: r.department, stars: Number(r.stars) || 0 });
+  });
+  return [...map.values()].sort(
+    (a, b) => b.stars - a.stars || a.name.localeCompare(b.name, 'vi'),
+  );
+};
+
+/** Tháng hiện tại dạng 'YYYY-MM' theo lịch máy người dùng */
+export const thangHienTai = (d: Date = new Date()): string =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;

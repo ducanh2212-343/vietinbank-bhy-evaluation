@@ -127,3 +127,36 @@ export const getKpiPoints = (stars: number): number =>
 /** Hiển thị điểm KPI kiểu Việt Nam: 0,5 / 1 / 1,5 … */
 export const formatKpi = (points: number): string =>
   points.toLocaleString('vi-VN', { maximumFractionDigits: 1 });
+
+// ---- Nhắc mốc quà kế tiếp (kích thích nhận sao — yêu cầu 04/09/2026) ----
+//
+// Cùng một câu chữ dùng ở ba nơi: thẻ trang chủ, tab Tổng hợp, và thân tin push khi
+// cán bộ vừa nhận sao. Vì vậy để một chỗ soạn câu, đừng viết lại ở từng màn.
+//
+// ⚠ BẢN SQL SONG SINH: `sao_moc_qua_ke_tiep()` trong migration
+// 20260904150000_thong_bao_sao_xung_dang.sql soạn đúng câu này cho trigger push.
+// Sửa mốc hay chữ ở đây thì phải sửa cả bên đó — hai bên lệch là cán bộ đọc push
+// một đằng, mở cổng ra thấy một nẻo.
+
+export interface NhacMocQua {
+  /** Số sao còn thiếu để chạm mốc kế tiếp */
+  conThieu: number;
+  moc: StarRewardTier;
+  /** Câu hiển thị, ví dụ «Còn 2 Sao nữa tới mốc 8 Sao — Loa / Tai nghe Bluetooth» */
+  cau: string;
+}
+
+/**
+ * Mốc quà gần nhất chưa đạt và còn thiếu mấy sao. Trả null khi đã chạm mốc cao nhất
+ * (20 sao) — lúc đó treo thêm mốc là chế nhạo, không phải khích lệ.
+ */
+export const nhacMocQuaKeTiep = (stars: number): NhacMocQua | null => {
+  const { nextTier } = getMilestoneInfo(stars);
+  if (!nextTier) return null;
+  const conThieu = nextTier.stars - stars;
+  return {
+    conThieu,
+    moc: nextTier,
+    cau: `Còn ${conThieu} Sao nữa tới mốc ${nextTier.stars} Sao — ${nextTier.name}`,
+  };
+};

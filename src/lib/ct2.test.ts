@@ -421,6 +421,15 @@ describe('Thông báo — bấm vào phải mở đúng thứ nó nói tới', (
       .toBe('/one/chieu-thuc-2?the=x1');
   });
 
+  it('tin Sao Xứng Đáng mở tab Tổng hợp — nơi có bảng cá nhân và mốc quà kế tiếp', () => {
+    // Người NHẬN sao thường không phải người được quyền ghi, nên không mở màn
+    // Ghi nhận Sao. Quy tắc này trùng với duongDan() trong notify-ct2.
+    expect(duongDanThongBao({ ma_su_kien: 'SAO_NHAN', dau_viec_id: null }))
+      .toBe('/one/ghi-nhan/tong-hop');
+    expect(duongDanThongBao({ ma_su_kien: 'SAO_BAN_TIN', dau_viec_id: null }))
+      .toBe('/one/ghi-nhan/tong-hop');
+  });
+
   it('tin gắn hồ sơ tín dụng thì mở THẲNG hồ sơ đó — không bắt tự tìm giữa 48 hồ sơ', () => {
     expect(duongDanThongBao({ ma_su_kien: 'HS_TRINH', dau_viec_id: null, ho_so_id: 'hs-9' }))
       .toBe('/one/chieu-thuc-2?ho_so=hs-9');

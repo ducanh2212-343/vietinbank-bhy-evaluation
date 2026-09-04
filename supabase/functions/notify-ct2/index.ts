@@ -81,6 +81,8 @@ function duongDan(tb: ThongBao): string {
   if (tb.ma_su_kien === 'PHIEN_BAN') return '/co-gi-moi';
   if (tb.ma_su_kien === 'GOP_Y') return '/gop-y-he-thong';
   if (tb.ma_su_kien === 'IDEA_TRA_VE' || tb.ma_su_kien === 'IDEA_TIEN_TRINH') return '/one/y-tuong/gui';
+  // Sao Xứng Đáng — tab Tổng hợp (bảng cá nhân + mốc quà kế tiếp)
+  if (tb.ma_su_kien === 'SAO_NHAN' || tb.ma_su_kien === 'SAO_BAN_TIN') return '/one/ghi-nhan/tong-hop';
   if (tb.dau_viec_id) return `/one/chieu-thuc-2?the=${tb.dau_viec_id}`;
   if (tb.ho_so_id) return `/one/chieu-thuc-2?ho_so=${tb.ho_so_id}`;
   if (tb.ma_su_kien.startsWith('HS_')) return '/one/chieu-thuc-2?tab=tin-dung';
