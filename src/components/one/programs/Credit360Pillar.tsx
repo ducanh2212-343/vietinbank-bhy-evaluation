@@ -14,6 +14,14 @@ interface Credit360PillarProps {
   onImageUpload: (index: number, fileOrUrl: string) => void;
   /** Trang đặc trưng chỉ giới thiệu — nơi làm việc thật là /one/credit-360 (một chức năng một cửa) */
   introOnly?: boolean;
+  /**
+   * Khối chèn giữa phần giới thiệu và sổ đăng ký — hiện dùng cho sơ đồ vận hành.
+   *
+   * Nhận qua prop chứ không nhúng thẳng vào đây: sơ đồ vận hành đọc từ
+   * `vanHanhChuongTrinh.ts` và sẽ dùng cho cả sáu thương hiệu Ways, còn file này
+   * là của riêng Credit 360. Nhúng thẳng thì thương hiệu thứ hai phải chép lại.
+   */
+  giuaHaiKhoi?: React.ReactNode;
 }
 
 const EMPTY_FORM: CreditSessionInput = {
@@ -422,7 +430,7 @@ const CreditSessionLogger: React.FC = () => {
   );
 };
 
-export const Credit360Pillar: React.FC<Credit360PillarProps> = ({ images, onImageUpload, introOnly }) => {
+export const Credit360Pillar: React.FC<Credit360PillarProps> = ({ images, onImageUpload, introOnly, giuaHaiKhoi }) => {
   const { isGuest } = useAuth();
 
   // --- Credit 360 Simulator State ---
@@ -468,7 +476,7 @@ export const Credit360Pillar: React.FC<Credit360PillarProps> = ({ images, onImag
             <p className="text-xs text-slate-600">
               <EditableText
                 id="programs.credit360.schedule_content"
-                defaultVal="Chiều thứ 2, Sáng thứ 3 hoặc ngày thứ 5 hằng tuần. Cán bộ trình bày gửi hồ sơ trước tối thiểu 01 ngày. Bắt buộc minh chứng ảnh cơ sở kinh doanh/TSBĐ chụp qua ứng dụng Timemark."
+                defaultVal="Chiều thứ 2, Sáng thứ 3 hoặc ngày thứ 5 hằng tuần. Cán bộ trình bày gửi hồ sơ trước tối thiểu 03 ngày. Bắt buộc minh chứng ảnh cơ sở kinh doanh/TSBĐ chụp qua ứng dụng Timemark."
                 multiline={true}
                 as="span"
                 className="text-xs"
@@ -552,6 +560,10 @@ export const Credit360Pillar: React.FC<Credit360PillarProps> = ({ images, onImag
           </Link>
         </div>
       )}
+      {/* Sơ đồ vận hành nằm GIỮA giới thiệu và sổ đăng ký: đọc xong «chương trình
+          là gì» thì tới «chạy thế nào», rồi mới tới chỗ nhập việc. Khách đối tác
+          không thấy — biểu mẫu và mốc nội bộ là việc của cán bộ. */}
+      {!introOnly && !isGuest && giuaHaiKhoi}
       {!introOnly && !isGuest && <CreditSessionLogger />}
     </div>
   );

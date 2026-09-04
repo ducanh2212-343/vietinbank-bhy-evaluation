@@ -1,6 +1,8 @@
 import { OnePageShell } from '@/components/one/OnePageShell';
 import { usePillarImages } from '@/components/one/programs/PillarGallery';
 import { Credit360Pillar } from '@/components/one/programs/Credit360Pillar';
+import { SoDoVanHanh } from '@/components/one/programs/SoDoVanHanh';
+import { CREDIT_360_VAN_HANH } from '@/data/one/vanHanhChuongTrinh';
 
 // Nơi làm việc thật của BHY Credit 360 (menu Sáng kiến & Nghiệp vụ):
 // đăng ký phiên họp + sổ tra cứu. Trang đặc trưng chỉ giới thiệu và dẫn về đây.
@@ -13,6 +15,11 @@ export default function OneCreditPage() {
         <Credit360Pillar
           images={pillarImages['credit360'] || []}
           onImageUpload={(index, fileOrUrl) => handlePillarImageUpload('credit360', index, fileOrUrl)}
+          giuaHaiKhoi={
+            <section id="cach-thuc-van-hanh" className="scroll-mt-20">
+              <SoDoVanHanh moHinh={CREDIT_360_VAN_HANH} />
+            </section>
+          }
         />
       </section>
     </OnePageShell>
