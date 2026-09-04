@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  bacPhanBoTheoQuanSo, dungDanhMucPhongSao, laLechCanXuLy, nhanPhongDangDung,
+  bacPhanBoTheoQuanSo, dungDanhMucPhongSao, gomNhanPhongCu, laLechCanXuLy,
+  nhanPhongDangDung, quyVeNhanSao,
   type PhongDanhBa,
 } from '../starDepartments';
 
@@ -114,5 +115,54 @@ describe('phân loại lệch: sai dữ liệu vs chênh quân số', () => {
     const canXuLy = lech.filter(laLechCanXuLy).map((l) => l.loai);
     expect(canXuLy).toContain('nhan-trung-phong');
     expect(canXuLy).toContain('nhan-khong-con-phong');
+  });
+});
+
+describe('quyVeNhanSao — mọi cách viết tên phòng về một nhãn (TCTH báo 04/09)', () => {
+  it('tên danh bạ đầy đủ và nhãn Sao rút gọn ra CÙNG một dòng thi đua', () => {
+    // Ca thật: phiếu nhập bù ghi "Phòng Dịch vụ khách hàng" (tên danh bạ) trong khi
+    // 19 phiếu cũ ghi "Phòng DVKH" → bảng thi đua ra hai dòng DVKH.
+    expect(quyVeNhanSao('Phòng Dịch vụ khách hàng')).toBe('Phòng DVKH');
+    expect(quyVeNhanSao('Phòng DVKH')).toBe('Phòng DVKH');
+  });
+
+  it('tên cũ trước khi đổi cũng về nhãn mới — Yên Mỹ và Ocean City là một đơn vị', () => {
+    expect(quyVeNhanSao('Phòng Yên Mỹ')).toBe('PGD Ocean City');
+    expect(quyVeNhanSao('Phòng giao dịch Yên Mỹ')).toBe('PGD Ocean City');
+    expect(quyVeNhanSao('Phòng giao dịch Ocean City')).toBe('PGD Ocean City');
+    expect(quyVeNhanSao('PGD Ocean City')).toBe('PGD Ocean City');
+  });
+
+  it('cả năm phòng giao dịch về đúng nhãn riêng, không dồn về DVKH', () => {
+    expect(quyVeNhanSao('Phòng giao dịch Ân Thi')).toBe('Phòng Ân Thi');
+    expect(quyVeNhanSao('Phòng giao dịch Khoái Châu')).toBe('Phòng Khoái Châu');
+    expect(quyVeNhanSao('Phòng giao dịch Văn Giang')).toBe('Phòng Văn Giang');
+    expect(quyVeNhanSao('Phòng giao dịch Văn Lâm')).toBe('Phòng Văn Lâm');
+  });
+
+  it('không nhận ra thì giữ nguyên chuỗi, không đoán bừa và không làm mất phiếu', () => {
+    expect(quyVeNhanSao('Tổ FDI')).toBe('Tổ FDI');
+    expect(quyVeNhanSao('Tổ truyền thông')).toBe('Tổ truyền thông');
+    expect(quyVeNhanSao('Phòng Chưa Có Trong Luật')).toBe('Phòng Chưa Có Trong Luật');
+  });
+});
+
+describe('gomNhanPhongCu — chỉ ra phiếu còn lưu chữ cũ để TCTH dọn dữ liệu', () => {
+  const p = (departmentGoc: string) => ({ departmentGoc, department: quyVeNhanSao(departmentGoc) });
+
+  it('đếm theo từng cặp chữ cũ → nhãn mới, nhiều phiếu nhất lên đầu', () => {
+    const kq = gomNhanPhongCu([
+      p('Phòng Dịch vụ khách hàng'),
+      p('Phòng Yên Mỹ'), p('Phòng Yên Mỹ'), p('Phòng Yên Mỹ'),
+      p('Phòng DVKH'), p('PGD Ocean City'),
+    ]);
+    expect(kq).toEqual([
+      { nhanCu: 'Phòng Yên Mỹ', nhanMoi: 'PGD Ocean City', soPhieu: 3 },
+      { nhanCu: 'Phòng Dịch vụ khách hàng', nhanMoi: 'Phòng DVKH', soPhieu: 1 },
+    ]);
+  });
+
+  it('phiếu đã đúng nhãn thì không báo gì — không làm nhiễu màn quản lý', () => {
+    expect(gomNhanPhongCu([p('Phòng DVKH'), p('Phòng TCTH'), p('Tổ FDI')])).toEqual([]);
   });
 });

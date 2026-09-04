@@ -120,6 +120,29 @@
   }
 
   /*
+   * ĐẢO SÁNG PHẢI KHAI `color-scheme` RIÊNG — khối biến ở trên KHÔNG chạm tới nó.
+   *
+   * Lỗi thật (ảnh màn hình 04/09/2026, màn Ghi nhận Sao Xứng Đáng): ô tìm tên cán bộ,
+   * ô «Vì đã», ô «Đem lại» hiện thành khối ĐEN KÍN, gõ chữ không nhìn thấy. Nguyên
+   * nhân không nằm ở biến màu: index.html khai `<meta name="color-scheme" content=
+   * "light dark">`, nên khi máy cán bộ để hệ tối, trình duyệt tự tô nền tối cho
+   * <input>/<select>/<textarea> KHÔNG có nền tự khai — trong khi chữ vẫn là
+   * text-slate-800. Chữ tối trên nền tối.
+   *
+   * Bằng chứng ngay trong cùng khung hình: ô «Ngày trao Sao» có `bg-white` nên hiện
+   * bình thường, ba ô còn lại không có nên đen. `color-scheme` là thứ duy nhất nói
+   * được với trình duyệt "vùng này là nền sáng"; biến CSS không làm thay được.
+   *
+   * Vá ở đây thay vì đi thêm `bg-white` cho từng ô: cổng có hàng trăm ô nhập, sót
+   * một ô là lại một cán bộ gõ vào khoảng đen. `:root` cố ý KHÔNG nằm trong luật này
+   * — phần còn lại của ứng dụng vẫn theo hệ tối của máy như thiết kế.
+   */
+  .one-light,
+  body.one-portal-light > *:not(#root) {
+    color-scheme: light;
+  }
+
+  /*
    * Giao diện tối — giữ tinh thần "Cây ký ức", nền navy sâu, chữ sáng dễ đọc.
    * Kích hoạt bằng class `.dark` trên <html> (ThemeProvider quản lý).
    */
