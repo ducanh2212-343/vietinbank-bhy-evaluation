@@ -69,6 +69,11 @@ const DEFAULT_DEPT = 'Phòng KHDN';
 export const standardizeDepartment = (deptStr: string): string | null => {
   const s = deptStr.toLowerCase().trim();
   if (!s) return null;
+  // Ban Giám đốc là một tập thể trong chương trình Sao (ý kiến TCTH 04/09/2026):
+  // trước đó PGĐ nhận sao cá nhân bị xếp vào phòng mình phụ trách. Chỉ bắt đúng
+  // cụm "ban giám đốc" / mã BGĐ — KHÔNG bắt "giám đốc" trần vì chức danh
+  // "Phó giám đốc phụ trách KHDN" cũng chứa cụm đó.
+  if (s.includes('ban giám đốc') || s.includes('ban giam doc') || /(^|\s)bg[dđ](\s|$)/.test(s)) return 'Ban Giám đốc';
   if (s.includes('tcth') || s.includes('tổng hợp') || s.includes('hành chính') || s.includes('tổ chức')) return 'Phòng TCTH';
   if (s.includes('khdn') || s.includes('doanh nghiệp') || s.includes('khách hàng doanh nghiệp')) return 'Phòng KHDN';
   if (s.includes('dvkh') || s.includes('dịch vụ khách hàng')) return 'Phòng DVKH';

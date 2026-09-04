@@ -32,16 +32,18 @@ describe('bacPhanBoTheoQuanSo — bậc sao/quý theo văn bản mục 4', () =>
 });
 
 describe('dungDanhMucPhongSao — danh mục phòng suy từ danh bạ', () => {
-  it('Ban Giám đốc không nằm trong danh mục nhận Sao tập thể và không bị coi là lệch', () => {
+  it('Ban Giám đốc là một tập thể trong danh mục (PGĐ nhận sao cá nhân phải có chỗ), không có hạn mức, không báo lệch', () => {
     const { danhSach, lech } = dungDanhMucPhongSao(DANH_BA_THAT);
-    expect(danhSach.map((p) => p.nhan)).not.toContain('Ban Giám đốc');
+    const bgd = danhSach.find((p) => p.nhan === 'Ban Giám đốc');
+    expect(bgd).toBeDefined();
+    expect(bgd!.hanMucNam).toBeNull();
     expect(lech.filter((l) => l.ten === 'Ban Giám đốc')).toHaveLength(0);
   });
 
-  it('10 phòng thật đều ra đúng nhãn Sao, không phòng nào bị bỏ sót', () => {
+  it('11 đơn vị thật đều ra đúng nhãn Sao, không đơn vị nào bị bỏ sót', () => {
     const { danhSach } = dungDanhMucPhongSao(DANH_BA_THAT);
     expect(danhSach.map((p) => p.nhan).sort()).toEqual([
-      'PGD Ocean City', 'Phòng Bán lẻ', 'Phòng DVKH', 'Phòng HTTD', 'Phòng KHDN',
+      'Ban Giám đốc', 'PGD Ocean City', 'Phòng Bán lẻ', 'Phòng DVKH', 'Phòng HTTD', 'Phòng KHDN',
       'Phòng Khoái Châu', 'Phòng TCTH', 'Phòng Văn Giang', 'Phòng Văn Lâm', 'Phòng Ân Thi',
     ].sort());
   });
@@ -59,9 +61,14 @@ describe('dungDanhMucPhongSao — danh mục phòng suy từ danh bạ', () => {
     expect(lech.filter((l) => l.loai === 'nhan-khong-con-phong')).toHaveLength(0);
   });
 
-  it('Tổ FDI nhận sao tập thể nhưng không phải phòng danh bạ — không coi là lệch', () => {
-    const { lech } = dungDanhMucPhongSao(DANH_BA_THAT, ['Tổ FDI']);
+  it('tổ trong danh mục star_sub_units (Tổ FDI, Tổ truyền thông) không phải phòng — không coi là lệch', () => {
+    const { lech } = dungDanhMucPhongSao(DANH_BA_THAT, ['Tổ FDI', 'Tổ truyền thông'], ['Tổ FDI', 'Tổ truyền thông']);
     expect(lech.filter((l) => l.loai === 'nhan-khong-con-phong')).toHaveLength(0);
+  });
+
+  it('nhãn tổ trên phiếu mà KHÔNG có trong danh mục thì vẫn báo — chống tổ tự phát', () => {
+    const { lech } = dungDanhMucPhongSao(DANH_BA_THAT, ['Tổ Bí Ẩn'], ['Tổ FDI']);
+    expect(lech.find((l) => l.loai === 'nhan-khong-con-phong')?.ten).toBe('Tổ Bí Ẩn');
   });
 
   it('phòng giao dịch mới mở bị luật cũ dồn vào Phòng DVKH thì phải báo, không im lặng', () => {

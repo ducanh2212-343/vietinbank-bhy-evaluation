@@ -154,6 +154,36 @@ Bù lại, khu bàn giao có thêm dòng **"Đã bàn giao [quý]: N sao cho M l
 số sao từng người đã nhận trong quý — chỗ để TCTH tự đối chiếu với mức mình đang
 áp, dù là mức cũ theo văn bản hay mức mới theo quân số.
 
+## 3c. Ý kiến Phòng TCTH 04/09 — tập thể chưa có chỗ, và người tặng / serial
+
+Cán bộ TCTH nêu 4 điểm sau khi xem bản preview. Ba điểm đầu cùng một gốc: **có
+những tập thể thật ngoài danh sách phòng ban**.
+
+| Ý kiến | Hiện trạng tìm thấy | Đã làm |
+|---|---|---|
+| Bổ sung Ban Giám đốc | Cả 3 PGĐ có 4 sao cá nhân nhưng **đều bị xếp vào Phòng KHDN** — kể cả PGĐ phụ trách DVKH — vì form Lark cũ chỉ có ô "phòng" và chương trình Sao cố tình loại BGĐ khỏi danh mục | Ban Giám đốc là một tập thể trong danh mục (không hạn mức phân bổ, không báo lệch); luật nhận tên bắt đúng "Ban Giám đốc"/BGĐ, **không** bắt "giám đốc" trần vì chức danh "Phó giám đốc phụ trách KHDN" cũng chứa cụm đó; 4 phiếu PGĐ đã chuyển về "Ban Giám đốc" |
+| Tổ FDI trong Phòng KHDN | Đã có 2 phiếu tập thể "Tập thể Tổ FDI" (department = Tổ FDI), nhưng không có cách ghi nhận cán bộ thuộc tổ | Danh mục **tổ / tập thể nhỏ** (`star_sub_units`), Tổ FDI thuộc Phòng KHDN; phiếu cá nhân có thêm `sub_unit` |
+| Tổ truyền thông (liên phòng) | Chưa có gì | Cùng danh mục, `phong_cha = null` = liên phòng |
+| Hiện Người tặng + Serial ở thống kê cá nhân | Khối cá nhân mở rộng chỉ có ngày, lý do, hiệu quả; tab Chi tiết không có cột người tặng/serial | Thêm cả hai chỗ, kèm tổ nếu có |
+
+**Cách mô hình hóa tổ** (quyết định đáng ghi lại):
+
+- Tổ là **dòng riêng trong bảng thi đua, lồng dưới phòng cha, không xếp hạng cùng
+  phòng** (tổ liên phòng nằm cuối bảng). Sao tập thể của tổ = phiếu ghi cho "Tập
+  thể Tổ …" — đúng cách 2 phiếu Tổ FDI đang ghi, nên dữ liệu cũ không phải sửa.
+- Sao tập thể của tổ **không cộng vào phòng cha**: văn bản xếp hạng phòng theo sao
+  ghi cho phòng; nếu chi nhánh muốn gộp thì đổi một chỗ trong `buildDepartmentStats`.
+- Cán bộ thuộc tổ **vẫn thuộc phòng** (phiếu giữ `department` = phòng, chỉ gắn
+  thêm `sub_unit`): bảng phòng không mất người, dòng tổ hiện thêm sao cá nhân để
+  tham khảo. Việc "thuộc tổ" do lãnh đạo chọn khi tặng — không quản danh sách thành
+  viên tổ, vì tổ liên phòng thay đổi theo đợt.
+- Danh mục tổ do **TCTH tự thêm / ngừng dùng** ở khu Quản lý Sao — không hardcode,
+  cùng bài học với danh mục phòng. RPC `award_star` từ chối tên tổ không có trong
+  danh mục (chặn tổ tự phát gõ tay).
+
+Migration `20260904090000_tap_the_nho_va_ban_giam_doc` **đã áp** (kèm rollback);
+đồng thời thu hồi `anon` trên `star_serials` / `star_handovers` cho đúng quy ước.
+
 ## 4. Trình tự đưa vào vận hành
 
 1. **Merge + deploy nhánh này** — chừng nào chưa deploy, màn nhập Excel cũ còn sống

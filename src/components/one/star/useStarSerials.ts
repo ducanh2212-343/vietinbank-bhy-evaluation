@@ -150,6 +150,7 @@ export interface AwardStarInput {
   awardedOn: string; // yyyy-mm-dd
   holderProfileId?: string | null; // proxy: lãnh đạo được nhập hộ
   programName?: string | null;     // program: tên chương trình động lực
+  subUnit?: string | null;         // tổ / tập thể nhỏ gắn phiếu (phải có trong star_sub_units)
 }
 
 /** Các thao tác ghi của chương trình Sao — tất cả qua RPC, tất cả invalidate đủ 3 khối dữ liệu */
@@ -175,6 +176,7 @@ export function useStarOps() {
       p_awarded_on: input.awardedOn,
       p_holder_profile_id: input.holderProfileId ?? null,
       p_program_name: input.programName ?? null,
+      p_sub_unit: input.subUnit ?? null,
     });
     if (error) {
       toast.error(rpcErrorMessage(error));
@@ -298,7 +300,7 @@ export function useProfileNames(profileIds: string[], enabled: boolean) {
  * "Quản lý Phòng ban & Chức danh". Trả kèm danh sách điểm lệch để Phòng TCTH
  * biết ngay khi danh bạ và chương trình Sao không còn khớp nhau.
  */
-export function useStarDepartments(nhanTrenPhieu: string[] = []) {
+export function useStarDepartments(nhanTrenPhieu: string[] = [], nhanToDanhMuc: string[] = []) {
   const { data, isLoading } = useQuery({
     queryKey: ['one-star-departments'],
     staleTime: 10 * 60 * 1000,
@@ -318,11 +320,96 @@ export function useStarDepartments(nhanTrenPhieu: string[] = []) {
   });
 
   const nhanKey = useMemo(() => [...new Set(nhanTrenPhieu)].sort().join('|'), [nhanTrenPhieu]);
+  const toKey = useMemo(() => [...new Set(nhanToDanhMuc)].sort().join('|'), [nhanToDanhMuc]);
   const { danhSach, lech } = useMemo(
-    () => dungDanhMucPhongSao(data ?? [], nhanKey ? nhanKey.split('|') : []),
-    [data, nhanKey],
+    () => dungDanhMucPhongSao(
+      data ?? [],
+      nhanKey ? nhanKey.split('|') : [],
+      toKey ? toKey.split('|') : [],
+    ),
+    [data, nhanKey, toKey],
   );
   const nhanDangDung = useMemo(() => nhanPhongDangDung(danhSach), [danhSach]);
 
   return { danhSachPhong: danhSach, lechDanhMuc: lech, nhanDangDung, isLoading };
+}
+
+export interface StarSubUnit {
+  id: string;
+  nhan: string;
+  /** Nhãn phòng cha trong chương trình Sao; null = liên phòng */
+  phongCha: string | null;
+  moTa: string | null;
+  dangDung: boolean;
+}
+
+const SUB_UNITS_KEY = ['one-star-sub-units'];
+
+/**
+ * Danh mục TỔ / TẬP THỂ NHỎ (bảng star_sub_units) — Tổ FDI thuộc Phòng KHDN, Tổ
+ * truyền thông liên phòng… Do Phòng TCTH tự thêm/tắt ở khu Quản lý Sao (RLS chỉ
+ * cho admin ghi), không hardcode — cùng bài học với danh mục phòng.
+ */
+export function useStarSubUnits() {
+  const queryClient = useQueryClient();
+  const { data: rows = [], isLoading } = useQuery({
+    queryKey: SUB_UNITS_KEY,
+    staleTime: 10 * 60 * 1000,
+    queryFn: async (): Promise<StarSubUnit[]> => {
+      const { data, error } = await supabase
+        .from('star_sub_units')
+        .select('id, nhan, phong_cha, mo_ta, dang_dung')
+        .order('nhan');
+      if (error) throw error;
+      return (data ?? []).map((r) => ({
+        id: r.id, nhan: r.nhan, phongCha: r.phong_cha, moTa: r.mo_ta, dangDung: r.dang_dung,
+      }));
+    },
+  });
+
+  const dangDung = useMemo(() => rows.filter((r) => r.dangDung), [rows]);
+  /** Dạng đưa vào buildDepartmentStats */
+  const toDanhMuc = useMemo(
+    () => dangDung.map((r) => ({ nhan: r.nhan, phongCha: r.phongCha })),
+    [dangDung],
+  );
+
+  const refresh = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: SUB_UNITS_KEY }),
+    [queryClient],
+  );
+
+  const addSubUnit = useCallback(async (nhan: string, phongCha: string | null, moTa?: string): Promise<boolean> => {
+    const ten = nhan.trim();
+    if (!ten) {
+      toast.error('Nhập tên tổ / tập thể nhỏ');
+      return false;
+    }
+    const { error } = await supabase
+      .from('star_sub_units')
+      .insert({ nhan: ten, phong_cha: phongCha, mo_ta: moTa?.trim() || null });
+    if (error) {
+      toast.error(error.code === '23505' ? `Đã có tổ tên «${ten}»` : rpcErrorMessage(error));
+      return false;
+    }
+    toast.success(`Đã thêm «${ten}»${phongCha ? ` thuộc ${phongCha}` : ' (liên phòng)'}`);
+    refresh();
+    return true;
+  }, [refresh]);
+
+  const toggleSubUnit = useCallback(async (id: string, dangDungMoi: boolean): Promise<boolean> => {
+    const { error } = await supabase
+      .from('star_sub_units')
+      .update({ dang_dung: dangDungMoi })
+      .eq('id', id);
+    if (error) {
+      toast.error(rpcErrorMessage(error));
+      return false;
+    }
+    toast.success(dangDungMoi ? 'Đã kích hoạt lại tổ' : 'Đã ngừng dùng tổ — phiếu cũ vẫn giữ nguyên');
+    refresh();
+    return true;
+  }, [refresh]);
+
+  return { rows, dangDung, toDanhMuc, isLoading, addSubUnit, toggleSubUnit };
 }

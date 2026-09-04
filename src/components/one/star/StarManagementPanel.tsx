@@ -1,13 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import {
   AlertTriangle, Archive, ArrowRightLeft, BookOpen, Boxes, Building2, CheckCircle2,
-  Loader2, PackagePlus, Search, ShieldCheck, Star, Undo2, X,
+  Loader2, PackagePlus, Search, ShieldCheck, Star, Undo2, Users, X,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { formatRanges, QUARTERLY_ALLOCATION, TOTAL_ALLOCATED_2026 } from './starSerial';
 import {
   useAwardablePeople, useProfileNames, useStarDepartments, useStarHandovers,
-  useStarOps, useStarSerials, type StaffOption,
+  useStarOps, useStarSerials, useStarSubUnits, type StaffOption,
 } from './useStarSerials';
 import { useStarRecords } from './useStarRecords';
 import { laLechCanXuLy, type LoaiLech } from './starDepartments';
@@ -63,7 +63,19 @@ export const StarManagementPanel: React.FC = () => {
     () => [...new Set(records.map((r) => r.department).filter(Boolean))],
     [records],
   );
-  const { danhSachPhong, lechDanhMuc } = useStarDepartments(nhanTrenPhieu);
+  // Tổ / tập thể nhỏ: danh mục riêng, không phải phòng — truyền nhãn vào bộ dò
+  // lệch để "Tổ FDI" trên phiếu không bị coi là phòng bị xoá. Chờ danh mục tải
+  // xong mới dò để không nháy cảnh báo giả.
+  const {
+    rows: toRows, toDanhMuc, isLoading: toLoading, addSubUnit, toggleSubUnit,
+  } = useStarSubUnits();
+  const nhanToDanhMuc = useMemo(() => toDanhMuc.map((t) => t.nhan), [toDanhMuc]);
+  const { danhSachPhong, lechDanhMuc, nhanDangDung } = useStarDepartments(
+    toLoading ? [] : nhanTrenPhieu,
+    nhanToDanhMuc,
+  );
+  const [toMoi, setToMoi] = useState('');
+  const [toMoiPhongCha, setToMoiPhongCha] = useState('');
   // Lệch làm sai dữ liệu (phải xử lý) tách khỏi chênh quân số (chỉ tham khảo) —
   // chi nhánh giữ hạn mức cũ cả năm là hợp lệ, không nên báo đỏ mãi.
   const lechCanXuLy = useMemo(() => lechDanhMuc.filter(laLechCanXuLy), [lechDanhMuc]);
@@ -152,6 +164,13 @@ export const StarManagementPanel: React.FC = () => {
     const ok = await handover(holder.profileId, from, to, quarter);
     setBusy(null);
     if (ok) { setHoFrom(''); setHoTo(''); }
+  };
+
+  const runAddSubUnit = async () => {
+    setBusy('sub-unit');
+    const ok = await addSubUnit(toMoi, toMoiPhongCha || null);
+    setBusy(null);
+    if (ok) { setToMoi(''); setToMoiPhongCha(''); }
   };
 
   const askVoid = async (serialNo: number) => {
@@ -288,6 +307,73 @@ export const StarManagementPanel: React.FC = () => {
                 </table>
               </div>
             </details>
+          </div>
+
+          {/* TỔ / TẬP THỂ NHỎ — ý kiến TCTH 04/09/2026 */}
+          <div className="rounded-2xl border border-slate-200 p-4">
+            <h6 className="flex items-center gap-1.5 font-black text-xs text-slate-800 uppercase mb-1">
+              <Users className="w-4 h-4 text-brand-navy" /> Tổ / tập thể nhỏ ({toRows.length})
+            </h6>
+            <p className="text-[10px] text-slate-500 mb-3 leading-relaxed">
+              Tập thể không phải phòng trong danh bạ: tổ thuộc một phòng (VD Tổ FDI thuộc Phòng KHDN)
+              hoặc liên phòng (VD Tổ truyền thông). Tổ nhận được sao tập thể, và phiếu cá nhân của cán bộ
+              thuộc tổ hiện thêm ở dòng tổ trong bảng thi đua. Ngừng dùng thì tổ rời ô chọn, phiếu cũ giữ nguyên.
+            </p>
+
+            {toRows.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {toRows.map((t) => (
+                  <div
+                    key={t.id}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-[11px] ${
+                      t.dangDung ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-100 opacity-60'
+                    }`}
+                  >
+                    <span className="font-bold text-slate-800">{t.nhan}</span>
+                    <span className="text-slate-500">{t.phongCha ? `thuộc ${t.phongCha}` : 'liên phòng'}</span>
+                    <button
+                      type="button"
+                      onClick={() => void toggleSubUnit(t.id, !t.dangDung)}
+                      className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase cursor-pointer ${
+                        t.dangDung ? 'bg-slate-100 text-slate-600 hover:bg-red-50 hover:text-red-700' : 'bg-emerald-50 text-emerald-700'
+                      }`}
+                      title={t.dangDung ? 'Ngừng dùng — phiếu cũ vẫn giữ' : 'Kích hoạt lại'}
+                    >
+                      {t.dangDung ? 'Ngừng dùng' : 'Kích hoạt'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <input
+                type="text"
+                value={toMoi}
+                onChange={(e) => setToMoi(e.target.value)}
+                placeholder="Tên tổ mới, VD: Tổ Bancas"
+                className="flex-1 min-w-40 px-3 py-2 rounded-xl border border-slate-200 focus:border-brand-navy outline-none font-semibold"
+              />
+              <select
+                value={toMoiPhongCha}
+                onChange={(e) => setToMoiPhongCha(e.target.value)}
+                className="px-3 py-2 rounded-xl border border-slate-200 focus:border-brand-navy outline-none font-semibold bg-white cursor-pointer"
+              >
+                <option value="">Liên phòng</option>
+                {nhanDangDung.map((d) => (
+                  <option key={d} value={d}>Thuộc {d}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => void runAddSubUnit()}
+                disabled={busy === 'sub-unit' || !toMoi.trim()}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-navy text-white text-[11px] font-black hover:bg-blue-800 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {busy === 'sub-unit' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Users className="w-3.5 h-3.5" />}
+                Thêm tổ
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">

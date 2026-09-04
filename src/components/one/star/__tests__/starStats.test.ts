@@ -3,6 +3,7 @@ import {
   buildDepartmentStats,
   buildIndividualStats,
   selectMyStarRecords,
+  tenTapThe,
 } from '../starStats';
 import type { StarRecord } from '../useStarRecords';
 
@@ -17,6 +18,7 @@ const rec = (p: Partial<StarRecord> & { name: string; department: string }): Sta
   serial: '',
   isCollective: false,
   source: 'import',
+  subUnit: null,
   ...p,
 });
 
@@ -93,6 +95,69 @@ describe('buildDepartmentStats — thi đua tính theo SAO TẬP THỂ', () => {
       rec({ name: 'Ban Giám đốc', department: 'Ban Giám đốc', stars: 2, isCollective: true }),
     ]);
     expect(stats.find(d => d.department === 'Ban Giám đốc')!.collectiveName).toBe('Ban Giám đốc');
+    expect(tenTapThe('Ban Giám đốc')).toBe('Ban Giám đốc');
+    expect(tenTapThe('Phòng KHDN')).toBe('Tập thể Phòng KHDN');
+  });
+
+  it('PGĐ nhận sao cá nhân được tính vào Ban Giám đốc, không rơi vào phòng phụ trách', () => {
+    // Ca thật 04/09: 3 PGĐ có 4 phiếu đều bị xếp vào Phòng KHDN vì không có nhánh BGĐ
+    const stats = buildDepartmentStats([
+      rec({ name: 'Nguyễn Đức Thái Hoàng', department: 'Ban Giám đốc', stars: 2 }),
+      rec({ name: 'Phạm Minh Hải', department: 'Ban Giám đốc', stars: 1 }),
+    ], ['Ban Giám đốc', 'Phòng KHDN']);
+    const bgd = stats.find(d => d.department === 'Ban Giám đốc')!;
+    expect(bgd.staffStars).toBe(3);
+    expect(bgd.staffCount).toBe(2);
+    expect(bgd.isSubUnit).toBe(false);
+  });
+});
+
+describe('buildDepartmentStats — tổ / tập thể nhỏ (Tổ FDI thuộc KHDN, Tổ truyền thông liên phòng)', () => {
+  const TO = [
+    { nhan: 'Tổ FDI', phongCha: 'Phòng KHDN' },
+    { nhan: 'Tổ truyền thông', phongCha: null },
+  ];
+
+  it('tổ chưa có phiếu vẫn có dòng riêng, đánh dấu là tổ và biết phòng cha', () => {
+    const stats = buildDepartmentStats([], ['Phòng KHDN'], TO);
+    const fdi = stats.find(d => d.department === 'Tổ FDI')!;
+    expect(fdi.isSubUnit).toBe(true);
+    expect(fdi.parent).toBe('Phòng KHDN');
+    expect(fdi.collectiveName).toBe('Tập thể Tổ FDI');
+    const tt = stats.find(d => d.department === 'Tổ truyền thông')!;
+    expect(tt.isSubUnit).toBe(true);
+    expect(tt.parent).toBeNull();
+    // phòng thường không phải tổ
+    expect(stats.find(d => d.department === 'Phòng KHDN')!.isSubUnit).toBe(false);
+  });
+
+  it('sao tập thể của tổ là phiếu ghi cho "Tập thể Tổ …" (department = tên tổ, như 2 phiếu Tổ FDI thật)', () => {
+    const stats = buildDepartmentStats([
+      rec({ name: 'Tập thể Tổ FDI', department: 'Tổ FDI', stars: 1, isCollective: true, subUnit: 'Tổ FDI' }),
+      rec({ name: 'Tập thể Tổ FDI', department: 'Tổ FDI', stars: 1, isCollective: true, subUnit: 'Tổ FDI' }),
+    ], ['Phòng KHDN'], TO);
+    expect(stats.find(d => d.department === 'Tổ FDI')!.collectiveStars).toBe(2);
+    // KHÔNG cộng vào sao tập thể của phòng cha — thi đua phòng vẫn tính phiếu ghi cho phòng
+    expect(stats.find(d => d.department === 'Phòng KHDN')!.collectiveStars).toBe(0);
+  });
+
+  it('cán bộ thuộc tổ: sao cá nhân vẫn ở phòng, đồng thời hiện thêm ở dòng tổ để tham khảo', () => {
+    const stats = buildDepartmentStats([
+      rec({ name: 'Nguyễn Văn A', department: 'Phòng KHDN', stars: 2, subUnit: 'Tổ FDI' }),
+      rec({ name: 'Trần Thị B', department: 'Phòng KHDN', stars: 1 }),
+    ], ['Phòng KHDN'], TO);
+    const khdn = stats.find(d => d.department === 'Phòng KHDN')!;
+    const fdi = stats.find(d => d.department === 'Tổ FDI')!;
+    expect(khdn.staffStars).toBe(3);
+    expect(khdn.staffCount).toBe(2);
+    expect(fdi.staffStars).toBe(2);
+    expect(fdi.staffCount).toBe(1);
+    expect(fdi.collectiveStars).toBe(0);
+  });
+
+  it('không truyền danh mục tổ thì hành vi y như cũ — không có dòng tổ nào', () => {
+    const stats = buildDepartmentStats([], ['Phòng KHDN']);
+    expect(stats.some(d => d.isSubUnit)).toBe(false);
   });
 });
 

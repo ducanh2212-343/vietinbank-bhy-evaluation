@@ -4637,6 +4637,7 @@ export type Database = {
           serial: string | null
           source: string
           stars: number
+          sub_unit: string | null
         }
         Insert: {
           awarded_on: string
@@ -4656,6 +4657,7 @@ export type Database = {
           serial?: string | null
           source?: string
           stars: number
+          sub_unit?: string | null
         }
         Update: {
           awarded_on?: string
@@ -4675,6 +4677,7 @@ export type Database = {
           serial?: string | null
           source?: string
           stars?: number
+          sub_unit?: string | null
         }
         Relationships: []
       }
@@ -4708,6 +4711,33 @@ export type Database = {
           serial_no?: number
           status?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      star_sub_units: {
+        Row: {
+          created_at: string
+          dang_dung: boolean
+          id: string
+          mo_ta: string | null
+          nhan: string
+          phong_cha: string | null
+        }
+        Insert: {
+          created_at?: string
+          dang_dung?: boolean
+          id?: string
+          mo_ta?: string | null
+          nhan: string
+          phong_cha?: string | null
+        }
+        Update: {
+          created_at?: string
+          dang_dung?: boolean
+          id?: string
+          mo_ta?: string | null
+          nhan?: string
+          phong_cha?: string | null
         }
         Relationships: []
       }
@@ -5102,6 +5132,7 @@ export type Database = {
           p_awarded_on?: string
           p_holder_profile_id?: string | null
           p_program_name?: string | null
+          p_sub_unit?: string | null
         }
         Returns: string
       }

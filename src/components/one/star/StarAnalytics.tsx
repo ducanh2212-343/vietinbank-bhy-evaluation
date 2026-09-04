@@ -9,11 +9,11 @@ import { STAR_WRITE_LOCKED, STAR_WRITE_LOCK_REASON } from './starImportLock';
 import {
   calculateRewardValue, formatKpi, formatVnd, getKpiPoints, getMilestoneInfo, getRewardBreakdown,
 } from './starMath';
-import { useStarDepartments, useStarOps } from './useStarSerials';
+import { useStarDepartments, useStarOps, useStarSubUnits } from './useStarSerials';
 import {
   DEPT_QUOTAS, buildTemplateWorkbook, parseStarWorkbook, type ParseResult,
 } from './starParser';
-import { buildDepartmentStats, buildIndividualStats, individualKey } from './starStats';
+import { buildDepartmentStats, buildIndividualStats, individualKey, type DepartmentStat } from './starStats';
 
 // Trình tổng hợp & phân tích Sao tích lũy — port từ app "Sao Xứng Đáng" đã triển khai,
 // dữ liệu thật từ Supabase (bảng star_records) thay cho Firestore.
@@ -48,22 +48,45 @@ export const StarAnalytics: React.FC = () => {
     () => [...new Set(records.map((r) => r.department).filter(Boolean))],
     [records],
   );
-  const { nhanDangDung } = useStarDepartments(nhanTrenPhieu);
+  // Tổ / tập thể nhỏ (Tổ FDI thuộc KHDN, Tổ truyền thông liên phòng): dòng riêng
+  // lồng dưới phòng cha, không xếp hạng cùng phòng. Chờ danh mục tải xong mới dò
+  // lệch để "Tổ FDI" trên phiếu không nháy thành "phòng bị xoá".
+  const { toDanhMuc, isLoading: toLoading } = useStarSubUnits();
+  const nhanToDanhMuc = useMemo(() => toDanhMuc.map((t) => t.nhan), [toDanhMuc]);
+  const { nhanDangDung } = useStarDepartments(toLoading ? [] : nhanTrenPhieu, nhanToDanhMuc);
 
   // ---- Thi đua phòng ban: xếp theo SAO TẬP THỂ, không cộng sao cán bộ ----
   // Cán bộ nhận sao và tập thể phòng nhận sao là hai chủ thể khác nhau: phần thưởng
   // quy đổi của cán bộ về chính cán bộ đó. Cộng gộp vào bảng tập thể vừa sai chủ thể,
   // vừa khiến phòng đông người luôn xếp trên phòng ít người.
   const departmentStats = useMemo(
-    () => buildDepartmentStats(records, nhanDangDung),
-    [records, nhanDangDung],
+    () => buildDepartmentStats(records, nhanDangDung, toDanhMuc),
+    [records, nhanDangDung, toDanhMuc],
   );
 
-  // Mốc so sánh cho thanh tiến độ: phòng dẫn đầu về sao tập thể
-  const topCollectiveStars = departmentStats[0]?.collectiveStars ?? 0;
+  // Thứ tự hiển thị bảng thi đua: phòng xếp hạng 1..n; ngay dưới mỗi phòng là các
+  // tổ thuộc phòng đó (không có hạng); cuối bảng là tổ liên phòng.
+  const hangThiDua = useMemo(() => {
+    const phong = departmentStats.filter((d) => !d.isSubUnit);
+    const to = departmentStats.filter((d) => d.isSubUnit);
+    const rows: Array<{ dept: DepartmentStat; rank: number | null }> = [];
+    phong.forEach((d, i) => {
+      rows.push({ dept: d, rank: i + 1 });
+      to.filter((t) => t.parent === d.department).forEach((t) => rows.push({ dept: t, rank: null }));
+    });
+    to.filter((t) => !t.parent || !phong.some((d) => d.department === t.parent))
+      .forEach((t) => rows.push({ dept: t, rank: null }));
+    return rows;
+  }, [departmentStats]);
 
-  const getTopIndividualForDept = (deptName: string): string => {
-    const deptIndividuals = individualStats.filter((st) => st.department === deptName);
+  // Mốc so sánh cho thanh tiến độ: phòng dẫn đầu về sao tập thể (không tính tổ)
+  const topCollectiveStars = hangThiDua.find((r) => r.rank === 1)?.dept.collectiveStars ?? 0;
+
+  const getTopIndividualForDept = (deptName: string, isSubUnit = false): string => {
+    // Dòng tổ: cán bộ có phiếu gắn tổ đó (họ vẫn thuộc phòng, nên không lọc theo department)
+    const deptIndividuals = isSubUnit
+      ? individualStats.filter((st) => st.records.some((r) => r.subUnit === deptName))
+      : individualStats.filter((st) => st.department === deptName);
     if (deptIndividuals.length === 0) return 'Chưa có';
     const top = deptIndividuals[0]; // đã sắp xếp giảm dần
     return `${top.name} (${top.totalStars} ⭐)`;
@@ -146,13 +169,14 @@ export const StarAnalytics: React.FC = () => {
 
       // Xếp hạng thi đua tính trên SAO TẬP THỂ. Sao cán bộ để cột riêng (tham khảo),
       // không cộng vào — chủ thể nhận sao khác nhau.
-      const deptData = departmentStats.map((dept, idx) => {
+      const deptData = hangThiDua.map(({ dept, rank }) => {
         const milestone = getMilestoneInfo(dept.collectiveStars);
         const totalReward = calculateRewardValue(dept.collectiveStars);
         const breakdown = getRewardBreakdown(dept.collectiveStars);
         return {
-          'Hạng': idx + 1,
+          'Hạng': rank ?? '',
           'Tập thể': dept.collectiveName,
+          'Thuộc': dept.isSubUnit ? (dept.parent ?? 'Liên phòng') : '',
           'Sao tập thể (xếp hạng thi đua)': dept.collectiveStars,
           'Số phiếu ghi cho tập thể': dept.collectiveRecords,
           'Sao cán bộ trong phòng (tham khảo)': dept.staffStars,
@@ -161,7 +185,7 @@ export const StarAnalytics: React.FC = () => {
           'Mốc quà đạt được': milestone.achievedTier?.name || 'Chưa đạt mốc',
           'Giá trị quà tặng của tập thể': formatVnd(totalReward),
           'Chi tiết quy đổi': `${dept.collectiveStars} Sao × 100k (gốc: ${formatVnd(breakdown.baseValue)}) + ${breakdown.threeStarCount} mốc 3 Sao × 300k (${formatVnd(breakdown.threeStarValue)}) + Mốc 6 Sao (${formatVnd(breakdown.sixStarValue)}) + Mốc cao nhất >= 8 Sao (${formatVnd(breakdown.highTierValue)})`,
-          'Cán bộ xuất sắc nhất': getTopIndividualForDept(dept.department),
+          'Cán bộ xuất sắc nhất': getTopIndividualForDept(dept.department, dept.isSubUnit),
         };
       });
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(deptData), 'Thi đua Phòng ban');
@@ -626,6 +650,13 @@ export const StarAnalytics: React.FC = () => {
                                           </span>
                                           <span className="text-[10px] text-slate-400 font-mono">📅 {r.date}</span>
                                         </div>
+                                        <p className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-slate-600">
+                                          <span>🎁 Người tặng: <strong className="text-slate-800">{r.sender || '—'}</strong></span>
+                                          <span>🔢 Serial: <strong className="font-mono text-brand-navy">{r.serial || '—'}</strong></span>
+                                          {r.subUnit && r.subUnit !== r.department && (
+                                            <span>👥 Tổ: <strong className="text-slate-800">{r.subUnit}</strong></span>
+                                          )}
+                                        </p>
                                         <p className="text-slate-800">
                                           <strong className="text-slate-500 font-bold">Vì đã:</strong> {r.reason}
                                         </p>
@@ -674,7 +705,7 @@ export const StarAnalytics: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 font-medium text-slate-600">
-                        {departmentStats.map((dept, idx) => {
+                        {hangThiDua.map(({ dept, rank }) => {
                           // So với phòng dẫn đầu, KHÔNG so với quota năm: con số trong
                           // DEPT_QUOTAS là lượng sao phòng được phân bổ để TRAO ĐI, không
                           // phải chỉ tiêu sao phòng phải nhận về.
@@ -685,19 +716,31 @@ export const StarAnalytics: React.FC = () => {
                           const breakdown = getRewardBreakdown(dept.collectiveStars);
 
                           return (
-                            <tr key={dept.department} className="hover:bg-slate-50 transition-colors">
+                            <tr
+                              key={dept.department}
+                              className={`hover:bg-slate-50 transition-colors ${dept.isSubUnit ? 'bg-slate-50/70 text-[11px]' : ''}`}
+                            >
                               <td className="p-3 font-black text-slate-800 text-center w-12">
-                                {idx + 1 <= 3 ? (
+                                {rank !== null && rank <= 3 ? (
                                   <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-white font-mono text-[10px] font-black ${
-                                    idx === 0 ? 'bg-amber-500' : idx === 1 ? 'bg-slate-400' : 'bg-amber-700'
+                                    rank === 1 ? 'bg-amber-500' : rank === 2 ? 'bg-slate-400' : 'bg-amber-700'
                                   }`}>
-                                    {idx + 1}
+                                    {rank}
                                   </span>
+                                ) : rank !== null ? (
+                                  rank
                                 ) : (
-                                  idx + 1
+                                  <span className="text-slate-300" title="Tổ / tập thể nhỏ — không xếp hạng cùng phòng">↳</span>
                                 )}
                               </td>
-                              <td className="p-3 font-extrabold text-slate-800">{dept.collectiveName}</td>
+                              <td className={`p-3 font-extrabold text-slate-800 ${dept.isSubUnit ? 'pl-7' : ''}`}>
+                                {dept.collectiveName}
+                                {dept.isSubUnit && (
+                                  <span className="block text-[9px] font-bold text-slate-400 uppercase">
+                                    {dept.parent ? `Tổ thuộc ${dept.parent}` : 'Tập thể liên phòng'}
+                                  </span>
+                                )}
+                              </td>
                               <td className="p-3 text-center font-black text-brand-navy text-sm">
                                 {dept.collectiveStars} ⭐
                                 <span className="block text-[9px] font-bold text-slate-400">
@@ -758,7 +801,7 @@ export const StarAnalytics: React.FC = () => {
                               </td>
                               <td className="p-3 pl-4">
                                 <span className="text-[10px] bg-amber-50 text-amber-900 border border-amber-200/50 px-2 py-1 rounded-md font-bold">
-                                  {getTopIndividualForDept(dept.department)}
+                                  {getTopIndividualForDept(dept.department, dept.isSubUnit)}
                                 </span>
                               </td>
                             </tr>
@@ -800,6 +843,8 @@ export const StarAnalytics: React.FC = () => {
                           <th className="p-2.5">Họ và tên</th>
                           <th className="p-2.5">Phòng ban</th>
                           <th className="p-2.5 text-center">Sao</th>
+                          <th className="p-2.5">Người tặng</th>
+                          <th className="p-2.5 text-center">Serial</th>
                           <th className="p-2.5">Lý do ghi nhận</th>
                           <th className="p-2.5">Hiệu quả đem lại</th>
                           <th className="p-2.5 text-center">Ngày nhận</th>
@@ -810,7 +855,7 @@ export const StarAnalytics: React.FC = () => {
                       <tbody className="divide-y divide-slate-100 font-medium text-slate-600">
                         {records.length === 0 ? (
                           <tr>
-                            <td colSpan={isContentAdmin ? 8 : 7} className="p-8 text-center text-slate-400 font-bold italic">
+                            <td colSpan={isContentAdmin ? 10 : 9} className="p-8 text-center text-slate-400 font-bold italic">
                               Chưa có dữ liệu đối soát. Vui lòng liên hệ Quản trị viên để cập nhật dữ liệu thi đua của Chi nhánh.
                             </td>
                           </tr>
@@ -818,8 +863,15 @@ export const StarAnalytics: React.FC = () => {
                           records.map((rec) => (
                             <tr key={rec.id} className="hover:bg-slate-50">
                               <td className="p-2.5 font-bold text-slate-800">{rec.name}</td>
-                              <td className="p-2.5">{rec.department}</td>
+                              <td className="p-2.5">
+                                {rec.department}
+                                {rec.subUnit && rec.subUnit !== rec.department && (
+                                  <span className="block text-[9px] text-slate-400">↳ {rec.subUnit}</span>
+                                )}
+                              </td>
                               <td className="p-2.5 text-center font-bold text-amber-600">+{rec.stars} ⭐</td>
+                              <td className="p-2.5 whitespace-nowrap">{rec.sender || '—'}</td>
+                              <td className="p-2.5 text-center font-mono text-brand-navy font-bold whitespace-nowrap">{rec.serial || '—'}</td>
                               <td className="p-2.5 max-w-xs truncate" title={rec.reason}>{rec.reason}</td>
                               <td className="p-2.5 max-w-xs truncate" title={rec.result}>{rec.result}</td>
                               <td className="p-2.5 text-center font-mono">{rec.date}</td>

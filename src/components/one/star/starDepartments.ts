@@ -59,17 +59,14 @@ export const LOAI_LECH_CAN_XU_LY: LoaiLech[] = [
 export const laLechCanXuLy = (l: LechDanhMuc): boolean =>
   LOAI_LECH_CAN_XU_LY.includes(l.loai);
 
-/**
- * Ban Giám đốc là cấp PHÁT sao cho toàn chi nhánh, không phải phòng nhận sao
- * tập thể — vắng mặt trong danh mục thi đua là đúng, không phải lệch.
- */
-const KHONG_NHAN_SAO_TAP_THE = ['ban giám đốc'];
-
-/**
- * Tổ/nhóm nhận sao tập thể nhưng không phải phòng trong danh bạ (đã có phiếu
- * thật). Không coi là lệch, chỉ không có hạn mức phân bổ.
- */
-const TO_NHOM_NGOAI_DANH_BA = ['Tổ FDI'];
+// Ban Giám đốc từng bị loại khỏi danh mục vì là cấp PHÁT sao. Ý kiến TCTH
+// 04/09/2026: các PGĐ nhận sao cá nhân bị xếp nhầm vào phòng mình phụ trách vì
+// không có nhánh Ban Giám đốc → nay BGĐ là một tập thể bình thường trong danh mục
+// (không có hạn mức phân bổ theo phòng, nên không bao giờ bị báo lệch bậc).
+//
+// Tổ / tập thể nhỏ (Tổ FDI, Tổ truyền thông…) KHÔNG nằm trong danh bạ phòng ban:
+// danh mục của chúng là bảng star_sub_units, truyền vào qua `nhanToDanhMuc` để
+// bộ dò lệch không coi nhãn tổ trên phiếu là "phòng bị xoá".
 
 /** Bậc phân bổ sao/quý theo quân số — văn bản triển khai mục 4 */
 export const bacPhanBoTheoQuanSo = (quanSo: number): number | null => {
@@ -79,19 +76,19 @@ export const bacPhanBoTheoQuanSo = (quanSo: number): number | null => {
   return null; // dưới 7 người: văn bản chưa quy định bậc
 };
 
-const laPhongKhongNhanSao = (ten: string): boolean =>
-  KHONG_NHAN_SAO_TAP_THE.includes(ten.trim().toLowerCase());
-
 /**
  * Dựng danh mục phòng cho chương trình Sao từ danh bạ, kèm danh sách điểm lệch
  * cần Phòng TCTH xử lý.
  *
- * @param danhBa      các phòng đọc từ bảng departments
+ * @param danhBa        các phòng đọc từ bảng departments
  * @param nhanTrenPhieu các nhãn phòng đang xuất hiện trên phiếu Sao
+ * @param nhanToDanhMuc nhãn tổ / tập thể nhỏ đang dùng (không phải phòng, không báo lệch)
  */
 export const dungDanhMucPhongSao = (
   danhBa: PhongDanhBa[],
   nhanTrenPhieu: string[] = [],
+  /** Nhãn các tổ / tập thể nhỏ đang dùng trong danh mục star_sub_units */
+  nhanToDanhMuc: string[] = [],
 ): { danhSach: PhongSao[]; lech: LechDanhMuc[] } => {
   const danhSach: PhongSao[] = [];
   const lech: LechDanhMuc[] = [];
@@ -99,8 +96,6 @@ export const dungDanhMucPhongSao = (
   const nhanDaDung = new Map<string, string>();
 
   danhBa.forEach((p) => {
-    if (laPhongKhongNhanSao(p.ten)) return;
-
     const nhan = standardizeDepartment(p.ten);
     if (!nhan) {
       lech.push({
@@ -160,8 +155,7 @@ export const dungDanhMucPhongSao = (
 
   [...new Set(nhanTrenPhieu)].forEach((nhan) => {
     if (!nhan || nhanHopLe.has(nhan)) return;
-    if (TO_NHOM_NGOAI_DANH_BA.includes(nhan)) return;
-    if (laPhongKhongNhanSao(nhan)) return;
+    if (nhanToDanhMuc.includes(nhan)) return;
 
     if (nhanNgungDung.has(nhan)) {
       lech.push({

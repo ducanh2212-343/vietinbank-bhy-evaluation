@@ -28,6 +28,8 @@ export interface StarRecord {
   serial: string;
   isCollective: boolean;
   source: 'import' | 'form';
+  /** Tổ / tập thể nhỏ gắn phiếu (VD "Tổ FDI") — null với đa số phiếu */
+  subUnit: string | null;
 }
 
 export interface StarRecordInput {
@@ -69,6 +71,7 @@ export function useStarRecords() {
         serial: r.serial ?? '',
         isCollective: r.is_collective,
         source: r.source as 'import' | 'form',
+        subUnit: r.sub_unit ?? null,
       }));
     },
     staleTime: 30 * 1000,

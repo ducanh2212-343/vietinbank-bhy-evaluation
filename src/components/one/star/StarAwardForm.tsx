@@ -7,9 +7,10 @@ import confetti from 'canvas-confetti';
 import { useAuth } from '@/hooks/useAuth';
 import { getKpiPoints, formatKpi } from './starMath';
 import { suggestSerials } from './starSerial';
+import { tenTapThe } from './starStats';
 import {
   useAwardablePeople, useProfileNames, useStarDepartments, useStarOps, useStarSerials,
-  type StaffOption,
+  useStarSubUnits, type StaffOption,
 } from './useStarSerials';
 
 // FORM TẶNG SAO TRÊN CỔNG — thay cho đường nhập Lark (tạm hoãn 08/2026).
@@ -45,6 +46,10 @@ export const StarAwardForm: React.FC = () => {
   // Danh sách phòng nhận Sao tập thể lấy từ danh bạ: phòng mới tạo hiện ra ngay,
   // phòng đổi tên hiện tên mới, phòng «Ngừng sử dụng» tự biến mất khỏi ô chọn.
   const { nhanDangDung } = useStarDepartments();
+  // Tổ / tập thể nhỏ (Tổ FDI thuộc KHDN, Tổ truyền thông liên phòng…) — danh mục
+  // do TCTH quản, ý kiến 04/09/2026: cán bộ thuộc tổ được ghi nhận theo tổ, và
+  // tổ cũng nhận được sao tập thể.
+  const { dangDung: toDangDung } = useStarSubUnits();
 
   const [mode, setMode] = useState<EntryMode>('self');
   const [holderId, setHolderId] = useState<string | null>(null);
@@ -54,6 +59,9 @@ export const StarAwardForm: React.FC = () => {
   const [recipient, setRecipient] = useState<StaffOption | null>(null);
   const [personQuery, setPersonQuery] = useState('');
   const [collectiveDept, setCollectiveDept] = useState<string>('');
+  /** Tổ / tập thể nhỏ gắn phiếu cá nhân ('' = không thuộc tổ nào) */
+  const [subUnit, setSubUnit] = useState<string>('');
+  const laTapTheTo = toDangDung.some((t) => t.nhan === collectiveDept);
 
   const [starsCount, setStarsCount] = useState(1);
   const [selectedSerials, setSelectedSerials] = useState<number[]>([]);
@@ -103,7 +111,7 @@ export const StarAwardForm: React.FC = () => {
 
   const recipientLabel = recipientType === 'person'
     ? (recipient ? recipient.fullName : '')
-    : (collectiveDept ? `Tập thể ${collectiveDept}` : '');
+    : (collectiveDept ? tenTapThe(collectiveDept) : '');
 
   const previewText =
     `Cảm ơn ${recipientLabel || '...'}\n`
@@ -141,7 +149,7 @@ export const StarAwardForm: React.FC = () => {
       serials: selectedSerials,
       isCollective: recipientType === 'collective',
       recipientProfileId: recipientType === 'person' ? recipient?.profileId : null,
-      recipientName: recipientType === 'collective' ? `Tập thể ${collectiveDept}` : null,
+      recipientName: recipientType === 'collective' ? tenTapThe(collectiveDept) : null,
       department: recipientType === 'person'
         ? (recipient?.starDept ?? recipient?.rawDept ?? null)
         : collectiveDept,
@@ -150,6 +158,10 @@ export const StarAwardForm: React.FC = () => {
       awardedOn,
       holderProfileId: mode === 'proxy' ? holderId : null,
       programName: mode === 'program' ? programName : null,
+      // Tập thể là tổ → gắn tổ; cá nhân → tổ đã chọn (nếu có)
+      subUnit: recipientType === 'collective'
+        ? (laTapTheTo ? collectiveDept : null)
+        : (subUnit || null),
     });
     setSubmitting(false);
     if (ok) {
@@ -157,6 +169,7 @@ export const StarAwardForm: React.FC = () => {
       setRecipient(null);
       setPersonQuery('');
       setCollectiveDept('');
+      setSubUnit('');
       setReason('');
       setResult('');
       setSelectedSerials([]);
@@ -282,7 +295,7 @@ export const StarAwardForm: React.FC = () => {
                 recipientType === 'collective' ? 'bg-brand-navy text-white border-brand-navy' : 'bg-slate-50 text-slate-600 border-slate-200'
               }`}
             >
-              <Users className="w-3.5 h-3.5" /> Tập thể phòng
+              <Users className="w-3.5 h-3.5" /> Tập thể (phòng / tổ)
             </button>
           </div>
 
@@ -333,6 +346,25 @@ export const StarAwardForm: React.FC = () => {
             )
           )}
 
+          {recipientType === 'person' && recipient && toDangDung.length > 0 && (
+            <div className="mt-2 flex items-center gap-2">
+              <Users className="w-4 h-4 text-slate-400 shrink-0" />
+              <select
+                value={subUnit}
+                onChange={(e) => setSubUnit(e.target.value)}
+                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:border-brand-navy outline-none font-semibold text-slate-800 bg-white cursor-pointer"
+                title="Cán bộ thuộc tổ / tập thể nhỏ nào? Sao vẫn tính cho phòng, đồng thời hiện ở dòng tổ"
+              >
+                <option value="">Không thuộc tổ / tập thể nhỏ nào</option>
+                {toDangDung.map((t) => (
+                  <option key={t.id} value={t.nhan}>
+                    Thuộc {t.nhan}{t.phongCha ? ` (${t.phongCha})` : ' (liên phòng)'}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {recipientType === 'collective' && (
             <div className="flex items-center gap-2">
               <Building2 className="w-4 h-4 text-slate-400 shrink-0" />
@@ -341,10 +373,21 @@ export const StarAwardForm: React.FC = () => {
                 onChange={(e) => setCollectiveDept(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-brand-navy outline-none font-semibold text-slate-800 bg-white cursor-pointer"
               >
-                <option value="">— Chọn phòng nhận Sao tập thể —</option>
-                {nhanDangDung.map((d) => (
-                  <option key={d} value={d}>Tập thể {d}</option>
-                ))}
+                <option value="">— Chọn tập thể nhận Sao —</option>
+                <optgroup label="Phòng ban / Ban Giám đốc">
+                  {nhanDangDung.map((d) => (
+                    <option key={d} value={d}>{tenTapThe(d)}</option>
+                  ))}
+                </optgroup>
+                {toDangDung.length > 0 && (
+                  <optgroup label="Tổ / tập thể nhỏ">
+                    {toDangDung.map((t) => (
+                      <option key={t.id} value={t.nhan}>
+                        Tập thể {t.nhan}{t.phongCha ? ` — thuộc ${t.phongCha}` : ' — liên phòng'}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
             </div>
           )}
