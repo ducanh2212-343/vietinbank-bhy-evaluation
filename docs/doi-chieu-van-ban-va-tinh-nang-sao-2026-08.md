@@ -184,6 +184,29 @@ những tập thể thật ngoài danh sách phòng ban**.
 Migration `20260904090000_tap_the_nho_va_ban_giam_doc` **đã áp** (kèm rollback);
 đồng thời thu hồi `anon` trên `star_serials` / `star_handovers` cho đúng quy ước.
 
+## 3d. Sự cố "[object Object]" khi bàn giao (TCTH báo 04/09)
+
+TCTH thử bàn giao trên bản preview, màn báo *"[object Object]"*, thoát vào lại không
+thấy gì ghi nhận, nhập lại vẫn thế. Log máy chủ cho thấy **hai lớp**:
+
+1. **Máy chủ từ chối đúng**: 5 lần liên tiếp bàn giao dải **209–220** — cả 12 số đã
+   nằm trên phiếu thật (210 Hàn Thị Thùy Linh, 213 Vũ Đức Nam, 215 Trần Hà Trang,
+   220 Nguyễn Mạnh Quân…). RPC `handover_stars` trả đúng *"Các số không còn trong
+   kho (đã bàn giao/đã tặng/đã hủy): 209, 210, …, 220"*. Ba đợt trước đó (6–10 và
+   274–278 cho Trưởng phòng Bán lẻ, 241–250 cho PGĐ KHDN) đều thành công — dữ liệu
+   không hỏng.
+2. **Màn hình nuốt thông báo**: `supabase.rpc()` trả `{ error }` là **object
+   thường** `{ message, details, hint, code }`, chỉ bọc thành `Error` khi gọi
+   `.throwOnError()` (postgrest-js 2.103, `dist/index.mjs` dòng 359–387). Hàm đọc
+   lỗi cũ dùng `err instanceof Error ? err.message : String(err)` nên mọi lỗi từ
+   máy chủ hiện thành "[object Object]". Lỗi có từ ngày đầu nhưng không lộ vì các
+   RPC được kiểm thử bằng SQL, không qua trình duyệt.
+
+Đã sửa: `starRpcError.ts` đọc `.message` từ mọi dạng (kèm 5 test, có ca "không
+bao giờ ra [object Object]"); và khu bàn giao **soát dải số ngay khi gõ** — liệt kê
+số đã tặng / đã bàn giao / chưa khai báo và khóa nút gửi cho tới khi dải sạch, để
+TCTH không phải gửi rồi mới biết.
+
 ## 4. Trình tự đưa vào vận hành
 
 1. **Merge + deploy nhánh này** — chừng nào chưa deploy, màn nhập Excel cũ còn sống

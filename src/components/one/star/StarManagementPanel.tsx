@@ -144,6 +144,28 @@ export const StarManagementPanel: React.FC = () => {
     [rows, statusFilter],
   );
 
+  // Soát dải bàn giao NGAY KHI GÕ: số chưa khai báo / đã bàn giao / đã tặng / đã hủy
+  // chỉ ra trên màn trước khi bấm gửi. Máy chủ vẫn kiểm lại trong RPC handover_stars
+  // — đây chỉ là lớp báo sớm. Ca thật 04/09/2026: TCTH gõ 209–220 (toàn số đã nằm
+  // trên phiếu), gửi 5 lần, lần nào cũng bị từ chối mà không thấy lý do.
+  const soatDaiBanGiao = useMemo(() => {
+    const from = parseInt(hoFrom, 10);
+    const to = parseInt(hoTo, 10);
+    if (!Number.isFinite(from) || !Number.isFinite(to) || from < 1 || to < from) return null;
+    if (to - from >= 500) return { loi: 'Tối đa 500 số một lần bàn giao', chuaKhaiBao: [] as number[], khongTonKho: [] as number[], tong: 0 };
+    const theoSo = new Map(rows.map((r) => [r.serialNo, r]));
+    const chuaKhaiBao: number[] = [];
+    const khongTonKho: number[] = [];
+    for (let n = from; n <= to; n += 1) {
+      const r = theoSo.get(n);
+      if (!r) chuaKhaiBao.push(n);
+      else if (r.status !== 'in_stock') khongTonKho.push(n);
+    }
+    return { loi: null as string | null, chuaKhaiBao, khongTonKho, tong: to - from + 1 };
+  }, [hoFrom, hoTo, rows]);
+  const daiBanGiaoHopLe = soatDaiBanGiao !== null && !soatDaiBanGiao.loi
+    && soatDaiBanGiao.chuaKhaiBao.length === 0 && soatDaiBanGiao.khongTonKho.length === 0;
+
   if (!isTcthAdmin) return null;
 
   const runBatch = async () => {
@@ -450,13 +472,40 @@ export const StarManagementPanel: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => void runHandover()}
-                    disabled={busy === 'handover' || !holder || !hoFrom || !hoTo}
+                    disabled={busy === 'handover' || !holder || !daiBanGiaoHopLe}
                     className="ml-auto inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-navy text-white text-[11px] font-black hover:bg-blue-800 transition-all cursor-pointer disabled:opacity-50"
                   >
                     {busy === 'handover' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRightLeft className="w-3.5 h-3.5" />}
                     Bàn giao
                   </button>
                 </div>
+                {soatDaiBanGiao && (
+                  soatDaiBanGiao.loi ? (
+                    <p className="text-[11px] font-bold text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">
+                      {soatDaiBanGiao.loi}
+                    </p>
+                  ) : daiBanGiaoHopLe ? (
+                    <p className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5">
+                      Cả {soatDaiBanGiao.tong} số đang tồn kho — bàn giao được.
+                    </p>
+                  ) : (
+                    <div className="text-[11px] text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 space-y-0.5">
+                      <p className="font-bold">Dải này chưa bàn giao được:</p>
+                      {soatDaiBanGiao.khongTonKho.length > 0 && (
+                        <p>
+                          Số <strong>đã tặng / đã bàn giao / đã hủy</strong>: {formatRanges(soatDaiBanGiao.khongTonKho)}
+                          {' '}— chọn dải khác, xem số còn tồn ở mục Đối soát tồn kho phía trên.
+                        </p>
+                      )}
+                      {soatDaiBanGiao.chuaKhaiBao.length > 0 && (
+                        <p>
+                          Số <strong>chưa khai báo lô in</strong>: {formatRanges(soatDaiBanGiao.chuaKhaiBao)}
+                          {' '}— khai báo lô trước.
+                        </p>
+                      )}
+                    </div>
+                  )
+                )}
                 <p className="text-[10px] text-slate-500">
                   Chỉ bàn giao được số đang tồn kho; số đã bàn giao/đã tặng sẽ báo lỗi kèm danh sách.
                   Hệ thống <strong>không giới hạn theo hạn mức</strong> — giao đúng mức chi nhánh

@@ -9,6 +9,7 @@ import {
   type SerialStatus, type StarSerialRow,
 } from './starSerial';
 import { dungDanhMucPhongSao, nhanPhongDangDung, type PhongDanhBa } from './starDepartments';
+import { rpcErrorMessage } from './starRpcError';
 
 // Tầng dữ liệu cho SỔ SAO + BÀN GIAO + TẶNG SAO.
 //
@@ -20,11 +21,6 @@ const SERIALS_KEY = ['one-star-serials'];
 const HANDOVERS_KEY = ['one-star-handovers'];
 const RECORDS_KEY = ['one-star-records'];
 
-/** Thông báo lỗi RPC: PostgREST trả message của RAISE EXCEPTION — hiển thị nguyên văn */
-const rpcErrorMessage = (err: unknown): string => {
-  const msg = err instanceof Error ? err.message : String(err);
-  return msg.replace(/^.*P0001:\s*/, '');
-};
 
 export function useStarSerials() {
   const { profileId } = useAuth();
