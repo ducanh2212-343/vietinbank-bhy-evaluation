@@ -1,5 +1,6 @@
 import { OnePageShell } from '@/components/one/OnePageShell';
 import { StarHero, StarTabs } from '@/components/one/star/StarNav';
+import { GioiThieuSaoXungDang } from '@/components/one/star/GioiThieuSaoXungDang';
 import { StarWorthy2026 } from '@/components/one/StarWorthy2026';
 
 // Màn GIỚI THIỆU chương trình Sao Xứng Đáng — cửa vào của khu Ghi nhận & Lan tỏa,
@@ -18,6 +19,10 @@ export default function OneRecognitionPage() {
           tích lũy điểm KPI và quy đổi tủ quà tặng của Chi nhánh.
         </StarHero>
         <StarTabs />
+        {/* Giới thiệu đi TRƯỚC bảng phân bổ và tủ quà: phân bổ 412 sao chỉ có
+            nghĩa với người đã biết ngôi sao là gì và trao thế nào. Khách đối tác
+            chỉ vào được màn này nên phần giới thiệu phải tự đứng được một mình. */}
+        <GioiThieuSaoXungDang />
         <StarWorthy2026 />
       </section>
     </OnePageShell>
