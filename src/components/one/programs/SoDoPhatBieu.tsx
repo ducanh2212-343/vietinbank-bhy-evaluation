@@ -20,13 +20,57 @@ import { timVaiTro, type MoHinhVanHanh } from '@/data/one/vanHanhChuongTrinh';
  * 1 → 9 và kết thúc ở người kết luận.
  */
 
-const KHUNG = 600;
-const TAM_X = 300;
-const TAM_Y = 262;
+// Khung rộng hơn chiều cao khá nhiều: nhãn tên toả ngang ra hai bên vòng người,
+// nên phần dư phải chừa cho chữ chứ không phải cho hình. Từng để khung 600 và
+// nhãn bị cắt cụt ở mép trên điện thoại («LĐP kiểm so…», «Đ phụ trách»).
+const KHUNG = 760;
+const TAM_X = 380;
+const TAM_Y = 250;
 const BAN_R = 104;
-const GHE_R = 172;
-const NHAN_R = 214;
-const GHE_BAN_KINH = 25;
+const GHE_R = 168;
+const NHAN_R = 208;
+// Nửa bề ngang hình người — thay cho bán kính ghế tròn cũ. Dùng để chừa khoảng
+// hai đầu mũi tên nối và để tính vùng bấm, nên vẫn cần một con số «bán kính».
+const NGUOI_R = 26;
+
+/**
+ * Hình biểu trưng một người ngồi quanh bàn — đầu và vai, tô theo màu vai trò.
+ *
+ * Vì sao không dùng vòng tròn đánh số như trước: vòng tròn không nói lên đây là
+ * NGƯỜI. Cán bộ lần đầu nhìn sơ đồ dễ đọc nhầm thành các bước của quy trình,
+ * nhất là khi ngay phía trên đã có một sơ đồ luồng việc cũng vẽ bằng hộp. Hình
+ * người thì nhìn phát biết đây là chỗ ngồi, không phải công đoạn.
+ *
+ * Số thứ tự chuyển sang huy hiệu nhỏ bên vai: vẫn đọc được thứ tự phát biểu mà
+ * không chiếm mất thân hình.
+ */
+function NguoiNgoi({
+  x, y, mau, dangChon, so, netDut,
+}: {
+  x: number; y: number; mau: string; dangChon: boolean; so: number; netDut?: boolean;
+}) {
+  const to = dangChon ? mau : '#FFFFFF';
+  const net = dangChon ? 0 : 3;
+  return (
+    <g className="transition-[fill] duration-200" filter="url(#bong-ghe)">
+      {/* Đầu */}
+      <circle cx={x} cy={y - 12} r={9.5} fill={to} stroke={mau} strokeWidth={net}
+              strokeDasharray={netDut && !dangChon ? '4 3' : undefined} />
+      {/* Vai — vòm nửa tròn, hai bên thẳng xuống cho ra dáng thân người */}
+      <path d={`M ${x - 17} ${y + 21} v -4 a 17 17 0 0 1 34 0 v 4 z`}
+            fill={to} stroke={mau} strokeWidth={net}
+            strokeDasharray={netDut && !dangChon ? '4 3' : undefined} />
+      {/* Huy hiệu số thứ tự — nền trắng viền màu khi hình đang tô đặc, để số
+          không chìm vào thân; nền màu chữ trắng khi hình còn rỗng */}
+      <circle cx={x + 19} cy={y - 19} r={10.5} fill={dangChon ? '#FFFFFF' : mau}
+              stroke={dangChon ? mau : '#FFFFFF'} strokeWidth={2} />
+      <text x={x + 19} y={y - 15} textAnchor="middle" fontSize={12} fontWeight={900}
+            fill={dangChon ? mau : '#FFFFFF'} className="pointer-events-none select-none">
+        {so}
+      </text>
+    </g>
+  );
+}
 
 /** Toạ độ trên vòng tròn; góc tính bằng độ, 0 = 3 giờ, âm = ngược chiều kim đồng hồ */
 function diem(banKinh: number, goc: number) {
@@ -65,7 +109,7 @@ export const SoDoPhatBieu: React.FC<{ moHinh: MoHinhVanHanh }> = ({ moHinh }) =>
         <svg
           viewBox={`0 0 ${KHUNG} ${TAM_Y * 2 + 8}`}
           role="group"
-          aria-label={`Sơ đồ phát biểu ${moHinh.ten}: ${so} vị trí quanh bàn, bấm từng ghế để xem việc của vị trí đó`}
+          aria-label={`Sơ đồ phát biểu ${moHinh.ten}: ${so} người ngồi quanh bàn, bấm từng người để xem việc của vị trí đó`}
           className="block h-auto w-full"
         >
           <defs>
@@ -94,7 +138,7 @@ export const SoDoPhatBieu: React.FC<{ moHinh: MoHinhVanHanh }> = ({ moHinh }) =>
           {luot.map((l) => {
             if (l.thuTu === so) return null;
             // Chừa khoảng hai đầu để mũi tên không cắm vào ghế
-            const chua = (GHE_BAN_KINH + 9) * (180 / (Math.PI * GHE_R));
+            const chua = (NGUOI_R + 9) * (180 / (Math.PI * GHE_R));
             const a = gocCua(l.thuTu) + chua;
             const b = gocCua(l.thuTu + 1) - chua;
             return (
@@ -136,47 +180,48 @@ export const SoDoPhatBieu: React.FC<{ moHinh: MoHinhVanHanh }> = ({ moHinh }) =>
                     setChon(l.thuTu);
                   }
                 }}
-                className="cursor-pointer outline-none [&:focus-visible>circle:first-of-type]:stroke-slate-900"
+                className="cursor-pointer outline-none [&:focus-visible>circle.vung-bam]:stroke-slate-900"
               >
                 <title>{`${l.thuTu}. ${l.viTri} — ${vt.ten}`}</title>
-                {/* Vòng sáng quanh ghế đang chọn */}
+                {/* Nền sáng quanh người đang chọn */}
                 {dangChonGhe && (
-                  <circle cx={g.x} cy={g.y} r={GHE_BAN_KINH + 7} fill={vt.mau} fillOpacity={0.18} />
+                  <circle cx={g.x} cy={g.y} r={NGUOI_R + 8} fill={vt.mau} fillOpacity={0.18} />
                 )}
-                {/* Ghế «nếu có» (VD Phòng đầu mối theo phân khúc) vẽ nét đứt: có
-                    trong văn bản nhưng không phải phiên nào cũng có người ngồi */}
+                {/* Vùng bấm phủ trọn hình người: bấm vào khoảng trống giữa đầu và
+                    vai vẫn ăn, và đây cũng là vòng nhận nét khi đi bằng bàn phím */}
                 <circle
+                  className="vung-bam"
                   cx={g.x}
                   cy={g.y}
-                  r={GHE_BAN_KINH}
-                  fill={dangChonGhe ? vt.mau : '#FFFFFF'}
-                  stroke={vt.mau}
-                  strokeWidth={dangChonGhe ? 0 : 3}
-                  strokeDasharray={l.tuyChon && !dangChonGhe ? '5 4' : undefined}
-                  filter="url(#bong-ghe)"
-                  className="transition-[fill] duration-200"
+                  r={NGUOI_R + 4}
+                  fill="transparent"
+                  stroke="transparent"
+                  strokeWidth={2}
                 />
-                <text
+                {/* Người «nếu có» (VD Phòng đầu mối theo phân khúc) vẽ nét đứt: có
+                    trong văn bản nhưng không phải phiên nào cũng có người ngồi */}
+                <NguoiNgoi
                   x={g.x}
-                  y={g.y + 6}
-                  textAnchor="middle"
-                  fontSize={16}
-                  fontWeight={900}
-                  fill={dangChonGhe ? '#FFFFFF' : vt.mau}
-                  className="pointer-events-none select-none"
-                >
-                  {l.thuTu}
-                </text>
-                {/* Nhãn ngắn: ẩn ở điện thoại vì sơ đồ co còn ~60%, chữ 11px thành
-                    7px không đọc nổi — danh sách bên dưới thay thế */}
+                  y={g.y}
+                  mau={vt.mau}
+                  dangChon={dangChonGhe}
+                  so={l.thuTu}
+                  netDut={l.tuyChon}
+                />
+                {/* Nhãn ngắn cạnh mỗi người. Trước đây nhãn bị ẩn trên điện thoại
+                    (sơ đồ co còn ~60% nên chữ 11px thành 7px) và có một danh sách
+                    chín dòng bên dưới thay thế — nhưng danh sách ấy lặp y nguyên
+                    những gì vòng tròn đã nói, nên đã bỏ. Nay nhãn hiện ở mọi khổ
+                    màn. Cỡ chữ khai bằng CSS chứ không bằng thuộc tính fontSize:
+                    ở khổ điện thoại sơ đồ co còn chưa tới một nửa, nên chữ phải
+                    khai to gấp rưỡi mới dựng ra đúng cỡ đọc được. */}
                 <text
                   x={n.x}
                   y={n.y + dy}
                   textAnchor={anchor}
-                  fontSize={11}
                   fontWeight={dangChonGhe ? 900 : 700}
                   fill={dangChonGhe ? '#0F172A' : '#475569'}
-                  className="pointer-events-none hidden select-none sm:block"
+                  className="pointer-events-none select-none [font-size:22px] sm:[font-size:13px]"
                 >
                   {l.viTriNgan}
                 </text>
@@ -217,6 +262,14 @@ export const SoDoPhatBieu: React.FC<{ moHinh: MoHinhVanHanh }> = ({ moHinh }) =>
             >
               {vaiTroChon.ten}
             </span>
+            {/* Vị trí «nếu có» vẽ nét đứt trên sơ đồ; nét đứt không tự nói được ý
+                nghĩa nên phải chú ở đây. Trước kia chữ này nằm ở danh sách bên
+                dưới — danh sách đã bỏ vì lặp lại sơ đồ. */}
+            {dangChon.tuyChon && (
+              <span className="mt-1 ml-1.5 inline-block rounded-full border border-dashed border-slate-400 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-500">
+                Nếu có
+              </span>
+            )}
           </div>
         </div>
 
@@ -268,40 +321,6 @@ export const SoDoPhatBieu: React.FC<{ moHinh: MoHinhVanHanh }> = ({ moHinh }) =>
           </button>
         </div>
       </div>
-
-      {/* ---- Danh sách đủ chín vị trí — cũng là nút chọn ----
-          Trên điện thoại nhãn quanh ghế bị ẩn nên đây là nơi đọc tên đầy đủ;
-          trên máy tính nó là bản in để lưu vào hồ sơ. */}
-      <ol className="grid gap-1.5 sm:grid-cols-3 lg:col-span-5">
-        {luot.map((l) => {
-          const vt = timVaiTro(moHinh, l.vaiTro);
-          const dangChonGhe = l.thuTu === chon;
-          return (
-            <li key={l.thuTu}>
-              <button
-                type="button"
-                onClick={() => setChon(l.thuTu)}
-                aria-pressed={dangChonGhe}
-                className={`flex w-full items-center gap-2.5 rounded-xl border px-3 py-2 text-left text-xs transition-colors ${
-                  dangChonGhe
-                    ? 'border-slate-900 bg-slate-900 text-white'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-400'
-                }`}
-              >
-                <span
-                  aria-hidden
-                  className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-[11px] font-black text-white"
-                  style={{ backgroundColor: vt.mau }}
-                >
-                  {l.thuTu}
-                </span>
-                <span className="min-w-0 flex-1 truncate font-bold">{l.viTri}</span>
-                {l.tuyChon && <span className="shrink-0 text-[10px] font-bold opacity-70">nếu có</span>}
-              </button>
-            </li>
-          );
-        })}
-      </ol>
     </div>
   );
 };

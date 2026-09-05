@@ -240,7 +240,7 @@ export const SoDoVanHanh: React.FC<{ moHinh: MoHinhVanHanh }> = ({ moHinh }) => 
         <KhoiTieuDe
           so="3"
           tieuDe="Thứ tự phát biểu trong phiên"
-          phu={`Trình tự trao đổi, phát biểu tại Bước 3 (iii) của văn bản — ${moHinh.phatBieu.length} vị trí quanh bàn, theo chiều kim đồng hồ từ người gần hồ sơ nhất tới Người điều phối. Bấm vào từng ghế để xem việc của vị trí đó.`}
+          phu={`Trình tự trao đổi, phát biểu tại Bước 3 (iii) của văn bản — ${moHinh.phatBieu.length} vị trí quanh bàn, theo chiều kim đồng hồ từ người gần hồ sơ nhất tới Người điều phối. Bấm vào từng người để xem việc của vị trí đó.`}
         />
         <SoDoPhatBieu moHinh={moHinh} />
       </section>
