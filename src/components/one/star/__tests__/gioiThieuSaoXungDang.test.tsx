@@ -7,6 +7,11 @@ import { GioiThieuSaoXungDang } from '../GioiThieuSaoXungDang';
  * Màn giới thiệu Sao Xứng Đáng là màn DUY NHẤT mở cho khách đối tác, nên hai
  * điều dễ hỏng nhất phải khóa lại: ảnh phiếu giấy có tồn tại đúng đường dẫn, và
  * khách không bị mời bấm vào những cửa họ không mở được.
+ *
+ * Khóa thêm cách chơi chữ ba nhịp «vì sao → ngôi sao → làm sao»: đây là trục
+ * dẫn dắt cả màn, và nó chỉ chạy khi đủ ba nhịp ĐÚNG THỨ TỰ. Ai sửa chữ mà làm
+ * mất một nhịp hoặc đảo trật tự thì phần giới thiệu tuột mất mạch, nhưng trang
+ * vẫn dựng bình thường nên mắt thường rất khó bắt.
  */
 
 const mockAuth = { isGuest: false, roles: ['employee'] as string[] };
@@ -38,6 +43,34 @@ describe('Giới thiệu Sao Xứng Đáng', () => {
       expect(a.getAttribute('alt')?.length ?? 0).toBeGreaterThan(10);
       expect(a).toHaveAttribute('width');
       expect(a).toHaveAttribute('height');
+    }
+  });
+
+  it('mở đầu bằng đủ ba cách đọc chữ «Sao», đúng thứ tự', () => {
+    dung();
+    const nhip = screen.getAllByText(/^Cách đọc \d$/);
+    expect(nhip).toHaveLength(3);
+    expect(screen.getByText('Sao xứng đáng?')).toBeInTheDocument();
+    expect(screen.getByText('SAO xứng đáng!')).toBeInTheDocument();
+    expect(screen.getByText('Làm sao cho xứng đáng?')).toBeInTheDocument();
+    // Ba nhịp phải nằm đúng trật tự trong luồng đọc: hỏi → trao → làm cho đúng
+    const chu = document.body.textContent ?? '';
+    expect(chu.indexOf('Sao xứng đáng?')).toBeLessThan(chu.indexOf('SAO xứng đáng!'));
+    expect(chu.indexOf('SAO xứng đáng!')).toBeLessThan(chu.indexOf('Làm sao cho xứng đáng?'));
+  });
+
+  it('nói đủ ba mục tiêu của chương trình', () => {
+    dung();
+    for (const muc of ['Ghi nhận kịp thời', 'Khen thưởng xứng đáng', 'Môi trường làm việc tích cực']) {
+      expect(screen.getByText(muc)).toBeInTheDocument();
+    }
+  });
+
+  it('gắn năm cánh sao với đủ năm giá trị Văn hóa VietinBank', () => {
+    // Thiếu một giá trị thì ngôi sao mất nghĩa «năm cánh», chỉ còn là hình vẽ
+    dung();
+    for (const gt of ['Chính trực', 'Tận tâm', 'Thấu cảm', 'Trí tuệ', 'Thích ứng']) {
+      expect(screen.getByText(gt)).toBeInTheDocument();
     }
   });
 

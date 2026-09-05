@@ -2,32 +2,116 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Printer, Handshake, PenLine, ScanLine, Trophy, ArrowRight, Boxes, BarChart3, Star,
-  Hash, PackageCheck, Undo2, FileSpreadsheet, Users, Target, Wallet, type LucideIcon,
+  Hash, PackageCheck, Undo2, FileSpreadsheet, Users, Target, Wallet, HelpCircle,
+  Clock, Gift, type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 /**
- * GIỚI THIỆU SAO XỨNG ĐÁNG — phiếu giấy, vòng đời một ngôi sao, và hai nhóm
- * tính năng trên cổng (quản lý tập trung · vinh danh).
+ * GIỚI THIỆU SAO XỨNG ĐÁNG — cách chơi chữ, phiếu giấy, vòng đời một ngôi sao,
+ * và hai nhóm tính năng trên cổng (quản lý tập trung · vinh danh).
  *
  * Vì sao dựng khối này: màn giới thiệu cũ mở thẳng vào bảng phân bổ 412 sao và
  * tủ quà — hai thứ chỉ có nghĩa với người ĐÃ biết chương trình. Cán bộ mới,
  * và khách đối tác (đây là màn duy nhất mở cho khách), đọc xong vẫn không biết
  * ngôi sao trông thế nào, ai trao cho ai, và vì sao phải ghi lên cổng.
  *
- * Vì sao đưa ảnh phiếu giấy lên đầu: Sao Xứng Đáng là vật thật — một tấm phiếu
+ * Vì sao mở đầu bằng cách chơi chữ chứ không bằng định nghĩa: tên chương trình
+ * vốn là một câu hỏi tu từ — bộ nhận diện gốc của Chi nhánh viết «Sao xứng
+ * đáng?» rồi trả lời «SAO xứng đáng!». Hai chữ đó đọc được ba cách (vì sao ·
+ * ngôi sao · làm sao), và ba cách đọc ấy chính là ba việc người trao phải làm.
+ * Bày đúng trật tự đó thì người đọc nhớ được chương trình mà không cần học
+ * thuộc quy trình.
+ *
+ * Vì sao đưa ảnh phiếu giấy lên sớm: Sao Xứng Đáng là vật thật — một tấm phiếu
  * bìa treo được, có số serial. Người chưa cầm tấm phiếu bao giờ thì mọi lời mô
  * tả đều mơ hồ; nhìn thấy mặt sau có ba dòng «Cảm ơn / Vì đã / Đem lại» là hiểu
  * ngay vì sao chương trình bắt ghi ba vế chứ không phải một lời khen chung.
  *
- * Ảnh dựng từ tệp thiết kế gốc của Chi nhánh (public/brand/), nền trong suốt để
- * đặt được lên cả nền trắng lẫn nền vàng nhạt.
+ * Cơ chế thưởng (điểm KPI, tủ quà, luật đổi quà) KHÔNG lặp ở đây — khối
+ * StarWorthy2026 ngay bên dưới đã bày đủ. Khối này chỉ dẫn tới đó.
+ *
+ * Chữ trong file lấy từ bộ nhận diện chương trình của Chi nhánh; phần nào là
+ * lời trích thì ghi rõ nguồn ngay tại chỗ.
  */
 
 const ANH_PHIEU = {
   truoc: '/brand/sao-xung-dang-mat-truoc.webp',
   sau: '/brand/sao-xung-dang-mat-sau.webp',
 };
+
+interface CachDoc {
+  ma: string;
+  cau: string;
+  nghia: string;
+  giaiThich: string;
+  icon: LucideIcon;
+}
+
+/**
+ * Ba cách đọc hai chữ «Sao xứng đáng» — trục dẫn dắt cả màn giới thiệu.
+ *
+ * Đây không phải trò chữ nghĩa cho vui: mỗi cách đọc là một việc thật người
+ * trao phải làm, và bỏ việc nào thì ngôi sao hỏng theo cách đó. Bỏ câu hỏi
+ * «vì sao» thì thành trao đại; bỏ «làm sao» thì thành phiếu ghi qua loa.
+ */
+const BA_CACH_DOC: CachDoc[] = [
+  {
+    ma: 'vi-sao',
+    cau: 'Sao xứng đáng?',
+    nghia: '«Sao» là vì sao',
+    giaiThich:
+      'Trước khi trao, người trao phải trả lời được: vì sao người này xứng đáng? Chưa trả lời được thì chưa trao.',
+    icon: HelpCircle,
+  },
+  {
+    ma: 'ngoi-sao',
+    cau: 'SAO xứng đáng!',
+    nghia: '«Sao» là ngôi sao',
+    giaiThich:
+      'Trả lời được rồi thì trao một ngôi sao: tấm phiếu thật, có số riêng, viết tay và trao tận tay.',
+    icon: Star,
+  },
+  {
+    ma: 'lam-sao',
+    cau: 'Làm sao cho xứng đáng?',
+    nghia: '«Sao» là làm thế nào',
+    giaiThich:
+      'Viết đủ ba vế ở mặt sau rồi ghi lên cổng. Trao vội, viết qua loa thì ngôi sao chỉ còn là tờ giấy.',
+    icon: PenLine,
+  },
+];
+
+/** Ba việc chương trình muốn làm được — theo bộ nhận diện chương trình của Chi nhánh */
+const BA_MUC_TIEU = [
+  {
+    ma: 'kip-thoi',
+    icon: Clock,
+    ten: 'Ghi nhận kịp thời',
+    moTa: 'Việc tốt được nói ra ngay lúc nó xảy ra, không đợi tới kỳ tổng kết mới nhắc.',
+  },
+  {
+    ma: 'xung-dang',
+    icon: Gift,
+    ten: 'Khen thưởng xứng đáng',
+    moTa: 'Sao đổi được điểm KPI và quà thật, nên lời cảm ơn không dừng ở lời nói.',
+  },
+  {
+    ma: 'moi-truong',
+    icon: Users,
+    ten: 'Môi trường làm việc tích cực',
+    moTa: 'Cả Chi nhánh nhìn thấy việc tốt của nhau, thi đua sôi nổi và gắn kết hơn.',
+  },
+];
+
+/**
+ * Năm cánh sao — năm giá trị Văn hóa VietinBank.
+ *
+ * Lấy nguyên chữ từ bộ nhận diện «Biểu tượng Văn hóa» của Chi nhánh: hình ngôi
+ * sao không phải hình trang trí, năm cánh là năm giá trị. Đây là câu trả lời
+ * ngắn nhất cho «vì sao lại là ngôi sao chứ không phải cái khác».
+ */
+const NAM_CANH = ['Chính trực', 'Tận tâm', 'Thấu cảm', 'Trí tuệ', 'Thích ứng'];
 
 interface BuocVongDoi {
   ma: string;
@@ -38,10 +122,10 @@ interface BuocVongDoi {
 }
 
 /**
- * Vòng đời một ngôi sao — từ lúc in ra tới lúc quy đổi thành quà.
+ * Vòng đời một ngôi sao — từ lúc in ra tới lúc đổi thành quà.
  *
  * Đây là thứ tách Sao Xứng Đáng khỏi mọi hình thức khen thưởng khác của Chi
- * nhánh: ngôi sao có SỐ SERIAL, nên đi tới đâu cũng truy được ai giữ, ai trao,
+ * nhánh: ngôi sao có SỐ RIÊNG, nên đi tới đâu cũng truy được ai giữ, ai trao,
  * trao cho ai. Không có bước «ghi nhận lên cổng» thì tấm phiếu chỉ là tờ giấy.
  */
 const VONG_DOI: BuocVongDoi[] = [
@@ -50,19 +134,19 @@ const VONG_DOI: BuocVongDoi[] = [
     icon: Printer,
     ten: 'In & đánh số',
     ai: 'Phòng TCTH',
-    moTa: 'Mỗi phiếu mang một số serial duy nhất, vào sổ kho ngay từ lô in.',
+    moTa: 'Mỗi phiếu mang một số riêng, vào sổ kho ngay từ lô in.',
   },
   {
     ma: 'ban-giao',
     icon: Handshake,
     ten: 'Bàn giao theo quý',
     ai: 'TCTH → Ban Giám đốc, Trưởng phòng',
-    moTa: 'Giao theo dải số và theo mức phân bổ của từng đơn vị, trước mồng 5 đầu quý.',
+    moTa: 'Giao theo dải số và theo mức của từng đơn vị, trước mồng 5 đầu quý.',
   },
   {
     ma: 'trao',
     icon: PenLine,
-    ten: 'Ghi ba vế & trao tận tay',
+    ten: 'Viết ba vế & trao tận tay',
     ai: 'Người trao',
     moTa: 'Viết Cảm ơn – Vì đã – Đem lại lên mặt sau, ký tên, trao trực tiếp cho người nhận.',
   },
@@ -71,14 +155,14 @@ const VONG_DOI: BuocVongDoi[] = [
     icon: ScanLine,
     ten: 'Ghi nhận lên cổng',
     ai: 'Người trao',
-    moTa: 'Nhập đúng số serial trên phiếu; cổng đối chiếu với sổ kho nên không trùng, không khống.',
+    moTa: 'Nhập đúng số ghi trên phiếu; cổng đối chiếu sổ kho nên không trùng, không khống.',
   },
   {
     ma: 'vinh-danh',
     icon: Trophy,
     ten: 'Tích lũy & vinh danh',
     ai: 'Cả Chi nhánh',
-    moTa: 'Sao vào bảng thi đua, cộng điểm KPI và quy đổi tủ quà theo mốc.',
+    moTa: 'Sao vào bảng thi đua, cộng điểm KPI và đổi quà theo mốc.',
   },
 ];
 
@@ -100,7 +184,7 @@ const NHOM_TINH_NANG: NhomTinhNang[] = [
     icon: Boxes,
     ten: 'Quản lý tập trung kho sao',
     moTa:
-      'Toàn bộ phiếu giấy của Chi nhánh nằm trong một sổ kho duy nhất trên cổng. Bất kỳ số serial nào cũng tra được đang ở đâu, ai giữ, đã tặng cho ai.',
+      'Toàn bộ phiếu giấy của Chi nhánh nằm trong một sổ kho duy nhất trên cổng. Bất kỳ số nào cũng tra được đang ở đâu, ai giữ, đã tặng cho ai.',
     duongDan: '/one/ghi-nhan/quan-ly',
     nhanNut: 'Vào khu quản lý & bàn giao',
     chiTcth: true,
@@ -108,7 +192,7 @@ const NHOM_TINH_NANG: NhomTinhNang[] = [
       {
         icon: Hash,
         ten: 'Sổ kho theo dải serial',
-        moTa: 'Nhập lô in theo dải số; mỗi số chỉ tồn tại một lần trong toàn hệ thống.',
+        moTa: 'Nhập lô in theo dải số; mỗi số chỉ có một lần trong toàn hệ thống.',
       },
       {
         icon: PackageCheck,
@@ -118,7 +202,7 @@ const NHOM_TINH_NANG: NhomTinhNang[] = [
       {
         icon: Undo2,
         ten: 'Thu hồi số chưa tặng',
-        moTa: 'Cuối kỳ thu lại những số chưa dùng, trả về kho thay vì thất lạc.',
+        moTa: 'Cuối kỳ thu lại những số chưa dùng, trả về kho thay vì để thất lạc.',
       },
       {
         icon: FileSpreadsheet,
@@ -149,7 +233,7 @@ const NHOM_TINH_NANG: NhomTinhNang[] = [
       {
         icon: Target,
         ten: 'Mốc quà của từng người',
-        moTa: 'Mỗi cán bộ thấy mình đang ở mốc nào và còn thiếu mấy sao để lên mốc kế tiếp.',
+        moTa: 'Mỗi cán bộ thấy mình đang ở mốc nào, còn thiếu mấy sao để lên mốc sau.',
       },
       {
         icon: Wallet,
@@ -162,8 +246,8 @@ const NHOM_TINH_NANG: NhomTinhNang[] = [
 
 /** Ba vế bắt buộc trên mặt sau phiếu — chú thích cho ảnh */
 const BA_VE = [
-  { nhan: 'Cảm ơn', giaiThich: 'Ghi rõ tên người hoặc tập thể được cảm ơn.' },
-  { nhan: 'Vì đã', giaiThich: 'Hành vi cụ thể đã làm, không phải lời khen chung chung.' },
+  { nhan: 'Cảm ơn', giaiThich: 'Tên người hoặc tập thể được cảm ơn.' },
+  { nhan: 'Vì đã', giaiThich: 'Việc cụ thể họ đã làm — không phải lời khen chung chung.' },
   { nhan: 'Đem lại', giaiThich: 'Kết quả thật việc đó mang lại: số dư, khách hàng, tiến độ.' },
 ];
 
@@ -199,7 +283,73 @@ export const GioiThieuSaoXungDang: React.FC = () => {
 
   return (
     <div className="space-y-10 text-left">
-      {/* ---------- 1. Phiếu Sao bản giấy ---------- */}
+      {/* ---------- 1. Ba cách đọc hai chữ «Sao xứng đáng» ---------- */}
+      <section className="rounded-3xl border-2 border-brand-navy/15 bg-brand-navy p-6 shadow-lg sm:p-8">
+        <h2 className="text-balance text-2xl font-black tracking-tight text-white sm:text-3xl">
+          Tên chương trình là một câu hỏi
+        </h2>
+        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-blue-100">
+          Hai chữ <strong className="font-black text-white">«Sao xứng đáng»</strong> đọc được ba cách. Ba cách
+          đọc ấy cũng chính là ba việc người trao phải làm — nhớ được ba câu này là hiểu cả chương trình.
+        </p>
+
+        <ol className="mt-6 grid gap-3 md:grid-cols-3">
+          {BA_CACH_DOC.map((c, i) => (
+            <li
+              key={c.ma}
+              className="relative flex h-full flex-col rounded-2xl bg-white/10 p-5 ring-1 ring-inset ring-white/15"
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  aria-hidden
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-400 text-brand-navy"
+                >
+                  <c.icon className="h-[18px] w-[18px]" />
+                </span>
+                {/* Số thứ tự cũng là nhãn: ba câu phải đọc theo đúng trật tự */}
+                <span className="text-[10px] font-black uppercase tracking-widest text-blue-200">
+                  Cách đọc {i + 1}
+                </span>
+              </div>
+              <p className="mt-3 text-lg font-black leading-snug text-amber-300 sm:text-xl">{c.cau}</p>
+              <p className="mt-1 text-[11px] font-black uppercase tracking-wide text-blue-200">{c.nghia}</p>
+              <p className="mt-2 text-xs leading-relaxed text-blue-50">{c.giaiThich}</p>
+              {i < BA_CACH_DOC.length - 1 && (
+                <ArrowRight
+                  aria-hidden
+                  className="absolute -right-2.5 top-1/2 hidden h-5 w-5 -translate-y-1/2 text-amber-400 md:block"
+                />
+              )}
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      {/* ---------- 2. Ba việc chương trình muốn làm được ---------- */}
+      <section>
+        <h2 className="text-xl font-black tracking-tight text-brand-navy sm:text-2xl">
+          Chương trình để làm gì
+        </h2>
+        <p className="mt-1 text-sm leading-relaxed text-slate-600">
+          Ba việc, nói gọn trong ba dòng.
+        </p>
+        <ul className="mt-5 grid gap-3 md:grid-cols-3">
+          {BA_MUC_TIEU.map((m) => (
+            <li key={m.ma} className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-5">
+              <span
+                aria-hidden
+                className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-100 text-amber-700"
+              >
+                <m.icon className="h-5 w-5" />
+              </span>
+              <h3 className="mt-3 text-sm font-black leading-snug text-slate-900">{m.ten}</h3>
+              <p className="mt-1.5 text-xs leading-relaxed text-slate-600">{m.moTa}</p>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {/* ---------- 3. Phiếu Sao bản giấy ---------- */}
       <section className="rounded-3xl border-2 border-amber-300 bg-gradient-to-b from-amber-50 via-white to-white p-6 shadow-lg sm:p-8">
         <div className="grid gap-8 lg:grid-cols-12 lg:items-center">
           <div className="lg:col-span-6">
@@ -247,13 +397,13 @@ export const GioiThieuSaoXungDang: React.FC = () => {
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-slate-700">
               Sao Xứng Đáng không phải lời khen nói miệng. Mỗi ngôi sao là một tấm phiếu bìa treo được,
-              mang <strong className="font-black text-slate-900">một số serial duy nhất</strong> — nhờ số đó
-              Chi nhánh biết phiếu đang ở đâu, ai trao, trao cho ai. Người trao viết tay lên mặt sau rồi
-              trao tận tay người nhận, sau đó ghi nhận lên cổng theo đúng số serial.
+              mang <strong className="font-black text-slate-900">một số riêng không trùng với phiếu nào</strong> —
+              nhờ số đó Chi nhánh biết phiếu đang ở đâu, ai trao, trao cho ai. Người trao viết tay lên mặt sau,
+              trao tận tay người nhận, rồi ghi lên cổng theo đúng số đó.
             </p>
 
             <p className="mt-6 text-[11px] font-black uppercase tracking-widest text-slate-500">
-              Mặt sau bắt buộc ghi đủ ba vế
+              Mặt sau phải viết đủ ba vế
             </p>
             <ol className="mt-2 space-y-2">
               {BA_VE.map((v, i) => (
@@ -271,20 +421,47 @@ export const GioiThieuSaoXungDang: React.FC = () => {
               ))}
             </ol>
             <p className="mt-3 text-xs leading-relaxed text-slate-500">
-              Ba vế này là lý do phiếu Sao đọc lại sau một năm vẫn còn giá trị: người sau biết chính xác
-              việc gì đã được ghi nhận và nó đem lại kết quả gì.
+              Đủ ba vế thì một năm sau đọc lại vẫn hiểu: việc gì đã được ghi nhận, và việc đó đem lại gì.
             </p>
           </div>
         </div>
+
+        {/* Năm cánh sao — trả lời «vì sao lại là ngôi sao». Đặt cuối khối phiếu
+            giấy vì người đọc vừa nhìn thấy hình ngôi sao ngay phía trên. */}
+        <div className="mt-8 rounded-2xl border border-amber-200 bg-white p-5 sm:p-6">
+          <h3 className="text-sm font-black text-brand-navy">Vì sao lại là ngôi sao — và vì sao năm cánh</h3>
+          <p className="mt-2 text-xs leading-relaxed text-slate-600">
+            Ngôi sao không phải hình vẽ cho đẹp. Năm cánh sao là năm giá trị Văn hóa VietinBank — trao một
+            ngôi sao là nói rằng người kia vừa sống đúng những giá trị này.
+          </p>
+          <ul className="mt-3 flex flex-wrap gap-2">
+            {NAM_CANH.map((gt) => (
+              <li
+                key={gt}
+                className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1.5 text-xs font-black text-amber-900"
+              >
+                <Star aria-hidden className="h-3.5 w-3.5 fill-amber-500 text-amber-600" />
+                {gt}
+              </li>
+            ))}
+          </ul>
+          <blockquote className="mt-4 border-l-2 border-amber-400 pl-3 text-xs italic leading-relaxed text-slate-600">
+            «Trên bầu trời rộng lớn mang tên VietinBank, với muôn ngàn vì tinh tú, Chi nhánh Bắc Hưng Yên tự
+            hào là một ngôi sao nhỏ bé, lấp lánh trên bầu trời rộng lớn ấy.»
+            <footer className="mt-1.5 not-italic text-[11px] font-bold text-slate-500">
+              Đại sứ Văn hóa — Giám đốc Chi nhánh
+            </footer>
+          </blockquote>
+        </div>
       </section>
 
-      {/* ---------- 2. Vòng đời một ngôi sao ---------- */}
+      {/* ---------- 4. Vòng đời một ngôi sao ---------- */}
       <section>
         <h2 className="text-xl font-black tracking-tight text-brand-navy sm:text-2xl">
-          Vòng đời một ngôi sao
+          Một ngôi sao đi qua năm chặng
         </h2>
         <p className="mt-1 text-sm leading-relaxed text-slate-600">
-          Từ lô in của Phòng TCTH tới mốc quà của cán bộ — năm chặng, mỗi chặng có người chịu trách nhiệm rõ ràng.
+          Từ lô in của Phòng TCTH tới mốc quà của cán bộ — mỗi chặng có người chịu trách nhiệm rõ ràng.
         </p>
 
         {/* Xếp dọc trên điện thoại, ngang trên máy tính. Mũi tên chỉ hiện ở bản
@@ -315,9 +492,12 @@ export const GioiThieuSaoXungDang: React.FC = () => {
             </li>
           ))}
         </ol>
+        <p className="mt-3 text-xs leading-relaxed text-slate-500">
+          Sao đổi được gì — điểm KPI, các mốc quà và luật đổi quà — xem ngay bảng bên dưới.
+        </p>
       </section>
 
-      {/* ---------- 3. Hai nhóm tính năng trên cổng ---------- */}
+      {/* ---------- 5. Hai nhóm tính năng trên cổng ---------- */}
       <section>
         <h2 className="text-xl font-black tracking-tight text-brand-navy sm:text-2xl">
           Cổng làm giúp Chi nhánh hai việc
