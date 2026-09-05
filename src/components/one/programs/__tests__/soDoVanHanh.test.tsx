@@ -216,6 +216,31 @@ describe('Sơ đồ phát biểu (bàn tròn)', () => {
     expect(screen.getByRole('heading', { level: 4 })).toHaveTextContent('Cán bộ trình bày');
   });
 
+  it('mỗi vị trí chỉ có MỘT chỗ bấm — không còn danh sách lặp lại bên dưới sơ đồ', () => {
+    // Trước đây dưới bàn tròn có một danh sách đủ mười dòng, nói y nguyên những
+    // gì vòng tròn đã nói. Đọc hai lần cùng một thứ khiến mục này dài gấp đôi mà
+    // không thêm thông tin nào, nên đã bỏ. Khóa lại để không ai vô tình dựng lại.
+    dungBan();
+    for (const l of CREDIT_360_VAN_HANH.phatBieu) {
+      const an = l.viTri.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      expect(screen.getAllByRole('button', { name: new RegExp(an) })).toHaveLength(1);
+    }
+  });
+
+  it('mỗi chỗ ngồi vẽ bằng hình người, không phải vòng tròn đánh số', () => {
+    // Ngay phía trên đã có một sơ đồ luồng việc vẽ bằng hộp; nếu bàn tròn cũng
+    // chỉ là các vòng tròn đánh số thì người đọc dễ tưởng đây là các BƯỚC nối
+    // tiếp nhau chứ không phải các NGƯỜI ngồi quanh bàn.
+    dungBan();
+    for (const l of CREDIT_360_VAN_HANH.phatBieu) {
+      const ghe = screen.getByRole('button', { name: `Lượt ${l.thuTu}: ${l.viTri}` });
+      // Thân người là <path>; vòng tròn đánh số cũ không có path nào
+      expect(ghe.querySelector('path')).not.toBeNull();
+      // Số thứ tự vẫn phải đọc được ngay trên hình
+      expect(ghe.textContent).toContain(String(l.thuTu));
+    }
+  });
+
   it('ghế cuối cùng là người điều phối — người kết luận ngồi đầu bàn', () => {
     const cuoi = CREDIT_360_VAN_HANH.phatBieu[CREDIT_360_VAN_HANH.phatBieu.length - 1];
     expect(cuoi.vaiTro).toBe('dieu-phoi');
