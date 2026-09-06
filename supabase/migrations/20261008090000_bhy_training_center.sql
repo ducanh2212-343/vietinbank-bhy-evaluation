@@ -780,7 +780,7 @@ END $cron$;
 -- tay sau. Chỉ nạp khi chưa có chương trình cùng tên — chạy lại không nhân đôi.
 -- ---------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION pg_temp.ttc_seed_viec(
+CREATE OR REPLACE FUNCTION public.ttc_seed_tam_viec(
   _ct uuid, _so int, _phan text, _bd text, _kt text, _ten text, _dau_ra text,
   _ai text, _thiet_bi text, _noi_nop text, _trong_tam boolean DEFAULT false)
 RETURNS void
@@ -798,44 +798,44 @@ END $$;
 
 -- Khung ngày chuẩn (ngày 2–9): sáng theo khung, chiều là chuyên đề riêng, rồi
 -- tự suy ngẫm → trình bày → phản hồi → triển khai + PDCA
-CREATE OR REPLACE FUNCTION pg_temp.ttc_seed_sang_chuan(_ct uuid, _so int, _stt_phieu int)
+CREATE OR REPLACE FUNCTION public.ttc_seed_tam_sang_chuan(_ct uuid, _so int, _stt_phieu int)
 RETURNS void
 LANGUAGE plpgsql AS $$
 BEGIN
-  PERFORM pg_temp.ttc_seed_viec(_ct, _so, 'KHOI_DONG', '07:30', '07:50',
+  PERFORM public.ttc_seed_tam_viec(_ct, _so, 'KHOI_DONG', '07:30', '07:50',
     'VietinType 20 phút theo bài dựng sẵn của phần mềm. Ghi tốc độ, độ chính xác, nhóm lỗi phím.',
     'Log VietinType trong ngày', 'TCTH', 'MAY_CO_QUAN', 'TCTH');
-  PERFORM pg_temp.ttc_seed_viec(_ct, _so, 'VAN_BAN', '07:50', '09:20',
+  PERFORM public.ttc_seed_tam_viec(_ct, _so, 'VAN_BAN', '07:50', '09:20',
     'Đọc văn bản của ngày theo 3 lượt: quét cấu trúc → đọc sâu đánh dấu thay đổi/điều kiện/rủi ro → đóng văn bản kể lại.',
     format('Phiếu văn bản 1 trang số %s (Phụ lục 1) — NGAY%s_PHIEUVANBAN', _stt_phieu, lpad(_so::text, 2, '0')),
     'HOC_VIEN', 'MAY_CO_QUAN', 'EMAIL');
-  PERFORM pg_temp.ttc_seed_viec(_ct, _so, 'VAN_BAN', '09:20', '10:20',
+  PERFORM public.ttc_seed_tam_viec(_ct, _so, 'VAN_BAN', '09:20', '10:20',
     'Lập phiếu 06 thang Bloom cho chính văn bản đó (Phụ lục 2).',
     format('Phiếu Bloom 6 thang số %s — NGAY%s_PHIEUBLOOM', _stt_phieu, lpad(_so::text, 2, '0')),
     'HOC_VIEN', 'MAY_CO_QUAN', 'EMAIL');
-  PERFORM pg_temp.ttc_seed_viec(_ct, _so, 'VAN_BAN', '10:20', '11:30',
+  PERFORM public.ttc_seed_tam_viec(_ct, _so, 'VAN_BAN', '10:20', '11:30',
     'Làm slide PowerPoint 5–7 trang trên máy tính cơ quan. KHÔNG dùng AI. Mỗi slide thể hiện một thang Bloom, ghi nhãn thang ở góc slide.',
     format('File .pptx số %s đặt tên theo quy tắc — NGAY%s_SLIDE', _stt_phieu, lpad(_so::text, 2, '0')),
     'HOC_VIEN', 'MAY_CO_QUAN', 'EMAIL', true);
 END $$;
 
-CREATE OR REPLACE FUNCTION pg_temp.ttc_seed_chieu_chuan(
+CREATE OR REPLACE FUNCTION public.ttc_seed_tam_chieu_chuan(
   _ct uuid, _so int, _phan_hoi_them text DEFAULT NULL, _ai_phan_hoi text DEFAULT 'GD_PGD',
   _trien_khai text DEFAULT NULL, _dau_ra_trien_khai text DEFAULT NULL)
 RETURNS void
 LANGUAGE plpgsql AS $$
 BEGIN
-  PERFORM pg_temp.ttc_seed_viec(_ct, _so, 'TU_SUY_NGAM', '15:05', '15:25',
+  PERFORM public.ttc_seed_tam_viec(_ct, _so, 'TU_SUY_NGAM', '15:05', '15:25',
     'Phiên tự suy ngẫm 20 phút: viết tay 10 phút → tự chấm mức trên thang 5 mức 3 phút → nói ra 5 phút. Không tranh luận, không phản hồi.',
     '3 dòng viết tay, nhập vào ô Tự suy ngẫm của ngày', 'HOC_VIEN', 'GIAY', 'TRAINING_CENTER');
-  PERFORM pg_temp.ttc_seed_viec(_ct, _so, 'TRINH_BAY', '15:30', '16:00',
+  PERFORM public.ttc_seed_tam_viec(_ct, _so, 'TRINH_BAY', '15:30', '16:00',
     'Trình bày 30 phút với Giám đốc và/hoặc PGĐ phụ trách: 12 phút trình bày, 15 phút hỏi đáp, 3 phút chốt.',
     'Phiếu chấm Bloom (Phụ lục 3) do Ban Giám đốc ghi', 'GD_PGD', 'LAPTOP', 'KHONG', true);
-  PERFORM pg_temp.ttc_seed_viec(_ct, _so, 'TRINH_BAY', '16:00', '16:30',
+  PERFORM public.ttc_seed_tam_viec(_ct, _so, 'TRINH_BAY', '16:00', '16:30',
     'Phản hồi theo cấu trúc: sự việc – ảnh hưởng – kỳ vọng – hỗ trợ – cam kết.'
       || COALESCE(' ' || _phan_hoi_them, ''),
     'Biên bản phản hồi ngắn', _ai_phan_hoi, 'KHONG', 'KHONG');
-  PERFORM pg_temp.ttc_seed_viec(_ct, _so, 'THUC_HANH', '16:30', '17:00',
+  PERFORM public.ttc_seed_tam_viec(_ct, _so, 'THUC_HANH', '16:30', '17:00',
     COALESCE(_trien_khai, 'Thiết kế cách triển khai văn bản đó tại Phòng KHDN: ai đọc, ai làm gì, checklist, bộ 10 câu Quizizz, mốc kiểm tra. Chốt PDCA cuối ngày.'),
     COALESCE(_dau_ra_trien_khai, 'Phiếu triển khai văn bản + bộ Quizizz + phiếu PDCA'),
     'HOC_VIEN', 'LAPTOP', 'TRAINING_CENTER');
@@ -937,103 +937,108 @@ BEGIN
     'Tôi đang ở tầng nào so với ngày 1? Điều gì đang cản tôi lên tầng tiếp theo? Từ ngày mai tôi cần dừng gì, bắt đầu gì, tiếp tục gì?');
 
   -- NGÀY 1 — Khai tâm và cam kết
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 1, 'KHOI_DONG', '08:00', '08:20', 'Khai mạc. Giám đốc nêu bối cảnh: Chi nhánh đang ở đâu, Phòng KHDN đang ở đâu, và vì sao vai Trưởng phòng là điểm nghẽn quyết định.', 'Biên bản khai mạc', 'GD', 'KHONG', 'KHONG');
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 1, 'KHOI_DONG', '08:20', '09:00', 'Chia sẻ lộ trình 10 ngày: 4 khối, khung ngày, cách chấm, bốn bảng điểm tách biệt, quyền giải trình của người học.', 'Người học nhắc lại được lộ trình bằng lời của mình', 'GD', 'KHONG', 'KHONG');
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 1, 'THUC_HANH', '09:00', '10:00', 'Phiên tư duy: BA CÂU HỎI TỰ TRẢ LỜI — viết tay 10 phút mỗi câu rồi đọc to. Giám đốc chỉ hỏi lại, không phản bác.', '03 trang viết tay của người học', 'GD', 'GIAY', 'TCTH', true);
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 1, 'THUC_HANH', '10:00', '10:45', 'Khoảng cách giữa BIẾT và LÀM ĐƯỢC: mô hình 70–20–10; vì sao chương trình bắt tự làm trước và chỉ mở AI ở nửa sau. Phiên Giám đốc chia sẻ: lãi kép nghề nghiệp, năm loại vốn.', 'Người học tự nêu 3 việc mình vẫn «biết mà chưa làm»', 'GD', 'KHONG', 'KHONG');
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 1, 'THUC_HANH', '10:45', '11:30', 'Bảy nguyên tắc và ranh giới trong 10 ngày. Làm rõ: điều gì được làm, điều gì không, xử lý thế nào khi có việc gấp.', 'Bảng ranh giới được hai bên xác nhận', 'GD_PGD', 'KHONG', 'KHONG');
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 1, 'THUC_HANH', '13:30', '14:00', 'KÝ CAM KẾT bằng giấy (Phụ lục 6). Ba bên ký: người học, PGĐ phụ trách, Giám đốc.', 'Bản cam kết gốc lưu TCTH', 'GD_PGD', 'GIAY', 'TCTH', true);
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 1, 'THUC_HANH', '14:00', '14:40', 'Bàn giao có cấu trúc toàn bộ việc đang mở sang PGĐ Hoàng: trạng thái, việc tiếp theo, người làm, hạn, rủi ro, nơi lưu.', 'Danh sách bàn giao có xác nhận', 'PGD', 'LAPTOP', 'TCTH');
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 1, 'KHOI_DONG', '14:40', '15:20', 'Cài đặt và đo VietinType lần 1 làm MỐC NỀN. Kết quả này không tính điểm, chỉ để so với ngày 10.', 'Log nền VietinType', 'TCTH', 'MAY_CO_QUAN', 'TCTH');
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 1, 'THUC_HANH', '15:20', '16:30', 'Hướng dẫn thao tác khung ngày: mẫu phiếu văn bản, phiếu Bloom, chuẩn slide, cách nộp file, quy tắc đặt tên. Đăng nhập Training Center trên điện thoại và laptop.', 'Người học làm thử 01 phiếu văn bản mẫu', 'TCTH', 'LAPTOP', 'EMAIL');
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 1, 'TU_SUY_NGAM', '16:00', '16:30', 'Tự chấm phiếu 08 tiêu chí trưởng thành lần 1 — MỐC NỀN. Mỗi mức kèm một ví dụ có thật trong ba tháng gần đây.', 'Phiếu tự soi đợt 1 trên Training Center', 'HOC_VIEN', 'LAPTOP', 'TRAINING_CENTER', true);
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 1, 'THUC_HANH', '16:30', '17:00', 'Giao văn bản ngày 2. Chốt PDCA ngày 1.', 'Phiếu PDCA', 'TCTH', 'LAPTOP', 'TRAINING_CENTER');
+  PERFORM public.ttc_seed_tam_viec(v_ct, 1, 'KHOI_DONG', '08:00', '08:20', 'Khai mạc. Giám đốc nêu bối cảnh: Chi nhánh đang ở đâu, Phòng KHDN đang ở đâu, và vì sao vai Trưởng phòng là điểm nghẽn quyết định.', 'Biên bản khai mạc', 'GD', 'KHONG', 'KHONG');
+  PERFORM public.ttc_seed_tam_viec(v_ct, 1, 'KHOI_DONG', '08:20', '09:00', 'Chia sẻ lộ trình 10 ngày: 4 khối, khung ngày, cách chấm, bốn bảng điểm tách biệt, quyền giải trình của người học.', 'Người học nhắc lại được lộ trình bằng lời của mình', 'GD', 'KHONG', 'KHONG');
+  PERFORM public.ttc_seed_tam_viec(v_ct, 1, 'THUC_HANH', '09:00', '10:00', 'Phiên tư duy: BA CÂU HỎI TỰ TRẢ LỜI — viết tay 10 phút mỗi câu rồi đọc to. Giám đốc chỉ hỏi lại, không phản bác.', '03 trang viết tay của người học', 'GD', 'GIAY', 'TCTH', true);
+  PERFORM public.ttc_seed_tam_viec(v_ct, 1, 'THUC_HANH', '10:00', '10:45', 'Khoảng cách giữa BIẾT và LÀM ĐƯỢC: mô hình 70–20–10; vì sao chương trình bắt tự làm trước và chỉ mở AI ở nửa sau. Phiên Giám đốc chia sẻ: lãi kép nghề nghiệp, năm loại vốn.', 'Người học tự nêu 3 việc mình vẫn «biết mà chưa làm»', 'GD', 'KHONG', 'KHONG');
+  PERFORM public.ttc_seed_tam_viec(v_ct, 1, 'THUC_HANH', '10:45', '11:30', 'Bảy nguyên tắc và ranh giới trong 10 ngày. Làm rõ: điều gì được làm, điều gì không, xử lý thế nào khi có việc gấp.', 'Bảng ranh giới được hai bên xác nhận', 'GD_PGD', 'KHONG', 'KHONG');
+  PERFORM public.ttc_seed_tam_viec(v_ct, 1, 'THUC_HANH', '13:30', '14:00', 'KÝ CAM KẾT bằng giấy (Phụ lục 6). Ba bên ký: người học, PGĐ phụ trách, Giám đốc.', 'Bản cam kết gốc lưu TCTH', 'GD_PGD', 'GIAY', 'TCTH', true);
+  PERFORM public.ttc_seed_tam_viec(v_ct, 1, 'THUC_HANH', '14:00', '14:40', 'Bàn giao có cấu trúc toàn bộ việc đang mở sang PGĐ Hoàng: trạng thái, việc tiếp theo, người làm, hạn, rủi ro, nơi lưu.', 'Danh sách bàn giao có xác nhận', 'PGD', 'LAPTOP', 'TCTH');
+  PERFORM public.ttc_seed_tam_viec(v_ct, 1, 'KHOI_DONG', '14:40', '15:20', 'Cài đặt và đo VietinType lần 1 làm MỐC NỀN. Kết quả này không tính điểm, chỉ để so với ngày 10.', 'Log nền VietinType', 'TCTH', 'MAY_CO_QUAN', 'TCTH');
+  PERFORM public.ttc_seed_tam_viec(v_ct, 1, 'THUC_HANH', '15:20', '16:30', 'Hướng dẫn thao tác khung ngày: mẫu phiếu văn bản, phiếu Bloom, chuẩn slide, cách nộp file, quy tắc đặt tên. Đăng nhập Training Center trên điện thoại và laptop.', 'Người học làm thử 01 phiếu văn bản mẫu', 'TCTH', 'LAPTOP', 'EMAIL');
+  PERFORM public.ttc_seed_tam_viec(v_ct, 1, 'TU_SUY_NGAM', '16:00', '16:30', 'Tự chấm phiếu 08 tiêu chí trưởng thành lần 1 — MỐC NỀN. Mỗi mức kèm một ví dụ có thật trong ba tháng gần đây.', 'Phiếu tự soi đợt 1 trên Training Center', 'HOC_VIEN', 'LAPTOP', 'TRAINING_CENTER', true);
+  PERFORM public.ttc_seed_tam_viec(v_ct, 1, 'THUC_HANH', '16:30', '17:00', 'Giao văn bản ngày 2. Chốt PDCA ngày 1.', 'Phiếu PDCA', 'TCTH', 'LAPTOP', 'TRAINING_CENTER');
 
   -- NGÀY 2
-  PERFORM pg_temp.ttc_seed_sang_chuan(v_ct, 2, 1);
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 2, 'THUC_HANH', '13:30', '15:05', 'Chuyên đề: cách một văn bản đi từ hộp thư đến hành vi của RM. Vẽ dòng chảy hiện tại của Phòng và chỉ ra 3 điểm rơi.', 'Sơ đồ dòng chảy văn bản + 3 điểm rơi (PGĐ kiểm)', 'HOC_VIEN', 'LAPTOP', 'EMAIL');
-  PERFORM pg_temp.ttc_seed_chieu_chuan(v_ct, 2, NULL, 'GD_PGD',
+  PERFORM public.ttc_seed_tam_sang_chuan(v_ct, 2, 1);
+  PERFORM public.ttc_seed_tam_viec(v_ct, 2, 'THUC_HANH', '13:30', '15:05', 'Chuyên đề: cách một văn bản đi từ hộp thư đến hành vi của RM. Vẽ dòng chảy hiện tại của Phòng và chỉ ra 3 điểm rơi.', 'Sơ đồ dòng chảy văn bản + 3 điểm rơi (PGĐ kiểm)', 'HOC_VIEN', 'LAPTOP', 'EMAIL');
+  PERFORM public.ttc_seed_tam_chieu_chuan(v_ct, 2, NULL, 'GD_PGD',
     'Thiết kế bộ 10 câu Quizizz cho văn bản này. Chốt PDCA.', 'Bộ Quizizz 1 + phiếu PDCA');
 
   -- NGÀY 3
-  PERFORM pg_temp.ttc_seed_sang_chuan(v_ct, 3, 2);
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 3, 'THUC_HANH', '13:30', '15:05', 'Chuyên đề: PHÂN PHỐI VÀ TRIỂN KHAI VĂN BẢN. Xây quy trình chuẩn: ai đọc bản gốc, ai làm phiếu 1 trang, ai phổ biến, kiểm tra hiểu bằng cách nào, lưu minh chứng ở đâu, bao lâu kiểm tra lại.', 'SOP triển khai văn bản tại Phòng KHDN v1 (PGĐ kiểm)', 'HOC_VIEN', 'LAPTOP', 'EMAIL');
-  PERFORM pg_temp.ttc_seed_chieu_chuan(v_ct, 3,
+  PERFORM public.ttc_seed_tam_sang_chuan(v_ct, 3, 2);
+  PERFORM public.ttc_seed_tam_viec(v_ct, 3, 'THUC_HANH', '13:30', '15:05', 'Chuyên đề: PHÂN PHỐI VÀ TRIỂN KHAI VĂN BẢN. Xây quy trình chuẩn: ai đọc bản gốc, ai làm phiếu 1 trang, ai phổ biến, kiểm tra hiểu bằng cách nào, lưu minh chứng ở đâu, bao lâu kiểm tra lại.', 'SOP triển khai văn bản tại Phòng KHDN v1 (PGĐ kiểm)', 'HOC_VIEN', 'LAPTOP', 'EMAIL');
+  PERFORM public.ttc_seed_tam_chieu_chuan(v_ct, 3,
     'Kèm phiên PGĐ chia sẻ 20 phút: «Một văn bản không tới được RM thì cái giá là gì».', 'PGD',
     'Chạy thử Quizizz với 03 cán bộ. Đo tỷ lệ trả lời đúng — phép đo chất lượng truyền đạt, không phải phép đo cán bộ. Chốt PDCA.',
     'Kết quả Quizizz + nhận định của người học + phiếu PDCA');
 
   -- NGÀY 4 — Bài tập 1
-  PERFORM pg_temp.ttc_seed_sang_chuan(v_ct, 4, 3);
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 4, 'THUC_HANH', '13:30', '13:40', 'Giao đề. TCTH mở file BT1, nhắc quy tắc: không AI, không internet, không trao đổi. Chỉ hỏi làm rõ về YÊU CẦU ĐẦU RA.', 'Biên bản mở bài', 'TCTH', 'MAY_CO_QUAN', 'TCTH');
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 4, 'THUC_HANH', '13:40', '14:40', 'LÀM BÀI 60 PHÚT: rà soát bảng chỉ số tài chính do cán bộ mới lập cho CTCP Bao bì Giấy Hồng Phát.', 'Nhật ký rà soát + bảng chỉ số đã sửa', 'HOC_VIEN', 'MAY_CO_QUAN', 'TCTH', true);
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 4, 'THUC_HANH', '14:40', '14:50', 'Khóa bài. Lưu theo mã, khóa quyền sửa. KHÔNG công bố đáp án.', 'Biên bản khóa bài', 'TCTH', 'MAY_CO_QUAN', 'TCTH');
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 4, 'TRINH_BAY', '14:50', '15:30', 'Giải trình: bảo vệ 05 lỗi quan trọng nhất và nêu 05 ô sẽ kiểm tra đầu tiên khi nhận một file phân tích tài chính.', 'Phiếu bảo vệ', 'PGD', 'LAPTOP', 'TCTH', true);
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 4, 'THUC_HANH', '15:30', '16:00', 'BƯỚC 1 CỦA ĐÁP ÁN: chỉ phát BẢNG KẾT QUẢ CHUẨN (không phát công thức). Tự tìm chênh lệch.', 'Bản tự đối chiếu', 'TCTH', 'MAY_CO_QUAN', 'TCTH');
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 4, 'TRINH_BAY', '16:00', '16:30', 'BƯỚC 2: mở đáp án đầy đủ. Tổ chấm giải thích nguyên lý. Kèm phiên Giám đốc chia sẻ 20 phút: «Uy tín chuyên môn được xây bằng gì».', 'Biên bản phản hồi', 'GD_PGD', 'KHONG', 'KHONG');
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 4, 'TU_SUY_NGAM', '16:30', '16:45', 'Tự suy ngẫm 15 phút: điều gì tôi làm chắc, điều gì tôi muốn luyện thêm.', '3 dòng viết tay, nhập vào ô Tự suy ngẫm', 'HOC_VIEN', 'GIAY', 'TRAINING_CENTER');
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 4, 'THUC_HANH', '16:45', '17:00', 'Lập bản đồ khoảng trống phần 1 và chốt PDCA.', 'Bản đồ khoảng trống v1 + phiếu PDCA', 'HOC_VIEN', 'LAPTOP', 'TRAINING_CENTER');
+  PERFORM public.ttc_seed_tam_sang_chuan(v_ct, 4, 3);
+  PERFORM public.ttc_seed_tam_viec(v_ct, 4, 'THUC_HANH', '13:30', '13:40', 'Giao đề. TCTH mở file BT1, nhắc quy tắc: không AI, không internet, không trao đổi. Chỉ hỏi làm rõ về YÊU CẦU ĐẦU RA.', 'Biên bản mở bài', 'TCTH', 'MAY_CO_QUAN', 'TCTH');
+  PERFORM public.ttc_seed_tam_viec(v_ct, 4, 'THUC_HANH', '13:40', '14:40', 'LÀM BÀI 60 PHÚT: rà soát bảng chỉ số tài chính do cán bộ mới lập cho CTCP Bao bì Giấy Hồng Phát.', 'Nhật ký rà soát + bảng chỉ số đã sửa', 'HOC_VIEN', 'MAY_CO_QUAN', 'TCTH', true);
+  PERFORM public.ttc_seed_tam_viec(v_ct, 4, 'THUC_HANH', '14:40', '14:50', 'Khóa bài. Lưu theo mã, khóa quyền sửa. KHÔNG công bố đáp án.', 'Biên bản khóa bài', 'TCTH', 'MAY_CO_QUAN', 'TCTH');
+  PERFORM public.ttc_seed_tam_viec(v_ct, 4, 'TRINH_BAY', '14:50', '15:30', 'Giải trình: bảo vệ 05 lỗi quan trọng nhất và nêu 05 ô sẽ kiểm tra đầu tiên khi nhận một file phân tích tài chính.', 'Phiếu bảo vệ', 'PGD', 'LAPTOP', 'TCTH', true);
+  PERFORM public.ttc_seed_tam_viec(v_ct, 4, 'THUC_HANH', '15:30', '16:00', 'BƯỚC 1 CỦA ĐÁP ÁN: chỉ phát BẢNG KẾT QUẢ CHUẨN (không phát công thức). Tự tìm chênh lệch.', 'Bản tự đối chiếu', 'TCTH', 'MAY_CO_QUAN', 'TCTH');
+  PERFORM public.ttc_seed_tam_viec(v_ct, 4, 'TRINH_BAY', '16:00', '16:30', 'BƯỚC 2: mở đáp án đầy đủ. Tổ chấm giải thích nguyên lý. Kèm phiên Giám đốc chia sẻ 20 phút: «Uy tín chuyên môn được xây bằng gì».', 'Biên bản phản hồi', 'GD_PGD', 'KHONG', 'KHONG');
+  PERFORM public.ttc_seed_tam_viec(v_ct, 4, 'TU_SUY_NGAM', '16:30', '16:45', 'Tự suy ngẫm 15 phút: điều gì tôi làm chắc, điều gì tôi muốn luyện thêm.', '3 dòng viết tay, nhập vào ô Tự suy ngẫm', 'HOC_VIEN', 'GIAY', 'TRAINING_CENTER');
+  PERFORM public.ttc_seed_tam_viec(v_ct, 4, 'THUC_HANH', '16:45', '17:00', 'Lập bản đồ khoảng trống phần 1 và chốt PDCA.', 'Bản đồ khoảng trống v1 + phiếu PDCA', 'HOC_VIEN', 'LAPTOP', 'TRAINING_CENTER');
 
   -- NGÀY 5 — Chiêu thức số 2
-  PERFORM pg_temp.ttc_seed_sang_chuan(v_ct, 5, 4);
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 5, 'THUC_HANH', '13:30', '14:30', 'CHIÊU THỨC SỐ 2: chuyển 30 việc lấy từ JD và danh sách bàn giao vào bảng 5 cột. Mỗi việc phải có việc tiếp theo, người làm và hạn.', 'Bảng Kanban cá nhân v1', 'HOC_VIEN', 'LAPTOP', 'TRAINING_CENTER', true);
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 5, 'THUC_HANH', '14:30', '15:05', 'MA TRẬN 4 HỘP quan trọng – khẩn cấp. Thêm hai cột kiểm chứng «tôi thích việc này?» và «tôi giỏi việc này?». Rút ra: việc TP phải tự làm / ủy quyền / tự động hóa / bỏ.', 'Ma trận 4 hộp + danh sách 4 nhóm việc', 'HOC_VIEN', 'LAPTOP', 'EMAIL');
-  PERFORM pg_temp.ttc_seed_chieu_chuan(v_ct, 5,
+  PERFORM public.ttc_seed_tam_sang_chuan(v_ct, 5, 4);
+  PERFORM public.ttc_seed_tam_viec(v_ct, 5, 'THUC_HANH', '13:30', '14:30', 'CHIÊU THỨC SỐ 2: chuyển 30 việc lấy từ JD và danh sách bàn giao vào bảng 5 cột. Mỗi việc phải có việc tiếp theo, người làm và hạn.', 'Bảng Kanban cá nhân v1', 'HOC_VIEN', 'LAPTOP', 'TRAINING_CENTER', true);
+  PERFORM public.ttc_seed_tam_viec(v_ct, 5, 'THUC_HANH', '14:30', '15:05', 'MA TRẬN 4 HỘP quan trọng – khẩn cấp. Thêm hai cột kiểm chứng «tôi thích việc này?» và «tôi giỏi việc này?». Rút ra: việc TP phải tự làm / ủy quyền / tự động hóa / bỏ.', 'Ma trận 4 hộp + danh sách 4 nhóm việc', 'HOC_VIEN', 'LAPTOP', 'EMAIL');
+  PERFORM public.ttc_seed_tam_chieu_chuan(v_ct, 5,
     'Kèm phiên PGĐ chia sẻ 20 phút: «Một tuần ngồi ở ghế Trưởng phòng».', 'PGD',
     'Chuyển bảng Kanban lên Chiêu thức 2 của cổng Bắc Hưng Yên ONE — thẻ nào là 3 việc gối đầu thì liên kết vào Bảng việc của Training Center. Chốt PDCA tuần 1.',
     'Board Kanban trên BHY ONE + biên bản tuần 1');
 
   -- NGÀY 6 — Bài tập 2
-  PERFORM pg_temp.ttc_seed_sang_chuan(v_ct, 6, 5);
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 6, 'THUC_HANH', '13:00', '13:10', 'Giao đề BT2. Nhắc rõ: KHÔNG xây lại mô hình từ đầu trước khi chỉ ra được lỗi trong file nhận được.', 'Biên bản mở bài', 'TCTH', 'MAY_CO_QUAN', 'TCTH');
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 6, 'THUC_HANH', '13:10', '15:10', 'LÀM BÀI 120 PHÚT: rà soát bảng chạy dòng tiền dự án nhà máy giấy bao bì 90.000 tấn/năm, TMĐT 1.200 tỷ, đề nghị vay 840 tỷ.', 'Nhật ký lỗi + file sửa + con số đúng', 'HOC_VIEN', 'MAY_CO_QUAN', 'TCTH', true);
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 6, 'THUC_HANH', '15:10', '15:20', 'Khóa bài.', 'Biên bản khóa bài', 'TCTH', 'MAY_CO_QUAN', 'TCTH');
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 6, 'TRINH_BAY', '15:20', '16:00', 'Giải trình 05 lỗi trọng yếu và trả lời: THỨ TỰ 07 BƯỚC kiểm tra khi nhận một mô hình dòng tiền dự án.', 'Phiếu bảo vệ', 'PGD', 'LAPTOP', 'TCTH', true);
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 6, 'THUC_HANH', '16:00', '16:20', 'BƯỚC 1 CỦA ĐÁP ÁN: chỉ phát các con số neo (NPV, IRR, DSCR tối thiểu, năm thiếu tiền). Tự truy ngược.', 'Bản tự đối chiếu', 'TCTH', 'MAY_CO_QUAN', 'TCTH');
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 6, 'TRINH_BAY', '16:20', '16:50', 'BƯỚC 2: mở file mô hình chuẩn. Giải thích nguyên lý. Hoàn thiện bản đồ khoảng trống theo 5 nhóm: kiến thức tài chính – Excel – phát hiện sai – lập luận tín dụng – trình bày.', 'Bản đồ khoảng trống v2 (hoàn chỉnh)', 'GD_PGD', 'LAPTOP', 'EMAIL');
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 6, 'TU_SUY_NGAM', '16:50', '17:00', 'Tự suy ngẫm: uy tín chuyên môn của tôi đang dựa trên điều gì. Chốt PDCA.', '3 dòng viết tay + phiếu PDCA', 'HOC_VIEN', 'GIAY', 'TRAINING_CENTER');
+  PERFORM public.ttc_seed_tam_sang_chuan(v_ct, 6, 5);
+  PERFORM public.ttc_seed_tam_viec(v_ct, 6, 'THUC_HANH', '13:00', '13:10', 'Giao đề BT2. Nhắc rõ: KHÔNG xây lại mô hình từ đầu trước khi chỉ ra được lỗi trong file nhận được.', 'Biên bản mở bài', 'TCTH', 'MAY_CO_QUAN', 'TCTH');
+  PERFORM public.ttc_seed_tam_viec(v_ct, 6, 'THUC_HANH', '13:10', '15:10', 'LÀM BÀI 120 PHÚT: rà soát bảng chạy dòng tiền dự án nhà máy giấy bao bì 90.000 tấn/năm, TMĐT 1.200 tỷ, đề nghị vay 840 tỷ.', 'Nhật ký lỗi + file sửa + con số đúng', 'HOC_VIEN', 'MAY_CO_QUAN', 'TCTH', true);
+  PERFORM public.ttc_seed_tam_viec(v_ct, 6, 'THUC_HANH', '15:10', '15:20', 'Khóa bài.', 'Biên bản khóa bài', 'TCTH', 'MAY_CO_QUAN', 'TCTH');
+  PERFORM public.ttc_seed_tam_viec(v_ct, 6, 'TRINH_BAY', '15:20', '16:00', 'Giải trình 05 lỗi trọng yếu và trả lời: THỨ TỰ 07 BƯỚC kiểm tra khi nhận một mô hình dòng tiền dự án.', 'Phiếu bảo vệ', 'PGD', 'LAPTOP', 'TCTH', true);
+  PERFORM public.ttc_seed_tam_viec(v_ct, 6, 'THUC_HANH', '16:00', '16:20', 'BƯỚC 1 CỦA ĐÁP ÁN: chỉ phát các con số neo (NPV, IRR, DSCR tối thiểu, năm thiếu tiền). Tự truy ngược.', 'Bản tự đối chiếu', 'TCTH', 'MAY_CO_QUAN', 'TCTH');
+  PERFORM public.ttc_seed_tam_viec(v_ct, 6, 'TRINH_BAY', '16:20', '16:50', 'BƯỚC 2: mở file mô hình chuẩn. Giải thích nguyên lý. Hoàn thiện bản đồ khoảng trống theo 5 nhóm: kiến thức tài chính – Excel – phát hiện sai – lập luận tín dụng – trình bày.', 'Bản đồ khoảng trống v2 (hoàn chỉnh)', 'GD_PGD', 'LAPTOP', 'EMAIL');
+  PERFORM public.ttc_seed_tam_viec(v_ct, 6, 'TU_SUY_NGAM', '16:50', '17:00', 'Tự suy ngẫm: uy tín chuyên môn của tôi đang dựa trên điều gì. Chốt PDCA.', '3 dòng viết tay + phiếu PDCA', 'HOC_VIEN', 'GIAY', 'TRAINING_CENTER');
 
   -- NGÀY 7 — Giao việc và bám việc (việc gối đầu số 1)
-  PERFORM pg_temp.ttc_seed_sang_chuan(v_ct, 7, 6);
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 7, 'THUC_HANH', '13:30', '14:15', 'Kỹ năng giao việc: phiếu WHY – WHAT – OWNER – STANDARD – DEADLINE – CHECKPOINT cho một nhiệm vụ THẬT nhưng PHI SỰ VỤ. Ghi thành việc gối đầu số 1 trên Bảng việc.', 'Phiếu giao việc + việc gối đầu 1', 'HOC_VIEN', 'LAPTOP', 'TRAINING_CENTER', true);
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 7, 'THUC_HANH', '14:15', '14:45', 'TƯƠNG TÁC CÁN BỘ 1: giao việc trực tiếp cho 01 cán bộ. Bắt buộc có repeat-back và đặt lịch checkpoint. Sau đó KHÔNG nhắn thêm ngoài mốc đã hẹn. Thẻ việc ghi vào Chiêu thức 2, cán bộ là người chịu trách nhiệm.', 'Phiếu quan sát của PGĐ Hoàng + thẻ việc trên Chiêu thức 2', 'PGD', 'LAPTOP', 'TRAINING_CENTER', true);
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 7, 'THUC_HANH', '14:45', '15:05', 'Bám việc bằng PDCA: thiết kế nhịp kiểm tra sao cho cán bộ không phải hỏi lại và Trưởng phòng không phải làm thay.', 'SOP nhận – giao – bám – đóng việc', 'HOC_VIEN', 'LAPTOP', 'EMAIL');
-  PERFORM pg_temp.ttc_seed_chieu_chuan(v_ct, 7,
+  PERFORM public.ttc_seed_tam_sang_chuan(v_ct, 7, 6);
+  PERFORM public.ttc_seed_tam_viec(v_ct, 7, 'THUC_HANH', '13:30', '14:15', 'Kỹ năng giao việc: phiếu WHY – WHAT – OWNER – STANDARD – DEADLINE – CHECKPOINT cho một nhiệm vụ THẬT nhưng PHI SỰ VỤ. Ghi thành việc gối đầu số 1 trên Bảng việc.', 'Phiếu giao việc + việc gối đầu 1', 'HOC_VIEN', 'LAPTOP', 'TRAINING_CENTER', true);
+  PERFORM public.ttc_seed_tam_viec(v_ct, 7, 'THUC_HANH', '14:15', '14:45', 'TƯƠNG TÁC CÁN BỘ 1: giao việc trực tiếp cho 01 cán bộ. Bắt buộc có repeat-back và đặt lịch checkpoint. Sau đó KHÔNG nhắn thêm ngoài mốc đã hẹn. Thẻ việc ghi vào Chiêu thức 2, cán bộ là người chịu trách nhiệm.', 'Phiếu quan sát của PGĐ Hoàng + thẻ việc trên Chiêu thức 2', 'PGD', 'LAPTOP', 'TRAINING_CENTER', true);
+  PERFORM public.ttc_seed_tam_viec(v_ct, 7, 'THUC_HANH', '14:45', '15:05', 'Bám việc bằng PDCA: thiết kế nhịp kiểm tra sao cho cán bộ không phải hỏi lại và Trưởng phòng không phải làm thay.', 'SOP nhận – giao – bám – đóng việc', 'HOC_VIEN', 'LAPTOP', 'EMAIL');
+  PERFORM public.ttc_seed_tam_chieu_chuan(v_ct, 7,
     'Kèm phiên Giám đốc chia sẻ 20 phút: «Từ làm việc sang làm cho người khác làm được».', 'GD_PGD',
     'AI CA 1 – TÌM KIẾM THÔNG TIN CÓ KIỂM CHỨNG (16:00–17:00). Đã có phiếu văn bản tự làm; nay dùng AI tìm bổ sung và ghi: tôi tìm được gì – AI trả gì – chênh ở đâu – nguồn kiểm chứng – dùng hay bỏ.',
     'Nhật ký kiểm chứng AI 1');
 
   -- NGÀY 8 — Kèm cặp và IDP (việc gối đầu số 2)
-  PERFORM pg_temp.ttc_seed_sang_chuan(v_ct, 8, 7);
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 8, 'THUC_HANH', '13:30', '14:10', 'Mô hình 70–20–10 trong kèm cặp. Thiết kế cách kèm một cán bộ cụ thể theo đúng tỷ lệ này. Ghi thành việc gối đầu số 2.', 'Kế hoạch kèm cặp 70–20–10 + việc gối đầu 2', 'HOC_VIEN', 'LAPTOP', 'TRAINING_CENTER', true);
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 8, 'THUC_HANH', '14:10', '14:50', 'TƯƠNG TÁC CÁN BỘ 2 – COACHING THẬT (30–35 phút) về một khoảng trống năng lực PHI SỰ VỤ. 10 phút đầu chỉ được hỏi. Cán bộ tự nêu mục tiêu, phương án và hành động.', 'Phiếu quan sát coaching + phiếu cảm nhận ẩn danh của cán bộ', 'PGD', 'KHONG', 'TRAINING_CENTER', true);
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 8, 'THUC_HANH', '14:50', '15:05', 'CHIÊU THỨC SỐ 3 – theo sát IDP: lập IDP 30 ngày cho cán bộ đó; lập bản đồ chuyên gia nội bộ của Phòng. Ghi thành việc gối đầu số 3.', 'IDP 30 ngày + bản đồ chuyên gia + việc gối đầu 3', 'HOC_VIEN', 'LAPTOP', 'TRAINING_CENTER', true);
-  PERFORM pg_temp.ttc_seed_chieu_chuan(v_ct, 8,
+  PERFORM public.ttc_seed_tam_sang_chuan(v_ct, 8, 7);
+  PERFORM public.ttc_seed_tam_viec(v_ct, 8, 'THUC_HANH', '13:30', '14:10', 'Mô hình 70–20–10 trong kèm cặp. Thiết kế cách kèm một cán bộ cụ thể theo đúng tỷ lệ này. Ghi thành việc gối đầu số 2.', 'Kế hoạch kèm cặp 70–20–10 + việc gối đầu 2', 'HOC_VIEN', 'LAPTOP', 'TRAINING_CENTER', true);
+  PERFORM public.ttc_seed_tam_viec(v_ct, 8, 'THUC_HANH', '14:10', '14:50', 'TƯƠNG TÁC CÁN BỘ 2 – COACHING THẬT (30–35 phút) về một khoảng trống năng lực PHI SỰ VỤ. 10 phút đầu chỉ được hỏi. Cán bộ tự nêu mục tiêu, phương án và hành động.', 'Phiếu quan sát coaching + phiếu cảm nhận ẩn danh của cán bộ', 'PGD', 'KHONG', 'TRAINING_CENTER', true);
+  PERFORM public.ttc_seed_tam_viec(v_ct, 8, 'THUC_HANH', '14:50', '15:05', 'CHIÊU THỨC SỐ 3 – theo sát IDP: lập IDP 30 ngày cho cán bộ đó; lập bản đồ chuyên gia nội bộ của Phòng. Ghi thành việc gối đầu số 3.', 'IDP 30 ngày + bản đồ chuyên gia + việc gối đầu 3', 'HOC_VIEN', 'LAPTOP', 'TRAINING_CENTER', true);
+  PERFORM public.ttc_seed_tam_chieu_chuan(v_ct, 8,
     'Kèm phiên PGĐ chia sẻ 20 phút: «Một lần kèm cặp và điều xảy ra sau đó».', 'PGD',
     'AI CA 2 – LÀM SLIDE BẰNG AI (16:00–17:00). Đưa văn bản đã tự làm slide ở ngày 2 cho AI, so sánh hai bộ slide: cấu trúc, độ chính xác, chỗ AI bịa, chỗ AI làm tốt hơn người.',
     'Bảng so sánh 2 bộ slide + Nhật ký kiểm chứng AI 2');
 
   -- NGÀY 9 — Quản trị hệ thống
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 9, 'KHOI_DONG', '07:30', '07:50', 'VietinType 20 phút theo bài dựng sẵn.', 'Log VietinType trong ngày', 'TCTH', 'MAY_CO_QUAN', 'TCTH');
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 9, 'VAN_BAN', '07:50', '11:30', 'BẮC HƯNG YÊN ONE: đọc lại tài liệu của TỪNG chương trình trên cổng, làm slide: chương trình này giải quyết vấn đề gì; ai là người dùng thật; điều gì đang cản việc dùng.', 'Bộ slide đánh giá các chương trình BHY ONE — NGAY09_SLIDE', 'HOC_VIEN', 'MAY_CO_QUAN', 'EMAIL', true);
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 9, 'THUC_HANH', '13:30', '14:10', 'Đánh giá từng chương trình BHY ONE theo 06 thang Bloom: người dùng đang dừng ở thang nào, và cần gì để lên thang tiếp theo.', 'Bảng đánh giá Bloom cho từng chương trình', 'HOC_VIEN', 'LAPTOP', 'EMAIL');
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 9, 'THUC_HANH', '14:10', '14:50', 'RỦI RO PHÂN KHÚC KHDN Ở THỜI ĐIỂM HIỆN NAY: 05 rủi ro lớn nhất, mỗi rủi ro có dấu hiệu nhận biết sớm, số đo, giải pháp giảm thiểu, người chịu trách nhiệm.', 'Bản đồ rủi ro KHDN + 05 giải pháp', 'HOC_VIEN', 'LAPTOP', 'EMAIL');
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 9, 'THUC_HANH', '14:50', '15:05', 'CẢI TIẾN GIẢM THỜI GIAN TÁC NGHIỆP CỦA RM: đo 03 quy trình hay làm nhất; chỉ ra bước thừa; ước tính số giờ tiết kiệm/tháng.', '03 đề xuất cải tiến có ước lượng định lượng', 'HOC_VIEN', 'LAPTOP', 'EMAIL');
-  PERFORM pg_temp.ttc_seed_chieu_chuan(v_ct, 9, NULL, 'GD_PGD',
+  PERFORM public.ttc_seed_tam_viec(v_ct, 9, 'KHOI_DONG', '07:30', '07:50', 'VietinType 20 phút theo bài dựng sẵn.', 'Log VietinType trong ngày', 'TCTH', 'MAY_CO_QUAN', 'TCTH');
+  PERFORM public.ttc_seed_tam_viec(v_ct, 9, 'VAN_BAN', '07:50', '11:30', 'BẮC HƯNG YÊN ONE: đọc lại tài liệu của TỪNG chương trình trên cổng, làm slide: chương trình này giải quyết vấn đề gì; ai là người dùng thật; điều gì đang cản việc dùng.', 'Bộ slide đánh giá các chương trình BHY ONE — NGAY09_SLIDE', 'HOC_VIEN', 'MAY_CO_QUAN', 'EMAIL', true);
+  PERFORM public.ttc_seed_tam_viec(v_ct, 9, 'THUC_HANH', '13:30', '14:10', 'Đánh giá từng chương trình BHY ONE theo 06 thang Bloom: người dùng đang dừng ở thang nào, và cần gì để lên thang tiếp theo.', 'Bảng đánh giá Bloom cho từng chương trình', 'HOC_VIEN', 'LAPTOP', 'EMAIL');
+  PERFORM public.ttc_seed_tam_viec(v_ct, 9, 'THUC_HANH', '14:10', '14:50', 'RỦI RO PHÂN KHÚC KHDN Ở THỜI ĐIỂM HIỆN NAY: 05 rủi ro lớn nhất, mỗi rủi ro có dấu hiệu nhận biết sớm, số đo, giải pháp giảm thiểu, người chịu trách nhiệm.', 'Bản đồ rủi ro KHDN + 05 giải pháp', 'HOC_VIEN', 'LAPTOP', 'EMAIL');
+  PERFORM public.ttc_seed_tam_viec(v_ct, 9, 'THUC_HANH', '14:50', '15:05', 'CẢI TIẾN GIẢM THỜI GIAN TÁC NGHIỆP CỦA RM: đo 03 quy trình hay làm nhất; chỉ ra bước thừa; ước tính số giờ tiết kiệm/tháng.', '03 đề xuất cải tiến có ước lượng định lượng', 'HOC_VIEN', 'LAPTOP', 'EMAIL');
+  PERFORM public.ttc_seed_tam_chieu_chuan(v_ct, 9, NULL, 'GD_PGD',
     'AI CA 3 – PHÂN TÍCH DỰ ÁN VÀ KHÁCH HÀNG BẰNG SKILL, AI AGENT, MCP, CONNECTOR (16:00–17:00). Chỉ dữ liệu công khai hoặc giả lập. Chỉ ra ranh giới dữ liệu tuyệt đối không được đưa vào.',
     'Nhật ký kiểm chứng AI 3 + bộ lọc dữ liệu trước khi dùng AI');
 
   -- NGÀY 10 — Đo lại – Bảo vệ – Cam kết
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 10, 'KHOI_DONG', '07:30', '07:50', 'Đo lại VietinType với bài có độ khó tương đương ngày 1. So tốc độ, độ chính xác, nhóm lỗi.', 'Log cuối kỳ + bảng so sánh', 'TCTH', 'MAY_CO_QUAN', 'TCTH');
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 10, 'THUC_HANH', '07:50', '09:20', 'BÀI SONG SONG: một bảng chỉ số tài chính khác, cùng dạng bài rà soát, 60 phút, không AI. Đo năng lực chuyển giao chứ không đo trí nhớ.', 'Bài song song đã khóa', 'HOC_VIEN', 'MAY_CO_QUAN', 'TCTH', true);
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 10, 'THUC_HANH', '09:20', '10:20', 'Đối chiếu đáp án bài song song. So với kết quả ngày 4 để đo mức tiến bộ theo từng nhóm lỗi.', 'Bảng so sánh ngày 4 – ngày 10', 'TO_CHAM', 'MAY_CO_QUAN', 'TCTH');
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 10, 'THUC_HANH', '10:20', '11:30', 'Chuẩn bị bảo vệ: chọn 06 sản phẩm, tự chấm theo rubric TRƯỚC khi xem điểm của hội đồng.', 'Phiếu tự chấm', 'HOC_VIEN', 'LAPTOP', 'EMAIL');
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 10, 'TRINH_BAY', '13:30', '14:50', 'BẢO VỆ 06 SẢN PHẨM trước hội đồng gọn: phiếu văn bản và Bloom; slide và bản ghi trình bày; hai bài rà soát và bản đồ khoảng trống; hệ điều hành cá nhân; giao việc – coaching – IDP; BHY ONE, rủi ro KHDN và cải tiến RM.', 'Phiếu bảo vệ từng sản phẩm', 'GD_PGD', 'LAPTOP', 'KHONG', true);
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 10, 'TRINH_BAY', '14:50', '15:20', 'PGĐ Hoàng trình bày ngược: sau 10 ngày trực tiếp làm vai Trưởng phòng, hệ thống lộ ra điểm yếu gì. Tối thiểu 05 cải tiến.', 'Báo cáo của PGĐ Hoàng', 'PGD', 'LAPTOP', 'EMAIL');
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 10, 'TRINH_BAY', '15:20', '16:15', 'Công bố điểm theo TỪNG CẤU PHẦN, không công bố một điểm tổng. Giám đốc kết luận: điểm mạnh, khoảng trống, mức giám sát cần thiết trong 90 ngày. Kèm phiên Giám đốc chia sẻ: «Đừng đợi có chức danh cao hơn rồi mới hành xử như vị trí cao hơn».', 'Biên bản tổng kết', 'GD', 'KHONG', 'TCTH', true);
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 10, 'TU_SUY_NGAM', '16:15', '16:35', 'Tự chấm 08 tiêu chí lần 2 + phiếu STOP – START – CONTINUE + cam kết 30 ngày.', 'Phiếu tự soi đợt 2 trên Training Center', 'HOC_VIEN', 'LAPTOP', 'TRAINING_CENTER', true);
-  PERFORM pg_temp.ttc_seed_viec(v_ct, 10, 'THUC_HANH', '16:35', '17:00', 'Chốt kế hoạch 30–60–90 ngày, lịch review, nhiệm vụ khi trở lại vai Trưởng phòng và điều kiện điều chỉnh. Ba bên ký.', 'Kế hoạch 30–60–90 được ký', 'GD_PGD', 'GIAY', 'TCTH');
+  PERFORM public.ttc_seed_tam_viec(v_ct, 10, 'KHOI_DONG', '07:30', '07:50', 'Đo lại VietinType với bài có độ khó tương đương ngày 1. So tốc độ, độ chính xác, nhóm lỗi.', 'Log cuối kỳ + bảng so sánh', 'TCTH', 'MAY_CO_QUAN', 'TCTH');
+  PERFORM public.ttc_seed_tam_viec(v_ct, 10, 'THUC_HANH', '07:50', '09:20', 'BÀI SONG SONG: một bảng chỉ số tài chính khác, cùng dạng bài rà soát, 60 phút, không AI. Đo năng lực chuyển giao chứ không đo trí nhớ.', 'Bài song song đã khóa', 'HOC_VIEN', 'MAY_CO_QUAN', 'TCTH', true);
+  PERFORM public.ttc_seed_tam_viec(v_ct, 10, 'THUC_HANH', '09:20', '10:20', 'Đối chiếu đáp án bài song song. So với kết quả ngày 4 để đo mức tiến bộ theo từng nhóm lỗi.', 'Bảng so sánh ngày 4 – ngày 10', 'TO_CHAM', 'MAY_CO_QUAN', 'TCTH');
+  PERFORM public.ttc_seed_tam_viec(v_ct, 10, 'THUC_HANH', '10:20', '11:30', 'Chuẩn bị bảo vệ: chọn 06 sản phẩm, tự chấm theo rubric TRƯỚC khi xem điểm của hội đồng.', 'Phiếu tự chấm', 'HOC_VIEN', 'LAPTOP', 'EMAIL');
+  PERFORM public.ttc_seed_tam_viec(v_ct, 10, 'TRINH_BAY', '13:30', '14:50', 'BẢO VỆ 06 SẢN PHẨM trước hội đồng gọn: phiếu văn bản và Bloom; slide và bản ghi trình bày; hai bài rà soát và bản đồ khoảng trống; hệ điều hành cá nhân; giao việc – coaching – IDP; BHY ONE, rủi ro KHDN và cải tiến RM.', 'Phiếu bảo vệ từng sản phẩm', 'GD_PGD', 'LAPTOP', 'KHONG', true);
+  PERFORM public.ttc_seed_tam_viec(v_ct, 10, 'TRINH_BAY', '14:50', '15:20', 'PGĐ Hoàng trình bày ngược: sau 10 ngày trực tiếp làm vai Trưởng phòng, hệ thống lộ ra điểm yếu gì. Tối thiểu 05 cải tiến.', 'Báo cáo của PGĐ Hoàng', 'PGD', 'LAPTOP', 'EMAIL');
+  PERFORM public.ttc_seed_tam_viec(v_ct, 10, 'TRINH_BAY', '15:20', '16:15', 'Công bố điểm theo TỪNG CẤU PHẦN, không công bố một điểm tổng. Giám đốc kết luận: điểm mạnh, khoảng trống, mức giám sát cần thiết trong 90 ngày. Kèm phiên Giám đốc chia sẻ: «Đừng đợi có chức danh cao hơn rồi mới hành xử như vị trí cao hơn».', 'Biên bản tổng kết', 'GD', 'KHONG', 'TCTH', true);
+  PERFORM public.ttc_seed_tam_viec(v_ct, 10, 'TU_SUY_NGAM', '16:15', '16:35', 'Tự chấm 08 tiêu chí lần 2 + phiếu STOP – START – CONTINUE + cam kết 30 ngày.', 'Phiếu tự soi đợt 2 trên Training Center', 'HOC_VIEN', 'LAPTOP', 'TRAINING_CENTER', true);
+  PERFORM public.ttc_seed_tam_viec(v_ct, 10, 'THUC_HANH', '16:35', '17:00', 'Chốt kế hoạch 30–60–90 ngày, lịch review, nhiệm vụ khi trở lại vai Trưởng phòng và điều kiện điều chỉnh. Ba bên ký.', 'Kế hoạch 30–60–90 được ký', 'GD_PGD', 'GIAY', 'TCTH');
 END $seed$;
+
+-- Ba hàm seed chỉ dùng một lần — xoá ngay để không thành cửa ghi ngoài RLS
+DROP FUNCTION IF EXISTS public.ttc_seed_tam_viec(uuid, int, text, text, text, text, text, text, text, text, boolean);
+DROP FUNCTION IF EXISTS public.ttc_seed_tam_sang_chuan(uuid, int, int);
+DROP FUNCTION IF EXISTS public.ttc_seed_tam_chieu_chuan(uuid, int, text, text, text, text);
 
 COMMENT ON TABLE public.ttc_chuong_trinh IS 'Bắc Hưng Yên Training Center — một chương trình đào tạo/rèn luyện (đặc tả 1.0, 06/09/2026)';
 COMMENT ON TABLE public.ttc_thanh_vien IS 'Vai trong chương trình: hoc_vien / huong_dan / bgd / quan_tri — nguồn quyền cho toàn bộ bảng ttc_*';
