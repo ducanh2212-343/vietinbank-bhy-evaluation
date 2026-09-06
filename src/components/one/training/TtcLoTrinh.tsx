@@ -13,7 +13,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { ngayVnChuoi } from '@/lib/lichNghi';
 import {
   TTC_PHAN, TTC_TEN_NOI_NOP, TTC_TEN_PHU_TRACH, TTC_TEN_THIET_BI, TTC_TEN_TRANG_THAI,
-  docCauHinhBao, moTaNguoiNhanBao, nhanNgay, ngayMacDinh, thieuDeTich, tichDuoc, tienDoNgay, trangThaiViec,
+  docCauHinhBao, moTaNguoiNhanBao, moTaThoiLuong, nhanNgay, ngayMacDinh, nhomTheoBuoi, thieuDeTich,
+  thoiLuongPhut, tichDuoc, tienDoNgay, trangThaiViec,
   type TtcDauViec, type TtcNgay, type TtcTep, type TtcTienDo,
 } from '@/lib/trainingCenter';
 import type { TtcBoiCanh } from './useTrainingCenter';
@@ -232,44 +233,46 @@ export function TtcLoTrinh({ bc }: { bc: TtcBoiCanh }) {
         </div>
       </div>
 
-      {/* Lịch chi tiết theo phần */}
+      {/* Lịch trong ngày gom theo buổi — giờ là khuyến nghị, không phải mốc phải theo */}
       <div className="space-y-4">
         {viecCuaNgay.length === 0 && (
           <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-center text-sm text-slate-500">
             Ngày này chưa có đầu việc.{suaDuoc ? ' Bấm «Thêm đầu việc» để soạn.' : ''}
           </p>
         )}
-        {TTC_PHAN.map((phan) => {
-          const ds = viecCuaNgay.filter((v) => v.phan === phan.ma);
-          if (ds.length === 0) return null;
-          return (
-            <section key={phan.ma}>
-              <h3 className="mb-2 text-2xs font-bold uppercase tracking-widest text-slate-500">{phan.ten}</h3>
-              <div className="space-y-2">
-                {ds.map((v) => (
-                  <DongDauViec
-                    key={v.id}
-                    v={v}
-                    ngay={ngayHien!}
-                    tienDo={tienDoTheoViec.get(v.id)}
-                    daCham={daCham.has(ngayHien!.id)}
-                    coTheTich={coTheTich}
-                    homNay={homNay}
-                    onTich={(x) => tich(v, x)}
-                    laHocVien={bc.laHocVien}
-                    nopDuoc={bc.laHocVien && !!ctId && !!profileId && !!user && tichDuoc(ngayHien!, homNay)}
-                    ctId={ctId ?? ''}
-                    profileId={profileId ?? ''}
-                    userId={user?.id ?? ''}
-                    suaDuoc={suaDuoc && !xemNgayMai}
-                    onSua={() => setViecSua(v)}
-                    onXoa={() => boViec(v)}
-                  />
-                ))}
-              </div>
-            </section>
-          );
-        })}
+        {nhomTheoBuoi(viecCuaNgay).map((nhom) => (
+          <section key={nhom.buoi}>
+            <div className="mb-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-brand-navy">{nhom.ten}</h3>
+              <span className="text-2xs text-slate-500">
+                khuyến nghị <b className="tabular-nums text-slate-600">{nhom.tu}–{nhom.den}</b>
+                {nhom.tongPhut > 0 && <> · {nhom.viec.length} đầu việc, khoảng {moTaThoiLuong(nhom.tongPhut)}</>}
+              </span>
+            </div>
+            <div className="space-y-2">
+              {nhom.viec.map((v) => (
+                <DongDauViec
+                  key={v.id}
+                  v={v}
+                  ngay={ngayHien!}
+                  tienDo={tienDoTheoViec.get(v.id)}
+                  daCham={daCham.has(ngayHien!.id)}
+                  coTheTich={coTheTich}
+                  homNay={homNay}
+                  onTich={(x) => tich(v, x)}
+                  laHocVien={bc.laHocVien}
+                  nopDuoc={bc.laHocVien && !!ctId && !!profileId && !!user && tichDuoc(ngayHien!, homNay)}
+                  ctId={ctId ?? ''}
+                  profileId={profileId ?? ''}
+                  userId={user?.id ?? ''}
+                  suaDuoc={suaDuoc && !xemNgayMai}
+                  onSua={() => setViecSua(v)}
+                  onXoa={() => boViec(v)}
+                />
+              ))}
+            </div>
+          </section>
+        ))}
       </div>
 
       {/* Tự suy ngẫm của ngày — chỉ học viên */}
@@ -304,9 +307,11 @@ function DongDauViec({
   return (
     <div className={`rounded-2xl border bg-white p-3 shadow-sm ${v.trong_tam ? 'border-[#A8763E]/50' : 'border-slate-200'} ${tt === 'HOAN_THANH' || tt === 'DA_DANH_GIA' ? 'opacity-80' : ''}`}>
       <div className="flex gap-3">
+        {/* Thời lượng khuyến nghị thay cho hai mốc giờ: học viên tự sắp trong buổi,
+            in mốc giờ ra thì thành một cái hẹn không ai cam kết */}
         <div className="flex w-14 shrink-0 flex-col items-center pt-0.5 text-center">
-          <span className="text-sm font-bold tabular-nums text-brand-navy">{v.gio_bat_dau}</span>
-          <span className="text-2xs tabular-nums text-slate-400">{v.gio_ket_thuc}</span>
+          <span className="text-sm font-bold tabular-nums text-brand-navy">{thoiLuongPhut(v)}</span>
+          <span className="text-2xs text-slate-400">phút</span>
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium leading-snug text-slate-800">
@@ -315,6 +320,7 @@ function DongDauViec({
           </p>
           {v.dau_ra && <p className="mt-1 text-xs text-slate-600"><b>Đầu ra:</b> {v.dau_ra}</p>}
           <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-2xs text-slate-500">
+            <span className="rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600">{TTC_PHAN.find((p) => p.ma === v.phan)?.ten ?? v.phan}</span>
             <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" /> {TTC_TEN_PHU_TRACH[v.nguoi_phu_trach]}</span>
             {IconTb && <span className="inline-flex items-center gap-1"><IconTb className="h-3 w-3" /> {TTC_TEN_THIET_BI[v.thiet_bi]}</span>}
             {v.noi_nop !== 'KHONG' && (

@@ -655,3 +655,77 @@ hàm nhắc theo cấu hình (`ttc_ten_phan` + `ttc_nhac_theo_lich` + cron 5 ph�
 chép lại trong file gỡ — nguyên văn nằm ở mục 5 của
 `20261010090000_ttc_lo_trinh_nop_tep_va_nhac.sql`, chạy lại đoạn đó nếu cần. Chép
 hai hàm dài vào file gỡ chỉ tạo thêm một bản thứ hai để lệch nhau.
+
+---
+
+## 14. Đợt 8 — Lịch ngày gom thành buổi, giờ chỉ còn là khuyến nghị
+
+### 14.1 Yêu cầu
+
+Giám đốc 06/09/2026: «chia thành 2 phần trong lịch hàng ngày là buổi sáng và
+buổi chiều, phần thời gian chỉ là khuyến nghị khoảng thời gian làm thôi».
+
+Đây là bước tiếp theo tự nhiên của mục 12 và 13: lộ trình đã xếp theo khung buổi,
+nhắc theo giờ đã bỏ — nhưng giao diện vẫn còn trình bày lịch như một cái hẹn theo
+phút. Năm mục theo loại việc (Khởi động · Nghiên cứu văn bản · Thực hành · Trình
+bày · Tự suy ngẫm) cộng hai mốc giờ cứng trên từng dòng làm học viên đọc thành
+«09:00 phải xong việc này», trong khi thực tế học viên tự sắp thứ tự trong buổi.
+
+### 14.2 Không thêm cột `buoi` vào database
+
+Phụ lục có gợi ý thêm cột `buoi`. Không làm, vì buổi **suy thẳng được từ
+`gio_bat_dau`** đã có sẵn: trước 12:00 là sáng, 12:00–17:59 là chiều, từ 18:00 là
+sau giờ làm việc. Thêm một cột nữa là đẻ nơi thứ hai nói cùng một chuyện, rồi có
+ngày Phòng TCTH sửa giờ mà quên sửa buổi — đúng cái bẫy mà bảng «nguồn duy nhất»
+trong `CLAUDE.md` sinh ra để tránh.
+
+Dữ liệu giờ **giữ nguyên hoàn toàn**, không xoá, không đổi. Chỉ đổi cách trình
+bày. Nhờ vậy lịch Ban Giám đốc vẫn tính được tải theo phút, và nếu sau này Giám
+đốc muốn quay lại hiển thị mốc giờ thì chỉ là việc của giao diện.
+
+Bốn buổi pickleball ở 18:00–19:30 tách thành nhóm thứ ba «Sau giờ làm việc».
+Nhét chúng vào buổi chiều thì khung giờ khuyến nghị của chiều kéo tới 19:30 và
+cán bộ đọc thành «chiều làm tới 7 rưỡi tối» — sai hẳn ý. Nhóm này rỗng ở sáu
+ngày còn lại nên không hiện ra.
+
+### 14.3 Giờ trình bày thành khuyến nghị như thế nào
+
+| Trước | Sau |
+| --- | --- |
+| 5 mục theo loại việc | 2 mục: Buổi sáng · Buổi chiều (+ Sau giờ làm việc khi có) |
+| Tiêu đề mục: tên loại việc | Tiêu đề mục: tên buổi + «khuyến nghị 08:00–11:30 · 5 đầu việc, khoảng 3 giờ 30 phút» |
+| Mỗi dòng: `08:00` / `08:30` | Mỗi dòng: `30` `phút` |
+| Loại việc là tiêu đề nhóm | Loại việc thành nhãn nhỏ ngay trên dòng đầu việc |
+
+Loại việc không mất đi — nó chuyển từ tiêu đề nhóm thành một nhãn trên dòng, nên
+người xem vẫn biết đầu việc nào thuộc phần nào mà không phải nhớ mình đang ở mục
+nào.
+
+Không có gì bị đánh dấu trễ theo giờ: `trangThaiViec` vốn chỉ tính theo **ngày**
+(chưa tới ngày → Chưa mở, tới ngày → Đang làm, tích rồi → Hoàn thành), nên không
+phải sửa gì để thoả ràng buộc «không tự động đánh dấu quá hạn theo giờ».
+
+### 14.4 Sửa luôn lỗi «08:00:00»
+
+Cột kiểu `time` của Postgres trả về `HH:MM:SS`. Bốn chỗ đang in thẳng nên cán bộ
+thấy thừa hai chữ số giây. Thêm `gioNgan()` — cắt về `HH:MM` ở đúng một chỗ — và
+dùng ở lịch Ban Giám đốc, màn Quản trị, trang chủ Training Center.
+
+Hai chỗ nữa cùng gốc lỗi, không chỉ là hiển thị:
+
+- **Trang chủ** so `v.gio_ket_thuc > gioHienTai` với `gioHienTai` dạng `HH:MM`.
+  So chuỗi `'09:00:00' > '09:00'` ra đúng, nên đầu việc kết thúc đúng phút này
+  vẫn bị tính là «còn tới».
+- **Form sửa đầu việc** nạp `'09:00:00'` vào ô `<input type="time">` và phép kiểm
+  «giờ kết thúc phải sau giờ bắt đầu» so hai chuỗi khác dạng. Cắt ngay lúc nạp
+  form là xong cả hai.
+
+### 14.5 Đã kiểm chứng
+
+Thuần giao diện, **không có migration** trong đợt này. 11 test mới trong
+`src/lib/__tests__/loTrinhTheoBuoi.test.ts`: ranh giới ba buổi (kể cả 11:30, 17:45,
+18:00), khung giờ khuyến nghị lấy giờ kết thúc **muộn nhất** chứ không phải của
+đầu việc cuối danh sách, buổi rỗng không xuất hiện, thời lượng đọc thành lời
+(«1 giờ» chứ không «1 giờ 0 phút»), và `gioNgan` với chuỗi rỗng hay chuỗi hỏng.
+
+Toàn bộ: `npm run test` 1132/1132 xanh, `tsc` sạch, `npm run build` xong.

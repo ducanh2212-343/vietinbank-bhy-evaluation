@@ -484,6 +484,16 @@ chục tin lúc 7h00. Cấu hình `ttc_chuong_trinh.nhac` đổi khuôn thành
 (06/09/2026, tên `ttc_bao_khi_hoan_thanh`); file gỡ cùng tên trong
 `supabase/rollbacks/`. Chi tiết: mục 13 của tài liệu trên.
 
+**Lịch ngày gom thành buổi (06/09/2026, đợt 8):** lịch một ngày còn hai mục
+**Buổi sáng** và **Buổi chiều** (pickleball tách «Sau giờ làm việc») thay cho năm
+mục theo loại việc; mỗi buổi ghi khung giờ khuyến nghị và tổng thời lượng, mỗi
+đầu việc ghi số phút thay cho hai mốc giờ. **Không thêm cột `buoi`** — buổi suy
+thẳng từ `gio_bat_dau`, thêm cột là đẻ nơi thứ hai nói cùng một chuyện. Dữ liệu
+giờ giữ nguyên. Thêm `gioNgan()` cắt `HH:MM:SS` → `HH:MM`, sửa lỗi hiển thị
+«08:00:00» ở lịch BGĐ, màn Quản trị, trang chủ, và hai chỗ so giờ khác dạng
+(trang chủ, form sửa đầu việc). **Không có migration.** Chi tiết: mục 14 của tài
+liệu trên.
+
 ## Chiêu thức 2 — Kanban 5W2H + PDCA (08/2026)
 
 Trang `/one/chieu-thuc-2` được dựng lại theo đặc tả đầy đủ

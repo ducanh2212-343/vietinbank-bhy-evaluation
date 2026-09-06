@@ -758,6 +758,91 @@ export function thoiLuongPhut(v: Pick<TtcDauViec, 'gio_bat_dau' | 'gio_ket_thuc'
   return Math.max(0, phutTuGio(v.gio_ket_thuc) - phutTuGio(v.gio_bat_dau));
 }
 
+// ---------------------------------------------------------------------------
+// Chia ngày thành BUỔI — giờ chỉ là khuyến nghị (Giám đốc 06/09/2026)
+//
+// «Chia thành 2 phần trong lịch hàng ngày là buổi sáng và buổi chiều, phần thời
+// gian chỉ là khuyến nghị khoảng thời gian làm thôi.»
+//
+// Không thêm cột `buoi` vào database: buổi suy thẳng từ gio_bat_dau đã có sẵn.
+// Thêm một cột nữa là đẻ nơi thứ hai nói cùng một chuyện, rồi có ngày TCTH sửa
+// giờ mà quên sửa buổi. Giờ trong lộ trình vẫn giữ nguyên, chỉ đổi cách trình
+// bày: không còn là mốc phải theo, mà là khoảng thời gian gợi ý.
+// ---------------------------------------------------------------------------
+
+export type TtcBuoi = 'SANG' | 'CHIEU' | 'NGOAI_GIO';
+
+export const TTC_BUOI: Array<{ ma: TtcBuoi; ten: string }> = [
+  { ma: 'SANG', ten: 'Buổi sáng' },
+  { ma: 'CHIEU', ten: 'Buổi chiều' },
+  // Bốn buổi pickleball nằm ở 18:00–19:30. Nhét chúng vào buổi chiều thì khung
+  // giờ khuyến nghị của chiều kéo tới 19:30 và cán bộ đọc thành «chiều làm tới
+  // 7 rưỡi tối» — sai hẳn ý. Tách riêng, và nhóm này thường rỗng.
+  { ma: 'NGOAI_GIO', ten: 'Sau giờ làm việc' },
+];
+
+/** Ranh giới giữa các buổi, tính theo phút kể từ 0h */
+const MOC_TRUA = 12 * 60;
+const MOC_HET_GIO = 18 * 60;
+
+export function buoiCuaViec(v: Pick<TtcDauViec, 'gio_bat_dau'>): TtcBuoi {
+  const p = phutTuGio(v.gio_bat_dau);
+  if (p < MOC_TRUA) return 'SANG';
+  return p < MOC_HET_GIO ? 'CHIEU' : 'NGOAI_GIO';
+}
+
+/**
+ * Cột `time` của Postgres trả về 'HH:MM:SS'. In thẳng thì cán bộ thấy «08:00:00»
+ * — thừa hai chữ số không nói gì. Cắt về 'HH:MM' ở đúng một chỗ để mọi màn hình
+ * hiện giống nhau.
+ */
+export function gioNgan(gio: string | null | undefined): string {
+  const t = (gio ?? '').trim();
+  return /^\d{1,2}:\d{2}/.test(t) ? t.slice(0, 5) : t;
+}
+
+/** «40 phút» · «1 giờ» · «1 giờ 30 phút» — thời lượng khuyến nghị, đọc thành lời */
+export function moTaThoiLuong(phut: number): string {
+  const p = Math.max(0, Math.round(phut));
+  if (p === 0) return '';
+  if (p < 60) return `${p} phút`;
+  const gio = Math.floor(p / 60);
+  const du = p % 60;
+  return du === 0 ? `${gio} giờ` : `${gio} giờ ${du} phút`;
+}
+
+export interface NhomBuoi {
+  buoi: TtcBuoi;
+  ten: string;
+  viec: TtcDauViec[];
+  /** Khung giờ khuyến nghị của cả buổi: sớm nhất → muộn nhất, 'HH:MM' */
+  tu: string;
+  den: string;
+  /** Tổng thời lượng khuyến nghị của các đầu việc trong buổi, tính bằng phút */
+  tongPhut: number;
+}
+
+/**
+ * Gom đầu việc của một ngày thành các buổi, xếp theo giờ trong buổi. Buổi không
+ * có đầu việc nào thì không trả về — ngày nào cũng in ra một mục «Sau giờ làm
+ * việc» rỗng chỉ làm lịch dài thêm.
+ */
+export function nhomTheoBuoi(dsViecCuaNgay: TtcDauViec[]): NhomBuoi[] {
+  return TTC_BUOI.map(({ ma, ten }) => {
+    const viec = dsViecCuaNgay
+      .filter((v) => buoiCuaViec(v) === ma)
+      .sort((a, b) => phutTuGio(a.gio_bat_dau) - phutTuGio(b.gio_bat_dau) || a.thu_tu - b.thu_tu);
+    return {
+      buoi: ma,
+      ten,
+      viec,
+      tu: viec.length ? gioNgan(viec[0].gio_bat_dau) : '',
+      den: viec.length ? gioNgan(viec.reduce((x, v) => (phutTuGio(v.gio_ket_thuc) > phutTuGio(x.gio_ket_thuc) ? v : x)).gio_ket_thuc) : '',
+      tongPhut: viec.reduce((s, v) => s + thoiLuongPhut(v), 0),
+    };
+  }).filter((n) => n.viec.length > 0);
+}
+
 /** Đầu việc này cần Giám đốc hay PGĐ có mặt không */
 export function canBgd(v: Pick<TtcDauViec, 'nguoi_phu_trach'>): boolean {
   return v.nguoi_phu_trach === 'GD' || v.nguoi_phu_trach === 'PGD' || v.nguoi_phu_trach === 'GD_PGD';

@@ -14,7 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import {
   TTC_NHOM_DOI_TUONG, TTC_TEN_NOI_NOP, TTC_TEN_PHU_TRACH, TTC_TEN_THIET_BI, TTC_TEN_TRANG_THAI_CT, TTC_TINH_NANG,
-  TTC_TEN_VAI, duongDanChuongTrinh, nhanNgay, xepChuongTrinhCuaToi,
+  TTC_TEN_VAI, duongDanChuongTrinh, gioNgan, nhanNgay, xepChuongTrinhCuaToi,
   type TtcChuongTrinh, type TtcDauViec, type TtcNgay, type TtcNhomDoiTuong, type TtcVai,
 } from '@/lib/trainingCenter';
 import { docCauHinhDiemDanh, nhanLuong } from '@/lib/diemDanh';
@@ -370,7 +370,7 @@ function ChiTietChuongTrinh({ ctId, suaDuoc, xepDuoc, onNhanBan }: {
                     <ul className="divide-y divide-slate-100 text-sm">
                       {viec.map((v) => (
                         <li key={v.id} className="flex items-start gap-2 py-1.5">
-                          <span className="w-24 shrink-0 tabular-nums text-slate-500">{v.gio_bat_dau}–{v.gio_ket_thuc}</span>
+                          <span className="w-24 shrink-0 tabular-nums text-slate-500">{gioNgan(v.gio_bat_dau)}–{gioNgan(v.gio_ket_thuc)}</span>
                           <span className="min-w-0 flex-1">
                             <span className="text-slate-800">{v.trong_tam ? '★ ' : ''}{v.ten}</span>
                             <span className="block text-2xs text-slate-500">
