@@ -4,7 +4,7 @@ import { ArrowRight, CalendarClock, Columns3, Route, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button';
 import { ngayVnChuoi } from '@/lib/lichNghi';
 import {
-  TTC_TEN_VAI, canBgd, duongDanChuongTrinh, nhanNgay, ngayMacDinh, tienDoNgay,
+  TTC_TEN_VAI, canBgd, duongDanChuongTrinh, gioNgan, nhanNgay, ngayMacDinh, tienDoNgay,
 } from '@/lib/trainingCenter';
 import type { TtcBoiCanh } from './useTrainingCenter';
 import { useTtcDauViec, useTtcNgay, useTtcTienDo, useTtcViecGoiDau } from './useTrainingCenter';
@@ -32,7 +32,9 @@ export function TtcTrangChu({ bc }: { bc: TtcBoiCanh }) {
   const tien = tienDoNgay(viecNgay, tienDo);
   const laHomNay = ngay?.ngay === homNay;
   const gioHienTai = new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit' });
-  const slotBgdKe = viecNgay.filter(canBgd).find((v) => !laHomNay || v.gio_ket_thuc > gioHienTai) ?? null;
+  // gioNgan hai vế: cột time trả 'HH:MM:SS', so thẳng với 'HH:MM' thì việc kết thúc
+  // đúng phút này vẫn bị tính là còn tới
+  const slotBgdKe = viecNgay.filter(canBgd).find((v) => !laHomNay || gioNgan(v.gio_ket_thuc) > gioHienTai) ?? null;
   const daNghiemThu = dsGoiDau.filter((g) => g.nghiem_thu_ket_qua === 'dat').length;
   // Giữ học viên đang xem khi chuyển màn (người hướng dẫn/BGĐ xem nhiều học viên)
   const duoi = !bc.laHocVien && hocVienId ? `?hv=${hocVienId}` : '';
@@ -62,7 +64,7 @@ export function TtcTrangChu({ bc }: { bc: TtcBoiCanh }) {
               {slotBgdKe && (
                 <p className="mt-3 flex items-center gap-2 rounded-xl bg-slate-50 p-2.5 text-sm text-slate-700">
                   <CalendarClock className="h-4 w-4 shrink-0 text-[#A8763E]" />
-                  <span><b>{slotBgdKe.gio_bat_dau}–{slotBgdKe.gio_ket_thuc}</b> cần Ban Giám đốc: {slotBgdKe.ten}</span>
+                  <span><b>{gioNgan(slotBgdKe.gio_bat_dau)}–{gioNgan(slotBgdKe.gio_ket_thuc)}</b> cần Ban Giám đốc: {slotBgdKe.ten}</span>
                 </p>
               )}
               <div className="mt-4 flex flex-wrap gap-2">

@@ -437,6 +437,63 @@ lần đào tạo, cron `ttc-nhac-theo-lich` mỗi 5 phút gửi hai mã tin m�
 `whlysprzsguehxmrjwha` (06/09/2026, tên `ttc_lo_trinh_nop_tep_va_nhac`); file gỡ
 cùng tên trong `supabase/rollbacks/`. Chi tiết: mục 9 của tài liệu trên.
 
+**Điểm danh hai luồng (06/09/2026, đợt 4):** học viên bấm nút trên điện thoại
+(máy chủ tính khoảng cách Haversine tới toạ độ phòng học, so bán kính) hoặc quét
+tấm QR **riêng của từng ngày** do TCTH in ra (`/one/training-center/diem-danh?ma=`).
+Mã gắn với một ngày, cấp lại thì mã cũ chết; tấm in xuất PNG hoặc PDF A5 kèm
+châm ngôn EQ theo ngày. TCTH đặt toạ độ bằng nút «Lấy toạ độ tại đây», theo dõi
+theo ngày và ghi hộ có lý do. Thêm phụ thuộc `qrcode` (nạp động, chỉ tải khi mở
+tấm in). Migration `20261011090000_ttc_diem_danh.sql` **đã áp** vào
+`whlysprzsguehxmrjwha` (06/09/2026, tên `ttc_diem_danh`); file gỡ cùng tên trong
+`supabase/rollbacks/`. **Không thêm loại push nào.** Chi tiết: mục 10 của tài
+liệu trên.
+
+**Thẩm định định vị trước khi mở (06/09/2026, đợt 5):** mỗi lớp tự chọn luồng;
+lớp mới mặc định **chỉ QR**. Mở thêm luồng định vị phải đo thử tại phòng học
+(`ttc_thu_dinh_vi`) đủ **3 lần gần nhất đều trong bán kính** — trigger
+`ttc_chuong_trinh_truoc_sua` chặn ở tầng dữ liệu, không chỉ làm mờ nút. Hệ thống
+đề xuất bán kính = chỗ xa nhất + sai số máy báo, làm tròn lên bội 50. Danh sách
+chương trình hiện luồng đang mở của từng lớp. Migration
+`20261012090000_ttc_tham_dinh_dinh_vi.sql` **đã áp** vào `whlysprzsguehxmrjwha`
+(06/09/2026, tên `ttc_tham_dinh_dinh_vi`); lớp 10 ngày đã tự về chỉ QR vì toạ độ
+hiện tại vẫn là toạ độ tạm tính. Chi tiết: mục 11 của tài liệu trên.
+
+**Thay toàn bộ lộ trình 10 ngày (06/09/2026, đợt 6):** lịch mười ngày được thay
+bằng bản nội dung mới nhất và xếp lại vào giờ làm việc thật — sáng 08:00–11:30,
+chiều 13:30 và muộn nhất 18:00 (bản cũ có ngày bắt đầu 07:30). Tổng **122 đầu
+việc**, giữ nguyên `lat_cat` và `cau_hoi_tu_soi`; bốn buổi pickleball vẫn ở
+18:00–19:30. Migration `20261013090000_ttc_lo_trinh_ban_moi.sql` **đã áp** vào
+`whlysprzsguehxmrjwha` (06/09/2026), chia bốn lần vì file 52 KB:
+`ttc_lo_trinh_ban_moi_1_ngay` · `…_2_dau_viec_1_4` · `…_3_dau_viec_5_7` ·
+`…_4_dau_viec_8_10`. Trước khi xoá, nguyên trạng được chụp vào
+`ttc_luu_lo_trinh_20261013` và `ttc_luu_ngay_20261013` (đã bật RLS, `REVOKE ALL
+FROM anon, authenticated`); file gỡ cùng tên trong `supabase/rollbacks/` khôi
+phục từ hai bảng này rồi tự xoá chúng. Chi tiết: mục 12 của tài liệu trên.
+
+**Bỏ nhắc theo giờ, báo cả lớp khi tích hoàn thành (06/09/2026, đợt 7):** bốn
+loại tin tính mốc theo `gio_bat_dau`/`gio_ket_thuc` (sắp bắt đầu ngày · sắp hết
+phần · sắp trình bày · 17h còn việc) đã **gỡ hẳn** — cả ba cron `ttc-nhac*` lẫn
+bốn hàm — vì giờ trong lộ trình nay chỉ là gợi ý, nhắc theo nó thì tin luôn sai
+lúc. Thay bằng `TTC_HOAN_THANH`: học viên tích một đầu việc → **toàn bộ thành
+viên khóa học** nhận tin kèm con số N/M của ngày. `TTC_DU_NGAY` bỏ (tin mới đã
+mang N/M). Còn đúng hai mã tin TTC: `TTC_HOAN_THANH` và `TTC_CUNG_CO`. Tin còn
+chờ phát được **gộp theo ngày lộ trình** để việc làm bù buổi tối không dội cả
+chục tin lúc 7h00. Cấu hình `ttc_chuong_trinh.nhac` đổi khuôn thành
+`{"khi_hoan_thanh":{"bat","nguoi"}}`, `nguoi` rỗng = cả lớp. Migration
+`20261015090000_ttc_bao_khi_hoan_thanh.sql` **đã áp** vào `whlysprzsguehxmrjwha`
+(06/09/2026, tên `ttc_bao_khi_hoan_thanh`); file gỡ cùng tên trong
+`supabase/rollbacks/`. Chi tiết: mục 13 của tài liệu trên.
+
+**Lịch ngày gom thành buổi (06/09/2026, đợt 8):** lịch một ngày còn hai mục
+**Buổi sáng** và **Buổi chiều** (pickleball tách «Sau giờ làm việc») thay cho năm
+mục theo loại việc; mỗi buổi ghi khung giờ khuyến nghị và tổng thời lượng, mỗi
+đầu việc ghi số phút thay cho hai mốc giờ. **Không thêm cột `buoi`** — buổi suy
+thẳng từ `gio_bat_dau`, thêm cột là đẻ nơi thứ hai nói cùng một chuyện. Dữ liệu
+giờ giữ nguyên. Thêm `gioNgan()` cắt `HH:MM:SS` → `HH:MM`, sửa lỗi hiển thị
+«08:00:00» ở lịch BGĐ, màn Quản trị, trang chủ, và hai chỗ so giờ khác dạng
+(trang chủ, form sửa đầu việc). **Không có migration.** Chi tiết: mục 14 của tài
+liệu trên.
+
 ## Chiêu thức 2 — Kanban 5W2H + PDCA (08/2026)
 
 Trang `/one/chieu-thuc-2` được dựng lại theo đặc tả đầy đủ

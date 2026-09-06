@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { AlertTriangle, CalendarDays } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  TTC_TEN_PHU_TRACH, TTC_TRAN_PHUT_BGD, lichBgd, nhanNgay, thoiLuongPhut, tongGioCaDot, vuotTranBgd,
+  TTC_TEN_PHU_TRACH, TTC_TRAN_PHUT_BGD, gioNgan, lichBgd, nhanNgay, thoiLuongPhut, tongGioCaDot, vuotTranBgd,
 } from '@/lib/trainingCenter';
 import type { TtcBoiCanh } from './useTrainingCenter';
 import { useTtcDauViec, useTtcNgay } from './useTrainingCenter';
@@ -55,7 +55,7 @@ export function TtcLichBgd({ bc }: { bc: TtcBoiCanh }) {
                 <ul className="mt-2 divide-y divide-slate-100 text-sm">
                   {d.viec.map((v) => (
                     <li key={v.id} className="flex gap-3 py-1.5">
-                      <span className="w-24 shrink-0 tabular-nums text-slate-600">{v.gio_bat_dau}–{v.gio_ket_thuc}</span>
+                      <span className="w-24 shrink-0 tabular-nums text-slate-600">{gioNgan(v.gio_bat_dau)}–{gioNgan(v.gio_ket_thuc)}</span>
                       <span className="w-10 shrink-0 text-right tabular-nums text-slate-400">{thoiLuongPhut(v)}′</span>
                       <span className="min-w-0 flex-1 text-slate-800">{v.ten}</span>
                       <span className={`shrink-0 rounded-full px-2 py-0.5 text-2xs font-semibold ${v.nguoi_phu_trach === 'GD' ? 'bg-brand-navy/10 text-brand-navy' : v.nguoi_phu_trach === 'PGD' ? 'bg-[#A8763E]/15 text-[#8A5E2C]' : 'bg-slate-100 text-slate-600'}`}>

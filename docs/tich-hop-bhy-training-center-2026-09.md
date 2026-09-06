@@ -306,3 +306,426 @@ phải nộp, **Chưa tích: học viên · n/m**). Đây là quyết định ng
 và tôn trọng trần tin nhẹ/ngày. Push mở về `/one/training-center/lo-trinh` —
 trang mới tự chuyển sang Lộ trình của chương trình đang chạy của người đọc
 (trước đây đường dẫn này chưa có route).
+
+---
+
+## 10. Điểm danh học viên — hai luồng (yêu cầu 06/09, đợt 4)
+
+Migration `20261011090000_ttc_diem_danh.sql` — **đã áp** 06/09/2026 vào
+`whlysprzsguehxmrjwha` (tên `ttc_diem_danh`). Kiểm sau khi áp: 2 bảng có RLS ·
+3 policy · 7 hàm · cấu hình đã bật cho chương trình 10 ngày (hai luồng, muộn sau
+15 phút, bán kính 250 m). File gỡ cùng tên trong `supabase/rollbacks/`; kịch bản
+A–G chạy thử trên Postgres cục bộ.
+
+### 10.1 Luồng 1 — điện thoại và định vị
+
+Thẻ «Điểm danh Ngày N» nằm đầu màn Lộ trình, **chỉ hiện đúng ngày học hôm nay**.
+Học viên bấm, trình duyệt xin quyền vị trí, toạ độ thô gửi lên RPC
+`ttc_diem_danh_dinh_vi`. **Máy chủ** tính khoảng cách (Haversine, hàm
+`ttc_khoang_cach_m`) và so với bán kính của chương trình — trình duyệt không có
+đường nào ghi thẳng vào bảng, vì toạ độ do trình duyệt gửi thì ai cũng sửa được
+trước khi gửi. Ngoài vùng thì câu báo nói rõ đang cách bao nhiêu mét và phạm vi
+cho phép là bao nhiêu.
+
+Toạ độ phòng học đặt ở màn Quản trị chương trình bằng nút **«Lấy toạ độ tại
+đây»**: người của TCTH đứng giữa phòng học bấm một lần. Bán kính khuyến nghị
+100–150 m cho một toà nhà; toạ độ đang dùng vẫn là toạ độ tạm tính khu vực
+Phường Mỹ Hào nên bán kính tạm để 250 m.
+
+### 10.2 Luồng 2 — quét tấm QR của ngày
+
+`ttc_qr_ngay` giữ mã của từng ngày (16 ký tự ngẫu nhiên từ `gen_random_bytes`).
+Mã **gắn với một ngày**: quét mã của ngày khác thì bị chặn kèm ngày của tấm QR.
+Cấp lại mã (`ttc_cap_ma_qr(_ngay, true)`) làm mã cũ vô hiệu ngay — dùng khi tấm
+in cũ bị chụp lan ra ngoài. Học viên không đọc được bảng mã (RLS chỉ mở cho
+quản trị/BGĐ); họ quét ảnh, trình duyệt mở
+`/one/training-center/diem-danh?ma=…`, trang tự gọi RPC một lần. Toạ độ gửi kèm
+nếu máy cho phép — không có cũng ghi được, chỉ là BGĐ không có gì đối chiếu khi
+nghi ngờ tấm QR bị chụp gửi ra ngoài.
+
+**Tấm in** (`TtcTamQr.tsx`) dựng bằng thư viện `qrcode` (nạp tại chỗ khi mở hộp
+thoại) và xuất bằng html2canvas: nút **Tải ảnh PNG** và **Bản in A5** (jsPDF,
+có `autoPrint`). Màu trên tấm in viết thẳng bằng mã hex chứ không dùng biến CSS
+theo chủ đề sáng/tối của cổng — html2canvas chụp màu đã tính của trình duyệt,
+để biến thì tấm in ra khác nhau tuỳ máy người bấm. Mã QR đen tuyền trên nền
+trắng vì máy in Chi nhánh in đen trắng. Nội dung tấm: tên trung tâm, tên chương
+trình, **NGÀY 0N** cỡ lớn, thứ và ngày tháng, tiêu đề buổi, mã QR 280 px, ba
+dòng hướng dẫn quét, một **châm ngôn EQ** (`CHAM_NGON_EQ`, 10 câu quay vòng theo
+số thứ tự ngày — câu do Chi nhánh soạn, **không gán tên tác giả** để không in ra
+một trích dẫn sai rồi treo trong phòng học mười ngày), chân trang ghi ngày in và
+bốn ký tự cuối của mã để đối chiếu tấm nào mới nhất.
+
+### 10.3 Theo dõi và ghi hộ
+
+Khối «Điểm danh» ở màn Quản trị chương trình: cấu hình · danh sách tấm QR theo
+ngày · bảng theo dõi từng ngày (có mặt / muộn mấy phút / vắng, kèm khoảng cách
+đã ghi). Học viên quên điện thoại thì TCTH **ghi hộ** — bắt buộc lý do ≥ 10 ký
+tự, lưu cả người ghi; dòng ghi hộ mang luồng `BO_SUNG` và không tính muộn. Sửa
+một dòng điểm danh thì không có đường nào: muốn đổi phải xoá rồi ghi lại, để
+không ai lặng lẽ sửa giờ điểm danh của người khác.
+
+### 10.4 Phần cố ý KHÔNG làm
+
+- **Không thêm loại push mới.** Quy ước của repo: thêm một loại tin là quyết
+  định nghiệp vụ. Cán bộ đã nhận 21+ loại push và chỉ 27/100 người bật push;
+  một tin «chưa điểm danh» nữa sẽ làm hỏng cả các tin cần hành động.
+- **Không chặn quét QR khi thiếu định vị.** Tấm QR do PGĐ mở trong phòng vốn đã
+  là bằng chứng có mặt; bắt thêm định vị chỉ làm học viên tắc ở cửa lớp.
+- **Không nhận diện khuôn mặt, không ảnh chụp.** Ngoài phạm vi yêu cầu và kéo
+  theo cả một tầng dữ liệu nhạy cảm mới.
+
+---
+
+## 11. Thẩm định định vị trước khi mở luồng (yêu cầu 06/09, đợt 5)
+
+Yêu cầu của Giám đốc: «một số lớp sẽ chỉ mở QR; sau khi test định vị chính xác
+mới mở phần định vị diện rộng». Migration
+`20261012090000_ttc_tham_dinh_dinh_vi.sql` — **đã áp** 06/09/2026 vào
+`whlysprzsguehxmrjwha` (tên `ttc_tham_dinh_dinh_vi`). Kiểm sau khi áp: bảng
+`ttc_thu_dinh_vi` có RLS · 2 policy · trigger `ttc_chuong_trinh_truoc_sua` ·
+4 hàm · lớp 10 ngày đã tự về **chỉ QR**. Kịch bản A–G chạy thử trên Postgres cục
+bộ (chặn bật khi chưa thẩm định, người ngoài chương trình không thử được, hai
+lần chưa đủ, lần thứ ba mới đạt, thu bán kính thì mất hiệu lực, RLS, gỡ sạch).
+
+### 11.1 Ba mức của một lớp
+
+| Mức | Luồng | Ai đặt |
+| --- | --- | --- |
+| Mặc định lớp mới | Chưa bật điểm danh | — |
+| Bật, chưa thẩm định | Chỉ **QR** | TCTH / BGĐ tích một ô |
+| Bật, đã thẩm định | **QR + định vị** | Mở được sau khi đo thử đạt |
+
+`TTC_DIEM_DANH_MAC_DINH()` đổi từ `['DINH_VI','QR']` thành `['QR']`: mặc định mở
+sẵn cả hai thì lớp nào quên rà lại là chạy thật bằng một toạ độ chưa ai đo.
+
+### 11.2 Đo thử — RPC `ttc_thu_dinh_vi`
+
+Nút «Thử tại chỗ này» trong khối Điểm danh của màn Quản trị. Mỗi lần bấm: lấy
+toạ độ máy, máy chủ tính khoảng cách tới toạ độ phòng học, **ghi vào
+`ttc_thu_dinh_vi` chứ không ghi điểm danh**, trả về khoảng cách + sai số + đã
+thẩm định xong chưa. Có ô «Chỗ đứng khi thử» để ghi «giữa phòng · cuối phòng ·
+cửa ra vào» — ba lần đo ở ba chỗ mới nói được điều gì về cả phòng. Thành viên
+chương trình đều thử được (để PGĐ cầm máy đi quanh phòng đo hộ), riêng xoá lần
+thử là của quản trị/BGĐ.
+
+Bảng **lưu khoảng cách thô, không lưu kết luận đạt/không**: bán kính còn được
+chỉnh, lưu con số thô thì đổi bán kính là các lần đo cũ tự được xét lại.
+
+### 11.3 Cổng chặn — ở tầng dữ liệu
+
+`ttc_dinh_vi_da_tham_dinh(_ct, _ban_kinh)`: **ba lần đo gần nhất** đều ≤ bán
+kính. Trigger `f_ttc_chuong_trinh_truoc_sua` chặn mọi UPDATE bật luồng định vị
+khi chưa đạt, kể cả UPDATE thẳng vào bảng. Giao diện làm mờ ô tích là lớp trải
+nghiệm; hàng rào thật là trigger — vì mở nhầm luồng định vị cho một lớp có toạ
+độ sai thì người phát hiện ra là học viên đang đứng ở cửa phòng lúc 7h30.
+
+Chỉ xét **ba lần gần nhất** chứ không xét cả lịch sử: đổi phòng học thì các lần
+đo cũ nói về một chỗ khác. Thu bán kính xuống dưới khoảng cách đã đo cũng làm
+mất hiệu lực — phải đo lại, đúng như khi đổi phòng.
+
+### 11.4 Bán kính đề xuất
+
+`ketLuanThuDinhVi` tính: **chỗ xa nhất + sai số máy báo lớn nhất**, làm tròn lên
+bội 50, kẹp trong 50–2000 m (đúng khoảng CHECK của cột `ban_kinh_m`). Nút «Dùng
+bán kính đề xuất N m» điền thẳng vào ô. Đây là con số có căn cứ đo được, thay cho
+việc đoán 100 hay 150 m.
+
+### 11.5 Rà trước khi nhân rộng
+
+Danh sách chương trình ở màn Quản trị hiện thêm dòng «Điểm danh: Chưa bật / QR /
+Định vị + QR» cho từng lớp, để nhìn một lượt biết lớp nào đã mở gì trước khi
+quyết định mở diện rộng.
+
+---
+
+## 12. Đợt 6 — Thay toàn bộ lộ trình 10 ngày và xếp lại vào giờ làm việc thật
+
+### 12.1 Vì sao phải thay chứ không sửa từng chỗ
+
+Khảo sát trước khi làm phát hiện **hai bản lộ trình khác nhau** đang tồn tại
+song song: bản trong nguyên mẫu HTML mà Giám đốc gửi, và bản đang nằm trong
+`ttc_dau_viec` trên production. Đối chiếu đủ mười ngày cho thấy bản nguyên mẫu
+mới là bản khớp với bảng Mục 3.2 của đặc tả; bản trong database là bản Giám đốc
+đã sửa tay trước đó và đã lệch đi.
+
+Không đi sửa từng đầu việc vì hai lý do. Một: lệch ở cả tên, nội dung, người phụ
+trách lẫn khung giờ — sửa từng cột thì diff không ai rà nổi, mà bỏ sót một dòng
+là học viên nhìn thấy lịch sai. Hai: **production chưa có dữ liệu phái sinh nào**
+— 0 tiến độ, 0 điểm Bloom, 0 điểm danh, 0 phiếu tự soi, 0 phiếu giao việc, 0 mã
+QR — nên xoá và ghi lại không làm mất gì của ai. Đã kiểm đếm từng bảng trước khi
+chạy DELETE, không suy đoán.
+
+### 12.2 Khung giờ mới
+
+Bản cũ có ngày bắt đầu **07:30** và có buổi sáng chạy quá 11:30. Giám đốc chốt
+lại khung theo giờ làm việc thật của Chi nhánh:
+
+| Buổi | Bắt đầu | Kết thúc |
+| --- | --- | --- |
+| Sáng | 08:00 | 11:30 |
+| Chiều | 13:30 | tối đa 18:00 |
+
+Kết quả sau khi xếp lại (đã đối chiếu trên production):
+
+| Ngày | Đầu việc | Sáng | Chiều | Ngoài giờ |
+| --- | --- | --- | --- | --- |
+| 1 | 12 | 08:00–11:30 | 13:30–17:20 | pickleball 18:00–19:30 |
+| 2 | 11 | 08:00–11:30 | 13:30–17:00 | — |
+| 3 | 12 | 08:00–11:30 | 13:30–17:00 | — |
+| 4 | 13 | 08:00–11:30 | 13:30–17:15 | — |
+| 5 | 13 | 08:00–11:30 | 13:30–17:00 | pickleball 18:00–19:30 |
+| 6 | 13 | 08:00–11:30 | 13:30–17:45 | pickleball 18:00–19:30 |
+| 7 | 12 | 08:00–11:30 | 13:30–17:25 | — |
+| 8 | 12 | 08:00–11:30 | 13:30–17:15 | — |
+| 9 | 12 | 08:00–11:30 | 13:30–17:25 | — |
+| 10 | 12 | 08:00–11:30 | 13:30–17:40 | pickleball 18:00–19:30 |
+
+Tổng **122 đầu việc**, không đầu việc nào chồng lấn nhau, không đầu việc nào có
+giờ kết thúc trước giờ bắt đầu.
+
+### 12.3 Rút 30 phút thừa buổi sáng — rút theo tỷ lệ, không cắt một khối
+
+Bản nguyên mẫu có buổi sáng dài 4 giờ, khung mới chỉ còn 3 giờ 30 phút. Ba mươi
+phút thừa được rút khỏi **ba khối học viên tự làm** (đọc văn bản · phiếu Bloom ·
+dựng slide) chứ không đụng vào các khối có Ban Giám đốc chủ trì — vì các khối đó
+đã hẹn giờ với người thật.
+
+Cách rút đầu tiên là «cắt khối dài nhất», và nó hỏng: toàn bộ 30 phút rơi vào
+khối Đọc văn bản (80 → 50 phút), làm mất hẳn lượt đọc sâu. Cách thứ hai vẫn hỏng
+vì công thức chia tỷ lệ dùng biến `thua` đã bị trừ dần trong vòng lặp, nên vòng
+đầu ăn gần hết. Bản cuối chụp lại `thuaGoc` **trước** vòng lặp rồi mới chia tỷ
+lệ: Đọc −20 · Bloom −5 · Slide −5. Ghi lại ở đây vì cùng một lỗi rất dễ lặp lại
+khi sau này chèn thêm đầu việc vào buổi sáng.
+
+### 12.4 Migration và đường lùi
+
+`supabase/migrations/20261013090000_ttc_lo_trinh_ban_moi.sql` **đã áp** vào
+`whlysprzsguehxmrjwha` ngày 06/09/2026, chia làm bốn lần áp vì file 52 KB vượt
+giới hạn một lần gửi:
+
+| Tên migration trên Supabase | Nội dung |
+| --- | --- |
+| `ttc_lo_trinh_ban_moi_1_ngay` | Bảng chụp + DELETE đầu việc cũ + UPDATE 10 ngày |
+| `ttc_lo_trinh_ban_moi_2_dau_viec_1_4` | 48 đầu việc ngày 1–4 |
+| `ttc_lo_trinh_ban_moi_3_dau_viec_5_7` | 38 đầu việc ngày 5–7 |
+| `ttc_lo_trinh_ban_moi_4_dau_viec_8_10` | 36 đầu việc ngày 8–10 |
+
+Trước khi xoá, migration **chụp nguyên trạng** vào hai bảng
+`ttc_luu_lo_trinh_20261013` và `ttc_luu_ngay_20261013`. Hai bảng chụp này vẫn là
+bảng thật trong `public`, nên vẫn `ENABLE ROW LEVEL SECURITY` và `REVOKE ALL …
+FROM anon, authenticated` — lịch cũ là dữ liệu nội bộ, không vì nó là bản lưu mà
+được lỏng tay. File gỡ
+`supabase/rollbacks/20261013090000_ttc_lo_trinh_ban_moi_down.sql` khôi phục từ
+hai bảng chụp rồi tự xoá chúng.
+
+`lat_cat` và `cau_hoi_tu_soi` của cả mười ngày **được giữ nguyên**, không nằm
+trong phạm vi thay.
+
+### 12.5 Những gì chưa làm và vì sao
+
+- **24 đầu việc dưới 30 phút.** Mục 6 của phụ lục đặt sàn 30 phút cho mọi đầu
+  việc, nhưng nguyên mẫu có nhiều mốc 10 phút có thật và cần thiết: «Nhận đề —
+  TCTH mở file», «Khoá bài», «Chuẩn bị trình bày». Ép lên 30 phút thì phải kéo
+  dài những việc chỉ mất 10 phút, hoặc phải bỏ chúng đi. Giữ nguyên theo nguyên
+  mẫu và để lại quyết định cho Giám đốc.
+- **Cột `buoi` / `thoiLuong` / `gioCoDinh` và giao diện theo buổi** (Mục 3 trở đi
+  của phụ lục) chưa làm, vì còn chờ trả lời Việc 2 (quy tắc «giờ cố định») và
+  Việc 3 (sàn 30 phút).
+- **Lỗi hiển thị `07:30:00`** vẫn còn: cột kiểu `time` trả về `HH:MM:SS` và bốn
+  chỗ đang in thẳng (`TtcLoTrinh.tsx`, `TtcLichBgd.tsx`, `TtcQuanTri.tsx`,
+  `TtcTrangChu.tsx`). Đây là lỗi có sẵn, không phải do đợt này sinh ra, và sửa nó
+  là một việc riêng.
+
+---
+
+## 13. Đợt 7 — Bỏ nhắc theo giờ, báo cả lớp khi học viên tích hoàn thành
+
+### 13.1 Vì sao bỏ hết nhắc theo giờ
+
+Giám đốc 06/09/2026: «lịch chi tiết thì đây là gợi ý, bây giờ push chỉ khi nào
+học viên ấn nút hoàn thành thì sẽ push cho toàn bộ người có liên quan trong khóa
+học».
+
+Bốn loại tin cũ đều tính mốc từ `gio_bat_dau` / `gio_ket_thuc` của lộ trình:
+
+| Mã tin | Kích hoạt | Người nhận |
+| --- | --- | --- |
+| `TTC_SAP_BAT_DAU_NGAY` | cron 5 phút, trước giờ bắt đầu ngày | người được chọn |
+| `TTC_SAP_HET_PHAN` | cron 5 phút, trước giờ hết mỗi phần | người được chọn |
+| `TTC_SAP_TRINH_BAY` | cron 15:10 | BGĐ, hướng dẫn, học viên |
+| `TTC_CON_VIEC` | cron 17:00 | BGĐ, hướng dẫn |
+
+Từ khi lịch chuyển sang tư duy buổi sáng – buổi chiều (mục 12), giờ trong lộ
+trình chỉ còn là gợi ý sắp xếp, không phải cam kết. Nhắc theo một con số không ai
+cam kết thì tin **luôn sai lúc**: học viên đang làm việc khác thì bị giục, làm
+xong sớm rồi vẫn bị nhắc. Vài lần như vậy là người ta tắt push — mà chỉ 27/100
+cán bộ còn bật.
+
+Bỏ hẳn chứ không tắt bằng công tắc: để lại bốn loại tin chết mà cron vẫn chạy là
+cái bẫy cho người đến sau. Ba cron (`ttc-nhac-theo-lich`, `ttc-nhac-sap-trinh-bay`,
+`ttc-nhac-con-viec`) và bốn hàm tương ứng đã gỡ khỏi database.
+
+`TTC_DU_NGAY` (đủ cả ngày mới báo BGĐ) cũng bỏ, nhưng vì lý do khác: tin mới đã
+mang sẵn con số N/M nên khi N = M nó tự nói là xong đủ ngày — giữ thêm một mã nữa
+là gửi hai tin cho cùng một sự việc. Còn lại **đúng hai nguồn tin**:
+`TTC_HOAN_THANH` và `TTC_CUNG_CO` (Bloom dưới 60%, giữ nguyên).
+
+### 13.2 Tin mới — ai nhận và nội dung gì
+
+Trigger `ttc_sau_tich_tien_do` bắt đúng lần chuyển **chưa tích → đã tích** (sửa
+ghi chú của ô đã tích thì không báo lại), rồi gọi `ttc_bao_hoan_thanh`.
+
+Người nhận: **toàn bộ `ttc_thanh_vien` của chương trình**. `ct2_dat_thong_bao` tự
+loại người vừa tích, nên học viên không nhận tin về việc của chính mình. Người
+không phải thành viên không nhận gì, kể cả khi id nằm trong cấu hình.
+
+Hình thức theo chuẩn push 09/08/2026:
+
+```
+Ngày 3: đã xong 4/12 đầu việc
+  Học viên: Đỗ Việt Anh
+  Ngày: 3 · Từ công văn đến công việc
+  Việc: Xây quy trình chuẩn triển khai văn bản tại Phòng KHDN
+  Nội dung: Đã hoàn thành 4/12 đầu việc của ngày.
+```
+
+Tên đầu việc dài quá 70 ký tự bị cắt: lộ trình có đầu việc tên hơn 120 ký tự, để
+nguyên thì dòng «Nội dung:» mang con số bị đẩy khuất khỏi màn hình khoá.
+
+### 13.3 Gộp tin còn đang chờ phát
+
+Trần thông báo đã bị bỏ từ 20260914090000, nên không còn gì chặn mười hai lần
+tích trong một ngày thành mười hai tin. Trong giờ làm việc đó chính là điều Giám
+đốc muốn — thấy tiến độ ngay lúc nó xảy ra. Nhưng tin sinh ngoài giờ nằm chờ tới
+7h00 hôm sau; học viên làm bù buổi tối mà không gộp thì cả lớp mở máy sáng hôm
+sau nhận một chuỗi tin về cùng một ngày lộ trình.
+
+Nên: còn tin `TTC_HOAN_THANH` **cùng ngày lộ trình, cùng người nhận, chưa phát**
+(`gui_luc IS NULL AND phat_luc > now()`) thì **cập nhật tin đó** thay vì đặt tin
+mới; dòng «Việc:» đổi thành «… và các đầu việc trước đó trong ngày», con số N/M
+tự cập nhật theo.
+
+Đây là chỗ **duy nhất** trong repo được sửa thẳng `ct2_thong_bao` thay vì đi qua
+`ct2_dat_thong_bao`. Lý do: gộp là sửa một tin đã đặt hợp lệ, không phải sinh tin
+mới — các luật của cửa duy nhất (hoãn ngoài giờ, không tự nhắc mình) đã được áp
+lúc tin đó ra đời và vẫn giữ nguyên hiệu lực. Điều kiện `gui_luc IS NULL` bảo
+đảm không bao giờ sửa một tin người ta đã nhận được.
+
+### 13.4 Cấu hình của từng lần đào tạo
+
+Cột `ttc_chuong_trinh.nhac` đổi khuôn:
+
+```json
+{"khi_hoan_thanh": {"bat": true, "nguoi": []}}
+```
+
+`nguoi` **rỗng nghĩa là toàn bộ thành viên** — đúng lời Giám đốc, và cũng là mặc
+định khi khoá thiếu. Chỉ `bat === false` mới là tắt; thiếu khoá không được hiểu là
+tắt, vì một cấu hình chưa ai đụng đến phải chạy đúng ý mặc định chứ không im
+lặng. Danh sách người của hai mốc cũ **không** được mang sang: người chọn để nhận
+nhắc «sắp hết phần» không phải người muốn nhận tin «đã xong một đầu việc».
+
+Màn Quản trị: khối «Nhắc trước giờ — báo cho ai» thay bằng «Báo khi học viên hoàn
+thành một đầu việc» (`TtcCauHinhBao.tsx`). Màn Lộ trình: dải nhắc theo giờ thay
+bằng một dòng nói ai sẽ biết khi tích xong. Hai màn dùng chung
+`moTaNguoiNhanBao()` để không nói hai kiểu về cùng một cấu hình.
+
+### 13.5 Đã kiểm chứng
+
+Migration `20261015090000_ttc_bao_khi_hoan_thanh.sql` **đã áp** vào
+`whlysprzsguehxmrjwha` ngày 06/09/2026 (tên `ttc_bao_khi_hoan_thanh`). Kiểm sau
+khi áp: 0 cron `ttc-nhac*`, 0 hàm nhắc theo giờ còn lại, hàm và trigger mới có đủ,
+mọi chương trình đã về cấu hình `{"khi_hoan_thanh":{"bat":true,"nguoi":[]}}`.
+
+Chạy trên cụm Postgres 16 cục bộ với đủ chuỗi migration `ttc_*`:
+
+| Kịch bản | Kết quả |
+| --- | --- |
+| Ngoài giờ, tích 3 đầu việc liên tiếp | 3 tin — đúng 1 tin/người nhận, nội dung «3/11» |
+| Trong giờ, tin trước đã phát | mỗi lần tích là một tin mới |
+| Sửa ghi chú của ô đã tích | 0 tin |
+| Tắt công tắc | 0 tin |
+| Chọn đích danh một người | chỉ người đó nhận |
+| Người ngoài khóa học | 0 tin |
+| Người vừa tích | 0 tin |
+| Chạy file gỡ | hai hàm nhắc cũ dựng lại, `ttc_bao_hoan_thanh` biến mất, cấu hình về khuôn cũ |
+
+File gỡ: `supabase/rollbacks/20261015090000_ttc_bao_khi_hoan_thanh_down.sql`. Hai
+hàm nhắc theo cấu hình (`ttc_ten_phan` + `ttc_nhac_theo_lich` + cron 5 phút) không
+chép lại trong file gỡ — nguyên văn nằm ở mục 5 của
+`20261010090000_ttc_lo_trinh_nop_tep_va_nhac.sql`, chạy lại đoạn đó nếu cần. Chép
+hai hàm dài vào file gỡ chỉ tạo thêm một bản thứ hai để lệch nhau.
+
+---
+
+## 14. Đợt 8 — Lịch ngày gom thành buổi, giờ chỉ còn là khuyến nghị
+
+### 14.1 Yêu cầu
+
+Giám đốc 06/09/2026: «chia thành 2 phần trong lịch hàng ngày là buổi sáng và
+buổi chiều, phần thời gian chỉ là khuyến nghị khoảng thời gian làm thôi».
+
+Đây là bước tiếp theo tự nhiên của mục 12 và 13: lộ trình đã xếp theo khung buổi,
+nhắc theo giờ đã bỏ — nhưng giao diện vẫn còn trình bày lịch như một cái hẹn theo
+phút. Năm mục theo loại việc (Khởi động · Nghiên cứu văn bản · Thực hành · Trình
+bày · Tự suy ngẫm) cộng hai mốc giờ cứng trên từng dòng làm học viên đọc thành
+«09:00 phải xong việc này», trong khi thực tế học viên tự sắp thứ tự trong buổi.
+
+### 14.2 Không thêm cột `buoi` vào database
+
+Phụ lục có gợi ý thêm cột `buoi`. Không làm, vì buổi **suy thẳng được từ
+`gio_bat_dau`** đã có sẵn: trước 12:00 là sáng, 12:00–17:59 là chiều, từ 18:00 là
+sau giờ làm việc. Thêm một cột nữa là đẻ nơi thứ hai nói cùng một chuyện, rồi có
+ngày Phòng TCTH sửa giờ mà quên sửa buổi — đúng cái bẫy mà bảng «nguồn duy nhất»
+trong `CLAUDE.md` sinh ra để tránh.
+
+Dữ liệu giờ **giữ nguyên hoàn toàn**, không xoá, không đổi. Chỉ đổi cách trình
+bày. Nhờ vậy lịch Ban Giám đốc vẫn tính được tải theo phút, và nếu sau này Giám
+đốc muốn quay lại hiển thị mốc giờ thì chỉ là việc của giao diện.
+
+Bốn buổi pickleball ở 18:00–19:30 tách thành nhóm thứ ba «Sau giờ làm việc».
+Nhét chúng vào buổi chiều thì khung giờ khuyến nghị của chiều kéo tới 19:30 và
+cán bộ đọc thành «chiều làm tới 7 rưỡi tối» — sai hẳn ý. Nhóm này rỗng ở sáu
+ngày còn lại nên không hiện ra.
+
+### 14.3 Giờ trình bày thành khuyến nghị như thế nào
+
+| Trước | Sau |
+| --- | --- |
+| 5 mục theo loại việc | 2 mục: Buổi sáng · Buổi chiều (+ Sau giờ làm việc khi có) |
+| Tiêu đề mục: tên loại việc | Tiêu đề mục: tên buổi + «khuyến nghị 08:00–11:30 · 5 đầu việc, khoảng 3 giờ 30 phút» |
+| Mỗi dòng: `08:00` / `08:30` | Mỗi dòng: `30` `phút` |
+| Loại việc là tiêu đề nhóm | Loại việc thành nhãn nhỏ ngay trên dòng đầu việc |
+
+Loại việc không mất đi — nó chuyển từ tiêu đề nhóm thành một nhãn trên dòng, nên
+người xem vẫn biết đầu việc nào thuộc phần nào mà không phải nhớ mình đang ở mục
+nào.
+
+Không có gì bị đánh dấu trễ theo giờ: `trangThaiViec` vốn chỉ tính theo **ngày**
+(chưa tới ngày → Chưa mở, tới ngày → Đang làm, tích rồi → Hoàn thành), nên không
+phải sửa gì để thoả ràng buộc «không tự động đánh dấu quá hạn theo giờ».
+
+### 14.4 Sửa luôn lỗi «08:00:00»
+
+Cột kiểu `time` của Postgres trả về `HH:MM:SS`. Bốn chỗ đang in thẳng nên cán bộ
+thấy thừa hai chữ số giây. Thêm `gioNgan()` — cắt về `HH:MM` ở đúng một chỗ — và
+dùng ở lịch Ban Giám đốc, màn Quản trị, trang chủ Training Center.
+
+Hai chỗ nữa cùng gốc lỗi, không chỉ là hiển thị:
+
+- **Trang chủ** so `v.gio_ket_thuc > gioHienTai` với `gioHienTai` dạng `HH:MM`.
+  So chuỗi `'09:00:00' > '09:00'` ra đúng, nên đầu việc kết thúc đúng phút này
+  vẫn bị tính là «còn tới».
+- **Form sửa đầu việc** nạp `'09:00:00'` vào ô `<input type="time">` và phép kiểm
+  «giờ kết thúc phải sau giờ bắt đầu» so hai chuỗi khác dạng. Cắt ngay lúc nạp
+  form là xong cả hai.
+
+### 14.5 Đã kiểm chứng
+
+Thuần giao diện, **không có migration** trong đợt này. 11 test mới trong
+`src/lib/__tests__/loTrinhTheoBuoi.test.ts`: ranh giới ba buổi (kể cả 11:30, 17:45,
+18:00), khung giờ khuyến nghị lấy giờ kết thúc **muộn nhất** chứ không phải của
+đầu việc cuối danh sách, buổi rỗng không xuất hiện, thời lượng đọc thành lời
+(«1 giờ» chứ không «1 giờ 0 phút»), và `gioNgan` với chuỗi rỗng hay chuỗi hỏng.
+
+Toàn bộ: `npm run test` 1132/1132 xanh, `tsc` sạch, `npm run build` xong.

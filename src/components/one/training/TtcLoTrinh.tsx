@@ -13,14 +13,16 @@ import { useAuth } from '@/hooks/useAuth';
 import { ngayVnChuoi } from '@/lib/lichNghi';
 import {
   TTC_PHAN, TTC_TEN_NOI_NOP, TTC_TEN_PHU_TRACH, TTC_TEN_THIET_BI, TTC_TEN_TRANG_THAI,
-  docCauHinhNhac, mocNhacTrongNgay, nhanNgay, ngayMacDinh, thieuDeTich, tichDuoc, tienDoNgay, trangThaiViec,
+  docCauHinhBao, moTaNguoiNhanBao, moTaThoiLuong, nhanNgay, ngayMacDinh, nhomTheoBuoi, thieuDeTich,
+  thoiLuongPhut, tichDuoc, tienDoNgay, trangThaiViec,
   type TtcDauViec, type TtcNgay, type TtcTep, type TtcTienDo,
 } from '@/lib/trainingCenter';
 import type { TtcBoiCanh } from './useTrainingCenter';
 import {
   luuNopDauViec, luuSuyNgam, tichDauViec, xoaDauViec, xoaNgay,
-  useTtcDauViec, useTtcDiemBloom, useTtcKyTep, useTtcLamTuoi, useTtcNgay, useTtcSuyNgam, useTtcTienDo,
+  useTtcDauViec, useTtcDiemBloom, useTtcDiemDanh, useTtcKyTep, useTtcLamTuoi, useTtcNgay, useTtcSuyNgam, useTtcTienDo,
 } from './useTrainingCenter';
+import { TtcTheDiemDanh } from './TtcTheDiemDanh';
 import { TTC_TEP_ACCEPT, TTC_TEP_TOI_DA, kichThuocDoc, taiTepTrainingCenter, xoaTepTrainingCenter } from './tepTrainingCenter';
 import { TtcChamBloom } from './TtcChamBloom';
 import { FormDauViec, FormNgay } from './TtcFormLoTrinh';
@@ -51,6 +53,7 @@ export function TtcLoTrinh({ bc }: { bc: TtcBoiCanh }) {
   const viecIds = useMemo(() => dsViec.map((v) => v.id), [dsViec]);
   const { data: tienDo = [] } = useTtcTienDo(ctId, hocVienId, viecIds);
   const { data: dsDiem = [] } = useTtcDiemBloom(ctId, ngayIds);
+  const { data: dsDiemDanh = [] } = useTtcDiemDanh(ctId, ngayIds);
   const lamTuoi = useTtcLamTuoi();
 
   const [ngayChon, setNgayChon] = useState<string | null>(null);
@@ -71,9 +74,7 @@ export function TtcLoTrinh({ bc }: { bc: TtcBoiCanh }) {
   );
   const tienDoTheoViec = useMemo(() => new Map(tienDo.map((t) => [t.dau_viec_id, t])), [tienDo]);
   const daCham = useMemo(() => new Set(dsDiem.map((d) => d.ngay_id)), [dsDiem]);
-  const cauHinhNhac = useMemo(() => docCauHinhNhac(ct?.nhac), [ct?.nhac]);
-  const mocNhac = useMemo(() => mocNhacTrongNgay(viecCuaNgay, cauHinhNhac), [viecCuaNgay, cauHinhNhac]);
-  const soNguoiNhac = new Set([...cauHinhNhac.truoc_ngay.nguoi, ...cauHinhNhac.truoc_het_phan.nguoi]).size;
+  const cauHinhBao = useMemo(() => docCauHinhBao(ct?.nhac), [ct?.nhac]);
 
   const tien = tienDoNgay(viecCuaNgay, tienDo);
   const coTheTich = bc.laHocVien && !!ngayHien && tichDuoc(ngayHien, homNay);
@@ -128,6 +129,11 @@ export function TtcLoTrinh({ bc }: { bc: TtcBoiCanh }) {
 
   return (
     <div className="space-y-5">
+      {/* Điểm danh — chỉ hiện đúng ngày học hôm nay */}
+      {ct && ngayHien && ngayHien.ngay === homNay && (
+        <TtcTheDiemDanh bc={bc} ngay={ngayHien} dsDiemDanh={dsDiemDanh} />
+      )}
+
       {/* Dải ngày */}
       <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
         {dsNgay.map((n) => {
@@ -201,24 +207,15 @@ export function TtcLoTrinh({ bc }: { bc: TtcBoiCanh }) {
           )}
         </div>
 
-        {/* Nhắc hôm nay — cùng phép tính với máy chủ */}
-        {(mocNhac.length > 0 || suaDuoc) && (
-          <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-dashed border-[#A8763E]/40 px-3 py-2 text-xs text-slate-600">
-            <BellRing className="h-3.5 w-3.5 text-[#A8763E]" />
-            {mocNhac.length > 0 ? (
-              <>
-                <span className="font-semibold text-brand-navy">Nhắc trong ngày:</span>
-                {mocNhac.map((m) => <span key={`${m.loai}-${m.gio}`}><b className="tabular-nums">{m.gio}</b> {m.nhan}</span>)}
-                <span className="text-slate-400">→ {soNguoiNhac} người</span>
-              </>
-            ) : (
-              <span>Chưa bật nhắc trước giờ cho lần đào tạo này.</span>
-            )}
-            {suaDuoc && ct && (
-              <Link to={`/one/training-center/quan-tri?ct=${ct.id}`} className="ml-auto font-semibold text-brand-navy underline">Chỉnh «báo cho ai»</Link>
-            )}
-          </p>
-        )}
+        {/* Ai biết khi tích xong — thay cho khối «nhắc trước giờ» đã bỏ 06/09/2026 */}
+        <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-dashed border-[#A8763E]/40 px-3 py-2 text-xs text-slate-600">
+          <BellRing className="h-3.5 w-3.5 text-[#A8763E]" />
+          <span className="font-semibold text-brand-navy">Khi tích hoàn thành:</span>
+          <span>{moTaNguoiNhanBao(cauHinhBao, bc.thanhVien.length)}</span>
+          {suaDuoc && ct && (
+            <Link to={`/one/training-center/quan-tri?ct=${ct.id}`} className="ml-auto font-semibold text-brand-navy underline">Chỉnh «báo cho ai»</Link>
+          )}
+        </p>
 
         {/* Tiến độ */}
         <div className="mt-4">
@@ -236,44 +233,46 @@ export function TtcLoTrinh({ bc }: { bc: TtcBoiCanh }) {
         </div>
       </div>
 
-      {/* Lịch chi tiết theo phần */}
+      {/* Lịch trong ngày gom theo buổi — giờ là khuyến nghị, không phải mốc phải theo */}
       <div className="space-y-4">
         {viecCuaNgay.length === 0 && (
           <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-center text-sm text-slate-500">
             Ngày này chưa có đầu việc.{suaDuoc ? ' Bấm «Thêm đầu việc» để soạn.' : ''}
           </p>
         )}
-        {TTC_PHAN.map((phan) => {
-          const ds = viecCuaNgay.filter((v) => v.phan === phan.ma);
-          if (ds.length === 0) return null;
-          return (
-            <section key={phan.ma}>
-              <h3 className="mb-2 text-2xs font-bold uppercase tracking-widest text-slate-500">{phan.ten}</h3>
-              <div className="space-y-2">
-                {ds.map((v) => (
-                  <DongDauViec
-                    key={v.id}
-                    v={v}
-                    ngay={ngayHien!}
-                    tienDo={tienDoTheoViec.get(v.id)}
-                    daCham={daCham.has(ngayHien!.id)}
-                    coTheTich={coTheTich}
-                    homNay={homNay}
-                    onTich={(x) => tich(v, x)}
-                    laHocVien={bc.laHocVien}
-                    nopDuoc={bc.laHocVien && !!ctId && !!profileId && !!user && tichDuoc(ngayHien!, homNay)}
-                    ctId={ctId ?? ''}
-                    profileId={profileId ?? ''}
-                    userId={user?.id ?? ''}
-                    suaDuoc={suaDuoc && !xemNgayMai}
-                    onSua={() => setViecSua(v)}
-                    onXoa={() => boViec(v)}
-                  />
-                ))}
-              </div>
-            </section>
-          );
-        })}
+        {nhomTheoBuoi(viecCuaNgay).map((nhom) => (
+          <section key={nhom.buoi}>
+            <div className="mb-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-brand-navy">{nhom.ten}</h3>
+              <span className="text-2xs text-slate-500">
+                khuyến nghị <b className="tabular-nums text-slate-600">{nhom.tu}–{nhom.den}</b>
+                {nhom.tongPhut > 0 && <> · {nhom.viec.length} đầu việc, khoảng {moTaThoiLuong(nhom.tongPhut)}</>}
+              </span>
+            </div>
+            <div className="space-y-2">
+              {nhom.viec.map((v) => (
+                <DongDauViec
+                  key={v.id}
+                  v={v}
+                  ngay={ngayHien!}
+                  tienDo={tienDoTheoViec.get(v.id)}
+                  daCham={daCham.has(ngayHien!.id)}
+                  coTheTich={coTheTich}
+                  homNay={homNay}
+                  onTich={(x) => tich(v, x)}
+                  laHocVien={bc.laHocVien}
+                  nopDuoc={bc.laHocVien && !!ctId && !!profileId && !!user && tichDuoc(ngayHien!, homNay)}
+                  ctId={ctId ?? ''}
+                  profileId={profileId ?? ''}
+                  userId={user?.id ?? ''}
+                  suaDuoc={suaDuoc && !xemNgayMai}
+                  onSua={() => setViecSua(v)}
+                  onXoa={() => boViec(v)}
+                />
+              ))}
+            </div>
+          </section>
+        ))}
       </div>
 
       {/* Tự suy ngẫm của ngày — chỉ học viên */}
@@ -308,9 +307,11 @@ function DongDauViec({
   return (
     <div className={`rounded-2xl border bg-white p-3 shadow-sm ${v.trong_tam ? 'border-[#A8763E]/50' : 'border-slate-200'} ${tt === 'HOAN_THANH' || tt === 'DA_DANH_GIA' ? 'opacity-80' : ''}`}>
       <div className="flex gap-3">
+        {/* Thời lượng khuyến nghị thay cho hai mốc giờ: học viên tự sắp trong buổi,
+            in mốc giờ ra thì thành một cái hẹn không ai cam kết */}
         <div className="flex w-14 shrink-0 flex-col items-center pt-0.5 text-center">
-          <span className="text-sm font-bold tabular-nums text-brand-navy">{v.gio_bat_dau}</span>
-          <span className="text-2xs tabular-nums text-slate-400">{v.gio_ket_thuc}</span>
+          <span className="text-sm font-bold tabular-nums text-brand-navy">{thoiLuongPhut(v)}</span>
+          <span className="text-2xs text-slate-400">phút</span>
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium leading-snug text-slate-800">
@@ -319,6 +320,7 @@ function DongDauViec({
           </p>
           {v.dau_ra && <p className="mt-1 text-xs text-slate-600"><b>Đầu ra:</b> {v.dau_ra}</p>}
           <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-2xs text-slate-500">
+            <span className="rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600">{TTC_PHAN.find((p) => p.ma === v.phan)?.ten ?? v.phan}</span>
             <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" /> {TTC_TEN_PHU_TRACH[v.nguoi_phu_trach]}</span>
             {IconTb && <span className="inline-flex items-center gap-1"><IconTb className="h-3 w-3" /> {TTC_TEN_THIET_BI[v.thiet_bi]}</span>}
             {v.noi_nop !== 'KHONG' && (

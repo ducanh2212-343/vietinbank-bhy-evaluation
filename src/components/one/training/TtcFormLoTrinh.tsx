@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  TTC_PHAN, TTC_TEN_NOI_NOP, TTC_TEN_PHU_TRACH, TTC_TEN_THIET_BI, TTC_TINH_NANG,
+  TTC_PHAN, TTC_TEN_NOI_NOP, TTC_TEN_PHU_TRACH, TTC_TEN_THIET_BI, TTC_TINH_NANG, gioNgan,
   type TtcDauViec, type TtcNgay,
 } from '@/lib/trainingCenter';
 import { luuDauViec, luuNgay, useTtcLamTuoi } from './useTrainingCenter';
@@ -59,7 +59,11 @@ export function FormNgay({ ngay, onClose }: { ngay: Partial<TtcNgay> | null; onC
 export function FormDauViec({ viec, onClose }: { viec: Partial<TtcDauViec> | null; onClose: () => void }) {
   const lamTuoi = useTtcLamTuoi();
   const [f, setF] = useState<Partial<TtcDauViec>>({});
-  useEffect(() => { if (viec) setF(viec); }, [viec]);
+  // Cột time trả 'HH:MM:SS'; ô <input type="time"> và phép so giờ kết thúc phải sau
+  // giờ bắt đầu đều làm việc với 'HH:MM', nên cắt ngay lúc nạp form
+  useEffect(() => {
+    if (viec) setF({ ...viec, gio_bat_dau: gioNgan(viec.gio_bat_dau), gio_ket_thuc: gioNgan(viec.gio_ket_thuc) });
+  }, [viec]);
   const dat = <K extends keyof TtcDauViec>(k: K, v: TtcDauViec[K]) => setF((c) => ({ ...c, [k]: v }));
   const luu = async () => {
     if (!f.ngay_id || !f.gio_bat_dau || !f.gio_ket_thuc || (f.ten ?? '').trim().length < 5) { toast.error('Cần giờ bắt đầu, giờ kết thúc và tên việc (≥ 5 ký tự).'); return; }

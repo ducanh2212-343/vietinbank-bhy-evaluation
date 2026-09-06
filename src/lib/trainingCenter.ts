@@ -115,8 +115,10 @@ export interface TtcChuongTrinh {
   ban_kinh_m: number;
   nguoi_tao: string | null;
   created_at: string;
-  /** Cấu hình nhắc của lần đào tạo này — đọc bằng docCauHinhNhac() */
+  /** Cấu hình báo khi tích hoàn thành — đọc bằng docCauHinhBao() */
   nhac: unknown;
+  /** Cấu hình điểm danh — đọc bằng docCauHinhDiemDanh() ở src/lib/diemDanh.ts */
+  diem_danh: unknown;
 }
 
 export interface TtcThanhVien {
@@ -756,6 +758,91 @@ export function thoiLuongPhut(v: Pick<TtcDauViec, 'gio_bat_dau' | 'gio_ket_thuc'
   return Math.max(0, phutTuGio(v.gio_ket_thuc) - phutTuGio(v.gio_bat_dau));
 }
 
+// ---------------------------------------------------------------------------
+// Chia ngày thành BUỔI — giờ chỉ là khuyến nghị (Giám đốc 06/09/2026)
+//
+// «Chia thành 2 phần trong lịch hàng ngày là buổi sáng và buổi chiều, phần thời
+// gian chỉ là khuyến nghị khoảng thời gian làm thôi.»
+//
+// Không thêm cột `buoi` vào database: buổi suy thẳng từ gio_bat_dau đã có sẵn.
+// Thêm một cột nữa là đẻ nơi thứ hai nói cùng một chuyện, rồi có ngày TCTH sửa
+// giờ mà quên sửa buổi. Giờ trong lộ trình vẫn giữ nguyên, chỉ đổi cách trình
+// bày: không còn là mốc phải theo, mà là khoảng thời gian gợi ý.
+// ---------------------------------------------------------------------------
+
+export type TtcBuoi = 'SANG' | 'CHIEU' | 'NGOAI_GIO';
+
+export const TTC_BUOI: Array<{ ma: TtcBuoi; ten: string }> = [
+  { ma: 'SANG', ten: 'Buổi sáng' },
+  { ma: 'CHIEU', ten: 'Buổi chiều' },
+  // Bốn buổi pickleball nằm ở 18:00–19:30. Nhét chúng vào buổi chiều thì khung
+  // giờ khuyến nghị của chiều kéo tới 19:30 và cán bộ đọc thành «chiều làm tới
+  // 7 rưỡi tối» — sai hẳn ý. Tách riêng, và nhóm này thường rỗng.
+  { ma: 'NGOAI_GIO', ten: 'Sau giờ làm việc' },
+];
+
+/** Ranh giới giữa các buổi, tính theo phút kể từ 0h */
+const MOC_TRUA = 12 * 60;
+const MOC_HET_GIO = 18 * 60;
+
+export function buoiCuaViec(v: Pick<TtcDauViec, 'gio_bat_dau'>): TtcBuoi {
+  const p = phutTuGio(v.gio_bat_dau);
+  if (p < MOC_TRUA) return 'SANG';
+  return p < MOC_HET_GIO ? 'CHIEU' : 'NGOAI_GIO';
+}
+
+/**
+ * Cột `time` của Postgres trả về 'HH:MM:SS'. In thẳng thì cán bộ thấy «08:00:00»
+ * — thừa hai chữ số không nói gì. Cắt về 'HH:MM' ở đúng một chỗ để mọi màn hình
+ * hiện giống nhau.
+ */
+export function gioNgan(gio: string | null | undefined): string {
+  const t = (gio ?? '').trim();
+  return /^\d{1,2}:\d{2}/.test(t) ? t.slice(0, 5) : t;
+}
+
+/** «40 phút» · «1 giờ» · «1 giờ 30 phút» — thời lượng khuyến nghị, đọc thành lời */
+export function moTaThoiLuong(phut: number): string {
+  const p = Math.max(0, Math.round(phut));
+  if (p === 0) return '';
+  if (p < 60) return `${p} phút`;
+  const gio = Math.floor(p / 60);
+  const du = p % 60;
+  return du === 0 ? `${gio} giờ` : `${gio} giờ ${du} phút`;
+}
+
+export interface NhomBuoi {
+  buoi: TtcBuoi;
+  ten: string;
+  viec: TtcDauViec[];
+  /** Khung giờ khuyến nghị của cả buổi: sớm nhất → muộn nhất, 'HH:MM' */
+  tu: string;
+  den: string;
+  /** Tổng thời lượng khuyến nghị của các đầu việc trong buổi, tính bằng phút */
+  tongPhut: number;
+}
+
+/**
+ * Gom đầu việc của một ngày thành các buổi, xếp theo giờ trong buổi. Buổi không
+ * có đầu việc nào thì không trả về — ngày nào cũng in ra một mục «Sau giờ làm
+ * việc» rỗng chỉ làm lịch dài thêm.
+ */
+export function nhomTheoBuoi(dsViecCuaNgay: TtcDauViec[]): NhomBuoi[] {
+  return TTC_BUOI.map(({ ma, ten }) => {
+    const viec = dsViecCuaNgay
+      .filter((v) => buoiCuaViec(v) === ma)
+      .sort((a, b) => phutTuGio(a.gio_bat_dau) - phutTuGio(b.gio_bat_dau) || a.thu_tu - b.thu_tu);
+    return {
+      buoi: ma,
+      ten,
+      viec,
+      tu: viec.length ? gioNgan(viec[0].gio_bat_dau) : '',
+      den: viec.length ? gioNgan(viec.reduce((x, v) => (phutTuGio(v.gio_ket_thuc) > phutTuGio(x.gio_ket_thuc) ? v : x)).gio_ket_thuc) : '',
+      tongPhut: viec.reduce((s, v) => s + thoiLuongPhut(v), 0),
+    };
+  }).filter((n) => n.viec.length > 0);
+}
+
 /** Đầu việc này cần Giám đốc hay PGĐ có mặt không */
 export function canBgd(v: Pick<TtcDauViec, 'nguoi_phu_trach'>): boolean {
   return v.nguoi_phu_trach === 'GD' || v.nguoi_phu_trach === 'PGD' || v.nguoi_phu_trach === 'GD_PGD';
@@ -865,95 +952,53 @@ export function tenFileSanPham(soNgay: number, maSanPham: string, hoTen: string,
 // ---------------------------------------------------------------------------
 
 export const TTC_MA_SU_KIEN = {
-  /** Học viên tích đủ toàn bộ đầu việc trong ngày → Giám đốc và PGĐ */
-  DU_NGAY: 'TTC_DU_NGAY',
-  /** 15:10 hằng ngày, 20 phút trước phiên trình bày → GĐ, PGĐ, học viên */
-  SAP_TRINH_BAY: 'TTC_SAP_TRINH_BAY',
-  /** 17:00 mà chưa đủ đầu việc → Giám đốc và PGĐ */
-  CON_VIEC: 'TTC_CON_VIEC',
+  /** Học viên tích hoàn thành một đầu việc → toàn bộ thành viên khóa học */
+  HOAN_THANH: 'TTC_HOAN_THANH',
   /** Một thang Bloom dưới 60% → Giám đốc */
   CUNG_CO: 'TTC_CUNG_CO',
-  /** X phút trước giờ bắt đầu của ngày — kiểm tra lại phần chuẩn bị → người do lần đào tạo chọn */
-  SAP_BAT_DAU_NGAY: 'TTC_SAP_BAT_DAU_NGAY',
-  /** X phút trước giờ kết thúc của một phần trong ngày → người do lần đào tạo chọn */
-  SAP_HET_PHAN: 'TTC_SAP_HET_PHAN',
 } as const;
 
 // ---------------------------------------------------------------------------
-// Nhắc trước giờ — cấu hình theo từng lần đào tạo (cột ttc_chuong_trinh.nhac)
+// Báo khi học viên tích hoàn thành — cấu hình theo từng lần đào tạo
+// (cột ttc_chuong_trinh.nhac)
+//
+// Từ 06/09/2026 Training Center KHÔNG còn nhắc theo giờ. Giờ trong lộ trình chỉ
+// là gợi ý sắp xếp buổi sáng – buổi chiều, không phải cam kết, nên nhắc theo nó
+// thì tin luôn sai lúc. Nguồn tin duy nhất giờ là hành vi thật của học viên:
+// ấn nút hoàn thành.
 // ---------------------------------------------------------------------------
 
-export interface TtcMocNhac {
+export interface TtcCauHinhBao {
   bat: boolean;
-  /** Số phút trước mốc */
-  phut: number;
-  /** Profile id những người nhận — chọn tay trong danh sách thành viên */
+  /** Profile id người nhận — RỖNG nghĩa là toàn bộ thành viên khóa học */
   nguoi: string[];
 }
 
-export interface TtcCauHinhNhac {
-  /** Trước giờ bắt đầu của cả ngày (giờ đầu việc sớm nhất) */
-  truoc_ngay: TtcMocNhac;
-  /** Trước giờ kết thúc của từng phần (giờ kết thúc muộn nhất của phần) */
-  truoc_het_phan: TtcMocNhac;
-}
+export const TTC_BAO_MAC_DINH = (): TtcCauHinhBao => ({ bat: true, nguoi: [] });
 
-export const TTC_NHAC_MAC_DINH = (): TtcCauHinhNhac => ({
-  truoc_ngay: { bat: false, phut: 30, nguoi: [] },
-  truoc_het_phan: { bat: false, phut: 15, nguoi: [] },
-});
-
-/** Đọc jsonb từ máy chủ ra cấu hình đầy đủ — thiếu khoá nào lấy mặc định khoá đó */
-export function docCauHinhNhac(json: unknown): TtcCauHinhNhac {
-  const mac = TTC_NHAC_MAC_DINH();
+/** Đọc jsonb từ máy chủ; thiếu khoá thì lấy mặc định (bật, gửi cả lớp) */
+export function docCauHinhBao(json: unknown): TtcCauHinhBao {
   const o = (json && typeof json === 'object' ? json : {}) as Record<string, unknown>;
-  const doc = (k: keyof TtcCauHinhNhac): TtcMocNhac => {
-    const m = (o[k] && typeof o[k] === 'object' ? o[k] : {}) as Record<string, unknown>;
-    const phut = Number(m.phut);
-    return {
-      bat: m.bat === true,
-      phut: Number.isFinite(phut) && phut >= 5 && phut <= 180 ? Math.round(phut) : mac[k].phut,
-      nguoi: Array.isArray(m.nguoi) ? m.nguoi.filter((x): x is string => typeof x === 'string') : [],
-    };
+  const m = (o.khi_hoan_thanh && typeof o.khi_hoan_thanh === 'object' ? o.khi_hoan_thanh : {}) as Record<string, unknown>;
+  return {
+    bat: m.bat !== false,
+    nguoi: Array.isArray(m.nguoi) ? m.nguoi.filter((x): x is string => typeof x === 'string') : [],
   };
-  return { truoc_ngay: doc('truoc_ngay'), truoc_het_phan: doc('truoc_het_phan') };
 }
 
-export interface MocNhacTrongNgay {
-  gio: string;
-  loai: 'TRUOC_NGAY' | 'TRUOC_HET_PHAN';
-  nhan: string;
-}
-
-/** Phút kể từ 0h → 'HH:MM' (âm thì kẹp về 00:00) */
-export function gioTuPhut(phut: number): string {
-  const p = Math.max(0, Math.round(phut));
-  return `${String(Math.floor(p / 60)).padStart(2, '0')}:${String(p % 60).padStart(2, '0')}`;
+/** Ghi ngược ra jsonb đúng khuôn máy chủ đọc */
+export function ghiCauHinhBao(ch: TtcCauHinhBao): { khi_hoan_thanh: TtcCauHinhBao } {
+  return { khi_hoan_thanh: { bat: ch.bat, nguoi: [...ch.nguoi] } };
 }
 
 /**
- * Các mốc sẽ nhắc trong một ngày lộ trình — cùng phép tính với ttc_nhac_theo_lich
- * ở máy chủ, để màn Lộ trình nói trước «hôm nay sẽ nhắc lúc…» đúng như máy chủ làm.
+ * Câu mô tả ai sẽ nhận tin — dùng chung cho màn Quản trị và màn Lộ trình để hai
+ * chỗ không nói hai kiểu về cùng một cấu hình.
  */
-export function mocNhacTrongNgay(
-  dsViecCuaNgay: Array<Pick<TtcDauViec, 'phan' | 'gio_bat_dau' | 'gio_ket_thuc'>>,
-  ch: TtcCauHinhNhac,
-): MocNhacTrongNgay[] {
-  if (dsViecCuaNgay.length === 0) return [];
-  const ds: MocNhacTrongNgay[] = [];
-  if (ch.truoc_ngay.bat && ch.truoc_ngay.nguoi.length > 0) {
-    const batDau = Math.min(...dsViecCuaNgay.map((v) => phutTuGio(v.gio_bat_dau)));
-    ds.push({ gio: gioTuPhut(batDau - ch.truoc_ngay.phut), loai: 'TRUOC_NGAY', nhan: `bắt đầu ngày (${gioTuPhut(batDau)})` });
-  }
-  if (ch.truoc_het_phan.bat && ch.truoc_het_phan.nguoi.length > 0) {
-    for (const p of TTC_PHAN) {
-      const cua = dsViecCuaNgay.filter((v) => v.phan === p.ma);
-      if (cua.length === 0) continue;
-      const ketThuc = Math.max(...cua.map((v) => phutTuGio(v.gio_ket_thuc)));
-      ds.push({ gio: gioTuPhut(ketThuc - ch.truoc_het_phan.phut), loai: 'TRUOC_HET_PHAN', nhan: `hết phần ${p.ten} (${gioTuPhut(ketThuc)})` });
-    }
-  }
-  return ds.sort((a, b) => a.gio.localeCompare(b.gio));
+export function moTaNguoiNhanBao(ch: TtcCauHinhBao, soThanhVien: number): string {
+  if (!ch.bat) return 'Đang tắt — không ai nhận tin khi học viên tích hoàn thành.';
+  if (ch.nguoi.length === 0) return `Gửi cho toàn bộ ${soThanhVien} thành viên của khóa học (trừ người vừa tích).`;
+  return `Chỉ gửi cho ${ch.nguoi.length} người được chọn.`;
 }
 
 /** Tin của Training Center mở về đâu — cùng luật với duongDanThongBao (ct2.ts) và notify-ct2 */

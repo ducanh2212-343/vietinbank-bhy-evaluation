@@ -14,16 +14,19 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import {
   TTC_NHOM_DOI_TUONG, TTC_TEN_NOI_NOP, TTC_TEN_PHU_TRACH, TTC_TEN_THIET_BI, TTC_TEN_TRANG_THAI_CT, TTC_TINH_NANG,
-  TTC_TEN_VAI, duongDanChuongTrinh, nhanNgay, xepChuongTrinhCuaToi,
+  TTC_TEN_VAI, duongDanChuongTrinh, gioNgan, nhanNgay, xepChuongTrinhCuaToi,
   type TtcChuongTrinh, type TtcDauViec, type TtcNgay, type TtcNhomDoiTuong, type TtcVai,
 } from '@/lib/trainingCenter';
+import { docCauHinhDiemDanh, nhanLuong } from '@/lib/diemDanh';
 import { useCt2NhanSu } from '@/components/one/move2/useCt2Data';
 import { TtcLoi } from './TrainingNav';
 import { FormDauViec, FormNgay } from './TtcFormLoTrinh';
-import { TtcCauHinhNhac } from './TtcCauHinhNhac';
+import { TtcCauHinhBao } from './TtcCauHinhBao';
+import { TtcDiemDanhQuanTri } from './TtcDiemDanhQuanTri';
 import {
   luuChuongTrinh, nhanBanChuongTrinh, themThanhVien, xoaDauViec, xoaNgay, xoaThanhVien,
-  useTtcBoiCanh, useTtcDanhMuc, useTtcDauViec, useTtcLamTuoi, useTtcNgay, useTtcQuyenSoan,
+  useTtcBoiCanh, useTtcDanhMuc, useTtcDauViec, useTtcDiemDanh, useTtcLamTuoi, useTtcNgay, useTtcQrNgay,
+  useTtcQuyenSoan, useTtcThuDinhVi,
   type TtcChuongTrinhForm,
 } from './useTrainingCenter';
 
@@ -72,6 +75,7 @@ export function TtcQuanTri() {
                 {TTC_TEN_TRANG_THAI_CT[c.trang_thai]} · {c.ngay_bd.split('-').reverse().slice(0, 2).join('/')}
                 {c.la_mau ? ' · Mẫu' : ''}{!soanDuoc(c.id) ? ' · chỉ xem' : ''}
               </p>
+              <p className="mt-0.5 text-2xs text-slate-400">Điểm danh: {nhanLuong(docCauHinhDiemDanh(c.diem_danh))}</p>
             </button>
           ))}
         </div>
@@ -227,6 +231,9 @@ function ChiTietChuongTrinh({ ctId, suaDuoc, xepDuoc, onNhanBan }: {
   const { data: dsNgay = [] } = useTtcNgay(ctId);
   const ngayIds = useMemo(() => dsNgay.map((n) => n.id), [dsNgay]);
   const { data: dsViec = [] } = useTtcDauViec(ctId, ngayIds);
+  const { data: dsDiemDanh = [] } = useTtcDiemDanh(ctId, ngayIds);
+  const { data: dsQr = [] } = useTtcQrNgay(ctId, ngayIds, suaDuoc);
+  const { data: dsThu = [] } = useTtcThuDinhVi(ctId, true);
 
   const [moSua, setMoSua] = useState(false);
   const [nguoiMoi, setNguoiMoi] = useState('');
@@ -316,7 +323,18 @@ function ChiTietChuongTrinh({ ctId, suaDuoc, xepDuoc, onNhanBan }: {
       </div>
 
       {/* Nhắc trước giờ — báo cho ai trong lần đào tạo này */}
-      <TtcCauHinhNhac ct={ct} thanhVien={bc.thanhVien} suaDuoc={suaDuoc} />
+      <TtcCauHinhBao ct={ct} thanhVien={bc.thanhVien} suaDuoc={suaDuoc} />
+
+      {/* Điểm danh: cách điểm danh · tấm QR từng ngày · theo dõi và ghi hộ */}
+      <TtcDiemDanhQuanTri
+        ct={ct}
+        dsNgay={dsNgay}
+        thanhVien={bc.thanhVien}
+        dsDiemDanh={dsDiemDanh}
+        dsQr={dsQr}
+        dsThu={dsThu}
+        suaDuoc={suaDuoc}
+      />
 
       {/* Ngày và đầu việc */}
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -352,7 +370,7 @@ function ChiTietChuongTrinh({ ctId, suaDuoc, xepDuoc, onNhanBan }: {
                     <ul className="divide-y divide-slate-100 text-sm">
                       {viec.map((v) => (
                         <li key={v.id} className="flex items-start gap-2 py-1.5">
-                          <span className="w-24 shrink-0 tabular-nums text-slate-500">{v.gio_bat_dau}–{v.gio_ket_thuc}</span>
+                          <span className="w-24 shrink-0 tabular-nums text-slate-500">{gioNgan(v.gio_bat_dau)}–{gioNgan(v.gio_ket_thuc)}</span>
                           <span className="min-w-0 flex-1">
                             <span className="text-slate-800">{v.trong_tam ? '★ ' : ''}{v.ten}</span>
                             <span className="block text-2xs text-slate-500">

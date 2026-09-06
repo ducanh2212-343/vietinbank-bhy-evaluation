@@ -127,6 +127,7 @@ const OneTrainingQuanTriPage = lazyWithRetry(() => import("./pages/one/OneTraini
 const OneTrainingChuongTrinhPage = lazyWithRetry(() => import("./pages/one/OneTrainingChuongTrinhPage"));
 const OneTrainingLoTrinhPage = lazyWithRetry(() => import("./pages/one/OneTrainingLoTrinhPage"));
 const OneTrainingLoTrinhHomNayPage = lazyWithRetry(() => import("./pages/one/OneTrainingLoTrinhHomNayPage"));
+const OneTrainingDiemDanhPage = lazyWithRetry(() => import("./pages/one/OneTrainingDiemDanhPage"));
 const OneTrainingBangViecPage = lazyWithRetry(() => import("./pages/one/OneTrainingBangViecPage"));
 const OneTrainingTuSoiPage = lazyWithRetry(() => import("./pages/one/OneTrainingTuSoiPage"));
 const OneTrainingLichBgdPage = lazyWithRetry(() => import("./pages/one/OneTrainingLichBgdPage"));
@@ -262,6 +263,8 @@ const App = () => (
               <Route path="/one/training-center/quan-tri" element={<OneTrainingQuanTriPage />} />
               {/* Đích của push TTC_* — tự chuyển sang Lộ trình chương trình đang chạy của người đọc */}
               <Route path="/one/training-center/lo-trinh" element={<OneTrainingLoTrinhHomNayPage />} />
+              {/* Đích của tấm QR in ra — học viên quét bằng camera điện thoại */}
+              <Route path="/one/training-center/diem-danh" element={<OneTrainingDiemDanhPage />} />
               <Route path="/one/training-center/chuong-trinh/:id" element={<OneTrainingChuongTrinhPage />} />
               <Route path="/one/training-center/chuong-trinh/:id/lo-trinh" element={<OneTrainingLoTrinhPage />} />
               <Route path="/one/training-center/chuong-trinh/:id/bang-viec" element={<OneTrainingBangViecPage />} />
