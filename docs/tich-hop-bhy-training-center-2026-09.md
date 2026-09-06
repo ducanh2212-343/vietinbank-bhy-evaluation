@@ -373,3 +373,65 @@ không ai lặng lẽ sửa giờ điểm danh của người khác.
   là bằng chứng có mặt; bắt thêm định vị chỉ làm học viên tắc ở cửa lớp.
 - **Không nhận diện khuôn mặt, không ảnh chụp.** Ngoài phạm vi yêu cầu và kéo
   theo cả một tầng dữ liệu nhạy cảm mới.
+
+---
+
+## 11. Thẩm định định vị trước khi mở luồng (yêu cầu 06/09, đợt 5)
+
+Yêu cầu của Giám đốc: «một số lớp sẽ chỉ mở QR; sau khi test định vị chính xác
+mới mở phần định vị diện rộng». Migration
+`20261012090000_ttc_tham_dinh_dinh_vi.sql` — **đã áp** 06/09/2026 vào
+`whlysprzsguehxmrjwha` (tên `ttc_tham_dinh_dinh_vi`). Kiểm sau khi áp: bảng
+`ttc_thu_dinh_vi` có RLS · 2 policy · trigger `ttc_chuong_trinh_truoc_sua` ·
+4 hàm · lớp 10 ngày đã tự về **chỉ QR**. Kịch bản A–G chạy thử trên Postgres cục
+bộ (chặn bật khi chưa thẩm định, người ngoài chương trình không thử được, hai
+lần chưa đủ, lần thứ ba mới đạt, thu bán kính thì mất hiệu lực, RLS, gỡ sạch).
+
+### 11.1 Ba mức của một lớp
+
+| Mức | Luồng | Ai đặt |
+| --- | --- | --- |
+| Mặc định lớp mới | Chưa bật điểm danh | — |
+| Bật, chưa thẩm định | Chỉ **QR** | TCTH / BGĐ tích một ô |
+| Bật, đã thẩm định | **QR + định vị** | Mở được sau khi đo thử đạt |
+
+`TTC_DIEM_DANH_MAC_DINH()` đổi từ `['DINH_VI','QR']` thành `['QR']`: mặc định mở
+sẵn cả hai thì lớp nào quên rà lại là chạy thật bằng một toạ độ chưa ai đo.
+
+### 11.2 Đo thử — RPC `ttc_thu_dinh_vi`
+
+Nút «Thử tại chỗ này» trong khối Điểm danh của màn Quản trị. Mỗi lần bấm: lấy
+toạ độ máy, máy chủ tính khoảng cách tới toạ độ phòng học, **ghi vào
+`ttc_thu_dinh_vi` chứ không ghi điểm danh**, trả về khoảng cách + sai số + đã
+thẩm định xong chưa. Có ô «Chỗ đứng khi thử» để ghi «giữa phòng · cuối phòng ·
+cửa ra vào» — ba lần đo ở ba chỗ mới nói được điều gì về cả phòng. Thành viên
+chương trình đều thử được (để PGĐ cầm máy đi quanh phòng đo hộ), riêng xoá lần
+thử là của quản trị/BGĐ.
+
+Bảng **lưu khoảng cách thô, không lưu kết luận đạt/không**: bán kính còn được
+chỉnh, lưu con số thô thì đổi bán kính là các lần đo cũ tự được xét lại.
+
+### 11.3 Cổng chặn — ở tầng dữ liệu
+
+`ttc_dinh_vi_da_tham_dinh(_ct, _ban_kinh)`: **ba lần đo gần nhất** đều ≤ bán
+kính. Trigger `f_ttc_chuong_trinh_truoc_sua` chặn mọi UPDATE bật luồng định vị
+khi chưa đạt, kể cả UPDATE thẳng vào bảng. Giao diện làm mờ ô tích là lớp trải
+nghiệm; hàng rào thật là trigger — vì mở nhầm luồng định vị cho một lớp có toạ
+độ sai thì người phát hiện ra là học viên đang đứng ở cửa phòng lúc 7h30.
+
+Chỉ xét **ba lần gần nhất** chứ không xét cả lịch sử: đổi phòng học thì các lần
+đo cũ nói về một chỗ khác. Thu bán kính xuống dưới khoảng cách đã đo cũng làm
+mất hiệu lực — phải đo lại, đúng như khi đổi phòng.
+
+### 11.4 Bán kính đề xuất
+
+`ketLuanThuDinhVi` tính: **chỗ xa nhất + sai số máy báo lớn nhất**, làm tròn lên
+bội 50, kẹp trong 50–2000 m (đúng khoảng CHECK của cột `ban_kinh_m`). Nút «Dùng
+bán kính đề xuất N m» điền thẳng vào ô. Đây là con số có căn cứ đo được, thay cho
+việc đoán 100 hay 150 m.
+
+### 11.5 Rà trước khi nhân rộng
+
+Danh sách chương trình ở màn Quản trị hiện thêm dòng «Điểm danh: Chưa bật / QR /
+Định vị + QR» cho từng lớp, để nhìn một lượt biết lớp nào đã mở gì trước khi
+quyết định mở diện rộng.

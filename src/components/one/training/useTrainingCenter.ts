@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type { Ct2DauViec } from '@/lib/ct2';
 import { kyTepTrainingCenter } from './tepTrainingCenter';
-import type { KetQuaDiemDanh, TtcCauHinhDiemDanh, TtcDiemDanh, TtcQrNgay } from '@/lib/diemDanh';
+import type { KetQuaDiemDanh, TtcCauHinhDiemDanh, TtcDiemDanh, TtcQrNgay, TtcThuDinhVi } from '@/lib/diemDanh';
 import type {
   TtcChuongTrinh, TtcDauViec, TtcDiemBloom, TtcDiemKiem, TtcKetQuaNghiemThu, TtcLichSuChuan, TtcMucGiao,
   TtcNgay, TtcPhieuForm, TtcSuyNgam, TtcThanhVien, TtcTienDo, TtcTrangThaiPhieu, TtcTuSoi, TtcVai, TtcViecGoiDau,
@@ -592,6 +592,35 @@ export async function diemDanhGhiHo(ngayId: string, nguoi: string, ghiChu: strin
 
 export async function xoaDiemDanh(id: string) {
   nemNeuLoi(await db.from('ttc_diem_danh').delete().eq('id', id));
+}
+
+/** Nhật ký thử định vị của một chương trình (RLS: thành viên đọc được) */
+export function useTtcThuDinhVi(ctId: string | null, bat: boolean) {
+  return useQuery({
+    queryKey: ['ttc', 'thu-dinh-vi', ctId],
+    enabled: bat && !!ctId,
+    staleTime: NUA_PHUT,
+    queryFn: async () => {
+      const data = nemNeuLoi(await db.from('ttc_thu_dinh_vi').select('*')
+        .eq('chuong_trinh_id', ctId).order('luc', { ascending: false }).limit(50)) as TtcThuDinhVi[];
+      return data ?? [];
+    },
+  });
+}
+
+/** Đo thử một lần tại phòng học — KHÔNG ghi điểm danh, chỉ lưu lại con số đo được */
+export async function thuDinhVi(ctId: string, vi: GeolocationPosition, viTri: string) {
+  return nemNeuLoi(await db.rpc('ttc_thu_dinh_vi', {
+    _ct: ctId,
+    _vi_do: vi.coords.latitude,
+    _kinh_do: vi.coords.longitude,
+    _do_chinh_xac: Number.isFinite(vi.coords.accuracy) ? Math.round(vi.coords.accuracy) : null,
+    _vi_tri: viTri.trim() || null,
+  })) as KetQuaDiemDanh & { khoang_cach_m?: number; trong_vung?: boolean; da_tham_dinh?: boolean };
+}
+
+export async function xoaThuDinhVi(id: string) {
+  nemNeuLoi(await db.from('ttc_thu_dinh_vi').delete().eq('id', id));
 }
 
 /** Cấu hình điểm danh + toạ độ phòng học — quản trị / BGĐ của chương trình */

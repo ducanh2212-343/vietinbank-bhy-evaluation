@@ -17,6 +17,7 @@ import {
   TTC_TEN_VAI, duongDanChuongTrinh, nhanNgay, xepChuongTrinhCuaToi,
   type TtcChuongTrinh, type TtcDauViec, type TtcNgay, type TtcNhomDoiTuong, type TtcVai,
 } from '@/lib/trainingCenter';
+import { docCauHinhDiemDanh, nhanLuong } from '@/lib/diemDanh';
 import { useCt2NhanSu } from '@/components/one/move2/useCt2Data';
 import { TtcLoi } from './TrainingNav';
 import { FormDauViec, FormNgay } from './TtcFormLoTrinh';
@@ -24,7 +25,8 @@ import { TtcCauHinhNhac } from './TtcCauHinhNhac';
 import { TtcDiemDanhQuanTri } from './TtcDiemDanhQuanTri';
 import {
   luuChuongTrinh, nhanBanChuongTrinh, themThanhVien, xoaDauViec, xoaNgay, xoaThanhVien,
-  useTtcBoiCanh, useTtcDanhMuc, useTtcDauViec, useTtcDiemDanh, useTtcLamTuoi, useTtcNgay, useTtcQrNgay, useTtcQuyenSoan,
+  useTtcBoiCanh, useTtcDanhMuc, useTtcDauViec, useTtcDiemDanh, useTtcLamTuoi, useTtcNgay, useTtcQrNgay,
+  useTtcQuyenSoan, useTtcThuDinhVi,
   type TtcChuongTrinhForm,
 } from './useTrainingCenter';
 
@@ -73,6 +75,7 @@ export function TtcQuanTri() {
                 {TTC_TEN_TRANG_THAI_CT[c.trang_thai]} · {c.ngay_bd.split('-').reverse().slice(0, 2).join('/')}
                 {c.la_mau ? ' · Mẫu' : ''}{!soanDuoc(c.id) ? ' · chỉ xem' : ''}
               </p>
+              <p className="mt-0.5 text-2xs text-slate-400">Điểm danh: {nhanLuong(docCauHinhDiemDanh(c.diem_danh))}</p>
             </button>
           ))}
         </div>
@@ -230,6 +233,7 @@ function ChiTietChuongTrinh({ ctId, suaDuoc, xepDuoc, onNhanBan }: {
   const { data: dsViec = [] } = useTtcDauViec(ctId, ngayIds);
   const { data: dsDiemDanh = [] } = useTtcDiemDanh(ctId, ngayIds);
   const { data: dsQr = [] } = useTtcQrNgay(ctId, ngayIds, suaDuoc);
+  const { data: dsThu = [] } = useTtcThuDinhVi(ctId, true);
 
   const [moSua, setMoSua] = useState(false);
   const [nguoiMoi, setNguoiMoi] = useState('');
@@ -328,6 +332,7 @@ function ChiTietChuongTrinh({ ctId, suaDuoc, xepDuoc, onNhanBan }: {
         thanhVien={bc.thanhVien}
         dsDiemDanh={dsDiemDanh}
         dsQr={dsQr}
+        dsThu={dsThu}
         suaDuoc={suaDuoc}
       />
 

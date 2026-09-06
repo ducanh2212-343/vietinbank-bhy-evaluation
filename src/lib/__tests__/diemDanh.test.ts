@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   CHAM_NGON_EQ, TTC_TEN_LUONG, chamNgonCuaNgay, chuKhoangCach, docCauHinhDiemDanh, duoiMa, duongDanQuet,
-  khoangCachM, laNgayHocHomNay, nhanDiemDanh, tenFileQr, tomTatDiemDanh, type TtcDiemDanh,
+  khoangCachM, laNgayHocHomNay, nhanDiemDanh, tenFileQr, tomTatDiemDanh,
+  SO_LAN_THU_TOI_THIEU, TTC_BAN_KINH_MAX, TTC_BAN_KINH_MIN, ketLuanThuDinhVi, nhanLuong,
+  type TtcDiemDanh, type TtcThuDinhVi,
 } from '../diemDanh';
 
 const dd = (them: Partial<TtcDiemDanh> = {}): TtcDiemDanh => ({
@@ -26,8 +28,8 @@ describe('khoảng cách tới phòng học', () => {
 });
 
 describe('cấu hình điểm danh của một lần đào tạo', () => {
-  it('rỗng thì tắt, muộn sau 15 phút, mở cả hai luồng', () => {
-    expect(docCauHinhDiemDanh({})).toEqual({ bat: false, muon_phut: 15, luong: ['DINH_VI', 'QR'] });
+  it('rỗng thì tắt và CHỈ QR — luồng định vị phải thẩm định mới mở', () => {
+    expect(docCauHinhDiemDanh({})).toEqual({ bat: false, muon_phut: 15, luong: ['QR'] });
   });
   it('bỏ giá trị lạ: phút ngoài 0–120 về mặc định, luồng lạ bị loại, không nhân đôi', () => {
     expect(docCauHinhDiemDanh({ bat: true, muon_phut: 999, luong: ['QR', 'QR', 'BAY'] }))
@@ -77,5 +79,71 @@ describe('tấm QR in ra', () => {
   it('chỉ hiện thẻ điểm danh đúng ngày học', () => {
     expect(laNgayHocHomNay('2026-09-08', '2026-09-08')).toBe(true);
     expect(laNgayHocHomNay('2026-09-09', '2026-09-08')).toBe(false);
+  });
+});
+
+describe('thẩm định định vị trước khi mở luồng', () => {
+  const thu = (id: string, luc: string, cach: number, saiSo: number | null = 20): TtcThuDinhVi => ({
+    id, chuong_trinh_id: 'ct', nguoi: 'p1', luc, vi_do: 20.92, kinh_do: 106.07,
+    do_chinh_xac_m: saiSo, khoang_cach_m: cach, vi_tri: 'giữa phòng',
+  });
+
+  it('chưa thử lần nào: chưa đạt, có câu chỉ việc phải làm', () => {
+    const k = ketLuanThuDinhVi([], 150);
+    expect(k.datChuan).toBe(false);
+    expect(k.banKinhDeXuat).toBeNull();
+    expect(k.cau).toContain('Chưa thử lần nào');
+  });
+
+  it(`đủ ${SO_LAN_THU_TOI_THIEU} lần và đều trong bán kính thì đạt`, () => {
+    const k = ketLuanThuDinhVi([
+      thu('a', '2026-09-06T01:00:00Z', 35),
+      thu('b', '2026-09-06T01:05:00Z', 48),
+      thu('c', '2026-09-06T01:10:00Z', 59),
+    ], 150);
+    expect(k.datChuan).toBe(true);
+    expect(k.soLan).toBe(3);
+    expect(k.xaNhat).toBe(59);
+    expect(k.cau).toContain('Đã đạt');
+  });
+
+  it('hai lần thì chưa đủ; một lần vượt bán kính thì trượt dù đủ số lần', () => {
+    expect(ketLuanThuDinhVi([thu('a', '2026-09-06T01:00:00Z', 35), thu('b', '2026-09-06T01:05:00Z', 40)], 150).cau)
+      .toContain('Còn thiếu 1 lần');
+    const truot = ketLuanThuDinhVi([
+      thu('a', '2026-09-06T01:00:00Z', 35),
+      thu('b', '2026-09-06T01:05:00Z', 40),
+      thu('c', '2026-09-06T01:10:00Z', 400),
+    ], 150);
+    expect(truot.datChuan).toBe(false);
+    expect(truot.cau).toContain('vượt bán kính 150 m');
+  });
+
+  it('chỉ xét ba lần GẦN NHẤT — lần đo cũ ở phòng khác không cứu được đợt mới', () => {
+    const k = ketLuanThuDinhVi([
+      thu('cu1', '2026-09-01T01:00:00Z', 10), thu('cu2', '2026-09-01T01:01:00Z', 12),
+      thu('moi1', '2026-09-06T01:00:00Z', 30), thu('moi2', '2026-09-06T01:05:00Z', 40),
+      thu('moi3', '2026-09-06T01:10:00Z', 900),
+    ], 150);
+    expect(k.baGanNhat.map((t) => t.id)).toEqual(['moi3', 'moi2', 'moi1']);
+    expect(k.datChuan).toBe(false);
+  });
+
+  it('bán kính đề xuất = chỗ xa nhất cộng sai số, làm tròn lên bội 50, kẹp trong 50–2000', () => {
+    // 59 + 30 = 89 → 100
+    expect(ketLuanThuDinhVi([thu('a', '2026-09-06T01:00:00Z', 59, 30)], 150).banKinhDeXuat).toBe(100);
+    // 12 + 5 = 17 → dưới sàn 50
+    expect(ketLuanThuDinhVi([thu('a', '2026-09-06T01:00:00Z', 12, 5)], 150).banKinhDeXuat).toBe(TTC_BAN_KINH_MIN);
+    // vượt trần thì kẹp lại
+    expect(ketLuanThuDinhVi([thu('a', '2026-09-06T01:00:00Z', 9000, 50)], 150).banKinhDeXuat).toBe(TTC_BAN_KINH_MAX);
+    // thiếu sai số thì coi như 0
+    expect(ketLuanThuDinhVi([thu('a', '2026-09-06T01:00:00Z', 120, null)], 150).banKinhDeXuat).toBe(150);
+  });
+
+  it('nhãn luồng đọc được trong danh sách chương trình', () => {
+    expect(nhanLuong(docCauHinhDiemDanh({}))).toBe('Chưa bật điểm danh');
+    expect(nhanLuong(docCauHinhDiemDanh({ bat: true, luong: ['QR'] }))).toBe('QR');
+    expect(nhanLuong(docCauHinhDiemDanh({ bat: true, luong: ['DINH_VI', 'QR'] }))).toBe('Định vị + QR');
+    expect(nhanLuong(docCauHinhDiemDanh({ bat: true, luong: [] }))).toBe('Bật nhưng chưa chọn luồng');
   });
 });

@@ -42,10 +42,17 @@ export interface TtcCauHinhDiemDanh {
   luong: Array<'DINH_VI' | 'QR'>;
 }
 
+/**
+ * Lớp mới mặc định CHỈ MỞ QR.
+ *
+ * Giám đốc 06/09: «một số lớp sẽ chỉ mở QR; sau khi test định vị chính xác mới
+ * mở phần định vị diện rộng». Mặc định mở sẵn cả hai luồng thì lớp nào quên rà
+ * lại là chạy thật bằng một toạ độ chưa ai đo — hỏng đúng vào sáng ngày học.
+ */
 export const TTC_DIEM_DANH_MAC_DINH = (): TtcCauHinhDiemDanh => ({
   bat: false,
   muon_phut: 15,
-  luong: ['DINH_VI', 'QR'],
+  luong: ['QR'],
 });
 
 /** Bán kính mặc định quanh phòng học (mét) khi chương trình chưa đặt */
@@ -215,4 +222,76 @@ export function duoiMa(ma: string): string {
 /** Hôm nay có phải ngày học không — dùng để chỉ hiện thẻ điểm danh đúng ngày */
 export function laNgayHocHomNay(ngayIso: string, homNay: string = ngayVnChuoi(new Date())): boolean {
   return ngayIso === homNay;
+}
+
+// ---------------------------------------------------------------------------
+// Thẩm định định vị — đo thử tại phòng học trước khi mở luồng định vị
+// ---------------------------------------------------------------------------
+
+/** Số lần thử tối thiểu — trùng với ttc_so_lan_thu_toi_thieu() ở máy chủ */
+export const SO_LAN_THU_TOI_THIEU = 3;
+
+export interface TtcThuDinhVi {
+  id: string;
+  chuong_trinh_id: string;
+  nguoi: string;
+  luc: string;
+  vi_do: number;
+  kinh_do: number;
+  do_chinh_xac_m: number | null;
+  khoang_cach_m: number;
+  vi_tri: string | null;
+}
+
+export interface KetLuanThuDinhVi {
+  soLan: number;
+  /** Ba lần gần nhất — đúng tập máy chủ xét khi cho phép bật luồng định vị */
+  baGanNhat: TtcThuDinhVi[];
+  /** Đủ điều kiện bật luồng định vị chưa */
+  datChuan: boolean;
+  xaNhat: number | null;
+  saiSoLonNhat: number | null;
+  /** Bán kính nên đặt: chỗ xa nhất cộng sai số máy báo, làm tròn lên bội 50 */
+  banKinhDeXuat: number | null;
+  cau: string;
+}
+
+/** Bán kính của cột ttc_chuong_trinh.ban_kinh_m — CHECK (50..2000) */
+export const TTC_BAN_KINH_MIN = 50;
+export const TTC_BAN_KINH_MAX = 2000;
+
+/**
+ * Kết luận đợt thử. Máy chủ chỉ xét BA LẦN GẦN NHẤT (xem ttc_dinh_vi_da_tham_dinh)
+ * chứ không xét toàn bộ lịch sử: đổi phòng học hoặc đổi toạ độ thì các lần đo cũ
+ * nói về một chỗ khác, giữ lại để đối chiếu chứ không dùng để kết luận.
+ */
+export function ketLuanThuDinhVi(ds: TtcThuDinhVi[], banKinh: number): KetLuanThuDinhVi {
+  const theoGio = [...ds].sort((a, b) => b.luc.localeCompare(a.luc));
+  const baGanNhat = theoGio.slice(0, SO_LAN_THU_TOI_THIEU);
+  const datChuan = baGanNhat.length === SO_LAN_THU_TOI_THIEU
+    && baGanNhat.every((t) => t.khoang_cach_m <= banKinh);
+  const xaNhat = ds.length ? Math.max(...ds.map((t) => t.khoang_cach_m)) : null;
+  const saiSoLonNhat = ds.length ? Math.max(...ds.map((t) => t.do_chinh_xac_m ?? 0)) : null;
+  const canPhu = ds.length ? Math.max(...ds.map((t) => t.khoang_cach_m + (t.do_chinh_xac_m ?? 0))) : null;
+  const banKinhDeXuat = canPhu === null
+    ? null
+    : Math.min(TTC_BAN_KINH_MAX, Math.max(TTC_BAN_KINH_MIN, Math.ceil(canPhu / 50) * 50));
+
+  const conThieu = SO_LAN_THU_TOI_THIEU - baGanNhat.length;
+  const cau = ds.length === 0
+    ? `Chưa thử lần nào. Đứng tại phòng học bấm «Thử tại chỗ này» ${SO_LAN_THU_TOI_THIEU} lần ở ${SO_LAN_THU_TOI_THIEU} chỗ ngồi khác nhau.`
+    : datChuan
+      ? `Đã đạt: ${SO_LAN_THU_TOI_THIEU} lần gần nhất đều trong bán kính ${banKinh} m. Mở được luồng định vị.`
+      : conThieu > 0
+        ? `Còn thiếu ${conThieu} lần thử nữa.`
+        : `Có lần đo vượt bán kính ${banKinh} m. Đo lại toạ độ phòng học, hoặc nới bán kính rồi thử lại ${SO_LAN_THU_TOI_THIEU} lần.`;
+
+  return { soLan: ds.length, baGanNhat, datChuan, xaNhat, saiSoLonNhat, banKinhDeXuat, cau };
+}
+
+/** Nhãn ngắn cho danh sách chương trình: lần đào tạo này đang mở luồng nào */
+export function nhanLuong(cauHinh: TtcCauHinhDiemDanh): string {
+  if (!cauHinh.bat) return 'Chưa bật điểm danh';
+  if (cauHinh.luong.length === 0) return 'Bật nhưng chưa chọn luồng';
+  return cauHinh.luong.map((l) => (l === 'QR' ? 'QR' : 'Định vị')).join(' + ');
 }

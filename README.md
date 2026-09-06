@@ -448,6 +448,16 @@ tấm in). Migration `20261011090000_ttc_diem_danh.sql` **đã áp** vào
 `supabase/rollbacks/`. **Không thêm loại push nào.** Chi tiết: mục 10 của tài
 liệu trên.
 
+**Thẩm định định vị trước khi mở (06/09/2026, đợt 5):** mỗi lớp tự chọn luồng;
+lớp mới mặc định **chỉ QR**. Mở thêm luồng định vị phải đo thử tại phòng học
+(`ttc_thu_dinh_vi`) đủ **3 lần gần nhất đều trong bán kính** — trigger
+`ttc_chuong_trinh_truoc_sua` chặn ở tầng dữ liệu, không chỉ làm mờ nút. Hệ thống
+đề xuất bán kính = chỗ xa nhất + sai số máy báo, làm tròn lên bội 50. Danh sách
+chương trình hiện luồng đang mở của từng lớp. Migration
+`20261012090000_ttc_tham_dinh_dinh_vi.sql` **đã áp** vào `whlysprzsguehxmrjwha`
+(06/09/2026, tên `ttc_tham_dinh_dinh_vi`); lớp 10 ngày đã tự về chỉ QR vì toạ độ
+hiện tại vẫn là toạ độ tạm tính. Chi tiết: mục 11 của tài liệu trên.
+
 ## Chiêu thức 2 — Kanban 5W2H + PDCA (08/2026)
 
 Trang `/one/chieu-thuc-2` được dựng lại theo đặc tả đầy đủ

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Crosshair, MapPin, QrCode, Trash2, UserPlus } from 'lucide-react';
+import { Crosshair, Lock, MapPin, QrCode, Ruler, Trash2, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -9,12 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { nhanNgay, type TtcChuongTrinh, type TtcNgay, type TtcThanhVien } from '@/lib/trainingCenter';
 import {
-  TTC_BAN_KINH_MAC_DINH, TTC_LUONG_CHON, chuKhoangCach, docCauHinhDiemDanh, duoiMa, nhanDiemDanh,
-  tomTatDiemDanh, type TtcCauHinhDiemDanh, type TtcQrNgay,
+  SO_LAN_THU_TOI_THIEU, TTC_BAN_KINH_MAC_DINH, TTC_LUONG_CHON, chuKhoangCach, docCauHinhDiemDanh, duoiMa,
+  gioVn, ketLuanThuDinhVi, nhanDiemDanh, tomTatDiemDanh,
+  type TtcCauHinhDiemDanh, type TtcQrNgay, type TtcThuDinhVi,
 } from '@/lib/diemDanh';
 import type { TtcDiemDanh } from '@/lib/diemDanh';
 import {
-  diemDanhGhiHo, layViTri, luuDiemDanhCauHinh, useTtcLamTuoi, xoaDiemDanh,
+  diemDanhGhiHo, layViTri, luuDiemDanhCauHinh, thuDinhVi, useTtcLamTuoi, xoaDiemDanh, xoaThuDinhVi,
 } from './useTrainingCenter';
 import { TtcTamQr } from './TtcTamQr';
 
@@ -30,12 +31,13 @@ const PHUT_MUON = [0, 5, 10, 15, 30];
  * bấm một lần. Nhập tay hai số thập phân sáu chữ số là cách chắc chắn nhất để
  * đặt sai vị trí rồi cả lớp không ai điểm danh được.
  */
-export function TtcDiemDanhQuanTri({ ct, dsNgay, thanhVien, dsDiemDanh, dsQr, suaDuoc }: {
+export function TtcDiemDanhQuanTri({ ct, dsNgay, thanhVien, dsDiemDanh, dsQr, dsThu, suaDuoc }: {
   ct: TtcChuongTrinh;
   dsNgay: TtcNgay[];
   thanhVien: TtcThanhVien[];
   dsDiemDanh: TtcDiemDanh[];
   dsQr: TtcQrNgay[];
+  dsThu: TtcThuDinhVi[];
   suaDuoc: boolean;
 }) {
   const lamTuoi = useTtcLamTuoi();
@@ -48,6 +50,8 @@ export function TtcDiemDanhQuanTri({ ct, dsNgay, thanhVien, dsDiemDanh, dsQr, su
   const [ngayXem, setNgayXem] = useState<string | null>(null);
   const [ghiHoNguoi, setGhiHoNguoi] = useState('');
   const [ghiHoLyDo, setGhiHoLyDo] = useState('');
+  const [choDung, setChoDung] = useState('');
+  const [dangThu, setDangThu] = useState(false);
 
   const dsHocVien = useMemo(() => thanhVien.filter((t) => t.vai === 'hoc_vien'), [thanhVien]);
   const tenNguoi = useMemo(() => new Map(thanhVien.map((t) => [t.nguoi, t.full_name ?? t.nguoi])), [thanhVien]);
@@ -58,6 +62,17 @@ export function TtcDiemDanhQuanTri({ ct, dsNgay, thanhVien, dsDiemDanh, dsQr, su
     [dsDiemDanh, ngayDangXem],
   );
   const tom = tomTatDiemDanh(dsHocVien.length, cuaNgay);
+  // Kết luận xét theo bán kính ĐANG GÕ trên màn, để TCTH thấy ngay hệ quả khi
+  // chỉnh con số trước lúc bấm Lưu — cùng phép tính với ttc_dinh_vi_da_tham_dinh.
+  const banKinhSo = Number(banKinh);
+  const ket = useMemo(
+    () => ketLuanThuDinhVi(dsThu, Number.isFinite(banKinhSo) ? banKinhSo : (ct.ban_kinh_m ?? TTC_BAN_KINH_MAC_DINH)),
+    [dsThu, banKinhSo, ct.ban_kinh_m],
+  );
+  const dangBatDinhVi = docCauHinhDiemDanh(ct.diem_danh).luong.includes('DINH_VI')
+    && docCauHinhDiemDanh(ct.diem_danh).bat;
+  /** Đã mở rồi thì không khoá lại; chưa mở thì phải thẩm định xong mới tích được */
+  const khoaDinhVi = !dangBatDinhVi && !ket.datChuan;
 
   const layToaDo = async () => {
     try {
@@ -78,7 +93,7 @@ export function TtcDiemDanhQuanTri({ ct, dsNgay, thanhVien, dsDiemDanh, dsQr, su
       return;
     }
     const bk = Number(banKinh);
-    if (!Number.isFinite(bk) || bk < 20 || bk > 5000) { toast.error('Bán kính từ 20 đến 5000 mét.'); return; }
+    if (!Number.isFinite(bk) || bk < 50 || bk > 2000) { toast.error('Bán kính từ 50 đến 2000 mét.'); return; }
     if (ch.bat && ch.luong.includes('DINH_VI') && (vd === null || kd === null)) {
       toast.error('Bật điểm danh bằng định vị thì phải có toạ độ phòng học.');
       return;
@@ -104,6 +119,26 @@ export function TtcDiemDanhQuanTri({ ct, dsNgay, thanhVien, dsDiemDanh, dsQr, su
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Không ghi hộ được');
     }
+  };
+
+  const thu = async () => {
+    setDangThu(true);
+    try {
+      const vi = await layViTri();
+      const kq = await thuDinhVi(ct.id, vi, choDung);
+      lamTuoi();
+      setChoDung('');
+      if (kq.ok) {
+        if (kq.trong_vung) toast.success(kq.thong_bao);
+        else toast.warning(kq.thong_bao);
+      } else toast.error(kq.thong_bao);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Không thử được');
+    } finally { setDangThu(false); }
+  };
+
+  const boLanThu = async (t: TtcThuDinhVi) => {
+    try { await xoaThuDinhVi(t.id); lamTuoi(); } catch (e) { toast.error(e instanceof Error ? e.message : 'Không xoá được'); }
   };
 
   const xoa = async (d: TtcDiemDanh) => {
@@ -143,7 +178,7 @@ export function TtcDiemDanhQuanTri({ ct, dsNgay, thanhVien, dsDiemDanh, dsQr, su
               <Checkbox
                 className="mt-0.5"
                 checked={ch.luong.includes(l.ma)}
-                disabled={!suaDuoc || !ch.bat}
+                disabled={!suaDuoc || !ch.bat || (l.ma === 'DINH_VI' && khoaDinhVi)}
                 onCheckedChange={(v) => setCh((c) => ({
                   ...c,
                   luong: v === true ? [...c.luong, l.ma] : c.luong.filter((x) => x !== l.ma),
@@ -152,6 +187,11 @@ export function TtcDiemDanhQuanTri({ ct, dsNgay, thanhVien, dsDiemDanh, dsQr, su
               <span>
                 <span className="block text-sm font-semibold text-slate-800">{l.ten}</span>
                 <span className="block text-2xs leading-snug text-slate-500">{l.mo}</span>
+                {l.ma === 'DINH_VI' && khoaDinhVi && (
+                  <span className="mt-1 flex items-center gap-1 text-2xs font-semibold text-amber-700">
+                    <Lock className="h-3 w-3" /> Khoá tới khi thẩm định xong ở khối bên dưới
+                  </span>
+                )}
               </span>
             </label>
           ))}
@@ -175,6 +215,64 @@ export function TtcDiemDanhQuanTri({ ct, dsNgay, thanhVien, dsDiemDanh, dsQr, su
               để rộng quá thì đứng ngoài cổng cũng điểm danh được.
             </p>
           </div>
+        )}
+      </div>
+
+      {/* 1b. Thẩm định định vị — phải đo thật tại phòng học trước khi mở luồng */}
+      <div className={`mt-3 rounded-xl border p-3 ${ket.datChuan ? 'border-emerald-200 bg-emerald-50/40' : 'border-amber-200 bg-amber-50/40'}`}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-wider text-slate-600">
+            <Ruler className="h-3.5 w-3.5" /> Thẩm định định vị
+            <span className="font-normal normal-case text-slate-500">
+              · {ket.soLan} lần thử · cần {SO_LAN_THU_TOI_THIEU} lần gần nhất đều trong bán kính
+            </span>
+          </p>
+          <span className={`text-xs font-semibold ${ket.datChuan ? 'text-emerald-700' : 'text-amber-700'}`}>
+            {ket.datChuan ? 'Đạt — mở được định vị' : 'Chưa đạt'}
+          </span>
+        </div>
+        <p className="mt-1 text-xs text-slate-600">{ket.cau}</p>
+
+        {suaDuoc && (
+          <div className="mt-2 flex flex-wrap items-end gap-2">
+            <div className="min-w-[12rem] flex-1">
+              <Label className="text-xs">Chỗ đứng khi thử</Label>
+              <Input className="h-9 bg-white" value={choDung} onChange={(e) => setChoDung(e.target.value)} placeholder="VD: giữa phòng · cuối phòng · cửa ra vào" />
+            </div>
+            <Button size="sm" variant="outline" className="h-9" onClick={thu} disabled={dangThu}>
+              <Crosshair className="mr-1 h-3.5 w-3.5" /> {dangThu ? 'Đang đo…' : 'Thử tại chỗ này'}
+            </Button>
+            {ket.banKinhDeXuat != null && String(ket.banKinhDeXuat) !== banKinh && (
+              <Button size="sm" variant="ghost" className="h-9 text-xs" onClick={() => setBanKinh(String(ket.banKinhDeXuat))}>
+                Dùng bán kính đề xuất {ket.banKinhDeXuat} m
+              </Button>
+            )}
+          </div>
+        )}
+
+        {dsThu.length > 0 && (
+          <ul className="mt-2 space-y-1 text-xs">
+            {dsThu.slice(0, 6).map((t) => {
+              const trong = t.khoang_cach_m <= (Number.isFinite(banKinhSo) ? banKinhSo : 0);
+              const trongBa = ket.baGanNhat.some((x) => x.id === t.id);
+              return (
+                <li key={t.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <span className={`font-semibold tabular-nums ${trong ? 'text-emerald-700' : 'text-red-600'}`}>
+                    {chuKhoangCach(t.khoang_cach_m)}
+                  </span>
+                  <span className="text-slate-500">sai số {t.do_chinh_xac_m ?? '—'} m</span>
+                  {t.vi_tri && <span className="text-slate-600">· {t.vi_tri}</span>}
+                  <span className="text-slate-400">· {tenNguoi.get(t.nguoi) ?? '—'} {gioVn(t.luc)}</span>
+                  {trongBa && <span className="rounded bg-slate-200 px-1 text-2xs font-semibold text-slate-600">đang xét</span>}
+                  {suaDuoc && (
+                    <button type="button" onClick={() => boLanThu(t)} className="ml-auto text-slate-400 hover:text-red-600" aria-label="Xoá lần thử">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         )}
       </div>
 
