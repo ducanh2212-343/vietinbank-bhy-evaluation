@@ -13,7 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { ngayVnChuoi } from '@/lib/lichNghi';
 import {
   TTC_PHAN, TTC_TEN_NOI_NOP, TTC_TEN_PHU_TRACH, TTC_TEN_THIET_BI, TTC_TEN_TRANG_THAI,
-  docCauHinhNhac, mocNhacTrongNgay, nhanNgay, ngayMacDinh, thieuDeTich, tichDuoc, tienDoNgay, trangThaiViec,
+  docCauHinhBao, moTaNguoiNhanBao, nhanNgay, ngayMacDinh, thieuDeTich, tichDuoc, tienDoNgay, trangThaiViec,
   type TtcDauViec, type TtcNgay, type TtcTep, type TtcTienDo,
 } from '@/lib/trainingCenter';
 import type { TtcBoiCanh } from './useTrainingCenter';
@@ -73,9 +73,7 @@ export function TtcLoTrinh({ bc }: { bc: TtcBoiCanh }) {
   );
   const tienDoTheoViec = useMemo(() => new Map(tienDo.map((t) => [t.dau_viec_id, t])), [tienDo]);
   const daCham = useMemo(() => new Set(dsDiem.map((d) => d.ngay_id)), [dsDiem]);
-  const cauHinhNhac = useMemo(() => docCauHinhNhac(ct?.nhac), [ct?.nhac]);
-  const mocNhac = useMemo(() => mocNhacTrongNgay(viecCuaNgay, cauHinhNhac), [viecCuaNgay, cauHinhNhac]);
-  const soNguoiNhac = new Set([...cauHinhNhac.truoc_ngay.nguoi, ...cauHinhNhac.truoc_het_phan.nguoi]).size;
+  const cauHinhBao = useMemo(() => docCauHinhBao(ct?.nhac), [ct?.nhac]);
 
   const tien = tienDoNgay(viecCuaNgay, tienDo);
   const coTheTich = bc.laHocVien && !!ngayHien && tichDuoc(ngayHien, homNay);
@@ -208,24 +206,15 @@ export function TtcLoTrinh({ bc }: { bc: TtcBoiCanh }) {
           )}
         </div>
 
-        {/* Nhắc hôm nay — cùng phép tính với máy chủ */}
-        {(mocNhac.length > 0 || suaDuoc) && (
-          <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-dashed border-[#A8763E]/40 px-3 py-2 text-xs text-slate-600">
-            <BellRing className="h-3.5 w-3.5 text-[#A8763E]" />
-            {mocNhac.length > 0 ? (
-              <>
-                <span className="font-semibold text-brand-navy">Nhắc trong ngày:</span>
-                {mocNhac.map((m) => <span key={`${m.loai}-${m.gio}`}><b className="tabular-nums">{m.gio}</b> {m.nhan}</span>)}
-                <span className="text-slate-400">→ {soNguoiNhac} người</span>
-              </>
-            ) : (
-              <span>Chưa bật nhắc trước giờ cho lần đào tạo này.</span>
-            )}
-            {suaDuoc && ct && (
-              <Link to={`/one/training-center/quan-tri?ct=${ct.id}`} className="ml-auto font-semibold text-brand-navy underline">Chỉnh «báo cho ai»</Link>
-            )}
-          </p>
-        )}
+        {/* Ai biết khi tích xong — thay cho khối «nhắc trước giờ» đã bỏ 06/09/2026 */}
+        <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-dashed border-[#A8763E]/40 px-3 py-2 text-xs text-slate-600">
+          <BellRing className="h-3.5 w-3.5 text-[#A8763E]" />
+          <span className="font-semibold text-brand-navy">Khi tích hoàn thành:</span>
+          <span>{moTaNguoiNhanBao(cauHinhBao, bc.thanhVien.length)}</span>
+          {suaDuoc && ct && (
+            <Link to={`/one/training-center/quan-tri?ct=${ct.id}`} className="ml-auto font-semibold text-brand-navy underline">Chỉnh «báo cho ai»</Link>
+          )}
+        </p>
 
         {/* Tiến độ */}
         <div className="mt-4">

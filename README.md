@@ -470,6 +470,20 @@ việc**, giữ nguyên `lat_cat` và `cau_hoi_tu_soi`; bốn buổi pickleball 
 FROM anon, authenticated`); file gỡ cùng tên trong `supabase/rollbacks/` khôi
 phục từ hai bảng này rồi tự xoá chúng. Chi tiết: mục 12 của tài liệu trên.
 
+**Bỏ nhắc theo giờ, báo cả lớp khi tích hoàn thành (06/09/2026, đợt 7):** bốn
+loại tin tính mốc theo `gio_bat_dau`/`gio_ket_thuc` (sắp bắt đầu ngày · sắp hết
+phần · sắp trình bày · 17h còn việc) đã **gỡ hẳn** — cả ba cron `ttc-nhac*` lẫn
+bốn hàm — vì giờ trong lộ trình nay chỉ là gợi ý, nhắc theo nó thì tin luôn sai
+lúc. Thay bằng `TTC_HOAN_THANH`: học viên tích một đầu việc → **toàn bộ thành
+viên khóa học** nhận tin kèm con số N/M của ngày. `TTC_DU_NGAY` bỏ (tin mới đã
+mang N/M). Còn đúng hai mã tin TTC: `TTC_HOAN_THANH` và `TTC_CUNG_CO`. Tin còn
+chờ phát được **gộp theo ngày lộ trình** để việc làm bù buổi tối không dội cả
+chục tin lúc 7h00. Cấu hình `ttc_chuong_trinh.nhac` đổi khuôn thành
+`{"khi_hoan_thanh":{"bat","nguoi"}}`, `nguoi` rỗng = cả lớp. Migration
+`20261015090000_ttc_bao_khi_hoan_thanh.sql` **đã áp** vào `whlysprzsguehxmrjwha`
+(06/09/2026, tên `ttc_bao_khi_hoan_thanh`); file gỡ cùng tên trong
+`supabase/rollbacks/`. Chi tiết: mục 13 của tài liệu trên.
+
 ## Chiêu thức 2 — Kanban 5W2H + PDCA (08/2026)
 
 Trang `/one/chieu-thuc-2` được dựng lại theo đặc tả đầy đủ

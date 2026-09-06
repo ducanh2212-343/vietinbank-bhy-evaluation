@@ -115,7 +115,7 @@ export interface TtcChuongTrinh {
   ban_kinh_m: number;
   nguoi_tao: string | null;
   created_at: string;
-  /** Cấu hình nhắc của lần đào tạo này — đọc bằng docCauHinhNhac() */
+  /** Cấu hình báo khi tích hoàn thành — đọc bằng docCauHinhBao() */
   nhac: unknown;
   /** Cấu hình điểm danh — đọc bằng docCauHinhDiemDanh() ở src/lib/diemDanh.ts */
   diem_danh: unknown;
@@ -867,95 +867,53 @@ export function tenFileSanPham(soNgay: number, maSanPham: string, hoTen: string,
 // ---------------------------------------------------------------------------
 
 export const TTC_MA_SU_KIEN = {
-  /** Học viên tích đủ toàn bộ đầu việc trong ngày → Giám đốc và PGĐ */
-  DU_NGAY: 'TTC_DU_NGAY',
-  /** 15:10 hằng ngày, 20 phút trước phiên trình bày → GĐ, PGĐ, học viên */
-  SAP_TRINH_BAY: 'TTC_SAP_TRINH_BAY',
-  /** 17:00 mà chưa đủ đầu việc → Giám đốc và PGĐ */
-  CON_VIEC: 'TTC_CON_VIEC',
+  /** Học viên tích hoàn thành một đầu việc → toàn bộ thành viên khóa học */
+  HOAN_THANH: 'TTC_HOAN_THANH',
   /** Một thang Bloom dưới 60% → Giám đốc */
   CUNG_CO: 'TTC_CUNG_CO',
-  /** X phút trước giờ bắt đầu của ngày — kiểm tra lại phần chuẩn bị → người do lần đào tạo chọn */
-  SAP_BAT_DAU_NGAY: 'TTC_SAP_BAT_DAU_NGAY',
-  /** X phút trước giờ kết thúc của một phần trong ngày → người do lần đào tạo chọn */
-  SAP_HET_PHAN: 'TTC_SAP_HET_PHAN',
 } as const;
 
 // ---------------------------------------------------------------------------
-// Nhắc trước giờ — cấu hình theo từng lần đào tạo (cột ttc_chuong_trinh.nhac)
+// Báo khi học viên tích hoàn thành — cấu hình theo từng lần đào tạo
+// (cột ttc_chuong_trinh.nhac)
+//
+// Từ 06/09/2026 Training Center KHÔNG còn nhắc theo giờ. Giờ trong lộ trình chỉ
+// là gợi ý sắp xếp buổi sáng – buổi chiều, không phải cam kết, nên nhắc theo nó
+// thì tin luôn sai lúc. Nguồn tin duy nhất giờ là hành vi thật của học viên:
+// ấn nút hoàn thành.
 // ---------------------------------------------------------------------------
 
-export interface TtcMocNhac {
+export interface TtcCauHinhBao {
   bat: boolean;
-  /** Số phút trước mốc */
-  phut: number;
-  /** Profile id những người nhận — chọn tay trong danh sách thành viên */
+  /** Profile id người nhận — RỖNG nghĩa là toàn bộ thành viên khóa học */
   nguoi: string[];
 }
 
-export interface TtcCauHinhNhac {
-  /** Trước giờ bắt đầu của cả ngày (giờ đầu việc sớm nhất) */
-  truoc_ngay: TtcMocNhac;
-  /** Trước giờ kết thúc của từng phần (giờ kết thúc muộn nhất của phần) */
-  truoc_het_phan: TtcMocNhac;
-}
+export const TTC_BAO_MAC_DINH = (): TtcCauHinhBao => ({ bat: true, nguoi: [] });
 
-export const TTC_NHAC_MAC_DINH = (): TtcCauHinhNhac => ({
-  truoc_ngay: { bat: false, phut: 30, nguoi: [] },
-  truoc_het_phan: { bat: false, phut: 15, nguoi: [] },
-});
-
-/** Đọc jsonb từ máy chủ ra cấu hình đầy đủ — thiếu khoá nào lấy mặc định khoá đó */
-export function docCauHinhNhac(json: unknown): TtcCauHinhNhac {
-  const mac = TTC_NHAC_MAC_DINH();
+/** Đọc jsonb từ máy chủ; thiếu khoá thì lấy mặc định (bật, gửi cả lớp) */
+export function docCauHinhBao(json: unknown): TtcCauHinhBao {
   const o = (json && typeof json === 'object' ? json : {}) as Record<string, unknown>;
-  const doc = (k: keyof TtcCauHinhNhac): TtcMocNhac => {
-    const m = (o[k] && typeof o[k] === 'object' ? o[k] : {}) as Record<string, unknown>;
-    const phut = Number(m.phut);
-    return {
-      bat: m.bat === true,
-      phut: Number.isFinite(phut) && phut >= 5 && phut <= 180 ? Math.round(phut) : mac[k].phut,
-      nguoi: Array.isArray(m.nguoi) ? m.nguoi.filter((x): x is string => typeof x === 'string') : [],
-    };
+  const m = (o.khi_hoan_thanh && typeof o.khi_hoan_thanh === 'object' ? o.khi_hoan_thanh : {}) as Record<string, unknown>;
+  return {
+    bat: m.bat !== false,
+    nguoi: Array.isArray(m.nguoi) ? m.nguoi.filter((x): x is string => typeof x === 'string') : [],
   };
-  return { truoc_ngay: doc('truoc_ngay'), truoc_het_phan: doc('truoc_het_phan') };
 }
 
-export interface MocNhacTrongNgay {
-  gio: string;
-  loai: 'TRUOC_NGAY' | 'TRUOC_HET_PHAN';
-  nhan: string;
-}
-
-/** Phút kể từ 0h → 'HH:MM' (âm thì kẹp về 00:00) */
-export function gioTuPhut(phut: number): string {
-  const p = Math.max(0, Math.round(phut));
-  return `${String(Math.floor(p / 60)).padStart(2, '0')}:${String(p % 60).padStart(2, '0')}`;
+/** Ghi ngược ra jsonb đúng khuôn máy chủ đọc */
+export function ghiCauHinhBao(ch: TtcCauHinhBao): { khi_hoan_thanh: TtcCauHinhBao } {
+  return { khi_hoan_thanh: { bat: ch.bat, nguoi: [...ch.nguoi] } };
 }
 
 /**
- * Các mốc sẽ nhắc trong một ngày lộ trình — cùng phép tính với ttc_nhac_theo_lich
- * ở máy chủ, để màn Lộ trình nói trước «hôm nay sẽ nhắc lúc…» đúng như máy chủ làm.
+ * Câu mô tả ai sẽ nhận tin — dùng chung cho màn Quản trị và màn Lộ trình để hai
+ * chỗ không nói hai kiểu về cùng một cấu hình.
  */
-export function mocNhacTrongNgay(
-  dsViecCuaNgay: Array<Pick<TtcDauViec, 'phan' | 'gio_bat_dau' | 'gio_ket_thuc'>>,
-  ch: TtcCauHinhNhac,
-): MocNhacTrongNgay[] {
-  if (dsViecCuaNgay.length === 0) return [];
-  const ds: MocNhacTrongNgay[] = [];
-  if (ch.truoc_ngay.bat && ch.truoc_ngay.nguoi.length > 0) {
-    const batDau = Math.min(...dsViecCuaNgay.map((v) => phutTuGio(v.gio_bat_dau)));
-    ds.push({ gio: gioTuPhut(batDau - ch.truoc_ngay.phut), loai: 'TRUOC_NGAY', nhan: `bắt đầu ngày (${gioTuPhut(batDau)})` });
-  }
-  if (ch.truoc_het_phan.bat && ch.truoc_het_phan.nguoi.length > 0) {
-    for (const p of TTC_PHAN) {
-      const cua = dsViecCuaNgay.filter((v) => v.phan === p.ma);
-      if (cua.length === 0) continue;
-      const ketThuc = Math.max(...cua.map((v) => phutTuGio(v.gio_ket_thuc)));
-      ds.push({ gio: gioTuPhut(ketThuc - ch.truoc_het_phan.phut), loai: 'TRUOC_HET_PHAN', nhan: `hết phần ${p.ten} (${gioTuPhut(ketThuc)})` });
-    }
-  }
-  return ds.sort((a, b) => a.gio.localeCompare(b.gio));
+export function moTaNguoiNhanBao(ch: TtcCauHinhBao, soThanhVien: number): string {
+  if (!ch.bat) return 'Đang tắt — không ai nhận tin khi học viên tích hoàn thành.';
+  if (ch.nguoi.length === 0) return `Gửi cho toàn bộ ${soThanhVien} thành viên của khóa học (trừ người vừa tích).`;
+  return `Chỉ gửi cho ${ch.nguoi.length} người được chọn.`;
 }
 
 /** Tin của Training Center mở về đâu — cùng luật với duongDanThongBao (ct2.ts) và notify-ct2 */

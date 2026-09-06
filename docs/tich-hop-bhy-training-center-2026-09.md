@@ -535,3 +535,123 @@ trong phạm vi thay.
   chỗ đang in thẳng (`TtcLoTrinh.tsx`, `TtcLichBgd.tsx`, `TtcQuanTri.tsx`,
   `TtcTrangChu.tsx`). Đây là lỗi có sẵn, không phải do đợt này sinh ra, và sửa nó
   là một việc riêng.
+
+---
+
+## 13. Đợt 7 — Bỏ nhắc theo giờ, báo cả lớp khi học viên tích hoàn thành
+
+### 13.1 Vì sao bỏ hết nhắc theo giờ
+
+Giám đốc 06/09/2026: «lịch chi tiết thì đây là gợi ý, bây giờ push chỉ khi nào
+học viên ấn nút hoàn thành thì sẽ push cho toàn bộ người có liên quan trong khóa
+học».
+
+Bốn loại tin cũ đều tính mốc từ `gio_bat_dau` / `gio_ket_thuc` của lộ trình:
+
+| Mã tin | Kích hoạt | Người nhận |
+| --- | --- | --- |
+| `TTC_SAP_BAT_DAU_NGAY` | cron 5 phút, trước giờ bắt đầu ngày | người được chọn |
+| `TTC_SAP_HET_PHAN` | cron 5 phút, trước giờ hết mỗi phần | người được chọn |
+| `TTC_SAP_TRINH_BAY` | cron 15:10 | BGĐ, hướng dẫn, học viên |
+| `TTC_CON_VIEC` | cron 17:00 | BGĐ, hướng dẫn |
+
+Từ khi lịch chuyển sang tư duy buổi sáng – buổi chiều (mục 12), giờ trong lộ
+trình chỉ còn là gợi ý sắp xếp, không phải cam kết. Nhắc theo một con số không ai
+cam kết thì tin **luôn sai lúc**: học viên đang làm việc khác thì bị giục, làm
+xong sớm rồi vẫn bị nhắc. Vài lần như vậy là người ta tắt push — mà chỉ 27/100
+cán bộ còn bật.
+
+Bỏ hẳn chứ không tắt bằng công tắc: để lại bốn loại tin chết mà cron vẫn chạy là
+cái bẫy cho người đến sau. Ba cron (`ttc-nhac-theo-lich`, `ttc-nhac-sap-trinh-bay`,
+`ttc-nhac-con-viec`) và bốn hàm tương ứng đã gỡ khỏi database.
+
+`TTC_DU_NGAY` (đủ cả ngày mới báo BGĐ) cũng bỏ, nhưng vì lý do khác: tin mới đã
+mang sẵn con số N/M nên khi N = M nó tự nói là xong đủ ngày — giữ thêm một mã nữa
+là gửi hai tin cho cùng một sự việc. Còn lại **đúng hai nguồn tin**:
+`TTC_HOAN_THANH` và `TTC_CUNG_CO` (Bloom dưới 60%, giữ nguyên).
+
+### 13.2 Tin mới — ai nhận và nội dung gì
+
+Trigger `ttc_sau_tich_tien_do` bắt đúng lần chuyển **chưa tích → đã tích** (sửa
+ghi chú của ô đã tích thì không báo lại), rồi gọi `ttc_bao_hoan_thanh`.
+
+Người nhận: **toàn bộ `ttc_thanh_vien` của chương trình**. `ct2_dat_thong_bao` tự
+loại người vừa tích, nên học viên không nhận tin về việc của chính mình. Người
+không phải thành viên không nhận gì, kể cả khi id nằm trong cấu hình.
+
+Hình thức theo chuẩn push 09/08/2026:
+
+```
+Ngày 3: đã xong 4/12 đầu việc
+  Học viên: Đỗ Việt Anh
+  Ngày: 3 · Từ công văn đến công việc
+  Việc: Xây quy trình chuẩn triển khai văn bản tại Phòng KHDN
+  Nội dung: Đã hoàn thành 4/12 đầu việc của ngày.
+```
+
+Tên đầu việc dài quá 70 ký tự bị cắt: lộ trình có đầu việc tên hơn 120 ký tự, để
+nguyên thì dòng «Nội dung:» mang con số bị đẩy khuất khỏi màn hình khoá.
+
+### 13.3 Gộp tin còn đang chờ phát
+
+Trần thông báo đã bị bỏ từ 20260914090000, nên không còn gì chặn mười hai lần
+tích trong một ngày thành mười hai tin. Trong giờ làm việc đó chính là điều Giám
+đốc muốn — thấy tiến độ ngay lúc nó xảy ra. Nhưng tin sinh ngoài giờ nằm chờ tới
+7h00 hôm sau; học viên làm bù buổi tối mà không gộp thì cả lớp mở máy sáng hôm
+sau nhận một chuỗi tin về cùng một ngày lộ trình.
+
+Nên: còn tin `TTC_HOAN_THANH` **cùng ngày lộ trình, cùng người nhận, chưa phát**
+(`gui_luc IS NULL AND phat_luc > now()`) thì **cập nhật tin đó** thay vì đặt tin
+mới; dòng «Việc:» đổi thành «… và các đầu việc trước đó trong ngày», con số N/M
+tự cập nhật theo.
+
+Đây là chỗ **duy nhất** trong repo được sửa thẳng `ct2_thong_bao` thay vì đi qua
+`ct2_dat_thong_bao`. Lý do: gộp là sửa một tin đã đặt hợp lệ, không phải sinh tin
+mới — các luật của cửa duy nhất (hoãn ngoài giờ, không tự nhắc mình) đã được áp
+lúc tin đó ra đời và vẫn giữ nguyên hiệu lực. Điều kiện `gui_luc IS NULL` bảo
+đảm không bao giờ sửa một tin người ta đã nhận được.
+
+### 13.4 Cấu hình của từng lần đào tạo
+
+Cột `ttc_chuong_trinh.nhac` đổi khuôn:
+
+```json
+{"khi_hoan_thanh": {"bat": true, "nguoi": []}}
+```
+
+`nguoi` **rỗng nghĩa là toàn bộ thành viên** — đúng lời Giám đốc, và cũng là mặc
+định khi khoá thiếu. Chỉ `bat === false` mới là tắt; thiếu khoá không được hiểu là
+tắt, vì một cấu hình chưa ai đụng đến phải chạy đúng ý mặc định chứ không im
+lặng. Danh sách người của hai mốc cũ **không** được mang sang: người chọn để nhận
+nhắc «sắp hết phần» không phải người muốn nhận tin «đã xong một đầu việc».
+
+Màn Quản trị: khối «Nhắc trước giờ — báo cho ai» thay bằng «Báo khi học viên hoàn
+thành một đầu việc» (`TtcCauHinhBao.tsx`). Màn Lộ trình: dải nhắc theo giờ thay
+bằng một dòng nói ai sẽ biết khi tích xong. Hai màn dùng chung
+`moTaNguoiNhanBao()` để không nói hai kiểu về cùng một cấu hình.
+
+### 13.5 Đã kiểm chứng
+
+Migration `20261015090000_ttc_bao_khi_hoan_thanh.sql` **đã áp** vào
+`whlysprzsguehxmrjwha` ngày 06/09/2026 (tên `ttc_bao_khi_hoan_thanh`). Kiểm sau
+khi áp: 0 cron `ttc-nhac*`, 0 hàm nhắc theo giờ còn lại, hàm và trigger mới có đủ,
+mọi chương trình đã về cấu hình `{"khi_hoan_thanh":{"bat":true,"nguoi":[]}}`.
+
+Chạy trên cụm Postgres 16 cục bộ với đủ chuỗi migration `ttc_*`:
+
+| Kịch bản | Kết quả |
+| --- | --- |
+| Ngoài giờ, tích 3 đầu việc liên tiếp | 3 tin — đúng 1 tin/người nhận, nội dung «3/11» |
+| Trong giờ, tin trước đã phát | mỗi lần tích là một tin mới |
+| Sửa ghi chú của ô đã tích | 0 tin |
+| Tắt công tắc | 0 tin |
+| Chọn đích danh một người | chỉ người đó nhận |
+| Người ngoài khóa học | 0 tin |
+| Người vừa tích | 0 tin |
+| Chạy file gỡ | hai hàm nhắc cũ dựng lại, `ttc_bao_hoan_thanh` biến mất, cấu hình về khuôn cũ |
+
+File gỡ: `supabase/rollbacks/20261015090000_ttc_bao_khi_hoan_thanh_down.sql`. Hai
+hàm nhắc theo cấu hình (`ttc_ten_phan` + `ttc_nhac_theo_lich` + cron 5 phút) không
+chép lại trong file gỡ — nguyên văn nằm ở mục 5 của
+`20261010090000_ttc_lo_trinh_nop_tep_va_nhac.sql`, chạy lại đoạn đó nếu cần. Chép
+hai hàm dài vào file gỡ chỉ tạo thêm một bản thứ hai để lệch nhau.

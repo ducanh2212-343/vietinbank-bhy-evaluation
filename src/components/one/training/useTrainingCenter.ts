@@ -3,12 +3,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type { Ct2DauViec } from '@/lib/ct2';
+import { ghiCauHinhBao } from '@/lib/trainingCenter';
 import { kyTepTrainingCenter } from './tepTrainingCenter';
 import type { KetQuaDiemDanh, TtcCauHinhDiemDanh, TtcDiemDanh, TtcQrNgay, TtcThuDinhVi } from '@/lib/diemDanh';
 import type {
   TtcChuongTrinh, TtcDauViec, TtcDiemBloom, TtcDiemKiem, TtcKetQuaNghiemThu, TtcLichSuChuan, TtcMucGiao,
   TtcNgay, TtcPhieuForm, TtcSuyNgam, TtcThanhVien, TtcTienDo, TtcTrangThaiPhieu, TtcTuSoi, TtcVai, TtcViecGoiDau,
-  TtcTep, TtcCauHinhNhac,
+  TtcTep, TtcCauHinhBao,
 } from '@/lib/trainingCenter';
 
 /**
@@ -322,9 +323,10 @@ export function useTtcKyTep(paths: string[]) {
   });
 }
 
-/** Cấu hình nhắc của lần đào tạo — quản trị/BGĐ của chương trình (policy sửa chương trình) */
-export async function luuNhac(ctId: string, nhac: TtcCauHinhNhac) {
-  nemNeuLoi(await db.from('ttc_chuong_trinh').update({ nhac, updated_at: new Date().toISOString() }).eq('id', ctId));
+/** Cấu hình báo khi tích hoàn thành — quản trị/BGĐ của chương trình (policy sửa chương trình) */
+export async function luuCauHinhBao(ctId: string, ch: TtcCauHinhBao) {
+  nemNeuLoi(await db.from('ttc_chuong_trinh')
+    .update({ nhac: ghiCauHinhBao(ch), updated_at: new Date().toISOString() }).eq('id', ctId));
 }
 
 /** Học viên tích / bỏ tích một đầu việc — upsert theo (đầu việc, người) */

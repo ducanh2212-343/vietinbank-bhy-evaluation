@@ -21,7 +21,7 @@ import { docCauHinhDiemDanh, nhanLuong } from '@/lib/diemDanh';
 import { useCt2NhanSu } from '@/components/one/move2/useCt2Data';
 import { TtcLoi } from './TrainingNav';
 import { FormDauViec, FormNgay } from './TtcFormLoTrinh';
-import { TtcCauHinhNhac } from './TtcCauHinhNhac';
+import { TtcCauHinhBao } from './TtcCauHinhBao';
 import { TtcDiemDanhQuanTri } from './TtcDiemDanhQuanTri';
 import {
   luuChuongTrinh, nhanBanChuongTrinh, themThanhVien, xoaDauViec, xoaNgay, xoaThanhVien,
@@ -323,7 +323,7 @@ function ChiTietChuongTrinh({ ctId, suaDuoc, xepDuoc, onNhanBan }: {
       </div>
 
       {/* Nhắc trước giờ — báo cho ai trong lần đào tạo này */}
-      <TtcCauHinhNhac ct={ct} thanhVien={bc.thanhVien} suaDuoc={suaDuoc} />
+      <TtcCauHinhBao ct={ct} thanhVien={bc.thanhVien} suaDuoc={suaDuoc} />
 
       {/* Điểm danh: cách điểm danh · tấm QR từng ngày · theo dõi và ghi hộ */}
       <TtcDiemDanhQuanTri
