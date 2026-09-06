@@ -115,6 +115,8 @@ export interface TtcChuongTrinh {
   ban_kinh_m: number;
   nguoi_tao: string | null;
   created_at: string;
+  /** Cấu hình nhắc của lần đào tạo này — đọc bằng docCauHinhNhac() */
+  nhac: unknown;
 }
 
 export interface TtcThanhVien {
@@ -154,6 +156,25 @@ export interface TtcDauViec {
   thiet_bi: TtcThietBi;
   noi_nop: TtcNoiNop;
   trong_tam: boolean;
+  /** Tính năng bật cho đầu việc — bật thì học viên phải nộp mới tích được */
+  tinh_nang: TtcTinhNang[];
+}
+
+/** Tính năng của một đầu việc trong lộ trình */
+export type TtcTinhNang = 'NOP_TEP' | 'GHI_CHU' | 'DUONG_DAN';
+
+export const TTC_TINH_NANG: Array<{ ma: TtcTinhNang; ten: string; mo: string }> = [
+  { ma: 'NOP_TEP', ten: 'Nộp tệp đính kèm', mo: 'Học viên tải sản phẩm lên (PDF, Word, Excel, PowerPoint, ảnh) ngay trên dòng đầu việc' },
+  { ma: 'GHI_CHU', ten: 'Ghi chú kết quả', mo: 'Học viên ghi vài dòng kết quả trước khi tích hoàn thành' },
+  { ma: 'DUONG_DAN', ten: 'Đường dẫn', mo: 'Học viên dán liên kết (Miro, Drive, thẻ Chiêu thức 2…)' },
+];
+
+/** Một tệp đã nộp trong bucket bhy-training */
+export interface TtcTep {
+  path: string;
+  ten: string;
+  kich_thuoc: number;
+  luc: string;
 }
 
 export interface TtcTienDo {
@@ -164,6 +185,25 @@ export interface TtcTienDo {
   thoi_diem: string | null;
   ghi_chu: string | null;
   file_url: string | null;
+  tep: TtcTep[];
+  duong_dan: string | null;
+}
+
+/**
+ * Còn thiếu gì trước khi tích hoàn thành — trùng từng chữ với trigger
+ * f_ttc_tien_do_truoc_ghi ở máy chủ để câu báo trên màn và câu báo từ máy chủ
+ * là một.
+ */
+export function thieuDeTich(
+  v: Pick<TtcDauViec, 'tinh_nang'>,
+  td: Partial<Pick<TtcTienDo, 'tep' | 'ghi_chu' | 'duong_dan'>> | null | undefined,
+): string[] {
+  const thieu: string[] = [];
+  const tn = v.tinh_nang ?? [];
+  if (tn.includes('NOP_TEP') && (td?.tep ?? []).length === 0) thieu.push('tệp đính kèm');
+  if (tn.includes('GHI_CHU') && (td?.ghi_chu ?? '').trim().length < 10) thieu.push('ghi chú kết quả (≥ 10 ký tự)');
+  if (tn.includes('DUONG_DAN') && !(td?.duong_dan ?? '').trim()) thieu.push('đường dẫn');
+  return thieu;
 }
 
 export interface TtcDiemBloom {
@@ -833,7 +873,88 @@ export const TTC_MA_SU_KIEN = {
   CON_VIEC: 'TTC_CON_VIEC',
   /** Một thang Bloom dưới 60% → Giám đốc */
   CUNG_CO: 'TTC_CUNG_CO',
+  /** X phút trước giờ bắt đầu của ngày — kiểm tra lại phần chuẩn bị → người do lần đào tạo chọn */
+  SAP_BAT_DAU_NGAY: 'TTC_SAP_BAT_DAU_NGAY',
+  /** X phút trước giờ kết thúc của một phần trong ngày → người do lần đào tạo chọn */
+  SAP_HET_PHAN: 'TTC_SAP_HET_PHAN',
 } as const;
+
+// ---------------------------------------------------------------------------
+// Nhắc trước giờ — cấu hình theo từng lần đào tạo (cột ttc_chuong_trinh.nhac)
+// ---------------------------------------------------------------------------
+
+export interface TtcMocNhac {
+  bat: boolean;
+  /** Số phút trước mốc */
+  phut: number;
+  /** Profile id những người nhận — chọn tay trong danh sách thành viên */
+  nguoi: string[];
+}
+
+export interface TtcCauHinhNhac {
+  /** Trước giờ bắt đầu của cả ngày (giờ đầu việc sớm nhất) */
+  truoc_ngay: TtcMocNhac;
+  /** Trước giờ kết thúc của từng phần (giờ kết thúc muộn nhất của phần) */
+  truoc_het_phan: TtcMocNhac;
+}
+
+export const TTC_NHAC_MAC_DINH = (): TtcCauHinhNhac => ({
+  truoc_ngay: { bat: false, phut: 30, nguoi: [] },
+  truoc_het_phan: { bat: false, phut: 15, nguoi: [] },
+});
+
+/** Đọc jsonb từ máy chủ ra cấu hình đầy đủ — thiếu khoá nào lấy mặc định khoá đó */
+export function docCauHinhNhac(json: unknown): TtcCauHinhNhac {
+  const mac = TTC_NHAC_MAC_DINH();
+  const o = (json && typeof json === 'object' ? json : {}) as Record<string, unknown>;
+  const doc = (k: keyof TtcCauHinhNhac): TtcMocNhac => {
+    const m = (o[k] && typeof o[k] === 'object' ? o[k] : {}) as Record<string, unknown>;
+    const phut = Number(m.phut);
+    return {
+      bat: m.bat === true,
+      phut: Number.isFinite(phut) && phut >= 5 && phut <= 180 ? Math.round(phut) : mac[k].phut,
+      nguoi: Array.isArray(m.nguoi) ? m.nguoi.filter((x): x is string => typeof x === 'string') : [],
+    };
+  };
+  return { truoc_ngay: doc('truoc_ngay'), truoc_het_phan: doc('truoc_het_phan') };
+}
+
+export interface MocNhacTrongNgay {
+  gio: string;
+  loai: 'TRUOC_NGAY' | 'TRUOC_HET_PHAN';
+  nhan: string;
+}
+
+/** Phút kể từ 0h → 'HH:MM' (âm thì kẹp về 00:00) */
+export function gioTuPhut(phut: number): string {
+  const p = Math.max(0, Math.round(phut));
+  return `${String(Math.floor(p / 60)).padStart(2, '0')}:${String(p % 60).padStart(2, '0')}`;
+}
+
+/**
+ * Các mốc sẽ nhắc trong một ngày lộ trình — cùng phép tính với ttc_nhac_theo_lich
+ * ở máy chủ, để màn Lộ trình nói trước «hôm nay sẽ nhắc lúc…» đúng như máy chủ làm.
+ */
+export function mocNhacTrongNgay(
+  dsViecCuaNgay: Array<Pick<TtcDauViec, 'phan' | 'gio_bat_dau' | 'gio_ket_thuc'>>,
+  ch: TtcCauHinhNhac,
+): MocNhacTrongNgay[] {
+  if (dsViecCuaNgay.length === 0) return [];
+  const ds: MocNhacTrongNgay[] = [];
+  if (ch.truoc_ngay.bat && ch.truoc_ngay.nguoi.length > 0) {
+    const batDau = Math.min(...dsViecCuaNgay.map((v) => phutTuGio(v.gio_bat_dau)));
+    ds.push({ gio: gioTuPhut(batDau - ch.truoc_ngay.phut), loai: 'TRUOC_NGAY', nhan: `bắt đầu ngày (${gioTuPhut(batDau)})` });
+  }
+  if (ch.truoc_het_phan.bat && ch.truoc_het_phan.nguoi.length > 0) {
+    for (const p of TTC_PHAN) {
+      const cua = dsViecCuaNgay.filter((v) => v.phan === p.ma);
+      if (cua.length === 0) continue;
+      const ketThuc = Math.max(...cua.map((v) => phutTuGio(v.gio_ket_thuc)));
+      ds.push({ gio: gioTuPhut(ketThuc - ch.truoc_het_phan.phut), loai: 'TRUOC_HET_PHAN', nhan: `hết phần ${p.ten} (${gioTuPhut(ketThuc)})` });
+    }
+  }
+  return ds.sort((a, b) => a.gio.localeCompare(b.gio));
+}
 
 /** Tin của Training Center mở về đâu — cùng luật với duongDanThongBao (ct2.ts) và notify-ct2 */
 export function laTinTrainingCenter(maSuKien: string): boolean {

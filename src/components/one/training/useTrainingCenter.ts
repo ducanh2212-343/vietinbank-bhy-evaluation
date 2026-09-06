@@ -3,9 +3,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type { Ct2DauViec } from '@/lib/ct2';
+import { kyTepTrainingCenter } from './tepTrainingCenter';
 import type {
   TtcChuongTrinh, TtcDauViec, TtcDiemBloom, TtcDiemKiem, TtcKetQuaNghiemThu, TtcLichSuChuan, TtcMucGiao,
   TtcNgay, TtcPhieuForm, TtcSuyNgam, TtcThanhVien, TtcTienDo, TtcTrangThaiPhieu, TtcTuSoi, TtcVai, TtcViecGoiDau,
+  TtcTep, TtcCauHinhNhac,
 } from '@/lib/trainingCenter';
 
 /**
@@ -289,6 +291,39 @@ export function useTtcTienDo(ctId: string | null, hocVienId: string | null, dauV
       return data ?? [];
     },
   });
+}
+
+/**
+ * Lưu phần nộp của học viên cho một đầu việc (tệp, ghi chú, đường dẫn) — không đổi
+ * ô tích. Upsert theo (đầu việc, người); dòng chưa có thì tạo với hoan_thanh=false.
+ */
+export async function luuNopDauViec(p: { dau_viec_id: string; nguoi: string; tep?: TtcTep[]; ghi_chu?: string | null; duong_dan?: string | null }) {
+  const { data: cu } = await db.from('ttc_tien_do').select('id, hoan_thanh, thoi_diem')
+    .eq('dau_viec_id', p.dau_viec_id).eq('nguoi', p.nguoi).maybeSingle();
+  const dong = cu as { hoan_thanh: boolean; thoi_diem: string | null } | null;
+  nemNeuLoi(await db.from('ttc_tien_do').upsert({
+    dau_viec_id: p.dau_viec_id, nguoi: p.nguoi,
+    hoan_thanh: dong?.hoan_thanh ?? false, thoi_diem: dong?.thoi_diem ?? null,
+    ...(p.tep !== undefined ? { tep: p.tep } : {}),
+    ...(p.ghi_chu !== undefined ? { ghi_chu: p.ghi_chu } : {}),
+    ...(p.duong_dan !== undefined ? { duong_dan: p.duong_dan } : {}),
+  }, { onConflict: 'dau_viec_id,nguoi' }));
+}
+
+/** Ký đường dẫn tệp đã nộp để mở — bucket private, chỉ thành viên chương trình ký được */
+export function useTtcKyTep(paths: string[]) {
+  const khoa = paths.join(',');
+  return useQuery({
+    queryKey: ['ttc', 'ky-tep', khoa],
+    enabled: paths.length > 0,
+    staleTime: 50 * 60_000,
+    queryFn: () => kyTepTrainingCenter(paths),
+  });
+}
+
+/** Cấu hình nhắc của lần đào tạo — quản trị/BGĐ của chương trình (policy sửa chương trình) */
+export async function luuNhac(ctId: string, nhac: TtcCauHinhNhac) {
+  nemNeuLoi(await db.from('ttc_chuong_trinh').update({ nhac, updated_at: new Date().toISOString() }).eq('id', ctId));
 }
 
 /** Học viên tích / bỏ tích một đầu việc — upsert theo (đầu việc, người) */

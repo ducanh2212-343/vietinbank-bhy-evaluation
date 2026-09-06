@@ -18,7 +18,7 @@ const ngay = (so: number, d: string): TtcNgay => ({
 
 const viec = (ngayId: string, bd: string, kt: string, ai: TtcDauViec['nguoi_phu_trach'], id = `${ngayId}-${bd}`): TtcDauViec => ({
   id, ngay_id: ngayId, phan: 'TRINH_BAY', thu_tu: 1, gio_bat_dau: bd, gio_ket_thuc: kt,
-  ten: 'x', dau_ra: null, nguoi_phu_trach: ai, thiet_bi: 'KHONG', noi_nop: 'KHONG', trong_tam: false,
+  ten: 'x', dau_ra: null, nguoi_phu_trach: ai, thiet_bi: 'KHONG', noi_nop: 'KHONG', trong_tam: false, tinh_nang: [],
 });
 
 describe('tên gọi và dữ liệu nền', () => {

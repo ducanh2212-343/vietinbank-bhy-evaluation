@@ -392,7 +392,8 @@ export const NAV_SECTIONS: NavSection[] = [
             bleed: true,
             keywords: ['training center', 'dao tao', 'ren luyen', 'vun goc vuon canh', 'chuong trinh 10 ngay',
               'hoc vien', 'hoi nhap', 'chuyen de', 'quy hoach', 'lo trinh', 'bang viec', 'tu soi', 'lich ban giam doc'],
-            extraPaths: ['/one/training-center/chuong-trinh/'],
+            // /lo-trinh là đích của push TTC_* — trang chuyển hướng sang chương trình đang chạy
+            extraPaths: ['/one/training-center/chuong-trinh/', '/one/training-center/lo-trinh'],
           },
           {
             label: 'Quản trị chương trình',

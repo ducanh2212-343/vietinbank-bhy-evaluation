@@ -255,3 +255,54 @@ Giám đốc **tô cảnh báo chứ không cắt** — đây là thông tin đ�
 | 6 | Không còn chuỗi tiếng Anh | `grep` mã nguồn + `SELECT` seed = 0 |
 | 7 | Một cột, điền được trên điện thoại | `TtcBangViec` bọc `max-w-3xl`, không `grid-cols` |
 | 8 | Không thêm cột ngoài Mục 5, không thêm loại push | migration chỉ có 13 cột Mục 5; `TTC_MA_SU_KIEN` giữ 4 mã |
+
+---
+
+## 9. Sửa lộ trình tại chỗ · nộp tệp đính kèm · nhắc trước giờ (yêu cầu 06/09, đợt 3)
+
+Migration `20261010090000_ttc_lo_trinh_nop_tep_va_nhac.sql` — **đã áp** 06/09/2026
+vào `whlysprzsguehxmrjwha` (tên `ttc_lo_trinh_nop_tep_va_nhac`). Kiểm sau khi áp:
+bucket `bhy-training` riêng tư 20 MB · 3 policy Storage · trigger
+`ttc_tien_do_truoc_ghi` · cron `ttc-nhac-theo-lich` (`*/5 0-11 * * 1-5`) · cấu hình
+nhắc của chương trình 10 ngày đã nạp (30′ trước ngày, 15′ trước hết phần; người
+nhận: Trần Đức Anh · Nguyễn Đức Thái Hoàng · Đỗ Việt Anh) · 23/24 đầu việc «nộp
+lên Training Center» đã bật nộp tệp (trừ đầu việc có sản phẩm nằm sẵn trên Bảng
+việc). File gỡ cùng tên trong `supabase/rollbacks/`; kịch bản A–H chạy thử trên
+Postgres cục bộ (chặn tính năng lạ, PGĐ không sửa được, tích chưa nộp bị chặn,
+policy kho tệp, cửa sổ 5 phút không gửi lặp, tắt là im, nhân bản bỏ người nhận,
+gỡ sạch).
+
+### 9.1 Sửa lộ trình chi tiết ngay trên màn Lộ trình
+
+Quyền dùng lại `ttc_sua_duoc_noi_dung` (quản trị hoặc BGĐ của chương trình,
+system_admin) — không mở thêm quyền nào. Trên Lộ trình: ô «+ Thêm ngày» cuối dải
+ngày, nút «Sửa ngày» / «Thêm đầu việc» / thùng rác ở đầu ngày, bút sửa và thùng
+rác trên từng dòng đầu việc. Hai hộp thoại soạn ngày và đầu việc tách ra
+`TtcFormLoTrinh.tsx` để màn Quản trị và màn Lộ trình dùng chung một form.
+
+### 9.2 Tính năng của từng đầu việc
+
+Cột `ttc_dau_viec.tinh_nang text[]` ⊂ {NOP_TEP, GHI_CHU, DUONG_DAN}. Bật thì học
+viên nộp ngay trên dòng đầu việc; **chưa nộp thì chưa tích hoàn thành được** —
+trigger chặn với đúng câu «Đầu việc này yêu cầu nộp trước khi tích hoàn thành.
+Còn thiếu: …», giao diện dùng cùng câu (`thieuDeTich`). Tệp nộp lưu ở bucket
+riêng `bhy-training` (không dùng `bhy-one` vì bucket đó mọi cán bộ đọc được mọi
+object), đường dẫn `<chương trình>/<user>/<đầu việc>/<uuid>.<đuôi>`: thư mục cấp 1
+gác đọc theo thành viên chương trình, cấp 2 gác ghi/xoá theo chủ tệp. Người khác
+trong chương trình mở tệp qua signed URL 1 giờ.
+
+### 9.3 Nhắc trước giờ — «báo cho ai trong lần đào tạo này»
+
+Cột `ttc_chuong_trinh.nhac` jsonb: `truoc_ngay` và `truoc_het_phan`, mỗi mốc
+`{bat, phut, nguoi[]}`. Người nhận chọn **đích danh** trong danh sách thành viên
+(không theo vai) — đúng cách Giám đốc mô tả: mỗi đợt một bộ người. Hàm
+`ttc_nhac_theo_lich()` chạy mỗi 5 phút trong giờ làm việc; mốc = giờ đầu việc
+sớm nhất − phút (ngày) hoặc giờ kết thúc muộn nhất của phần − phút (phần); gửi ở
+tick đầu tiên rơi vào cửa sổ 5 phút nên không lặp. Hai mã tin mới
+`TTC_SAP_BAT_DAU_NGAY` (tiêu đề ngày, giờ bắt đầu, văn bản, **Kiểm tra lại:**
+phần chuẩn bị tối hôm trước) và `TTC_SAP_HET_PHAN` (phần, giờ kết thúc, đầu ra
+phải nộp, **Chưa tích: học viên · n/m**). Đây là quyết định nghiệp vụ của Giám
+đốc; bốn mốc cũ giữ nguyên. Tin đi qua `ct2_dat_thong_bao` nên vẫn im ngoài giờ
+và tôn trọng trần tin nhẹ/ngày. Push mở về `/one/training-center/lo-trinh` —
+trang mới tự chuyển sang Lộ trình của chương trình đang chạy của người đọc
+(trước đây đường dẫn này chưa có route).

@@ -426,6 +426,17 @@ viên vẫn của TCTH. Migration `20261009090000_ttc_phieu_giao_viec_bay_o.sql`
 `supabase/rollbacks/20261009090000_ttc_phieu_giao_viec_bay_o_down.sql`. Chi
 tiết rà soát và đối chiếu nghiệm thu: mục 8 của tài liệu trên.
 
+**Sửa lộ trình tại chỗ · nộp tệp · nhắc trước giờ (06/09/2026, đợt 3):** BGĐ và
+TCTH sửa ngày/đầu việc ngay trên màn Lộ trình; mỗi đầu việc bật được «nộp tệp
+đính kèm / ghi chú / đường dẫn» (bucket riêng tư `bhy-training`, chưa nộp thì
+chưa tích được — trigger chặn); cấu hình «Nhắc trước giờ — báo cho ai» theo từng
+lần đào tạo, cron `ttc-nhac-theo-lich` mỗi 5 phút gửi hai mã tin mới
+`TTC_SAP_BAT_DAU_NGAY` / `TTC_SAP_HET_PHAN`; route `/one/training-center/lo-trinh`
+(đích của push TTC_*) tự chuyển sang chương trình đang chạy. Migration
+`20261010090000_ttc_lo_trinh_nop_tep_va_nhac.sql` **đã áp** vào
+`whlysprzsguehxmrjwha` (06/09/2026, tên `ttc_lo_trinh_nop_tep_va_nhac`); file gỡ
+cùng tên trong `supabase/rollbacks/`. Chi tiết: mục 9 của tài liệu trên.
+
 ## Chiêu thức 2 — Kanban 5W2H + PDCA (08/2026)
 
 Trang `/one/chieu-thuc-2` được dựng lại theo đặc tả đầy đủ
