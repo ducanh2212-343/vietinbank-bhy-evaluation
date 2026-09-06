@@ -67,6 +67,8 @@ function nhanPhanHe(tb: ThongBao): string {
   if (tb.ma_su_kien === 'PHIEN_BAN') return '';
   // Bản tin góp ý nói về cả hệ thống, không thuộc phân hệ nào
   if (tb.ma_su_kien === 'GOP_Y') return '';
+  // Bốn mốc của Training Center — nhìn màn hình khóa là biết tin thuộc chương trình đào tạo
+  if (tb.ma_su_kien.startsWith('TTC_')) return '[Training Center] ';
   if (tb.noi_dung.startsWith('Dấu ấn:')) return '[Dấu ấn] ';
   if (tb.noi_dung.startsWith('Hành động:')) return '[CT3] ';
   return '[CT2] ';
@@ -84,6 +86,8 @@ function duongDan(tb: ThongBao): string {
   // Sao Xứng Đáng — tab Tổng hợp (bảng cá nhân + mốc quà kế tiếp)
   if (tb.ma_su_kien === 'SAO_NHAN' || tb.ma_su_kien === 'SAO_CHUNG_VUI'
       || tb.ma_su_kien === 'SAO_BAN_TIN') return '/one/ghi-nhan/tong-hop';
+  // Training Center — trùng với duongDanThongBao (src/lib/ct2.ts)
+  if (tb.ma_su_kien.startsWith('TTC_')) return '/one/training-center/lo-trinh';
   if (tb.dau_viec_id) return `/one/chieu-thuc-2?the=${tb.dau_viec_id}`;
   if (tb.ho_so_id) return `/one/chieu-thuc-2?ho_so=${tb.ho_so_id}`;
   if (tb.ma_su_kien.startsWith('HS_')) return '/one/chieu-thuc-2?tab=tin-dung';

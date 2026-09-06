@@ -384,6 +384,25 @@ npm run phien-ban -- ten-ngan-khong-dau --loai=tinh-nang --phan-he=chieu-thuc-2
 Nghiên cứu đầy đủ (có nên push mỗi khi lên tính năng mới, ba phương án đã cân,
 chính sách kênh theo mức thay đổi): `docs/lich-su-phien-ban-va-bao-tin-moi-2026-08.md`.
 
+## Bắc Hưng Yên Training Center (09/2026)
+
+Cấu phần đào tạo và rèn luyện, là thương hiệu thứ bảy trong Bắc Hưng Yên Ways
+(đặc tả 1.0 ngày 06/09/2026). Năm màn tại `/one/training-center` (trang chủ ·
+lộ trình · bảng việc · tự soi · lịch Ban Giám đốc); vai đọc từ **bảng thành
+viên chương trình** `ttc_thanh_vien` (học viên · người hướng dẫn · BGĐ · quản
+trị), không từ vai trò đăng nhập. Ba việc gối đầu («3 việc lựa chọn với cán
+bộ») nhập ở Chiêu thức 2 và hiện trên Kanban hàng ngày của Training Center qua
+RPC `ttc_kanban_hoc_vien`. Tự soi và tự suy ngẫm của học viên chỉ chính học
+viên đọc được — RLS, không phải giao diện. Bốn mốc thông báo (`TTC_*`) đi qua
+hàng đợi `ct2_thong_bao`; hai cron `ttc-nhac-sap-trinh-bay` (15:10) và
+`ttc-nhac-con-viec` (17:00). Migration
+`20261008090000_bhy_training_center.sql` **chưa áp** vào project
+`whlysprzsguehxmrjwha` — áp xong kiểm 4 dòng `ttc_thanh_vien` (gán theo họ
+tên: Trần Đức Anh · Nguyễn Đức Thái Hoàng · Đỗ Việt Anh · Vũ Thị Thu Hà) và
+**deploy lại `notify-ct2`** để push mở đúng Lộ trình. Đã chạy thử trọn migration
++ file gỡ trên Postgres cục bộ (kịch bản 10 bước). Nghiên cứu tích hợp, phân
+quyền, phần để lại giai đoạn 2–3: `docs/tich-hop-bhy-training-center-2026-09.md`.
+
 ## Chiêu thức 2 — Kanban 5W2H + PDCA (08/2026)
 
 Trang `/one/chieu-thuc-2` được dựng lại theo đặc tả đầy đủ

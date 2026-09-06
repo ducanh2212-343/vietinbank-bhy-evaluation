@@ -1023,6 +1023,9 @@ export function duongDanThongBao(
   // Không mở màn Ghi nhận Sao: người NHẬN sao thường không phải người được ghi.
   if (tb.ma_su_kien === 'SAO_NHAN' || tb.ma_su_kien === 'SAO_CHUNG_VUI'
       || tb.ma_su_kien === 'SAO_BAN_TIN') return '/one/ghi-nhan/tong-hop';
+  // Training Center — bốn mốc TTC_* đều nói về một ngày của lộ trình: mở thẳng
+  // Lộ trình (ngày mặc định là hôm nay), nơi có ô tích và phiếu chấm Bloom.
+  if (tb.ma_su_kien.startsWith('TTC_')) return '/one/training-center/lo-trinh';
   if (tb.dau_viec_id) return `/one/chieu-thuc-2?the=${tb.dau_viec_id}`;
   // Tin hồ sơ mang mã hồ sơ mở THẲNG hồ sơ đó — nơi có sẵn ô Trao đổi.
   // «Có hồ sơ chờ anh/chị» mà chỉ mở chung tab là bắt người duyệt tự tìm

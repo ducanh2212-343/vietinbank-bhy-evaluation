@@ -100,10 +100,13 @@ describe('Cấu trúc cây điều hướng', () => {
     ]);
     // Sao Xứng Đáng thành thư mục từ 04/09/2026: chương trình tách làm bốn màn
     // (giới thiệu / ghi nhận / tổng hợp / quản lý) nên không còn là mục lẻ.
+    // Training Center (09/2026) có năm màn (trang chủ, lộ trình, bảng việc,
+    // tự soi, lịch BGĐ) nên vào cổng là một thư mục ngay từ đầu.
     expect(thuMuc.map((f) => f.folder)).toEqual([
       'Sao Xứng Đáng',
       'Bắc Hưng Yên Ideas',
       'Bắc Hưng Yên Quizzi',
+      'Bắc Hưng Yên Training Center',
     ]);
   });
 
@@ -129,6 +132,22 @@ describe('Cấu trúc cây điều hướng', () => {
       '/quizzi/chien-dich',
       '/quan-tri-quizzi',
     ]);
+    expect(trongThuMuc('Bắc Hưng Yên Training Center')).toEqual([
+      '/one/training-center',
+      '/one/training-center/lo-trinh',
+      '/one/training-center/bang-viec',
+      '/one/training-center/tu-soi',
+      '/one/training-center/lich-bgd',
+    ]);
+  });
+
+  it('Training Center mở cho mọi cán bộ nhưng đóng với khách đối tác', () => {
+    // Vai đọc từ bảng thành viên chương trình nên menu không gác bằng minRole;
+    // trang tự hiện giới thiệu cho người ngoài chương trình. Khách đối tác thì
+    // không có màn nào trong danh mục màn hình khách → fail-closed.
+    expect(moiDuongDan(canBoThuong)).toContain('/one/training-center');
+    expect(moiDuongDan(canBoThuong)).toContain('/one/training-center/tu-soi');
+    expect(moiDuongDan(khachMoRong)).not.toContain('/one/training-center');
   });
 
   it('mọi mục con của Ways đều dẫn thẳng tới nơi làm việc thật', () => {
@@ -149,6 +168,11 @@ describe('Cấu trúc cây điều hướng', () => {
       '/quizzi',
       '/quizzi/chien-dich',
       '/quan-tri-quizzi',
+      '/one/training-center',
+      '/one/training-center/lo-trinh',
+      '/one/training-center/bang-viec',
+      '/one/training-center/tu-soi',
+      '/one/training-center/lich-bgd',
     ]);
   });
 

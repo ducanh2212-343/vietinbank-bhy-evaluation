@@ -6,7 +6,7 @@ import {
   CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag, GitBranch,
   ListChecks, Building2, Gavel, TrendingUp, Zap, Lightbulb,
   Home, BookOpen, Compass, Layers, Share2, CalendarDays, NotebookPen, Sprout, TreeDeciduous,
-  Boxes,
+  Boxes, Columns3, ScanFace,
   Sparkles as SparklesIcon,
   type LucideIcon,
 } from 'lucide-react';
@@ -369,6 +369,54 @@ export const NAV_SECTIONS: NavSection[] = [
             path: '/quan-tri-quizzi',
             minRole: 'admin',
             keywords: ['quan tri quiz', 'ngan hang cau hoi'],
+          },
+        ],
+      },
+      {
+        // Training Center (09/2026) — cấu phần đào tạo và rèn luyện. Vai đọc từ
+        // BẢNG THÀNH VIÊN chương trình chứ không từ vai trò đăng nhập, nên không
+        // gác được bằng minRole/special: mọi cán bộ thấy mục, trang tự hiện giới
+        // thiệu cho người ngoài chương trình và dữ liệu cho thành viên (RLS là
+        // hàng rào thật). Không mở cho khách đối tác — không có guestScreen.
+        id: 'ways-training',
+        folder: 'Bắc Hưng Yên Training Center',
+        icon: GraduationCap,
+        items: [
+          {
+            label: 'Trang chủ Training Center',
+            icon: GraduationCap,
+            path: '/one/training-center',
+            end: true,
+            bleed: true,
+            keywords: ['training center', 'dao tao', 'ren luyen', 'vun goc vuon canh', 'chuong trinh 10 ngay', 'hoc vien'],
+          },
+          {
+            label: 'Lộ trình',
+            icon: Route,
+            path: '/one/training-center/lo-trinh',
+            bleed: true,
+            keywords: ['lo trinh', 'lich hoc', 'dau viec', 'tich hoan thanh', 'phieu bloom'],
+          },
+          {
+            label: 'Bảng việc',
+            icon: Columns3,
+            path: '/one/training-center/bang-viec',
+            bleed: true,
+            keywords: ['bang viec', 'viec goi dau', 'kanban hoc vien', '5w2h', 'nghiem thu'],
+          },
+          {
+            label: 'Tự soi',
+            icon: ScanFace,
+            path: '/one/training-center/tu-soi',
+            bleed: true,
+            keywords: ['tu soi', '8 tieu chi', 'truong thanh', 'stop start continue'],
+          },
+          {
+            label: 'Lịch Ban Giám đốc',
+            icon: CalendarDays,
+            path: '/one/training-center/lich-bgd',
+            bleed: true,
+            keywords: ['lich ban giam doc', 'khung gio', 'trinh bay 30 phut'],
           },
         ],
       },
