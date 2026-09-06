@@ -1,5 +1,5 @@
 import {
-  BookOpen, Zap, Lightbulb, Share2, Star, ShieldAlert, type LucideIcon,
+  BookOpen, Zap, Lightbulb, Share2, Star, ShieldAlert, GraduationCap, type LucideIcon,
 } from 'lucide-react';
 
 /**
@@ -107,5 +107,21 @@ export const BHY_WAYS: WayItem[] = [
     accent: '#059669',
     duongDan: '/one/credit-360',
     nhanNut: 'Đăng ký phiên',
+  },
+  {
+    // Đặc tả Training Center 1.0 (06/09/2026): điểm vào là MỘT Ô trên trang chủ
+    // cổng, tên đầy đủ, dòng phụ «Vun gốc · Vươn cành». Thẻ dẫn về trang chủ
+    // của thương hiệu — người ngoài chương trình đọc giới thiệu, thành viên
+    // thấy ngày hôm nay và Kanban hàng ngày.
+    id: 'training-center',
+    ten: 'Bắc Hưng Yên Training Center',
+    dinhVi: 'Vun gốc · Vươn cành',
+    moTa:
+      'Trung tâm các chương trình đào tạo và rèn luyện cho bốn nhóm cán bộ — hội nhập, nâng cấp chuyên môn, ' +
+      'quy hoạch, quản lý đương nhiệm: lộ trình theo ngày, tích hoàn thành, phiếu Bloom, tự soi 08 tiêu chí.',
+    icon: GraduationCap,
+    accent: '#A8763E',
+    duongDan: '/one/training-center',
+    nhanNut: 'Vào Training Center',
   },
 ];

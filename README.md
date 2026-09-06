@@ -384,6 +384,59 @@ npm run phien-ban -- ten-ngan-khong-dau --loai=tinh-nang --phan-he=chieu-thuc-2
 Nghiên cứu đầy đủ (có nên push mỗi khi lên tính năng mới, ba phương án đã cân,
 chính sách kênh theo mức thay đổi): `docs/lich-su-phien-ban-va-bao-tin-moi-2026-08.md`.
 
+## Bắc Hưng Yên Training Center (09/2026)
+
+Trung tâm NHIỀU chương trình đào tạo và rèn luyện — thương hiệu thứ bảy trong
+Bắc Hưng Yên Ways (đặc tả 1.0 ngày 06/09/2026). Tầng trung tâm:
+`/one/training-center` (danh mục theo bốn nhóm đối tượng, «chương trình của
+tôi») và `/one/training-center/quan-tri` (Phòng TCTH tạo, nhân bản từ mẫu, xếp
+thành viên, soạn ngày và đầu việc). Tầng chương trình:
+`/one/training-center/chuong-trinh/:id` + `lo-trinh` · `bang-viec` · `tu-soi` ·
+`lich-bgd`; một chương trình có nhiều học viên, người hướng dẫn/BGĐ chọn học
+viên đang xem bằng `?hv=`. Vai đọc từ **bảng thành viên chương trình**
+`ttc_thanh_vien` (học viên · người hướng dẫn · BGĐ · quản trị), không từ vai
+trò đăng nhập; người tạo chương trình tự thành quản trị của nó. Danh mục mở
+cho mọi cán bộ (RLS), lịch/tiến độ/điểm chỉ thành viên. Ba việc gối đầu («3
+việc lựa chọn với cán bộ») nhập ở Chiêu thức 2 và hiện trên Kanban hàng ngày
+của chương trình qua RPC `ttc_kanban_hoc_vien`. Tự soi và tự suy ngẫm của học
+viên chỉ chính học viên đọc được — RLS, không phải giao diện. Bốn mốc thông
+báo (`TTC_*`) đi qua hàng đợi `ct2_thong_bao`; hai cron
+`ttc-nhac-sap-trinh-bay` (15:10) và `ttc-nhac-con-viec` (17:00). Migration
+`20261008090000_bhy_training_center.sql` (nạp chương trình 10 ngày TP KHDN làm
+mẫu + ba chương trình dự kiến ở trạng thái Chuẩn bị; thành viên gán theo họ
+tên: Trần Đức Anh · Nguyễn Đức Thái Hoàng · Đỗ Việt Anh · Vũ Thị Thu Hà) **đã
+áp** vào project `whlysprzsguehxmrjwha` (06/09/2026) qua ba đợt
+`bhy_training_center_1_bang_va_rls` · `_2_kanban_thong_bao_cron` ·
+`_3_seed_chuong_trinh_10_ngay` — nội dung trùng file trong repo (bản bỏ chú
+thích), đã đối chiếu checksum 102 đầu việc với bản chạy thử cục bộ; 4 thành
+viên gán đúng người, 2 cron đã đăng ký. Cần **deploy lại `notify-ct2`** để push
+mở đúng Lộ trình. Đã chạy thử trọn migration + file gỡ trên Postgres cục bộ
+(kịch bản 11 bước). Nghiên cứu tích hợp, phân quyền, phần để lại giai đoạn 3:
+`docs/tich-hop-bhy-training-center-2026-09.md`.
+
+**Phiếu giao việc bảy ô (06/09/2026):** ba việc gối đầu chuyển sang phiếu
+tiếng Việt VÌ SAO · VIỆC GÌ · AI LÀM · ĐẠT CHUẨN · HẠN NỘP · ĐIỂM KIỂM · MỨC
+GIAO, khoá chuẩn khi «Giao việc», nghiệm thu Đạt/Chưa đạt, thẻ ①②③ trên Kanban
+đi theo trạng thái riêng của phiếu. Ban Giám đốc của chương trình sửa được nội
+dung (thông tin, ngày, đầu việc) như quản trị; tạo mới, nhân bản, xếp thành
+viên vẫn của TCTH. Migration `20261009090000_ttc_phieu_giao_viec_bay_o.sql`
+**đã áp** vào `whlysprzsguehxmrjwha` (06/09/2026, tên
+`ttc_phieu_giao_viec_bay_o`; kiểm sau áp: 13 cột mới, 2 trigger, 3 policy đổi,
+0 phiếu cũ nên không phải chuyển dữ liệu). File gỡ:
+`supabase/rollbacks/20261009090000_ttc_phieu_giao_viec_bay_o_down.sql`. Chi
+tiết rà soát và đối chiếu nghiệm thu: mục 8 của tài liệu trên.
+
+**Sửa lộ trình tại chỗ · nộp tệp · nhắc trước giờ (06/09/2026, đợt 3):** BGĐ và
+TCTH sửa ngày/đầu việc ngay trên màn Lộ trình; mỗi đầu việc bật được «nộp tệp
+đính kèm / ghi chú / đường dẫn» (bucket riêng tư `bhy-training`, chưa nộp thì
+chưa tích được — trigger chặn); cấu hình «Nhắc trước giờ — báo cho ai» theo từng
+lần đào tạo, cron `ttc-nhac-theo-lich` mỗi 5 phút gửi hai mã tin mới
+`TTC_SAP_BAT_DAU_NGAY` / `TTC_SAP_HET_PHAN`; route `/one/training-center/lo-trinh`
+(đích của push TTC_*) tự chuyển sang chương trình đang chạy. Migration
+`20261010090000_ttc_lo_trinh_nop_tep_va_nhac.sql` **đã áp** vào
+`whlysprzsguehxmrjwha` (06/09/2026, tên `ttc_lo_trinh_nop_tep_va_nhac`); file gỡ
+cùng tên trong `supabase/rollbacks/`. Chi tiết: mục 9 của tài liệu trên.
+
 ## Chiêu thức 2 — Kanban 5W2H + PDCA (08/2026)
 
 Trang `/one/chieu-thuc-2` được dựng lại theo đặc tả đầy đủ

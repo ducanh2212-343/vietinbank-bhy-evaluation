@@ -122,6 +122,14 @@ const OneIdeaCouncilPage = lazyWithRetry(() => import("./pages/one/OneIdeaCounci
 const OneIdeaOpsPage = lazyWithRetry(() => import("./pages/one/OneIdeaOpsPage"));
 const OneIdeaSubmitPage = lazyWithRetry(() => import("./pages/one/OneIdeaSubmitPage"));
 const OneCreditPage = lazyWithRetry(() => import("./pages/one/OneCreditPage"));
+const OneTrainingPage = lazyWithRetry(() => import("./pages/one/OneTrainingPage"));
+const OneTrainingQuanTriPage = lazyWithRetry(() => import("./pages/one/OneTrainingQuanTriPage"));
+const OneTrainingChuongTrinhPage = lazyWithRetry(() => import("./pages/one/OneTrainingChuongTrinhPage"));
+const OneTrainingLoTrinhPage = lazyWithRetry(() => import("./pages/one/OneTrainingLoTrinhPage"));
+const OneTrainingLoTrinhHomNayPage = lazyWithRetry(() => import("./pages/one/OneTrainingLoTrinhHomNayPage"));
+const OneTrainingBangViecPage = lazyWithRetry(() => import("./pages/one/OneTrainingBangViecPage"));
+const OneTrainingTuSoiPage = lazyWithRetry(() => import("./pages/one/OneTrainingTuSoiPage"));
+const OneTrainingLichBgdPage = lazyWithRetry(() => import("./pages/one/OneTrainingLichBgdPage"));
 const OneRecognitionPage = lazyWithRetry(() => import("./pages/one/OneRecognitionPage"));
 const OneStarAwardPage = lazyWithRetry(() => import("./pages/one/OneStarAwardPage"));
 const OneStarStatsPage = lazyWithRetry(() => import("./pages/one/OneStarStatsPage"));
@@ -246,6 +254,19 @@ const App = () => (
               {/* Vận hành & phê duyệt Ideas — BGĐ duyệt Bén rễ, TCTH chốt hạn mức/SMP/ngân sách; trang tự gác quyền */}
               <Route path="/one/y-tuong/van-hanh" element={<OneIdeaOpsPage />} />
               <Route path="/one/credit-360" element={<OneCreditPage />} />
+              {/* Bắc Hưng Yên Training Center — trung tâm NHIỀU chương trình: danh mục + quản trị
+                  (TCTH) ở tầng trung tâm, năm màn của từng chương trình theo /chuong-trinh/:id.
+                  Trang tự gác theo bảng thành viên chương trình, RLS là lớp chặn chính. Không mở
+                  cho khách đối tác. */}
+              <Route path="/one/training-center" element={<OneTrainingPage />} />
+              <Route path="/one/training-center/quan-tri" element={<OneTrainingQuanTriPage />} />
+              {/* Đích của push TTC_* — tự chuyển sang Lộ trình chương trình đang chạy của người đọc */}
+              <Route path="/one/training-center/lo-trinh" element={<OneTrainingLoTrinhHomNayPage />} />
+              <Route path="/one/training-center/chuong-trinh/:id" element={<OneTrainingChuongTrinhPage />} />
+              <Route path="/one/training-center/chuong-trinh/:id/lo-trinh" element={<OneTrainingLoTrinhPage />} />
+              <Route path="/one/training-center/chuong-trinh/:id/bang-viec" element={<OneTrainingBangViecPage />} />
+              <Route path="/one/training-center/chuong-trinh/:id/tu-soi" element={<OneTrainingTuSoiPage />} />
+              <Route path="/one/training-center/chuong-trinh/:id/lich-bgd" element={<OneTrainingLichBgdPage />} />
               <Route path="/one/ghi-nhan" element={<OneRecognitionPage />} />
               <Route path="/one/ghi-nhan/tang-sao" element={<OneStarAwardPage />} />
               <Route path="/one/ghi-nhan/tong-hop" element={<OneStarStatsPage />} />

@@ -372,6 +372,40 @@ export const NAV_SECTIONS: NavSection[] = [
           },
         ],
       },
+      {
+        // Training Center (09/2026) — TRUNG TÂM nhiều chương trình đào tạo; chương
+        // trình 10 ngày của Trưởng phòng KHDN chỉ là một mục trong danh mục. Vai đọc
+        // từ BẢNG THÀNH VIÊN chương trình chứ không từ vai trò đăng nhập, nên danh
+        // mục mở cho mọi cán bộ (trang tự hiện giới thiệu cho người ngoài chương
+        // trình, RLS là hàng rào thật). Các màn của từng chương trình mang id trên
+        // đường dẫn nên không có mục menu riêng — gắn vào mục danh mục qua extraPaths.
+        // Không mở cho khách đối tác — không có guestScreen.
+        id: 'ways-training',
+        folder: 'Bắc Hưng Yên Training Center',
+        icon: GraduationCap,
+        items: [
+          {
+            label: 'Danh mục chương trình',
+            icon: GraduationCap,
+            path: '/one/training-center',
+            end: true,
+            bleed: true,
+            keywords: ['training center', 'dao tao', 'ren luyen', 'vun goc vuon canh', 'chuong trinh 10 ngay',
+              'hoc vien', 'hoi nhap', 'chuyen de', 'quy hoach', 'lo trinh', 'bang viec', 'tu soi', 'lich ban giam doc'],
+            // /lo-trinh là đích của push TTC_* — trang chuyển hướng sang chương trình đang chạy
+            extraPaths: ['/one/training-center/chuong-trinh/', '/one/training-center/lo-trinh'],
+          },
+          {
+            label: 'Quản trị chương trình',
+            icon: ClipboardList,
+            path: '/one/training-center/quan-tri',
+            bleed: true,
+            // admin = bgd + tcth_admin + system_admin: BGĐ sửa nội dung, TCTH xếp thành viên
+            minRole: 'admin',
+            keywords: ['quan tri chuong trinh', 'tao chuong trinh', 'nhan ban', 'thanh vien', 'soan ngay', 'dau viec', 'sua noi dung chuong trinh'],
+          },
+        ],
+      },
     ],
   },
   {
