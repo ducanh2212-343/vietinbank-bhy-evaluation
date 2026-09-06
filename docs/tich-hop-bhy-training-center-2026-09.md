@@ -189,9 +189,9 @@ Giám đốc **tô cảnh báo chứ không cắt** — đây là thông tin đ�
 
 ## 7. Việc còn lại trước 07/09 và sau đó
 
-1. **Áp migration** `20261008090000_bhy_training_center.sql` vào project
-   `whlysprzsguehxmrjwha` (SQL Editor); kiểm tra 4 dòng `ttc_thanh_vien` đã
-   khớp đúng người — nếu họ tên trong `profiles` khác, thêm tay.
+1. ~~Áp migration~~ **Đã áp** 06/09/2026 qua ba đợt (bảng + RLS · Kanban +
+   thông báo + cron · seed); 4 dòng `ttc_thanh_vien` khớp đúng người, checksum
+   102 đầu việc trùng bản chạy thử cục bộ.
 2. **Deploy lại `notify-ct2`** để push của bốn mốc mở đúng Lộ trình.
 3. Đứng tại cổng chi nhánh lấy toạ độ thật, cập nhật `vi_do`/`kinh_do` (chỉ
    cần khi bật ghi nhận có mặt ở giai đoạn 3).

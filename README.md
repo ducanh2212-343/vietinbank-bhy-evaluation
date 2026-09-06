@@ -404,9 +404,13 @@ báo (`TTC_*`) đi qua hàng đợi `ct2_thong_bao`; hai cron
 `ttc-nhac-sap-trinh-bay` (15:10) và `ttc-nhac-con-viec` (17:00). Migration
 `20261008090000_bhy_training_center.sql` (nạp chương trình 10 ngày TP KHDN làm
 mẫu + ba chương trình dự kiến ở trạng thái Chuẩn bị; thành viên gán theo họ
-tên: Trần Đức Anh · Nguyễn Đức Thái Hoàng · Đỗ Việt Anh · Vũ Thị Thu Hà) —
-trạng thái áp ghi ở cuối mục này. Cần **deploy lại `notify-ct2`** để push mở
-đúng Lộ trình. Đã chạy thử trọn migration + file gỡ trên Postgres cục bộ
+tên: Trần Đức Anh · Nguyễn Đức Thái Hoàng · Đỗ Việt Anh · Vũ Thị Thu Hà) **đã
+áp** vào project `whlysprzsguehxmrjwha` (06/09/2026) qua ba đợt
+`bhy_training_center_1_bang_va_rls` · `_2_kanban_thong_bao_cron` ·
+`_3_seed_chuong_trinh_10_ngay` — nội dung trùng file trong repo (bản bỏ chú
+thích), đã đối chiếu checksum 102 đầu việc với bản chạy thử cục bộ; 4 thành
+viên gán đúng người, 2 cron đã đăng ký. Cần **deploy lại `notify-ct2`** để push
+mở đúng Lộ trình. Đã chạy thử trọn migration + file gỡ trên Postgres cục bộ
 (kịch bản 11 bước). Nghiên cứu tích hợp, phân quyền, phần để lại giai đoạn 3:
 `docs/tich-hop-bhy-training-center-2026-09.md`.
 
