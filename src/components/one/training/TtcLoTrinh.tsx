@@ -19,8 +19,9 @@ import {
 import type { TtcBoiCanh } from './useTrainingCenter';
 import {
   luuNopDauViec, luuSuyNgam, tichDauViec, xoaDauViec, xoaNgay,
-  useTtcDauViec, useTtcDiemBloom, useTtcKyTep, useTtcLamTuoi, useTtcNgay, useTtcSuyNgam, useTtcTienDo,
+  useTtcDauViec, useTtcDiemBloom, useTtcDiemDanh, useTtcKyTep, useTtcLamTuoi, useTtcNgay, useTtcSuyNgam, useTtcTienDo,
 } from './useTrainingCenter';
+import { TtcTheDiemDanh } from './TtcTheDiemDanh';
 import { TTC_TEP_ACCEPT, TTC_TEP_TOI_DA, kichThuocDoc, taiTepTrainingCenter, xoaTepTrainingCenter } from './tepTrainingCenter';
 import { TtcChamBloom } from './TtcChamBloom';
 import { FormDauViec, FormNgay } from './TtcFormLoTrinh';
@@ -51,6 +52,7 @@ export function TtcLoTrinh({ bc }: { bc: TtcBoiCanh }) {
   const viecIds = useMemo(() => dsViec.map((v) => v.id), [dsViec]);
   const { data: tienDo = [] } = useTtcTienDo(ctId, hocVienId, viecIds);
   const { data: dsDiem = [] } = useTtcDiemBloom(ctId, ngayIds);
+  const { data: dsDiemDanh = [] } = useTtcDiemDanh(ctId, ngayIds);
   const lamTuoi = useTtcLamTuoi();
 
   const [ngayChon, setNgayChon] = useState<string | null>(null);
@@ -128,6 +130,11 @@ export function TtcLoTrinh({ bc }: { bc: TtcBoiCanh }) {
 
   return (
     <div className="space-y-5">
+      {/* Điểm danh — chỉ hiện đúng ngày học hôm nay */}
+      {ct && ngayHien && ngayHien.ngay === homNay && (
+        <TtcTheDiemDanh bc={bc} ngay={ngayHien} dsDiemDanh={dsDiemDanh} />
+      )}
+
       {/* Dải ngày */}
       <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
         {dsNgay.map((n) => {

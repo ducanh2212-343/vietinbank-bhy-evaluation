@@ -117,6 +117,8 @@ export interface TtcChuongTrinh {
   created_at: string;
   /** Cấu hình nhắc của lần đào tạo này — đọc bằng docCauHinhNhac() */
   nhac: unknown;
+  /** Cấu hình điểm danh — đọc bằng docCauHinhDiemDanh() ở src/lib/diemDanh.ts */
+  diem_danh: unknown;
 }
 
 export interface TtcThanhVien {

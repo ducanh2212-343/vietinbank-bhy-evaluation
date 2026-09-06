@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type { Ct2DauViec } from '@/lib/ct2';
 import { kyTepTrainingCenter } from './tepTrainingCenter';
+import type { KetQuaDiemDanh, TtcCauHinhDiemDanh, TtcDiemDanh, TtcQrNgay } from '@/lib/diemDanh';
 import type {
   TtcChuongTrinh, TtcDauViec, TtcDiemBloom, TtcDiemKiem, TtcKetQuaNghiemThu, TtcLichSuChuan, TtcMucGiao,
   TtcNgay, TtcPhieuForm, TtcSuyNgam, TtcThanhVien, TtcTienDo, TtcTrangThaiPhieu, TtcTuSoi, TtcVai, TtcViecGoiDau,
@@ -497,6 +498,108 @@ export async function nghiemThuPhieu(id: string, p: { ket_qua: TtcKetQuaNghiemTh
 /** «Mở lại nghiệm thu» — BGĐ; thẻ về Đang làm */
 export async function moLaiNghiemThu(id: string) {
   nemNeuLoi(await db.from('ttc_viec_goi_dau').update({ nghiem_thu_ket_qua: null }).eq('id', id));
+}
+
+// ---------------------------------------------------------------------------
+// Điểm danh — hai luồng: điện thoại + định vị · quét QR của ngày
+// ---------------------------------------------------------------------------
+
+/** Bản ghi điểm danh của cả chương trình (RLS: chỉ thành viên đọc được) */
+export function useTtcDiemDanh(ctId: string | null, ngayIds: string[]) {
+  const khoa = ngayIds.join(',');
+  return useQuery({
+    queryKey: ['ttc', 'diem-danh', ctId, khoa],
+    enabled: !!ctId && ngayIds.length > 0,
+    staleTime: NUA_PHUT,
+    queryFn: async () => {
+      const data = nemNeuLoi(await db.from('ttc_diem_danh').select('*').in('ngay_id', ngayIds)) as TtcDiemDanh[];
+      return data ?? [];
+    },
+  });
+}
+
+/** Mã QR còn hiệu lực của từng ngày — chỉ quản trị / BGĐ đọc được (RLS) */
+export function useTtcQrNgay(ctId: string | null, ngayIds: string[], bat: boolean) {
+  const khoa = ngayIds.join(',');
+  return useQuery({
+    queryKey: ['ttc', 'qr-ngay', ctId, khoa],
+    enabled: bat && !!ctId && ngayIds.length > 0,
+    staleTime: NUA_PHUT,
+    queryFn: async () => {
+      const data = nemNeuLoi(await db.from('ttc_qr_ngay').select('*').in('ngay_id', ngayIds)) as TtcQrNgay[];
+      return (data ?? []).filter((q) => !q.vo_hieu);
+    },
+  });
+}
+
+/**
+ * Lấy vị trí của máy đang dùng. Bọc lại Promise vì API trình duyệt còn dùng
+ * callback; `enableHighAccuracy` để máy ưu tiên GPS thay vì vị trí theo wifi —
+ * trong nhà bê tông, vị trí theo wifi lệch tới vài trăm mét, đủ để một học viên
+ * đứng trong phòng học vẫn bị báo ngoài vùng.
+ */
+export function layViTri(): Promise<GeolocationPosition> {
+  return new Promise((giai, tuChoi) => {
+    if (!('geolocation' in navigator)) {
+      tuChoi(new Error('Máy này không hỗ trợ định vị. Dùng điện thoại hoặc quét mã QR trong phòng học.'));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(giai, (loi) => {
+      tuChoi(new Error(
+        loi.code === loi.PERMISSION_DENIED
+          ? 'Trình duyệt đang chặn định vị. Vào Cài đặt → quyền vị trí, bật cho trang này rồi bấm lại.'
+          : loi.code === loi.TIMEOUT
+            ? 'Chưa bắt được vị trí. Ra gần cửa sổ rồi bấm lại, hoặc quét mã QR trong phòng học.'
+            : 'Không lấy được vị trí. Bật định vị của máy rồi bấm lại.',
+      ));
+    }, { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 });
+  });
+}
+
+/** Luồng 1 — máy chủ tự tìm ngày hôm nay của chương trình và tự tính khoảng cách */
+export async function diemDanhDinhVi(ctId: string, vi: GeolocationPosition): Promise<KetQuaDiemDanh> {
+  const data = nemNeuLoi(await db.rpc('ttc_diem_danh_dinh_vi', {
+    _ct: ctId,
+    _vi_do: vi.coords.latitude,
+    _kinh_do: vi.coords.longitude,
+    _do_chinh_xac: Number.isFinite(vi.coords.accuracy) ? Math.round(vi.coords.accuracy) : null,
+  })) as KetQuaDiemDanh;
+  return data;
+}
+
+/** Luồng 2 — quét QR; toạ độ gửi kèm nếu máy cho, không có cũng ghi được */
+export async function diemDanhQr(ma: string, vi: GeolocationPosition | null): Promise<KetQuaDiemDanh> {
+  const data = nemNeuLoi(await db.rpc('ttc_diem_danh_qr', {
+    _ma: ma,
+    _vi_do: vi?.coords.latitude ?? null,
+    _kinh_do: vi?.coords.longitude ?? null,
+    _do_chinh_xac: vi && Number.isFinite(vi.coords.accuracy) ? Math.round(vi.coords.accuracy) : null,
+  })) as KetQuaDiemDanh;
+  return data;
+}
+
+/** Cấp mã QR cho một ngày; `capLai` = true thì mã cũ chết ngay */
+export async function capMaQr(ngayId: string, capLai = false): Promise<string> {
+  return nemNeuLoi(await db.rpc('ttc_cap_ma_qr', { _ngay_id: ngayId, _cap_lai: capLai })) as string;
+}
+
+/** Ghi hộ — Phòng Tổng hợp / BGĐ, bắt buộc lý do */
+export async function diemDanhGhiHo(ngayId: string, nguoi: string, ghiChu: string): Promise<KetQuaDiemDanh> {
+  return nemNeuLoi(await db.rpc('ttc_diem_danh_ghi_ho', {
+    _ngay_id: ngayId, _nguoi: nguoi, _ghi_chu: ghiChu,
+  })) as KetQuaDiemDanh;
+}
+
+export async function xoaDiemDanh(id: string) {
+  nemNeuLoi(await db.from('ttc_diem_danh').delete().eq('id', id));
+}
+
+/** Cấu hình điểm danh + toạ độ phòng học — quản trị / BGĐ của chương trình */
+export async function luuDiemDanhCauHinh(ctId: string, p: {
+  diem_danh: TtcCauHinhDiemDanh; vi_do: number | null; kinh_do: number | null; ban_kinh_m: number;
+}) {
+  nemNeuLoi(await db.from('ttc_chuong_trinh')
+    .update({ ...p, updated_at: new Date().toISOString() }).eq('id', ctId));
 }
 
 /**

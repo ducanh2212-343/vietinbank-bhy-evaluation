@@ -21,9 +21,10 @@ import { useCt2NhanSu } from '@/components/one/move2/useCt2Data';
 import { TtcLoi } from './TrainingNav';
 import { FormDauViec, FormNgay } from './TtcFormLoTrinh';
 import { TtcCauHinhNhac } from './TtcCauHinhNhac';
+import { TtcDiemDanhQuanTri } from './TtcDiemDanhQuanTri';
 import {
   luuChuongTrinh, nhanBanChuongTrinh, themThanhVien, xoaDauViec, xoaNgay, xoaThanhVien,
-  useTtcBoiCanh, useTtcDanhMuc, useTtcDauViec, useTtcLamTuoi, useTtcNgay, useTtcQuyenSoan,
+  useTtcBoiCanh, useTtcDanhMuc, useTtcDauViec, useTtcDiemDanh, useTtcLamTuoi, useTtcNgay, useTtcQrNgay, useTtcQuyenSoan,
   type TtcChuongTrinhForm,
 } from './useTrainingCenter';
 
@@ -227,6 +228,8 @@ function ChiTietChuongTrinh({ ctId, suaDuoc, xepDuoc, onNhanBan }: {
   const { data: dsNgay = [] } = useTtcNgay(ctId);
   const ngayIds = useMemo(() => dsNgay.map((n) => n.id), [dsNgay]);
   const { data: dsViec = [] } = useTtcDauViec(ctId, ngayIds);
+  const { data: dsDiemDanh = [] } = useTtcDiemDanh(ctId, ngayIds);
+  const { data: dsQr = [] } = useTtcQrNgay(ctId, ngayIds, suaDuoc);
 
   const [moSua, setMoSua] = useState(false);
   const [nguoiMoi, setNguoiMoi] = useState('');
@@ -317,6 +320,16 @@ function ChiTietChuongTrinh({ ctId, suaDuoc, xepDuoc, onNhanBan }: {
 
       {/* Nhắc trước giờ — báo cho ai trong lần đào tạo này */}
       <TtcCauHinhNhac ct={ct} thanhVien={bc.thanhVien} suaDuoc={suaDuoc} />
+
+      {/* Điểm danh: cách điểm danh · tấm QR từng ngày · theo dõi và ghi hộ */}
+      <TtcDiemDanhQuanTri
+        ct={ct}
+        dsNgay={dsNgay}
+        thanhVien={bc.thanhVien}
+        dsDiemDanh={dsDiemDanh}
+        dsQr={dsQr}
+        suaDuoc={suaDuoc}
+      />
 
       {/* Ngày và đầu việc */}
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">

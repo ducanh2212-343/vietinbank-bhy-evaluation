@@ -306,3 +306,70 @@ phải nộp, **Chưa tích: học viên · n/m**). Đây là quyết định ng
 và tôn trọng trần tin nhẹ/ngày. Push mở về `/one/training-center/lo-trinh` —
 trang mới tự chuyển sang Lộ trình của chương trình đang chạy của người đọc
 (trước đây đường dẫn này chưa có route).
+
+---
+
+## 10. Điểm danh học viên — hai luồng (yêu cầu 06/09, đợt 4)
+
+Migration `20261011090000_ttc_diem_danh.sql` — **đã áp** 06/09/2026 vào
+`whlysprzsguehxmrjwha` (tên `ttc_diem_danh`). Kiểm sau khi áp: 2 bảng có RLS ·
+3 policy · 7 hàm · cấu hình đã bật cho chương trình 10 ngày (hai luồng, muộn sau
+15 phút, bán kính 250 m). File gỡ cùng tên trong `supabase/rollbacks/`; kịch bản
+A–G chạy thử trên Postgres cục bộ.
+
+### 10.1 Luồng 1 — điện thoại và định vị
+
+Thẻ «Điểm danh Ngày N» nằm đầu màn Lộ trình, **chỉ hiện đúng ngày học hôm nay**.
+Học viên bấm, trình duyệt xin quyền vị trí, toạ độ thô gửi lên RPC
+`ttc_diem_danh_dinh_vi`. **Máy chủ** tính khoảng cách (Haversine, hàm
+`ttc_khoang_cach_m`) và so với bán kính của chương trình — trình duyệt không có
+đường nào ghi thẳng vào bảng, vì toạ độ do trình duyệt gửi thì ai cũng sửa được
+trước khi gửi. Ngoài vùng thì câu báo nói rõ đang cách bao nhiêu mét và phạm vi
+cho phép là bao nhiêu.
+
+Toạ độ phòng học đặt ở màn Quản trị chương trình bằng nút **«Lấy toạ độ tại
+đây»**: người của TCTH đứng giữa phòng học bấm một lần. Bán kính khuyến nghị
+100–150 m cho một toà nhà; toạ độ đang dùng vẫn là toạ độ tạm tính khu vực
+Phường Mỹ Hào nên bán kính tạm để 250 m.
+
+### 10.2 Luồng 2 — quét tấm QR của ngày
+
+`ttc_qr_ngay` giữ mã của từng ngày (16 ký tự ngẫu nhiên từ `gen_random_bytes`).
+Mã **gắn với một ngày**: quét mã của ngày khác thì bị chặn kèm ngày của tấm QR.
+Cấp lại mã (`ttc_cap_ma_qr(_ngay, true)`) làm mã cũ vô hiệu ngay — dùng khi tấm
+in cũ bị chụp lan ra ngoài. Học viên không đọc được bảng mã (RLS chỉ mở cho
+quản trị/BGĐ); họ quét ảnh, trình duyệt mở
+`/one/training-center/diem-danh?ma=…`, trang tự gọi RPC một lần. Toạ độ gửi kèm
+nếu máy cho phép — không có cũng ghi được, chỉ là BGĐ không có gì đối chiếu khi
+nghi ngờ tấm QR bị chụp gửi ra ngoài.
+
+**Tấm in** (`TtcTamQr.tsx`) dựng bằng thư viện `qrcode` (nạp tại chỗ khi mở hộp
+thoại) và xuất bằng html2canvas: nút **Tải ảnh PNG** và **Bản in A5** (jsPDF,
+có `autoPrint`). Màu trên tấm in viết thẳng bằng mã hex chứ không dùng biến CSS
+theo chủ đề sáng/tối của cổng — html2canvas chụp màu đã tính của trình duyệt,
+để biến thì tấm in ra khác nhau tuỳ máy người bấm. Mã QR đen tuyền trên nền
+trắng vì máy in Chi nhánh in đen trắng. Nội dung tấm: tên trung tâm, tên chương
+trình, **NGÀY 0N** cỡ lớn, thứ và ngày tháng, tiêu đề buổi, mã QR 280 px, ba
+dòng hướng dẫn quét, một **châm ngôn EQ** (`CHAM_NGON_EQ`, 10 câu quay vòng theo
+số thứ tự ngày — câu do Chi nhánh soạn, **không gán tên tác giả** để không in ra
+một trích dẫn sai rồi treo trong phòng học mười ngày), chân trang ghi ngày in và
+bốn ký tự cuối của mã để đối chiếu tấm nào mới nhất.
+
+### 10.3 Theo dõi và ghi hộ
+
+Khối «Điểm danh» ở màn Quản trị chương trình: cấu hình · danh sách tấm QR theo
+ngày · bảng theo dõi từng ngày (có mặt / muộn mấy phút / vắng, kèm khoảng cách
+đã ghi). Học viên quên điện thoại thì TCTH **ghi hộ** — bắt buộc lý do ≥ 10 ký
+tự, lưu cả người ghi; dòng ghi hộ mang luồng `BO_SUNG` và không tính muộn. Sửa
+một dòng điểm danh thì không có đường nào: muốn đổi phải xoá rồi ghi lại, để
+không ai lặng lẽ sửa giờ điểm danh của người khác.
+
+### 10.4 Phần cố ý KHÔNG làm
+
+- **Không thêm loại push mới.** Quy ước của repo: thêm một loại tin là quyết
+  định nghiệp vụ. Cán bộ đã nhận 21+ loại push và chỉ 27/100 người bật push;
+  một tin «chưa điểm danh» nữa sẽ làm hỏng cả các tin cần hành động.
+- **Không chặn quét QR khi thiếu định vị.** Tấm QR do PGĐ mở trong phòng vốn đã
+  là bằng chứng có mặt; bắt thêm định vị chỉ làm học viên tắc ở cửa lớp.
+- **Không nhận diện khuôn mặt, không ảnh chụp.** Ngoài phạm vi yêu cầu và kéo
+  theo cả một tầng dữ liệu nhạy cảm mới.

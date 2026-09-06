@@ -437,6 +437,17 @@ lần đào tạo, cron `ttc-nhac-theo-lich` mỗi 5 phút gửi hai mã tin m�
 `whlysprzsguehxmrjwha` (06/09/2026, tên `ttc_lo_trinh_nop_tep_va_nhac`); file gỡ
 cùng tên trong `supabase/rollbacks/`. Chi tiết: mục 9 của tài liệu trên.
 
+**Điểm danh hai luồng (06/09/2026, đợt 4):** học viên bấm nút trên điện thoại
+(máy chủ tính khoảng cách Haversine tới toạ độ phòng học, so bán kính) hoặc quét
+tấm QR **riêng của từng ngày** do TCTH in ra (`/one/training-center/diem-danh?ma=`).
+Mã gắn với một ngày, cấp lại thì mã cũ chết; tấm in xuất PNG hoặc PDF A5 kèm
+châm ngôn EQ theo ngày. TCTH đặt toạ độ bằng nút «Lấy toạ độ tại đây», theo dõi
+theo ngày và ghi hộ có lý do. Thêm phụ thuộc `qrcode` (nạp động, chỉ tải khi mở
+tấm in). Migration `20261011090000_ttc_diem_danh.sql` **đã áp** vào
+`whlysprzsguehxmrjwha` (06/09/2026, tên `ttc_diem_danh`); file gỡ cùng tên trong
+`supabase/rollbacks/`. **Không thêm loại push nào.** Chi tiết: mục 10 của tài
+liệu trên.
+
 ## Chiêu thức 2 — Kanban 5W2H + PDCA (08/2026)
 
 Trang `/one/chieu-thuc-2` được dựng lại theo đặc tả đầy đủ
