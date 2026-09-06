@@ -435,3 +435,103 @@ việc đoán 100 hay 150 m.
 Danh sách chương trình ở màn Quản trị hiện thêm dòng «Điểm danh: Chưa bật / QR /
 Định vị + QR» cho từng lớp, để nhìn một lượt biết lớp nào đã mở gì trước khi
 quyết định mở diện rộng.
+
+---
+
+## 12. Đợt 6 — Thay toàn bộ lộ trình 10 ngày và xếp lại vào giờ làm việc thật
+
+### 12.1 Vì sao phải thay chứ không sửa từng chỗ
+
+Khảo sát trước khi làm phát hiện **hai bản lộ trình khác nhau** đang tồn tại
+song song: bản trong nguyên mẫu HTML mà Giám đốc gửi, và bản đang nằm trong
+`ttc_dau_viec` trên production. Đối chiếu đủ mười ngày cho thấy bản nguyên mẫu
+mới là bản khớp với bảng Mục 3.2 của đặc tả; bản trong database là bản Giám đốc
+đã sửa tay trước đó và đã lệch đi.
+
+Không đi sửa từng đầu việc vì hai lý do. Một: lệch ở cả tên, nội dung, người phụ
+trách lẫn khung giờ — sửa từng cột thì diff không ai rà nổi, mà bỏ sót một dòng
+là học viên nhìn thấy lịch sai. Hai: **production chưa có dữ liệu phái sinh nào**
+— 0 tiến độ, 0 điểm Bloom, 0 điểm danh, 0 phiếu tự soi, 0 phiếu giao việc, 0 mã
+QR — nên xoá và ghi lại không làm mất gì của ai. Đã kiểm đếm từng bảng trước khi
+chạy DELETE, không suy đoán.
+
+### 12.2 Khung giờ mới
+
+Bản cũ có ngày bắt đầu **07:30** và có buổi sáng chạy quá 11:30. Giám đốc chốt
+lại khung theo giờ làm việc thật của Chi nhánh:
+
+| Buổi | Bắt đầu | Kết thúc |
+| --- | --- | --- |
+| Sáng | 08:00 | 11:30 |
+| Chiều | 13:30 | tối đa 18:00 |
+
+Kết quả sau khi xếp lại (đã đối chiếu trên production):
+
+| Ngày | Đầu việc | Sáng | Chiều | Ngoài giờ |
+| --- | --- | --- | --- | --- |
+| 1 | 12 | 08:00–11:30 | 13:30–17:20 | pickleball 18:00–19:30 |
+| 2 | 11 | 08:00–11:30 | 13:30–17:00 | — |
+| 3 | 12 | 08:00–11:30 | 13:30–17:00 | — |
+| 4 | 13 | 08:00–11:30 | 13:30–17:15 | — |
+| 5 | 13 | 08:00–11:30 | 13:30–17:00 | pickleball 18:00–19:30 |
+| 6 | 13 | 08:00–11:30 | 13:30–17:45 | pickleball 18:00–19:30 |
+| 7 | 12 | 08:00–11:30 | 13:30–17:25 | — |
+| 8 | 12 | 08:00–11:30 | 13:30–17:15 | — |
+| 9 | 12 | 08:00–11:30 | 13:30–17:25 | — |
+| 10 | 12 | 08:00–11:30 | 13:30–17:40 | pickleball 18:00–19:30 |
+
+Tổng **122 đầu việc**, không đầu việc nào chồng lấn nhau, không đầu việc nào có
+giờ kết thúc trước giờ bắt đầu.
+
+### 12.3 Rút 30 phút thừa buổi sáng — rút theo tỷ lệ, không cắt một khối
+
+Bản nguyên mẫu có buổi sáng dài 4 giờ, khung mới chỉ còn 3 giờ 30 phút. Ba mươi
+phút thừa được rút khỏi **ba khối học viên tự làm** (đọc văn bản · phiếu Bloom ·
+dựng slide) chứ không đụng vào các khối có Ban Giám đốc chủ trì — vì các khối đó
+đã hẹn giờ với người thật.
+
+Cách rút đầu tiên là «cắt khối dài nhất», và nó hỏng: toàn bộ 30 phút rơi vào
+khối Đọc văn bản (80 → 50 phút), làm mất hẳn lượt đọc sâu. Cách thứ hai vẫn hỏng
+vì công thức chia tỷ lệ dùng biến `thua` đã bị trừ dần trong vòng lặp, nên vòng
+đầu ăn gần hết. Bản cuối chụp lại `thuaGoc` **trước** vòng lặp rồi mới chia tỷ
+lệ: Đọc −20 · Bloom −5 · Slide −5. Ghi lại ở đây vì cùng một lỗi rất dễ lặp lại
+khi sau này chèn thêm đầu việc vào buổi sáng.
+
+### 12.4 Migration và đường lùi
+
+`supabase/migrations/20261013090000_ttc_lo_trinh_ban_moi.sql` **đã áp** vào
+`whlysprzsguehxmrjwha` ngày 06/09/2026, chia làm bốn lần áp vì file 52 KB vượt
+giới hạn một lần gửi:
+
+| Tên migration trên Supabase | Nội dung |
+| --- | --- |
+| `ttc_lo_trinh_ban_moi_1_ngay` | Bảng chụp + DELETE đầu việc cũ + UPDATE 10 ngày |
+| `ttc_lo_trinh_ban_moi_2_dau_viec_1_4` | 48 đầu việc ngày 1–4 |
+| `ttc_lo_trinh_ban_moi_3_dau_viec_5_7` | 38 đầu việc ngày 5–7 |
+| `ttc_lo_trinh_ban_moi_4_dau_viec_8_10` | 36 đầu việc ngày 8–10 |
+
+Trước khi xoá, migration **chụp nguyên trạng** vào hai bảng
+`ttc_luu_lo_trinh_20261013` và `ttc_luu_ngay_20261013`. Hai bảng chụp này vẫn là
+bảng thật trong `public`, nên vẫn `ENABLE ROW LEVEL SECURITY` và `REVOKE ALL …
+FROM anon, authenticated` — lịch cũ là dữ liệu nội bộ, không vì nó là bản lưu mà
+được lỏng tay. File gỡ
+`supabase/rollbacks/20261013090000_ttc_lo_trinh_ban_moi_down.sql` khôi phục từ
+hai bảng chụp rồi tự xoá chúng.
+
+`lat_cat` và `cau_hoi_tu_soi` của cả mười ngày **được giữ nguyên**, không nằm
+trong phạm vi thay.
+
+### 12.5 Những gì chưa làm và vì sao
+
+- **24 đầu việc dưới 30 phút.** Mục 6 của phụ lục đặt sàn 30 phút cho mọi đầu
+  việc, nhưng nguyên mẫu có nhiều mốc 10 phút có thật và cần thiết: «Nhận đề —
+  TCTH mở file», «Khoá bài», «Chuẩn bị trình bày». Ép lên 30 phút thì phải kéo
+  dài những việc chỉ mất 10 phút, hoặc phải bỏ chúng đi. Giữ nguyên theo nguyên
+  mẫu và để lại quyết định cho Giám đốc.
+- **Cột `buoi` / `thoiLuong` / `gioCoDinh` và giao diện theo buổi** (Mục 3 trở đi
+  của phụ lục) chưa làm, vì còn chờ trả lời Việc 2 (quy tắc «giờ cố định») và
+  Việc 3 (sàn 30 phút).
+- **Lỗi hiển thị `07:30:00`** vẫn còn: cột kiểu `time` trả về `HH:MM:SS` và bốn
+  chỗ đang in thẳng (`TtcLoTrinh.tsx`, `TtcLichBgd.tsx`, `TtcQuanTri.tsx`,
+  `TtcTrangChu.tsx`). Đây là lỗi có sẵn, không phải do đợt này sinh ra, và sửa nó
+  là một việc riêng.

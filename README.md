@@ -458,6 +458,18 @@ chương trình hiện luồng đang mở của từng lớp. Migration
 (06/09/2026, tên `ttc_tham_dinh_dinh_vi`); lớp 10 ngày đã tự về chỉ QR vì toạ độ
 hiện tại vẫn là toạ độ tạm tính. Chi tiết: mục 11 của tài liệu trên.
 
+**Thay toàn bộ lộ trình 10 ngày (06/09/2026, đợt 6):** lịch mười ngày được thay
+bằng bản nội dung mới nhất và xếp lại vào giờ làm việc thật — sáng 08:00–11:30,
+chiều 13:30 và muộn nhất 18:00 (bản cũ có ngày bắt đầu 07:30). Tổng **122 đầu
+việc**, giữ nguyên `lat_cat` và `cau_hoi_tu_soi`; bốn buổi pickleball vẫn ở
+18:00–19:30. Migration `20261013090000_ttc_lo_trinh_ban_moi.sql` **đã áp** vào
+`whlysprzsguehxmrjwha` (06/09/2026), chia bốn lần vì file 52 KB:
+`ttc_lo_trinh_ban_moi_1_ngay` · `…_2_dau_viec_1_4` · `…_3_dau_viec_5_7` ·
+`…_4_dau_viec_8_10`. Trước khi xoá, nguyên trạng được chụp vào
+`ttc_luu_lo_trinh_20261013` và `ttc_luu_ngay_20261013` (đã bật RLS, `REVOKE ALL
+FROM anon, authenticated`); file gỡ cùng tên trong `supabase/rollbacks/` khôi
+phục từ hai bảng này rồi tự xoá chúng. Chi tiết: mục 12 của tài liệu trên.
+
 ## Chiêu thức 2 — Kanban 5W2H + PDCA (08/2026)
 
 Trang `/one/chieu-thuc-2` được dựng lại theo đặc tả đầy đủ
