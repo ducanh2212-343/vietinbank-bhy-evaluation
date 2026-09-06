@@ -9,6 +9,7 @@ import {
   type TtcNgay, type TtcDauViec,
 } from '../trainingCenter';
 import type { Ct2DauViec } from '../ct2';
+import type { TtcPhieuForm } from '../trainingCenter';
 
 const ngay = (so: number, d: string): TtcNgay => ({
   id: `n${so}`, chuong_trinh_id: 'ct', so_thu_tu: so, ngay: d, tieu_de: `Ngày ${so}`,
@@ -154,13 +155,20 @@ describe('bảng việc — ba cột dùng chung với Chiêu thức 2', () => {
     expect(m.get('HOAN_THANH')!.map((t) => t.id)).toEqual(['c']);
   });
 
-  it('huy hiệu gối đầu chỉ gắn cho thẻ đã liên kết; ô nghiệm thu mở khi đủ 5W2H', () => {
+  it('huy hiệu gối đầu chỉ gắn cho thẻ đã liên kết; phiếu đủ bảy ô mới được giao', () => {
     const m = huyHieuGoiDau([{ so: 1, dau_viec_id: 'x' }, { so: 2, dau_viec_id: null }, { so: 3, dau_viec_id: 'z' }]);
     expect([...m.entries()]).toEqual([['x', 1], ['z', 3]]);
-    const du = { ten: 'Tổng hợp KCN', muc_dich: 'a', dau_ra: 'b', can_bo: 'p1', tieu_chuan: 'c', han: '2026-09-20', moc_kiem_tra: '2026-09-15' };
+    const du: TtcPhieuForm = {
+      ten: 'Bản đồ KCN và thị phần', muc_dich: 'Chi nhánh chưa biết đang bỏ trống KCN nào để chọn hướng tiếp cận',
+      dau_ra: 'Một bản đồ KCN/CCN trên địa bàn kèm thị phần từng khu, nộp lên Training Center',
+      can_bo: 'p1', ten_can_bo: 'Nguyễn Văn A',
+      dat_chuan: ['Đủ toàn bộ KCN đang hoạt động, mỗi khu có số doanh nghiệp', 'Số liệu khớp báo cáo Core ngày 31/8'],
+      han_nop: '2026-09-17T16:00:00+07:00', diem_kiem: [{ ngay: '2026-09-11', ket_qua: null, ghi_chu: '' }],
+      muc_giao: 'M2', goi_y_cach_lam: null, nguon_luc: null,
+    };
     expect(goiDauDuTruong(du)).toBe(true);
     expect(goiDauDuTruong({ ...du, can_bo: null })).toBe(false);
-    expect(goiDauDuTruong({ ...du, tieu_chuan: '  ' })).toBe(false);
+    expect(goiDauDuTruong({ ...du, dat_chuan: ['  '] })).toBe(false);
   });
 });
 

@@ -395,12 +395,13 @@ export const NAV_SECTIONS: NavSection[] = [
             extraPaths: ['/one/training-center/chuong-trinh/'],
           },
           {
-            label: 'Quản trị chương trình (TCTH)',
+            label: 'Quản trị chương trình',
             icon: ClipboardList,
             path: '/one/training-center/quan-tri',
             bleed: true,
+            // admin = bgd + tcth_admin + system_admin: BGĐ sửa nội dung, TCTH xếp thành viên
             minRole: 'admin',
-            keywords: ['quan tri chuong trinh', 'tao chuong trinh', 'nhan ban', 'thanh vien', 'soan ngay', 'dau viec'],
+            keywords: ['quan tri chuong trinh', 'tao chuong trinh', 'nhan ban', 'thanh vien', 'soan ngay', 'dau viec', 'sua noi dung chuong trinh'],
           },
         ],
       },

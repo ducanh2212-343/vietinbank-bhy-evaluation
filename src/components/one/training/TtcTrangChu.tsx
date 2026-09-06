@@ -33,10 +33,10 @@ export function TtcTrangChu({ bc }: { bc: TtcBoiCanh }) {
   const laHomNay = ngay?.ngay === homNay;
   const gioHienTai = new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit' });
   const slotBgdKe = viecNgay.filter(canBgd).find((v) => !laHomNay || v.gio_ket_thuc > gioHienTai) ?? null;
-  const daNghiemThu = dsGoiDau.filter((g) => g.nghiem_thu).length;
+  const daNghiemThu = dsGoiDau.filter((g) => g.nghiem_thu_ket_qua === 'dat').length;
   // Giữ học viên đang xem khi chuyển màn (người hướng dẫn/BGĐ xem nhiều học viên)
   const duoi = !bc.laHocVien && hocVienId ? `?hv=${hocVienId}` : '';
-  const daLienKet = dsGoiDau.filter((g) => g.dau_viec_id).length;
+  const daGiao = dsGoiDau.filter((g) => g.khoa_chuan).length;
 
   return (
     <div className="space-y-6">
@@ -79,7 +79,7 @@ export function TtcTrangChu({ bc }: { bc: TtcBoiCanh }) {
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-2xs font-semibold uppercase tracking-wider text-slate-500">Ba việc gối đầu</p>
             <p className="mt-1 text-sm text-slate-700">
-              Đã lập <b>{dsGoiDau.length}/3</b> · liên kết Chiêu thức 2 <b>{daLienKet}/3</b> · nghiệm thu <b>{daNghiemThu}/3</b>
+              Đã lập <b>{dsGoiDau.length}/3</b> · đã giao <b>{daGiao}/3</b> · nghiệm thu Đạt <b>{daNghiemThu}/3</b>
             </p>
             <Link to={duongDanChuongTrinh(ct.id, 'bang-viec') + duoi} className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-brand-navy hover:underline">
               Xem bảng việc <ArrowRight className="h-3.5 w-3.5" />
@@ -107,13 +107,13 @@ export function TtcTrangChu({ bc }: { bc: TtcBoiCanh }) {
             <p className="flex items-center gap-2 text-2xs font-semibold uppercase tracking-widest text-brand-red">
               <Columns3 className="h-4 w-4" /> Kanban hàng ngày{bc.hocVien?.full_name ? ` · ${bc.hocVien.full_name}` : ''}
             </p>
-            <p className="mt-1 text-sm text-slate-600">Ba thẻ mang huy hiệu ①②③ là ba việc lựa chọn với cán bộ — nhập ở Chiêu thức 2, hiện ở đây.</p>
+            <p className="mt-1 text-sm text-slate-600">Ba thẻ mang huy hiệu ①②③ là ba phiếu giao việc cho cán bộ; các thẻ còn lại là việc thật ở Chiêu thức 2.</p>
           </div>
           <Button asChild size="sm" variant="ghost">
             <Link to="/one/chieu-thuc-2">Mở Chiêu thức 2 <ArrowRight className="ml-1 h-3.5 w-3.5" /></Link>
           </Button>
         </div>
-        <TtcKanban ctId={ct.id} hocVienId={hocVienId} dsGoiDau={dsGoiDau} gon />
+        <TtcKanban ctId={ct.id} hocVienId={hocVienId} dsGoiDau={dsGoiDau} gon keoDuoc={bc.laHocVien} />
       </div>
 
     </div>

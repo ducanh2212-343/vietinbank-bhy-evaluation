@@ -202,30 +202,305 @@ export interface TtcSuyNgam {
   thoi_diem: string;
 }
 
+// ---------------------------------------------------------------------------
+// PHIẾU GIAO VIỆC BẢY Ô — «Bản mô tả yêu cầu sửa» của Giám đốc 06/09/2026
+//
+// Phiếu này là 5W2H rút gọn cho tình huống giao việc, bổ sung điểm Check của
+// PDCA. Bảy ô bắt buộc: VÌ SAO (Why) · VIỆC GÌ (What + Where) · AI LÀM (Who) ·
+// ĐẠT CHUẨN (Standard) · HẠN NỘP (When) · ĐIỂM KIỂM (Checkpoint) · MỨC GIAO.
+// Hai ô tuỳ chọn: GỢI Ý CÁCH LÀM (How) · NGUỒN LỰC (How much).
+// Tên trường dữ liệu giữ nguyên (không đổi tên để khỏi vỡ dữ liệu) — chỉ nhãn
+// hiển thị là tiếng Việt.
+// ---------------------------------------------------------------------------
+
+export const TTC_PHIEU_CHU_THICH = 'Phiếu này là 5W2H rút gọn cho tình huống giao việc, bổ sung điểm Check của PDCA.';
+
+export type TtcMucGiao = 'M1' | 'M2' | 'M3';
+
+export const TTC_MUC_GIAO: Array<{ ma: TtcMucGiao; ten: string; mo: string }> = [
+  { ma: 'M1', ten: 'Làm theo hướng dẫn', mo: 'Cán bộ làm theo cách đã chỉ, báo cáo từng bước.' },
+  { ma: 'M2', ten: 'Tự làm, báo phương án trước', mo: 'Cán bộ tự nghĩ cách, trình phương án rồi mới thực hiện.' },
+  { ma: 'M3', ten: 'Tự làm, báo kết quả', mo: 'Cán bộ tự quyết cách làm, chỉ báo lại kết quả cuối.' },
+];
+
+export function tenMucGiao(ma: TtcMucGiao | null | undefined): string {
+  const m = TTC_MUC_GIAO.find((x) => x.ma === ma);
+  return m ? `${m.ma} — ${m.ten}` : '—';
+}
+
+/** Nhãn hiển thị của bảy ô bắt buộc + hai ô tuỳ chọn — DÙNG ĐÚNG NGUYÊN VĂN bản mô tả */
+export const TTC_O_PHIEU = {
+  viSao: { nhan: 'VÌ SAO', en: 'Why', goiY: 'Việc này phục vụ mục tiêu nào của Phòng? Đừng ghi "theo chỉ đạo của trên".' },
+  viecGi: { nhan: 'VIỆC GÌ', en: 'What', goiY: 'Sản phẩm cuối cùng là gì — file nào, báo cáo nào, danh sách nào? Ghi rõ phạm vi: địa bàn, thời kỳ số liệu, nguồn dữ liệu.' },
+  aiLam: { nhan: 'AI LÀM', en: 'Owner', goiY: 'Một cái tên, một người chịu trách nhiệm. Không ghi tên tổ hay tên phòng.' },
+  datChuan: { nhan: 'ĐẠT CHUẨN', en: 'Standard', goiY: 'Nhìn vào đâu để nói được là xong? Mỗi dòng một tiêu chí đo được.' },
+  hanNop: { nhan: 'HẠN NỘP', en: 'Deadline', goiY: 'Ngày và giờ cụ thể.' },
+  diemKiem: { nhan: 'ĐIỂM KIỂM', en: 'Checkpoint', goiY: 'Ngày nào tôi xem giữa chừng? Đặt trước hạn nộp để còn kịp sửa.' },
+  mucGiao: { nhan: 'MỨC GIAO', en: '', goiY: 'Chọn mức uỷ quyền phù hợp với năng lực hiện tại của cán bộ.' },
+  goiYCachLam: { nhan: 'GỢI Ý CÁCH LÀM', en: 'How', goiY: 'Chỉ điền cho cán bộ mới hoặc việc có rủi ro tuân thủ. Với cán bộ đã vững, để trống là có chủ ý — đó là khoảng trống để cán bộ tự nghĩ.' },
+  nguonLuc: { nhan: 'NGUỒN LỰC', en: 'How much', goiY: 'Chi phí, người hỗ trợ, công cụ cần cấp thêm.' },
+} as const;
+
+export const TTC_VI_SAO_BAY_O = `Bảy ô này lấy từ 5W2H mà Chi nhánh đang dùng:
+
+  VÌ SAO   ← Why        AI LÀM   ← Who        HẠN NỘP ← When
+  VIỆC GÌ  ← What + Where
+
+Hai ô 5W2H còn lại không bắt buộc:
+  Cách làm (How) và Nguồn lực (How much) chỉ điền khi thật sự cần.
+  Nếu lúc nào cũng chỉ luôn cách làm thì đó là chỉ việc, không phải giao việc.
+
+Hai ô thêm mới, lấy từ PDCA:
+  ĐẠT CHUẨN  — không có ô này thì đến lúc nghiệm thu hai bên cãi nhau,
+               người giao bảo chưa được, người làm bảo đã xong.
+  ĐIỂM KIỂM  — không có ô này thì phát hiện hỏng vào đúng ngày hết hạn,
+               không còn thời gian sửa.`;
+
+export type TtcKetQuaDiemKiem = 'chua_toi' | 'dung_tien_do' | 'cham_tien_do' | null;
+export interface TtcDiemKiem { ngay: string; ket_qua: TtcKetQuaDiemKiem; ghi_chu: string }
+export interface TtcLichSuChuan { thoi_diem: string; chuan_cu: string[]; chuan_moi: string[]; ly_do: string }
+export type TtcTrangThaiPhieu = 'phai_lam' | 'dang_lam' | 'hoan_thanh';
+export type TtcKetQuaNghiemThu = 'dat' | 'chua_dat';
+
 /**
- * Ba việc gối đầu — «3 việc lựa chọn với cán bộ». Thẻ việc THẬT nằm ở Chiêu
- * thức 2 (`dau_viec_id` trỏ sang ct2_dau_viec) để cán bộ được giao ghi nhịp
- * bằng đúng công cụ Phòng đang dùng; ở đây chỉ giữ phần thuộc về chương trình:
- * WHY, tiêu chuẩn, mốc kiểm tra, nghiệm thu của Ban Giám đốc.
+ * Ba việc gối đầu — «3 việc lựa chọn với cán bộ». Thẻ việc THẬT có thể liên
+ * kết sang Chiêu thức 2 (`dau_viec_id`) để cán bộ ghi nhịp; phiếu giao việc và
+ * kỷ luật khoá chuẩn, nghiệm thu nằm ở đây. Tên trường cũ (muc_dich · dau_ra ·
+ * can_bo · tieu_chuan · han · moc_kiem_tra · nghiem_thu) giữ nguyên; các cột
+ * mới theo Mục 5 của bản mô tả.
  */
 export interface TtcViecGoiDau {
   id: string;
   chuong_trinh_id: string;
   hoc_vien: string;
   so: 1 | 2 | 3;
+  /** Tên sản phẩm — tiêu đề thẻ Kanban, dạng ngắn của ô VIỆC GÌ */
   ten: string;
+  /** Ô 1 — VÌ SAO (Why) */
   muc_dich: string | null;
+  /** Ô 2 — VIỆC GÌ (What + Where) */
   dau_ra: string | null;
+  /** Ô 3 — AI LÀM (Owner): profile_id của đúng một cán bộ */
   can_bo: string | null;
-  tieu_chuan: string | null;
-  han: string | null;
-  moc_kiem_tra: string | null;
-  dau_viec_id: string | null;
-  ket_qua: string | null;
+  /** Ô 4 — ĐẠT CHUẨN (Standard): mỗi phần tử một tiêu chí đo được */
+  dat_chuan: string[];
+  /** Ô 5 — HẠN NỘP (Deadline): ISO datetime, bắt buộc có giờ */
+  han_nop: string | null;
+  /** Ô 6 — ĐIỂM KIỂM (Checkpoint): tối thiểu 1 mốc, mọi mốc trước hạn */
+  diem_kiem: TtcDiemKiem[];
+  /** Ô 7 — MỨC GIAO */
+  muc_giao: TtcMucGiao | null;
+  /** Tuỳ chọn — How; bắt buộc nếu muc_giao = M1 */
+  goi_y_cach_lam: string | null;
+  /** Tuỳ chọn — How much */
+  nguon_luc: string | null;
+  /** Cột Kanban của phiếu */
+  trang_thai: TtcTrangThaiPhieu;
+  /** true sau khi bấm «Giao việc» — ĐẠT CHUẨN chuyển sang chỉ đọc */
+  khoa_chuan: boolean;
+  lich_su_chuan: TtcLichSuChuan[];
+  /** Nghiệm thu: hai kết quả, không có «đạt một phần» */
+  nghiem_thu_ket_qua: TtcKetQuaNghiemThu | null;
+  /** Nhận xét nghiệm thu (≥ 30 ký tự) — cột cũ giữ tên */
   nghiem_thu: string | null;
   nguoi_nghiem_thu: string | null;
   nghiem_thu_luc: string | null;
+  so_lan_nghiem_thu: number;
+  hoi_lai_giua_chung: boolean | null;
+  muc_giao_cuoi_ky: TtcMucGiao | null;
+  /** Liên kết thẻ Chiêu thức 2 (tuỳ chọn) */
+  dau_viec_id: string | null;
+  ket_qua: string | null;
+  /** Cột cũ, trigger tự đồng bộ từ dat_chuan / han_nop / diem_kiem */
+  tieu_chuan: string | null;
+  han: string | null;
+  moc_kiem_tra: string | null;
   updated_at: string;
+}
+
+/** Bảy ô + hai ô tuỳ chọn ở dạng form (chưa lưu) */
+export type TtcPhieuForm = Pick<TtcViecGoiDau,
+  'ten' | 'muc_dich' | 'dau_ra' | 'can_bo' | 'dat_chuan' | 'han_nop' | 'diem_kiem' | 'muc_giao' | 'goi_y_cach_lam' | 'nguon_luc'>
+  & { /** Họ tên cán bộ đã chọn — để kiểm tra luật «một người» */ ten_can_bo?: string | null };
+
+export const TTC_PHIEU_TRONG = (): TtcPhieuForm => ({
+  ten: '', muc_dich: '', dau_ra: '', can_bo: null, dat_chuan: ['', ''], han_nop: null,
+  diem_kiem: [], muc_giao: null, goi_y_cach_lam: null, nguon_luc: null, ten_can_bo: null,
+});
+
+export interface KetQuaKiemTraPhieu {
+  /** Chặn — không cho lưu (chữ đỏ) */
+  chan: Array<{ o: keyof typeof TTC_O_PHIEU | 'tieuDe'; loi: string }>;
+  /** Cảnh báo — vẫn cho lưu (chữ vàng) */
+  canhBao: Array<{ o: keyof typeof TTC_O_PHIEU | 'tieuDe'; loi: string }>;
+}
+
+const TU_HANH_DONG = ['rà soát', 'nghiên cứu', 'tìm hiểu', 'triển khai', 'đẩy mạnh', 'tăng cường', 'phối hợp', 'theo dõi', 'quan tâm', 'chú trọng', 'nâng cao'];
+const CUM_TAP_THE = ['phòng', 'tổ ', 'bộ phận', 'các cán bộ', 'toàn thể', 'nhóm'];
+const CUM_CHUAN_RONG = ['đảm bảo chất lượng', 'đúng quy định', 'hoàn thành tốt', 'theo yêu cầu', 'đầy đủ', 'chính xác'];
+
+export const TTC_LOI_PHIEU = {
+  tieuDe: 'Đây là một hành động, chưa phải một sản phẩm. Thử đặt lại tên theo thứ sẽ nộp: "Bản đồ KCN và thị phần", "Danh sách 30 khách hàng", "Quy trình rút gọn 3 bước".',
+  aiLam: 'Giao việc phải có đúng một người chịu trách nhiệm cuối cùng. Giao cho một tập thể thì thường không ai làm. Nếu cần nhiều người, chọn một người chủ trì và ghi những người còn lại vào ô NGUỒN LỰC.',
+  datChuan: 'Chuẩn phải nhìn được, đếm được hoặc đối chiếu được. Ví dụ: "đủ 30 doanh nghiệp, mỗi doanh nghiệp có 6 trường thông tin", "số liệu khớp với báo cáo Core ngày 31/8", "trình bày được trong 10 phút".',
+  hanNop: 'Ghi thêm giờ. "Cuối tuần" hay "trong tuần tới" là chỗ để việc trôi.',
+  diemKiem: 'Đặt ít nhất một điểm kiểm trước hạn. Kiểm giữa chừng để còn kịp sửa, không phải để bắt lỗi.',
+  mucGiao: 'Mức M1 nghĩa là cán bộ làm theo hướng dẫn. Vậy phải ghi hướng dẫn vào ô GỢI Ý CÁCH LÀM.',
+} as const;
+
+function chuThuong(s: string | null | undefined): string {
+  return (s ?? '').normalize('NFC').toLowerCase().trim();
+}
+
+/** Tên có phải tập thể / hai người nối nhau không (Mục 7.2) */
+export function laTapThe(ten: string | null | undefined): boolean {
+  const t = chuThuong(ten);
+  if (!t) return false;
+  if (CUM_TAP_THE.some((c) => t.includes(c))) return true;
+  if (t.includes(',')) return true;
+  return /\s(và)\s/.test(t);
+}
+
+/** Toàn bộ chuẩn chỉ gồm các cụm rỗng nghĩa (Mục 7.3) */
+export function chuanRongNghia(dong: string): boolean {
+  let t = chuThuong(dong);
+  for (const c of CUM_CHUAN_RONG) t = t.split(c).join(' ');
+  // Từ nối không mang nội dung — «đảm bảo chất lượng và đúng quy định» vẫn là rỗng.
+  // Tách token thay vì dùng \b: \b của JS chỉ hiểu chữ ASCII nên «và», «đúng» không khớp.
+  const TU_NOI = new Set(['và', 'các', 'những', 'cho', 'được', 'là', 'về', 'phải', 'cần', 'theo', 'đúng', 'tốt']);
+  return t.split(/[\s.,;:·\-–—()]+/).filter((tu) => tu && !TU_NOI.has(tu)).length === 0;
+}
+
+/** Ngày 'YYYY-MM-DD' theo giờ Việt Nam của một mốc ISO */
+export function ngayVnCuaIso(iso: string): string {
+  return ngayVnChuoi(new Date(iso));
+}
+
+/**
+ * Quy tắc kiểm tra khi lưu (Mục 7). `nhanCanBo` là họ tên cán bộ đã chọn, vì ô
+ * AI LÀM chọn từ danh bạ nên tên tập thể chỉ có thể lọt qua dữ liệu danh bạ.
+ */
+export function kiemTraPhieu(f: TtcPhieuForm, homNay: string = ngayVnChuoi(new Date())): KetQuaKiemTraPhieu {
+  const chan: KetQuaKiemTraPhieu['chan'] = [];
+  const canhBao: KetQuaKiemTraPhieu['canhBao'] = [];
+
+  const tieuDe = chuThuong(f.ten);
+  if (!tieuDe || tieuDe.length < 5) chan.push({ o: 'tieuDe', loi: 'Ghi tên sản phẩm (tối thiểu 5 ký tự).' });
+  else if (TU_HANH_DONG.some((tu) => tieuDe.startsWith(tu))) canhBao.push({ o: 'tieuDe', loi: TTC_LOI_PHIEU.tieuDe });
+
+  if (!chuThuong(f.muc_dich)) chan.push({ o: 'viSao', loi: 'Ghi vì sao cần làm việc này.' });
+  if (!chuThuong(f.dau_ra)) chan.push({ o: 'viecGi', loi: 'Ghi sản phẩm cuối cùng và phạm vi.' });
+
+  if (!f.can_bo) chan.push({ o: 'aiLam', loi: TTC_LOI_PHIEU.aiLam });
+  else if (laTapThe(f.ten_can_bo)) chan.push({ o: 'aiLam', loi: TTC_LOI_PHIEU.aiLam });
+
+  const chuan = (f.dat_chuan ?? []).map((d) => d.trim()).filter(Boolean);
+  if (chuan.length === 0 || chuan.some((d) => d.length < 15) || chuan.every(chuanRongNghia)) {
+    chan.push({ o: 'datChuan', loi: TTC_LOI_PHIEU.datChuan });
+  }
+
+  const coGio = !!f.han_nop && !Number.isNaN(Date.parse(f.han_nop));
+  if (!coGio) chan.push({ o: 'hanNop', loi: TTC_LOI_PHIEU.hanNop });
+
+  const moc = (f.diem_kiem ?? []).filter((m) => m.ngay);
+  const ngayHan = coGio ? ngayVnCuaIso(f.han_nop!) : null;
+  if (moc.length === 0 || (ngayHan && moc.some((m) => m.ngay >= ngayHan))) {
+    chan.push({ o: 'diemKiem', loi: TTC_LOI_PHIEU.diemKiem });
+  }
+
+  if (!f.muc_giao) chan.push({ o: 'mucGiao', loi: 'Bắt buộc chọn mức giao.' });
+  else if (f.muc_giao === 'M1' && !chuThuong(f.goi_y_cach_lam)) chan.push({ o: 'mucGiao', loi: TTC_LOI_PHIEU.mucGiao });
+
+  void homNay;
+  return { chan, canhBao };
+}
+
+/** Mốc điểm kiểm gợi ý ở ~60% quãng từ hôm nay đến hạn (Mục 7.5), không sớm hơn ngày mai, không trùng ngày hạn */
+export function goiYDiemKiem(hanNopIso: string, homNay: string = ngayVnChuoi(new Date())): string | null {
+  if (!hanNopIso || Number.isNaN(Date.parse(hanNopIso))) return null;
+  const ngayHan = ngayVnCuaIso(hanNopIso);
+  const bd = Date.UTC(+homNay.slice(0, 4), +homNay.slice(5, 7) - 1, +homNay.slice(8, 10));
+  const kt = Date.UTC(+ngayHan.slice(0, 4), +ngayHan.slice(5, 7) - 1, +ngayHan.slice(8, 10));
+  const soNgay = Math.round((kt - bd) / 86_400_000);
+  if (soNgay <= 1) return null;
+  const lech = Math.min(soNgay - 1, Math.max(1, Math.round(soNgay * 0.6)));
+  const d = new Date(bd + lech * 86_400_000);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+}
+
+/** Bảy ô còn thiếu — dùng cho thông báo «Thẻ chưa đủ thông tin để giao. Còn thiếu: …» */
+export function oConThieu(g: TtcPhieuForm): string[] {
+  const kq = kiemTraPhieu(g);
+  const ten: Record<string, string> = {
+    tieuDe: 'Tên sản phẩm', viSao: 'VÌ SAO', viecGi: 'VIỆC GÌ', aiLam: 'AI LÀM', datChuan: 'ĐẠT CHUẨN',
+    hanNop: 'HẠN NỘP', diemKiem: 'ĐIỂM KIỂM', mucGiao: 'MỨC GIAO',
+  };
+  return [...new Set(kq.chan.map((c) => ten[c.o] ?? c.o))];
+}
+
+/** Điều kiện chuyển cột (Mục 10). Trả null khi được phép, ngược lại là câu thông báo. */
+export function chuyenCotPhieu(g: TtcViecGoiDau, dich: TtcTrangThaiPhieu): string | null {
+  if (g.trang_thai === dich) return null;
+  if (g.trang_thai === 'hoan_thanh') return 'Thẻ đã nghiệm thu. Nếu cần mở lại, dùng nút Mở lại nghiệm thu.';
+  if (dich === 'dang_lam') {
+    const thieu = oConThieu(g);
+    if (!g.khoa_chuan) thieu.push('bấm «Giao việc» để khoá chuẩn');
+    return thieu.length ? `Thẻ chưa đủ thông tin để giao. Còn thiếu: ${thieu.join(', ')}` : null;
+  }
+  if (dich === 'hoan_thanh') {
+    return g.nghiem_thu_ket_qua === 'dat' ? null : 'Thẻ chỉ được chuyển sang Hoàn thành sau khi nghiệm thu Đạt.';
+  }
+  return null;
+}
+
+/** Nhãn trạng thái thẻ (Mục 11.2) */
+export function nhanTrangThaiPhieu(g: TtcViecGoiDau | null): string {
+  if (!g) return 'Chưa lập phiếu';
+  const ngay = (iso: string | null) => (iso ? ngayVnCuaIso(iso).split('-').reverse().slice(0, 2).join('/') : '');
+  if (g.nghiem_thu_ket_qua === 'dat') return `Nghiệm thu Đạt · ${ngay(g.nghiem_thu_luc)}`;
+  if (g.nghiem_thu_ket_qua === 'chua_dat') return `Nghiệm thu Chưa đạt · ${ngay(g.nghiem_thu_luc)} · làm lại`;
+  if (g.khoa_chuan) return `Đang chạy · hạn ${ngay(g.han_nop)}`;
+  return 'Đã lập · chưa giao';
+}
+
+export interface TrangThaiDiemKiem { chu: string; muc: 'TRUNG_TINH' | 'CANH_BAO' | 'DO' }
+
+/** Dòng trạng thái điểm kiểm trên mặt thẻ ở cột Đang làm (Mục 10) */
+export function trangThaiDiemKiem(g: Pick<TtcViecGoiDau, 'diem_kiem'>, homNay: string = ngayVnChuoi(new Date())): TrangThaiDiemKiem | null {
+  const ds = [...(g.diem_kiem ?? [])].filter((m) => m.ngay).sort((a, b) => a.ngay.localeCompare(b.ngay));
+  if (ds.length === 0) return null;
+  const nhan = (d: string) => d.split('-').reverse().slice(0, 2).join('/');
+  const cham = ds.find((m) => m.ket_qua === 'cham_tien_do');
+  if (cham) return { chu: `Chậm tiến độ tại mốc ${nhan(cham.ngay)}`, muc: 'DO' };
+  const quaMoc = ds.find((m) => m.ngay < homNay && m.ket_qua == null);
+  if (quaMoc) return { chu: `Quá điểm kiểm ${nhan(quaMoc.ngay)} · chưa ghi nhận`, muc: 'CANH_BAO' };
+  const sapToi = ds.find((m) => m.ngay >= homNay && m.ket_qua == null);
+  if (sapToi) return { chu: `Điểm kiểm ${nhan(sapToi.ngay)}`, muc: 'TRUNG_TINH' };
+  return { chu: `Đã qua ${ds.length} điểm kiểm`, muc: 'TRUNG_TINH' };
+}
+
+/** Đúng hạn hay chậm — tự tính từ hạn nộp và thời điểm nghiệm thu (Mục 9.4) */
+export function dungHan(g: Pick<TtcViecGoiDau, 'han_nop' | 'nghiem_thu_luc'>): boolean | null {
+  if (!g.han_nop || !g.nghiem_thu_luc) return null;
+  return Date.parse(g.nghiem_thu_luc) <= Date.parse(g.han_nop);
+}
+
+/** Dòng so sánh mức giao đầu kỳ → cuối kỳ (Mục 9.5) */
+export function cauSoSanhMucGiao(dau: TtcMucGiao | null, cuoi: TtcMucGiao | null): string | null {
+  if (!dau || !cuoi) return null;
+  return `Mức giao đầu kỳ: ${dau} → Mức giao cuối kỳ: ${cuoi}. ${dau === cuoi ? 'Mức uỷ quyền chưa đổi sau mười ngày.' : 'Đây là kết quả kèm cặp đo được sau mười ngày.'}`;
+}
+
+/** Số thứ tự việc gối đầu (1–3) theo mã thẻ Chiêu thức 2 — để gắn huy hiệu lên thẻ */
+export function huyHieuGoiDau(dsGoiDau: Array<Pick<TtcViecGoiDau, 'so' | 'dau_viec_id'>>): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const g of dsGoiDau) if (g.dau_viec_id) m.set(g.dau_viec_id, g.so);
+  return m;
+}
+
+/** Bảy ô bắt buộc của một phiếu đã đủ chưa (không tính cảnh báo) */
+export function goiDauDuTruong(g: TtcPhieuForm): boolean {
+  return kiemTraPhieu(g).chan.length === 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -523,19 +798,6 @@ export function chiaCotBangViec(ds: Ct2DauViec[]): Map<TtcCot, Ct2DauViec[]> {
     if (cot) m.get(cot)!.push(t);
   }
   return m;
-}
-
-/** Số thứ tự việc gối đầu (1–3) theo mã thẻ Chiêu thức 2 — để gắn huy hiệu lên thẻ */
-export function huyHieuGoiDau(dsGoiDau: Array<Pick<TtcViecGoiDau, 'so' | 'dau_viec_id'>>): Map<string, number> {
-  const m = new Map<string, number>();
-  for (const g of dsGoiDau) if (g.dau_viec_id) m.set(g.dau_viec_id, g.so);
-  return m;
-}
-
-/** Sáu trường 5W2H của một việc gối đầu đã đủ chưa — ô nghiệm thu chỉ mở khi đủ */
-export function goiDauDuTruong(g: Pick<TtcViecGoiDau, 'ten' | 'muc_dich' | 'dau_ra' | 'can_bo' | 'tieu_chuan' | 'han' | 'moc_kiem_tra'>): boolean {
-  return [g.ten, g.muc_dich, g.dau_ra, g.can_bo, g.tieu_chuan, g.han, g.moc_kiem_tra]
-    .every((x) => typeof x === 'string' && x.trim().length > 0);
 }
 
 // ---------------------------------------------------------------------------

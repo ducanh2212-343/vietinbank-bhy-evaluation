@@ -200,3 +200,58 @@ Giám đốc **tô cảnh báo chứ không cắt** — đây là thông tin đ�
 5. Phòng TCTH điền nội dung ba chương trình dự kiến (hoặc nhân bản từ mẫu) ở
    màn Quản trị chương trình. Còn lại giai đoạn 2–3: thư viện biểu mẫu, phiếu
    cảm nhận ẩn danh, ghi nhận có mặt bằng định vị.
+
+---
+
+## 8. Phiếu giao việc bảy ô + BGĐ sửa nội dung (bản mô tả yêu cầu sửa 06/09)
+
+### 8.1 Rà soát trước khi sửa (Mục 4 bản mô tả)
+
+| Câu hỏi | Kết quả rà soát |
+| --- | --- |
+| Phiếu nằm ở đâu | Thẻ «Việc gối đầu» trong `TtcBangViec.tsx` (Bảng việc của chương trình), 3 thẻ ngang, nhãn WHY / WHAT / OWNER / STANDARD / DEADLINE / CHECKPOINT |
+| Dữ liệu lưu ở đâu | Bảng `ttc_viec_goi_dau` (một dòng = một việc gối đầu, cột `tieu_chuan`/`han`/`moc_kiem_tra`/`nghiem_thu`) |
+| Có phiếu thật chưa | **0 phiếu**, 0 tiến độ, 0 điểm, 0 tự soi tại thời điểm rà (06/09) → Mục 12 (chuyển dữ liệu cũ) **không cần**, chỉ giữ câu lệnh chuyển tự động phòng khi có |
+| Chuỗi tiếng Anh ở đâu | `TtcBangViec.tsx` (nhãn ô, câu «Học viên lập theo phiếu WHY – WHAT …»), chú thích trong `trainingCenter.ts`, chữ đầu việc Ngày 7 trong seed, tài liệu |
+
+### 8.2 Những gì đã sửa
+
+- **Máy chủ** — migration `20261009090000_ttc_phieu_giao_viec_bay_o.sql` (**đã
+  áp** 06/09/2026 vào `whlysprzsguehxmrjwha`, tên `ttc_phieu_giao_viec_bay_o`;
+  kiểm sau khi áp: 13 cột mới · 2 trigger · 3 policy đổi · 0 chuỗi tiếng Anh
+  trong seed · chữ Ngày 1/2/7/8 đã đổi). Không đổi tên cột cũ; thêm đúng các
+  cột Mục 5 (`dat_chuan[]`, `han_nop` có giờ, `diem_kiem` jsonb, `muc_giao`,
+  `goi_y_cach_lam`, `nguon_luc`, `khoa_chuan`, `lich_su_chuan`, `trang_thai`,
+  `nghiem_thu_ket_qua`, `so_lan_nghiem_thu`, `hoi_lai_giua_chung`,
+  `muc_giao_cuoi_ky`). Trigger giữ luật ở tầng dữ liệu để giao diện không lách
+  được: giao thiếu ô bị chặn kèm danh sách ô thiếu; khoá chuẩn một chiều; sửa
+  chuẩn sau khoá bắt buộc một dòng lịch sử với lý do ≥ 20 ký tự; chỉ BGĐ nghiệm
+  thu, nhận xét ≥ 30 ký tự, tự đếm số lần, Đạt → Hoàn thành, Chưa đạt → Đang
+  làm; thẻ Hoàn thành không kéo lại. Cột cũ `tieu_chuan`/`han`/`moc_kiem_tra`
+  được trigger tự đồng bộ từ cột mới nên báo cáo cũ vẫn đọc được.
+- **Giao diện** — `TtcPhieuGiaoViec.tsx`: một cột dọc bảy ô tiếng Việt, mỗi ô
+  có gợi ý dưới nhãn; kiểm tra khi lưu (Mục 7) trùng từng chữ bản mô tả; hạn
+  nộp có giờ, điểm kiểm tự gợi ý ở 60 % quãng; hai ô tuỳ chọn gấp lại; nút
+  «Giao việc» / «Lưu nháp» / «Điều chỉnh chuẩn» / «Nghiệm thu» / «Mở lại nghiệm
+  thu» cao ≥ 44 px. Kanban: thẻ ①②③ đi theo trạng thái riêng của phiếu, dòng
+  điểm kiểm trên mặt thẻ; thẻ Chiêu thức 2 đã liên kết nằm trong thẻ phiếu,
+  không hiện hai lần.
+- **BGĐ sửa nội dung chương trình** — hàm `ttc_sua_duoc_noi_dung(ct)` = vai
+  `quan_tri` hoặc `bgd` trong chương trình, hoặc `system_admin`; ba policy ghi
+  của `ttc_chuong_trinh` / `ttc_ngay` / `ttc_dau_viec` chuyển sang hàm này.
+  Tạo mới, nhân bản, xếp thành viên **vẫn** của TCTH (policy không đổi). Trên
+  giao diện: màn Quản trị mở cho TCTH và BGĐ của chương trình; trong chương
+  trình có nút «Sửa nội dung chương trình» mở thẳng đúng mục (`?ct=`).
+
+### 8.3 Đối chiếu danh sách nghiệm thu (Mục 14)
+
+| # | Tiêu chí | Cách kiểm |
+| --- | --- | --- |
+| 1 | Bảy ô tiếng Việt, đúng thứ tự | `TTC_O_PHIEU` trong `src/lib/trainingCenter.ts`; test `phieuGiaoViec.test.ts` |
+| 2 | Chặn đúng 7 quy tắc Mục 7 | 15 test đơn vị + kịch bản A–H trên Postgres cục bộ |
+| 3 | Khoá chuẩn khi giao, điều chỉnh có lý do và lịch sử | trigger `f_ttc_goi_dau_truoc_sua` mục 2–3 |
+| 4 | Nghiệm thu chỉ Đạt / Chưa đạt, đếm số lần, so mức giao | trigger mục 4; hộp thoại Nghiệm thu |
+| 5 | Chuyển cột đúng luật | `chuyenCotPhieu` (client) trùng câu báo với trigger mục 5 |
+| 6 | Không còn chuỗi tiếng Anh | `grep` mã nguồn + `SELECT` seed = 0 |
+| 7 | Một cột, điền được trên điện thoại | `TtcBangViec` bọc `max-w-3xl`, không `grid-cols` |
+| 8 | Không thêm cột ngoài Mục 5, không thêm loại push | migration chỉ có 13 cột Mục 5; `TTC_MA_SU_KIEN` giữ 4 mã |

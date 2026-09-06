@@ -27,7 +27,7 @@ const NGUYEN_TAC = [
 const MAN_HINH = [
   { icon: Route, ten: 'Lộ trình', mo: 'Dải ngày, lịch chi tiết theo giờ, ô tích hoàn thành, xem trước ngày mai.' },
   { icon: ScanFace, ten: 'Tự soi', mo: 'Phiếu 08 tiêu chí hai đợt, ví dụ thật, biểu đồ dịch chuyển, STOP–START–CONTINUE.' },
-  { icon: Columns3, ten: 'Bảng việc', mo: 'Ba việc gối đầu đủ 5W2H và ô nghiệm thu; Kanban 3 cột dùng chung với Chiêu thức 2.' },
+  { icon: Columns3, ten: 'Bảng việc', mo: 'Ba phiếu giao việc bảy ô, khoá chuẩn khi giao, nghiệm thu Đạt/Chưa đạt; Kanban 3 cột dùng chung với Chiêu thức 2.' },
   { icon: CalendarDays, ten: 'Lịch Ban Giám đốc', mo: 'Mọi khung giờ cần Giám đốc hoặc PGĐ có mặt, tổng phút mỗi ngày và tổng giờ cả đợt.' },
 ];
 

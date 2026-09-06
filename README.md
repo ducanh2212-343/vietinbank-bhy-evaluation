@@ -414,6 +414,18 @@ mở đúng Lộ trình. Đã chạy thử trọn migration + file gỡ trên Po
 (kịch bản 11 bước). Nghiên cứu tích hợp, phân quyền, phần để lại giai đoạn 3:
 `docs/tich-hop-bhy-training-center-2026-09.md`.
 
+**Phiếu giao việc bảy ô (06/09/2026):** ba việc gối đầu chuyển sang phiếu
+tiếng Việt VÌ SAO · VIỆC GÌ · AI LÀM · ĐẠT CHUẨN · HẠN NỘP · ĐIỂM KIỂM · MỨC
+GIAO, khoá chuẩn khi «Giao việc», nghiệm thu Đạt/Chưa đạt, thẻ ①②③ trên Kanban
+đi theo trạng thái riêng của phiếu. Ban Giám đốc của chương trình sửa được nội
+dung (thông tin, ngày, đầu việc) như quản trị; tạo mới, nhân bản, xếp thành
+viên vẫn của TCTH. Migration `20261009090000_ttc_phieu_giao_viec_bay_o.sql`
+**đã áp** vào `whlysprzsguehxmrjwha` (06/09/2026, tên
+`ttc_phieu_giao_viec_bay_o`; kiểm sau áp: 13 cột mới, 2 trigger, 3 policy đổi,
+0 phiếu cũ nên không phải chuyển dữ liệu). File gỡ:
+`supabase/rollbacks/20261009090000_ttc_phieu_giao_viec_bay_o_down.sql`. Chi
+tiết rà soát và đối chiếu nghiệm thu: mục 8 của tài liệu trên.
+
 ## Chiêu thức 2 — Kanban 5W2H + PDCA (08/2026)
 
 Trang `/one/chieu-thuc-2` được dựng lại theo đặc tả đầy đủ

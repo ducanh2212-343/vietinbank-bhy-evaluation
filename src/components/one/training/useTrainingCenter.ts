@@ -4,8 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type { Ct2DauViec } from '@/lib/ct2';
 import type {
-  TtcChuongTrinh, TtcDauViec, TtcDiemBloom, TtcNgay, TtcSuyNgam, TtcThanhVien,
-  TtcTienDo, TtcTuSoi, TtcVai, TtcViecGoiDau,
+  TtcChuongTrinh, TtcDauViec, TtcDiemBloom, TtcDiemKiem, TtcKetQuaNghiemThu, TtcLichSuChuan, TtcMucGiao,
+  TtcNgay, TtcPhieuForm, TtcSuyNgam, TtcThanhVien, TtcTienDo, TtcTrangThaiPhieu, TtcTuSoi, TtcVai, TtcViecGoiDau,
 } from '@/lib/trainingCenter';
 
 /**
@@ -91,6 +91,36 @@ export function useTtcDanhMuc() {
   });
 }
 
+/**
+ * Ai vào được màn Quản trị và soạn được chương trình nào — bản client của
+ * `ttc_sua_duoc_noi_dung` ở máy chủ (RLS mới là hàng rào thật). Soạn nội dung
+ * (thông tin, ngày, đầu việc): quản trị hoặc Ban Giám đốc của chương trình,
+ * system_admin. Xếp thành viên và tạo/nhân bản chương trình vẫn là việc của
+ * Phòng Tổng hợp — Giám đốc yêu cầu 06/09: BGĐ và TCTH sửa được nội dung.
+ */
+export function useTtcQuyenSoan() {
+  const { roles } = useAuth();
+  const { data } = useTtcDanhMuc();
+  const laSystemAdmin = roles.includes('system_admin');
+  const laTcth = laSystemAdmin || roles.includes('tcth_admin');
+  const ctSoanDuoc = useMemo(
+    () => new Set((data?.cuaToi ?? []).filter((t) => t.vai === 'quan_tri' || t.vai === 'bgd').map((t) => t.chuong_trinh_id)),
+    [data],
+  );
+  const ctQuanTri = useMemo(
+    () => new Set((data?.cuaToi ?? []).filter((t) => t.vai === 'quan_tri').map((t) => t.chuong_trinh_id)),
+    [data],
+  );
+  return {
+    laTcth,
+    laSystemAdmin,
+    /** Vào được màn Quản trị: TCTH, hoặc là BGĐ/quản trị của ít nhất một chương trình */
+    laVaoDuoc: laTcth || roles.includes('bgd') || ctSoanDuoc.size > 0,
+    soanDuoc: (ctId: string) => laSystemAdmin || ctSoanDuoc.has(ctId),
+    xepThanhVienDuoc: (ctId: string) => laSystemAdmin || ctQuanTri.has(ctId),
+  };
+}
+
 export interface TtcBoiCanh {
   chuongTrinh: TtcChuongTrinh | null;
   thanhVien: TtcThanhVien[];
@@ -104,6 +134,8 @@ export interface TtcBoiCanh {
   laNguoiCham: boolean;
   laBgd: boolean;
   laQuanTri: boolean;
+  /** Sửa được nội dung chương trình (thông tin, ngày, đầu việc): quản trị, BGĐ, system_admin */
+  laSuaDuocNoiDung: boolean;
 }
 
 /**
@@ -159,6 +191,7 @@ export function useTtcBoiCanh(ctId: string | null, hocVienChon: string | null = 
     laNguoiCham: vai === 'huong_dan' || vai === 'bgd',
     laBgd: vai === 'bgd',
     laQuanTri: vai === 'quan_tri',
+    laSuaDuocNoiDung: vai === 'quan_tri' || vai === 'bgd' || laSystemAdmin,
     isLoading: ct.isLoading || (!!ct.data && tv.isLoading),
     isError: ct.isError || tv.isError,
     error: ct.error ?? tv.error,
@@ -381,15 +414,54 @@ export function useTtcViecGoiDau(ctId: string | null, hocVienId: string | null) 
   });
 }
 
-export async function luuViecGoiDau(p: Partial<TtcViecGoiDau> & { chuong_trinh_id: string; hoc_vien: string; so: number; ten: string }) {
-  const { id, updated_at: _bo, nghiem_thu: _nt, nguoi_nghiem_thu: _nnt, nghiem_thu_luc: _ntl, ...phan } = p;
-  void _bo; void _nt; void _nnt; void _ntl;
-  if (id) nemNeuLoi(await db.from('ttc_viec_goi_dau').update(phan).eq('id', id));
-  else nemNeuLoi(await db.from('ttc_viec_goi_dau').insert(phan));
+/** Lưu nháp hoặc sửa phiếu (không khoá chuẩn) — học viên */
+export async function luuPhieuGiaoViec(p: TtcPhieuForm & { id?: string; chuong_trinh_id: string; hoc_vien: string; so: number; dau_viec_id?: string | null }) {
+  const { id, ten_can_bo: _b, ...phan } = p;
+  void _b;
+  const du = {
+    ...phan,
+    dat_chuan: (phan.dat_chuan ?? []).map((d) => d.trim()).filter(Boolean),
+    diem_kiem: (phan.diem_kiem ?? []).filter((m) => m.ngay),
+    muc_dich: phan.muc_dich?.trim() || null, dau_ra: phan.dau_ra?.trim() || null,
+    goi_y_cach_lam: phan.goi_y_cach_lam?.trim() || null, nguon_luc: phan.nguon_luc?.trim() || null,
+  };
+  if (id) nemNeuLoi(await db.from('ttc_viec_goi_dau').update(du).eq('id', id));
+  else nemNeuLoi(await db.from('ttc_viec_goi_dau').insert(du));
 }
 
-export async function nghiemThuViecGoiDau(id: string, nghiemThu: string) {
-  nemNeuLoi(await db.from('ttc_viec_goi_dau').update({ nghiem_thu: nghiemThu }).eq('id', id));
+/** «Giao việc»: khoá chuẩn và đưa thẻ sang Đang làm — trigger ở máy chủ chặn nếu thiếu ô */
+export async function giaoViec(id: string) {
+  nemNeuLoi(await db.from('ttc_viec_goi_dau').update({ khoa_chuan: true, trang_thai: 'dang_lam' }).eq('id', id));
+}
+
+/** «Điều chỉnh chuẩn» sau khi giao — bắt buộc lý do ≥ 20 ký tự, ghi lịch sử */
+export async function dieuChinhChuan(g: TtcViecGoiDau, chuanMoi: string[], lyDo: string) {
+  const dong: TtcLichSuChuan = { thoi_diem: new Date().toISOString(), chuan_cu: g.dat_chuan, chuan_moi: chuanMoi, ly_do: lyDo.trim() };
+  nemNeuLoi(await db.from('ttc_viec_goi_dau')
+    .update({ dat_chuan: chuanMoi, lich_su_chuan: [...(g.lich_su_chuan ?? []), dong] }).eq('id', g.id));
+}
+
+export async function chuyenCotPhieuGiaoViec(id: string, trangThai: TtcTrangThaiPhieu) {
+  nemNeuLoi(await db.from('ttc_viec_goi_dau').update({ trang_thai: trangThai }).eq('id', id));
+}
+
+/** Ghi kết quả một điểm kiểm — học viên (người giao việc) */
+export async function ghiDiemKiem(g: TtcViecGoiDau, ngay: string, ketQua: TtcDiemKiem['ket_qua'], ghiChu: string) {
+  const diem_kiem = (g.diem_kiem ?? []).map((m) => (m.ngay === ngay ? { ...m, ket_qua: ketQua, ghi_chu: ghiChu } : m));
+  nemNeuLoi(await db.from('ttc_viec_goi_dau').update({ diem_kiem }).eq('id', g.id));
+}
+
+/** Nghiệm thu — BGĐ; hai kết quả, nhận xét ≥ 30 ký tự; trigger tự đếm số lần, đổi cột */
+export async function nghiemThuPhieu(id: string, p: { ket_qua: TtcKetQuaNghiemThu; nhan_xet: string; hoi_lai_giua_chung: boolean | null; muc_giao_cuoi_ky: TtcMucGiao | null }) {
+  nemNeuLoi(await db.from('ttc_viec_goi_dau').update({
+    nghiem_thu_ket_qua: p.ket_qua, nghiem_thu: p.nhan_xet.trim(),
+    hoi_lai_giua_chung: p.hoi_lai_giua_chung, muc_giao_cuoi_ky: p.muc_giao_cuoi_ky,
+  }).eq('id', id));
+}
+
+/** «Mở lại nghiệm thu» — BGĐ; thẻ về Đang làm */
+export async function moLaiNghiemThu(id: string) {
+  nemNeuLoi(await db.from('ttc_viec_goi_dau').update({ nghiem_thu_ket_qua: null }).eq('id', id));
 }
 
 /**

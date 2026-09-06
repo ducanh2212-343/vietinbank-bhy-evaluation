@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ArrowRight, Copy, Pencil, Plus, Trash2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { useAuth } from '@/hooks/useAuth';
 import {
   TTC_NHOM_DOI_TUONG, TTC_PHAN, TTC_TEN_NOI_NOP, TTC_TEN_PHU_TRACH, TTC_TEN_THIET_BI, TTC_TEN_TRANG_THAI_CT,
   TTC_TEN_VAI, duongDanChuongTrinh, nhanNgay, xepChuongTrinhCuaToi,
@@ -22,13 +21,15 @@ import { useCt2NhanSu } from '@/components/one/move2/useCt2Data';
 import { TtcLoi } from './TrainingNav';
 import {
   luuChuongTrinh, luuDauViec, luuNgay, nhanBanChuongTrinh, themThanhVien, xoaDauViec, xoaNgay, xoaThanhVien,
-  useTtcBoiCanh, useTtcDanhMuc, useTtcDauViec, useTtcLamTuoi, useTtcNgay,
+  useTtcBoiCanh, useTtcDanhMuc, useTtcDauViec, useTtcLamTuoi, useTtcNgay, useTtcQuyenSoan,
   type TtcChuongTrinhForm,
 } from './useTrainingCenter';
 
 /**
  * QUẢN TRỊ CHƯƠNG TRÌNH — màn của Phòng Tổng hợp (đặc tả giai đoạn 2: «TCTH tự
- * tạo được một chương trình mới mà không cần đội phát triển»).
+ * tạo được một chương trình mới mà không cần đội phát triển»). Từ 06/09 Ban
+ * Giám đốc của chương trình cũng vào được để sửa nội dung (thông tin, ngày,
+ * đầu việc); tạo mới, nhân bản và xếp thành viên vẫn của TCTH.
  *
  * Ba việc: tạo/sửa/nhân bản chương trình · xếp thành viên và vai · soạn ngày
  * và đầu việc. Người tạo tự thành quản trị của chương trình (trigger), nên
@@ -36,20 +37,18 @@ import {
  * nhanh nhất cho «chương trình 10 ngày điều chỉnh theo vị trí quy hoạch».
  */
 export function TtcQuanTri() {
-  const { roles } = useAuth();
-  const laTcth = roles.includes('tcth_admin') || roles.includes('system_admin');
+  const { laTcth, laVaoDuoc, soanDuoc, xepThanhVienDuoc } = useTtcQuyenSoan();
   const { data, isLoading, isError, error } = useTtcDanhMuc();
-  const [chon, setChon] = useState<string | null>(null);
+  // `?ct=` — liên kết «Sửa nội dung chương trình» từ trong chương trình mở thẳng đúng mục
+  const [sp] = useSearchParams();
+  const [chon, setChon] = useState<string | null>(sp.get('ct'));
   const [moTao, setMoTao] = useState(false);
   const [nhanBanTu, setNhanBanTu] = useState<TtcChuongTrinh | null>(null);
 
   const ds = useMemo(() => xepChuongTrinhCuaToi(data?.chuongTrinh ?? []), [data]);
-  // Chỉ chương trình mình quản trị (hoặc system_admin) mới sửa được — RLS quyết, đây là bố trí nút
-  const quanTriCua = useMemo(() => new Set((data?.cuaToi ?? []).filter((t) => t.vai === 'quan_tri').map((t) => t.chuong_trinh_id)), [data]);
-  const laSystemAdmin = roles.includes('system_admin');
 
-  if (!laTcth) {
-    return <p className="rounded-2xl border border-slate-200 bg-white p-4 text-center text-sm text-slate-600 shadow-sm">Màn này dành cho Phòng Tổng hợp.</p>;
+  if (!laVaoDuoc) {
+    return <p className="rounded-2xl border border-slate-200 bg-white p-4 text-center text-sm text-slate-600 shadow-sm">Màn này dành cho Phòng Tổng hợp và Ban Giám đốc của chương trình.</p>;
   }
   if (isLoading) return <Skeleton className="h-64 rounded-2xl" />;
   if (isError) return <TtcLoi error={error} />;
@@ -57,7 +56,7 @@ export function TtcQuanTri() {
   return (
     <div className="grid gap-5 lg:grid-cols-[20rem_1fr]">
       <aside className="space-y-3">
-        <Button className="w-full" onClick={() => setMoTao(true)}><Plus className="mr-1 h-4 w-4" /> Chương trình mới</Button>
+        {laTcth && <Button className="w-full" onClick={() => setMoTao(true)}><Plus className="mr-1 h-4 w-4" /> Chương trình mới</Button>}
         <div className="space-y-2">
           {ds.map((c) => (
             <button
@@ -69,7 +68,7 @@ export function TtcQuanTri() {
               <p className="font-semibold leading-snug text-brand-navy">{c.ten}</p>
               <p className="mt-0.5 text-2xs text-slate-500">
                 {TTC_TEN_TRANG_THAI_CT[c.trang_thai]} · {c.ngay_bd.split('-').reverse().slice(0, 2).join('/')}
-                {c.la_mau ? ' · Mẫu' : ''}{!(quanTriCua.has(c.id) || laSystemAdmin) ? ' · chỉ xem' : ''}
+                {c.la_mau ? ' · Mẫu' : ''}{!soanDuoc(c.id) ? ' · chỉ xem' : ''}
               </p>
             </button>
           ))}
@@ -80,8 +79,9 @@ export function TtcQuanTri() {
         {chon ? (
           <ChiTietChuongTrinh
             ctId={chon}
-            suaDuoc={quanTriCua.has(chon) || laSystemAdmin}
-            onNhanBan={(c) => setNhanBanTu(c)}
+            suaDuoc={soanDuoc(chon)}
+            xepDuoc={xepThanhVienDuoc(chon)}
+            onNhanBan={laTcth ? (c) => setNhanBanTu(c) : null}
           />
         ) : (
           <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
@@ -211,7 +211,14 @@ function FormNhanBan({ nguon, onClose, onXong }: { nguon: TtcChuongTrinh | null;
 
 // ---------------------------------------------------------------------------
 
-function ChiTietChuongTrinh({ ctId, suaDuoc, onNhanBan }: { ctId: string; suaDuoc: boolean; onNhanBan: (c: TtcChuongTrinh) => void }) {
+function ChiTietChuongTrinh({ ctId, suaDuoc, xepDuoc, onNhanBan }: {
+  ctId: string;
+  /** Sửa thông tin, ngày, đầu việc — quản trị hoặc BGĐ của chương trình */
+  suaDuoc: boolean;
+  /** Xếp thành viên và vai — chỉ quản trị (khớp RLS ttc_thanh_vien) */
+  xepDuoc: boolean;
+  onNhanBan: ((c: TtcChuongTrinh) => void) | null;
+}) {
   const bc = useTtcBoiCanh(ctId);
   const lamTuoi = useTtcLamTuoi();
   const { data: nhanSu = [] } = useCt2NhanSu();
@@ -261,7 +268,7 @@ function ChiTietChuongTrinh({ ctId, suaDuoc, onNhanBan }: { ctId: string; suaDuo
           </div>
           <div className="flex flex-wrap gap-2">
             {suaDuoc && <Button size="sm" variant="outline" onClick={() => setMoSua(true)}><Pencil className="mr-1 h-3.5 w-3.5" /> Sửa</Button>}
-            <Button size="sm" variant="outline" onClick={() => onNhanBan(ct)}><Copy className="mr-1 h-3.5 w-3.5" /> Nhân bản</Button>
+            {onNhanBan && <Button size="sm" variant="outline" onClick={() => onNhanBan(ct)}><Copy className="mr-1 h-3.5 w-3.5" /> Nhân bản</Button>}
             {bc.vai && (
               <Button asChild size="sm"><Link to={duongDanChuongTrinh(ct.id)}>Mở chương trình <ArrowRight className="ml-1 h-3.5 w-3.5" /></Link></Button>
             )}
@@ -278,11 +285,11 @@ function ChiTietChuongTrinh({ ctId, suaDuoc, onNhanBan }: { ctId: string; suaDuo
             <li key={t.id} className="flex items-center gap-2 py-1.5">
               <span className="flex-1 text-slate-800">{t.full_name ?? t.nguoi}</span>
               <span className="rounded-full bg-slate-100 px-2 py-0.5 text-2xs font-semibold text-slate-600">{TTC_TEN_VAI[t.vai]}</span>
-              {suaDuoc && <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => bo(t.id)} aria-label="Bỏ khỏi chương trình"><Trash2 className="h-3.5 w-3.5" /></Button>}
+              {xepDuoc && <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => bo(t.id)} aria-label="Bỏ khỏi chương trình"><Trash2 className="h-3.5 w-3.5" /></Button>}
             </li>
           ))}
         </ul>
-        {suaDuoc && (
+        {xepDuoc && (
           <div className="mt-3 flex flex-wrap items-end gap-2">
             <div className="min-w-[14rem] flex-1">
               <Label className="text-xs">Cán bộ</Label>

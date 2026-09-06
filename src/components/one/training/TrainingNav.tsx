@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, NavLink, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, CalendarDays, Compass, Columns3, GraduationCap, Route, ScanFace, Users } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Compass, Columns3, GraduationCap, Pencil, Route, ScanFace, Users } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OnePageShell } from '@/components/one/OnePageShell';
 import {
@@ -65,11 +65,11 @@ function ThanhTab({ tabs, nhan }: { tabs: MucTab[]; nhan: string }) {
   );
 }
 
-/** Tab tầng trung tâm: danh mục + quản trị (TCTH) */
-export const TtcTabsTrungTam: React.FC<{ laTcth: boolean }> = ({ laTcth }) => {
+/** Tab tầng trung tâm: danh mục + quản trị (TCTH và Ban Giám đốc của chương trình) */
+export const TtcTabsTrungTam: React.FC<{ soanDuoc: boolean }> = ({ soanDuoc }) => {
   const tabs: MucTab[] = [
     { to: '/one/training-center', label: 'Danh mục chương trình', icon: Compass, end: true },
-    ...(laTcth ? [{ to: '/one/training-center/quan-tri', label: 'Quản trị chương trình (TCTH)', icon: Users }] : []),
+    ...(soanDuoc ? [{ to: '/one/training-center/quan-tri', label: 'Quản trị chương trình', icon: Users }] : []),
   ];
   if (tabs.length < 2) return null;
   return <ThanhTab tabs={tabs} nhan="Các màn hình của Bắc Hưng Yên Training Center" />;
@@ -130,6 +130,11 @@ export const TtcKhungChuongTrinh: React.FC<{
             <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs text-slate-600">
               {tenNhomDoiTuong(ct.nhom_doi_tuong)} · {TTC_TEN_TRANG_THAI_CT[ct.trang_thai]} · {ct.ngay_bd.split('-').reverse().join('/')} → {ct.ngay_kt.split('-').reverse().join('/')}
             </span>
+          )}
+          {ct && bc.laSuaDuocNoiDung && (
+            <Link to={`/one/training-center/quan-tri?ct=${ct.id}`} className="inline-flex items-center gap-1 rounded-full border border-[#A8763E]/50 bg-white px-3 py-1.5 text-xs font-semibold text-[#A8763E] hover:bg-[#A8763E]/10">
+              <Pencil className="h-3.5 w-3.5" /> Sửa nội dung chương trình
+            </Link>
           )}
         </div>
 
