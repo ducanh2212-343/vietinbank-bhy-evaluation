@@ -1,15 +1,24 @@
-import { TtcKhung } from '@/components/one/training/TrainingNav';
-import { TtcTrangChu } from '@/components/one/training/TtcTrangChu';
+import { OnePageShell } from '@/components/one/OnePageShell';
+import { useAuth } from '@/hooks/useAuth';
+import { TtcHero, TtcTabsTrungTam } from '@/components/one/training/TrainingNav';
+import { TtcDanhMuc } from '@/components/one/training/TtcDanhMuc';
 
-// Bắc Hưng Yên Training Center — màn «Trang chủ». Vỏ, hero và tab dùng chung ở
-// TrainingNav.tsx; RLS theo bảng thành viên chương trình là hàng rào thật.
+// TRANG CHỦ Bắc Hưng Yên Training Center — trung tâm nhiều chương trình. Chương
+// trình 10 ngày của Trưởng phòng KHDN chỉ là một mục trong danh mục ở đây.
 export default function OneTrainingPage() {
+  const { roles } = useAuth();
+  const laTcth = roles.includes('tcth_admin') || roles.includes('system_admin');
   return (
-    <TtcKhung
-      title="Trang chủ"
-      moTa="Nơi tổ chức và theo dõi mọi chương trình đào tạo, rèn luyện và phát triển năng lực của Chi nhánh. Chương trình 10 ngày Trưởng phòng KHDN là chương trình đầu tiên chạy ở đây."
-    >
-      {(bc) => <TtcTrangChu bc={bc} />}
-    </TtcKhung>
+    <OnePageShell>
+      <section className="mx-auto w-full max-w-7xl space-y-6 px-4 py-10 sm:px-6 lg:px-8">
+        <TtcHero title="Training Center">
+          Nơi tổ chức và theo dõi mọi chương trình đào tạo, rèn luyện và phát triển năng lực của Chi nhánh —
+          hội nhập cán bộ mới, chuyên đề nâng cấp chuyên môn, chương trình cho cán bộ quy hoạch và duy trì cho
+          cán bộ quản lý đương nhiệm.
+        </TtcHero>
+        <TtcTabsTrungTam laTcth={laTcth} />
+        <TtcDanhMuc />
+      </section>
+    </OnePageShell>
   );
 }

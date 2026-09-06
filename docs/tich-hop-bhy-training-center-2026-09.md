@@ -10,17 +10,31 @@ Khung chia sẻ và tự suy ngẫm 1.0 (số 06), Sổ tay trả lời tin nh�
 ## 1. Kết luận
 
 Training Center được dựng như **một thương hiệu thứ bảy trong Bắc Hưng Yên
-Ways**, không phải một phân hệ riêng trên thanh điều hướng. Lý do: đặc tả xác
-định điểm vào là «một ô trên trang chủ cổng», và cấu trúc menu chốt 08/2026 chỉ
-có sáu khu — thêm khu thứ bảy là phá cấu trúc đã được kiểm thử khoá.
+Ways** và là **trung tâm nhiều chương trình**: danh mục xếp theo bốn nhóm đối
+tượng của đặc tả (cán bộ mới · nâng cấp chuyên môn · quy hoạch · quản lý đương
+nhiệm), mỗi chương trình có thành viên, lộ trình, bảng việc, phiếu riêng và
+đường dẫn riêng (`/chuong-trinh/:id/…`). Chương trình 10 ngày của Trưởng phòng
+KHDN chỉ là một mục — được nạp làm **chương trình mẫu** để Phòng TCTH nhân bản
+cho vị trí quy hoạch khác. Không dựng phân hệ riêng trên thanh điều hướng:
+đặc tả xác định điểm vào là «một ô trên trang chủ cổng», và cấu trúc menu chốt
+08/2026 chỉ có sáu khu.
 
-Ba quyết định thiết kế quan trọng nhất:
+Hai tầng màn hình:
+
+| Tầng | Đường dẫn | Ai dùng |
+| --- | --- | --- |
+| Trung tâm — danh mục, «chương trình của tôi» | `/one/training-center` | mọi cán bộ |
+| Trung tâm — quản trị chương trình | `/one/training-center/quan-tri` | Phòng TCTH (tcth_admin, system_admin) |
+| Chương trình — tổng quan, lộ trình, bảng việc, tự soi, lịch BGĐ | `/one/training-center/chuong-trinh/:id[/lo-trinh…]` | thành viên chương trình |
+
+Bốn quyết định thiết kế quan trọng nhất:
 
 | Quyết định | Cách làm | Vì sao |
 | --- | --- | --- |
 | Vai đọc từ **bảng thành viên chương trình**, không từ vai trò đăng nhập | `ttc_thanh_vien(vai: hoc_vien · huong_dan · bgd · quan_tri)`; mọi RLS gác bằng hàm `ttc_vai()` | Vai trò chung không tách được: Giám đốc mang `system_admin`, PGĐ phụ trách chỉ là một trong ba PGĐ, Phòng TCTH có nhiều `tcth_admin` nhưng chỉ một người quản trị chương trình |
 | Ba việc gối đầu **không đẻ thẻ việc riêng** | Thẻ thật ở `ct2_dau_viec` (Chiêu thức 2); `ttc_viec_goi_dau` chỉ giữ WHY, tiêu chuẩn, mốc kiểm tra, nghiệm thu và **trỏ** sang thẻ đó | Cán bộ được giao ghi nhịp bằng đúng công cụ Phòng đang dùng; Kanban hàng ngày trên Training Center đọc thẻ thật qua RPC nên không bao giờ lệch với bảng Phòng |
 | Tự soi và tự suy ngẫm **chỉ chính học viên đọc** — ở tầng RLS | Không có policy nào cho vai khác, kể cả `system_admin`; vai khác chỉ gọi được hàm trả cờ «đã điền N/8» | Đặc tả nói rõ: chỉ ẩn ở giao diện thì sớm muộn sẽ có người đọc được, và toàn bộ giá trị của phần tự soi mất đi |
+| **Danh mục mở, chi tiết đóng** | `ttc_chuong_trinh` đọc được bởi mọi cán bộ; ngày, đầu việc, thành viên, tiến độ, điểm chỉ thành viên | Cán bộ nào cũng sẽ có lúc đứng trong một chương trình — phải thấy trước có gì; nhưng ai đang học gì, tiến độ ra sao là chuyện của chương trình đó |
 
 ---
 
@@ -40,15 +54,20 @@ Ba quyết định thiết kế quan trọng nhất:
 ### 2.2 Những gì phải DỰNG MỚI
 
 Chín bảng `ttc_*` (một migration, một file gỡ), bảy hàm quyền, hai hàm cờ
-«đã điền», một RPC Kanban học viên, hai trigger thông báo, hai hàm cron, lớp
-logic thuần `src/lib/trainingCenter.ts` (có kiểm thử), lớp dữ liệu
-`useTrainingCenter.ts`, năm màn hình và năm route.
+«đã điền», RPC Kanban học viên, hàm nhân bản chương trình mẫu, trigger «người
+tạo là quản trị», hai trigger thông báo, hai hàm cron, lớp logic thuần
+`src/lib/trainingCenter.ts` (có kiểm thử), lớp dữ liệu `useTrainingCenter.ts`,
+màn danh mục, màn quản trị (tạo · nhân bản · thành viên · ngày · đầu việc) và
+năm màn của từng chương trình.
+
+**Nhiều học viên một chương trình** (hội nhập 30 ngày): tiến độ, điểm Bloom,
+việc gối đầu, tự soi đều theo từng học viên; người hướng dẫn/BGĐ chọn học viên
+đang xem ở đầu trang, tham số `?hv=` giữ lựa chọn khi chuyển màn.
 
 ### 2.3 Những gì đặc tả nêu nhưng ĐỂ LẠI giai đoạn sau (có chủ ý)
 
 | Hạng mục | Giai đoạn | Lý do để lại |
 | --- | --- | --- |
-| Màn quản trị chương trình cho Phòng TCTH tự tạo ngày, đầu việc | 2 | Giai đoạn 1 chỉ có một chương trình; nội dung đã nạp sẵn từ tài liệu Bản 4.0. Bảng và RLS đã sẵn sàng cho màn này (vai `quan_tri` ghi được `ttc_ngay`, `ttc_dau_viec`) |
 | Thư viện 18 biểu mẫu, tải ảnh phiếu viết tay | 2 | Đặt trong kho tư liệu chung của cổng (Sharing) theo đúng đặc tả Mục VIII; cần thống nhất nhãn theo chương trình trước |
 | Phiếu cảm nhận ẩn danh của cán bộ (`staff_feedback`) | 2 | Chỉ dùng ở Ngày 7–8; giai đoạn 1 thu bằng phiếu giấy như tài liệu 00 đang quy định |
 | Ghi nhận có mặt bằng định vị | 3 | Đặc tả yêu cầu lấy toạ độ thật tại cổng chi nhánh trước; cột toạ độ và bán kính đã có sẵn trên `ttc_chuong_trinh` |
@@ -58,7 +77,7 @@ logic thuần `src/lib/trainingCenter.ts` (có kiểm thử), lớp dữ liệu
 
 ## 3. Phân quyền
 
-### 3.1 Bốn vai và người được gán cho chương trình 10 ngày
+### 3.1 Bốn vai và người được gán cho chương trình 10 ngày (mục đầu tiên của danh mục)
 
 | Vai | Người | Được làm | Không được làm |
 | --- | --- | --- | --- |
@@ -68,15 +87,20 @@ logic thuần `src/lib/trainingCenter.ts` (có kiểm thử), lớp dữ liệu
 | `quan_tri` — Quản trị chương trình | Vũ Thị Thu Hà, Phòng TCTH | Sửa chương trình, ngày, đầu việc; thêm bớt thành viên; xem điểm để tổng hợp | Chấm điểm; đọc tự soi; sửa nội dung học viên đã nộp |
 
 Thành viên được nạp **theo họ tên** trong `profiles` lúc áp migration (cùng cách
-với đợt Dấu ấn BHY Mark). Tên nào chưa có hồ sơ thì bỏ qua — Phòng TCTH thêm
-bằng SQL hoặc màn quản trị giai đoạn 2. `system_admin` xem được như quản trị
-để bảo trì kỹ thuật, nhưng **vẫn không đọc được** tự soi và tự suy ngẫm.
+với đợt Dấu ấn BHY Mark). Tên nào chưa có hồ sơ thì bỏ qua — Phòng TCTH thêm ở
+màn Quản trị chương trình. Người tạo một chương trình tự thành `quan_tri` của
+nó (trigger). `system_admin` xem được như quản trị để bảo trì kỹ thuật, nhưng
+**vẫn không đọc được** tự soi và tự suy ngẫm.
+
+Ba chương trình dự kiến của ba nhóm còn lại được nạp ở trạng thái **Chuẩn bị**,
+chưa có ngày và thành viên — để danh mục phản ánh đủ bốn nhóm ngay từ đầu và
+TCTH có chỗ điền nội dung.
 
 ### 3.2 Ma trận đọc/ghi từng bảng (RLS)
 
 | Bảng | Đọc | Ghi |
 | --- | --- | --- |
-| `ttc_chuong_trinh` | thành viên | tạo: system_admin/tcth_admin · sửa: quan_tri |
+| `ttc_chuong_trinh` | **mọi cán bộ** (danh mục) | tạo: system_admin/tcth_admin (tự thành quan_tri) · sửa: quan_tri · nhân bản: tcth_admin/system_admin |
 | `ttc_thanh_vien` | thành viên | quan_tri |
 | `ttc_ngay`, `ttc_dau_viec` | thành viên | quan_tri |
 | `ttc_tien_do` | thành viên | chính học viên |
@@ -84,9 +108,11 @@ bằng SQL hoặc màn quản trị giai đoạn 2. `system_admin` xem được 
 | `ttc_tu_soi`, `ttc_suy_ngam` | **chỉ chính học viên** | chỉ chính học viên |
 | `ttc_viec_goi_dau` | thành viên | nội dung: học viên · nghiệm thu: bgd (trigger chặn chéo) |
 
-Điều hướng: mục menu Training Center **hiện với mọi cán bộ** (không gác bằng
-`minRole` vì vai nằm ở bảng riêng); trang tự hiện giới thiệu cho người ngoài
-chương trình. Khách đối tác không có màn nào trong danh mục màn hình khách nên
+Điều hướng: thư mục Training Center có hai mục — «Danh mục chương trình» hiện
+với mọi cán bộ (không gác bằng `minRole` vì vai nằm ở bảng riêng) và «Quản trị
+chương trình (TCTH)» gác `minRole: admin`. Màn của từng chương trình mang id
+trên đường dẫn nên không có mục menu riêng, tô sáng mục danh mục qua
+`extraPaths`. Khách đối tác không có màn nào trong danh mục màn hình khách nên
 đóng hoàn toàn (fail-closed như mọi route `/one` khác).
 
 ---
@@ -139,10 +165,11 @@ nhiều dòng một lệnh hoặc cron chạy lặp).
 ## 6. Kết quả chạy thử migration trên Postgres cục bộ
 
 Dựng khung giả lập (`profiles`, `ct2_dau_viec`, `ct2_dat_thong_bao`, các hàm
-quyền) rồi áp migration và kịch bản kiểm 10 bước:
+quyền) rồi áp migration và kịch bản kiểm 11 bước:
 
-- Nạp đủ 10 ngày, 102 đầu việc, 4 thành viên đúng vai.
-- Người ngoài chương trình: 0 chương trình, 0 ngày (RLS).
+- Nạp 4 chương trình (1 đang chạy làm mẫu + 3 dự kiến), 10 ngày, 102 đầu việc, 4 thành viên đúng vai.
+- Người ngoài chương trình: thấy 4 mục danh mục, 0 ngày, 0 thành viên (RLS).
+- TCTH tạo chương trình → tự là quản trị; nhân bản mẫu sang 05/10 → 10 ngày, 102 đầu việc, lịch 05→16/10; người thường nhân bản bị chặn.
 - Học viên tích đủ Ngày 2 → đúng 2 tin `TTC_DU_NGAY` tới GĐ và PGĐ.
 - Giám đốc, TCTH đọc thẳng `ttc_tu_soi`/`ttc_suy_ngam`: 0 dòng; hàm cờ: «đợt 1, 8/8 tiêu chí».
 - PGĐ chấm Bloom có thang 9/20 → 1 tin `TTC_CUNG_CO` tới Giám đốc; học viên thấy 0 phiếu trước công bố, thấy điểm 66 sau công bố.
@@ -170,5 +197,6 @@ Giám đốc **tô cảnh báo chứ không cắt** — đây là thông tin đ�
    cần khi bật ghi nhận có mặt ở giai đoạn 3).
 4. Ngày 5: học viên chuyển 30 việc lên Chiêu thức 2 — Kanban hàng ngày trên
    Training Center tự có dữ liệu; Ngày 7–8 lập ba việc gối đầu và liên kết thẻ.
-5. Giai đoạn 2: màn quản trị chương trình cho TCTH, thư viện biểu mẫu, phiếu
-   cảm nhận ẩn danh; giai đoạn 3: định vị, nhiều chương trình song song.
+5. Phòng TCTH điền nội dung ba chương trình dự kiến (hoặc nhân bản từ mẫu) ở
+   màn Quản trị chương trình. Còn lại giai đoạn 2–3: thư viện biểu mẫu, phiếu
+   cảm nhận ẩn danh, ghi nhận có mặt bằng định vị.

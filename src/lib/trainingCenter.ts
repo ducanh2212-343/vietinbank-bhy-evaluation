@@ -78,13 +78,37 @@ export const TTC_TEN_NOI_NOP: Record<TtcNoiNop, string> = {
   KHONG: 'Không có sản phẩm',
 };
 
+/** Bốn nhóm đối tượng phục vụ (đặc tả Mục I) — trục xếp danh mục chương trình */
+export type TtcNhomDoiTuong = 'CAN_BO_MOI' | 'NANG_CAP_CHUYEN_MON' | 'QUY_HOACH' | 'QUAN_LY_DUONG_NHIEM';
+
+export const TTC_NHOM_DOI_TUONG: Array<{ ma: TtcNhomDoiTuong; ten: string; nhuCau: string; duKien: string }> = [
+  { ma: 'CAN_BO_MOI', ten: 'Cán bộ mới', nhuCau: 'Nắm quy trình, sản phẩm và văn hoá làm việc trong 30–60 ngày đầu', duKien: 'Chương trình hội nhập 30 ngày; bộ bài rà soát cơ bản' },
+  { ma: 'NANG_CAP_CHUYEN_MON', ten: 'Cán bộ cần nâng cấp chuyên môn', nhuCau: 'Bổ sung đúng khoảng trống đã lộ ra qua công việc thực tế', duKien: 'Chương trình theo chuyên đề: thẩm định tín dụng, dự án đầu tư, sản phẩm' },
+  { ma: 'QUY_HOACH', ten: 'Cán bộ quy hoạch', nhuCau: 'Chuyển từ làm chuyên môn sang quản trị công việc và quản trị người khác', duKien: 'Chương trình 10 ngày như bản đang chạy, điều chỉnh theo vị trí quy hoạch' },
+  { ma: 'QUAN_LY_DUONG_NHIEM', ten: 'Cán bộ quản lý đương nhiệm', nhuCau: 'Rà soát năng lực định kỳ và duy trì hành vi quản trị', duKien: 'Chương trình duy trì 30–60–90 ngày; tự soi định kỳ theo 08 tiêu chí' },
+];
+
+export function tenNhomDoiTuong(ma: TtcNhomDoiTuong): string {
+  return TTC_NHOM_DOI_TUONG.find((n) => n.ma === ma)?.ten ?? ma;
+}
+
+export type TtcTrangThaiCt = 'CHUAN_BI' | 'DANG_CHAY' | 'KET_THUC';
+export const TTC_TEN_TRANG_THAI_CT: Record<TtcTrangThaiCt, string> = {
+  CHUAN_BI: 'Chuẩn bị', DANG_CHAY: 'Đang chạy', KET_THUC: 'Đã kết thúc',
+};
+
 export interface TtcChuongTrinh {
   id: string;
   ten: string;
   mo_ta: string | null;
   ngay_bd: string;
   ngay_kt: string;
-  trang_thai: 'CHUAN_BI' | 'DANG_CHAY' | 'KET_THUC';
+  trang_thai: TtcTrangThaiCt;
+  nhom_doi_tuong: TtcNhomDoiTuong;
+  loai: string | null;
+  khoi_nang_luc: string | null;
+  /** Chương trình mẫu — Phòng TCTH nhân bản ra chương trình mới */
+  la_mau: boolean;
   /** Toạ độ + bán kính ghi nhận có mặt — giai đoạn 3, giữ chỗ */
   vi_do: number | null;
   kinh_do: number | null;
@@ -552,6 +576,48 @@ export const TTC_MA_SU_KIEN = {
 /** Tin của Training Center mở về đâu — cùng luật với duongDanThongBao (ct2.ts) và notify-ct2 */
 export function laTinTrainingCenter(maSuKien: string): boolean {
   return maSuKien.startsWith('TTC_');
+}
+
+// ---------------------------------------------------------------------------
+// Danh mục chương trình — Training Center là trung tâm NHIỀU chương trình
+// ---------------------------------------------------------------------------
+
+export interface NhomDanhMuc {
+  nhom: (typeof TTC_NHOM_DOI_TUONG)[number];
+  chuongTrinh: TtcChuongTrinh[];
+}
+
+const THU_TU_TRANG_THAI: Record<TtcTrangThaiCt, number> = { DANG_CHAY: 0, CHUAN_BI: 1, KET_THUC: 2 };
+
+/**
+ * Xếp danh mục theo bốn nhóm đối tượng (đủ cả nhóm chưa có chương trình để
+ * TCTH thấy chỗ trống); trong nhóm: đang chạy → chuẩn bị (sắp tới trước) →
+ * đã kết thúc (mới nhất trước).
+ */
+export function xepDanhMuc(ds: TtcChuongTrinh[]): NhomDanhMuc[] {
+  return TTC_NHOM_DOI_TUONG.map((nhom) => ({
+    nhom,
+    chuongTrinh: ds
+      .filter((c) => c.nhom_doi_tuong === nhom.ma)
+      .sort((a, b) => {
+        const t = THU_TU_TRANG_THAI[a.trang_thai] - THU_TU_TRANG_THAI[b.trang_thai];
+        if (t !== 0) return t;
+        return a.trang_thai === 'KET_THUC' ? b.ngay_bd.localeCompare(a.ngay_bd) : a.ngay_bd.localeCompare(b.ngay_bd);
+      }),
+  }));
+}
+
+/** Chương trình «của tôi» xếp đang chạy trước, rồi sắp tới, rồi đã xong */
+export function xepChuongTrinhCuaToi(ds: TtcChuongTrinh[]): TtcChuongTrinh[] {
+  return [...ds].sort((a, b) => {
+    const t = THU_TU_TRANG_THAI[a.trang_thai] - THU_TU_TRANG_THAI[b.trang_thai];
+    return t !== 0 ? t : a.ngay_bd.localeCompare(b.ngay_bd);
+  });
+}
+
+/** Đường dẫn các màn của một chương trình — một nơi duy nhất, tab và thẻ cùng đọc */
+export function duongDanChuongTrinh(id: string, man: '' | 'lo-trinh' | 'bang-viec' | 'tu-soi' | 'lich-bgd' = ''): string {
+  return `/one/training-center/chuong-trinh/${id}${man ? `/${man}` : ''}`;
 }
 
 // ---------------------------------------------------------------------------

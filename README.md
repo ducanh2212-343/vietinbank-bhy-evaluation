@@ -386,22 +386,29 @@ chính sách kênh theo mức thay đổi): `docs/lich-su-phien-ban-va-bao-tin-m
 
 ## Bắc Hưng Yên Training Center (09/2026)
 
-Cấu phần đào tạo và rèn luyện, là thương hiệu thứ bảy trong Bắc Hưng Yên Ways
-(đặc tả 1.0 ngày 06/09/2026). Năm màn tại `/one/training-center` (trang chủ ·
-lộ trình · bảng việc · tự soi · lịch Ban Giám đốc); vai đọc từ **bảng thành
-viên chương trình** `ttc_thanh_vien` (học viên · người hướng dẫn · BGĐ · quản
-trị), không từ vai trò đăng nhập. Ba việc gối đầu («3 việc lựa chọn với cán
-bộ») nhập ở Chiêu thức 2 và hiện trên Kanban hàng ngày của Training Center qua
-RPC `ttc_kanban_hoc_vien`. Tự soi và tự suy ngẫm của học viên chỉ chính học
-viên đọc được — RLS, không phải giao diện. Bốn mốc thông báo (`TTC_*`) đi qua
-hàng đợi `ct2_thong_bao`; hai cron `ttc-nhac-sap-trinh-bay` (15:10) và
-`ttc-nhac-con-viec` (17:00). Migration
-`20261008090000_bhy_training_center.sql` **chưa áp** vào project
-`whlysprzsguehxmrjwha` — áp xong kiểm 4 dòng `ttc_thanh_vien` (gán theo họ
-tên: Trần Đức Anh · Nguyễn Đức Thái Hoàng · Đỗ Việt Anh · Vũ Thị Thu Hà) và
-**deploy lại `notify-ct2`** để push mở đúng Lộ trình. Đã chạy thử trọn migration
-+ file gỡ trên Postgres cục bộ (kịch bản 10 bước). Nghiên cứu tích hợp, phân
-quyền, phần để lại giai đoạn 2–3: `docs/tich-hop-bhy-training-center-2026-09.md`.
+Trung tâm NHIỀU chương trình đào tạo và rèn luyện — thương hiệu thứ bảy trong
+Bắc Hưng Yên Ways (đặc tả 1.0 ngày 06/09/2026). Tầng trung tâm:
+`/one/training-center` (danh mục theo bốn nhóm đối tượng, «chương trình của
+tôi») và `/one/training-center/quan-tri` (Phòng TCTH tạo, nhân bản từ mẫu, xếp
+thành viên, soạn ngày và đầu việc). Tầng chương trình:
+`/one/training-center/chuong-trinh/:id` + `lo-trinh` · `bang-viec` · `tu-soi` ·
+`lich-bgd`; một chương trình có nhiều học viên, người hướng dẫn/BGĐ chọn học
+viên đang xem bằng `?hv=`. Vai đọc từ **bảng thành viên chương trình**
+`ttc_thanh_vien` (học viên · người hướng dẫn · BGĐ · quản trị), không từ vai
+trò đăng nhập; người tạo chương trình tự thành quản trị của nó. Danh mục mở
+cho mọi cán bộ (RLS), lịch/tiến độ/điểm chỉ thành viên. Ba việc gối đầu («3
+việc lựa chọn với cán bộ») nhập ở Chiêu thức 2 và hiện trên Kanban hàng ngày
+của chương trình qua RPC `ttc_kanban_hoc_vien`. Tự soi và tự suy ngẫm của học
+viên chỉ chính học viên đọc được — RLS, không phải giao diện. Bốn mốc thông
+báo (`TTC_*`) đi qua hàng đợi `ct2_thong_bao`; hai cron
+`ttc-nhac-sap-trinh-bay` (15:10) và `ttc-nhac-con-viec` (17:00). Migration
+`20261008090000_bhy_training_center.sql` (nạp chương trình 10 ngày TP KHDN làm
+mẫu + ba chương trình dự kiến ở trạng thái Chuẩn bị; thành viên gán theo họ
+tên: Trần Đức Anh · Nguyễn Đức Thái Hoàng · Đỗ Việt Anh · Vũ Thị Thu Hà) —
+trạng thái áp ghi ở cuối mục này. Cần **deploy lại `notify-ct2`** để push mở
+đúng Lộ trình. Đã chạy thử trọn migration + file gỡ trên Postgres cục bộ
+(kịch bản 11 bước). Nghiên cứu tích hợp, phân quyền, phần để lại giai đoạn 3:
+`docs/tich-hop-bhy-training-center-2026-09.md`.
 
 ## Chiêu thức 2 — Kanban 5W2H + PDCA (08/2026)
 

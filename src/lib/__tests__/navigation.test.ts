@@ -134,20 +134,20 @@ describe('Cấu trúc cây điều hướng', () => {
     ]);
     expect(trongThuMuc('Bắc Hưng Yên Training Center')).toEqual([
       '/one/training-center',
-      '/one/training-center/lo-trinh',
-      '/one/training-center/bang-viec',
-      '/one/training-center/tu-soi',
-      '/one/training-center/lich-bgd',
+      '/one/training-center/quan-tri',
     ]);
   });
 
-  it('Training Center mở cho mọi cán bộ nhưng đóng với khách đối tác', () => {
-    // Vai đọc từ bảng thành viên chương trình nên menu không gác bằng minRole;
-    // trang tự hiện giới thiệu cho người ngoài chương trình. Khách đối tác thì
-    // không có màn nào trong danh mục màn hình khách → fail-closed.
+  it('Training Center: danh mục mở cho mọi cán bộ, quản trị chỉ TCTH, đóng với khách', () => {
+    // Vai trong chương trình đọc từ bảng thành viên nên danh mục không gác bằng
+    // minRole; màn quản trị là việc của Phòng TCTH. Khách đối tác không có màn
+    // nào trong danh mục màn hình khách → fail-closed.
     expect(moiDuongDan(canBoThuong)).toContain('/one/training-center');
-    expect(moiDuongDan(canBoThuong)).toContain('/one/training-center/tu-soi');
+    expect(moiDuongDan(canBoThuong)).not.toContain('/one/training-center/quan-tri');
+    expect(moiDuongDan(quanTri)).toContain('/one/training-center/quan-tri');
     expect(moiDuongDan(khachMoRong)).not.toContain('/one/training-center');
+    // Màn của từng chương trình (mang id) tô sáng mục danh mục
+    expect(resolveLocation('/one/training-center/chuong-trinh/abc/lo-trinh').leaf?.path).toBe('/one/training-center');
   });
 
   it('mọi mục con của Ways đều dẫn thẳng tới nơi làm việc thật', () => {
@@ -169,10 +169,7 @@ describe('Cấu trúc cây điều hướng', () => {
       '/quizzi/chien-dich',
       '/quan-tri-quizzi',
       '/one/training-center',
-      '/one/training-center/lo-trinh',
-      '/one/training-center/bang-viec',
-      '/one/training-center/tu-soi',
-      '/one/training-center/lich-bgd',
+      '/one/training-center/quan-tri',
     ]);
   });
 

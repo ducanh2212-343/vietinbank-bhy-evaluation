@@ -59,15 +59,46 @@ export function useTtcLamTuoi() {
 }
 
 // ---------------------------------------------------------------------------
-// Chương trình và vai của tôi
+// Danh mục chương trình + bối cảnh một chương trình
 // ---------------------------------------------------------------------------
+
+/** Vì sao lỗi: bảng chưa có (migration chưa áp) khác với lỗi mạng — báo cho đúng người */
+export function chuaCaiCauPhan(e: unknown): boolean {
+  const m = e instanceof Error ? e.message : String(e ?? '');
+  return /does not exist|42P01|schema cache|Could not find the table/i.test(m);
+}
+
+/**
+ * DANH MỤC: mọi chương trình cán bộ thấy được (RLS mở danh mục cho toàn bộ
+ * cán bộ) + các dòng thành viên của chính tôi để biết mình ở đâu.
+ */
+export function useTtcDanhMuc() {
+  const { profileId } = useAuth();
+  return useQuery({
+    queryKey: ['ttc', 'danh-muc', profileId],
+    enabled: !!profileId,
+    staleTime: NAM_PHUT,
+    queryFn: async () => {
+      const [ct, tv] = await Promise.all([
+        db.from('ttc_chuong_trinh').select('*').order('ngay_bd', { ascending: false }).limit(200),
+        db.from('ttc_thanh_vien').select('id, chuong_trinh_id, nguoi, vai').eq('nguoi', profileId),
+      ]);
+      return {
+        chuongTrinh: (nemNeuLoi(ct) ?? []) as TtcChuongTrinh[],
+        cuaToi: (nemNeuLoi(tv) ?? []) as TtcThanhVien[],
+      };
+    },
+  });
+}
 
 export interface TtcBoiCanh {
   chuongTrinh: TtcChuongTrinh | null;
   thanhVien: TtcThanhVien[];
   /** Vai của tôi trong chương trình; null = không thuộc chương trình */
   vai: TtcVai | null;
-  /** Học viên đang được xem (chương trình giai đoạn 1 có đúng một học viên) */
+  /** Mọi học viên của chương trình (hội nhập 30 ngày có nhiều người) */
+  dsHocVien: TtcThanhVien[];
+  /** Học viên đang được xem: chính mình nếu tôi là học viên, nếu không là người được chọn */
   hocVien: TtcThanhVien | null;
   laHocVien: boolean;
   laNguoiCham: boolean;
@@ -76,32 +107,27 @@ export interface TtcBoiCanh {
 }
 
 /**
- * Chương trình «của tôi»: RLS chỉ trả những chương trình tôi là thành viên
- * (system_admin thấy hết để bảo trì). Giai đoạn 1 chọn chương trình đang chạy
- * gần nhất; nhiều chương trình song song là việc của giai đoạn 3.
+ * Bối cảnh MỘT chương trình theo id trên đường dẫn. `hocVienChon` là học viên
+ * mà người hướng dẫn/BGĐ/TCTH đang xem (query `?hv=`); học viên luôn xem mình.
  */
-export function useTtcBoiCanh(): TtcBoiCanh & { isLoading: boolean; isError: boolean } {
+export function useTtcBoiCanh(ctId: string | null, hocVienChon: string | null = null):
+  TtcBoiCanh & { isLoading: boolean; isError: boolean; error: unknown } {
   const { profileId, roles } = useAuth();
   const laSystemAdmin = roles.includes('system_admin');
 
   const ct = useQuery({
-    queryKey: ['ttc', 'chuong-trinh', profileId],
-    enabled: !!profileId,
+    queryKey: ['ttc', 'chuong-trinh', ctId],
+    enabled: !!profileId && !!ctId,
     staleTime: NAM_PHUT,
     queryFn: async () => {
-      const data = nemNeuLoi(await db.from('ttc_chuong_trinh')
-        .select('*')
-        .order('ngay_bd', { ascending: false })
-        .limit(5)) as TtcChuongTrinh[];
-      const ds = data ?? [];
-      return ds.find((c) => c.trang_thai === 'DANG_CHAY') ?? ds[0] ?? null;
+      const data = nemNeuLoi(await db.from('ttc_chuong_trinh').select('*').eq('id', ctId).maybeSingle()) as TtcChuongTrinh | null;
+      return data ?? null;
     },
   });
 
-  const ctId = ct.data?.id ?? null;
   const tv = useQuery({
     queryKey: ['ttc', 'thanh-vien', ctId],
-    enabled: !!ctId,
+    enabled: !!ctId && !!ct.data,
     staleTime: NAM_PHUT,
     queryFn: async () => {
       const rows = nemNeuLoi(await db.from('ttc_thanh_vien')
@@ -110,7 +136,7 @@ export function useTtcBoiCanh(): TtcBoiCanh & { isLoading: boolean; isError: boo
       return (rows ?? []).map((r) => ({
         id: r.id, chuong_trinh_id: r.chuong_trinh_id, nguoi: r.nguoi, vai: r.vai,
         full_name: r.profiles?.full_name ?? undefined, avatar_url: r.profiles?.avatar_url ?? null,
-      }));
+      })).sort((a, b) => (a.full_name ?? '').localeCompare(b.full_name ?? '', 'vi'));
     },
   });
 
@@ -118,20 +144,73 @@ export function useTtcBoiCanh(): TtcBoiCanh & { isLoading: boolean; isError: boo
   const toi = thanhVien.find((t) => t.nguoi === profileId) ?? null;
   // system_admin không có dòng thành viên vẫn xem được như quản trị (bảo trì)
   const vai: TtcVai | null = toi?.vai ?? (laSystemAdmin && ct.data ? 'quan_tri' : null);
-  const hocVien = thanhVien.find((t) => t.vai === 'hoc_vien') ?? null;
+  const dsHocVien = useMemo(() => thanhVien.filter((t) => t.vai === 'hoc_vien'), [thanhVien]);
+  const hocVien = vai === 'hoc_vien'
+    ? toi
+    : (dsHocVien.find((h) => h.nguoi === hocVienChon) ?? dsHocVien[0] ?? null);
 
   return {
     chuongTrinh: ct.data ?? null,
     thanhVien,
     vai,
+    dsHocVien,
     hocVien,
     laHocVien: vai === 'hoc_vien',
     laNguoiCham: vai === 'huong_dan' || vai === 'bgd',
     laBgd: vai === 'bgd',
     laQuanTri: vai === 'quan_tri',
-    isLoading: ct.isLoading || (!!ctId && tv.isLoading),
+    isLoading: ct.isLoading || (!!ct.data && tv.isLoading),
     isError: ct.isError || tv.isError,
+    error: ct.error ?? tv.error,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Quản trị chương trình (Phòng TCTH) — tạo, sửa, nhân bản, thành viên, ngày, đầu việc
+// ---------------------------------------------------------------------------
+
+export type TtcChuongTrinhForm = Pick<TtcChuongTrinh,
+  'ten' | 'mo_ta' | 'ngay_bd' | 'ngay_kt' | 'trang_thai' | 'nhom_doi_tuong' | 'loai' | 'khoi_nang_luc' | 'la_mau'>;
+
+export async function luuChuongTrinh(f: TtcChuongTrinhForm, id?: string): Promise<string> {
+  if (id) {
+    nemNeuLoi(await db.from('ttc_chuong_trinh').update({ ...f, updated_at: new Date().toISOString() }).eq('id', id));
+    return id;
+  }
+  const row = nemNeuLoi(await db.from('ttc_chuong_trinh').insert(f).select('id').maybeSingle()) as { id: string } | null;
+  return row?.id ?? '';
+}
+
+export async function nhanBanChuongTrinh(nguonId: string, ten: string, ngayBd: string): Promise<string> {
+  return nemNeuLoi(await db.rpc('ttc_nhan_ban_chuong_trinh', { _nguon: nguonId, _ten: ten, _ngay_bd: ngayBd })) as string;
+}
+
+export async function themThanhVien(ctId: string, nguoi: string, vai: TtcVai) {
+  nemNeuLoi(await db.from('ttc_thanh_vien').upsert({ chuong_trinh_id: ctId, nguoi, vai }, { onConflict: 'chuong_trinh_id,nguoi' }));
+}
+
+export async function xoaThanhVien(id: string) {
+  nemNeuLoi(await db.from('ttc_thanh_vien').delete().eq('id', id));
+}
+
+export async function luuNgay(p: Omit<TtcNgay, 'id'> & { id?: string }) {
+  const { id, ...phan } = p;
+  if (id) nemNeuLoi(await db.from('ttc_ngay').update(phan).eq('id', id));
+  else nemNeuLoi(await db.from('ttc_ngay').insert(phan));
+}
+
+export async function xoaNgay(id: string) {
+  nemNeuLoi(await db.from('ttc_ngay').delete().eq('id', id));
+}
+
+export async function luuDauViec(p: Omit<TtcDauViec, 'id'> & { id?: string }) {
+  const { id, ...phan } = p;
+  if (id) nemNeuLoi(await db.from('ttc_dau_viec').update(phan).eq('id', id));
+  else nemNeuLoi(await db.from('ttc_dau_viec').insert(phan));
+}
+
+export async function xoaDauViec(id: string) {
+  nemNeuLoi(await db.from('ttc_dau_viec').delete().eq('id', id));
 }
 
 // ---------------------------------------------------------------------------

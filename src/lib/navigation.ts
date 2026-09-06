@@ -6,7 +6,7 @@ import {
   CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag, GitBranch,
   ListChecks, Building2, Gavel, TrendingUp, Zap, Lightbulb,
   Home, BookOpen, Compass, Layers, Share2, CalendarDays, NotebookPen, Sprout, TreeDeciduous,
-  Boxes, Columns3, ScanFace,
+  Boxes,
   Sparkles as SparklesIcon,
   type LucideIcon,
 } from 'lucide-react';
@@ -373,50 +373,34 @@ export const NAV_SECTIONS: NavSection[] = [
         ],
       },
       {
-        // Training Center (09/2026) — cấu phần đào tạo và rèn luyện. Vai đọc từ
-        // BẢNG THÀNH VIÊN chương trình chứ không từ vai trò đăng nhập, nên không
-        // gác được bằng minRole/special: mọi cán bộ thấy mục, trang tự hiện giới
-        // thiệu cho người ngoài chương trình và dữ liệu cho thành viên (RLS là
-        // hàng rào thật). Không mở cho khách đối tác — không có guestScreen.
+        // Training Center (09/2026) — TRUNG TÂM nhiều chương trình đào tạo; chương
+        // trình 10 ngày của Trưởng phòng KHDN chỉ là một mục trong danh mục. Vai đọc
+        // từ BẢNG THÀNH VIÊN chương trình chứ không từ vai trò đăng nhập, nên danh
+        // mục mở cho mọi cán bộ (trang tự hiện giới thiệu cho người ngoài chương
+        // trình, RLS là hàng rào thật). Các màn của từng chương trình mang id trên
+        // đường dẫn nên không có mục menu riêng — gắn vào mục danh mục qua extraPaths.
+        // Không mở cho khách đối tác — không có guestScreen.
         id: 'ways-training',
         folder: 'Bắc Hưng Yên Training Center',
         icon: GraduationCap,
         items: [
           {
-            label: 'Trang chủ Training Center',
+            label: 'Danh mục chương trình',
             icon: GraduationCap,
             path: '/one/training-center',
             end: true,
             bleed: true,
-            keywords: ['training center', 'dao tao', 'ren luyen', 'vun goc vuon canh', 'chuong trinh 10 ngay', 'hoc vien'],
+            keywords: ['training center', 'dao tao', 'ren luyen', 'vun goc vuon canh', 'chuong trinh 10 ngay',
+              'hoc vien', 'hoi nhap', 'chuyen de', 'quy hoach', 'lo trinh', 'bang viec', 'tu soi', 'lich ban giam doc'],
+            extraPaths: ['/one/training-center/chuong-trinh/'],
           },
           {
-            label: 'Lộ trình',
-            icon: Route,
-            path: '/one/training-center/lo-trinh',
+            label: 'Quản trị chương trình (TCTH)',
+            icon: ClipboardList,
+            path: '/one/training-center/quan-tri',
             bleed: true,
-            keywords: ['lo trinh', 'lich hoc', 'dau viec', 'tich hoan thanh', 'phieu bloom'],
-          },
-          {
-            label: 'Bảng việc',
-            icon: Columns3,
-            path: '/one/training-center/bang-viec',
-            bleed: true,
-            keywords: ['bang viec', 'viec goi dau', 'kanban hoc vien', '5w2h', 'nghiem thu'],
-          },
-          {
-            label: 'Tự soi',
-            icon: ScanFace,
-            path: '/one/training-center/tu-soi',
-            bleed: true,
-            keywords: ['tu soi', '8 tieu chi', 'truong thanh', 'stop start continue'],
-          },
-          {
-            label: 'Lịch Ban Giám đốc',
-            icon: CalendarDays,
-            path: '/one/training-center/lich-bgd',
-            bleed: true,
-            keywords: ['lich ban giam doc', 'khung gio', 'trinh bay 30 phut'],
+            minRole: 'admin',
+            keywords: ['quan tri chuong trinh', 'tao chuong trinh', 'nhan ban', 'thanh vien', 'soan ngay', 'dau viec'],
           },
         ],
       },

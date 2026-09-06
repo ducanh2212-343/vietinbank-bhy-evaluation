@@ -5,17 +5,17 @@ const muc: MucLichSu = {
   ngay: '2026-09-07',
   loai: 'lon',
   phanHe: 'bhy-ways',
-  tieuDe: 'Bắc Hưng Yên Training Center — chương trình 10 ngày chạy trọn trên cổng',
+  tieuDe: 'Bắc Hưng Yên Training Center — trung tâm các chương trình đào tạo trên cổng',
   tomTat:
-    'Cấu phần đào tạo và rèn luyện mới trong Bắc Hưng Yên Ways, thay cho lịch giấy và file rời. ' +
-    'Học viên xem lộ trình theo giờ trên điện thoại và tự tích từng đầu việc; Ban Giám đốc thấy tiến độ ' +
-    'ngay, chấm phiếu Bloom và nghiệm thu ba việc gối đầu tại chỗ. Chương trình 10 ngày Trưởng phòng ' +
-    'KHDN (07–18/09) là chương trình đầu tiên.',
+    'Thương hiệu mới trong Bắc Hưng Yên Ways: danh mục chương trình đào tạo, rèn luyện cho bốn nhóm cán bộ ' +
+    '(mới, nâng cấp chuyên môn, quy hoạch, quản lý đương nhiệm), thay cho lịch giấy và file rời. Mỗi chương ' +
+    'trình có lộ trình theo giờ, tích hoàn thành, phiếu Bloom, bảng việc và tự soi. Phòng Tổng hợp tự tạo ' +
+    'hoặc nhân bản chương trình từ mẫu. Chương trình 10 ngày Trưởng phòng KHDN (07–18/09) là mục đầu tiên.',
   diemChinh: [
-    'Lộ trình: dải 10 ngày, lịch chi tiết theo giờ kèm thiết bị và nơi nộp, xem trước ngày mai, tích hoàn thành',
-    'Bảng việc: ba việc gối đầu đủ 5W2H — nhập ở Chiêu thức 2, hiện trên Kanban hàng ngày của Training Center',
+    'Danh mục theo bốn nhóm đối tượng; «Chương trình của tôi» hiện ngay đầu trang',
+    'Phòng Tổng hợp tạo, nhân bản từ mẫu, xếp thành viên, soạn ngày và đầu việc — không cần đội phát triển',
+    'Mỗi chương trình: lộ trình theo giờ có ô tích, phiếu Bloom, ba việc gối đầu nhập ở Chiêu thức 2 và hiện trên Kanban',
     'Tự soi 08 tiêu chí hai đợt và tự suy ngẫm mỗi ngày — chỉ học viên đọc được, không vào bảng điểm nào',
-    'Lịch Ban Giám đốc gom mọi khung giờ cần có mặt, cảnh báo ngày vượt 60 phút',
     'Thông báo chỉ ở bốn mốc: đủ việc trong ngày · trước phiên trình bày · 17:00 còn việc · thang Bloom dưới 60%',
   ],
   duongDan: '/one/training-center',

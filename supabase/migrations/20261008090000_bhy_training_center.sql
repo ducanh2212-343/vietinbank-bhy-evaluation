@@ -31,6 +31,14 @@ CREATE TABLE IF NOT EXISTS public.ttc_chuong_trinh (
   ngay_kt date NOT NULL,
   trang_thai text NOT NULL DEFAULT 'CHUAN_BI'
     CHECK (trang_thai IN ('CHUAN_BI','DANG_CHAY','KET_THUC')),
+  -- Danh mục: Training Center là TRUNG TÂM nhiều chương trình cho bốn nhóm đối
+  -- tượng (đặc tả Mục I) — chương trình 10 ngày chỉ là một mục trong đó.
+  nhom_doi_tuong text NOT NULL DEFAULT 'QUY_HOACH'
+    CHECK (nhom_doi_tuong IN ('CAN_BO_MOI','NANG_CAP_CHUYEN_MON','QUY_HOACH','QUAN_LY_DUONG_NHIEM')),
+  loai text,                       -- «10 ngày», «Hội nhập 30 ngày», «Chuyên đề», «Duy trì 30–60–90»
+  khoi_nang_luc text,              -- tầng của Cây trưởng thành mà chương trình nhắm tới
+  -- Chương trình MẪU: Phòng TCTH nhân bản ra chương trình mới (ttc_nhan_ban_chuong_trinh)
+  la_mau boolean NOT NULL DEFAULT false,
   -- Ghi nhận có mặt (giai đoạn 3): toạ độ cổng chi nhánh do BGĐ đặt; số hiện
   -- tại là tạm tính, phải đứng tại cổng lấy toạ độ thật trước khi bật.
   vi_do double precision,
@@ -277,14 +285,41 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.ttc_chuong_trinh, public.ttc_than
 
 -- Chương trình: thành viên đọc; tạo mới do system_admin/tcth_admin (giai đoạn 2
 -- sẽ mở màn quản trị cho Phòng TCTH tự tạo); sửa do quản trị chương trình.
-CREATE POLICY "ttc xem chuong trinh" ON public.ttc_chuong_trinh FOR SELECT TO authenticated
-  USING (public.ttc_la_thanh_vien(id));
+-- DANH MỤC chương trình mở cho mọi cán bộ (tên, nhóm, ngày, trạng thái) — cán bộ
+-- nào cũng sẽ có lúc đứng trong một chương trình, phải thấy trước có gì. Lịch,
+-- đầu việc, thành viên, tiến độ vẫn gác theo thành viên ở các bảng con.
+CREATE POLICY "ttc xem danh muc chuong trinh" ON public.ttc_chuong_trinh FOR SELECT TO authenticated
+  USING (public.is_staff(auth.uid()));
 CREATE POLICY "ttc tao chuong trinh" ON public.ttc_chuong_trinh FOR INSERT TO authenticated
   WITH CHECK (public.is_staff(auth.uid())
     AND (public.has_role(auth.uid(), 'system_admin'::app_role)
          OR public.has_role(auth.uid(), 'tcth_admin'::app_role)));
 CREATE POLICY "ttc sua chuong trinh" ON public.ttc_chuong_trinh FOR UPDATE TO authenticated
   USING (public.ttc_la_quan_tri(id)) WITH CHECK (public.ttc_la_quan_tri(id));
+
+-- Người tạo chương trình tự thành quản trị của chính nó — không có dòng này thì
+-- TCTH tạo xong không thêm được thành viên nào (policy thêm thành viên đòi quan_tri).
+CREATE OR REPLACE FUNCTION public.f_ttc_sau_tao_chuong_trinh()
+RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  toi uuid := public.get_my_profile_id();
+BEGIN
+  IF NEW.nguoi_tao IS NULL AND toi IS NOT NULL THEN
+    UPDATE public.ttc_chuong_trinh SET nguoi_tao = toi WHERE id = NEW.id;
+  END IF;
+  IF toi IS NOT NULL THEN
+    INSERT INTO public.ttc_thanh_vien (chuong_trinh_id, nguoi, vai) VALUES (NEW.id, toi, 'quan_tri')
+    ON CONFLICT (chuong_trinh_id, nguoi) DO NOTHING;
+  END IF;
+  RETURN NEW;
+END $$;
+
+DROP TRIGGER IF EXISTS ttc_sau_tao_chuong_trinh ON public.ttc_chuong_trinh;
+CREATE TRIGGER ttc_sau_tao_chuong_trinh AFTER INSERT ON public.ttc_chuong_trinh
+  FOR EACH ROW EXECUTE FUNCTION public.f_ttc_sau_tao_chuong_trinh();
 
 -- Thành viên: ai trong chương trình thấy danh sách (để hiện tên người hướng dẫn,
 -- học viên); thêm/bớt do quản trị chương trình.
@@ -427,6 +462,58 @@ REVOKE ALL ON FUNCTION public.ttc_trang_thai_tu_soi(uuid) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.ttc_trang_thai_suy_ngam(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.ttc_trang_thai_tu_soi(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.ttc_trang_thai_suy_ngam(uuid) TO authenticated;
+
+-- ---------------------------------------------------------------------------
+-- 4b) Nhân bản chương trình — TCTH tạo chương trình mới từ chương trình mẫu
+--
+-- «Chương trình 10 ngày như bản đang chạy, điều chỉnh theo vị trí quy hoạch»
+-- (đặc tả Mục I): sao chép ngày và đầu việc, dời lịch theo ngày bắt đầu mới,
+-- giữ đúng khoảng cách giữa các ngày (kể cả cuối tuần). Không sao chép thành
+-- viên, tiến độ, điểm — chương trình mới bắt đầu sạch, người gọi là quản trị.
+-- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION public.ttc_nhan_ban_chuong_trinh(_nguon uuid, _ten text, _ngay_bd date)
+RETURNS uuid
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  goc public.ttc_chuong_trinh;
+  moi uuid;
+  lech int;
+  r record;
+  ngay_moi uuid;
+BEGIN
+  IF NOT (public.has_role(auth.uid(), 'system_admin'::app_role)
+          OR public.has_role(auth.uid(), 'tcth_admin'::app_role)) THEN
+    RAISE EXCEPTION 'Chỉ Phòng Tổng hợp mới nhân bản được chương trình';
+  END IF;
+  SELECT * INTO goc FROM public.ttc_chuong_trinh WHERE id = _nguon;
+  IF goc.id IS NULL THEN RAISE EXCEPTION 'Không thấy chương trình nguồn'; END IF;
+  lech := _ngay_bd - goc.ngay_bd;
+
+  INSERT INTO public.ttc_chuong_trinh
+    (ten, mo_ta, ngay_bd, ngay_kt, trang_thai, nhom_doi_tuong, loai, khoi_nang_luc, la_mau,
+     vi_do, kinh_do, ban_kinh_m, nguoi_tao)
+  VALUES (_ten, goc.mo_ta, _ngay_bd, goc.ngay_kt + lech, 'CHUAN_BI', goc.nhom_doi_tuong, goc.loai,
+          goc.khoi_nang_luc, false, goc.vi_do, goc.kinh_do, goc.ban_kinh_m, public.get_my_profile_id())
+  RETURNING id INTO moi;
+
+  FOR r IN SELECT * FROM public.ttc_ngay WHERE chuong_trinh_id = _nguon ORDER BY so_thu_tu LOOP
+    INSERT INTO public.ttc_ngay
+      (chuong_trinh_id, so_thu_tu, ngay, tieu_de, khoi, van_ban, nhiem_vu_van_ban, chuan_bi, lat_cat, cau_hoi_tu_soi)
+    VALUES (moi, r.so_thu_tu, r.ngay + lech, r.tieu_de, r.khoi, r.van_ban, r.nhiem_vu_van_ban, r.chuan_bi, r.lat_cat, r.cau_hoi_tu_soi)
+    RETURNING id INTO ngay_moi;
+    INSERT INTO public.ttc_dau_viec
+      (ngay_id, phan, thu_tu, gio_bat_dau, gio_ket_thuc, ten, dau_ra, nguoi_phu_trach, thiet_bi, noi_nop, trong_tam)
+    SELECT ngay_moi, phan, thu_tu, gio_bat_dau, gio_ket_thuc, ten, dau_ra, nguoi_phu_trach, thiet_bi, noi_nop, trong_tam
+      FROM public.ttc_dau_viec WHERE ngay_id = r.id;
+  END LOOP;
+  RETURN moi;
+END $$;
+
+REVOKE ALL ON FUNCTION public.ttc_nhan_ban_chuong_trinh(uuid, text, date) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.ttc_nhan_ban_chuong_trinh(uuid, text, date) TO authenticated;
 
 -- ---------------------------------------------------------------------------
 -- 5) Kanban hàng ngày của học viên — đọc thẻ THẬT từ Chiêu thức 2
@@ -763,14 +850,29 @@ BEGIN
     RETURN;
   END IF;
 
-  INSERT INTO public.ttc_chuong_trinh (ten, mo_ta, ngay_bd, ngay_kt, trang_thai, vi_do, kinh_do, ban_kinh_m)
+  INSERT INTO public.ttc_chuong_trinh (ten, mo_ta, ngay_bd, ngay_kt, trang_thai, nhom_doi_tuong, loai, khoi_nang_luc, la_mau, vi_do, kinh_do, ban_kinh_m)
   VALUES (
     'Chương trình 10 ngày Trưởng phòng KHDN — Bản 4.0',
     'Khai tâm trước – Tư duy mỗi ngày – Rà soát chuyên môn – AI sau cùng. Bốn khối: quản trị bản thân → công việc → người khác → hệ thống. Bốn bảng điểm tách biệt, không cộng thành một điểm tổng.',
-    '2026-09-07', '2026-09-18', 'DANG_CHAY',
+    '2026-09-07', '2026-09-18', 'DANG_CHAY', 'QUY_HOACH', '10 ngày',
+    'Bốn tầng: quản trị bản thân → công việc → người khác → hệ thống', true,
     -- Toạ độ TẠM TÍNH khu vực Phường Mỹ Hào — phải đứng tại cổng chi nhánh lấy toạ độ thật
     20.9346, 106.0669, 250)
   RETURNING id INTO v_ct;
+
+  -- Ba chương trình DỰ KIẾN cho ba nhóm còn lại (đặc tả Mục I): có mặt trong
+  -- danh mục ở trạng thái Chuẩn bị, chưa có ngày và thành viên — Phòng TCTH
+  -- điền nội dung ở màn Quản trị chương trình hoặc nhân bản từ mẫu.
+  INSERT INTO public.ttc_chuong_trinh (ten, mo_ta, ngay_bd, ngay_kt, trang_thai, nhom_doi_tuong, loai, khoi_nang_luc) VALUES
+  ('Chương trình hội nhập 30 ngày cho cán bộ mới',
+   'Nắm quy trình, sản phẩm và văn hoá làm việc trong 30–60 ngày đầu; kèm bộ bài rà soát cơ bản. Mỗi tuần một khối, mỗi ngày một đầu việc có người kèm.',
+   '2026-10-01', '2026-10-30', 'CHUAN_BI', 'CAN_BO_MOI', 'Hội nhập 30 ngày', 'Tầng 1 — Quản trị bản thân'),
+  ('Chuyên đề thẩm định tín dụng và dự án đầu tư',
+   'Bổ sung đúng khoảng trống đã lộ ra qua công việc thực tế: thẩm định tín dụng, dự án đầu tư, sản phẩm. Bài rà soát có bấm giờ, đáp án mở hai bước.',
+   '2026-10-06', '2026-10-10', 'CHUAN_BI', 'NANG_CAP_CHUYEN_MON', 'Chuyên đề', 'Tầng 1 — Rà soát chuyên môn'),
+  ('Duy trì 30–60–90 ngày cho cán bộ quản lý đương nhiệm',
+   'Rà soát năng lực định kỳ và duy trì hành vi quản trị: bảng việc, giao việc có repeat-back, coaching, IDP; tự soi định kỳ theo 08 tiêu chí.',
+   '2026-09-21', '2026-12-18', 'CHUAN_BI', 'QUAN_LY_DUONG_NHIEM', 'Duy trì 30–60–90', 'Tầng 3–4 — Quản trị người khác và hệ thống');
 
   -- Thành viên: gán theo họ tên, thiếu hồ sơ thì bỏ qua (Phòng TCTH thêm tay sau)
   SELECT id INTO v_gd  FROM public.profiles WHERE full_name = 'Trần Đức Anh' AND status = 'active' ORDER BY created_at LIMIT 1;

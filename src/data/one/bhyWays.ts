@@ -117,8 +117,8 @@ export const BHY_WAYS: WayItem[] = [
     ten: 'Bắc Hưng Yên Training Center',
     dinhVi: 'Vun gốc · Vươn cành',
     moTa:
-      'Nơi tổ chức và theo dõi mọi chương trình đào tạo, rèn luyện và phát triển năng lực: lộ trình ' +
-      'theo ngày, tích hoàn thành, phiếu chấm Bloom, tự soi 08 tiêu chí và bảng việc dùng chung với Chiêu thức 2.',
+      'Trung tâm các chương trình đào tạo và rèn luyện cho bốn nhóm cán bộ — hội nhập, nâng cấp chuyên môn, ' +
+      'quy hoạch, quản lý đương nhiệm: lộ trình theo ngày, tích hoàn thành, phiếu Bloom, tự soi 08 tiêu chí.',
     icon: GraduationCap,
     accent: '#A8763E',
     duongDan: '/one/training-center',
