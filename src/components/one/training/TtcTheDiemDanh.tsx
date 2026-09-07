@@ -9,6 +9,8 @@ import {
 } from '@/lib/diemDanh';
 import type { TtcNgay } from '@/lib/trainingCenter';
 import type { TtcBoiCanh } from './useTrainingCenter';
+import { LoiViTri } from '@/lib/quyenViTri';
+import { KhoiMoDinhVi } from './KhoiMoDinhVi';
 import { diemDanhDinhVi, layViTri, useTtcLamTuoi } from './useTrainingCenter';
 
 /**
@@ -33,6 +35,7 @@ export function TtcTheDiemDanh({ bc, ngay, dsDiemDanh }: {
   const cauHinh = docCauHinhDiemDanh(ct.diem_danh);
   const [dangGui, setDangGui] = useState(false);
   const [cach, setCach] = useState<number | null>(null);
+  const [loiViTri, setLoiViTri] = useState<LoiViTri | null>(null);
 
   if (!cauHinh.bat) return null;
 
@@ -46,6 +49,7 @@ export function TtcTheDiemDanh({ bc, ngay, dsDiemDanh }: {
     setDangGui(true);
     try {
       const vi = await layViTri();
+      setLoiViTri(null);
       if (ct.vi_do != null && ct.kinh_do != null) {
         setCach(Math.round(khoangCachM(ct.vi_do, ct.kinh_do, vi.coords.latitude, vi.coords.longitude)));
       }
@@ -58,7 +62,9 @@ export function TtcTheDiemDanh({ bc, ngay, dsDiemDanh }: {
         toast.error(kq.thong_bao);
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Không điểm danh được');
+      // Bị chặn quyền thì khối hướng dẫn lo; toast chỉ dành cho lỗi khác
+      if (e instanceof LoiViTri) { setLoiViTri(e); if (e.ma !== 'TU_CHOI') toast.error(e.message); }
+      else toast.error(e instanceof Error ? e.message : 'Không điểm danh được');
     } finally { setDangGui(false); }
   };
 
@@ -104,6 +110,9 @@ export function TtcTheDiemDanh({ bc, ngay, dsDiemDanh }: {
             )}
           </div>
         )}
+        {/* Điện thoại chặn quyền là lý do phổ biến nhất khiến học viên không
+            điểm danh được — chỉ luôn đường bật lại theo đúng máy đang cầm */}
+        {coDinhVi && <KhoiMoDinhVi loi={loiViTri} dangThu={dangGui} onThuLai={bam} />}
 
         <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-2xs text-slate-500">
           {!isMobile && (

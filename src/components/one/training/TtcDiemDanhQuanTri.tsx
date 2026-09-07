@@ -14,6 +14,8 @@ import {
   type TtcCauHinhDiemDanh, type TtcQrNgay, type TtcThuDinhVi,
 } from '@/lib/diemDanh';
 import type { TtcDiemDanh } from '@/lib/diemDanh';
+import { LoiViTri } from '@/lib/quyenViTri';
+import { KhoiMoDinhVi } from './KhoiMoDinhVi';
 import {
   diemDanhGhiHo, layViTri, luuDiemDanhCauHinh, thuDinhVi, useTtcLamTuoi, xoaDiemDanh, xoaThuDinhVi,
 } from './useTrainingCenter';
@@ -42,6 +44,8 @@ export function TtcDiemDanhQuanTri({ ct, dsNgay, thanhVien, dsDiemDanh, dsQr, ds
 }) {
   const lamTuoi = useTtcLamTuoi();
   const [ch, setCh] = useState<TtcCauHinhDiemDanh>(() => docCauHinhDiemDanh(ct.diem_danh));
+  const [loiViTri, setLoiViTri] = useState<LoiViTri | null>(null);
+  const [dangLayToaDo, setDangLayToaDo] = useState(false);
   const [viDo, setViDo] = useState(ct.vi_do?.toString() ?? '');
   const [kinhDo, setKinhDo] = useState(ct.kinh_do?.toString() ?? '');
   const [banKinh, setBanKinh] = useState(String(ct.ban_kinh_m ?? TTC_BAN_KINH_MAC_DINH));
@@ -75,14 +79,18 @@ export function TtcDiemDanhQuanTri({ ct, dsNgay, thanhVien, dsDiemDanh, dsQr, ds
   const khoaDinhVi = !dangBatDinhVi && !ket.datChuan;
 
   const layToaDo = async () => {
+    setDangLayToaDo(true);
     try {
       const vi = await layViTri();
+      setLoiViTri(null);
       setViDo(vi.coords.latitude.toFixed(6));
       setKinhDo(vi.coords.longitude.toFixed(6));
       toast.success(`Đã lấy toạ độ tại đây (sai số máy báo ${Math.round(vi.coords.accuracy)} m). Nhớ bấm Lưu.`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Không lấy được vị trí');
-    }
+      // Bị chặn quyền thì khối hướng dẫn bên dưới lo; toast chỉ dành cho lỗi khác
+      if (e instanceof LoiViTri) { setLoiViTri(e); if (e.ma !== 'TU_CHOI') toast.error(e.message); }
+      else toast.error(e instanceof Error ? e.message : 'Không lấy được vị trí');
+    } finally { setDangLayToaDo(false); }
   };
 
   const luu = async () => {
@@ -125,6 +133,7 @@ export function TtcDiemDanhQuanTri({ ct, dsNgay, thanhVien, dsDiemDanh, dsQr, ds
     setDangThu(true);
     try {
       const vi = await layViTri();
+      setLoiViTri(null);
       const kq = await thuDinhVi(ct.id, vi, choDung);
       lamTuoi();
       setChoDung('');
@@ -133,7 +142,8 @@ export function TtcDiemDanhQuanTri({ ct, dsNgay, thanhVien, dsDiemDanh, dsQr, ds
         else toast.warning(kq.thong_bao);
       } else toast.error(kq.thong_bao);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Không thử được');
+      if (e instanceof LoiViTri) { setLoiViTri(e); if (e.ma !== 'TU_CHOI') toast.error(e.message); }
+      else toast.error(e instanceof Error ? e.message : 'Không thử được');
     } finally { setDangThu(false); }
   };
 
@@ -205,8 +215,8 @@ export function TtcDiemDanhQuanTri({ ct, dsNgay, thanhVien, dsDiemDanh, dsQr, ds
               <div className="w-36"><Label className="text-xs">Kinh độ</Label><Input className="h-9 bg-white" value={kinhDo} onChange={(e) => setKinhDo(e.target.value)} disabled={!suaDuoc} placeholder="106.070xxx" /></div>
               <div className="w-32"><Label className="text-xs">Bán kính (m)</Label><Input className="h-9 bg-white" inputMode="numeric" value={banKinh} onChange={(e) => setBanKinh(e.target.value)} disabled={!suaDuoc} /></div>
               {suaDuoc && (
-                <Button size="sm" variant="outline" className="h-9" onClick={layToaDo}>
-                  <Crosshair className="mr-1 h-3.5 w-3.5" /> Lấy toạ độ tại đây
+                <Button size="sm" variant="outline" className="h-9" disabled={dangLayToaDo} onClick={layToaDo}>
+                  <Crosshair className="mr-1 h-3.5 w-3.5" /> {dangLayToaDo ? 'Đang lấy…' : 'Lấy toạ độ tại đây'}
                 </Button>
               )}
             </div>
@@ -214,6 +224,9 @@ export function TtcDiemDanhQuanTri({ ct, dsNgay, thanhVien, dsDiemDanh, dsQr, ds
               Đứng giữa phòng học rồi bấm «Lấy toạ độ tại đây». Bán kính 100–150 m là vừa cho một toà nhà;
               để rộng quá thì đứng ngoài cổng cũng điểm danh được.
             </p>
+            {/* Máy đang chặn quyền thì chỉ luôn đường bật lại, không để người
+                đứng ở phòng học phải tự mò trong Cài đặt */}
+            <KhoiMoDinhVi loi={loiViTri} dangThu={dangLayToaDo || dangThu} onThuLai={layToaDo} />
           </div>
         )}
       </div>
