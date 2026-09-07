@@ -1,0 +1,10 @@
+-- GỠ: trả hai hàm về bản trước.
+--
+-- CẢNH BÁO: bản trước của f_ttc_tien_do_truoc_ghi CHÍNH LÀ BẢN CÓ LỖI — đầu việc
+-- đã nộp tệp vẫn không tích hoàn thành được, vì trigger BEFORE INSERT của upsert
+-- không nhìn thấy tệp trong hàng cũ. Chỉ chạy khi cần dựng lại hiện trường.
+--
+-- Nguyên văn hai bản cũ:
+--   f_ttc_tien_do_truoc_ghi → mục 1 của 20261010090000_ttc_lo_trinh_nop_tep_va_nhac.sql
+--   ttc_bao_hoan_thanh      → 20261016090000_sua_tin_hoan_thanh_khoa_ngoai.sql
+-- Không chép lại ở đây để không có bản thứ hai của đoạn mã đã hỏng.
