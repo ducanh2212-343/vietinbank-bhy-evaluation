@@ -507,6 +507,17 @@ thiếu khoá ngoại, và pgcrypto cục bộ cài vào `public`. Migration
 `supabase/rollbacks/` (ghi rõ chúng khôi phục bản có lỗi). Chi tiết: mục 15 của
 tài liệu trên.
 
+**Tích được đầu việc đã nộp tệp + tin báo liệt kê việc đã xong (07/09/2026, đợt
+10):** đầu việc bật `NOP_TEP` đã đính kèm tệp vẫn báo «còn thiếu tệp» — client
+tích bằng upsert không gửi lại `tep`, mà Postgres chạy `BEFORE INSERT` **trước
+khi** phát hiện xung đột nên trigger thấy `NEW.tep` rỗng. Nay nhánh INSERT mượn
+`tep`/`ghi_chu`/`duong_dan` từ hàng đang có rồi mới kiểm; **cổng chặn không nới
+lỏng** (chưa nộp gì vẫn bị chặn). Cái bẫy này áp cho **mọi trigger `BEFORE INSERT`
+kiểm ràng buộc trên bảng ghi bằng upsert**. Cùng đợt: tin `TTC_HOAN_THANH` liệt kê
+từng đầu việc đã xong, đánh số theo thứ tự lộ trình, trần 8 dòng. Migration
+`20261018090000_sua_tich_khi_da_nop_va_liet_ke_viec.sql` **đã áp**; file gỡ cùng
+tên trong `supabase/rollbacks/`. Chi tiết: mục 16 của tài liệu trên.
+
 ## Chiêu thức 2 — Kanban 5W2H + PDCA (08/2026)
 
 Trang `/one/chieu-thuc-2` được dựng lại theo đặc tả đầy đủ

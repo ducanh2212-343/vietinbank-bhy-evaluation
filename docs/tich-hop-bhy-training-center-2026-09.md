@@ -825,3 +825,87 @@ search_path mới.
 
 Hai file gỡ đều ghi rõ chúng khôi phục lại **bản có lỗi**, chỉ dùng để dựng lại
 hiện trường.
+
+---
+
+## 16. Đợt 10 — Đã nộp tệp vẫn không tích được, và tin báo nói rõ việc nào đã xong
+
+### 16.1 Lỗi: upsert làm cổng chặn nhìn nhầm
+
+Đầu việc «Ký cam kết ba bên» hiện rõ «TỆP ĐÃ NỘP (1)» trên màn hình, nhưng bấm ô
+tích thì báo «Đầu việc này yêu cầu nộp trước khi tích hoàn thành. Còn thiếu: tệp
+đính kèm». Tra bảng: `ttc_tien_do` có đúng một tệp trong cột `tep`.
+
+Nguyên nhân nằm ở cách Postgres xử lý `INSERT ... ON CONFLICT DO UPDATE`. Client
+tích bằng upsert và **chỉ gửi `hoan_thanh` + `thoi_diem`**, không gửi lại `tep` —
+đúng như nó phải làm. Nhưng Postgres chạy trigger `BEFORE INSERT` trên hàng mới
+**trước khi** phát hiện xung đột, nên tại thời điểm kiểm tra `NEW.tep` là mảng
+rỗng mặc định, dù hàng cũ trong bảng đã có tệp. Trigger ném lỗi và huỷ cả lệnh.
+
+Điều này giải thích vì sao lỗi chỉ xảy ra ở đầu việc **có bật tính năng nộp**:
+đầu việc không bật gì thì trigger không xét tới `tep` nên tích bình thường — và
+đó cũng là lý do ba đầu việc khác trong cùng ngày tích được, làm lỗi trông như
+ngẫu nhiên.
+
+Sửa: ở nhánh `TG_OP = 'INSERT'`, tra hàng đang có theo `(dau_viec_id, nguoi)` và
+mượn `tep` / `ghi_chu` / `duong_dan` khi lệnh mới không mang chúng, rồi mới kiểm.
+Gán ngược vào `NEW` để `file_url` tính đúng; `ON CONFLICT DO UPDATE` chỉ `SET`
+những cột client gửi nên `tep` trong bảng không bị đụng tới.
+
+**Cổng chặn không hề nới lỏng:** chưa nộp gì thì vẫn không tích được, và xoá hết
+tệp rồi tích cũng vẫn bị chặn — lúc đó hàng cũ cũng rỗng nên không có gì để mượn.
+Đã kiểm cả hai chiều.
+
+Ghi lại vì đây là cái bẫy chung, không riêng Training Center: **mọi trigger
+`BEFORE INSERT` dùng để kiểm tra ràng buộc trên bảng được ghi bằng upsert đều
+nhìn nhầm như vậy.** Kiểm bằng `NEW` là chưa đủ khi lệnh ghi có thể là upsert.
+
+### 16.2 Tin báo liệt kê từng đầu việc đã xong
+
+Giám đốc 07/09/2026: «nội dung push không chi tiết phần việc nào đã xong, cần bổ
+sung». Bản cũ chỉ có một dòng `Việc: <tên việc vừa tích>`, nên người nhận biết
+con số 3/12 mà không biết ba việc nào — đúng thứ họ cần để theo dõi.
+
+Thân tin mới:
+
+```
+Ngày 1: đã xong 4/12 đầu việc
+  Học viên: Đỗ Việt Anh
+  Ngày: 1 · Khai bút — mở lối mười ngày
+  Đã xong 4/12:
+  1. Khai mạc chương trình
+  2. Giới thiệu lộ trình 10 ngày và quán triệt phạm vi
+  3. Hướng dẫn sử dụng Bắc Hưng Yên Training Center
+  4. Ký cam kết ba bên
+  Còn 8 đầu việc chưa tích.
+```
+
+Đánh số theo **thứ tự trong lộ trình**, không theo thứ tự tích, để đối chiếu được
+với lịch trên màn hình. Trần **8 dòng**: một ngày có tới 13 đầu việc, liệt kê hết
+thì phần đuôi bị điện thoại cắt mất mà chẳng ai đọc; vượt trần thì thêm dòng
+«… và N việc nữa». Xong hết thì dòng cuối đổi thành «Đã xong toàn bộ đầu việc của
+ngày.»
+
+Hai dòng đầu vẫn là chữ ký nhận diện tin cùng (học viên, ngày lộ trình) nên phép
+gộp tin chờ phát ở mục 15 không đổi.
+
+### 16.3 Đã áp và đã kiểm
+
+Migration `20261018090000_sua_tich_khi_da_nop_va_liet_ke_viec.sql` **đã áp** vào
+`whlysprzsguehxmrjwha` ngày 07/09/2026.
+
+Trên cụm cục bộ, **tái hiện đúng lỗi trước khi sửa** (nộp tệp bằng một upsert, rồi
+tích bằng một upsert khác → nổ đúng câu báo lỗi người dùng thấy), sau đó năm kịch
+bản đều đạt:
+
+| Kịch bản | Kết quả |
+| --- | --- |
+| Đã nộp tệp rồi tích | tích được, tệp còn nguyên, `file_url` đúng |
+| Chưa nộp gì mà tích | vẫn bị chặn |
+| Ba việc đã xong | tin liệt kê đủ ba dòng, đánh số theo lộ trình |
+| Mười việc đã xong | 8 dòng + «… và 2 việc nữa» |
+| Xong toàn bộ ngày | dòng cuối «Đã xong toàn bộ đầu việc của ngày.» |
+
+Trên database thật: tích đúng hồ sơ đang vướng của Trưởng phòng KHDN trong giao
+dịch có `ROLLBACK` → ghi được, tệp còn nguyên, tin sinh ra đúng dạng «Đã xong
+4/12» kèm danh sách bốn việc.
