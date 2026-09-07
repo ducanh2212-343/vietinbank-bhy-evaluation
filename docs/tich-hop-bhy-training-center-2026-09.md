@@ -729,3 +729,99 @@ Thuần giao diện, **không có migration** trong đợt này. 11 test mới t
 («1 giờ» chứ không «1 giờ 0 phút»), và `gioNgan` với chuỗi rỗng hay chuỗi hỏng.
 
 Toàn bộ: `npm run test` 1132/1132 xanh, `tsc` sạch, `npm run build` xong.
+
+---
+
+## 15. Đợt 9 — Hai lỗi chặn người dùng thật, và vì sao chạy thử không bắt được
+
+Trưởng phòng KHDN báo hai việc trong cùng một buổi: tích hoàn thành thì cổng báo
+lỗi, và tạo mã QR thì không ra mã. Hai lỗi này **không liên quan nhau** và cùng
+lọt qua toàn bộ vòng kiểm — ghi lại kỹ vì cả hai đều thuộc loại rất dễ lặp lại.
+
+### 15.1 Lỗi 1 — trùng tên cột giữa hai phân hệ
+
+```
+insert or update on table "ct2_thong_bao"
+violates foreign key constraint "ct2_thong_bao_dau_viec_id_fkey"
+```
+
+`ct2_thong_bao.dau_viec_id` có khoá ngoại tới **`ct2_dau_viec`** — thẻ việc của
+Chiêu thức 2 — chứ không phải `ttc_dau_viec`. Hàm `ttc_bao_hoan_thanh` (mục 13)
+truyền id của `ttc_dau_viec` vào tham số `_dau_viec_id` của `ct2_dat_thong_bao`
+vì hai cột trùng tên. Trigger chạy `AFTER INSERT` nên khoá ngoại nổ làm **huỷ cả
+lệnh ghi tiến độ**: học viên không tích được ô nào.
+
+`ct2_thong_bao` là hàng đợi **dùng chung**, nhưng cả hai cột khoá ngoại của nó
+(`dau_viec_id`, `ho_so_id`) đều thuộc về Chiêu thức 2. Tin của phân hệ khác chỉ
+được để `NULL` ở hai cột đó. Trùng tên cột giữa hai phân hệ không có nghĩa là
+cùng một thứ.
+
+Bỏ `dau_viec_id` kéo theo phải đổi cách gộp tin: trước đây gộp bằng cách join
+`ttc_dau_viec` qua chính cột đó. Nay nhận diện tin cùng (học viên, ngày lộ trình)
+bằng **hai dòng đầu của thân tin** — so bằng `left(noi_dung, n)` chứ không `LIKE`,
+để khỏi phải thoát dấu `%` và `_` có thể nằm trong tên người hoặc tiêu đề ngày.
+Tin vẫn mở đúng màn Lộ trình vì `notify-ct2` định tuyến theo tiền tố `TTC_` của
+mã sự kiện, không theo cột này.
+
+**Vì sao chạy thử không bắt được:** stub `ct2_thong_bao` trên cụm cục bộ khai
+`dau_viec_id uuid` trần, không có khoá ngoại. Đã bổ sung ràng buộc thật vào stub,
+tái hiện đúng lỗi, rồi mới sửa.
+
+### 15.2 Lỗi 2 — pgcrypto không nằm ở schema mình tưởng
+
+`ttc_cap_ma_qr` sinh mã bằng `gen_random_bytes(12)` của pgcrypto. Trên project
+`whlysprzsguehxmrjwha`, pgcrypto cài ở schema **`extensions`**; hàm lại khai
+`SET search_path = public` nên không tìm thấy hàm và ném lỗi trước khi ghi được
+dòng nào. Bằng chứng: `ttc_qr_ngay` có **0 dòng** — chưa lần nào cấp được mã kể
+từ khi tính năng lên hệ thống.
+
+Sửa thành `SET search_path = public, extensions`. Giữ `public` đứng trước để hàm
+vẫn chạy đúng ở nơi cài pgcrypto vào public, và để mọi bảng `ttc_*` phân giải
+như cũ.
+
+**Vì sao chạy thử không bắt được:** cụm Postgres cục bộ có
+`CREATE EXTENSION pgcrypto` vào `public` — đúng chỗ lệch giữa hai môi trường.
+`gen_random_uuid()` dùng khắp nơi trong repo lại là hàm dựng sẵn của Postgres 13+,
+không thuộc pgcrypto, nên không có tiền lệ nào cảnh báo. Đây là **hàm duy nhất
+trong repo dùng tới pgcrypto**; từ nay hàm nào dùng tới nó phải khai cả
+`extensions` trong search_path.
+
+### 15.3 Bài học chung
+
+Cả hai lỗi đều là **lệch giữa cụm cục bộ và database thật**, không phải lỗi
+logic. Chạy thử cục bộ chỉ chứng minh được logic đúng; nó không thay được việc
+đối chiếu ràng buộc và schema của chính project. Với migration đụng tới bảng của
+phân hệ khác hoặc tới extension, phải kiểm hai thứ trên database thật trước khi
+coi là xong:
+
+```sql
+-- khoá ngoại thật của bảng mình sắp ghi vào
+SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint
+ WHERE conrelid = 'public.<bảng>'::regclass AND contype = 'f';
+-- extension nằm ở schema nào
+SELECT e.extname, n.nspname FROM pg_extension e JOIN pg_namespace n ON n.oid = e.extnamespace;
+```
+
+Và một dấu hiệu đáng lẽ phải thấy sớm hơn: **bảng đếm ra 0 dòng** sau khi tính
+năng đã lên hệ thống mấy hôm. Sau mỗi đợt, nên đếm số dòng của các bảng mà tính
+năng vừa mở phải sinh ra.
+
+### 15.4 Đã áp và đã kiểm
+
+| Migration | Trạng thái |
+| --- | --- |
+| `20261016090000_sua_tin_hoan_thanh_khoa_ngoai.sql` | **đã áp** 07/09/2026 |
+| `20261017090000_sua_cap_ma_qr_pgcrypto.sql` | **đã áp** 07/09/2026 |
+
+Kiểm trên cụm cục bộ (có bổ sung khoá ngoại thật): tích hoàn thành ghi được và
+sinh tin với `dau_viec_id` để trống · ngoài giờ ba lần tích vẫn gộp thành một tin
+mỗi người · trong giờ mỗi lần tích một tin · tên người chứa `%` và `_` không làm
+vỡ phép gộp · hai ngày lộ trình khác nhau không bị gộp làm một.
+
+Kiểm trên database thật: ghi một dòng tiến độ trong giao dịch có `ROLLBACK` →
+ghi được, sinh 4 tin, không tin nào còn `dau_viec_id`, tiêu đề đúng dạng «Ngày 1:
+đã xong 1/12 đầu việc»; và `gen_random_bytes` sinh được mã 16 ký tự trong
+search_path mới.
+
+Hai file gỡ đều ghi rõ chúng khôi phục lại **bản có lỗi**, chỉ dùng để dựng lại
+hiện trường.

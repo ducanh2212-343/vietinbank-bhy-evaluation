@@ -1,0 +1,11 @@
+-- GỠ: trả ttc_bao_hoan_thanh về bản trước bản sửa.
+--
+-- CẢNH BÁO: bản đó CHÍNH LÀ BẢN CÓ LỖI — nó ghi id của ttc_dau_viec vào
+-- ct2_thong_bao.dau_viec_id (cột có khoá ngoại tới ct2_dau_viec), làm học viên
+-- không tích hoàn thành được đầu việc nào. Chỉ chạy file này khi cần dựng lại
+-- hiện trường để đối chiếu, không chạy trên hệ thống đang dùng.
+--
+-- Nguyên văn bản cũ nằm ở mục 3 của
+-- supabase/migrations/20261015090000_ttc_bao_khi_hoan_thanh.sql. Không chép lại
+-- ở đây: giữ một bản duy nhất của đoạn mã đã hỏng, để không ai lỡ tay dùng nhầm
+-- nó như một bản đang chạy được.
