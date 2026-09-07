@@ -909,3 +909,94 @@ bản đều đạt:
 Trên database thật: tích đúng hồ sơ đang vướng của Trưởng phòng KHDN trong giao
 dịch có `ROLLBACK` → ghi được, tệp còn nguyên, tin sinh ra đúng dạng «Đã xong
 4/12» kèm danh sách bốn việc.
+
+---
+
+## 17. Đợt 11 — Tài liệu của ngày: bộ tệp phát xuống cho học viên
+
+### 17.1 Yêu cầu và bản chất
+
+Giám đốc 07/09/2026: «mỗi ngày sẽ có một nhóm tài liệu riêng, làm tính năng đính
+kèm file các tài liệu gửi cho học viên ngày hôm đó». Kèm theo là năm tệp thật:
+`BM_NGAY_02` … `BM_NGAY_05` (mỗi ngày một bộ biểu mẫu đầy đủ: văn bản của ngày,
+lịch ngày, các phiếu phải điền) và `BA_CAU_HOI_DINH_HUONG` cho ngày 1.
+
+Đây là **chiều ngược lại** với thứ đã có:
+
+| | Ai ghi | Đi đâu | Lưu ở |
+| --- | --- | --- | --- |
+| `ttc_tien_do.tep` | học viên | nộp lên cho một đầu việc | theo (đầu việc, người) |
+| `ttc_ngay.tai_lieu` | Phòng TCTH, BGĐ | phát xuống cho cả lớp | theo ngày |
+
+Không gộp vào một chỗ: hai thứ khác người ghi, khác vòng đời, và gộp lại thì danh
+sách bài nộp của học viên lẫn với biểu mẫu phát ra.
+
+### 17.2 Không phải thêm policy nào
+
+Cả hai tầng đã sẵn đúng phân quyền cần thiết, chỉ cần dùng lại:
+
+- **Bảng `ttc_ngay`**: đọc = `ttc_la_thanh_vien` (cả lớp thấy), ghi =
+  `ttc_sua_duoc_noi_dung` (Phòng TCTH quản trị + Ban Giám đốc). Đúng y hệt thứ
+  tính năng này cần.
+- **Kho `bhy-training`**: ba policy hiện có chỉ gác **hai cấp thư mục đầu** —
+  cấp 1 là chương trình (gác đọc), cấp 2 là chủ tệp (gác ghi/xoá). Đường dẫn
+  `<chuong_trinh_id>/<user_id>/<ngay_id>/<uuid>.<đuôi>` khớp đúng khuôn đó, chỉ
+  khác ở cấp 3 dùng id ngày thay cho id đầu việc. `taiTepTrainingCenter` đổi tên
+  tham số cuối từ `dauViecId` thành `thuMuc` và dùng chung cho cả hai.
+
+**Cổng chặn thật nằm ở tầng dữ liệu, không ở kho tệp.** Học viên cũng là thành
+viên nên storage vẫn cho họ tải tệp lên thư mục của chương trình; nhưng chỉ TCTH
+và BGĐ mới ghi được vào `ttc_ngay.tai_lieu`, mà tệp không nằm trong cột đó thì
+không hiện ở đâu cả. Đây là cùng một nguyên tắc đã áp cho điểm danh: giao diện ẩn
+nút chỉ là lớp trải nghiệm, hàng rào là policy.
+
+### 17.3 Trần 10 tệp, chặn ở máy chủ
+
+Trigger `f_ttc_ngay_truoc_ghi` chuẩn hoá giá trị không phải mảng về `[]` và chặn
+quá 10 tệp. Chặn ở database chứ không chỉ ở giao diện, vì `ttc_ngay` ghi được
+thẳng qua PostgREST. Mười tệp đủ cho bộ biểu mẫu + văn bản của ngày + vài phụ
+lục; không có trần thì đây thành kho lưu trữ và học viên phải lần trong đống tệp
+để tìm biểu mẫu cần điền.
+
+### 17.4 Nhân bản chương trình KHÔNG mang tài liệu sang
+
+Đường dẫn tệp bắt đầu bằng `chuong_trinh_id` của đợt **cũ**, mà policy đọc của
+kho xét đúng thư mục cấp 1 đó. Chép metadata sang đợt mới thì học viên đợt mới
+thấy tên tệp nhưng bấm vào không mở được — tệ hơn là không thấy gì. Đợt mới tải
+lại tài liệu của đợt mình.
+
+### 17.5 Giao diện
+
+Khối «Tài liệu của ngày» đặt **ngay dưới văn bản của ngày**, trước cả lịch buổi
+sáng: học viên mở lịch ra là thấy thứ cần tải về, không phải lần trong từng đầu
+việc. Ngày chưa có tệp nào thì khối tự ẩn với người không có quyền sửa — không
+bày ra một ô trống cho học viên.
+
+### 17.6 Đã áp và đã kiểm
+
+Migration `20261019090000_ttc_tai_lieu_cua_ngay.sql` **đã áp** vào
+`whlysprzsguehxmrjwha` ngày 07/09/2026. Kiểm sau khi áp: cột có, trigger có, cả
+10 ngày về mặc định `[]`.
+
+Trên cụm cục bộ, sáu kịch bản:
+
+| Kịch bản | Kết quả |
+| --- | --- |
+| Cột mới | 10/10 ngày mặc định `[]` |
+| Ghi danh sách tài liệu | đọc lại đúng tên tệp |
+| Ghi giá trị không phải mảng | tự về `[]`, không làm vỡ hàng |
+| 11 tệp | bị chặn kèm câu báo cho người dùng |
+| Đúng 10 tệp | ghi được |
+| Nhân bản chương trình | 10 ngày bản sao, 0 ngày mang tài liệu sang |
+
+Năm test mới trong `src/lib/__tests__/taiLieuNgay.test.ts` cho `docTaiLieuNgay`:
+cột rỗng hoặc hỏng không nổ, bỏ mục thiếu đường dẫn hoặc thiếu tên (bấm vào cũng
+không mở được), kích thước hỏng hoặc âm về 0, trần của giao diện trùng ràng buộc
+máy chủ.
+
+### 17.7 Việc còn để ngỏ
+
+**Chưa báo cho học viên khi có tài liệu mới.** Thêm một loại tin push là quyết
+định nghiệp vụ chứ không phải kỹ thuật (`CLAUDE.md` mục 5) và Giám đốc chưa yêu
+cầu, nên chưa làm. Nếu cần, chỗ tự nhiên là gộp vào tin `TTC_HOAN_THANH` đã có
+thay vì đẻ mã sự kiện thứ ba.
