@@ -494,6 +494,19 @@ giờ giữ nguyên. Thêm `gioNgan()` cắt `HH:MM:SS` → `HH:MM`, sửa lỗi
 (trang chủ, form sửa đầu việc). **Không có migration.** Chi tiết: mục 14 của tài
 liệu trên.
 
+**Sửa hai lỗi chặn người dùng (07/09/2026, đợt 9):** (1) học viên tích hoàn thành
+thì lỗi khoá ngoại `ct2_thong_bao_dau_viec_id_fkey` làm huỷ cả lệnh ghi tiến độ —
+`ct2_thong_bao.dau_viec_id` trỏ `ct2_dau_viec` của Chiêu thức 2, không phải
+`ttc_dau_viec`; tin TTC nay để `NULL` ở cột đó và gộp bằng hai dòng đầu thân tin.
+(2) Không tạo được mã QR (`ttc_qr_ngay` 0 dòng) — `gen_random_bytes` của pgcrypto
+nằm ở schema `extensions` còn hàm khai `search_path = public`; đổi thành
+`public, extensions`. Cả hai lọt lưới vì cụm cục bộ khác database thật: stub
+thiếu khoá ngoại, và pgcrypto cục bộ cài vào `public`. Migration
+`20261016090000_sua_tin_hoan_thanh_khoa_ngoai.sql` và
+`20261017090000_sua_cap_ma_qr_pgcrypto.sql` **đã áp**; file gỡ cùng tên trong
+`supabase/rollbacks/` (ghi rõ chúng khôi phục bản có lỗi). Chi tiết: mục 15 của
+tài liệu trên.
+
 ## Chiêu thức 2 — Kanban 5W2H + PDCA (08/2026)
 
 Trang `/one/chieu-thuc-2` được dựng lại theo đặc tả đầy đủ
