@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type { Ct2DauViec } from '@/lib/ct2';
+import { LoiViTri } from '@/lib/quyenViTri';
 import { ghiCauHinhBao } from '@/lib/trainingCenter';
 import { kyTepTrainingCenter } from './tepTrainingCenter';
 import type { KetQuaDiemDanh, TtcCauHinhDiemDanh, TtcDiemDanh, TtcQrNgay, TtcThuDinhVi } from '@/lib/diemDanh';
@@ -548,17 +549,20 @@ export function useTtcQrNgay(ctId: string | null, ngayIds: string[], bat: boolea
 export function layViTri(): Promise<GeolocationPosition> {
   return new Promise((giai, tuChoi) => {
     if (!('geolocation' in navigator)) {
-      tuChoi(new Error('Máy này không hỗ trợ định vị. Dùng điện thoại hoặc quét mã QR trong phòng học.'));
+      tuChoi(new LoiViTri('KHONG_HO_TRO', 'Máy này không hỗ trợ định vị. Dùng điện thoại hoặc quét mã QR trong phòng học.'));
       return;
     }
+    // Ném LoiViTri có MÃ chứ không phải Error trần: bị chặn quyền cần hiện
+    // hướng dẫn theo nền tảng, còn bắt sóng chậm thì chỉ cần bấm lại — hai việc
+    // khác hẳn nhau, giao diện phải phân biệt được
     navigator.geolocation.getCurrentPosition(giai, (loi) => {
-      tuChoi(new Error(
+      tuChoi(
         loi.code === loi.PERMISSION_DENIED
-          ? 'Trình duyệt đang chặn định vị. Vào Cài đặt → quyền vị trí, bật cho trang này rồi bấm lại.'
+          ? new LoiViTri('TU_CHOI', 'Trình duyệt đang chặn định vị của trang này.')
           : loi.code === loi.TIMEOUT
-            ? 'Chưa bắt được vị trí. Ra gần cửa sổ rồi bấm lại, hoặc quét mã QR trong phòng học.'
-            : 'Không lấy được vị trí. Bật định vị của máy rồi bấm lại.',
-      ));
+            ? new LoiViTri('HET_GIO', 'Chưa bắt được vị trí. Ra gần cửa sổ rồi bấm lại, hoặc quét mã QR trong phòng học.')
+            : new LoiViTri('KHAC', 'Không lấy được vị trí. Bật định vị của máy rồi bấm lại.'),
+      );
     }, { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 });
   });
 }

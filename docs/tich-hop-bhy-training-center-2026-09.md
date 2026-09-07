@@ -1000,3 +1000,110 @@ máy chủ.
 định nghiệp vụ chứ không phải kỹ thuật (`CLAUDE.md` mục 5) và Giám đốc chưa yêu
 cầu, nên chưa làm. Nếu cần, chỗ tự nhiên là gộp vào tin `TTC_HOAN_THANH` đã có
 thay vì đẻ mã sự kiện thứ ba.
+
+---
+
+## 18. Đợt 12 — Tin ngắn lại, hướng dẫn mở quyền định vị, đóng sổ lịch sử
+
+Ba việc Giám đốc chốt trong cùng một lượt 07/09/2026.
+
+### 18.1 Tin «tích hoàn thành» trở về bản ngắn
+
+«Phần push khi học viên ấn tích đã hoàn thành chuyển về bản cũ cho nó ngắn gọn,
+dài quá không hiển thị được trên điện thoại.»
+
+Bản liệt kê từng đầu việc (mục 16.2) **đúng về nội dung nhưng sai về phương
+tiện**. Màn hình khoá điện thoại chỉ hiện hai đến ba dòng đầu, nên phần
+«Nội dung:» mang con số N/M — thứ đáng giá nhất của tin — bị đẩy khuất sau danh
+sách. Người nhận phải mở ứng dụng mới đọc được điều lẽ ra chỉ cần liếc.
+
+Đây là bài học về **chọn đúng thứ cho đúng chỗ**: yêu cầu «cho biết việc nào đã
+xong» là thật, nhưng chỗ trả lời nó không phải là push. Danh sách vẫn ở màn Lộ
+trình, nơi có chỗ trình bày tử tế; push chỉ cần trả lời «ai, ngày nào, xong bao
+nhiêu».
+
+Thân tin về lại bốn dòng, đo trên cụm cục bộ: **tối đa 168 ký tự, luôn 4 dòng**
+kể cả khi đã xong 10/11 đầu việc. Tên đầu việc cắt ở 50 ký tự thay vì 70 — dòng
+«Việc:» tràn là đẩy khuất dòng mang con số, đúng cái lỗi đang phải sửa. Phép gộp
+tin của mục 15 giữ nguyên.
+
+### 18.2 Hướng dẫn mở quyền định vị theo nền tảng
+
+«Phần toạ độ khi ấn vào cần có nút chuyển sang chế độ cho phép mở định vị của các
+nền tảng iOS, Android.»
+
+Web **không có cách nào tự bật quyền định vị hộ người dùng** — đó là chốt an toàn
+của cả iOS lẫn Android, không phải thiếu sót của cổng. Thứ làm được, và là thứ
+thực sự gỡ được cho cán bộ đang đứng ở phòng học, gồm ba phần:
+
+1. **Phân biệt bị chặn quyền với bắt sóng chậm.** `layViTri` nay ném `LoiViTri`
+   mang mã (`TU_CHOI` · `HET_GIO` · `KHONG_HO_TRO` · `KHAC`) thay cho `Error`
+   trần. Ba lỗi này cần ba cách xử lý khác hẳn nhau; gộp thành một câu báo là
+   bắt người dùng đoán.
+2. **Chỉ đúng đường đi trong Cài đặt của máy đang cầm.** Một dòng «vào cài đặt
+   trình duyệt» chung chung là thứ khiến người ta bỏ cuộc: trên iPhone quyền nằm
+   ở **Cài đặt của máy** (Quyền riêng tư → Dịch vụ định vị, rồi Safari → Vị trí),
+   không nằm trong Safari. Trên Android phải bật GPS ở thanh thông báo **trước**,
+   rồi mới tới ổ khoá cạnh địa chỉ trang.
+3. **Cho bấm lại ngay tại chỗ.** iOS hỏi quyền lại ở lần gọi kế tiếp nên bấm lại
+   là đủ; bắt tải lại trang thì mất luôn ô toạ độ đang nhập.
+
+Khối là **hộp cố định, không phải toast**: người đang đứng ở phòng học cần đọc ba
+bước rồi rời màn hình sang Cài đặt, quay lại vẫn phải thấy mình làm tới bước nào.
+Toast biến mất sau vài giây là vô dụng ở đúng lúc cần nhất.
+
+Dùng `navigator.permissions` để biết trạng thái **trước** khi bấm, nên máy đang
+chặn thì hướng dẫn hiện sẵn, đỡ phải bấm một lần thất bại mới biết. Safari cũ
+không có API này và Firefox không cho hỏi `geolocation` — trả `khong_ro` để giao
+diện im lặng chứ không đoán bừa là đã bị chặn.
+
+Gắn ở **cả hai chỗ dùng định vị**: nút điểm danh của học viên và ô lấy toạ độ /
+thử tại chỗ của Phòng TCTH.
+
+**iPad đời mới báo `userAgent` y hệt máy Mac**, chỉ khác ở chỗ có cảm ứng — nên
+`nenTangThietBi` xét thêm `maxTouchPoints`, nếu không cán bộ dùng iPad nhận hướng
+dẫn của máy tính và không tìm thấy mục nào như thế.
+
+### 18.3 Đóng sổ lịch sử phiên bản — không báo gì cho ai
+
+«Không cần thông báo những tính năng mới này.»
+
+Migration `20260928090000_lich_su_phien_ban.sql` vừa áp, nên sổ `phien_ban_cong_bo`
+**trống** trong khi mã nguồn có **70 mục**. Ai bấm «Công bố phiên bản» lúc này là
+gửi cho ~100 cán bộ một tin gộp cả 70 mục, trong đó 59 mục đã lên hệ thống từ
+01/04 và cán bộ dùng cả tháng nay rồi.
+
+Đã ghi cả 70 mục vào sổ với `kenh = '{}'` và `so_nguoi_nhan = 0` — tức **đánh dấu
+đã báo mà không sinh tin nào**. Đây đúng là lối thoát mà chính migration lường
+trước bằng tham số `_gui_tin = false`. Kiểm sau khi ghi: 70 mục, 0 mục có kênh
+phát, 0 lượt gửi, 0 tin `PHIEN_BAN` trong hàng đợi.
+
+Từ nay nút «Công bố» chỉ gửi đúng mục **mới** chưa có trong sổ. Mục lịch sử vẫn
+hiện đầy đủ ở màn «Có gì mới» — đóng sổ chỉ chặn việc sinh tin, không giấu nội
+dung.
+
+### 18.4 Hai việc Giám đốc chốt là KHÔNG làm
+
+- **Sàn 30 phút cho đầu việc** (Mục 6 phụ lục): bỏ. Lịch đã phân buổi sáng/chiều
+  nên ràng buộc này không còn ý nghĩa; 24 đầu việc ngắn giữ nguyên.
+- **Tin báo khi thêm tài liệu của ngày** (mục 17.7): không xây dựng.
+
+Ghi lại để người đến sau không mở lại hai việc này tưởng là còn sót.
+
+### 18.5 Đã áp và đã kiểm
+
+| Migration | Trạng thái |
+| --- | --- |
+| `20261020090000_tin_hoan_thanh_ngan_gon.sql` | **đã áp** 07/09/2026 |
+
+Trên cụm cục bộ: tin một đầu việc **4 dòng / 167 ký tự**; tích thêm 9 việc nữa
+tin **vẫn 4 dòng / 168 ký tự** (không phình theo số việc); 0 dòng «Việc:» vượt 60
+ký tự; ngoài giờ ba lần tích vẫn gộp thành một tin mỗi người.
+
+Chín test mới trong `src/lib/__tests__/quyenViTri.test.ts`: nhận đúng iPhone /
+Android / máy tính, iPad đời mới cần xét cảm ứng, máy Mac thật vẫn là máy tính,
+`userAgent` rỗng không làm vỡ, và hướng dẫn từng nền tảng viết đúng tên mục mà
+cán bộ sẽ thấy.
+
+Việc đóng sổ **không có migration**: đó là thao tác dữ liệu một lần, chạy trực
+tiếp và đã đối chiếu bằng câu đếm ở trên.

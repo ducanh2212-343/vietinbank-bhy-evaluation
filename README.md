@@ -531,6 +531,19 @@ Trần 10 tệp/ngày chặn bằng trigger `f_ttc_ngay_truoc_ghi`. Nhân bản 
 gỡ cùng tên trong `supabase/rollbacks/` (chụp lại danh sách trước khi xoá cột).
 Chi tiết: mục 17 của tài liệu trên.
 
+**Tin ngắn lại + mở quyền định vị + đóng sổ lịch sử (07/09/2026, đợt 12):** tin
+`TTC_HOAN_THANH` trở về **4 dòng / ≤ 168 ký tự** để màn hình khoá điện thoại hiện
+đủ — bản liệt kê từng việc đúng nội dung nhưng sai phương tiện, đẩy khuất dòng
+mang con số N/M; danh sách chi tiết vẫn ở màn Lộ trình. `layViTri` ném `LoiViTri`
+mang mã (`TU_CHOI`/`HET_GIO`/…) để phân biệt **bị chặn quyền** với **bắt sóng
+chậm**; khối `KhoiMoDinhVi` hiện các bước bật lại đúng iOS / Android / máy tính
+kèm nút bấm lại tại chỗ (web không tự bật quyền hộ được — chốt an toàn của hệ
+điều hành). `nenTangThietBi` xét `maxTouchPoints` vì **iPad đời mới báo userAgent
+như máy Mac**. Migration `20261020090000_tin_hoan_thanh_ngan_gon.sql` **đã áp**.
+Đã **đóng sổ 70 mục** lịch sử vào `phien_ban_cong_bo` với `kenh='{}'` — đánh dấu
+đã báo mà **không sinh tin nào**, để nút «Công bố» sau này chỉ gửi đúng mục mới.
+Chi tiết: mục 18 của tài liệu trên.
+
 ## Chiêu thức 2 — Kanban 5W2H + PDCA (08/2026)
 
 Trang `/one/chieu-thuc-2` được dựng lại theo đặc tả đầy đủ
