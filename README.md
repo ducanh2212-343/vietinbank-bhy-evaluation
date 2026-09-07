@@ -518,6 +518,19 @@ từng đầu việc đã xong, đánh số theo thứ tự lộ trình, trần 
 `20261018090000_sua_tich_khi_da_nop_va_liet_ke_viec.sql` **đã áp**; file gỡ cùng
 tên trong `supabase/rollbacks/`. Chi tiết: mục 16 của tài liệu trên.
 
+**Tài liệu của ngày (07/09/2026, đợt 11):** mỗi ngày học có một bộ tệp riêng do
+Phòng TCTH và BGĐ phát cho học viên — cột `ttc_ngay.tai_lieu` jsonb, khối «Tài
+liệu của ngày» ở đầu màn Lộ trình. **Ngược chiều với `ttc_tien_do.tep`** (bài học
+viên nộp lên). **Không thêm policy nào**: `ttc_ngay` đã đúng phân quyền (đọc =
+thành viên, ghi = `ttc_sua_duoc_noi_dung`), và đường dẫn
+`<ct>/<user_id>/<ngay_id>/<uuid>` khớp ba policy sẵn có của kho `bhy-training`
+vốn chỉ gác hai cấp thư mục đầu. Cổng chặn thật ở tầng dữ liệu, không ở kho tệp.
+Trần 10 tệp/ngày chặn bằng trigger `f_ttc_ngay_truoc_ghi`. Nhân bản chương trình
+**không** mang tài liệu sang (đường dẫn thuộc chương trình cũ nên đợt mới không
+đọc được). Migration `20261019090000_ttc_tai_lieu_cua_ngay.sql` **đã áp**; file
+gỡ cùng tên trong `supabase/rollbacks/` (chụp lại danh sách trước khi xoá cột).
+Chi tiết: mục 17 của tài liệu trên.
+
 ## Chiêu thức 2 — Kanban 5W2H + PDCA (08/2026)
 
 Trang `/one/chieu-thuc-2` được dựng lại theo đặc tả đầy đủ

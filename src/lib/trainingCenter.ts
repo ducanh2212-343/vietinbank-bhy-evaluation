@@ -142,6 +142,8 @@ export interface TtcNgay {
   chuan_bi: string | null;
   lat_cat: string | null;
   cau_hoi_tu_soi: string | null;
+  /** Tài liệu Phòng TCTH phát cho học viên trong ngày — đọc bằng docTaiLieuNgay() */
+  tai_lieu?: unknown;
 }
 
 export interface TtcDauViec {
@@ -177,6 +179,35 @@ export interface TtcTep {
   ten: string;
   kich_thuoc: number;
   luc: string;
+}
+
+/**
+ * TÀI LIỆU CỦA NGÀY — bộ tệp Phòng TCTH phát cho học viên (Giám đốc 07/09/2026).
+ *
+ * Ngược chiều với TtcTienDo.tep: cái kia là bài học viên NỘP LÊN cho một đầu
+ * việc, cái này là biểu mẫu và văn bản PHÁT XUỐNG cho cả lớp theo ngày. Hai thứ
+ * khác người ghi và khác vòng đời nên để riêng, gộp lại thì danh sách bài nộp
+ * lẫn với biểu mẫu phát ra.
+ */
+
+/** Trần 10 tệp một ngày — trùng ràng buộc ở máy chủ (f_ttc_ngay_truoc_ghi) */
+export const TTC_TAI_LIEU_TOI_DA = 10;
+
+/** Đọc cột jsonb ra danh sách tệp; bỏ mục thiếu đường dẫn hoặc tên */
+export function docTaiLieuNgay(json: unknown): TtcTep[] {
+  if (!Array.isArray(json)) return [];
+  return json.flatMap((x) => {
+    if (!x || typeof x !== 'object') return [];
+    const o = x as Record<string, unknown>;
+    if (typeof o.path !== 'string' || !o.path || typeof o.ten !== 'string' || !o.ten) return [];
+    const kt = Number(o.kich_thuoc);
+    return [{
+      path: o.path,
+      ten: o.ten,
+      kich_thuoc: Number.isFinite(kt) && kt >= 0 ? kt : 0,
+      luc: typeof o.luc === 'string' ? o.luc : '',
+    }];
+  });
 }
 
 export interface TtcTienDo {

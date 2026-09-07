@@ -26,6 +26,7 @@ import { TtcTheDiemDanh } from './TtcTheDiemDanh';
 import { TTC_TEP_ACCEPT, TTC_TEP_TOI_DA, kichThuocDoc, taiTepTrainingCenter, xoaTepTrainingCenter } from './tepTrainingCenter';
 import { TtcChamBloom } from './TtcChamBloom';
 import { FormDauViec, FormNgay } from './TtcFormLoTrinh';
+import { TtcTaiLieuNgay } from './TtcTaiLieuNgay';
 
 /**
  * LỘ TRÌNH — dải ngày, lịch chi tiết theo giờ của ngày đang chọn, ô tích hoàn
@@ -206,6 +207,12 @@ export function TtcLoTrinh({ bc }: { bc: TtcBoiCanh }) {
             <p className="rounded-xl bg-amber-50 p-3 sm:col-span-2"><b className="text-amber-800">Chuẩn bị tối hôm trước:</b> {ngayHien!.chuan_bi}</p>
           )}
         </div>
+
+        {/* Tài liệu Phòng TCTH phát cho ngày này — đặt ngay dưới văn bản của ngày
+            để học viên mở lịch ra là thấy thứ cần tải về */}
+        {ctId && user && (
+          <TtcTaiLieuNgay ngay={ngayHien!} ctId={ctId} userId={user.id} suaDuoc={suaDuoc} />
+        )}
 
         {/* Ai biết khi tích xong — thay cho khối «nhắc trước giờ» đã bỏ 06/09/2026 */}
         <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-dashed border-[#A8763E]/40 px-3 py-2 text-xs text-slate-600">

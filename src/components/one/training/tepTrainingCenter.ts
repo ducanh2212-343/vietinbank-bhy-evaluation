@@ -38,10 +38,15 @@ export function kiemTraTep(file: File): string | null {
   return null;
 }
 
-export async function taiTepTrainingCenter(file: File, ctId: string, userId: string, dauViecId: string): Promise<TtcTep> {
+/**
+ * `thuMuc` là id đầu việc khi học viên nộp bài, hoặc id ngày khi Phòng TCTH phát
+ * tài liệu của ngày. Cả hai đều nằm ở thư mục cấp 3 nên dùng chung một hàm —
+ * ba policy của kho chỉ gác cấp 1 (chương trình) và cấp 2 (chủ tệp).
+ */
+export async function taiTepTrainingCenter(file: File, ctId: string, userId: string, thuMuc: string): Promise<TtcTep> {
   const loi = kiemTraTep(file);
   if (loi) throw new Error(loi);
-  const path = `${ctId}/${userId}/${dauViecId}/${crypto.randomUUID()}.${TTC_TEP_MIME[file.type]}`;
+  const path = `${ctId}/${userId}/${thuMuc}/${crypto.randomUUID()}.${TTC_TEP_MIME[file.type]}`;
   const { error } = await supabase.storage.from(BUCKET).upload(path, file, { contentType: file.type });
   if (error) throw new Error(error.message);
   return { path, ten: file.name, kich_thuoc: file.size, luc: new Date().toISOString() };

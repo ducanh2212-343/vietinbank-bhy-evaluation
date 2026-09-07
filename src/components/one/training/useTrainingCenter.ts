@@ -329,6 +329,11 @@ export async function luuCauHinhBao(ctId: string, ch: TtcCauHinhBao) {
     .update({ nhac: ghiCauHinhBao(ch), updated_at: new Date().toISOString() }).eq('id', ctId));
 }
 
+/** Tài liệu của ngày — chỉ Phòng TCTH và BGĐ của chương trình ghi được (policy «ttc ghi ngay») */
+export async function luuTaiLieuNgay(ngayId: string, taiLieu: TtcTep[]) {
+  nemNeuLoi(await db.from('ttc_ngay').update({ tai_lieu: taiLieu }).eq('id', ngayId));
+}
+
 /** Học viên tích / bỏ tích một đầu việc — upsert theo (đầu việc, người) */
 export async function tichDauViec(dauViecId: string, nguoi: string, hoanThanh: boolean, ghiChu?: string | null) {
   nemNeuLoi(await db.from('ttc_tien_do').upsert({
