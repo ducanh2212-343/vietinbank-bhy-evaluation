@@ -12,6 +12,8 @@ Website tự động dùng ảnh ngay sau khi deploy; khi chưa có ảnh sẽ h
 | `mascot.webp` | Linh vật (tùy chọn) | 480×480 · ~35KB |
 | `sao-xung-dang-mat-truoc.webp` | Phiếu Sao Xứng Đáng — mặt trước (ngôi sao) | 668×672 · ~35KB |
 | `sao-xung-dang-mat-sau.webp` | Phiếu Sao Xứng Đáng — mặt sau (Cảm ơn / Vì đã / Đem lại) | 668×672 · ~57KB |
+| `connect-logo.webp` | Logo Bắc Hưng Yên Connect — nền trong suốt (quả cầu lưới vàng kim + chữ CONNECT) | 640×684 |
+| `connect-logo-nen.webp` | Logo Connect trên nền đỏ chuyển xanh (bản dùng cho ảnh chia sẻ / in) | 600×917 |
 
 ## Muốn đổi ảnh khác
 Cách 1 (khuyến nghị): gửi ảnh cho Claude Code, sẽ tự chuyển sang WebP đúng tên và tối ưu.
@@ -26,3 +28,10 @@ lên cả nền trắng lẫn nền vàng nhạt. Hiển thị ở màn giới t
 nhất mở cho khách đối tác, nên đây cũng là ảnh đại diện chương trình với người ngoài.
 
 Đổi mẫu phiếu thì thay đúng hai tệp này (giữ nguyên tên, nền trong suốt, cạnh vuông ~670px).
+
+## Logo Bắc Hưng Yên Connect
+
+Dựng từ tệp thiết kế gốc (PDF hai trang, 09/2026): trang 1 là logo trên nền gradient
+đỏ → xanh, trang 2 là logo nền trong. Hiển thị ở đầu trang `/one/bhy-connect`; hoạ tiết
+lưới đa giác quanh logo KHÔNG phải ảnh mà vẽ bằng SVG (`HoaTietMangLuoi`) để đổi màu
+theo nền. Đổi logo thì thay đúng hai tệp này, giữ nền trong suốt cho bản không nền.

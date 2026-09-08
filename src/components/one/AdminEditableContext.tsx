@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo } from '
 import { Pencil, Check, X } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { docCauHinhDanhSach } from '@/lib/chuyenMuc';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { SITE_CONTENT_SEED } from '@/data/one/siteContent';
@@ -23,11 +24,9 @@ interface AdminEditableContextType {
 
 // Tách chuỗi cấu hình (phân cách bằng dấu phẩy hoặc xuống dòng) thành danh sách;
 // trả null khi key rỗng/thiếu để dùng fallback.
-function parseConfigList(raw: string | undefined): string[] | null {
-  if (!raw?.trim()) return null;
-  const list = raw.split(/[\n,]/).map(s => s.trim()).filter(Boolean);
-  return list.length > 0 ? list : null;
-}
+// Cấu hình lưu dạng JSON — đọc ở src/lib/chuyenMuc.ts (tách phẩy thuần từng
+// sinh ra chuyên mục hỏng kiểu `"connect":"Bắc Hưng Yên Connect & Thư viện"`).
+const parseConfigList = docCauHinhDanhSach;
 
 const AdminEditableContext = createContext<AdminEditableContextType | undefined>(undefined);
 
