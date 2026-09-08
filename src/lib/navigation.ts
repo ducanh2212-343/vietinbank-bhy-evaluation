@@ -6,7 +6,7 @@ import {
   CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag, GitBranch,
   ListChecks, Building2, Gavel, TrendingUp, Zap, Lightbulb,
   Home, BookOpen, Compass, Layers, Share2, CalendarDays, NotebookPen, Sprout, TreeDeciduous,
-  Boxes,
+  Boxes, Globe,
   Sparkles as SparklesIcon,
   type LucideIcon,
 } from 'lucide-react';
@@ -237,6 +237,21 @@ export const NAV_SECTIONS: NavSection[] = [
         guestScreen: 'connect',
         bleed: true,
         keywords: ['connect', 'hoi nghi khach hang', 'ket noi', 'he sinh thai doanh nghiep'],
+      },
+      {
+        // FDI Hub (09/2026): cẩm nang + kho công cụ tiếp cận khách hàng FDI của
+        // Phòng KHDN – Tổ FDI, trước là tệp HTML gửi tay. MỘT trang chín tab
+        // (?tab=) chứ không phải thư mục nhiều màn: chín tab là chín chương của
+        // một cẩm nang, không tab nào có dữ liệu nghiệp vụ riêng. Mở cho MỌI cán
+        // bộ (không minRole) — RM bán lẻ, giao dịch viên gặp khách FDI cũng cần;
+        // KHÔNG mở cho khách đối tác vì có giá quà, số điện thoại nhà cung cấp,
+        // quy trình đón tiếp nội bộ.
+        label: 'Bắc Hưng Yên FDI Hub',
+        icon: Globe,
+        path: '/one/fdi-hub',
+        bleed: true,
+        keywords: ['fdi', 'fdi hub', 'khach hang fdi', 'cam nang', 'rm fdi', 'hoa ngu', 'tieng trung',
+          'qua tang', 'wechat', 'checklist', 'bao cao nhanh', 'kich ban', 'efast', 'salekit'],
       },
       {
         id: 'ways-sao',

@@ -93,9 +93,12 @@ describe('Cấu trúc cây điều hướng', () => {
     const mucLe = (ways.items ?? []).filter((e) => !isFolder(e));
     const thuMuc = (ways.items ?? []).filter(isFolder);
 
+    // FDI Hub (09/2026) là một trang chín tab (?tab=), không phải chín màn
+    // hình — nên là mục lẻ, không phải thư mục.
     expect(mucLe.map((e) => (e as { label: string }).label)).toEqual([
       'Bắc Hưng Yên Sharing',
       'Bắc Hưng Yên Connect',
+      'Bắc Hưng Yên FDI Hub',
       'Bắc Hưng Yên Credit 360',
     ]);
     // Sao Xứng Đáng thành thư mục từ 04/09/2026: chương trình tách làm bốn màn
@@ -156,6 +159,7 @@ describe('Cấu trúc cây điều hướng', () => {
       '/one/hoc-hoi',
       // Connect không có màn hình nghiệp vụ nên có trang riêng của nó
       '/one/bhy-connect',
+      '/one/fdi-hub',
       '/one/ghi-nhan',
       '/one/ghi-nhan/tang-sao',
       '/one/ghi-nhan/tong-hop',
