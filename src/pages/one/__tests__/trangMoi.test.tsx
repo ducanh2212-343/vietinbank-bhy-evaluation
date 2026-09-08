@@ -68,6 +68,27 @@ describe('Trang Bắc Hưng Yên Connect', () => {
     dung(<OneConnectPage />, '/one/bhy-connect');
     expect(screen.getAllByText(/Connect/i).length).toBeGreaterThan(0);
   });
+
+  it('mang bộ nhận diện Connect: logo và khẩu hiệu ba vế', () => {
+    dung(<OneConnectPage />, '/one/bhy-connect');
+    expect(screen.getByAltText('Logo VietinBank Bắc Hưng Yên Connect')).toHaveAttribute('src', '/brand/connect-logo.webp');
+    // Khẩu hiệu ba vế xuất hiện ở cả dải mở đầu lẫn thư mời — đúng chủ ý
+    expect(screen.getAllByText('Kết nối tri thức – Đồng hành chuyển đổi – Kiến tạo giá trị').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('dựng lại thư mời Chạm AI 26/08/2026 với đủ timeline, chữ đọc được chứ không chỉ là ảnh', () => {
+    dung(<OneConnectPage />, '/one/bhy-connect');
+    expect(screen.getAllByText('26/08/2026').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Hội trường Tinh Hoa/)).toBeInTheDocument();
+    for (const gio of ['13h30', '16h00', '17h30']) {
+      expect(screen.getByText(gio)).toBeInTheDocument();
+    }
+  });
+
+  it('kho tư liệu trống thì nói rõ cách để bài lên trang này', () => {
+    dung(<OneConnectPage />, '/one/bhy-connect');
+    expect(screen.getByText(/Chưa có bài nào trong chuyên mục này/)).toBeInTheDocument();
+  });
 });
 
 describe('Trang Bắc Hưng Yên 3806', () => {
