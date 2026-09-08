@@ -1,3 +1,4 @@
+import { useCallback, useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { CONNECT_SU_MENH } from '@/data/one/connectChuongTrinh';
 import { ChomSaoDongTien } from './ChomSaoDongTien';
@@ -5,8 +6,10 @@ import { HoaTietMangLuoi } from './HoaTietMangLuoi';
 
 /**
  * Dải mở đầu trang Bắc Hưng Yên Connect: bầu trời đêm đỏ chuyển xanh của logo
- * Connect, chòm sao nối thành đồng tiền VietinBank bên phải, logo Connect và
- * thông điệp bên trái.
+ * Connect; bên phải là logo Connect đặt to giữa chòm sao nối thành đồng tiền
+ * VietinBank. Rê chuột qua: vòng sao xoay, sao nhấp nháy dồn, cả khối nghiêng
+ * theo hướng con trỏ (nghiêng tính bằng JS vì phụ thuộc vị trí chuột; phần
+ * xoay/nhấp nháy để CSS lo — xem ChomSaoDongTien).
  */
 export const LOGO_CONNECT = '/brand/connect-logo.webp';
 
@@ -20,20 +23,11 @@ export function ConnectHero({ soHoatDong }: { soHoatDong: number }) {
       <div className="pointer-events-none absolute -left-20 -top-20 h-72 w-72 rounded-full bg-red-400/20 blur-3xl" />
 
       <div className="relative grid gap-8 px-6 py-10 sm:px-10 lg:grid-cols-12 lg:items-center lg:py-14">
-        <div className="lg:col-span-7">
-          <div className="flex items-center gap-4">
-            <img
-              src={LOGO_CONNECT}
-              alt="Logo VietinBank Bắc Hưng Yên Connect"
-              width={640}
-              height={684}
-              className="w-20 drop-shadow-[0_8px_20px_rgba(0,0,0,0.4)] sm:w-24"
-            />
-            <span className="inline-flex items-center gap-2 rounded-full border border-amber-200/40 bg-white/10 px-3.5 py-1 text-2xs font-black uppercase tracking-[0.2em] text-amber-200 backdrop-blur">
-              <Sparkles className="h-3.5 w-3.5" />
-              Bắc Hưng Yên Ways · #2
-            </span>
-          </div>
+        <div className="lg:col-span-6">
+          <span className="inline-flex items-center gap-2 rounded-full border border-amber-200/40 bg-white/10 px-3.5 py-1 text-2xs font-black uppercase tracking-[0.2em] text-amber-200 backdrop-blur">
+            <Sparkles className="h-3.5 w-3.5" />
+            Bắc Hưng Yên Ways · #2
+          </span>
           <h1 className="mt-5 text-3xl font-black uppercase leading-tight tracking-tight sm:text-5xl">
             Bắc Hưng Yên{' '}
             <span className="bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-400 bg-clip-text text-transparent">
@@ -60,10 +54,48 @@ export function ConnectHero({ soHoatDong }: { soHoatDong: number }) {
           </div>
         </div>
 
-        <div className="flex justify-center lg:col-span-5">
-          <ChomSaoDongTien className="w-64 sm:w-80 lg:w-full lg:max-w-[380px]" />
+        <div className="flex justify-center lg:col-span-6">
+          <LogoGiuaChomSao />
         </div>
       </div>
     </section>
+  );
+}
+
+/** Logo Connect to, đặt giữa chòm sao đồng tiền; nghiêng theo con trỏ khi rê chuột. */
+function LogoGiuaChomSao() {
+  const [nghieng, setNghieng] = useState({ x: 0, y: 0 });
+  const theoChuot = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const o = e.currentTarget.getBoundingClientRect();
+    // -1 … 1 theo hai trục, tối đa nghiêng 9° — đủ thấy «sống» mà không chóng mặt
+    const x = ((e.clientX - o.left) / o.width) * 2 - 1;
+    const y = ((e.clientY - o.top) / o.height) * 2 - 1;
+    setNghieng({ x: -y * 9, y: x * 9 });
+  }, []);
+
+  return (
+    <div
+      className="chom-sao-khung group relative aspect-square w-80 sm:w-[26rem] lg:w-full lg:max-w-[520px]"
+      style={{ perspective: '1000px' }}
+      onMouseMove={theoChuot}
+      onMouseLeave={() => setNghieng({ x: 0, y: 0 })}
+    >
+      <div
+        className="relative h-full w-full transition-transform duration-300 ease-out will-change-transform"
+        style={{ transform: `rotateX(${nghieng.x}deg) rotateY(${nghieng.y}deg)`, transformStyle: 'preserve-3d' }}
+      >
+        <ChomSaoDongTien className="absolute inset-0 h-full w-full" />
+        {/* Logo nằm trong lòng đồng tiền, nhô lên một lớp (translateZ) để nghiêng có chiều sâu */}
+        <div className="absolute inset-0 grid place-items-center" style={{ transform: 'translateZ(40px)' }}>
+          <img
+            src={LOGO_CONNECT}
+            alt="Logo VietinBank Bắc Hưng Yên Connect"
+            width={640}
+            height={684}
+            className="-mt-[6%] w-[54%] drop-shadow-[0_16px_40px_rgba(0,0,0,0.45)] transition-transform duration-500 group-hover:scale-110"
+          />
+        </div>
+      </div>
+    </div>
   );
 }

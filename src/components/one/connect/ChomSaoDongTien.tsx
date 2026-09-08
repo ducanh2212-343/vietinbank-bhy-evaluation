@@ -12,6 +12,12 @@ import { useMemo } from 'react';
  * VietinBank), nối với nhau bằng cạnh vàng kim như lưới trên logo Connect.
  * Ngoài đường viền có thêm vài sao rải rác «đang chờ nối» — khách hàng mới.
  * Sao nhấp nháy bằng CSS; máy bật «giảm chuyển động» thì đứng yên.
+ *
+ * Chuyển động khi rê chuột (Giám đốc 08/09: «khi quét chuột qua thì chuyển
+ * động»): đặt SVG trong một khung mang lớp `chom-sao-khung`; khi khung được
+ * hover, vòng sao xoay chậm quanh tâm, sao nhấp nháy dồn hơn và sao rải quanh
+ * trôi về phía đồng tiền — như khách hàng mới đang được nối vào. Không dùng JS
+ * cho phần này để hàng chục sao không kéo giật khung hình.
  */
 interface Props {
   className?: string;
@@ -101,23 +107,38 @@ export function ChomSaoDongTien({ className, mau = '#F2D27A', hat = 88 }: Props)
         </radialGradient>
         <style>{`
           @keyframes chom-sao-nhap-nhay { 0%, 100% { opacity: .55 } 50% { opacity: 1 } }
+          @keyframes chom-sao-xoay { to { transform: rotate(360deg) } }
+          @keyframes chom-sao-troi { 0%, 100% { transform: scale(1) } 50% { transform: scale(.94) } }
           .chom-sao-sao { animation: chom-sao-nhap-nhay 3.6s ease-in-out infinite; }
-          @media (prefers-reduced-motion: reduce) { .chom-sao-sao { animation: none; opacity: .9 } }
+          .chom-sao-vong, .chom-sao-roi { transform-origin: 200px 200px; transform-box: view-box; }
+          .chom-sao-khung:hover .chom-sao-vong { animation: chom-sao-xoay 36s linear infinite; }
+          .chom-sao-khung:hover .chom-sao-roi { animation: chom-sao-troi 5s ease-in-out infinite; }
+          .chom-sao-khung:hover .chom-sao-sao { animation-duration: 1.4s; }
+          .chom-sao-khung:hover .chom-sao-canh { stroke-opacity: .95; }
+          .chom-sao-canh { transition: stroke-opacity .6s ease; }
+          @media (prefers-reduced-motion: reduce) {
+            .chom-sao-sao, .chom-sao-khung:hover .chom-sao-vong, .chom-sao-khung:hover .chom-sao-roi { animation: none; }
+            .chom-sao-sao { opacity: .9 }
+          }
         `}</style>
       </defs>
       <circle cx="200" cy="200" r="190" fill="url(#chom-sao-hao-quang)" />
-      {saoRoi.map((s, k) => (
-        <circle key={`r${k}`} cx={s.x} cy={s.y} r={s.r} fill="#fff" fillOpacity={0.7} className="chom-sao-sao" style={{ animationDelay: `${s.tre}s` }} />
-      ))}
-      {canh.map(([a, b], k) => (
-        <line key={`c${k}`} x1={sao[a].x} y1={sao[a].y} x2={sao[b].x} y2={sao[b].y} stroke={mau} strokeOpacity={0.55} strokeWidth={0.9} />
-      ))}
-      {sao.map((s, k) => (
-        <g key={`s${k}`} className="chom-sao-sao" style={{ animationDelay: `${s.tre}s` }}>
-          <circle cx={s.x} cy={s.y} r={s.r * 2.6} fill={mau} fillOpacity={0.14} />
-          <circle cx={s.x} cy={s.y} r={s.r} fill={mau} />
-        </g>
-      ))}
+      <g className="chom-sao-roi">
+        {saoRoi.map((s, k) => (
+          <circle key={`r${k}`} cx={s.x} cy={s.y} r={s.r} fill="#fff" fillOpacity={0.7} className="chom-sao-sao" style={{ animationDelay: `${s.tre}s` }} />
+        ))}
+      </g>
+      <g className="chom-sao-vong">
+        {canh.map(([a, b], k) => (
+          <line key={`c${k}`} className="chom-sao-canh" x1={sao[a].x} y1={sao[a].y} x2={sao[b].x} y2={sao[b].y} stroke={mau} strokeOpacity={0.55} strokeWidth={0.9} />
+        ))}
+        {sao.map((s, k) => (
+          <g key={`s${k}`} className="chom-sao-sao" style={{ animationDelay: `${s.tre}s` }}>
+            <circle cx={s.x} cy={s.y} r={s.r * 2.6} fill={mau} fillOpacity={0.14} />
+            <circle cx={s.x} cy={s.y} r={s.r} fill={mau} />
+          </g>
+        ))}
+      </g>
     </svg>
   );
 }
