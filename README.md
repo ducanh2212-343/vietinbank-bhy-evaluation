@@ -603,3 +603,19 @@ liệu và cách khắc phục: `docs/kanban-phe-duyet-tin-dung-2026-08.md`. Mig
   nhóm thái độ (Mục C) từ đầu. Hành động Quý I hiển thị ở mục "Rà soát hành
   động kỳ trước" để PDCA và chuyển tay hành động chưa hoàn thành sang Quý III.
   BM03 giữ nguyên auto carry-over.
+
+**Bắc Hưng Yên Connect — dòng thời gian kết nối (08/09/2026):** trang
+`/one/bhy-connect` dựng lại theo cấu trúc chương trình (Onepage «Kết nối kinh
+doanh» + Thư ngỏ) với hình tượng chòm sao nối thành đồng tiền VietinBank. Mỗi
+hoạt động (hội nghị, diễn đàn, kết nối, thư viện, dấu mốc) là một dòng trong
+bảng `connect_dong_thoi_gian`; ghi được bởi cán bộ **Phòng KHDN, Phòng TCTH**
+(xét theo mã phòng của hồ sơ, hàm `connect_soan_duoc`), admin nội dung và BGĐ;
+khách đối tác chỉ thấy dòng bật «mở cho khách». Một dòng gắn được bài trong
+`portal_uploads` để mượn ảnh và bài đầy đủ; ảnh riêng đặt dưới `shared/` của
+kho `bhy-one`. Migration `20261021090000_bhy_connect_dong_thoi_gian.sql`
+(kèm nạp 6 mốc 10/2024 → 08/2026, gắn bài «Chạm AI» theo tiêu đề) **chưa áp**
+vào `whlysprzsguehxmrjwha`; trước khi áp, trang hiện bản nạp sẵn trong mã
+(`src/data/one/connectDongThoiGian.ts`, trùng nội dung) và khoá nút thêm. File
+gỡ: `supabase/rollbacks/20261021090000_bhy_connect_dong_thoi_gian_down.sql`.
+Kèm sửa lỗi hộp đăng bài đọc cấu hình chuyên mục/phòng ban dạng JSON
+(`src/lib/chuyenMuc.ts`).

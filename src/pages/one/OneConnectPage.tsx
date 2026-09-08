@@ -1,22 +1,22 @@
 import { OnePageShell } from '@/components/one/OnePageShell';
-import { usePillarImages } from '@/components/one/programs/PillarGallery';
-import { ConnectPillar } from '@/components/one/programs/ConnectPillar';
 import { ConnectHero } from '@/components/one/connect/ConnectHero';
-import { ThuMoiChamAI } from '@/components/one/connect/ThuMoiChamAI';
-import { BaiVietConnect, locBaiConnect } from '@/components/one/connect/BaiVietConnect';
+import { CauTrucChuongTrinh } from '@/components/one/connect/CauTrucChuongTrinh';
+import { DongThoiGianConnect } from '@/components/one/connect/DongThoiGianConnect';
+import { BaiVietConnect } from '@/components/one/connect/BaiVietConnect';
 import { HoaTietMangLuoi } from '@/components/one/connect/HoaTietMangLuoi';
-import { useOneUploads } from '@/components/one/useOneUploads';
+import { useConnectDongThoiGian } from '@/components/one/connect/useConnectDongThoiGian';
 
 /**
  * Bắc Hưng Yên Connect — một trong sáu thương hiệu của Bắc Hưng Yên Ways.
  *
  * Năm thương hiệu còn lại đều dẫn thẳng tới công cụ thật (Sharing → kho tri thức,
  * Quizzi, Ideas, Sao Xứng Đáng, Credit 360). Riêng Connect là chuỗi hội nghị và
- * hoạt động kết nối, không có màn hình nghiệp vụ, nên đây chính là trang của nó.
+ * hoạt động kết nối, nên đây là trang của nó — và từ 09/2026 có một thứ ghi
+ * được: dòng thời gian kết nối do Phòng KHDN / TCTH tự bồi thêm.
  *
- * Bố cục từ trên xuống: nhận diện (logo + lưới vàng kim) → thư mời diễn đàn
- * Chạm AI 26/08/2026 → bài viết chuyên mục Connect lấy sống từ kho tư liệu →
- * phần giới thiệu chương trình (con số hội nghị Thu 2024) vốn có từ trước.
+ * Bố cục: chòm sao đồng tiền (nhận diện) → cấu trúc chương trình (phần ổn định,
+ * từ Onepage và Thư ngỏ) → dòng thời gian (phần sống: hội nghị, diễn đàn, kết
+ * nối; thư mời Chạm AI chỉ là một dòng trong đó) → thư viện bài viết Connect.
  */
 export default function OneConnectPage() {
   return (
@@ -27,12 +27,7 @@ export default function OneConnectPage() {
 }
 
 function NoiDung() {
-  const { pillarImages, handlePillarImageUpload } = usePillarImages();
-  const { items } = useOneUploads();
-  // Ảnh bìa của bài Chạm AI trong kho tư liệu chính là thư mời in — dùng lại,
-  // không lưu thêm bản thứ hai.
-  const baiChamAI = locBaiConnect(items).find((it) => /chạm ai/i.test(it.title));
-
+  const { hoatDong } = useConnectDongThoiGian();
   return (
     <div className="relative">
       <HoaTietMangLuoi
@@ -41,16 +36,11 @@ function NoiDung() {
         hat={2024}
         soDinh={60}
       />
-      <section className="mx-auto w-full max-w-7xl space-y-12 px-4 py-10 sm:px-6 lg:px-8">
-        <ConnectHero />
-        <ThuMoiChamAI anhThuMoi={baiChamAI?.imageUrl} />
+      <section className="mx-auto w-full max-w-7xl space-y-14 px-4 py-10 sm:px-6 lg:px-8">
+        <ConnectHero soHoatDong={hoatDong.length} />
+        <CauTrucChuongTrinh />
+        <DongThoiGianConnect />
         <BaiVietConnect />
-        <div className="rounded-3xl border border-blue-100 bg-white/80 p-6 shadow-sm backdrop-blur sm:p-8">
-          <ConnectPillar
-            images={pillarImages.connect || []}
-            onImageUpload={(index, fileOrUrl) => handlePillarImageUpload('connect', index, fileOrUrl)}
-          />
-        </div>
       </section>
     </div>
   );

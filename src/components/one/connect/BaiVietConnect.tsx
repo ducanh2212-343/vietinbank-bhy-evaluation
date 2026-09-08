@@ -3,18 +3,15 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Calendar, Images, Newspaper } from 'lucide-react';
 import { useOneUploads } from '@/components/one/useOneUploads';
 import type { UploadedItem } from '@/data/one/types';
+import { locBaiConnect } from '@/lib/connect';
 
 /**
- * Bài viết chuyên mục «Bắc Hưng Yên Connect & Thư viện» lấy từ kho tư liệu
- * (cùng dữ liệu với Học hỏi và Tin tức nội bộ — cán bộ đăng một lần, trang
- * Connect tự có). Bài mới nhất được dựng to kèm bộ ảnh; các bài còn lại xếp
+ * Thư viện Connect: bài viết chuyên mục «Bắc Hưng Yên Connect & Thư viện» lấy
+ * từ kho tư liệu (cùng dữ liệu với Học hỏi và Tin tức nội bộ — cán bộ đăng một
+ * lần, trang Connect tự có; dòng thời gian gắn được vào các bài này). Bài mới nhất được dựng to kèm bộ ảnh; các bài còn lại xếp
  * thành thẻ nhỏ. Bấm vào đâu cũng mở đúng bài ở Tin tức nội bộ, không đẻ thêm
  * màn đọc bài thứ hai.
  */
-export function locBaiConnect(items: UploadedItem[]): UploadedItem[] {
-  return items.filter((it) => it.category === 'connect');
-}
-
 export function BaiVietConnect() {
   const { items } = useOneUploads();
   const baiConnect = locBaiConnect(items);
@@ -26,10 +23,10 @@ export function BaiVietConnect() {
         <div>
           <span className="inline-flex items-center gap-2 rounded-full bg-blue-100 px-3.5 py-1 text-2xs font-black uppercase tracking-wider text-brand-royal">
             <Newspaper className="h-3.5 w-3.5" />
-            Từ kho tư liệu
+            Thư viện Connect
           </span>
           <h2 className="mt-2 text-2xl font-black uppercase tracking-tight text-brand-navy sm:text-3xl">
-            Bắc Hưng Yên Connect &amp; Thư viện
+            Bài viết chuyên mục Connect &amp; Thư viện
           </h2>
         </div>
         <Link

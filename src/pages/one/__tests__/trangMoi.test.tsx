@@ -30,18 +30,26 @@ const mockAuth = {
 
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => mockAuth }));
 
+// Cho phép một bảng trả lỗi (bảng chưa áp migration) — trang Connect phải sống được
+const loiBang: { value: { code: string; message: string } | null } = { value: null };
+
 vi.mock('@/integrations/supabase/client', () => {
-  const ketQua = Promise.resolve({ data: [], error: null });
   const builder: Record<string, unknown> = {};
   for (const m of ['select', 'eq', 'neq', 'order', 'limit', 'in', 'not', 'insert', 'delete']) {
     builder[m] = () => builder;
   }
-  builder.then = (...args: unknown[]) => (ketQua as unknown as PromiseLike<unknown>).then(...(args as []));
+  builder.then = (...args: unknown[]) =>
+    Promise.resolve({ data: [], error: null }).then(...(args as []));
+  const builderLoi: Record<string, unknown> = { ...builder };
+  builderLoi.select = () => builderLoi;
+  builderLoi.order = () => builderLoi;
+  builderLoi.then = (...args: unknown[]) =>
+    Promise.resolve({ data: null, error: loiBang.value }).then(...(args as []));
   builder.maybeSingle = () => Promise.resolve({ data: null, error: null });
   builder.single = () => Promise.resolve({ data: null, error: null });
   return {
     supabase: {
-      from: () => builder,
+      from: (bang: string) => (bang === 'connect_dong_thoi_gian' && loiBang.value ? builderLoi : builder),
       rpc: () => Promise.resolve({ data: [], error: null }),
       channel: () => ({ on: () => ({ subscribe: () => ({}) }), subscribe: () => ({}) }),
       removeChannel: () => {},
@@ -60,7 +68,7 @@ function dung(ui: React.ReactElement, path = '/one') {
 }
 
 describe('Trang Bắc Hưng Yên Connect', () => {
-  beforeEach(() => { mockAuth.isGuest = false; mockAuth.isManager = false; });
+  beforeEach(() => { mockAuth.isGuest = false; mockAuth.isManager = false; mockAuth.roles = ['employee']; });
 
   it('dựng được — Connect không có màn hình nghiệp vụ nên đây là nhà của nó', () => {
     // Năm thương hiệu còn lại dẫn thẳng tới công cụ thật; riêng Connect cần trang
@@ -69,25 +77,57 @@ describe('Trang Bắc Hưng Yên Connect', () => {
     expect(screen.getAllByText(/Connect/i).length).toBeGreaterThan(0);
   });
 
-  it('mang bộ nhận diện Connect: logo và khẩu hiệu ba vế', () => {
+  it('mang bộ nhận diện Connect: logo, đồng tiền từ những vì sao, khẩu hiệu ba vế', () => {
     dung(<OneConnectPage />, '/one/bhy-connect');
     expect(screen.getByAltText('Logo VietinBank Bắc Hưng Yên Connect')).toHaveAttribute('src', '/brand/connect-logo.webp');
-    // Khẩu hiệu ba vế xuất hiện ở cả dải mở đầu lẫn thư mời — đúng chủ ý
+    expect(screen.getByText(/Nối những vì sao lại, ta có hình đồng tiền VietinBank/)).toBeInTheDocument();
     expect(screen.getAllByText('Kết nối tri thức – Đồng hành chuyển đổi – Kiến tạo giá trị').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('dựng lại thư mời Chạm AI 26/08/2026 với đủ timeline, chữ đọc được chứ không chỉ là ảnh', () => {
+  it('trình bày cấu trúc chương trình: ba giá trị, bốn cấu phần, mười ngành hàng, đầu mối KHDN', () => {
     dung(<OneConnectPage />, '/one/bhy-connect');
-    expect(screen.getAllByText('26/08/2026').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Ba giá trị · Bốn cấu phần · Mười ngành hàng')).toBeInTheDocument();
+    for (const nganh of ['Nhôm thanh định hình', 'Khu công nghiệp', 'Nước giải khát']) {
+      expect(screen.getByText(nganh)).toBeInTheDocument();
+    }
+    expect(screen.getByText('Trưởng phòng KHDN')).toBeInTheDocument();
+  });
+
+  it('dòng thời gian: bảng chưa có thì vẫn kể lịch sử nạp sẵn và không hiện nút thêm', async () => {
+    // Mock Supabase trả lỗi «bảng không tồn tại» cho bảng dòng thời gian
+    loiBang.value = { code: '42P01', message: 'relation "connect_dong_thoi_gian" does not exist' };
+    mockAuth.roles = ['tcth_admin'];
+    dung(<OneConnectPage />, '/one/bhy-connect');
+    expect(await screen.findByText(/Hội nghị kết nối kinh doanh KHDN chủ đề «Thu»/)).toBeInTheDocument();
+    expect(screen.getByText(/Chạm AI, Chạm tương lai/)).toBeInTheDocument();
+    expect(screen.getByText(/Đang hiện lịch sử nạp sẵn/)).toBeInTheDocument();
+    expect(screen.queryByText('Thêm hoạt động')).not.toBeInTheDocument();
+    loiBang.value = null;
+  });
+
+  it('dòng Chạm AI mở được thư mời dựng lại thành chữ, đủ timeline', async () => {
+    loiBang.value = { code: '42P01', message: 'does not exist' };
+    dung(<OneConnectPage />, '/one/bhy-connect');
+    fireEvent.click(await screen.findByText('Xem thư mời'));
     expect(screen.getByText(/Hội trường Tinh Hoa/)).toBeInTheDocument();
     for (const gio of ['13h30', '16h00', '17h30']) {
       expect(screen.getByText(gio)).toBeInTheDocument();
     }
+    loiBang.value = null;
   });
 
-  it('kho tư liệu trống thì nói rõ cách để bài lên trang này', () => {
+  it('bảng đã có nhưng trống: admin nội dung thấy nút thêm hoạt động', async () => {
+    mockAuth.roles = ['tcth_admin'];
     dung(<OneConnectPage />, '/one/bhy-connect');
-    expect(screen.getByText(/Chưa có bài nào trong chuyên mục này/)).toBeInTheDocument();
+    expect(await screen.findByText(/Chưa có hoạt động nào/)).toBeInTheDocument();
+    expect(screen.getByText('Thêm hoạt động')).toBeInTheDocument();
+  });
+
+  it('cán bộ phòng khác không thấy nút thêm hoạt động', async () => {
+    mockAuth.roles = ['employee'];
+    dung(<OneConnectPage />, '/one/bhy-connect');
+    expect(await screen.findByText(/Chưa có hoạt động nào/)).toBeInTheDocument();
+    expect(screen.queryByText('Thêm hoạt động')).not.toBeInTheDocument();
   });
 });
 
