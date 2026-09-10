@@ -404,9 +404,9 @@ dòng trong `fdi_hub_luot_xem` (ghi qua RPC `fdi_hub_ghi_luot_xem`, chống trù
 kê sử dụng» (`?tab=thong-ke`) chỉ lãnh đạo phòng / PGĐ / BGĐ / TCTH thấy, đọc
 qua RPC `fdi_hub_thong_ke(_tu, _den)` — gác quyền ở SQL, trả số theo PHÒNG,
 không trả tên người; Phòng giao dịch xếp nhóm riêng, phòng chưa dùng vẫn hiện.
-Migration `20261022090000_fdi_hub_luot_xem.sql` **chưa áp**; file gỡ cùng tên
-trong `supabase/rollbacks/`. Chưa áp thì cẩm nang vẫn chạy bình thường (hook
-ghi lượt nuốt lỗi «hàm chưa có»), tab Thống kê hiện dòng nhắc chưa áp.
+Migration `20261022090000_fdi_hub_luot_xem.sql` **đã áp** (10/09/2026, qua
+Supabase MCP, tên `fdi_hub_luot_xem` trong lịch sử migration của project); file
+gỡ cùng tên trong `supabase/rollbacks/`. Lượt xem tích luỹ từ thời điểm áp.
 
 ## Bắc Hưng Yên Training Center (09/2026)
 

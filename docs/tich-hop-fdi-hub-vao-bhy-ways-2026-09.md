@@ -123,9 +123,10 @@ dùng kèm tên phòng chưa dùng) → bảng Phòng giao dịch (cán bộ, ng
 phủ, lượt, tab hay dùng, mở gần nhất) → thanh lượt theo tab → bảng phòng nghiệp vụ →
 ma trận phòng × tab. Lọc 7 / 30 / 90 ngày / từ đầu; ngày tính theo giờ Việt Nam.
 
-Migration `20261022090000_fdi_hub_luot_xem.sql` **chưa áp** (Phòng TCTH áp thủ công).
-Chưa áp thì cẩm nang vẫn chạy: hook ghi lượt nuốt lỗi «hàm chưa có», tab Thống kê
-hiện dòng nhắc. Số liệu chỉ tích luỹ từ lúc áp.
+Migration `20261022090000_fdi_hub_luot_xem.sql` **đã áp** ngày 10/09/2026 (sau khi
+chạy thử trong giao dịch rollback). Số liệu tích luỹ từ thời điểm đó. Nếu chưa áp ở
+môi trường khác, cẩm nang vẫn chạy: hook ghi lượt nuốt lỗi «hàm chưa có», tab Thống
+kê hiện dòng nhắc.
 
 Việc có thể làm tiếp khi có số liệu: đưa «tỷ lệ phủ của Phòng giao dịch» thành một
 dòng trong Nhịp điều hành BGĐ (Chiêu thức 2) để không phải mở FDI Hub mới thấy.
