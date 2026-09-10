@@ -60,6 +60,15 @@ export const FDI_HUB_TABS: TabFdiHub[] = [
 
 export const FDI_HUB_TAB_MAC_DINH: MaTabFdiHub = 'tong-quan';
 
+/**
+ * Tab «Thống kê sử dụng» (10/09/2026) — KHÔNG nằm trong FDI_HUB_TABS vì đó là
+ * chín chương của cẩm nang mà mọi cán bộ đọc và được ghi lượt; tab này chỉ
+ * lãnh đạo phòng / PGĐ / BGĐ / TCTH thấy và không ghi lượt cho chính nó.
+ */
+export const FDI_HUB_TAB_THONG_KE = 'thong-ke' as const;
+export type MaTabTrangFdiHub = MaTabFdiHub | typeof FDI_HUB_TAB_THONG_KE;
+export const FDI_HUB_TAB_THONG_KE_NHAN = { id: FDI_HUB_TAB_THONG_KE, nhan: 'Thống kê sử dụng', nhanNgan: 'Thống kê' } as const;
+
 export function laTabFdiHub(x: string | null | undefined): x is MaTabFdiHub {
   return !!x && FDI_HUB_TABS.some((t) => t.id === x);
 }

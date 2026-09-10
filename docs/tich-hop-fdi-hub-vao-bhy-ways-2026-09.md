@@ -99,6 +99,33 @@ và thư cảm ơn.
 3. **Nội dung sửa được trên giao diện** cho Tổ FDI (giá quà, số điện thoại nhà cung
    cấp thay đổi thường xuyên) — theo cơ chế `EditableText` sẵn có của cổng, hoặc chuyển
    catalogue quà vào bảng khi làm mục 1.
-4. **Đo dùng**: FDI Hub là cẩm nang, không sinh dữ liệu nên không tự biết ai đọc. Nếu
-   cần biết, gắn vào Quizzi (câu hỏi theo cẩm nang) hoặc Training Center (chương trình
-   hội nhập RM FDI) thay vì thêm đếm lượt xem.
+4. ~~**Đo dùng**~~ — đã làm ngày 10/09/2026, xem mục 6.
+
+---
+
+## 6. Thống kê sử dụng theo phòng (10/09/2026)
+
+Giám đốc yêu cầu «hiển thị số lượt sử dụng từng tab, nhóm user sử dụng thuộc phòng
+nào, đặc biệt các Phòng giao dịch đang trong quá trình tiếp cận KH FDI».
+
+| Quyết định | Cách làm | Vì sao |
+| --- | --- | --- |
+| Ghi gì | Mỗi lần cán bộ mở một tab = một dòng `fdi_hub_luot_xem` (hồ sơ, phòng, tab, thời điểm) | Đủ để trả lời «phòng nào dùng, dùng phần nào, bao nhiêu người»; không cần theo dõi cuộn trang hay thời gian đọc |
+| Ghi thế nào | Qua RPC `fdi_hub_ghi_luot_xem(_tab)`, không INSERT thẳng | Hàm tự lấy hồ sơ và phòng từ phiên đăng nhập (không tin client) và chống đếm trùng: cùng người, cùng tab trong 10 phút = một lượt |
+| Phòng của lượt | Chụp `department_id` tại thời điểm mở | Cán bộ chuyển phòng thì lượt cũ vẫn thuộc phòng cũ — số theo tháng không đổi khi tổ chức đổi |
+| Ai đọc | RPC `fdi_hub_thong_ke(_tu, _den)`, SECURITY DEFINER, gác bằng `fdi_hub_xem_thong_ke_duoc`: manager, pgd, bgd, TCTH/system admin | Không có policy SELECT trên bảng: chỉ một cửa ra, gác ở SQL chứ không ở giao diện |
+| Trả gì | Số theo PHÒNG và theo TAB, kèm cả phòng chưa có lượt nào | Mục đích là biết phòng nào đang tiếp cận, không phải soi từng cán bộ; phòng chưa dùng chính là phòng cần nhắc |
+| Phòng giao dịch | Nhận theo mã `PHONG_GIAO_DICH_*` / `PGD*` hoặc tên có «giao dịch»; xếp nhóm riêng, đứng đầu tab | Đúng câu hỏi của Giám đốc; 5 PGD hiện có: Ân Thi, Khoái Châu, Ocean City, Văn Giang, Văn Lâm |
+| Ở đâu | Tab thứ mười «Thống kê sử dụng» ngay trong FDI Hub, chỉ hiện với người đủ quyền | Lãnh đạo xem thống kê ở đúng nơi cán bộ dùng, không phải một trang quản trị rời |
+
+Màn thống kê: bốn ô số (lượt · cán bộ đã dùng · phòng đã dùng · Phòng giao dịch đã
+dùng kèm tên phòng chưa dùng) → bảng Phòng giao dịch (cán bộ, người đã dùng, tỷ lệ
+phủ, lượt, tab hay dùng, mở gần nhất) → thanh lượt theo tab → bảng phòng nghiệp vụ →
+ma trận phòng × tab. Lọc 7 / 30 / 90 ngày / từ đầu; ngày tính theo giờ Việt Nam.
+
+Migration `20261022090000_fdi_hub_luot_xem.sql` **chưa áp** (Phòng TCTH áp thủ công).
+Chưa áp thì cẩm nang vẫn chạy: hook ghi lượt nuốt lỗi «hàm chưa có», tab Thống kê
+hiện dòng nhắc. Số liệu chỉ tích luỹ từ lúc áp.
+
+Việc có thể làm tiếp khi có số liệu: đưa «tỷ lệ phủ của Phòng giao dịch» thành một
+dòng trong Nhịp điều hành BGĐ (Chiêu thức 2) để không phải mở FDI Hub mới thấy.

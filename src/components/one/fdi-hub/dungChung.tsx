@@ -5,6 +5,7 @@ import {
   FDI_HUB_KHOA_LUU,
   type LienKetFdiHub,
   type MaTabFdiHub,
+  type MaTabTrangFdiHub,
   type NeoFdiHub,
 } from '@/data/one/fdiHub';
 
@@ -22,8 +23,8 @@ import {
 // ---------------------------------------------------------------------------
 
 interface DieuHuongFdiHub {
-  tab: MaTabFdiHub;
-  diDenTab: (tab: MaTabFdiHub, neo?: NeoFdiHub) => void;
+  tab: MaTabTrangFdiHub;
+  diDenTab: (tab: MaTabTrangFdiHub, neo?: NeoFdiHub) => void;
 }
 
 export const FdiHubContext = createContext<DieuHuongFdiHub>({

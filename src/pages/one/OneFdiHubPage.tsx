@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Globe } from 'lucide-react';
 import { OnePageShell } from '@/components/one/OnePageShell';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import {
   FDI_HUB_DAU_MOI,
@@ -10,13 +11,17 @@ import {
   FDI_HUB_KHAU_HIEU,
   FDI_HUB_TAB_CUA_NEO,
   FDI_HUB_TAB_MAC_DINH,
+  FDI_HUB_TAB_THONG_KE,
+  FDI_HUB_TAB_THONG_KE_NHAN,
   FDI_HUB_TABS,
   FDI_HUB_TEN,
   laTabFdiHub,
   type MaTabFdiHub,
+  type MaTabTrangFdiHub,
   type NeoFdiHub,
 } from '@/data/one/fdiHub';
 import { FdiHubContext } from '@/components/one/fdi-hub/dungChung';
+import { useGhiLuotXemFdiHub } from '@/components/one/fdi-hub/useFdiHubLuotXem';
 
 /**
  * Bắc Hưng Yên FDI Hub — thương hiệu thứ tám của Bắc Hưng Yên Ways.
@@ -36,8 +41,14 @@ import { FdiHubContext } from '@/components/one/fdi-hub/dungChung';
  *
  * Nội dung: `src/data/one/fdiHub.ts`. Từng tab tải lười — tab Quà tặng có
  * ảnh, tab Trợ lý AI kéo thư viện QR, người chỉ xem Tổng quan không phải tải.
+ *
+ * Lượt mở từng tab được ghi (10/09/2026) để lãnh đạo biết phòng nào đang dùng
+ * — đặc biệt các Phòng giao dịch đang tiếp cận khách FDI. Tab «Thống kê sử
+ * dụng» là tab thứ mười, chỉ hiện với lãnh đạo phòng / PGĐ / BGĐ / TCTH và
+ * không tự ghi lượt cho mình.
  */
-const CAC_TAB: Record<MaTabFdiHub, React.LazyExoticComponent<React.ComponentType>> = {
+const CAC_TAB: Record<MaTabTrangFdiHub, React.LazyExoticComponent<React.ComponentType>> = {
+  [FDI_HUB_TAB_THONG_KE]: lazy(() => import('@/components/one/fdi-hub/TabThongKe').then((m) => ({ default: m.TabThongKe }))),
   'tong-quan': lazy(() => import('@/components/one/fdi-hub/TabTongQuan').then((m) => ({ default: m.TabTongQuan }))),
   'hanh-trinh': lazy(() => import('@/components/one/fdi-hub/TabHanhTrinh').then((m) => ({ default: m.TabHanhTrinh }))),
   checklist: lazy(() => import('@/components/one/fdi-hub/TabChecklist').then((m) => ({ default: m.TabChecklist }))),
@@ -58,13 +69,24 @@ export default function OneFdiHubPage() {
 }
 
 function NoiDung() {
+  const { profileId, isGuest, isAdmin, isManager, isPgd } = useAuth();
+  // Gác ở giao diện cho gọn menu; hàm SQL fdi_hub_thong_ke gác thật
+  const xemThongKeDuoc = !isGuest && (isAdmin || isManager || isPgd);
   const [thamSo, datThamSo] = useSearchParams();
   const thamSoTab = thamSo.get('tab');
-  const tab: MaTabFdiHub = laTabFdiHub(thamSoTab) ? thamSoTab : FDI_HUB_TAB_MAC_DINH;
+  const tab: MaTabTrangFdiHub = laTabFdiHub(thamSoTab)
+    ? thamSoTab
+    : thamSoTab === FDI_HUB_TAB_THONG_KE && xemThongKeDuoc
+      ? FDI_HUB_TAB_THONG_KE
+      : FDI_HUB_TAB_MAC_DINH;
   const neo = thamSo.get('neo');
+  const cacTab = xemThongKeDuoc ? [...FDI_HUB_TABS, FDI_HUB_TAB_THONG_KE_NHAN] : FDI_HUB_TABS;
+
+  // Chỉ chín chương cẩm nang mới tính là «sử dụng»; tab thống kê không ghi
+  useGhiLuotXemFdiHub(laTabFdiHub(tab) ? (tab as MaTabFdiHub) : null, profileId, isGuest);
 
   const diDenTab = useCallback(
-    (tabMoi: MaTabFdiHub, neoMoi?: NeoFdiHub) => {
+    (tabMoi: MaTabTrangFdiHub, neoMoi?: NeoFdiHub) => {
       const moi = new URLSearchParams(thamSo);
       moi.set('tab', tabMoi);
       if (neoMoi) moi.set('neo', neoMoi);
@@ -116,7 +138,7 @@ function NoiDung() {
 
         <nav aria-label={`Các phần của ${FDI_HUB_TEN}`} className="flex justify-center">
           <div className="flex flex-wrap justify-center gap-1 rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
-            {FDI_HUB_TABS.map((t) => {
+            {cacTab.map((t) => {
               const dangXem = t.id === tab;
               return (
                 <button
