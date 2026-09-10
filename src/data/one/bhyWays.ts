@@ -1,5 +1,5 @@
 import {
-  BookOpen, Zap, Lightbulb, Share2, Star, ShieldAlert, GraduationCap, type LucideIcon,
+  BookOpen, Zap, Lightbulb, Share2, Star, ShieldAlert, GraduationCap, Globe, type LucideIcon,
 } from 'lucide-react';
 
 /**
@@ -123,5 +123,20 @@ export const BHY_WAYS: WayItem[] = [
     accent: '#A8763E',
     duongDan: '/one/training-center',
     nhanNut: 'Vào Training Center',
+  },
+  {
+    // FDI Hub (09/2026): cẩm nang «FDI 343 HUB» của Phòng KHDN – Tổ FDI đưa lên
+    // cổng — hành trình 6 bước, checklist, văn hóa tiếp khách Hoa ngữ, chiến
+    // lược quà tặng, kịch bản song ngữ, trợ lý AI. Mở cho mọi cán bộ.
+    id: 'fdi-hub',
+    ten: 'Bắc Hưng Yên FDI Hub',
+    dinhVi: 'Chinh phục khách hàng FDI',
+    moTa:
+      'Cẩm nang và kho công cụ tiếp cận khách hàng FDI: hành trình 6 bước từ lập danh sách đến đồng hành dài hạn, ' +
+      'checklist từng giai đoạn, văn hóa tiếp khách Hoa ngữ, chiến lược quà tặng 11 điểm chạm, kịch bản song ngữ và trợ lý AI.',
+    icon: Globe,
+    accent: '#0072BC',
+    duongDan: '/one/fdi-hub',
+    nhanNut: 'Mở FDI Hub',
   },
 ];

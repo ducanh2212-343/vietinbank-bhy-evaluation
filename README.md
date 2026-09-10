@@ -384,6 +384,30 @@ npm run phien-ban -- ten-ngan-khong-dau --loai=tinh-nang --phan-he=chieu-thuc-2
 Nghiên cứu đầy đủ (có nên push mỗi khi lên tính năng mới, ba phương án đã cân,
 chính sách kênh theo mức thay đổi): `docs/lich-su-phien-ban-va-bao-tin-moi-2026-08.md`.
 
+## Bắc Hưng Yên FDI Hub (09/2026)
+
+Cẩm nang và kho công cụ tiếp cận khách hàng FDI của Phòng KHDN – Tổ FDI (bản
+«FDI 343 HUB» 07/2026, trước là tệp HTML gửi tay) — thương hiệu thứ tám trong
+Bắc Hưng Yên Ways, đường dẫn `/one/fdi-hub`, **một trang chín tab** ghi trên
+`?tab=` (tổng quan · hành trình B1–B6 · checklist · RM Hoa ngữ & văn hóa · quà
+tặng · kho công cụ · báo cáo nhanh · kịch bản · trợ lý AI). Mở cho **mọi cán
+bộ**, không mở cho khách đối tác (có giá quà, liên hệ nhà cung cấp, quy trình đón
+tiếp nội bộ). Nội dung là dữ liệu thuần ở `src/data/one/fdiHub.ts`; ảnh
+infographic ở `public/fdi-hub/`; mã QR video eFAST sinh lúc chạy từ link. Tiến
+độ hành trình, checklist, bản nháp prompt lưu trên trình duyệt (tiền tố
+`fdihub:`) — không có bảng cho phần cẩm nang. Nghiên cứu và bước tiếp theo:
+`docs/tich-hop-fdi-hub-vao-bhy-ways-2026-09.md`.
+
+**Thống kê sử dụng theo phòng (10/09/2026).** Mỗi lần cán bộ mở một tab là một
+dòng trong `fdi_hub_luot_xem` (ghi qua RPC `fdi_hub_ghi_luot_xem`, chống trùng
+10 phút, chụp phòng tại thời điểm mở; không ai SELECT thẳng bảng). Tab «Thống
+kê sử dụng» (`?tab=thong-ke`) chỉ lãnh đạo phòng / PGĐ / BGĐ / TCTH thấy, đọc
+qua RPC `fdi_hub_thong_ke(_tu, _den)` — gác quyền ở SQL, trả số theo PHÒNG,
+không trả tên người; Phòng giao dịch xếp nhóm riêng, phòng chưa dùng vẫn hiện.
+Migration `20261022090000_fdi_hub_luot_xem.sql` **chưa áp**; file gỡ cùng tên
+trong `supabase/rollbacks/`. Chưa áp thì cẩm nang vẫn chạy bình thường (hook
+ghi lượt nuốt lỗi «hàm chưa có»), tab Thống kê hiện dòng nhắc chưa áp.
+
 ## Bắc Hưng Yên Training Center (09/2026)
 
 Trung tâm NHIỀU chương trình đào tạo và rèn luyện — thương hiệu thứ bảy trong

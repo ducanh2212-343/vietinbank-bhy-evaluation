@@ -112,6 +112,7 @@ const BehaviorJournalPage = lazyWithRetry(() => import("./pages/BehaviorJournalP
 const MyBehaviorPage = lazyWithRetry(() => import("./pages/MyBehaviorPage"));
 const OneHomePage = lazyWithRetry(() => import("./pages/one/OneHomePage"));
 const OneConnectPage = lazyWithRetry(() => import("./pages/one/OneConnectPage"));
+const OneFdiHubPage = lazyWithRetry(() => import("./pages/one/OneFdiHubPage"));
 const One3806Page = lazyWithRetry(() => import("./pages/one/One3806Page"));
 const OneMove2Page = lazyWithRetry(() => import("./pages/one/OneMove2Page"));
 const LichNghiAdminPage = lazyWithRetry(() => import("./pages/LichNghiAdminPage"));
@@ -243,6 +244,7 @@ const App = () => (
               {/* Cổng BHY ONE — cấu trúc 6 menu đã duyệt (docs/so-do-site-bhy-one.md) */}
               <Route path="/one" element={<OneHomePage />} />
               <Route path="/one/bhy-connect" element={<OneConnectPage />} />
+              <Route path="/one/fdi-hub" element={<OneFdiHubPage />} />
               <Route path="/one/bhy-3806" element={<One3806Page />} />
               <Route path="/one/chieu-thuc-2" element={<OneMove2Page />} />
               <Route path="/one/hoc-hoi" element={<OneLearnPage />} />
