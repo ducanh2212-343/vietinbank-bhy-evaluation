@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, ChevronUp, ShieldCheck } from 'lucide-react';
+import { ChevronDown, ChevronUp, Presentation, ShieldCheck } from 'lucide-react';
 import { OnePageShell } from '@/components/one/OnePageShell';
 import { IdeaHero, IdeaTabs } from '@/components/one/ideas/IdeaNav';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,9 +9,20 @@ import {
   useCouncilRoundItems,
   useCouncilRounds,
   useIdeaCouncilAccess,
+  usePhienTrinhBay,
   type CouncilItem,
   type PhieuGui,
 } from '@/components/one/ideas/council/useIdeaCouncil';
+import { IdeaCouncilBoLoc } from '@/components/one/ideas/council/IdeaCouncilBoLoc';
+import {
+  BO_LOC_RONG,
+  MAU_THE_CHAM,
+  locYTuongCham,
+  phienDangTrinh,
+  tinhTrangCham,
+  type BoLocCham,
+  type PhienTrinhBay,
+} from '@/lib/ideaCouncilPhien';
 import { useStaffDirectory } from '@/components/one/ideas/useStaffDirectory';
 import { IdeaCouncilVoteForm } from '@/components/one/ideas/council/IdeaCouncilVoteForm';
 import { IdeaCouncilSummary } from '@/components/one/ideas/council/IdeaCouncilSummary';
@@ -25,14 +36,19 @@ import { IdeaCouncilAdmin } from '@/components/one/ideas/council/IdeaCouncilAdmi
 type Tab = 'cham-diem' | 'tong-hop' | 'quan-tri';
 
 /** Thẻ một ý tưởng trong danh sách chấm: thông tin B1-B4 + nội dung + phiếu */
-function ItemCard({ item, readOnly, biChanTuCham, onSubmit }: {
+function ItemCard({ item, readOnly, biChanTuCham, tenPhien, onSubmit }: {
   item: CouncilItem;
   readOnly: boolean;
   /** Người xem là chủ/đồng đề xuất ý tưởng — RLS chặn chấm, UI báo trước */
   biChanTuCham: boolean;
+  /** Tên phiên trình bày chứa ý tưởng này (nếu đã xếp phiên) */
+  tenPhien: string | null;
   onSubmit: (itemId: string, phieu: PhieuGui, trangThai: 'draft' | 'submitted') => Promise<boolean>;
 }) {
   const [moNoiDung, setMoNoiDung] = useState(false);
+  // Nhìn viền thẻ là biết mình đã chấm chưa — không phải cuộn xuống đọc chữ
+  // trên nút gửi như bản trước
+  const mau = MAU_THE_CHAM[tinhTrangCham(item.myVote)];
 
   const khoiNoiDung: { label: string; value: string; icon: string }[] = [
     { label: 'Thực trạng hiện tại', value: item.idea.currentStatus, icon: '⚠️' },
@@ -41,13 +57,21 @@ function ItemCard({ item, readOnly, biChanTuCham, onSubmit }: {
   ].filter(k => k.value.trim());
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+    <div className={`border-2 rounded-2xl shadow-sm overflow-hidden transition-colors ${mau.the}`}>
       {/* B1-B4: mã, tên, cấp, tầng đề xuất */}
       <div className="p-4 sm:p-5 border-b border-slate-100 space-y-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="px-2 py-0.5 rounded-md bg-slate-800 text-white font-black text-2xs tracking-wider">
             {item.ideaCode}
           </span>
+          <span className={`px-2 py-0.5 rounded-full text-2xs font-black ${mau.chip}`}>
+            {mau.nhan}
+          </span>
+          {tenPhien && (
+            <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-sky-50 text-sky-700 border border-sky-200">
+              🎤 {tenPhien}
+            </span>
+          )}
           <span className={`px-2 py-0.5 rounded-full text-2xs font-black ${item.idea.level === 'Nội bộ CN' ? 'bg-[#005a9c]/10 text-[#005a9c]' : 'bg-[#ed1b24]/10 text-[#ed1b24]'}`}>
             {item.idea.level}
           </span>
@@ -116,6 +140,50 @@ function ItemCard({ item, readOnly, biChanTuCham, onSubmit }: {
   );
 }
 
+/**
+ * Dải «đang trình bày» — thứ đầu tiên thành viên nhìn thấy khi mở màn chấm
+ * giữa cuộc họp. TCTH bấm bắt đầu phiên ở máy chiếu, trong vòng 15 giây dải
+ * này hiện trên máy từng người kèm danh sách đã tự thu về đúng nhóm đang nghe.
+ */
+function DaiDangTrinh({ phien, soYTuong, dangBamTheo, onBamTheo, onXemCaDot }: {
+  phien: PhienTrinhBay;
+  soYTuong: number;
+  dangBamTheo: boolean;
+  onBamTheo: () => void;
+  onXemCaDot: () => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border-2 border-emerald-300 bg-emerald-50 p-3 shadow-sm">
+      <span className="flex items-center gap-1.5 font-black text-emerald-800 text-sm">
+        <Presentation className="h-4 w-4" /> Đang trình bày: {phien.ten}
+      </span>
+      <span className="rounded-full bg-white px-2 py-0.5 text-2xs font-black text-emerald-700 border border-emerald-200">
+        {soYTuong} ý tưởng
+      </span>
+      {phien.ghiChu && <span className="text-2xs text-emerald-700">{phien.ghiChu}</span>}
+      <div className="ml-auto flex flex-wrap gap-1.5">
+        {dangBamTheo ? (
+          <button
+            type="button"
+            onClick={onXemCaDot}
+            className="cursor-pointer rounded-lg bg-white px-3 py-1.5 text-2xs font-bold text-emerald-800 border border-emerald-300 hover:bg-emerald-100"
+          >
+            Xem toàn bộ đợt
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onBamTheo}
+            className="cursor-pointer rounded-lg bg-emerald-600 px-3 py-1.5 text-2xs font-black text-white hover:bg-emerald-700"
+          >
+            🎤 Chỉ hiện phiên đang trình bày
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function OneIdeaCouncilPage() {
   const { user } = useAuth();
   const { loading, isMember, isChair, isAdmin, isSystemAdmin } = useIdeaCouncilAccess();
@@ -138,6 +206,28 @@ export default function OneIdeaCouncilPage() {
   );
   const { items, isLoading: loadingItems } = useCouncilRoundItems(roundId);
   const { guiPhieu } = useCouncilMutations(roundId);
+  // Đợt đang mở = đang họp: đọc lại phiên mỗi 15 giây để TCTH bấm «Bắt đầu
+  // trình bày» ở máy chiếu là điện thoại của thành viên tự bám theo
+  const { phien } = usePhienTrinhBay(
+    roundId, isMember || isAdmin, selectedRound?.status === 'open',
+  );
+  const dangTrinh = phienDangTrinh(phien);
+  const tenPhienTheoId = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of phien) m.set(p.id, p.ten);
+    return m;
+  }, [phien]);
+
+  const [loc, datLoc] = useState<BoLocCham>(BO_LOC_RONG);
+  // Bám theo phiên nào TCTH đang cho trình bày. Chỉ tự đổi khi phiên đổi, để
+  // thành viên bấm «Mọi phiên trình bày» xem cả đợt thì không bị kéo về ngay.
+  const [phienDaBam, datPhienDaBam] = useState<string | null>(null);
+  useEffect(() => {
+    const id = dangTrinh?.id ?? null;
+    if (id === phienDaBam) return;
+    datPhienDaBam(id);
+    datLoc(l => ({ ...l, phienId: id }));
+  }, [dangTrinh, phienDaBam]);
 
   // Chặn tự chấm — cùng logic với policy INSERT (tài khoản + họ tên trong nhóm đề xuất)
   const tenChuan = (me?.fullName ?? '').toLowerCase().trim();
@@ -148,6 +238,9 @@ export default function OneIdeaCouncilPage() {
   const duocCham = items.filter(i => !biChan(i));
   const daGui = duocCham.filter(i => i.myVote?.status === 'submitted').length;
   const soNhap = duocCham.filter(i => i.myVote?.status === 'draft').length;
+  // Lọc chạy trên TOÀN BỘ ý tưởng của đợt (kể cả ý tưởng mình bị chặn tự chấm)
+  // để danh sách không khuyết chỗ khó hiểu khi đang tìm theo mã
+  const hienThi = locYTuongCham(items, loc);
 
   const tabs: { id: Tab; label: string; visible: boolean }[] = [
     { id: 'cham-diem', label: '🗳️ Chấm điểm', visible: true },
@@ -238,6 +331,26 @@ export default function OneIdeaCouncilPage() {
                     Đợt chấm đã chốt — xem kết quả ở tab «Kết quả tổng hợp». Phiếu đã gửi hiển thị bên dưới để đối chiếu.
                   </p>
                 )}
+                {dangTrinh && (
+                  <DaiDangTrinh
+                    phien={dangTrinh}
+                    soYTuong={items.filter(i => i.sessionId === dangTrinh.id).length}
+                    dangBamTheo={loc.phienId === dangTrinh.id}
+                    onBamTheo={() => datLoc(l => ({ ...l, phienId: dangTrinh.id }))}
+                    onXemCaDot={() => datLoc(l => ({ ...l, phienId: null }))}
+                  />
+                )}
+
+                {items.length > 0 && (
+                  <IdeaCouncilBoLoc
+                    tatCa={items}
+                    phien={phien}
+                    loc={loc}
+                    datLoc={datLoc}
+                    soHienThi={hienThi.length}
+                  />
+                )}
+
                 {loadingItems ? (
                   <div className="text-center py-10">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500 mx-auto" />
@@ -246,13 +359,27 @@ export default function OneIdeaCouncilPage() {
                   <p className="text-xs text-slate-400 italic text-center py-10">
                     {selectedRound ? 'Đợt này chưa có ý tưởng nào được trình Hội đồng.' : 'Chưa có đợt chấm nào.'}
                   </p>
+                ) : hienThi.length === 0 ? (
+                  <div className="text-center py-10 space-y-2">
+                    <p className="text-xs text-slate-500 font-semibold">
+                      Không có ý tưởng nào khớp với bộ lọc đang đặt.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => datLoc(BO_LOC_RONG)}
+                      className="cursor-pointer rounded-lg bg-slate-800 px-3 py-1.5 text-2xs font-bold text-white hover:bg-slate-700"
+                    >
+                      Bỏ lọc, xem cả {items.length} ý tưởng của đợt
+                    </button>
+                  </div>
                 ) : (
-                  items.map(item => (
+                  hienThi.map(item => (
                     <ItemCard
                       key={item.id}
                       item={item}
                       readOnly={selectedRound?.status !== 'open'}
                       biChanTuCham={biChan(item)}
+                      tenPhien={item.sessionId ? tenPhienTheoId.get(item.sessionId) ?? null : null}
                       onSubmit={guiPhieu}
                     />
                   ))

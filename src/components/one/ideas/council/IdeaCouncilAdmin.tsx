@@ -16,10 +16,12 @@ import {
   useCouncilCandidates,
   useCouncilMutations,
   useIdeaCouncilAccess,
+  usePhienTrinhBay,
   type CouncilItem,
   type CouncilRound,
 } from './useIdeaCouncil';
 import { IdeaCouncilMembers } from './IdeaCouncilMembers';
+import { IdeaCouncilPhienPanel } from './IdeaCouncilPhienPanel';
 import { IdeaCouncilProgress } from './IdeaCouncilProgress';
 
 // Khung quản trị của Phòng TCTH: tạo/mở/chốt đợt chấm, trình ý tưởng lên Hội
@@ -47,6 +49,7 @@ const CHUYEN_TRANG_THAI: Record<TrangThaiDot, { next: TrangThaiDot; label: strin
 export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, selectedRound, items, onSelectRound }) => {
   const { isSystemAdmin } = useIdeaCouncilAccess();
   const { taoDot, doiTrangThaiDot, datHanChot, themYTuong, goYTuong } = useCouncilMutations(selectedRound?.id ?? null);
+  const { phien } = usePhienTrinhBay(selectedRound?.id ?? null, !!selectedRound);
   const { candidates } = useCouncilCandidates(true);
   // Phiếu ẩn danh chỉ mở sau khi đợt CHỐT (System Admin xem mọi lúc) — RPC gác;
   // đang mở thì không gọi, hiển thị ghi chú khóa thay vì "chưa có phiếu"
@@ -390,6 +393,11 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
             {items.length === 0 && (
               <p className="text-slate-400 italic text-center py-3">Đợt này chưa có ý tưởng nào.</p>
             )}
+          </div>
+
+          {/* Phiên trình bày — nhóm 1-5 ý tưởng lên trình bày rồi chấm ngay */}
+          <div className="p-3 bg-sky-50/50 border border-sky-200 rounded-xl">
+            <IdeaCouncilPhienPanel round={selectedRound} items={items} phien={phien} />
           </div>
 
           {/* Tiến độ chấm + nhắc push — tên thật, không điểm */}

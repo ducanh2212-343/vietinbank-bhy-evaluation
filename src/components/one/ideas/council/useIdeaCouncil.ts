@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import type { PhienTrinhBay, TrangThaiPhien } from '@/lib/ideaCouncilPhien';
 import {
   docTongHopRpc,
   type DeXuatHoiDong,
@@ -81,6 +82,10 @@ export interface CouncilItem {
   roundId: string;
   ideaCode: string;
   proposedTier: TangDeXuat;
+  /** Phiên trình bày đang chứa ý tưởng này (null = chưa xếp phiên) */
+  sessionId: string | null;
+  /** Thứ tự trình bày trong phiên */
+  thuTu: number;
   idea: {
     id: string;
     title: string;
@@ -120,6 +125,7 @@ const itemsKey = (roundId: string) => ['idea-council-items', roundId];
 const summaryKey = (roundId: string) => ['idea-council-summary', roundId];
 const ballotsKey = (roundId: string) => ['idea-council-anon-ballots', roundId];
 const progressKey = (roundId: string) => ['idea-council-progress', roundId];
+const phienKey = (roundId: string) => ['idea-council-phien', roundId];
 
 type VoteRow = {
   id: string;
@@ -190,7 +196,7 @@ export function useCouncilRoundItems(roundId: string | null) {
     queryFn: async (): Promise<CouncilItem[]> => {
       const { data: rows, error } = await supabase
         .from('portal_idea_council_items')
-        .select('id, round_id, idea_code, proposed_tier, portal_ideas(id, title, department_name, level, proposer, current_status, proposed_solution, expected_benefits, development_level, has_demo, created_by)')
+        .select('id, round_id, idea_code, proposed_tier, phien_id, thu_tu, portal_ideas(id, title, department_name, level, proposer, current_status, proposed_solution, expected_benefits, development_level, has_demo, created_by)')
         .eq('round_id', roundId!)
         .order('idea_code', { ascending: true });
       if (error) throw error;
@@ -218,6 +224,8 @@ export function useCouncilRoundItems(roundId: string | null) {
           roundId: r.round_id,
           ideaCode: r.idea_code,
           proposedTier: r.proposed_tier as TangDeXuat,
+          sessionId: r.phien_id,
+          thuTu: r.thu_tu,
           idea: {
             id: idea.id,
             title: idea.title,
@@ -260,6 +268,7 @@ export function useCouncilMutations(roundId: string | null) {
       queryClient.invalidateQueries({ queryKey: summaryKey(roundId) });
       queryClient.invalidateQueries({ queryKey: ballotsKey(roundId) });
       queryClient.invalidateQueries({ queryKey: progressKey(roundId) });
+      queryClient.invalidateQueries({ queryKey: phienKey(roundId) });
     }
   }, [queryClient, roundId]);
 
@@ -388,10 +397,122 @@ export function useCouncilMutations(roundId: string | null) {
     refresh();
   }, [refresh]);
 
+  // ---- Phiên trình bày (TCTH) ----
+
+  const taoPhien = useCallback(async (rid: string, ten: string, thuTu: number): Promise<boolean> => {
+    const { error } = await supabase.from('portal_idea_council_sessions')
+      .insert({ round_id: rid, ten: ten.trim(), thu_tu: thuTu });
+    if (error) {
+      toast.error(`Không tạo được phiên trình bày: ${error.message}`);
+      return false;
+    }
+    toast.success('Đã tạo phiên trình bày');
+    refresh();
+    return true;
+  }, [refresh]);
+
+  const suaPhien = useCallback(async (
+    id: string, patch: { ten?: string; thuTu?: number; ghiChu?: string },
+  ) => {
+    const { error } = await supabase.from('portal_idea_council_sessions')
+      .update({
+        ...(patch.ten !== undefined ? { ten: patch.ten.trim() } : {}),
+        ...(patch.thuTu !== undefined ? { thu_tu: patch.thuTu } : {}),
+        ...(patch.ghiChu !== undefined ? { ghi_chu: patch.ghiChu.trim() || null } : {}),
+      })
+      .eq('id', id);
+    if (error) {
+      toast.error(`Không sửa được phiên: ${error.message}`);
+      return;
+    }
+    refresh();
+  }, [refresh]);
+
+  /**
+   * Xóa phiên KHÔNG xóa ý tưởng khỏi đợt và KHÔNG xóa phiếu đã chấm — khóa
+   * ngoại để ON DELETE SET NULL, ý tưởng quay về nhóm «chưa xếp phiên».
+   */
+  const xoaPhien = useCallback(async (id: string) => {
+    const { error } = await supabase.from('portal_idea_council_sessions').delete().eq('id', id);
+    if (error) {
+      toast.error(`Không xóa được phiên: ${error.message}`);
+      return;
+    }
+    toast.success('Đã xóa phiên — ý tưởng quay về nhóm chưa xếp phiên, phiếu đã chấm giữ nguyên');
+    refresh();
+  }, [refresh]);
+
+  const xepVaoPhien = useCallback(async (itemId: string, phienId: string | null) => {
+    const { error } = await supabase.from('portal_idea_council_items')
+      .update({ phien_id: phienId }).eq('id', itemId);
+    if (error) {
+      toast.error(`Không xếp được vào phiên: ${error.message}`);
+      return;
+    }
+    refresh();
+  }, [refresh]);
+
+  /** Bắt đầu trình bày — RPC tự đóng phiên đang chạy trong cùng một giao dịch */
+  const moPhien = useCallback(async (phienId: string) => {
+    const { error } = await supabase.rpc('bhy_ideas_hd_mo_phien', { _phien_id: phienId });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success('Đã bắt đầu phiên — màn chấm của Hội đồng tự thu về phiên này');
+    refresh();
+  }, [refresh]);
+
+  const dongPhien = useCallback(async (phienId: string) => {
+    const { error } = await supabase.rpc('bhy_ideas_hd_dong_phien', { _phien_id: phienId });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success('Đã kết thúc phiên trình bày');
+    refresh();
+  }, [refresh]);
+
   return {
     guiPhieu, taoDot, doiTrangThaiDot, datHanChot, congBoKetQua,
     themYTuong, goYTuong, nhacPush,
+    taoPhien, suaPhien, xoaPhien, xepVaoPhien, moPhien, dongPhien,
   };
+}
+
+/**
+ * Phiên trình bày của một đợt.
+ *
+ * `live` = đợt đang mở: tự đọc lại mỗi 15 giây. Đây là mấu chốt của kịch bản
+ * họp — TCTH bấm «Bắt đầu trình bày» ở máy chiếu thì trong vòng 15 giây màn
+ * chấm trên điện thoại của từng thành viên tự thu về đúng nhóm ý tưởng đang
+ * nghe, không ai phải bấm gì.
+ */
+export function usePhienTrinhBay(roundId: string | null, enabled: boolean, live = false) {
+  const { data: phien = [], isLoading } = useQuery({
+    queryKey: phienKey(roundId ?? 'none'),
+    enabled: enabled && !!roundId,
+    refetchInterval: live ? 15_000 : false,
+    queryFn: async (): Promise<PhienTrinhBay[]> => {
+      const { data, error } = await supabase
+        .from('portal_idea_council_sessions')
+        .select('*')
+        .eq('round_id', roundId!)
+        .order('thu_tu', { ascending: true });
+      if (error) throw error;
+      return (data ?? []).map(p => ({
+        id: p.id,
+        roundId: p.round_id,
+        ten: p.ten,
+        thuTu: p.thu_tu,
+        trangThai: p.trang_thai as TrangThaiPhien,
+        batDauLuc: p.bat_dau_luc,
+        ketThucLuc: p.ket_thuc_luc,
+        ghiChu: p.ghi_chu,
+      }));
+    },
+  });
+  return { phien, isLoading };
 }
 
 // ---- Thành viên Hội đồng (bảng — GĐ quyết định từng thời kỳ, TCTH thao tác) ----
