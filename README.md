@@ -193,7 +193,12 @@ trần 10MB cho bucket `bhy-one` vốn đang để không giới hạn.
   `20261006090000_bhy_ideas_ket_luan_tcth_va_bao_chu_y_tuong` **đã áp** (03/09/2026) — kết luận
   TCTH (nuôi dưỡng / dừng), báo chủ ý tưởng ở mọi bước qua mã `IDEA_TIEN_TRINH` (mức NHE/KHEN) và
   `IDEA_TRA_VE` (mức DO), hàm sổ đầy đủ để kết xuất; `20261007090000_bhy_ideas_so_ben_re_kem_noi_dung` **đã áp** (03/09/2026) —
-  sổ Bén rễ trả kèm nội dung ý tưởng để thao tác tại chỗ. **Cần deploy lại `notify-ct2`** sau khi gộp. Tên file mang số thứ tự tăng dần
+  sổ Bén rễ trả kèm nội dung ý tưởng để thao tác tại chỗ; `20261023090000_bhy_ideas_hd_phien_trinh_bay`
+  **đã áp** (11/09/2026) — phiên trình bày trong đợt chấm Hội đồng (bảng `portal_idea_council_sessions`,
+  hai cột `phien_id`/`thu_tu` trên `portal_idea_council_items`, hàm `bhy_ideas_hd_mo_phien` /
+  `bhy_ideas_hd_dong_phien`). Đợt «Tháng 6,7,8» đang chấm dở lúc áp nên migration này **chỉ cộng thêm**:
+  không sửa, không xóa dòng nào; phiếu chấm, điểm tổng hợp và quorum giữ nguyên. `notify-ct2`
+  **đã deploy lại** (04/09/2026, bản 16). Tên file mang số thứ tự tăng dần
   chứ không phải ngày lịch (chuỗi Ideas đã vượt quá ngày thật từ 08/2026); mỗi file đều có
   bản gỡ ở `supabase/rollbacks/`.
 

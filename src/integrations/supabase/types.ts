@@ -2644,26 +2644,39 @@ export type Database = {
           id: string
           idea_code: string
           idea_id: string
+          phien_id: string | null
           proposed_tier: string
           round_id: string
+          thu_tu: number
         }
         Insert: {
           created_at?: string
           id?: string
           idea_code: string
           idea_id: string
+          phien_id?: string | null
           proposed_tier: string
           round_id: string
+          thu_tu?: number
         }
         Update: {
           created_at?: string
           id?: string
           idea_code?: string
           idea_id?: string
+          phien_id?: string | null
           proposed_tier?: string
           round_id?: string
+          thu_tu?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "portal_idea_council_items_phien_id_fkey"
+            columns: ["phien_id"]
+            isOneToOne: false
+            referencedRelation: "portal_idea_council_sessions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "portal_idea_council_items_idea_id_fkey"
             columns: ["idea_id"]
@@ -2673,6 +2686,56 @@ export type Database = {
           },
           {
             foreignKeyName: "portal_idea_council_items_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "portal_idea_council_rounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_idea_council_sessions: {
+        Row: {
+          bat_dau_luc: string | null
+          created_at: string
+          created_by: string
+          ghi_chu: string | null
+          id: string
+          ket_thuc_luc: string | null
+          round_id: string
+          ten: string
+          thu_tu: number
+          trang_thai: string
+          updated_at: string
+        }
+        Insert: {
+          bat_dau_luc?: string | null
+          created_at?: string
+          created_by?: string
+          ghi_chu?: string | null
+          id?: string
+          ket_thuc_luc?: string | null
+          round_id: string
+          ten: string
+          thu_tu?: number
+          trang_thai?: string
+          updated_at?: string
+        }
+        Update: {
+          bat_dau_luc?: string | null
+          created_at?: string
+          created_by?: string
+          ghi_chu?: string | null
+          id?: string
+          ket_thuc_luc?: string | null
+          round_id?: string
+          ten?: string
+          thu_tu?: number
+          trang_thai?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_idea_council_sessions_round_id_fkey"
             columns: ["round_id"]
             isOneToOne: false
             referencedRelation: "portal_idea_council_rounds"
@@ -5454,6 +5517,14 @@ export type Database = {
       bhy_ideas_so_cb_tinh_kpi: {
         Args: { _phong_ideas: string }
         Returns: number
+      }
+      bhy_ideas_hd_mo_phien: {
+        Args: { _phien_id: string }
+        Returns: Json
+      }
+      bhy_ideas_hd_dong_phien: {
+        Args: { _phien_id: string }
+        Returns: Json
       }
       bhy_ideas_hd_cong_bo: {
         Args: { _published: boolean; _round_id: string }
