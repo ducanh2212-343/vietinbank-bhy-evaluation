@@ -5,6 +5,7 @@
 // gói cước và nhật ký. Mọi lệnh đi qua edge function zalo-oa (token không bao giờ
 // xuống trình duyệt); trang chỉ thấy mốc giờ và kết quả.
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   CheckCircle2, CircleAlert, KeyRound, MessageSquareText, RefreshCw, Send, Users, Wallet, XCircle,
 } from 'lucide-react';
@@ -35,9 +36,32 @@ interface TongQuan {
 type CauHinh = Record<string, string | null>;
 
 const TEN_LOAI_NHAT_KY: Record<string, string> = {
-  doi_ma: 'Đổi mã ủy quyền', gia_han: 'Gia hạn token', liet_ke_nhom: 'Đọc danh sách nhóm',
-  luu_nhom: 'Lưu nhóm', gui_tin: 'Gửi tin', bi_mat: 'Nạp Secret Key',
+  doi_ma: 'Đổi mã ủy quyền', nap_token: 'Nạp refresh token', gia_han: 'Gia hạn token',
+  liet_ke_nhom: 'Đọc danh sách nhóm', luu_nhom: 'Lưu nhóm', gui_tin: 'Gửi tin', bi_mat: 'Nạp Secret Key',
 };
+
+/** Khóa sessionStorage giữ code_verifier giữa lúc tạo và lúc Zalo gọi về kèm oauth_code. */
+const KHOA_VERIFIER = 'zalo_code_verifier';
+
+/** Base64url không đệm — đúng dạng Zalo yêu cầu cho code_challenge (tài liệu «Xác thực và ủy quyền»). */
+export function base64Url(bytes: Uint8Array): string {
+  let s = '';
+  for (const b of bytes) s += String.fromCharCode(b);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/**
+ * Tạo cặp PKCE theo tài liệu Zalo: verifier là chuỗi 43 ký tự chữ-số, challenge
+ * = base64url(SHA-256(ASCII(verifier))). Zalo yêu cầu mỗi lần xin mã một verifier khác.
+ */
+export async function taoPkce(): Promise<{ verifier: string; challenge: string }> {
+  const bang = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const ngau = crypto.getRandomValues(new Uint8Array(43));
+  let verifier = '';
+  for (const n of ngau) verifier += bang[n % bang.length];
+  const bam = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  return { verifier, challenge: base64Url(new Uint8Array(bam)) };
+}
 
 /** Tình trạng token nhìn từ mốc hết hạn: còn tốt / sắp hết / đã hết / chưa có. */
 export function tinhTrangToken(hetHan: string | null | undefined, bayGio = Date.now()) {
@@ -68,8 +92,15 @@ export default function QuanTriZaloPage() {
   const [loading, setLoading] = useState(true);
   const [dangChay, setDangChay] = useState<string | null>(null);
 
+  const [searchParams, setSearchParams] = useSearchParams();
   const [secretKey, setSecretKey] = useState('');
-  const [oauthCode, setOauthCode] = useState('');
+  // Zalo gọi về callback URL dạng /quan-tri-zalo?code=...&oa_id=... — đọc sẵn vào ô
+  const [oauthCode, setOauthCode] = useState(() => searchParams.get('code') ?? '');
+  const [codeVerifier, setCodeVerifier] = useState(() => {
+    try { return sessionStorage.getItem(KHOA_VERIFIER) ?? ''; } catch { return ''; }
+  });
+  const [codeChallenge, setCodeChallenge] = useState('');
+  const [refreshTokenDan, setRefreshTokenDan] = useState('');
   const [tinThu, setTinThu] = useState('');
   const [dsNhom, setDsNhom] = useState<{ group_id: string; group_name: string }[] | null>(null);
   const [goiCuoc, setGoiCuoc] = useState<CauHinh>({});
@@ -136,9 +167,28 @@ export default function QuanTriZaloPage() {
     else { toast({ title: 'Đã nạp Secret Key vào kho bí mật' }); setSecretKey(''); load(); }
   };
 
+  const taoMaPkce = async () => {
+    const { verifier, challenge } = await taoPkce();
+    setCodeVerifier(verifier);
+    setCodeChallenge(challenge);
+    try { sessionStorage.setItem(KHOA_VERIFIER, verifier); } catch { /* trình duyệt chặn — vẫn còn trong ô */ }
+  };
+
   const doiMa = async () => {
-    const kq = await goiZaloOa('doi_ma', { code: oauthCode.trim() });
-    if (kq?.ok) { toast({ title: 'Đã lấy token', description: `Hết hạn lúc ${gio(kq.access_het_han_luc)}` }); setOauthCode(''); }
+    const kq = await goiZaloOa('doi_ma', {
+      code: oauthCode.trim(), ...(codeVerifier.trim() ? { code_verifier: codeVerifier.trim() } : {}),
+    });
+    if (kq?.ok) {
+      toast({ title: 'Đã lấy token', description: `Hết hạn lúc ${gio(kq.access_het_han_luc)}` });
+      setOauthCode(''); setCodeVerifier(''); setCodeChallenge('');
+      try { sessionStorage.removeItem(KHOA_VERIFIER); } catch { /* bỏ qua */ }
+      if (searchParams.has('code')) setSearchParams({}, { replace: true });
+    }
+  };
+
+  const napRefreshToken = async () => {
+    const kq = await goiZaloOa('nap_token', { refresh_token: refreshTokenDan.trim() });
+    if (kq?.ok) { toast({ title: 'Đã nạp token', description: `Đã đổi lấy cặp mới, hết hạn lúc ${gio(kq.access_het_han_luc)}` }); setRefreshTokenDan(''); }
   };
 
   const giaHan = async () => {
@@ -297,21 +347,58 @@ export default function QuanTriZaloPage() {
           </Card>
 
           <Card>
-            <CardHeader className="pb-3"><CardTitle className="text-base">2. Đổi mã ủy quyền lấy token</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Trên Zalo Developers → ứng dụng → Official Account API → «Lấy mã ủy quyền» (oauth_code). Mã chỉ sống vài phút và dùng được một lần —
-                lấy xong dán ngay. Đổi mã thành công là cặp token cũ (nếu có) bị thay hẳn.
-              </p>
-              <div className="flex gap-2 flex-wrap items-end">
-                <div className="flex-1 min-w-[240px]">
-                  <Label htmlFor="code">oauth_code</Label>
-                  <Input id="code" autoComplete="off" value={oauthCode} onChange={(e) => setOauthCode(e.target.value)} placeholder="Dán mã ủy quyền" />
+            <CardHeader className="pb-3"><CardTitle className="text-base">2. Lấy token lần đầu — chọn một trong hai cách</CardTitle></CardHeader>
+            <CardContent className="space-y-5">
+              <div className="space-y-3 rounded-md border p-3">
+                <div className="font-medium text-sm">Cách 1 · Đổi mã ủy quyền (PKCE)</div>
+                <ol className="text-sm text-muted-foreground list-decimal pl-5 space-y-1">
+                  <li>Bấm «Tạo mã PKCE», chép <em>code_challenge</em>.</li>
+                  <li>Trên Zalo for Developers → ứng dụng → Official Account API → «Thiết lập đường dẫn yêu cầu cấp quyền»: dán code_challenge,
+                    đặt callback URL là <span className="font-mono">{typeof window !== 'undefined' ? `${window.location.origin}/quan-tri-zalo` : '/quan-tri-zalo'}</span>, chọn đủ quyền, lưu.</li>
+                  <li>Mở đường dẫn cấp quyền bằng tài khoản admin OA, bấm «Cho phép». Zalo đưa anh quay lại trang này kèm <em>code</em> — ô bên dưới tự điền. Mã sống vài phút, dùng một lần.</li>
+                  <li>Bấm «Đổi mã lấy token». Mỗi lần xin mã phải tạo PKCE mới.</li>
+                </ol>
+                <div className="flex gap-2 flex-wrap items-end">
+                  <Button variant="outline" onClick={taoMaPkce}>Tạo mã PKCE</Button>
+                  {codeChallenge && (
+                    <div className="flex-1 min-w-[240px]">
+                      <Label>code_challenge (dán vào Zalo)</Label>
+                      <Input readOnly value={codeChallenge} onFocus={(e) => e.currentTarget.select()} className="font-mono text-xs" />
+                    </div>
+                  )}
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <div>
+                    <Label htmlFor="code">oauth_code</Label>
+                    <Input id="code" autoComplete="off" value={oauthCode} onChange={(e) => setOauthCode(e.target.value)} placeholder="Dán mã ủy quyền (hoặc tự điền từ callback)" />
+                  </div>
+                  <div>
+                    <Label htmlFor="verifier">code_verifier (để trống nếu Zalo không đặt code_challenge)</Label>
+                    <Input id="verifier" autoComplete="off" value={codeVerifier} onChange={(e) => setCodeVerifier(e.target.value)} placeholder="43 ký tự, tự giữ từ lúc tạo PKCE" className="font-mono text-xs" />
+                  </div>
                 </div>
                 <Button onClick={doiMa} disabled={!oauthCode.trim() || dangChay === 'doi_ma' || coBiMat === false}>
                   {dangChay === 'doi_ma' ? 'Đang đổi…' : 'Đổi mã lấy token'}
                 </Button>
               </div>
+
+              <div className="space-y-3 rounded-md border p-3">
+                <div className="font-medium text-sm">Cách 2 · Dán refresh token từ API Explorer (nhanh hơn, dành cho admin OA)</div>
+                <p className="text-sm text-muted-foreground">
+                  Zalo for Developers → Công cụ &amp; Hỗ trợ → API Explorer → chọn ứng dụng, loại «OA Access Token», chọn OA, «Cho phép» → chép <em>refresh token</em> dán vào đây.
+                  Cổng dùng nó đổi ngay lấy cặp mới của riêng hệ thống; chuỗi vừa dán hết tác dụng ngay sau đó.
+                </p>
+                <div className="flex gap-2 flex-wrap items-end">
+                  <div className="flex-1 min-w-[240px]">
+                    <Label htmlFor="rt">refresh_token</Label>
+                    <Input id="rt" type="password" autoComplete="off" value={refreshTokenDan} onChange={(e) => setRefreshTokenDan(e.target.value)} placeholder="Dán refresh token" />
+                  </div>
+                  <Button onClick={napRefreshToken} disabled={refreshTokenDan.trim().length < 20 || dangChay === 'nap_token' || coBiMat === false}>
+                    {dangChay === 'nap_token' ? 'Đang nạp…' : 'Nạp và đổi lấy cặp mới'}
+                  </Button>
+                </div>
+              </div>
+
               <div className="text-sm text-muted-foreground grid gap-1 sm:grid-cols-2">
                 <span>Lấy token lần đầu: {gio(token?.cap_luc)}</span>
                 <span>Gia hạn gần nhất: {gio(token?.gia_han_luc)}</span>

@@ -586,10 +586,14 @@ chi nhánh đọc; push của cổng chỉ một phần cán bộ bật.
   `zalo_cau_hinh` (OA ID, nhóm GMF, công tắc, gói cước — quản trị đọc/sửa),
   `zalo_nhat_ky` (mọi lần gọi Zalo). Secret Key nằm ở Vault `zalo_app_secret_key`,
   nạp từ trang Quản trị Zalo (RPC `zalo_dat_bi_mat`, chỉ system_admin).
-- Edge function **`zalo-oa`** (v1, đã deploy, đã gọi thử `trang_thai` bằng
-  service_role qua pg_net) — cửa duy nhất nói chuyện với Zalo: `doi_ma`,
-  `gia_han`, `trang_thai`, `liet_ke_nhom`, `luu_nhom`, `gui_thu`. Thư viện
-  `supabase/functions/_shared/zalo.ts`.
+- Edge function **`zalo-oa`** (v2, đã deploy, đã gọi thử `trang_thai` bằng
+  service_role qua pg_net) — cửa duy nhất nói chuyện với Zalo: `doi_ma` (kèm
+  `code_verifier` vì Zalo dùng PKCE), `nap_token` (dán refresh token lấy từ API
+  Explorer — cách 2 trong tài liệu Zalo; hệ thống đổi ngay lấy cặp mới của riêng
+  nó), `gia_han`, `trang_thai`, `liet_ke_nhom`, `luu_nhom`, `gui_thu`. Thư viện
+  `supabase/functions/_shared/zalo.ts`. Trang Quản trị Zalo tự tạo cặp PKCE
+  (verifier 43 ký tự, challenge = base64url(SHA-256)) và nhận `?code=` khi Zalo
+  gọi về callback `/quan-tri-zalo`.
 - **Refresh token của Zalo chỉ dùng được MỘT lần**: mỗi lần gia hạn nhận cặp mới
   và ghi đè ngay xuống `zalo_token`; khóa mềm `zalo_giu_khoa_gia_han()` chặn hai
   lần gia hạn song song; lỗi 2 lần liên tiếp → `zalo_canh_bao_quan_tri` đẩy tin
@@ -608,8 +612,12 @@ nhóm (gom 2 phút, retry), và bật công tắc `bat_sao_xung_dang`. Không đ
 hàng, số tài khoản, dữ liệu tín dụng vào tin Zalo.
 
 **Chạy lần đầu (trên cổng, không cần kỹ thuật):** Quản trị Zalo → tab Kết nối →
-(1) dán Secret Key → (2) lấy oauth_code trên Zalo Developers, dán, «Đổi mã lấy
-token» → tab Nhóm → (3) «Tìm và lưu nhóm» → (4) «Gửi tin thử» rồi xác nhận trên Zalo.
+(1) dán Secret Key → (2) **cách nhanh:** API Explorer trên Zalo for Developers →
+OA Access Token → chép refresh token → dán vào «Cách 2» (hoặc cách 1: «Tạo mã
+PKCE», dán code_challenge + callback `https://bachungyenone.com/quan-tri-zalo`
+vào phần thiết lập đường dẫn cấp quyền của ứng dụng, mở đường dẫn, «Cho phép»,
+quay về trang là mã tự điền, bấm «Đổi mã lấy token») → tab Nhóm → (3) «Tìm và
+lưu nhóm» → (4) «Gửi tin thử» rồi xác nhận trên Zalo.
 
 ## Chiêu thức 2 — Kanban 5W2H + PDCA (08/2026)
 

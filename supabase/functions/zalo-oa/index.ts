@@ -1,7 +1,8 @@
 // zalo-oa — cửa duy nhất nói chuyện với Zalo Official Account từ cổng BHY ONE.
 //
 // Body JSON: { hanh_dong, ...tham số }. Các hành động:
-//   doi_ma        { code }        đổi oauth_code lấy cặp token đầu tiên (bước 1)
+//   doi_ma        { code, code_verifier? }  đổi oauth_code lấy cặp token đầu tiên (bước 1, cách 1 — PKCE)
+//   nap_token     { refresh_token }          dán refresh token lấy từ API Explorer (bước 1, cách 2)
 //   gia_han       { ep? }         gia hạn nếu sắp hết hạn — cron 6 tiếng/lần gọi (bước 2)
 //   trang_thai                    tình trạng token + cấu hình (không lộ token)
 //   liet_ke_nhom                  các nhóm GMF mà OA đang tham gia
@@ -15,7 +16,7 @@ import { requireRole, HttpError } from '../_shared/auth.ts';
 import { corsHeaders, jsonResponse } from '../_shared/cors.ts';
 import {
   LoiZalo, docCauHinh, docToken, doiMaLayToken, ghiCauHinh, ghiNhatKy,
-  giaHanNeuCan, guiVanBanVaoNhom, lietKeNhom,
+  giaHanNeuCan, guiVanBanVaoNhom, lietKeNhom, napRefreshToken,
 } from '../_shared/zalo.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -46,10 +47,18 @@ Deno.serve(async (req) => {
       case 'doi_ma': {
         const code = String(body.code ?? '').trim();
         if (!code) throw new HttpError('Thiếu oauth_code', 400);
-        const t = await doiMaLayToken(admin, code);
+        const codeVerifier = String(body.code_verifier ?? '').trim() || undefined;
+        const t = await doiMaLayToken(admin, code, codeVerifier);
         return jsonResponse({
           ok: true, access_het_han_luc: t.access_het_han_luc, refresh_het_han_luc: t.refresh_het_han_luc,
         });
+      }
+      case 'nap_token': {
+        const rt = String(body.refresh_token ?? '').trim();
+        if (rt.length < 20) throw new HttpError('refresh_token không hợp lệ', 400);
+        const kq = await napRefreshToken(admin, rt);
+        if (!kq.da_gia_han) return jsonResponse({ ok: false, loi: 'Zalo không đổi được refresh token vừa dán: ' + kq.ly_do, ...kq }, 502);
+        return jsonResponse({ ok: true, ...kq });
       }
       case 'gia_han': {
         const kq = await giaHanNeuCan(admin, body.ep === true);

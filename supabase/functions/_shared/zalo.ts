@@ -175,19 +175,45 @@ async function canhBaoQuanTri(admin: SupabaseClient, tieuDe: string, noiDung: st
   if (error) console.error('zalo_canh_bao_quan_tri:', error.message);
 }
 
-/** Bước 1: đổi oauth_code lấy cặp token đầu tiên. */
-export async function doiMaLayToken(admin: SupabaseClient, code: string): Promise<DongToken> {
+/**
+ * Bước 1 (cách 1): đổi oauth_code lấy cặp token đầu tiên.
+ * Zalo dùng PKCE: nếu đường dẫn cấp quyền được thiết lập với code_challenge thì
+ * lúc đổi mã BẮT BUỘC gửi kèm code_verifier tương ứng, không thì Zalo từ chối.
+ */
+export async function doiMaLayToken(admin: SupabaseClient, code: string, codeVerifier?: string): Promise<DongToken> {
   const cu = await docToken(admin);
   try {
-    const t = await goiOAuth(admin, { grant_type: 'authorization_code', code });
+    const t = await goiOAuth(admin, {
+      grant_type: 'authorization_code', code,
+      ...(codeVerifier ? { code_verifier: codeVerifier } : {}),
+    });
     await luuToken(admin, t, false, cu);
-    await ghiNhatKy(admin, 'doi_ma', true, 'Đổi oauth_code lấy token thành công', { expires_in: t.expires_in });
+    await ghiNhatKy(admin, 'doi_ma', true, 'Đổi oauth_code lấy token thành công', { expires_in: t.expires_in, co_verifier: !!codeVerifier });
   } catch (e) {
     const loi = e as LoiZalo;
-    await ghiNhatKy(admin, 'doi_ma', false, loi.message, loi.chiTiet ?? {});
+    await ghiNhatKy(admin, 'doi_ma', false, loi.message, { ...(loi.chiTiet ?? {}), co_verifier: !!codeVerifier });
     throw loi;
   }
   return (await docToken(admin))!;
+}
+
+/**
+ * Bước 1 (cách 2): admin OA lấy refresh token bằng công cụ API Explorer trên
+ * Zalo for Developers rồi dán vào cổng. Không lưu thẳng cái vừa dán: dùng nó
+ * gia hạn NGAY để nhận cặp mới do hệ thống giữ — cái dán vào chết ngay sau đó,
+ * nên có lộ ra ngoài (ảnh chụp màn hình, lịch sử clipboard) cũng vô hại.
+ */
+export async function napRefreshToken(admin: SupabaseClient, refreshToken: string): Promise<KetQuaGiaHan> {
+  const bayGio = new Date().toISOString();
+  const { error } = await admin.from('zalo_token').upsert({
+    id: 1, access_token: null, refresh_token: refreshToken,
+    access_het_han_luc: null, refresh_het_han_luc: new Date(Date.now() + HAN_REFRESH_MS).toISOString(),
+    cap_luc: bayGio, gia_han_luc: null, so_lan_gia_han: 0,
+    loi_lien_tiep: 0, loi_gan_nhat: null, loi_luc: null, dang_gia_han_tu: null, cap_nhat_luc: bayGio,
+  });
+  if (error) throw new LoiZalo('Không ghi được refresh token: ' + error.message);
+  await ghiNhatKy(admin, 'nap_token', true, 'Nạp refresh token từ API Explorer — đang đổi lấy cặp mới');
+  return giaHanNeuCan(admin, true);
 }
 
 export interface KetQuaGiaHan {

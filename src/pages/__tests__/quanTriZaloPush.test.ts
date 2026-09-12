@@ -44,3 +44,20 @@ describe('phiMoiTin', () => {
     expect(phiMoiTin(1000000, 3)).toBe(333333);
   });
 });
+
+describe('PKCE theo tài liệu Zalo', () => {
+  it('verifier 43 ký tự chữ-số; challenge = base64url(SHA-256(verifier)), không đệm', async () => {
+    const { taoPkce, base64Url } = await import('../QuanTriZaloPage');
+    const { verifier, challenge } = await taoPkce();
+    expect(verifier).toMatch(/^[A-Za-z0-9]{43}$/);
+    expect(challenge).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    const bam = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+    expect(challenge).toBe(base64Url(new Uint8Array(bam)));
+  });
+  it('mỗi lần tạo một verifier khác nhau (Zalo yêu cầu)', async () => {
+    const { taoPkce } = await import('../QuanTriZaloPage');
+    const a = await taoPkce();
+    const b = await taoPkce();
+    expect(a.verifier).not.toBe(b.verifier);
+  });
+});
