@@ -289,7 +289,7 @@ export function PreviousActionsReview({ formId, previousFormId, previousCycleNam
             attitude_name: r._attitude_name || null,
             label: r._label,
           })));
-          toast.info(`Tự động chuyển ${incompletes.length} hành động chưa hoàn thành sang KH kỳ này`);
+          // Kết quả chuyển (kèm giới hạn 3 upskill/3 AI) do handler của trang toast — tránh 2 toast chồng nhau
         }
       }
 
@@ -476,7 +476,7 @@ export function PreviousActionsReview({ formId, previousFormId, previousCycleNam
                   attitude_name: r._attitude_name || null,
                   label: r._label,
                 })));
-                toast.success(`Đã chuyển ${incompletes.length} hành động chưa hoàn thành xuống KH phát triển kỳ này`);
+                // Kết quả (số chuyển được / bị cắt vì giới hạn) do handler của trang toast
               }}
             >
               Chuyển hành động chưa hoàn thành → KH kỳ này

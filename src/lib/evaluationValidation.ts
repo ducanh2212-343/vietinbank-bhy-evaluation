@@ -3,6 +3,7 @@ import type { AttitudeAssessment } from '@/components/evaluation/EvalSectionC';
 import type { SkillPriority } from '@/components/bm/SkillPriorityPicker';
 import type { SkillAction } from '@/components/bm/SkillActionsBlock';
 import { ATTITUDE_DIMENSIONS } from '@/components/bm/AttitudeConstants';
+import { PLAN_LIMITS } from '@/lib/planTransfer';
 
 export interface SubmitValidationInput {
   coreAssessments: CoreSkillAssessment[];
@@ -11,6 +12,8 @@ export interface SubmitValidationInput {
   skillActions: SkillAction[];
   /** Skill bổ trợ (nếu có) — cùng chịu quy tắc minh chứng khi tự chấm level cao */
   supplementaryAssessments?: CoreSkillAssessment[];
+  /** Mục F — để chặn nộp khi vượt giới hạn 3 hành động AI (nguyên tắc 27/07) */
+  aiActions?: { ai_action_text?: string | null }[];
 }
 
 /** Tự chấm từ level này trở lên phải kèm minh chứng cụ thể (evidence-based leveling) */
@@ -144,8 +147,20 @@ export function validateManagerReview(input: ManagerReviewInput): string[] {
 }
 
 export function validateSubmissionDetailed(input: SubmitValidationInput): DetailedValidation {
-  const { coreAssessments, attitudeAssessments, skillPriorities, skillActions, supplementaryAssessments = [] } = input;
+  const { coreAssessments, attitudeAssessments, skillPriorities, skillActions, supplementaryAssessments = [], aiActions = [] } = input;
   const errors: string[] = [];
+
+  // 0. Giới hạn kế hoạch (nguyên tắc 27/07): tối đa 3 hành động upskill (mục D),
+  //    tối đa 3 hành động AI (mục F); hành động thái độ (mục E) không giới hạn.
+  //    Kế hoạch phình to (thường do dồn hành động dở dang kỳ trước) là mất trọng tâm.
+  const nSkillActs = skillActions.filter(a => (a.action_text || '').trim()).length;
+  if (nSkillActs > PLAN_LIMITS.SKILL_ACTIONS) {
+    errors.push(`Mục D có ${nSkillActs} hành động upskill — tối đa ${PLAN_LIMITS.SKILL_ACTIONS}. Hãy chọn lọc việc trọng tâm, việc còn lại chuyển kỳ sau.`);
+  }
+  const nAiActs = aiActions.filter(a => (a.ai_action_text || '').trim()).length;
+  if (nAiActs > PLAN_LIMITS.AI_ACTIONS) {
+    errors.push(`Mục F có ${nAiActs} hành động AI — tối đa ${PLAN_LIMITS.AI_ACTIONS}. Hãy chọn lọc việc trọng tâm, việc còn lại chuyển kỳ sau.`);
+  }
 
   // 1. Skill lõi chưa đánh giá
   const coreMissing = coreAssessments.filter(
