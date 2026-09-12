@@ -607,6 +607,15 @@ chi nhánh đọc; push của cổng chỉ một phần cán bộ bật.
   (12/09/2026, tên `zalo_oa_ket_noi`; kiểm sau áp: 3 bảng, 7 hàm, 1 cron). File gỡ:
   `supabase/rollbacks/20261024090000_zalo_oa_ket_noi_down.sql`.
 
+**Gói cước (bảng giá Zalo OA áp dụng 01/06/2026, gồm VAT — migration
+`20261025090000_zalo_goi_cuoc_bang_gia.sql` **đã áp**, chỉ nạp dữ liệu vào
+`zalo_cau_hinh`, file gỡ cùng tên trong `supabase/rollbacks/`):** Gói Tăng
+trưởng 1.400.000đ/6 tháng hoặc 2.500.000đ/năm; **tin OA → nhóm chat miễn phí tới
+31/12/2026** (trang quản trị nhắc trước 45 ngày); 1 nhóm GMF-100 kèm gói (thêm
+nhóm: 75.000đ/tháng); API 100 request/phút; **OA chỉ ủy quyền được 1 ứng dụng** —
+ủy quyền app khác là BHY ONE mất token; 500 tin tư vấn 1-1/tháng (không liên
+quan tin nhóm). Hết hạn gói không gia hạn → OA về gói Cơ bản, API ngừng.
+
 **Chưa làm (chờ duyệt mẫu tin):** hàng đợi + trigger đẩy tin Sao Xứng Đáng vào
 nhóm (gom 2 phút, retry), và bật công tắc `bat_sao_xung_dang`. Không đưa tên khách
 hàng, số tài khoản, dữ liệu tín dụng vào tin Zalo.

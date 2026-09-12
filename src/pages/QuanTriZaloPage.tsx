@@ -122,6 +122,8 @@ export default function QuanTriZaloPage() {
         goi_cuoc_ten: m.goi_cuoc_ten ?? '', goi_cuoc_phi_thang: m.goi_cuoc_phi_thang ?? '',
         goi_cuoc_han_muc_tin_thang: m.goi_cuoc_han_muc_tin_thang ?? '', goi_cuoc_han_muc_phut: m.goi_cuoc_han_muc_phut ?? '',
         goi_cuoc_het_han: m.goi_cuoc_het_han ?? '',
+        goi_cuoc_ky_han: m.goi_cuoc_ky_han ?? '',
+        goi_cuoc_tin_nhom_mien_phi_den: m.goi_cuoc_tin_nhom_mien_phi_den ?? '',
       });
     }
     if (!bmRes.error) setCoBiMat(bmRes.data === true);
@@ -245,6 +247,10 @@ export default function QuanTriZaloPage() {
   const phiThang = Number(ch.goi_cuoc_phi_thang) || null;
   const hanMucThang = Number(ch.goi_cuoc_han_muc_tin_thang) || null;
   const phiTin = phiMoiTin(phiThang, thangNay.thanh_cong);
+  // Bảng giá Zalo 01/06/2026: tin OA → nhóm chat miễn phí tới 31/12/2026. Qua mốc
+  // này Zalo thu theo đơn giá công bố — phải nhắc trước, đừng để hóa đơn báo hộ.
+  const mienPhiDen = ch.goi_cuoc_tin_nhom_mien_phi_den ? new Date(ch.goi_cuoc_tin_nhom_mien_phi_den + 'T23:59:59') : null;
+  const conNgayMienPhi = mienPhiDen ? Math.ceil((mienPhiDen.getTime() - Date.now()) / 86400000) : null;
   const ngayHetHanGoi = ch.goi_cuoc_het_han ? new Date(ch.goi_cuoc_het_han + 'T00:00:00') : null;
   const conNgayGoi = ngayHetHanGoi ? Math.ceil((ngayHetHanGoi.getTime() - Date.now()) / 86400000) : null;
 
@@ -274,6 +280,16 @@ export default function QuanTriZaloPage() {
           <CircleAlert className="h-4 w-4" />
           <AlertTitle>Gia hạn token lỗi {token!.loi_lien_tiep} lần liên tiếp</AlertTitle>
           <AlertDescription>{token!.loi_gan_nhat} — lúc {gio(token!.loi_luc)}. Nếu refresh_token đã chết, lấy oauth_code mới rồi đổi mã lại.</AlertDescription>
+        </Alert>
+      )}
+      {conNgayMienPhi !== null && conNgayMienPhi <= 45 && (
+        <Alert variant={conNgayMienPhi < 0 ? 'destructive' : 'default'}>
+          <Wallet className="h-4 w-4" />
+          <AlertTitle>{conNgayMienPhi < 0 ? 'Zalo đã bắt đầu thu phí tin gửi vào nhóm' : `Còn ${conNgayMienPhi} ngày tin gửi vào nhóm còn miễn phí`}</AlertTitle>
+          <AlertDescription>
+            Theo bảng giá Zalo 01/06/2026, tin OA gửi vào nhóm chat miễn phí tới {mienPhiDen!.toLocaleDateString('vi-VN')}. Sau đó tính theo đơn giá Zalo công bố —
+            xem lại tần suất tin Sao và cập nhật đơn giá ở tab Gói cước.
+          </AlertDescription>
         </Alert>
       )}
       {buocKeTiep && !loading && (
@@ -312,7 +328,7 @@ export default function QuanTriZaloPage() {
           <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Send className="w-4 h-4" /> Tin tháng này</CardTitle></CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{thangNay.thanh_cong}{hanMucThang ? <span className="text-base font-normal text-muted-foreground">/{hanMucThang.toLocaleString('vi-VN')}</span> : null}</div>
-            <p className={`text-xs ${thangNay.loi > 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>{thangNay.loi} tin lỗi{phiTin ? ` · ≈ ${dinhDangTien(phiTin)}/tin` : ''}</p>
+            <p className={`text-xs ${thangNay.loi > 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>{thangNay.loi} tin lỗi{phiTin ? ` · phí gói phân bổ ≈ ${dinhDangTien(phiTin)}/tin` : ''}</p>
           </CardContent>
         </Card>
       </div>
@@ -493,21 +509,44 @@ export default function QuanTriZaloPage() {
         <TabsContent value="goi-cuoc" className="space-y-4">
           <Card>
             <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-1.5"><Wallet className="w-4 h-4" /> Gói OA đang dùng</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Điền theo hợp đồng với Zalo — cổng dùng để đối chiếu số tin đã gửi với hạn mức, tính phí bình quân mỗi tin và nhắc trước khi gói hết hạn.
+                Số liệu điền sẵn lấy từ bảng giá dịch vụ OA của Zalo áp dụng {ch.goi_cuoc_bang_gia_ap_dung ? new Date(ch.goi_cuoc_bang_gia_ap_dung + 'T00:00:00').toLocaleDateString('vi-VN') : '01/06/2026'} (đã gồm VAT).
+                Đối chiếu với hợp đồng thực rồi sửa nếu khác — cổng dùng để tính phí gói phân bổ mỗi tin và nhắc trước khi gói hết hạn.
               </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[520px]">
+                  <thead>
+                    <tr className="text-left text-muted-foreground border-b">
+                      <th className="py-2 pr-3 font-medium">Quyền lợi gói {ch.goi_cuoc_ten ?? 'Tăng trưởng'}</th>
+                      <th className="py-2 pr-3 font-medium">Mức</th>
+                      <th className="py-2 font-medium">Ý nghĩa với kênh Sao Xứng Đáng</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b"><td className="py-2 pr-3">Phí gói</td><td className="py-2 pr-3 whitespace-nowrap">1.400.000đ/6 tháng · 2.500.000đ/năm</td><td className="py-2 text-muted-foreground">Mua kỳ năm rẻ hơn ~11%; không hoàn tiền khi bỏ giữa chừng.</td></tr>
+                    <tr className="border-b"><td className="py-2 pr-3">Tin OA gửi vào nhóm</td><td className="py-2 pr-3 whitespace-nowrap">Miễn phí đến {mienPhiDen ? mienPhiDen.toLocaleDateString('vi-VN') : '31/12/2026'}</td><td className="py-2 text-muted-foreground">Toàn bộ tin Sao trong năm 2026 không phát sinh phí theo tin. Sau mốc này Zalo công bố đơn giá.</td></tr>
+                    <tr className="border-b"><td className="py-2 pr-3">Nhóm GMF-100 kèm gói</td><td className="py-2 pr-3">{ch.goi_cuoc_nhom_gmf_kem_goi ?? '1'} nhóm</td><td className="py-2 text-muted-foreground">Nhóm «{ch.gmf_ten_nhom}» dùng suất này; nhóm thứ hai phải mua thêm (GMF-100: 75.000đ/tháng).</td></tr>
+                    <tr className="border-b"><td className="py-2 pr-3">Ứng dụng được ủy quyền</td><td className="py-2 pr-3">{ch.goi_cuoc_app_uy_quyen ?? '1'} ứng dụng</td><td className="py-2 text-red-700 dark:text-red-300">Chỉ một app — ai ủy quyền OA cho app khác là BHY ONE mất token ngay. Không cấp quyền cho công cụ bên thứ ba.</td></tr>
+                    <tr className="border-b"><td className="py-2 pr-3">API rate limit</td><td className="py-2 pr-3">{ch.goi_cuoc_han_muc_phut ?? '100'} request/phút</td><td className="py-2 text-muted-foreground">Gộp nhiều sao vào một tin và giãn gửi là đủ; ~35 phiếu sao/tháng còn rất xa trần.</td></tr>
+                    <tr className="border-b"><td className="py-2 pr-3">Tin tư vấn 1-1 ngoài 48h</td><td className="py-2 pr-3">500 tin/tháng, sau đó 55đ/tin</td><td className="py-2 text-muted-foreground">Không liên quan tin nhóm — chỉ tính khi OA chat riêng với người dùng.</td></tr>
+                    <tr><td className="py-2 pr-3">Tài khoản nhân viên OA</td><td className="py-2 pr-3">{ch.goi_cuoc_nhan_su ?? '15'}</td><td className="py-2 text-muted-foreground">Đủ cho TCTH + Ban Giám đốc quản trị OA.</td></tr>
+                  </tbody>
+                </table>
+              </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div><Label>Tên gói</Label><Input value={goiCuoc.goi_cuoc_ten ?? ''} onChange={(e) => setGoiCuoc({ ...goiCuoc, goi_cuoc_ten: e.target.value })} /></div>
-                <div><Label>Phí mỗi tháng (đ)</Label><Input inputMode="numeric" value={goiCuoc.goi_cuoc_phi_thang ?? ''} onChange={(e) => setGoiCuoc({ ...goiCuoc, goi_cuoc_phi_thang: e.target.value.replace(/[^\d]/g, '') })} placeholder="VD 990000" /></div>
-                <div><Label>Hạn mức tin/tháng (để trống nếu không giới hạn)</Label><Input inputMode="numeric" value={goiCuoc.goi_cuoc_han_muc_tin_thang ?? ''} onChange={(e) => setGoiCuoc({ ...goiCuoc, goi_cuoc_han_muc_tin_thang: e.target.value.replace(/[^\d]/g, '') })} /></div>
+                <div><Label>Kỳ hạn đang mua</Label><Input value={goiCuoc.goi_cuoc_ky_han ?? ''} onChange={(e) => setGoiCuoc({ ...goiCuoc, goi_cuoc_ky_han: e.target.value })} placeholder="6 tháng / 1 năm" /></div>
+                <div><Label>Phí quy ra mỗi tháng (đ, gồm VAT)</Label><Input inputMode="numeric" value={goiCuoc.goi_cuoc_phi_thang ?? ''} onChange={(e) => setGoiCuoc({ ...goiCuoc, goi_cuoc_phi_thang: e.target.value.replace(/[^\d]/g, '') })} placeholder="233000 (6 tháng) · 208000 (năm)" /></div>
+                <div><Label>Hạn mức tin vào nhóm/tháng (bảng giá không đặt trần — để trống)</Label><Input inputMode="numeric" value={goiCuoc.goi_cuoc_han_muc_tin_thang ?? ''} onChange={(e) => setGoiCuoc({ ...goiCuoc, goi_cuoc_han_muc_tin_thang: e.target.value.replace(/[^\d]/g, '') })} /></div>
                 <div><Label>Giới hạn request/phút</Label><Input inputMode="numeric" value={goiCuoc.goi_cuoc_han_muc_phut ?? ''} onChange={(e) => setGoiCuoc({ ...goiCuoc, goi_cuoc_han_muc_phut: e.target.value.replace(/[^\d]/g, '') })} /></div>
+                <div><Label>Tin vào nhóm miễn phí đến</Label><Input type="date" value={goiCuoc.goi_cuoc_tin_nhom_mien_phi_den ?? ''} onChange={(e) => setGoiCuoc({ ...goiCuoc, goi_cuoc_tin_nhom_mien_phi_den: e.target.value })} /></div>
                 <div><Label>Ngày hết hạn gói</Label><Input type="date" value={goiCuoc.goi_cuoc_het_han ?? ''} onChange={(e) => setGoiCuoc({ ...goiCuoc, goi_cuoc_het_han: e.target.value })} /></div>
               </div>
               <Button onClick={luuGoiCuoc} disabled={dangChay === 'goi_cuoc'}>Lưu gói cước</Button>
               {conNgayGoi !== null && (
                 <p className={`text-sm ${conNgayGoi <= 15 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>
-                  {conNgayGoi < 0 ? `Gói đã hết hạn ${-conNgayGoi} ngày.` : `Gói còn ${conNgayGoi} ngày.`}
+                  {conNgayGoi < 0 ? `Gói đã hết hạn ${-conNgayGoi} ngày — OA bị hạ về gói Cơ bản, mất quyền tích hợp API.` : `Gói còn ${conNgayGoi} ngày. Hết hạn mà không gia hạn là OA về gói Cơ bản và API ngừng.`}
                 </p>
               )}
             </CardContent>
@@ -524,7 +563,7 @@ export default function QuanTriZaloPage() {
                       <th className="py-2 pr-3 font-medium text-right">Gửi thành công</th>
                       <th className="py-2 pr-3 font-medium text-right">Lỗi</th>
                       <th className="py-2 pr-3 font-medium text-right">% hạn mức</th>
-                      <th className="py-2 font-medium text-right">Phí/tin</th>
+                      <th className="py-2 font-medium text-right">Phí gói phân bổ/tin</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -544,7 +583,7 @@ export default function QuanTriZaloPage() {
                   </tbody>
                 </table>
               </div>
-              <p className="text-xs text-muted-foreground mt-3">Phí/tin = phí gói tháng chia cho số tin gửi thành công trong tháng — càng nhiều tin có ích thì mỗi tin càng rẻ; gửi ít mà trả phí gói là lãng phí.</p>
+              <p className="text-xs text-muted-foreground mt-3">Phí gói phân bổ/tin = phí gói tháng chia cho số tin gửi thành công — Zalo chưa thu theo tin vào nhóm (miễn phí tới {mienPhiDen ? mienPhiDen.toLocaleDateString('vi-VN') : '31/12/2026'}), con số này cho biết gói đang được dùng đáng tiền hay không.</p>
             </CardContent>
           </Card>
         </TabsContent>
