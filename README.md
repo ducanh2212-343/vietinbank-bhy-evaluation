@@ -573,6 +573,44 @@ như máy Mac**. Migration `20261020090000_tin_hoan_thanh_ngan_gon.sql` **đã �
 đã báo mà **không sinh tin nào**, để nút «Công bố» sau này chỉ gửi đúng mục mới.
 Chi tiết: mục 18 của tài liệu trên.
 
+## Kênh Zalo OA & Quản trị Push (09/2026)
+
+**Mục tiêu:** đẩy tin Sao Xứng Đáng từ cổng vào nhóm Zalo GMF «343 - Bắc Hưng Yên
+One» qua Zalo Official Account «VietinBank Bắc Hưng Yên» (App ID 298836022005112891,
+OA ID 3852871198450053653, gói Tăng trưởng, 100 request/phút). Zalo là kênh cả
+chi nhánh đọc; push của cổng chỉ một phần cán bộ bật.
+
+**Đợt 1 — nền kết nối + hai trang quản trị (12/09/2026):**
+
+- Bảng `zalo_token` (một dòng, chỉ service_role — KHÔNG policy nào cho cán bộ),
+  `zalo_cau_hinh` (OA ID, nhóm GMF, công tắc, gói cước — quản trị đọc/sửa),
+  `zalo_nhat_ky` (mọi lần gọi Zalo). Secret Key nằm ở Vault `zalo_app_secret_key`,
+  nạp từ trang Quản trị Zalo (RPC `zalo_dat_bi_mat`, chỉ system_admin).
+- Edge function **`zalo-oa`** (v1, đã deploy, đã gọi thử `trang_thai` bằng
+  service_role qua pg_net) — cửa duy nhất nói chuyện với Zalo: `doi_ma`,
+  `gia_han`, `trang_thai`, `liet_ke_nhom`, `luu_nhom`, `gui_thu`. Thư viện
+  `supabase/functions/_shared/zalo.ts`.
+- **Refresh token của Zalo chỉ dùng được MỘT lần**: mỗi lần gia hạn nhận cặp mới
+  và ghi đè ngay xuống `zalo_token`; khóa mềm `zalo_giu_khoa_gia_han()` chặn hai
+  lần gia hạn song song; lỗi 2 lần liên tiếp → `zalo_canh_bao_quan_tri` đẩy tin
+  `ZALO_LOI` (mức DO: push + chuông + email) tới TCTH/quản trị hệ thống.
+- Cron `zalo-gia-han-token` `0 */6 * * *` (đã đăng ký) — hàm chỉ gọi Zalo khi
+  access token còn dưới 7 giờ; cron tự bỏ qua khi chưa có token.
+- Trang **Quản trị Push** `/quan-tri-push` (RPC `push_thong_ke`, chỉ số đếm — không
+  đọc nội dung/người nhận tin) và **Quản trị Zalo** `/quan-tri-zalo` (RPC
+  `zalo_tong_quan`, `zalo_co_bi_mat`), cả hai trong khu Hệ thống, minRole admin.
+- Migration `20261024090000_zalo_oa_ket_noi.sql` **đã áp** vào `whlysprzsguehxmrjwha`
+  (12/09/2026, tên `zalo_oa_ket_noi`; kiểm sau áp: 3 bảng, 7 hàm, 1 cron). File gỡ:
+  `supabase/rollbacks/20261024090000_zalo_oa_ket_noi_down.sql`.
+
+**Chưa làm (chờ duyệt mẫu tin):** hàng đợi + trigger đẩy tin Sao Xứng Đáng vào
+nhóm (gom 2 phút, retry), và bật công tắc `bat_sao_xung_dang`. Không đưa tên khách
+hàng, số tài khoản, dữ liệu tín dụng vào tin Zalo.
+
+**Chạy lần đầu (trên cổng, không cần kỹ thuật):** Quản trị Zalo → tab Kết nối →
+(1) dán Secret Key → (2) lấy oauth_code trên Zalo Developers, dán, «Đổi mã lấy
+token» → tab Nhóm → (3) «Tìm và lưu nhóm» → (4) «Gửi tin thử» rồi xác nhận trên Zalo.
+
 ## Chiêu thức 2 — Kanban 5W2H + PDCA (08/2026)
 
 Trang `/one/chieu-thuc-2` được dựng lại theo đặc tả đầy đủ

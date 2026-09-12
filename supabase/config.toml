@@ -75,3 +75,8 @@ project_id = "whlysprzsguehxmrjwha"
   # cho ai, tắt đi là ai cũng đổi được mật khẩu của người khác.
   [functions.doi-mat-khau]
     verify_jwt = true
+
+  # Cửa duy nhất nói chuyện với Zalo OA (đổi mã, gia hạn token, gửi tin vào nhóm GMF).
+  # Cron gọi bằng service_role JWT từ Vault; quản trị chạy tay bằng JWT của họ.
+  [functions.zalo-oa]
+    verify_jwt = true

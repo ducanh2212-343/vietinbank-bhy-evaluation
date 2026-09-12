@@ -116,6 +116,8 @@ const OneFdiHubPage = lazyWithRetry(() => import("./pages/one/OneFdiHubPage"));
 const One3806Page = lazyWithRetry(() => import("./pages/one/One3806Page"));
 const OneMove2Page = lazyWithRetry(() => import("./pages/one/OneMove2Page"));
 const LichNghiAdminPage = lazyWithRetry(() => import("./pages/LichNghiAdminPage"));
+const QuanTriPushPage = lazyWithRetry(() => import("./pages/QuanTriPushPage"));
+const QuanTriZaloPage = lazyWithRetry(() => import("./pages/QuanTriZaloPage"));
 const OneLearnPage = lazyWithRetry(() => import("./pages/one/OneLearnPage"));
 const OneNewsPage = lazyWithRetry(() => import("./pages/one/OneNewsPage"));
 const OneIdeasPage = lazyWithRetry(() => import("./pages/one/OneIdeasPage"));
@@ -333,6 +335,8 @@ const App = () => (
                 <Route path="/duyet-yeu-cau-user" element={<ApproveRegistrations />} />
                 <Route path="/quan-tri-ai" element={<AIPromptsAdmin />} />
                 <Route path="/quan-tri-email" element={<EmailAdmin />} />
+                <Route path="/quan-tri-push" element={<QuanTriPushPage />} />
+                <Route path="/quan-tri-zalo" element={<QuanTriZaloPage />} />
                 <Route path="/quan-tri-khoa-hoc-vtb" element={<VtbCoursesAdminPage />} />
                 <Route path="/tong-hop-nhu-cau-dao-tao" element={<TrainingNeedsPage />} />
                 <Route path="/quan-ly-ky-danh-gia" element={<CycleManagementPage />} />

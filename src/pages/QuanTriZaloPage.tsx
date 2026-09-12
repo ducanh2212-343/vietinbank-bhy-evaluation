@@ -1,0 +1,505 @@
+// Quản trị Zalo — kênh Zalo Official Account «VietinBank Bắc Hưng Yên».
+//
+// Trang này là nơi DUY NHẤT quản trị thao tác với kết nối Zalo: nạp Secret Key,
+// đổi mã ủy quyền lấy token, gia hạn tay, chọn nhóm GMF, gửi tin thử, theo dõi
+// gói cước và nhật ký. Mọi lệnh đi qua edge function zalo-oa (token không bao giờ
+// xuống trình duyệt); trang chỉ thấy mốc giờ và kết quả.
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  CheckCircle2, CircleAlert, KeyRound, MessageSquareText, RefreshCw, Send, Users, Wallet, XCircle,
+} from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+
+interface TongQuan {
+  token: {
+    co_token: boolean; access_het_han_luc?: string | null; refresh_het_han_luc?: string | null;
+    cap_luc?: string | null; gia_han_luc?: string | null; so_lan_gia_han?: number;
+    loi_lien_tiep?: number; loi_gan_nhat?: string | null; loi_luc?: string | null;
+  };
+  theo_thang: { thang: string; thanh_cong: number; loi: number }[];
+  nhat_ky: { id: number; loai: string; thanh_cong: boolean; thong_diep: string | null; chi_tiet: Record<string, unknown> | null; tao_luc: string }[];
+  cron: { name: string; schedule: string; active: boolean; last_status: string | null; last_run: string | null }[];
+}
+
+type CauHinh = Record<string, string | null>;
+
+const TEN_LOAI_NHAT_KY: Record<string, string> = {
+  doi_ma: 'Đổi mã ủy quyền', gia_han: 'Gia hạn token', liet_ke_nhom: 'Đọc danh sách nhóm',
+  luu_nhom: 'Lưu nhóm', gui_tin: 'Gửi tin', bi_mat: 'Nạp Secret Key',
+};
+
+/** Tình trạng token nhìn từ mốc hết hạn: còn tốt / sắp hết / đã hết / chưa có. */
+export function tinhTrangToken(hetHan: string | null | undefined, bayGio = Date.now()) {
+  if (!hetHan) return { ma: 'chua_co', nhan: 'Chưa có token', mau: 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400' } as const;
+  const conLai = new Date(hetHan).getTime() - bayGio;
+  if (conLai <= 0) return { ma: 'het', nhan: 'Đã hết hạn', mau: 'bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-300' } as const;
+  if (conLai < 7 * 3600 * 1000) return { ma: 'sap_het', nhan: `Còn ${Math.max(1, Math.round(conLai / 3600000))} giờ`, mau: 'bg-yellow-100 dark:bg-yellow-500/15 text-yellow-800 dark:text-yellow-300' } as const;
+  return { ma: 'tot', nhan: `Còn ${Math.round(conLai / 3600000)} giờ`, mau: 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-300' } as const;
+}
+
+/** Phí trung bình mỗi tin gửi thành công trong tháng — null khi chưa có phí hoặc chưa gửi tin. */
+export function phiMoiTin(phiThang: number | null, soTin: number): number | null {
+  if (!phiThang || !soTin) return null;
+  return Math.round(phiThang / soTin);
+}
+
+const dinhDangTien = (n: number) => n.toLocaleString('vi-VN') + ' đ';
+const gio = (s: string | null | undefined) => (s ? new Date(s).toLocaleString('vi-VN') : '—');
+
+export default function QuanTriZaloPage() {
+  const { toast } = useToast();
+  const { roles } = useAuth();
+  const laSystemAdmin = roles.includes('system_admin');
+
+  const [tq, setTq] = useState<TongQuan | null>(null);
+  const [ch, setCh] = useState<CauHinh>({});
+  const [coBiMat, setCoBiMat] = useState<boolean | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [dangChay, setDangChay] = useState<string | null>(null);
+
+  const [secretKey, setSecretKey] = useState('');
+  const [oauthCode, setOauthCode] = useState('');
+  const [tinThu, setTinThu] = useState('');
+  const [dsNhom, setDsNhom] = useState<{ group_id: string; group_name: string }[] | null>(null);
+  const [goiCuoc, setGoiCuoc] = useState<CauHinh>({});
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const [tqRes, chRes, bmRes] = await Promise.all([
+      (supabase as any).rpc('zalo_tong_quan'),
+      (supabase as any).from('zalo_cau_hinh').select('khoa, gia_tri'),
+      (supabase as any).rpc('zalo_co_bi_mat'),
+    ]);
+    if (tqRes.error) toast({ title: 'Không tải được tổng quan Zalo', description: tqRes.error.message, variant: 'destructive' });
+    else setTq(tqRes.data as TongQuan);
+    if (!chRes.error) {
+      const m: CauHinh = {};
+      for (const r of (chRes.data ?? []) as { khoa: string; gia_tri: string | null }[]) m[r.khoa] = r.gia_tri;
+      setCh(m);
+      setGoiCuoc({
+        goi_cuoc_ten: m.goi_cuoc_ten ?? '', goi_cuoc_phi_thang: m.goi_cuoc_phi_thang ?? '',
+        goi_cuoc_han_muc_tin_thang: m.goi_cuoc_han_muc_tin_thang ?? '', goi_cuoc_han_muc_phut: m.goi_cuoc_han_muc_phut ?? '',
+        goi_cuoc_het_han: m.goi_cuoc_het_han ?? '',
+      });
+    }
+    if (!bmRes.error) setCoBiMat(bmRes.data === true);
+    setLoading(false);
+  }, [toast]);
+
+  useEffect(() => { load(); }, [load]);
+
+  /** Gọi edge function zalo-oa; báo lỗi bằng toast, trả về data hoặc null. */
+  const goiZaloOa = useCallback(async (hanhDong: string, body: Record<string, unknown> = {}) => {
+    setDangChay(hanhDong);
+    try {
+      const { data, error } = await supabase.functions.invoke('zalo-oa', { body: { hanh_dong: hanhDong, ...body } });
+      // functions.invoke gói lỗi HTTP vào error; thân JSON có `loi` tiếng Việt của hàm
+      if (error) {
+        let chiTiet = error.message;
+        try {
+          const ctx = (error as { context?: Response }).context;
+          if (ctx && typeof ctx.json === 'function') {
+            const j = await ctx.json();
+            if (j?.loi) chiTiet = j.loi;
+          }
+        } catch { /* giữ message gốc */ }
+        toast({ title: 'Zalo trả lỗi', description: chiTiet, variant: 'destructive' });
+        return null;
+      }
+      if (data && data.ok === false) {
+        toast({ title: 'Zalo trả lỗi', description: data.loi ?? 'Không rõ', variant: 'destructive' });
+        return data;
+      }
+      return data;
+    } finally {
+      setDangChay(null);
+      load();
+    }
+  }, [load, toast]);
+
+  const napSecretKey = async () => {
+    setDangChay('bi_mat');
+    const { error } = await (supabase as any).rpc('zalo_dat_bi_mat', { _gia_tri: secretKey });
+    setDangChay(null);
+    if (error) toast({ title: 'Không nạp được Secret Key', description: error.message, variant: 'destructive' });
+    else { toast({ title: 'Đã nạp Secret Key vào kho bí mật' }); setSecretKey(''); load(); }
+  };
+
+  const doiMa = async () => {
+    const kq = await goiZaloOa('doi_ma', { code: oauthCode.trim() });
+    if (kq?.ok) { toast({ title: 'Đã lấy token', description: `Hết hạn lúc ${gio(kq.access_het_han_luc)}` }); setOauthCode(''); }
+  };
+
+  const giaHan = async () => {
+    const kq = await goiZaloOa('gia_han', { ep: true });
+    if (kq?.da_gia_han) toast({ title: 'Đã gia hạn token', description: `Hết hạn lúc ${gio(kq.access_het_han_luc)}` });
+    else if (kq) toast({ title: 'Không gia hạn', description: kq.ly_do === 'chua_co_token' ? 'Chưa có token — đổi mã ủy quyền trước.' : kq.ly_do });
+  };
+
+  const lietKeNhom = async () => {
+    const kq = await goiZaloOa('liet_ke_nhom');
+    if (kq?.ok) setDsNhom(kq.nhom ?? []);
+  };
+
+  const luuNhom = async (tenNhom?: string) => {
+    const kq = await goiZaloOa('luu_nhom', tenNhom ? { ten_nhom: tenNhom } : {});
+    if (kq?.ok) toast({ title: 'Đã lưu nhóm', description: `${kq.group_name} (${kq.group_id})` });
+    else if (kq?.nhom) setDsNhom(kq.nhom);
+  };
+
+  const guiThu = async () => {
+    const kq = await goiZaloOa('gui_thu', tinThu.trim() ? { noi_dung: tinThu.trim() } : {});
+    if (kq?.ok) toast({ title: 'Đã gửi tin thử vào nhóm', description: 'Mở Zalo để xác nhận.' });
+  };
+
+  const doiCauHinh = async (khoa: string, giaTri: string | null) => {
+    const { error } = await (supabase as any).from('zalo_cau_hinh')
+      .update({ gia_tri: giaTri, cap_nhat_luc: new Date().toISOString() }).eq('khoa', khoa);
+    if (error) toast({ title: 'Không lưu được cấu hình', description: error.message, variant: 'destructive' });
+    else load();
+  };
+
+  const luuGoiCuoc = async () => {
+    setDangChay('goi_cuoc');
+    for (const [khoa, giaTri] of Object.entries(goiCuoc)) {
+      const { error } = await (supabase as any).from('zalo_cau_hinh')
+        .update({ gia_tri: giaTri?.trim() ? giaTri.trim() : null, cap_nhat_luc: new Date().toISOString() }).eq('khoa', khoa);
+      if (error) { toast({ title: 'Không lưu được gói cước', description: error.message, variant: 'destructive' }); break; }
+    }
+    setDangChay(null);
+    toast({ title: 'Đã lưu thông tin gói cước' });
+    load();
+  };
+
+  const token = tq?.token;
+  const ttAccess = tinhTrangToken(token?.co_token ? token.access_het_han_luc : null);
+  const ttRefresh = tinhTrangToken(token?.co_token ? token.refresh_het_han_luc : null);
+  const batSao = ch.bat_sao_xung_dang === 'true';
+
+  const thangNay = useMemo(() => {
+    const d = new Date();
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    return tq?.theo_thang.find((t) => t.thang === key) ?? { thang: key, thanh_cong: 0, loi: 0 };
+  }, [tq]);
+  const phiThang = Number(ch.goi_cuoc_phi_thang) || null;
+  const hanMucThang = Number(ch.goi_cuoc_han_muc_tin_thang) || null;
+  const phiTin = phiMoiTin(phiThang, thangNay.thanh_cong);
+  const ngayHetHanGoi = ch.goi_cuoc_het_han ? new Date(ch.goi_cuoc_het_han + 'T00:00:00') : null;
+  const conNgayGoi = ngayHetHanGoi ? Math.ceil((ngayHetHanGoi.getTime() - Date.now()) / 86400000) : null;
+
+  // Bước kế tiếp cho quản trị — trang phải nói rõ đang kẹt ở đâu, không bắt đoán
+  const buocKeTiep = coBiMat === false ? 'Nạp Secret Key của ứng dụng Zalo (ô «Kết nối»).'
+    : !token?.co_token ? 'Lấy oauth_code trên Zalo Developers rồi dán vào ô «Đổi mã ủy quyền».'
+    : !ch.gmf_group_id ? 'Bấm «Tìm và lưu nhóm» để nối nhóm GMF.'
+    : !batSao ? 'Gửi tin thử; xác nhận trên Zalo rồi bật công tắc Sao Xứng Đáng khi mẫu tin đã duyệt.'
+    : null;
+
+  return (
+    <div className="space-y-6 max-w-5xl">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2"><MessageSquareText className="w-6 h-6" /> Quản trị Zalo</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Kênh Zalo OA «VietinBank Bắc Hưng Yên» → nhóm GMF «{ch.gmf_ten_nhom ?? '343 - Bắc Hưng Yên One'}». Token, nhóm, gói cước và nhật ký gửi.
+          </p>
+        </div>
+        <Button variant="outline" onClick={load} disabled={loading}>
+          <RefreshCw className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} /> Làm mới
+        </Button>
+      </div>
+
+      {(token?.loi_lien_tiep ?? 0) > 0 && (
+        <Alert variant="destructive">
+          <CircleAlert className="h-4 w-4" />
+          <AlertTitle>Gia hạn token lỗi {token!.loi_lien_tiep} lần liên tiếp</AlertTitle>
+          <AlertDescription>{token!.loi_gan_nhat} — lúc {gio(token!.loi_luc)}. Nếu refresh_token đã chết, lấy oauth_code mới rồi đổi mã lại.</AlertDescription>
+        </Alert>
+      )}
+      {buocKeTiep && !loading && (
+        <Alert>
+          <CircleAlert className="h-4 w-4" />
+          <AlertTitle>Bước kế tiếp</AlertTitle>
+          <AlertDescription>{buocKeTiep}</AlertDescription>
+        </Alert>
+      )}
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><KeyRound className="w-4 h-4" /> Access token</CardTitle></CardHeader>
+          <CardContent>
+            <Badge className={ttAccess.mau}>{ttAccess.nhan}</Badge>
+            <p className="text-xs text-muted-foreground mt-1">Hết hạn: {gio(token?.access_het_han_luc)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><RefreshCw className="w-4 h-4" /> Refresh token</CardTitle></CardHeader>
+          <CardContent>
+            <Badge className={ttRefresh.mau}>{ttRefresh.ma === 'tot' || ttRefresh.ma === 'sap_het' ? `Còn ${Math.round((new Date(token!.refresh_het_han_luc!).getTime() - Date.now()) / 86400000)} ngày` : ttRefresh.nhan}</Badge>
+            <p className="text-xs text-muted-foreground mt-1">Đã gia hạn {token?.so_lan_gia_han ?? 0} lần · gần nhất {gio(token?.gia_han_luc)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Users className="w-4 h-4" /> Nhóm GMF</CardTitle></CardHeader>
+          <CardContent>
+            {ch.gmf_group_id
+              ? <Badge className="bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-300"><CheckCircle2 className="w-3 h-3 mr-1" /> Đã nối</Badge>
+              : <Badge className="bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400"><XCircle className="w-3 h-3 mr-1" /> Chưa nối</Badge>}
+            <p className="text-xs text-muted-foreground mt-1 truncate" title={ch.gmf_group_id ?? ''}>{ch.gmf_group_id ? `ID ${ch.gmf_group_id}` : 'Chưa có group_id'}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Send className="w-4 h-4" /> Tin tháng này</CardTitle></CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{thangNay.thanh_cong}{hanMucThang ? <span className="text-base font-normal text-muted-foreground">/{hanMucThang.toLocaleString('vi-VN')}</span> : null}</div>
+            <p className={`text-xs ${thangNay.loi > 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>{thangNay.loi} tin lỗi{phiTin ? ` · ≈ ${dinhDangTien(phiTin)}/tin` : ''}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Tabs defaultValue="ket-noi">
+        <TabsList className="flex-wrap h-auto">
+          <TabsTrigger value="ket-noi">Kết nối</TabsTrigger>
+          <TabsTrigger value="nhom">Nhóm & gửi thử</TabsTrigger>
+          <TabsTrigger value="goi-cuoc">Gói cước & phí</TabsTrigger>
+          <TabsTrigger value="nhat-ky">Nhật ký</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="ket-noi" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-base">1. Secret Key của ứng dụng Zalo</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                App ID <span className="font-mono">298836022005112891</span> · OA ID <span className="font-mono">{ch.oa_id}</span>.
+                Secret Key nằm trong kho bí mật của máy chủ, không hiện lại ở đây. Trạng thái:{' '}
+                {coBiMat === null ? '…' : coBiMat ? <Badge className="bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-300">Đã nạp</Badge> : <Badge className="bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-300">Chưa nạp</Badge>}
+              </p>
+              {laSystemAdmin ? (
+                <div className="flex gap-2 flex-wrap items-end">
+                  <div className="flex-1 min-w-[240px]">
+                    <Label htmlFor="secret">Dán Secret Key {coBiMat ? '(ghi đè)' : ''}</Label>
+                    <Input id="secret" type="password" autoComplete="off" value={secretKey} onChange={(e) => setSecretKey(e.target.value)} placeholder="Secret Key từ Zalo Developers" />
+                  </div>
+                  <Button onClick={napSecretKey} disabled={secretKey.trim().length < 8 || dangChay === 'bi_mat'}>Nạp vào kho bí mật</Button>
+                </div>
+              ) : <p className="text-xs text-muted-foreground">Chỉ quản trị hệ thống mới nạp được Secret Key.</p>}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-base">2. Đổi mã ủy quyền lấy token</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Trên Zalo Developers → ứng dụng → Official Account API → «Lấy mã ủy quyền» (oauth_code). Mã chỉ sống vài phút và dùng được một lần —
+                lấy xong dán ngay. Đổi mã thành công là cặp token cũ (nếu có) bị thay hẳn.
+              </p>
+              <div className="flex gap-2 flex-wrap items-end">
+                <div className="flex-1 min-w-[240px]">
+                  <Label htmlFor="code">oauth_code</Label>
+                  <Input id="code" autoComplete="off" value={oauthCode} onChange={(e) => setOauthCode(e.target.value)} placeholder="Dán mã ủy quyền" />
+                </div>
+                <Button onClick={doiMa} disabled={!oauthCode.trim() || dangChay === 'doi_ma' || coBiMat === false}>
+                  {dangChay === 'doi_ma' ? 'Đang đổi…' : 'Đổi mã lấy token'}
+                </Button>
+              </div>
+              <div className="text-sm text-muted-foreground grid gap-1 sm:grid-cols-2">
+                <span>Lấy token lần đầu: {gio(token?.cap_luc)}</span>
+                <span>Gia hạn gần nhất: {gio(token?.gia_han_luc)}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-base">3. Gia hạn tự động</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Lịch chạy 6 tiếng một lần; chỉ gọi Zalo khi access token còn dưới 7 giờ. Refresh token của Zalo dùng được MỘT lần,
+                mỗi lần gia hạn nhận cặp mới và ghi đè ngay xuống máy chủ. Lỗi 2 lần liên tiếp thì TCTH và quản trị nhận cảnh báo.
+              </p>
+              <div className="space-y-2">
+                {(tq?.cron ?? []).map((c) => (
+                  <div key={c.name} className="flex items-center justify-between gap-2 text-sm flex-wrap">
+                    <span className="font-medium">Lịch gia hạn token <span className="text-xs text-muted-foreground font-mono">{c.schedule}</span></span>
+                    <span className="flex items-center gap-2">
+                      <Badge className={c.active ? 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-300' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400'}>{c.active ? 'Đang bật' : 'Đã tắt'}</Badge>
+                      {c.last_status && <Badge className={c.last_status === 'succeeded' ? 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-300' : 'bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-300'}>Lần cuối: {c.last_status === 'succeeded' ? 'OK' : 'Lỗi'}</Badge>}
+                      {c.last_run && <span className="text-xs text-muted-foreground">{gio(c.last_run)}</span>}
+                    </span>
+                  </div>
+                ))}
+                {(tq?.cron ?? []).length === 0 && !loading && <p className="text-sm text-muted-foreground">Chưa đăng ký lịch gia hạn (migration chưa áp).</p>}
+              </div>
+              <Button variant="outline" onClick={giaHan} disabled={!token?.co_token || dangChay === 'gia_han'}>
+                <RefreshCw className={`w-4 h-4 mr-1 ${dangChay === 'gia_han' ? 'animate-spin' : ''}`} /> Gia hạn ngay
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="nhom" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-base">Nhóm GMF nhận tin</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid gap-1 text-sm sm:grid-cols-2">
+                <span>Tên nhóm: <strong>{ch.gmf_ten_nhom ?? '—'}</strong></span>
+                <span>group_id: <span className="font-mono">{ch.gmf_group_id ?? 'chưa có'}</span></span>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <Button onClick={() => luuNhom()} disabled={!token?.co_token || dangChay === 'luu_nhom'}>
+                  <Users className="w-4 h-4 mr-1" /> Tìm và lưu nhóm «{ch.gmf_ten_nhom}»
+                </Button>
+                <Button variant="outline" onClick={lietKeNhom} disabled={!token?.co_token || dangChay === 'liet_ke_nhom'}>Liệt kê nhóm OA đang tham gia</Button>
+              </div>
+              {dsNhom && (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm min-w-[420px]">
+                    <thead><tr className="text-left text-muted-foreground border-b"><th className="py-2 pr-3 font-medium">Nhóm</th><th className="py-2 pr-3 font-medium">group_id</th><th className="py-2 font-medium"></th></tr></thead>
+                    <tbody>
+                      {dsNhom.map((n) => (
+                        <tr key={n.group_id} className="border-b last:border-0">
+                          <td className="py-2 pr-3">{n.group_name}</td>
+                          <td className="py-2 pr-3 font-mono text-xs">{n.group_id}</td>
+                          <td className="py-2 text-right"><Button size="sm" variant={ch.gmf_group_id === n.group_id ? 'secondary' : 'outline'} onClick={() => luuNhom(n.group_name)}>{ch.gmf_group_id === n.group_id ? 'Đang dùng' : 'Dùng nhóm này'}</Button></td>
+                        </tr>
+                      ))}
+                      {dsNhom.length === 0 && <tr><td colSpan={3} className="py-4 text-center text-muted-foreground">OA chưa tham gia nhóm nào — thêm OA vào nhóm trên Zalo trước.</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-base">Gửi tin thử vào nhóm</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <Textarea rows={3} value={tinThu} onChange={(e) => setTinThu(e.target.value)} placeholder="Để trống để gửi tin thử mặc định «[Thử kết nối] BHY ONE đã nối được với nhóm Zalo…»" />
+              <Button onClick={guiThu} disabled={!ch.gmf_group_id || dangChay === 'gui_thu'}><Send className="w-4 h-4 mr-1" /> Gửi tin thử</Button>
+              <p className="text-xs text-muted-foreground">Không đưa tên khách hàng, số tài khoản hay dữ liệu tín dụng vào tin gửi qua Zalo.</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-base">Công tắc nghiệp vụ</CardTitle></CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="font-medium text-sm">Đẩy tin Sao Xứng Đáng vào nhóm</div>
+                  <p className="text-xs text-muted-foreground">Bật sau khi mẫu tin đã được duyệt. Tắt là tin dừng ngay, không mất dữ liệu Sao.</p>
+                </div>
+                <Switch checked={batSao} onCheckedChange={(v) => doiCauHinh('bat_sao_xung_dang', v ? 'true' : 'false')} />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="goi-cuoc" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-1.5"><Wallet className="w-4 h-4" /> Gói OA đang dùng</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Điền theo hợp đồng với Zalo — cổng dùng để đối chiếu số tin đã gửi với hạn mức, tính phí bình quân mỗi tin và nhắc trước khi gói hết hạn.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div><Label>Tên gói</Label><Input value={goiCuoc.goi_cuoc_ten ?? ''} onChange={(e) => setGoiCuoc({ ...goiCuoc, goi_cuoc_ten: e.target.value })} /></div>
+                <div><Label>Phí mỗi tháng (đ)</Label><Input inputMode="numeric" value={goiCuoc.goi_cuoc_phi_thang ?? ''} onChange={(e) => setGoiCuoc({ ...goiCuoc, goi_cuoc_phi_thang: e.target.value.replace(/[^\d]/g, '') })} placeholder="VD 990000" /></div>
+                <div><Label>Hạn mức tin/tháng (để trống nếu không giới hạn)</Label><Input inputMode="numeric" value={goiCuoc.goi_cuoc_han_muc_tin_thang ?? ''} onChange={(e) => setGoiCuoc({ ...goiCuoc, goi_cuoc_han_muc_tin_thang: e.target.value.replace(/[^\d]/g, '') })} /></div>
+                <div><Label>Giới hạn request/phút</Label><Input inputMode="numeric" value={goiCuoc.goi_cuoc_han_muc_phut ?? ''} onChange={(e) => setGoiCuoc({ ...goiCuoc, goi_cuoc_han_muc_phut: e.target.value.replace(/[^\d]/g, '') })} /></div>
+                <div><Label>Ngày hết hạn gói</Label><Input type="date" value={goiCuoc.goi_cuoc_het_han ?? ''} onChange={(e) => setGoiCuoc({ ...goiCuoc, goi_cuoc_het_han: e.target.value })} /></div>
+              </div>
+              <Button onClick={luuGoiCuoc} disabled={dangChay === 'goi_cuoc'}>Lưu gói cước</Button>
+              {conNgayGoi !== null && (
+                <p className={`text-sm ${conNgayGoi <= 15 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>
+                  {conNgayGoi < 0 ? `Gói đã hết hạn ${-conNgayGoi} ngày.` : `Gói còn ${conNgayGoi} ngày.`}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-base">Tin đã gửi theo tháng</CardTitle></CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[480px]">
+                  <thead>
+                    <tr className="text-left text-muted-foreground border-b">
+                      <th className="py-2 pr-3 font-medium">Tháng</th>
+                      <th className="py-2 pr-3 font-medium text-right">Gửi thành công</th>
+                      <th className="py-2 pr-3 font-medium text-right">Lỗi</th>
+                      <th className="py-2 pr-3 font-medium text-right">% hạn mức</th>
+                      <th className="py-2 font-medium text-right">Phí/tin</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(tq?.theo_thang ?? []).map((t) => {
+                      const pt = phiMoiTin(phiThang, t.thanh_cong);
+                      return (
+                        <tr key={t.thang} className="border-b last:border-0">
+                          <td className="py-2 pr-3">{t.thang.split('-').reverse().join('/')}</td>
+                          <td className="py-2 pr-3 text-right font-medium">{t.thanh_cong}</td>
+                          <td className={`py-2 pr-3 text-right ${t.loi > 0 ? 'text-red-600 dark:text-red-400' : ''}`}>{t.loi}</td>
+                          <td className="py-2 pr-3 text-right">{hanMucThang ? `${Math.round((t.thanh_cong / hanMucThang) * 100)}%` : '—'}</td>
+                          <td className="py-2 text-right">{pt ? dinhDangTien(pt) : '—'}</td>
+                        </tr>
+                      );
+                    })}
+                    {(tq?.theo_thang ?? []).length === 0 && !loading && <tr><td colSpan={5} className="py-6 text-center text-muted-foreground">Chưa gửi tin nào.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs text-muted-foreground mt-3">Phí/tin = phí gói tháng chia cho số tin gửi thành công trong tháng — càng nhiều tin có ích thì mỗi tin càng rẻ; gửi ít mà trả phí gói là lãng phí.</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="nhat-ky">
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-base">40 lần gọi Zalo gần nhất</CardTitle></CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[640px]">
+                  <thead>
+                    <tr className="text-left text-muted-foreground border-b">
+                      <th className="py-2 pr-3 font-medium">Thời gian</th>
+                      <th className="py-2 pr-3 font-medium">Việc</th>
+                      <th className="py-2 pr-3 font-medium">Kết quả</th>
+                      <th className="py-2 font-medium">Thông điệp</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(tq?.nhat_ky ?? []).map((r) => (
+                      <tr key={r.id} className="border-b last:border-0 align-top">
+                        <td className="py-2 pr-3 whitespace-nowrap text-muted-foreground">{gio(r.tao_luc)}</td>
+                        <td className="py-2 pr-3">{TEN_LOAI_NHAT_KY[r.loai] ?? r.loai}</td>
+                        <td className="py-2 pr-3">
+                          <Badge className={r.thanh_cong ? 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-300' : 'bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-300'}>{r.thanh_cong ? 'OK' : 'Lỗi'}</Badge>
+                        </td>
+                        <td className="py-2 text-xs">
+                          <div>{r.thong_diep}</div>
+                          {r.chi_tiet && Object.keys(r.chi_tiet).length > 0 && (
+                            <div className="text-muted-foreground font-mono truncate max-w-[360px]" title={JSON.stringify(r.chi_tiet)}>{JSON.stringify(r.chi_tiet)}</div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {(tq?.nhat_ky ?? []).length === 0 && !loading && <tr><td colSpan={4} className="py-6 text-center text-muted-foreground">Chưa có lần gọi nào.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

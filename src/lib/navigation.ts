@@ -6,7 +6,7 @@ import {
   CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag, GitBranch,
   ListChecks, Building2, Gavel, TrendingUp, Zap, Lightbulb,
   Home, BookOpen, Compass, Layers, Share2, CalendarDays, NotebookPen, Sprout, TreeDeciduous,
-  Boxes, Globe,
+  Boxes, Globe, BellRing, MessageSquareText,
   Sparkles as SparklesIcon,
   type LucideIcon,
 } from 'lucide-react';
@@ -717,6 +717,11 @@ export const NAV_SECTIONS: NavSection[] = [
         items: [
           // Hàng đợi email của cả hệ thống: nhắc nộp phiếu, thông báo, quiz…
           { label: 'Quản trị Email', icon: Mail, path: '/quan-tri-email', minRole: 'admin', keywords: ['hang doi', 'gui mail'] },
+          // Thống kê thông báo đẩy của cả cổng: ai bật, loại nào nhiều, mở đọc
+          // bao nhiêu — để «thêm một loại tin mới» là quyết định có số liệu
+          { label: 'Quản trị Push', icon: BellRing, path: '/quan-tri-push', minRole: 'admin', keywords: ['thong bao', 'push', 'thong ke', 'bat push'] },
+          // Kênh Zalo OA → nhóm GMF: token, nhóm nhận tin, gói cước, nhật ký gửi
+          { label: 'Quản trị Zalo', icon: MessageSquareText, path: '/quan-tri-zalo', minRole: 'admin', keywords: ['zalo', 'oa', 'gmf', 'token', 'goi cuoc'] },
           // Lịch nghỉ lễ + mốc giờ nhịp: mọi đồng hồ đếm ngày làm việc của chi
           // nhánh đọc từ đây (tuổi thẻ Kanban, tuổi hồ sơ tín dụng, số ngày im
           // lặng, mốc phát thông báo) — dùng chung, không riêng phân hệ nào
