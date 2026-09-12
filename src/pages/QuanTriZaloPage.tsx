@@ -35,6 +35,24 @@ interface TongQuan {
 
 type CauHinh = Record<string, string | null>;
 
+interface HangDoi {
+  dem: { cho: number; dang_gui: number; loi: number; da_gui_7_ngay: number; da_gui_thang: number };
+  dong: {
+    id: number; star_record_id: string; trang_thai: string; tao_luc: string; san_sang_luc: string; so_lan_thu: number;
+    loi_gan_nhat: string | null; gui_luc: string | null; message_id: string | null; noi_dung: string | null;
+    name: string | null; department: string | null; stars: number | null; is_collective: boolean | null; sender: string | null;
+  }[];
+}
+
+const TEN_TRANG_THAI: Record<string, string> = { cho: 'Chờ gửi', dang_gui: 'Đang gửi', da_gui: 'Đã gửi', loi: 'Lỗi', bo_qua: 'Bỏ qua' };
+const MAU_TRANG_THAI: Record<string, string> = {
+  cho: 'bg-yellow-100 dark:bg-yellow-500/15 text-yellow-800 dark:text-yellow-300',
+  dang_gui: 'bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-300',
+  da_gui: 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-300',
+  loi: 'bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-300',
+  bo_qua: 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400',
+};
+
 const TEN_LOAI_NHAT_KY: Record<string, string> = {
   doi_ma: 'Đổi mã ủy quyền', nap_token: 'Nạp refresh token', gia_han: 'Gia hạn token',
   liet_ke_nhom: 'Đọc danh sách nhóm', luu_nhom: 'Lưu nhóm', gui_tin: 'Gửi tin', bi_mat: 'Nạp Secret Key',
@@ -101,17 +119,31 @@ export default function QuanTriZaloPage() {
   });
   const [codeChallenge, setCodeChallenge] = useState('');
   const [refreshTokenDan, setRefreshTokenDan] = useState('');
+  const [hangDoi, setHangDoi] = useState<HangDoi | null>(null);
+  const [phieuGanNhat, setPhieuGanNhat] = useState<{ id: string; name: string; department: string; stars: number; is_collective: boolean; created_at: string }[]>([]);
+  const [phieuChon, setPhieuChon] = useState('');
+  const [xemTruoc, setXemTruoc] = useState<string | null>(null);
+  const [caiDatTin, setCaiDatTin] = useState<CauHinh>({});
   const [tinThu, setTinThu] = useState('');
   const [dsNhom, setDsNhom] = useState<{ group_id: string; group_name: string }[] | null>(null);
   const [goiCuoc, setGoiCuoc] = useState<CauHinh>({});
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [tqRes, chRes, bmRes] = await Promise.all([
+    const [tqRes, chRes, bmRes, hdRes, psRes] = await Promise.all([
       (supabase as any).rpc('zalo_tong_quan'),
       (supabase as any).from('zalo_cau_hinh').select('khoa, gia_tri'),
       (supabase as any).rpc('zalo_co_bi_mat'),
+      (supabase as any).rpc('zalo_hang_doi_tong_quan'),
+      supabase.from('star_records').select('id, name, department, stars, is_collective, created_at')
+        .order('created_at', { ascending: false }).limit(15),
     ]);
+    if (!hdRes.error) setHangDoi(hdRes.data as HangDoi);
+    if (!psRes.error) {
+      const ds = (psRes.data ?? []).map((r: any) => ({ ...r, stars: Number(r.stars) }));
+      setPhieuGanNhat(ds);
+      setPhieuChon((cu) => cu || ds[0]?.id || '');
+    }
     if (tqRes.error) toast({ title: 'Không tải được tổng quan Zalo', description: tqRes.error.message, variant: 'destructive' });
     else setTq(tqRes.data as TongQuan);
     if (!chRes.error) {
@@ -124,6 +156,11 @@ export default function QuanTriZaloPage() {
         goi_cuoc_het_han: m.goi_cuoc_het_han ?? '',
         goi_cuoc_ky_han: m.goi_cuoc_ky_han ?? '',
         goi_cuoc_tin_nhom_mien_phi_den: m.goi_cuoc_tin_nhom_mien_phi_den ?? '',
+      });
+      setCaiDatTin({
+        gom_phut: m.gom_phut ?? '2', toi_da_dong_mot_tin: m.toi_da_dong_mot_tin ?? '10',
+        link_chan_tin: m.link_chan_tin ?? '', ly_do_toi_da_ky_tu: m.ly_do_toi_da_ky_tu ?? '300',
+        so_lan_thu_toi_da: m.so_lan_thu_toi_da ?? '5',
       });
     }
     if (!bmRes.error) setCoBiMat(bmRes.data === true);
@@ -213,6 +250,50 @@ export default function QuanTriZaloPage() {
   const guiThu = async () => {
     const kq = await goiZaloOa('gui_thu', tinThu.trim() ? { noi_dung: tinThu.trim() } : {});
     if (kq?.ok) toast({ title: 'Đã gửi tin thử vào nhóm', description: 'Mở Zalo để xác nhận.' });
+  };
+
+  /** Gọi zalo-gui-sao (xem trước / gửi thử một phiếu). */
+  const goiGuiSao = useCallback(async (hanhDong: string, body: Record<string, unknown> = {}) => {
+    setDangChay(hanhDong);
+    try {
+      const { data, error } = await supabase.functions.invoke('zalo-gui-sao', { body: { hanh_dong: hanhDong, ...body } });
+      if (error) {
+        let chiTiet = error.message;
+        try {
+          const ctx = (error as { context?: Response }).context;
+          if (ctx && typeof ctx.json === 'function') { const j = await ctx.json(); if (j?.loi) chiTiet = j.loi; }
+        } catch { /* giữ message gốc */ }
+        toast({ title: 'Không soạn/gửi được tin Sao', description: chiTiet, variant: 'destructive' });
+        return null;
+      }
+      if (data && data.ok === false) { toast({ title: 'Zalo trả lỗi', description: data.loi ?? 'Không rõ', variant: 'destructive' }); return data; }
+      return data;
+    } finally { setDangChay(null); }
+  }, [toast]);
+
+  const xemTruocPhieu = async () => {
+    const kq = await goiGuiSao('xem_truoc', { star_record_id: phieuChon });
+    if (kq?.ok) setXemTruoc(kq.noi_dung);
+  };
+  const guiThuPhieu = async () => {
+    const kq = await goiGuiSao('gui_phieu', { star_record_id: phieuChon });
+    if (kq?.ok) { setXemTruoc(kq.noi_dung); toast({ title: 'Đã gửi tin Sao vào nhóm', description: 'Mở Zalo để xem.' }); load(); }
+  };
+  const guiLaiTinLoi = async () => {
+    const { data, error } = await (supabase as any).rpc('zalo_gui_lai_tin_loi');
+    if (error) toast({ title: 'Không gửi lại được', description: error.message, variant: 'destructive' });
+    else { toast({ title: `Đã xếp lại ${data} tin lỗi vào hàng đợi` }); load(); }
+  };
+  const luuCaiDatTin = async () => {
+    setDangChay('cai_dat_tin');
+    for (const [khoa, giaTri] of Object.entries(caiDatTin)) {
+      const { error } = await (supabase as any).from('zalo_cau_hinh')
+        .update({ gia_tri: (giaTri ?? '').trim() || null, cap_nhat_luc: new Date().toISOString() }).eq('khoa', khoa);
+      if (error) { toast({ title: 'Không lưu được cài đặt tin', description: error.message, variant: 'destructive' }); break; }
+    }
+    setDangChay(null);
+    toast({ title: 'Đã lưu cài đặt tin Sao' });
+    load();
   };
 
   const doiCauHinh = async (khoa: string, giaTri: string | null) => {
@@ -337,6 +418,7 @@ export default function QuanTriZaloPage() {
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="ket-noi">Kết nối</TabsTrigger>
           <TabsTrigger value="nhom">Nhóm & gửi thử</TabsTrigger>
+          <TabsTrigger value="tin-sao">Tin Sao</TabsTrigger>
           <TabsTrigger value="goi-cuoc">Gói cước & phí</TabsTrigger>
           <TabsTrigger value="nhat-ky">Nhật ký</TabsTrigger>
         </TabsList>
@@ -501,6 +583,102 @@ export default function QuanTriZaloPage() {
                   <p className="text-xs text-muted-foreground">Bật sau khi mẫu tin đã được duyệt. Tắt là tin dừng ngay, không mất dữ liệu Sao.</p>
                 </div>
                 <Switch checked={batSao} onCheckedChange={(v) => doiCauHinh('bat_sao_xung_dang', v ? 'true' : 'false')} />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="tin-sao" className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Đang chờ gửi</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{(hangDoi?.dem.cho ?? 0) + (hangDoi?.dem.dang_gui ?? 0)}</div></CardContent></Card>
+            <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Lỗi cần xử lý</CardTitle></CardHeader><CardContent><div className={`text-2xl font-bold ${(hangDoi?.dem.loi ?? 0) > 0 ? 'text-red-600 dark:text-red-400' : ''}`}>{hangDoi?.dem.loi ?? 0}</div></CardContent></Card>
+            <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Đã gửi 7 ngày</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{hangDoi?.dem.da_gui_7_ngay ?? 0}</div></CardContent></Card>
+            <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Đã gửi tháng này</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{hangDoi?.dem.da_gui_thang ?? 0}</div></CardContent></Card>
+          </div>
+
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-base">Xem trước / gửi thử với phiếu thật</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Chọn một phiếu Sao gần đây để xem đúng chữ sẽ lên nhóm (lý do nguyên văn, tích lũy, mốc quà, link). «Gửi thử» đẩy thật vào nhóm — dùng khi cần cả chi nhánh nhìn mẫu.
+              </p>
+              <div className="flex gap-2 flex-wrap items-end">
+                <div className="flex-1 min-w-[260px]">
+                  <Label>Phiếu</Label>
+                  <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={phieuChon} onChange={(e) => { setPhieuChon(e.target.value); setXemTruoc(null); }}>
+                    {phieuGanNhat.map((p) => (
+                      <option key={p.id} value={p.id}>{p.is_collective ? '👥 ' : ''}{p.name} — {p.department} · {p.stars} Sao · {new Date(p.created_at).toLocaleDateString('vi-VN')}</option>
+                    ))}
+                  </select>
+                </div>
+                <Button variant="outline" onClick={xemTruocPhieu} disabled={!phieuChon || dangChay === 'xem_truoc'}>Xem trước</Button>
+                <Button onClick={guiThuPhieu} disabled={!phieuChon || !ch.gmf_group_id || dangChay === 'gui_phieu'}><Send className="w-4 h-4 mr-1" /> Gửi thử vào nhóm</Button>
+              </div>
+              {xemTruoc && (
+                <pre className="whitespace-pre-wrap rounded-md border bg-muted/40 p-3 text-sm font-sans">{xemTruoc}</pre>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-base">Cách gom và soạn tin</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                <div>
+                  <div className="font-medium text-sm">Mỗi người nhận một tin riêng</div>
+                  <p className="text-xs text-muted-foreground">Bật (GĐ chốt 12/09): phiếu của mỗi người đi một tin, tách bạch. Tắt: các phiếu cùng người tặng trong cửa sổ gom dồn vào một tin liệt kê.</p>
+                </div>
+                <Switch checked={(ch.che_do_gop ?? 'moi_nguoi_mot_tin') === 'moi_nguoi_mot_tin'} onCheckedChange={(v) => doiCauHinh('che_do_gop', v ? 'moi_nguoi_mot_tin' : 'gop_theo_nguoi_tang')} />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div><Label>Cửa sổ gom (phút)</Label><Input inputMode="numeric" value={caiDatTin.gom_phut ?? ''} onChange={(e) => setCaiDatTin({ ...caiDatTin, gom_phut: e.target.value.replace(/[^\d]/g, '') })} /></div>
+                <div><Label>Tối đa phiếu liệt kê trong một tin</Label><Input inputMode="numeric" value={caiDatTin.toi_da_dong_mot_tin ?? ''} onChange={(e) => setCaiDatTin({ ...caiDatTin, toi_da_dong_mot_tin: e.target.value.replace(/[^\d]/g, '') })} /></div>
+                <div><Label>Lý do tối đa (ký tự)</Label><Input inputMode="numeric" value={caiDatTin.ly_do_toi_da_ky_tu ?? ''} onChange={(e) => setCaiDatTin({ ...caiDatTin, ly_do_toi_da_ky_tu: e.target.value.replace(/[^\d]/g, '') })} /></div>
+                <div><Label>Số lần thử lại khi lỗi</Label><Input inputMode="numeric" value={caiDatTin.so_lan_thu_toi_da ?? ''} onChange={(e) => setCaiDatTin({ ...caiDatTin, so_lan_thu_toi_da: e.target.value.replace(/[^\d]/g, '') })} /></div>
+                <div className="sm:col-span-2"><Label>Dòng cuối tin (link về cổng)</Label><Input value={caiDatTin.link_chan_tin ?? ''} onChange={(e) => setCaiDatTin({ ...caiDatTin, link_chan_tin: e.target.value })} placeholder="bachungyenone.com/one/ghi-nhan/tong-hop" /></div>
+              </div>
+              <Button onClick={luuCaiDatTin} disabled={dangChay === 'cai_dat_tin'}>Lưu cài đặt tin</Button>
+              <p className="text-xs text-muted-foreground">Tin chỉ đi khi công tắc «Đẩy tin Sao Xứng Đáng vào nhóm» (tab Nhóm & gửi thử) đang bật. Phiếu nhập bù không bao giờ lên nhóm. Lý do đưa nguyên văn — nhắc người tặng không ghi tên khách hàng, số tài khoản, số tiền.</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <CardTitle className="text-base">Hàng đợi 40 phiếu gần nhất</CardTitle>
+                {(hangDoi?.dem.loi ?? 0) > 0 && <Button size="sm" variant="outline" onClick={guiLaiTinLoi}><RefreshCw className="w-4 h-4 mr-1" /> Gửi lại {hangDoi!.dem.loi} tin lỗi</Button>}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[720px]">
+                  <thead>
+                    <tr className="text-left text-muted-foreground border-b">
+                      <th className="py-2 pr-3 font-medium">Ghi phiếu lúc</th>
+                      <th className="py-2 pr-3 font-medium">Người / tập thể</th>
+                      <th className="py-2 pr-3 font-medium text-right">Sao</th>
+                      <th className="py-2 pr-3 font-medium">Trạng thái</th>
+                      <th className="py-2 pr-3 font-medium">Gửi lúc</th>
+                      <th className="py-2 font-medium">Ghi chú</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(hangDoi?.dong ?? []).map((d) => (
+                      <tr key={d.id} className="border-b last:border-0 align-top">
+                        <td className="py-2 pr-3 whitespace-nowrap text-muted-foreground">{gio(d.tao_luc)}</td>
+                        <td className="py-2 pr-3">{d.name ?? <span className="text-muted-foreground">(phiếu đã gỡ)</span>}{d.department ? <span className="text-xs text-muted-foreground"> · {d.department}</span> : null}</td>
+                        <td className="py-2 pr-3 text-right">{d.stars ?? '—'}</td>
+                        <td className="py-2 pr-3"><Badge className={MAU_TRANG_THAI[d.trang_thai] ?? ''}>{TEN_TRANG_THAI[d.trang_thai] ?? d.trang_thai}</Badge>{d.so_lan_thu > 0 && <span className="text-xs text-muted-foreground"> · thử {d.so_lan_thu}</span>}</td>
+                        <td className="py-2 pr-3 whitespace-nowrap text-muted-foreground">{d.gui_luc ? gio(d.gui_luc) : d.trang_thai === 'cho' ? `sẵn sàng ${gio(d.san_sang_luc)}` : '—'}</td>
+                        <td className="py-2 text-xs max-w-[260px]">
+                          {d.loi_gan_nhat && <div className="text-red-600 dark:text-red-400">{d.loi_gan_nhat}</div>}
+                          {d.noi_dung && <details><summary className="cursor-pointer text-muted-foreground">Xem tin đã gửi</summary><pre className="whitespace-pre-wrap font-sans mt-1">{d.noi_dung}</pre></details>}
+                        </td>
+                      </tr>
+                    ))}
+                    {(hangDoi?.dong ?? []).length === 0 && !loading && <tr><td colSpan={6} className="py-6 text-center text-muted-foreground">Chưa có phiếu nào vào hàng đợi (công tắc đang tắt hoặc chưa có phiếu mới).</td></tr>}
+                  </tbody>
+                </table>
               </div>
             </CardContent>
           </Card>

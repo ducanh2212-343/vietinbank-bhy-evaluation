@@ -80,3 +80,8 @@ project_id = "whlysprzsguehxmrjwha"
   # Cron gọi bằng service_role JWT từ Vault; quản trị chạy tay bằng JWT của họ.
   [functions.zalo-oa]
     verify_jwt = true
+
+  # Đẩy tin Sao Xứng Đáng từ hàng đợi zalo_hang_doi vào nhóm Zalo GMF. Cron mỗi
+  # phút gọi bằng service_role JWT; quản trị xem trước/gửi thử bằng JWT của họ.
+  [functions.zalo-gui-sao]
+    verify_jwt = true

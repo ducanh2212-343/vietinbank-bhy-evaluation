@@ -616,9 +616,21 @@ nhóm: 75.000đ/tháng); API 100 request/phút; **OA chỉ ủy quyền được
 ủy quyền app khác là BHY ONE mất token; 500 tin tư vấn 1-1/tháng (không liên
 quan tin nhóm). Hết hạn gói không gia hạn → OA về gói Cơ bản, API ngừng.
 
-**Chưa làm (chờ duyệt mẫu tin):** hàng đợi + trigger đẩy tin Sao Xứng Đáng vào
-nhóm (gom 2 phút, retry), và bật công tắc `bat_sao_xung_dang`. Không đưa tên khách
-hàng, số tài khoản, dữ liệu tín dụng vào tin Zalo.
+**Đợt 2 — tin Sao Xứng Đáng lên nhóm (12/09/2026, mẫu tin GĐ duyệt cùng ngày):**
+lý do nguyên văn (cắt 300 ký tự), kèm sao tích lũy + mốc quà, **mỗi người nhận
+một tin riêng** (chế độ gộp theo người tặng để trong cấu hình), chân tin là link
+về cổng. Cơ chế: trigger `sao_xep_hang_zalo` sau khi ghi phiếu chỉ xếp vào
+`zalo_hang_doi` với mốc sẵn sàng = lúc ghi + `gom_phut` (2); cron `zalo-gui-sao`
+mỗi phút (chỉ gọi khi có dòng tới mốc) → edge function **`zalo-gui-sao`** (v1,
+đã deploy) gom theo người nhận, soạn tin bằng hàm thuần
+`_shared/zaloSaoMau.ts` (có kiểm thử), gửi, đóng dấu; lỗi thì lùi dần 2/4/8/16
+phút, quá 5 lần → đánh dấu lỗi + cảnh báo quản trị. Phiếu gỡ trước khi gửi thì
+rút khỏi hàng; phiếu nhập bù không vào hàng. Tab **Tin Sao** trên Quản trị Zalo:
+xem trước/gửi thử với phiếu thật, cài đặt gom, hàng đợi, gửi lại tin lỗi.
+Migration `20261026090000_zalo_tin_sao_xung_dang.sql` **đã áp** (bảng
+`zalo_hang_doi`, 2 trigger, 4 hàm, 1 cron; file gỡ cùng tên). Công tắc
+`bat_sao_xung_dang` **đang tắt** — bật trên tab Nhóm sau khi tin thử lên nhóm.
+Không đưa tên khách hàng, số tài khoản, dữ liệu tín dụng vào tin Zalo.
 
 **Chạy lần đầu (trên cổng, không cần kỹ thuật):** Quản trị Zalo → tab Kết nối →
 (1) dán Secret Key → (2) **cách nhanh:** API Explorer trên Zalo for Developers →
