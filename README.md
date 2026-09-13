@@ -666,7 +666,12 @@ HOA là cách nổi bật an toàn nhất cho tiếng Việt. Mẫu tin hỗ tr�
 `{ten_phong:dam}` — kiểu áp cho GIÁ TRỊ lúc điền, không áp cho tên ô (đổi chữ
 trong ngoặc là mất luôn dòng đó). Tab Tin Sao có thanh Đậm · Nghiêng · Gạch chân
 · Gạch ngang · VIẾT HOA · Xoá định dạng, cảnh báo số chữ có dấu trước khi đổi.
-Mẫu mặc định nay in đậm tiêu đề và tên người nhận. `zalo-gui-sao` v4.
+**Sau khi xem tin thật, GĐ yêu cầu đồng bộ phông: mẫu mặc định BỎ HẲN chữ đậm
+Unicode** — vì đó là bộ chữ serif riêng, Zalo vẽ bằng phông khác phần còn lại nên
+một tin lẫn hai kiểu chữ. Thay bằng ô `{ten_noi_bat}`: VIẾT HOA tên người, giữ
+nguyên tên phòng (hoa cả cụm thì cả dòng hét lên, mắt không bám vào tên ai). Hai
+nút Đậm/Nghiêng vẫn còn trên thanh công cụ cho ai cần, kèm cảnh báo đổi phông.
+`zalo-gui-sao` v5.
 
 **Gói cước (bảng giá Zalo OA áp dụng 01/06/2026, gồm VAT — migration
 `20261025090000_zalo_goi_cuoc_bang_gia.sql` **đã áp**, chỉ nạp dữ liệu vào

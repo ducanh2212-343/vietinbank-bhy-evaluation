@@ -43,9 +43,17 @@ export interface MauTin {
 }
 
 /**
- * Mẫu mặc định (13/09/2026, tham khảo tin cán bộ tự đăng tay trên nhóm nhưng
+ * Mẫu mặc định (13/09/2026). Tham khảo tin cán bộ tự đăng tay trên nhóm nhưng
  * KHÔNG chép nguyên: cách một dòng trống giữa các mục để lướt nhanh trên điện
- * thoại; lý do dài nên xuống dòng riêng).
+ * thoại; lý do dài nên xuống dòng riêng.
+ *
+ * VÌ SAO KHÔNG DÙNG CHỮ ĐẬM UNICODE Ở ĐÂY (đã thử rồi gỡ ra trong cùng ngày):
+ * bản đậm Unicode (U+1D400…) không phải là «nét đậm của phông đang dùng» mà là
+ * một BỘ CHỮ SERIF RIÊNG. Zalo vẽ nó bằng phông serif, phần còn lại bằng phông
+ * sans của ứng dụng — ảnh chụp thật cho thấy một tin lẫn hai kiểu chữ, rối mắt
+ * hơn là nổi bật. Giám đốc yêu cầu đồng bộ phông, nên làm nổi bật bằng VIẾT HOA:
+ * cùng một phông, tiếng Việt đủ dấu, không chữ nào lệch nét.
+ * Thanh công cụ vẫn giữ nút Đậm/Nghiêng cho ai cần, kèm cảnh báo đổi phông.
  *
  * Bộ biểu tượng, mỗi đầu mục một nghĩa, không trùng nhau:
  *   ⭐ tiêu đề chương trình        🎉 chúc mừng người/tập thể nhận
@@ -56,9 +64,9 @@ export interface MauTin {
  */
 export const MAU_MAC_DINH: MauTin = {
   ca_nhan: [
-    '⭐ 𝐒𝐀𝐎 𝐗Ứ𝐍𝐆 ĐÁ𝐍𝐆 · {ngay}',
+    '⭐ SAO XỨNG ĐÁNG · {ngay}',
     '',
-    '🎉 Chúc mừng {ten_phong:dam} vừa nhận {so_sao:dam}!',
+    '🎉 Chúc mừng {ten_noi_bat} vừa nhận {so_sao}!',
     '',
     '🎁 Người tặng: {nguoi_tang}',
     '',
@@ -72,9 +80,9 @@ export const MAU_MAC_DINH: MauTin = {
     '👉 {link}',
   ].join('\n'),
   tap_the: [
-    '⭐ 𝐒𝐀𝐎 𝐓Ậ𝐏 𝐓𝐇Ể · {ngay}',
+    '⭐ SAO TẬP THỂ · {ngay}',
     '',
-    '🎉 Chúc mừng {ten:dam} vừa nhận {so_sao:dam}!',
+    '🎉 Chúc mừng {ten_noi_bat} vừa nhận {so_sao}!',
     '',
     '🎁 Người tặng: {nguoi_tang}',
     '',
@@ -97,6 +105,7 @@ export const CAC_O_MAU: { o: string; nghia: string }[] = [
   { o: '{ten}', nghia: 'Tên người / tập thể trên phiếu' },
   { o: '{phong}', nghia: 'Phòng / đơn vị' },
   { o: '{ten_phong}', nghia: 'Tên — Phòng (cá nhân); tên tập thể (tập thể)' },
+  { o: '{ten_noi_bat}', nghia: 'Như trên nhưng TÊN VIẾT HOA — cách làm nổi bật giữ nguyên một phông' },
   { o: '{so_sao}', nghia: 'Số sao vừa nhận, ví dụ «2 Sao»' },
   { o: '{nguoi_tang}', nghia: 'Người tặng' },
   { o: '{ly_do}', nghia: 'Lý do (nguyên văn, cắt ở ngưỡng ký tự)' },
@@ -104,7 +113,7 @@ export const CAC_O_MAU: { o: string; nghia: string }[] = [
   { o: '{tich_luy}', nghia: 'Sao tích lũy, ví dụ «5 Sao» (tập thể: chỉ khi đã có sao trước đó)' },
   { o: '{moc_qua}', nghia: 'Câu nhắc mốc quà kế tiếp; đã chạm mốc cao nhất thì «Đã chạm mốc cao nhất 🏆»' },
   { o: '{link}', nghia: 'Đường dẫn chân tin (cài ở ô «Dòng cuối tin»)' },
-  { o: '{ten:dam}', nghia: 'Thêm «:dam» sau tên ô để in đậm giá trị — cũng có :nghieng, :gach_chan, :hoa' },
+  { o: '{ten:hoa}', nghia: 'Thêm «:hoa» sau tên ô để VIẾT HOA giá trị — cũng có :gach_chan, :dam (đậm đổi phông), :nghieng' },
 ];
 
 /** Khóa gom: cùng khóa → cùng một tin. */
@@ -141,6 +150,19 @@ function tenNguoi(p: PhieuSao): string {
   return phong ? `${p.name.trim()} — ${phong}` : p.name.trim();
 }
 
+/**
+ * Tên làm nổi bật: VIẾT HOA tên người, giữ nguyên tên phòng. Viết hoa cả cụm
+ * «NGUYỄN THỊ LAN ANH — PHÒNG ÂN THI» thì cả dòng hét lên, mắt không còn bám
+ * vào tên ai; chỉ hoa phần tên là vừa đủ. Tập thể thì viết hoa cả tên vì đó
+ * chính là chủ thể được khen.
+ */
+function tenNoiBat(p: PhieuSao): string {
+  const ten = p.name.trim().toLocaleUpperCase('vi-VN');
+  if (p.is_collective) return ten;
+  const phong = (p.department ?? '').trim();
+  return phong ? `${ten} — ${phong}` : ten;
+}
+
 /** «Kết quả» ở phiếu cũ đôi khi chỉ là «1» — bỏ qua thứ không phải câu chữ hoặc trùng lý do. */
 function ketQuaDangDung(p: PhieuSao, max: number): string {
   const kq = cat(p.result, max);
@@ -156,6 +178,7 @@ export function giaTriCacO(p: PhieuSao, bc: BoiCanhTin, tongSao = Number(p.stars
     ten: p.name.trim(),
     phong: (p.department ?? '').trim(),
     ten_phong: tenNguoi(p),
+    ten_noi_bat: tenNoiBat(p),
     so_sao: soSao(tongSao),
     nguoi_tang: (p.sender ?? '').trim(),
     ly_do: cat(p.reason, bc.lyDoToiDaKyTu),
@@ -221,7 +244,7 @@ export function soanTinSao(nhom: PhieuSao[], cheDo: CheDoGop, bc: BoiCanhTin, ma
     const hien = nhom.slice(0, bc.toiDaDong);
     hien.forEach((p, i) => {
       const lyDo = cat(p.reason, bc.lyDoToiDaKyTu);
-      dong.push(`${i + 1}. 🎉 ${tenNguoi(p)} · ${soSao(Number(p.stars))}${lyDo ? ` — ${lyDo}` : ''}`);
+      dong.push(`${i + 1}. 🎉 ${tenNoiBat(p)} · ${soSao(Number(p.stars))}${lyDo ? ` — ${lyDo}` : ''}`);
     });
     if (nhom.length > hien.length) {
       const conLai = nhom.slice(hien.length).reduce((s, p) => s + Number(p.stars || 0), 0);
@@ -230,7 +253,7 @@ export function soanTinSao(nhom: PhieuSao[], cheDo: CheDoGop, bc: BoiCanhTin, ma
   } else {
     // Một người nhận nhiều phiếu trong cửa sổ gom
     dong.push(p0.is_collective ? `⭐ SAO TẬP THỂ · ${ngay}` : `⭐ SAO XỨNG ĐÁNG · ${ngay}`);
-    dong.push('', `🎉 Chúc mừng ${tenNguoi(p0)} vừa nhận ${soSao(tongSao)}!`, '');
+    dong.push('', `🎉 Chúc mừng ${tenNoiBat(p0)} vừa nhận ${soSao(tongSao)}!`, '');
     const hien = nhom.slice(0, bc.toiDaDong);
     hien.forEach((p, i) => {
       const lyDo = cat(p.reason, bc.lyDoToiDaKyTu);

@@ -7,13 +7,20 @@
 // nhất tạo chữ đậm/nghiêng trong văn bản thuần là thay từng chữ cái bằng ký tự
 // Unicode có sẵn hình dáng đậm/nghiêng (khối Mathematical Alphanumeric Symbols).
 //
-// GIỚI HẠN PHẢI BIẾT TRƯỚC (đã gửi tin thử vào nhóm 13/09/2026 để xác nhận):
-// Khối Unicode đó CHỈ có A–Z, a–z, 0–9. Chữ tiếng Việt có dấu (ă â ê ô ơ ư đ và
-// mọi dấu thanh) KHÔNG có biến thể đậm. «Nguyễn» hoá thành «𝗡𝗴𝘂𝘆ễ𝗻» — chữ ễ
-// nằm lẫn, nhìn vỡ. Vì vậy:
-//   · chữ KHÔNG dấu  → đậm/nghiêng đẹp
-//   · chữ CÓ dấu     → khuyên dùng VIẾT HOA (tiếng Việt hoa đủ dấu, đậm mắt, an toàn)
-// Hàm `demChuCoDau` đếm sẵn để giao diện cảnh báo trước khi người dùng bấm.
+// HAI GIỚI HẠN PHẢI BIẾT TRƯỚC — đều xác nhận bằng tin thử gửi vào nhóm thật và
+// ảnh chụp Zalo trên Android ngày 13/09/2026:
+//
+// 1. ĐỔI PHÔNG, KHÔNG PHẢI ĐẬM LÊN. Khối Unicode này là bộ chữ toán học riêng,
+//    Zalo vẽ nó bằng phông serif còn phần chữ thường bằng phông sans của ứng
+//    dụng. Một tin có cả hai là lẫn hai kiểu chữ, rối hơn là nổi bật. Vì vậy
+//    MẪU MẶC ĐỊNH KHÔNG dùng đậm Unicode — xem `zaloSaoMau.MAU_MAC_DINH`.
+// 2. CHỮ CÓ DẤU KHÔNG ĐẬM ĐƯỢC. Khối đó chỉ có A–Z, a–z, 0–9; ă â ê ô ơ ư đ và
+//    mọi dấu thanh không có biến thể. «Nguyễn» ra «𝐍𝐠𝐮𝐲ễ𝐧» — chữ ễ nằm lẫn.
+//
+// Nên cách làm nổi bật được khuyên dùng là VIẾT HOA: cùng một phông, tiếng Việt
+// đủ dấu, không chữ nào lệch nét. Gạch chân cũng áp được cho mọi chữ có dấu.
+// Hai nút Đậm/Nghiêng vẫn giữ cho ai cần, kèm cảnh báo; `demChuCoDau` đếm sẵn
+// số chữ sẽ không đổi nét để giao diện báo trước khi người dùng bấm.
 //
 // Gạch chân/gạch ngang dùng ký tự tổ hợp (U+0332/U+0336) — chạy tốt trên Zalo
 // nhưng làm chữ dính nhau trên vài máy Android cũ, nên để người dùng tự chọn.
@@ -114,11 +121,11 @@ export function doiKieu(s: string, kieu: KieuChu): string {
 
 /** Nhãn tiếng Việt cho thanh công cụ. */
 export const NHAN_KIEU: { kieu: KieuChu; nhan: string; goiY: string }[] = [
-  { kieu: 'dam', nhan: 'Đậm', goiY: 'Chữ đậm — chữ có dấu (ễ, ị, Ứ) giữ nét thường vì Unicode không có bản đậm' },
-  { kieu: 'nghieng', nhan: 'Nghiêng', goiY: 'Chữ nghiêng (chỉ chữ không dấu)' },
+  { kieu: 'dam', nhan: 'Đậm', goiY: 'CẢNH BÁO: đậm Unicode là một bộ chữ serif riêng nên Zalo vẽ bằng phông khác — tin sẽ lẫn hai kiểu chữ. Chữ có dấu (ễ, ị, Ứ) lại không có bản đậm. Cân nhắc VIẾT HOA.' },
+  { kieu: 'nghieng', nhan: 'Nghiêng', goiY: 'Cũng đổi sang phông khác như Đậm; chỉ chữ không dấu' },
   { kieu: 'gach_chan', nhan: 'Gạch chân', goiY: 'Gạch chân mọi chữ, kể cả chữ có dấu' },
   { kieu: 'gach_ngang', nhan: 'Gạch ngang', goiY: 'Gạch ngang giữa chữ' },
-  { kieu: 'hoa', nhan: 'VIẾT HOA', goiY: 'Cách làm nổi bật AN TOÀN NHẤT cho tiếng Việt có dấu' },
+  { kieu: 'hoa', nhan: 'VIẾT HOA', goiY: 'Cách làm nổi bật TỐT NHẤT: giữ nguyên một phông, tiếng Việt đủ dấu' },
   { kieu: 'thuong', nhan: 'Xoá định dạng', goiY: 'Trả chữ về bình thường' },
 ];
 
