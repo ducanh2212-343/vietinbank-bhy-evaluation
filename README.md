@@ -607,6 +607,17 @@ chi nhánh đọc; push của cổng chỉ một phần cán bộ bật.
   (12/09/2026, tên `zalo_oa_ket_noi`; kiểm sau áp: 3 bảng, 7 hàm, 1 cron). File gỡ:
   `supabase/rollbacks/20261024090000_zalo_oa_ket_noi_down.sql`.
 
+**Đợt 3 — tab Kết nối (13/09/2026):** App ID và callback URL vào `zalo_cau_hinh`
+(migration `20261027090000_zalo_app_id_va_callback.sql` **đã áp**, chỉ nạp dữ
+liệu; callback mặc định `https://bachungyenone.com` — trước đó trang lấy domain
+đang chạy, mở từ workers.dev là Zalo báo -14003). **Cách 3** dán đường dẫn Zalo
+trả về (tự tách `code`/`oa_id`, che mã, chặn khi sai OA), nút «Mở trang cấp quyền»
+dựng từ cấu hình. Lỗi OAuth dịch tiếng Việt kèm cách sửa (`dienGiaiLoiOAuth`
+trong `_shared/zalo.ts`). Nhật ký ghi người thực hiện + 4 ký tự đầu của mã.
+`HomeRedirect` ở `/` giữ `?code=&oa_id=` chuyển sang `/quan-tri-zalo`. Khối
+«Hướng dẫn vận hành» thu gọn ở đầu tab. `zalo-oa` v3, `zalo-gui-sao` v2 (cùng
+`_shared/zalo.ts`).
+
 **Gói cước (bảng giá Zalo OA áp dụng 01/06/2026, gồm VAT — migration
 `20261025090000_zalo_goi_cuoc_bang_gia.sql` **đã áp**, chỉ nạp dữ liệu vào
 `zalo_cau_hinh`, file gỡ cùng tên trong `supabase/rollbacks/`):** Gói Tăng

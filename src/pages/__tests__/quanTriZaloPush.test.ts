@@ -61,3 +61,38 @@ describe('PKCE theo tài liệu Zalo', () => {
     expect(a.verifier).not.toBe(b.verifier);
   });
 });
+
+describe('Cách 3 — tách mã từ mọi dạng đầu vào', () => {
+  it('đường dẫn đầy đủ → mã và oa_id', async () => {
+    const { tachMaTuDauVao } = await import('../QuanTriZaloPage');
+    expect(tachMaTuDauVao('https://bachungyenone.com/?code=AbC_123-xyz&oa_id=3852871198450053653'))
+      .toEqual({ code: 'AbC_123-xyz', oaId: '3852871198450053653' });
+  });
+  it('đường dẫn có đường dẫn con, khoảng trắng và ngoặc kép thừa', async () => {
+    const { tachMaTuDauVao } = await import('../QuanTriZaloPage');
+    expect(tachMaTuDauVao('  "https://bachungyenone.com/quan-tri-zalo?oa_id=385&code=Q1w2" '))
+      .toEqual({ code: 'Q1w2', oaId: '385' });
+  });
+  it('thiếu giao thức vẫn tách được', async () => {
+    const { tachMaTuDauVao } = await import('../QuanTriZaloPage');
+    expect(tachMaTuDauVao('bachungyenone.com/?code=ZZ9&oa_id=1')).toEqual({ code: 'ZZ9', oaId: '1' });
+  });
+  it('chỉ mã → dùng luôn, gỡ ký tự lạ', async () => {
+    const { tachMaTuDauVao } = await import('../QuanTriZaloPage');
+    expect(tachMaTuDauVao(' AbC123_x-y\n')).toEqual({ code: 'AbC123_x-y', oaId: null });
+    expect(tachMaTuDauVao('')).toEqual({ code: '', oaId: null });
+  });
+  it('che mã chỉ lộ 4 ký tự đầu', async () => {
+    const { cheMa } = await import('../QuanTriZaloPage');
+    expect(cheMa('AbCdEfGhIjKlMnOp')).toBe('AbCd••••••••••••');
+    expect(cheMa('AbCdEfGhIjKlMnOp')).not.toContain('EfGh');
+  });
+  it('đường dẫn cấp quyền dựng từ cấu hình, mã hóa callback', async () => {
+    const { duongDanCapQuyen, callbackKhopDomain } = await import('../QuanTriZaloPage');
+    expect(duongDanCapQuyen('298836022005112891', 'https://bachungyenone.com'))
+      .toBe('https://oauth.zaloapp.com/v4/oa/permission?app_id=298836022005112891&redirect_uri=https%3A%2F%2Fbachungyenone.com');
+    expect(duongDanCapQuyen('', 'https://bachungyenone.com')).toBe('');
+    expect(callbackKhopDomain('https://bachungyenone.com', 'bachungyenone.com')).toBe(true);
+    expect(callbackKhopDomain('https://bachungyenone.com', '343-noi-bo.abc.workers.dev')).toBe(false);
+  });
+});

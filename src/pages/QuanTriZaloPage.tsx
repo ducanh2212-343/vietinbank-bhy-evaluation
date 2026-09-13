@@ -7,8 +7,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
-  CheckCircle2, CircleAlert, KeyRound, MessageSquareText, RefreshCw, Send, Users, Wallet, XCircle,
+  BookOpen, CheckCircle2, ChevronDown, CircleAlert, Copy, ExternalLink, KeyRound, MessageSquareText, RefreshCw, Send, Users, Wallet, XCircle,
 } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -90,6 +91,51 @@ export function tinhTrangToken(hetHan: string | null | undefined, bayGio = Date.
   return { ma: 'tot', nhan: `Còn ${Math.round(conLai / 3600000)} giờ`, mau: 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-300' } as const;
 }
 
+/**
+ * Cách 3: nhận MỌI dạng đầu vào — đường dẫn Zalo trả về đầy đủ
+ * (https://bachungyenone.com/?code=ABC&oa_id=385…), đường dẫn thiếu giao thức,
+ * hay chỉ mỗi mã — trả về mã và oa_id (nếu có). Ký tự thừa, khoảng trắng, dấu
+ * ngoặc kép người dùng lỡ dán kèm đều được gỡ.
+ */
+export function tachMaTuDauVao(dauVao: string): { code: string; oaId: string | null } {
+  const t = (dauVao ?? '').trim().replace(/^["'«»<>\s]+|["'«»<>\s]+$/g, '');
+  if (!t) return { code: '', oaId: null };
+  const coThamSo = /[?&#]code=/.test(t);
+  if (coThamSo || /^https?:\/\//i.test(t)) {
+    try {
+      const url = new URL(/^https?:\/\//i.test(t) ? t : 'https://x/' + t.replace(/^\/+/, ''));
+      const tham = new URLSearchParams(url.search || url.hash.replace(/^#/, '?'));
+      const code = (tham.get('code') ?? '').trim();
+      const oaId = (tham.get('oa_id') ?? '').trim() || null;
+      if (code) return { code, oaId };
+    } catch { /* rơi xuống nhánh chuỗi thường */ }
+    const m = t.match(/[?&#]code=([^&#\s]+)/);
+    const o = t.match(/[?&#]oa_id=([^&#\s]+)/);
+    return { code: m ? decodeURIComponent(m[1]) : '', oaId: o ? decodeURIComponent(o[1]) : null };
+  }
+  // Chỉ mã: bỏ mọi thứ không phải ký tự mã (Zalo dùng chữ, số, _ và -)
+  return { code: t.replace(/[^A-Za-z0-9_-]/g, ''), oaId: null };
+}
+
+/** Che mã: 4 ký tự đầu + ••••, để đối chiếu mà không lộ. */
+export function cheMa(ma: string): string {
+  if (!ma) return '';
+  return ma.slice(0, 4) + '•'.repeat(Math.min(12, Math.max(4, ma.length - 4)));
+}
+
+/** Đường dẫn cấp quyền OA v4 — dựng từ cấu hình, không viết cứng. */
+export function duongDanCapQuyen(appId: string | null | undefined, callbackUrl: string | null | undefined): string {
+  const a = (appId ?? '').trim();
+  const cb = (callbackUrl ?? '').trim();
+  if (!a || !cb) return '';
+  return `https://oauth.zaloapp.com/v4/oa/permission?app_id=${encodeURIComponent(a)}&redirect_uri=${encodeURIComponent(cb)}`;
+}
+
+/** Callback đang cấu hình có cùng domain với nơi đang mở trang không. */
+export function callbackKhopDomain(callbackUrl: string | null | undefined, hostHienTai: string): boolean {
+  try { return new URL((callbackUrl ?? '').trim()).host === hostHienTai; } catch { return false; }
+}
+
 /** Phí trung bình mỗi tin gửi thành công trong tháng — null khi chưa có phí hoặc chưa gửi tin. */
 export function phiMoiTin(phiThang: number | null, soTin: number): number | null {
   if (!phiThang || !soTin) return null;
@@ -119,6 +165,10 @@ export default function QuanTriZaloPage() {
   });
   const [codeChallenge, setCodeChallenge] = useState('');
   const [refreshTokenDan, setRefreshTokenDan] = useState('');
+  const [dauVaoCach3, setDauVaoCach3] = useState('');
+  const [loiCach3, setLoiCach3] = useState<string | null>(null);
+  const [huongDanMo, setHuongDanMo] = useState(false);
+  const [callbackForm, setCallbackForm] = useState<string | null>(null);
   const [hangDoi, setHangDoi] = useState<HangDoi | null>(null);
   const [phieuGanNhat, setPhieuGanNhat] = useState<{ id: string; name: string; department: string; stars: number; is_collective: boolean; created_at: string }[]>([]);
   const [phieuChon, setPhieuChon] = useState('');
@@ -185,7 +235,7 @@ export default function QuanTriZaloPage() {
           }
         } catch { /* giữ message gốc */ }
         toast({ title: 'Zalo trả lỗi', description: chiTiet, variant: 'destructive' });
-        return null;
+        return { ok: false, loi: chiTiet };
       }
       if (data && data.ok === false) {
         toast({ title: 'Zalo trả lỗi', description: data.loi ?? 'Không rõ', variant: 'destructive' });
@@ -223,6 +273,36 @@ export default function QuanTriZaloPage() {
       try { sessionStorage.removeItem(KHOA_VERIFIER); } catch { /* bỏ qua */ }
       if (searchParams.has('code')) setSearchParams({}, { replace: true });
     }
+  };
+
+  const maCach3 = useMemo(() => tachMaTuDauVao(dauVaoCach3), [dauVaoCach3]);
+  const oaIdLech = !!(maCach3.oaId && ch.oa_id && maCach3.oaId !== ch.oa_id);
+  const linkCapQuyen = duongDanCapQuyen(ch.app_id, ch.callback_url);
+  const hostHienTai = typeof window !== 'undefined' ? window.location.host : '';
+  const callbackLechDomain = !!ch.callback_url && !!hostHienTai && !callbackKhopDomain(ch.callback_url, hostHienTai);
+
+  const moTrangCapQuyen = () => {
+    if (!linkCapQuyen) return;
+    window.open(linkCapQuyen, '_blank', 'noopener');
+  };
+  const chepLink = async () => {
+    try { await navigator.clipboard.writeText(linkCapQuyen); toast({ title: 'Đã chép đường dẫn cấp quyền' }); }
+    catch { toast({ title: 'Trình duyệt không cho chép — bôi đen ô rồi Ctrl+C', variant: 'destructive' }); }
+  };
+  const doiMaCach3 = async () => {
+    setLoiCach3(null);
+    if (!maCach3.code) { setLoiCach3('Chưa nhận diện được mã trong nội dung dán.'); return; }
+    if (oaIdLech) { setLoiCach3(`Đường dẫn này cấp quyền cho OA ${maCach3.oaId}, không phải OA đang cấu hình (${ch.oa_id}). Không đổi token.`); return; }
+    const kq = await goiZaloOa('doi_ma', { code: maCach3.code, ...(maCach3.oaId ? { oa_id: maCach3.oaId } : {}) });
+    if (kq?.ok) { toast({ title: 'Đã lấy token', description: `Hết hạn lúc ${gio(kq.access_het_han_luc)}` }); setDauVaoCach3(''); }
+    else if (kq?.loi) setLoiCach3(String(kq.loi));
+  };
+  const luuCallback = async () => {
+    const gt = (callbackForm ?? '').trim();
+    if (!/^https:\/\/[^\s]+$/.test(gt)) { toast({ title: 'Callback URL phải bắt đầu bằng https:// và không có khoảng trắng', variant: 'destructive' }); return; }
+    await doiCauHinh('callback_url', gt);
+    setCallbackForm(null);
+    toast({ title: 'Đã lưu callback URL', description: 'Nhớ khai đúng giá trị này trên Zalo Developers.' });
   };
 
   const napRefreshToken = async () => {
@@ -424,6 +504,86 @@ export default function QuanTriZaloPage() {
         </TabsList>
 
         <TabsContent value="ket-noi" className="space-y-4">
+          <Collapsible open={huongDanMo} onOpenChange={setHuongDanMo}>
+            <Card>
+              <CollapsibleTrigger asChild>
+                <button type="button" className="w-full text-left">
+                  <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
+                    <CardTitle className="text-base flex items-center gap-1.5"><BookOpen className="w-4 h-4" /> Hướng dẫn vận hành kênh Zalo</CardTitle>
+                    <ChevronDown className={`w-4 h-4 transition-transform ${huongDanMo ? 'rotate-180' : ''}`} />
+                  </CardHeader>
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent className="space-y-4 text-sm">
+                  <div>
+                    <div className="font-medium">1. Thông tin cố định</div>
+                    <ul className="list-disc pl-5 text-muted-foreground space-y-0.5 mt-1">
+                      <li>Ứng dụng «Bắc Hưng Yên One» — App ID <span className="font-mono">{ch.app_id ?? '298836022005112891'}</span>.</li>
+                      <li>OA «VietinBank Bắc Hưng Yên» — OA ID <span className="font-mono">{ch.oa_id ?? '3852871198450053653'}</span>, gói {ch.goi_cuoc_ten ?? 'Tăng trưởng'}.</li>
+                      <li>Nhóm GMF nhận tin: «{ch.gmf_ten_nhom ?? '343 - Bắc Hưng Yên One'}».</li>
+                      <li>Nơi quản trị: <span className="font-mono">developers.zalo.me</span> (ứng dụng, token, callback) và <span className="font-mono">oa.zalo.me</span> (OA, gói cước, nhóm chat).</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <div className="font-medium">2. Ba cách lấy token — thử theo thứ tự này</div>
+                    <ol className="list-decimal pl-5 text-muted-foreground space-y-0.5 mt-1">
+                      <li><strong>Cách 2 · dán refresh token từ API Explorer</strong> — nhanh nhất, không cần cấu hình gì thêm. Thử trước.</li>
+                      <li><strong>Cách 3 · dán đường dẫn Zalo trả về</strong> — chắc chắn nhất, không phụ thuộc PKCE hay callback trỏ về đúng trang.</li>
+                      <li><strong>Cách 1 · PKCE</strong> — gọn nhất khi đã khai callback đúng; mã tự điền khi Zalo đưa về trang này.</li>
+                    </ol>
+                  </div>
+                  <div>
+                    <div className="font-medium">3. Đường đi trên Zalo Developers, từng cú bấm</div>
+                    <ul className="list-disc pl-5 text-muted-foreground space-y-0.5 mt-1">
+                      <li><strong>API Explorer (Cách 2):</strong> developers.zalo.me → Công cụ &amp; Hỗ trợ → API Explorer → chọn ứng dụng «Bắc Hưng Yên One» → loại «OA Access Token» → chọn OA «VietinBank Bắc Hưng Yên» → Cho phép → copy <em>refresh token</em> → dán vào ô Cách 2 → «Nạp và đổi lấy cặp mới».</li>
+                      <li><strong>Đường dẫn cấp quyền (Cách 3 và Cách 1):</strong> developers.zalo.me → ứng dụng → Official Account → «Thiết lập đường dẫn yêu cầu cấp quyền» → khối «Đường dẫn yêu cầu cấp quyền» có sẵn link, bấm copy. Hoặc bấm «Mở trang cấp quyền» ngay trên trang này — hai link phải giống nhau. Bấm Cho phép bằng tài khoản admin OA; trình duyệt chuyển tới callback kèm <em>code</em> — copy cả thanh địa chỉ dán vào ô Cách 3.</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <div className="font-medium">4. Ba điều dễ quên nhất</div>
+                    <ul className="list-disc pl-5 text-muted-foreground space-y-0.5 mt-1">
+                      <li>Mã oauth sống vài phút, dùng một lần — mở sẵn trang này rồi mới bấm Cho phép, dán ngay.</li>
+                      <li>Refresh token của Zalo chỉ dùng được MỘT lần; mỗi lần gia hạn sinh cặp mới. Hệ thống ghi đè ngay khi nhận — không tự tay gia hạn ở nơi khác (API Explorer, Postman) khi cổng đang giữ token, làm vậy là cặp trên cổng chết.</li>
+                      <li>Callback URL phải khớp TỪNG KÝ TỰ với giá trị khai trên Zalo Developers, và domain đó phải đã xác thực với Zalo. Hiện khai: <span className="font-mono">{ch.callback_url ?? '—'}</span>.</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <div className="font-medium">5. Xử lý sự cố</div>
+                    <ul className="list-disc pl-5 text-muted-foreground space-y-0.5 mt-1">
+                      <li><strong>Token chết, lịch gia hạn báo lỗi liên tiếp:</strong> lấy lại bằng Cách 2. Không cần sửa gì khác.</li>
+                      <li><strong>Lỗi -14003:</strong> callback không khớp hoặc domain chưa xác thực — so ô «Callback URL» bên dưới với Zalo Developers, sửa cho khớp từng ký tự; nếu vẫn lỗi thì dùng Cách 2.</li>
+                      <li><strong>Tin không lên nhóm:</strong> tab Nhóm kiểm tra group_id đã có; tab Tin Sao xem hàng đợi và cột ghi chú; tab Nhật ký xem Zalo trả lỗi gì. Công tắc «Đẩy tin Sao» phải đang bật.</li>
+                      <li><strong>Mất Secret Key:</strong> developers.zalo.me → ứng dụng → Cài đặt → xem/đổi Secret Key → nạp lại ở mục 1.</li>
+                    </ul>
+                  </div>
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-base">Cấu hình ứng dụng</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid gap-2 sm:grid-cols-2 text-sm">
+                <span>App ID: <span className="font-mono">{ch.app_id ?? '—'}</span></span>
+                <span>OA ID: <span className="font-mono">{ch.oa_id ?? '—'}</span></span>
+              </div>
+              <div className="flex gap-2 flex-wrap items-end">
+                <div className="flex-1 min-w-[260px]">
+                  <Label htmlFor="cb">Callback URL (khớp từng ký tự với Zalo Developers)</Label>
+                  <Input id="cb" value={callbackForm ?? ch.callback_url ?? ''} onChange={(e) => setCallbackForm(e.target.value)} placeholder="https://bachungyenone.com" className="font-mono text-xs" />
+                </div>
+                <Button variant="outline" onClick={luuCallback} disabled={callbackForm === null || callbackForm.trim() === (ch.callback_url ?? '')}>Lưu callback</Button>
+              </div>
+              {callbackLechDomain && (
+                <p className="text-sm text-red-600 dark:text-red-400">
+                  Callback đang cấu hình ({ch.callback_url}) khác domain đang mở trang ({hostHienTai}). Zalo chỉ chấp nhận domain đã xác thực và khớp giá trị khai trên Zalo Developers — nếu anh đang mở từ domain phụ (workers.dev), Cách 1 sẽ không tự điền mã; dùng Cách 2 hoặc Cách 3.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader className="pb-3"><CardTitle className="text-base">1. Secret Key của ứng dụng Zalo</CardTitle></CardHeader>
             <CardContent className="space-y-3">
@@ -445,14 +605,14 @@ export default function QuanTriZaloPage() {
           </Card>
 
           <Card>
-            <CardHeader className="pb-3"><CardTitle className="text-base">2. Lấy token lần đầu — chọn một trong hai cách</CardTitle></CardHeader>
+            <CardHeader className="pb-3"><CardTitle className="text-base">2. Lấy token lần đầu — chọn một trong ba cách</CardTitle></CardHeader>
             <CardContent className="space-y-5">
               <div className="space-y-3 rounded-md border p-3">
                 <div className="font-medium text-sm">Cách 1 · Đổi mã ủy quyền (PKCE)</div>
                 <ol className="text-sm text-muted-foreground list-decimal pl-5 space-y-1">
                   <li>Bấm «Tạo mã PKCE», chép <em>code_challenge</em>.</li>
                   <li>Trên Zalo for Developers → ứng dụng → Official Account API → «Thiết lập đường dẫn yêu cầu cấp quyền»: dán code_challenge,
-                    đặt callback URL là <span className="font-mono">{typeof window !== 'undefined' ? `${window.location.origin}/quan-tri-zalo` : '/quan-tri-zalo'}</span>, chọn đủ quyền, lưu.</li>
+                    callback URL đúng như ô «Cấu hình ứng dụng» (<span className="font-mono">{ch.callback_url ?? '—'}</span>), chọn đủ quyền, lưu.</li>
                   <li>Mở đường dẫn cấp quyền bằng tài khoản admin OA, bấm «Cho phép». Zalo đưa anh quay lại trang này kèm <em>code</em> — ô bên dưới tự điền. Mã sống vài phút, dùng một lần.</li>
                   <li>Bấm «Đổi mã lấy token». Mỗi lần xin mã phải tạo PKCE mới.</li>
                 </ol>
@@ -495,6 +655,46 @@ export default function QuanTriZaloPage() {
                     {dangChay === 'nap_token' ? 'Đang nạp…' : 'Nạp và đổi lấy cặp mới'}
                   </Button>
                 </div>
+              </div>
+
+              <div className="space-y-3 rounded-md border p-3">
+                <div className="font-medium text-sm">Cách 3 · Dán đường dẫn Zalo trả về (dự phòng — không PKCE, không cần callback trỏ về đúng trang)</div>
+                <ol className="text-sm text-muted-foreground list-decimal pl-5 space-y-1">
+                  <li>Bấm «Mở trang cấp quyền» (tab mới), chọn OA «VietinBank Bắc Hưng Yên», bấm Cho phép.</li>
+                  <li>Trình duyệt chuyển tới callback kèm <em>code</em>. Copy TOÀN BỘ thanh địa chỉ (hoặc chỉ mã) dán vào ô dưới.</li>
+                  <li>Đối chiếu mã và OA hiện dưới ô rồi bấm «Đổi mã lấy token». Mã sống vài phút.</li>
+                </ol>
+                <div className="flex gap-2 flex-wrap items-end">
+                  <Button variant="outline" onClick={moTrangCapQuyen} disabled={!linkCapQuyen}><ExternalLink className="w-4 h-4 mr-1" /> Mở trang cấp quyền</Button>
+                  <div className="flex-1 min-w-[260px]">
+                    <Label>Đường dẫn cấp quyền (đối chiếu với Zalo Developers)</Label>
+                    <div className="flex gap-1">
+                      <Input readOnly value={linkCapQuyen || 'Thiếu App ID hoặc callback URL'} onFocus={(e) => e.currentTarget.select()} className="font-mono text-xs" />
+                      <Button variant="outline" size="icon" onClick={chepLink} disabled={!linkCapQuyen} title="Chép"><Copy className="w-4 h-4" /></Button>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="dan3">Dán đường dẫn hoặc mã</Label>
+                  <Textarea id="dan3" rows={2} value={dauVaoCach3} onChange={(e) => { setDauVaoCach3(e.target.value); setLoiCach3(null); }} placeholder="https://bachungyenone.com/?code=…&oa_id=… hoặc chỉ mã" className="font-mono text-xs" />
+                  {dauVaoCach3.trim() && (
+                    <p className="text-xs mt-1">
+                      {maCach3.code
+                        ? <>Mã nhận diện: <span className="font-mono">{cheMa(maCach3.code)}</span> ({maCach3.code.length} ký tự)</>
+                        : <span className="text-red-600 dark:text-red-400">Không thấy mã trong nội dung dán.</span>}
+                      {' · '}OA trong đường dẫn: <span className="font-mono">{maCach3.oaId ?? 'không có'}</span>
+                      {oaIdLech && <span className="text-red-600 dark:text-red-400"> — KHÁC OA đang cấu hình ({ch.oa_id}); sẽ không đổi token</span>}
+                      {maCach3.oaId && !oaIdLech && <span className="text-green-700 dark:text-green-300"> — đúng OA</span>}
+                    </p>
+                  )}
+                </div>
+                {loiCach3 && (
+                  <Alert variant="destructive"><CircleAlert className="h-4 w-4" /><AlertDescription>{loiCach3}</AlertDescription></Alert>
+                )}
+                <Button onClick={doiMaCach3} disabled={!maCach3.code || oaIdLech || dangChay === 'doi_ma' || coBiMat === false}>
+                  {dangChay === 'doi_ma' ? 'Đang đổi…' : 'Đổi mã lấy token'}
+                </Button>
+                {coBiMat === false && <p className="text-xs text-red-600 dark:text-red-400">Chưa nạp Secret Key — kiểm tra mục 1 trước.</p>}
               </div>
 
               <div className="text-sm text-muted-foreground grid gap-1 sm:grid-cols-2">

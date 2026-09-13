@@ -1,7 +1,8 @@
 // zalo-oa — cửa duy nhất nói chuyện với Zalo Official Account từ cổng BHY ONE.
 //
 // Body JSON: { hanh_dong, ...tham số }. Các hành động:
-//   doi_ma        { code, code_verifier? }  đổi oauth_code lấy cặp token đầu tiên (bước 1, cách 1 — PKCE)
+//   doi_ma        { code, code_verifier?, oa_id? }  đổi oauth_code lấy cặp token (cách 1 PKCE hoặc cách 3 dán link);
+//                                            oa_id (nếu gửi) phải trùng OA đang cấu hình
 //   nap_token     { refresh_token }          dán refresh token lấy từ API Explorer (bước 1, cách 2)
 //   gia_han       { ep? }         gia hạn nếu sắp hết hạn — cron 6 tiếng/lần gọi (bước 2)
 //   trang_thai                    tình trạng token + cấu hình (không lộ token)
@@ -36,7 +37,8 @@ Deno.serve(async (req) => {
   try {
     const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
     const laServiceRole = token === SERVICE_KEY || claimsCua(token)?.role === 'service_role';
-    if (!laServiceRole) await requireRole(req, ['system_admin', 'tcth_admin']);
+    // Ai làm, lúc nào — vào nhật ký mọi thao tác đổi/nạp token
+    const nguoi = laServiceRole ? 'service_role' : (await requireRole(req, ['system_admin', 'tcth_admin'])).email ?? 'quản trị';
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
     let body: Record<string, unknown> = {};
@@ -48,7 +50,15 @@ Deno.serve(async (req) => {
         const code = String(body.code ?? '').trim();
         if (!code) throw new HttpError('Thiếu oauth_code', 400);
         const codeVerifier = String(body.code_verifier ?? '').trim() || undefined;
-        const t = await doiMaLayToken(admin, code, codeVerifier);
+        const oaId = String(body.oa_id ?? '').trim();
+        if (oaId) {
+          const ch = await docCauHinh(admin);
+          if (ch.oa_id && oaId !== ch.oa_id) {
+            await ghiNhatKy(admin, 'doi_ma', false, `oa_id trong đường dẫn (${oaId}) khác OA đang cấu hình (${ch.oa_id}) — không đổi token`, { nguoi, ma_dau: code.slice(0, 4) });
+            throw new HttpError(`Đường dẫn này cấp quyền cho OA ${oaId}, không phải OA đang cấu hình (${ch.oa_id}). Kiểm tra lại đã chọn đúng OA «VietinBank Bắc Hưng Yên» khi bấm Cho phép.`, 409);
+          }
+        }
+        const t = await doiMaLayToken(admin, code, codeVerifier, { nguoi, cach: codeVerifier ? 'pkce' : 'dan_link' });
         return jsonResponse({
           ok: true, access_het_han_luc: t.access_het_han_luc, refresh_het_han_luc: t.refresh_het_han_luc,
         });
@@ -56,7 +66,7 @@ Deno.serve(async (req) => {
       case 'nap_token': {
         const rt = String(body.refresh_token ?? '').trim();
         if (rt.length < 20) throw new HttpError('refresh_token không hợp lệ', 400);
-        const kq = await napRefreshToken(admin, rt);
+        const kq = await napRefreshToken(admin, rt, { nguoi });
         if (!kq.da_gia_han) return jsonResponse({ ok: false, loi: 'Zalo không đổi được refresh token vừa dán: ' + kq.ly_do, ...kq }, 502);
         return jsonResponse({ ok: true, ...kq });
       }

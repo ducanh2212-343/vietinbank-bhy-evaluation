@@ -13,6 +13,7 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 
 export const ZALO_OAUTH_URL = 'https://oauth.zaloapp.com/v4/oa/access_token';
 export const ZALO_OA_API = 'https://openapi.zalo.me/v3.0/oa';
+/** Dự phòng khi cấu hình chưa có khóa app_id — nguồn chính là zalo_cau_hinh.app_id */
 export const ZALO_APP_ID = '298836022005112891';
 /** Tên bí mật trong Vault giữ Secret Key của ứng dụng */
 export const TEN_BI_MAT_VAULT = 'zalo_app_secret_key';
@@ -106,7 +107,8 @@ async function goiOAuth(
   than: Record<string, string>,
 ): Promise<TokenZalo> {
   const secret = await laySecretKey(admin);
-  const form = new URLSearchParams({ app_id: ZALO_APP_ID, ...than });
+  const ch = await docCauHinh(admin);
+  const form = new URLSearchParams({ app_id: (ch.app_id ?? '').trim() || ZALO_APP_ID, ...than });
   const res = await fetch(ZALO_OAUTH_URL, {
     method: 'POST',
     headers: { secret_key: secret, 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -116,22 +118,48 @@ async function goiOAuth(
   let json: Record<string, unknown> = {};
   try { json = JSON.parse(text); } catch { /* Zalo trả HTML khi lỗi hạ tầng */ }
   if (!res.ok || !json.access_token) {
-    throw new LoiZalo(
-      String(json.error_description ?? json.error_name ?? json.message ?? `HTTP ${res.status}`),
-      {
-        http: res.status,
-        ma_loi: json.error ?? null,
-        ten_loi: json.error_name ?? null,
-        ly_do: json.error_reason ?? null,
-        grant_type: than.grant_type,
-      },
-    );
+    const chiTiet = {
+      http: res.status,
+      ma_loi: json.error ?? null,
+      ten_loi: json.error_name ?? null,
+      ly_do: json.error_reason ?? null,
+      mo_ta_goc: json.error_description ?? json.message ?? null,
+      grant_type: than.grant_type,
+    };
+    throw new LoiZalo(dienGiaiLoiOAuth(chiTiet), chiTiet);
   }
   return {
     access_token: String(json.access_token),
     refresh_token: String(json.refresh_token ?? ''),
     expires_in: Number(json.expires_in) || 90000,
   };
+}
+
+/**
+ * Dịch lỗi OAuth của Zalo sang tiếng Việt KÈM CÁCH KHẮC PHỤC — người đọc là TCTH,
+ * không phải lập trình viên. Mã -14003 do Giám đốc xác nhận từ thực tế (13/09):
+ * callback không khớp giá trị khai trên Zalo Developers hoặc domain chưa xác thực.
+ */
+export function dienGiaiLoiOAuth(ct: { http?: number; ma_loi?: unknown; ten_loi?: unknown; ly_do?: unknown; mo_ta_goc?: unknown; grant_type?: string }): string {
+  const ma = Number(ct.ma_loi);
+  const chu = `${ct.ten_loi ?? ''} ${ct.ly_do ?? ''} ${ct.mo_ta_goc ?? ''}`.toLowerCase();
+  const goc = ct.mo_ta_goc ? ` (Zalo: ${ct.mo_ta_goc})` : ct.ten_loi ? ` (Zalo: ${ct.ten_loi})` : '';
+  if (ma === -14003 || /redirect_uri|callback/.test(chu)) {
+    return 'Callback URL không khớp giá trị khai trên Zalo Developers tại mục «Thiết lập đường dẫn yêu cầu cấp quyền», hoặc domain chưa xác thực. Sửa callback ở mục Cấu hình ứng dụng cho khớp từng ký tự rồi lấy mã mới.' + goc;
+  }
+  if (/secret|app_id|application|invalid app|unauthorized/.test(chu) || ct.http === 401 || ct.http === 403) {
+    return 'Secret Key sai hoặc chưa nạp, hoặc App ID không đúng. Kiểm tra mục 1.' + goc;
+  }
+  if (ct.grant_type === 'authorization_code' && (/code|expire|invalid_grant|used/.test(chu) || ma === -14004 || ma === -14005 || ma === -14010)) {
+    return 'Mã đã hết hạn hoặc đã dùng. Bấm «Mở trang cấp quyền» lấy mã mới, dán ngay.' + goc;
+  }
+  if (ct.grant_type === 'refresh_token' && (/refresh|token|expire|invalid_grant/.test(chu) || ma === -14020 || ma === -14019)) {
+    return 'Refresh token đã bị dùng hoặc hết hạn — Zalo chỉ cho dùng một lần. Lấy lại token bằng Cách 2 (API Explorer).' + goc;
+  }
+  if (/verifier|challenge|pkce/.test(chu)) {
+    return 'code_verifier không khớp code_challenge đã khai. Tạo mã PKCE mới, cập nhật code_challenge trên Zalo Developers rồi lấy mã lại; hoặc dùng Cách 3.' + goc;
+  }
+  return `Zalo từ chối (${ct.ten_loi ?? ct.ma_loi ?? 'HTTP ' + ct.http})${ct.mo_ta_goc ? ': ' + ct.mo_ta_goc : ''}. Xem nhật ký để biết chi tiết.`;
 }
 
 /** Ghi cặp token mới xuống bảng — việc đầu tiên sau khi Zalo trả lời. */
@@ -180,18 +208,23 @@ async function canhBaoQuanTri(admin: SupabaseClient, tieuDe: string, noiDung: st
  * Zalo dùng PKCE: nếu đường dẫn cấp quyền được thiết lập với code_challenge thì
  * lúc đổi mã BẮT BUỘC gửi kèm code_verifier tương ứng, không thì Zalo từ chối.
  */
-export async function doiMaLayToken(admin: SupabaseClient, code: string, codeVerifier?: string): Promise<DongToken> {
+export async function doiMaLayToken(
+  admin: SupabaseClient, code: string, codeVerifier?: string,
+  boiCanh: Record<string, unknown> = {},
+): Promise<DongToken> {
   const cu = await docToken(admin);
+  // Nhật ký chỉ giữ 4 ký tự đầu của mã — đủ đối chiếu, không đủ để dùng lại
+  const dau = { ...boiCanh, ma_dau: code.slice(0, 4), co_verifier: !!codeVerifier };
   try {
     const t = await goiOAuth(admin, {
       grant_type: 'authorization_code', code,
       ...(codeVerifier ? { code_verifier: codeVerifier } : {}),
     });
     await luuToken(admin, t, false, cu);
-    await ghiNhatKy(admin, 'doi_ma', true, 'Đổi oauth_code lấy token thành công', { expires_in: t.expires_in, co_verifier: !!codeVerifier });
+    await ghiNhatKy(admin, 'doi_ma', true, 'Đổi oauth_code lấy token thành công', { ...dau, expires_in: t.expires_in });
   } catch (e) {
     const loi = e as LoiZalo;
-    await ghiNhatKy(admin, 'doi_ma', false, loi.message, { ...(loi.chiTiet ?? {}), co_verifier: !!codeVerifier });
+    await ghiNhatKy(admin, 'doi_ma', false, loi.message, { ...(loi.chiTiet ?? {}), ...dau });
     throw loi;
   }
   return (await docToken(admin))!;
@@ -203,7 +236,7 @@ export async function doiMaLayToken(admin: SupabaseClient, code: string, codeVer
  * gia hạn NGAY để nhận cặp mới do hệ thống giữ — cái dán vào chết ngay sau đó,
  * nên có lộ ra ngoài (ảnh chụp màn hình, lịch sử clipboard) cũng vô hại.
  */
-export async function napRefreshToken(admin: SupabaseClient, refreshToken: string): Promise<KetQuaGiaHan> {
+export async function napRefreshToken(admin: SupabaseClient, refreshToken: string, boiCanh: Record<string, unknown> = {}): Promise<KetQuaGiaHan> {
   const bayGio = new Date().toISOString();
   const { error } = await admin.from('zalo_token').upsert({
     id: 1, access_token: null, refresh_token: refreshToken,
@@ -212,7 +245,7 @@ export async function napRefreshToken(admin: SupabaseClient, refreshToken: strin
     loi_lien_tiep: 0, loi_gan_nhat: null, loi_luc: null, dang_gia_han_tu: null, cap_nhat_luc: bayGio,
   });
   if (error) throw new LoiZalo('Không ghi được refresh token: ' + error.message);
-  await ghiNhatKy(admin, 'nap_token', true, 'Nạp refresh token từ API Explorer — đang đổi lấy cặp mới');
+  await ghiNhatKy(admin, 'nap_token', true, 'Nạp refresh token từ API Explorer — đang đổi lấy cặp mới', { ...boiCanh, rt_dau: refreshToken.slice(0, 4) });
   return giaHanNeuCan(admin, true);
 }
 

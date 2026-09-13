@@ -181,6 +181,12 @@ function LoginRoute() {
 }
 
 function HomeRedirect() {
+  // Callback của Zalo OA khai là gốc domain (https://bachungyenone.com) — Zalo
+  // đưa admin về đây kèm ?code=…&oa_id=…. Mã chỉ sống vài phút nên phải chuyển
+  // thẳng tới trang Quản trị Zalo, giữ nguyên tham số, thay vì rơi vào /one.
+  const tham = typeof window !== 'undefined' ? window.location.search : '';
+  const q = new URLSearchParams(tham);
+  if (q.get('code') && q.get('oa_id')) return <Navigate to={`/quan-tri-zalo${tham}`} replace />;
   return <Navigate to="/one" replace />;
 }
 
