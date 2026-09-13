@@ -99,11 +99,7 @@ export default function DanhThiepCuaToiPage() {
       // Đơn vị: thương hiệu + đơn vị của cán bộ, như dòng trên thẻ giấy
       donVi: donVi.length >= 2 ? `VietinBank - ${donVi[donVi.length - 1]}` : donVi[0],
       donViEn: donViEn.length >= 2 ? donViEn[donViEn.length - 1] : undefined,
-      diaChi: chonBanDich(payloadThe.addr, 'vi') || undefined,
-      diaChiEn: chonBanDich(payloadThe.addr, 'en') || undefined,
-      email: payloadThe.email,
       zalo,
-      web: payloadThe.card_url.replace(/^https?:\/\//, ''),
     };
   }, [payloadThe]);
 

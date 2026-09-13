@@ -21,7 +21,7 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import type { CanBo } from '@/lib/danhThiep/kieu';
 import {
-  boDauGiuHoa, chuanHoaSoTheoDang, emailHopLe, soHopLe, taoVcardNhanh, tenMacDinh, type DangSo,
+  boDauGiuHoa, chuanHoaSoTheoDang, soHopLe, taoVcardNhanh, tenMacDinh, type DangSo,
 } from '@/lib/danhThiep/maLuuNhanh';
 import { CAC_MAU, TEN_MAU, tenTepMau, veMauAnh, type DuLieuMau, type MauAnh } from '@/lib/danhThiep/mauAnhQr';
 import { soOMotCanh, taiTepVeMay, taoQrPngThuan } from '@/lib/danhThiep/qr';
@@ -31,8 +31,8 @@ interface Props {
   dangLuu: boolean;
   /** Chức danh / đơn vị / email lấy từ thẻ online — chỉ vẽ lên mẫu name card, không vào mã */
   phu?: Omit<DuLieuMau, 'vcard' | 'ten' | 'sdt'>;
-  /** Lưu ba cột qr_nhanh_ten / qr_nhanh_sdt / qr_nhanh_email (email chỉ in name card); lỗi báo qua toast ở nơi gọi */
-  onLuu: (dong: { qr_nhanh_ten: string; qr_nhanh_sdt: string; qr_nhanh_email: string | null }) => Promise<void>;
+  /** Lưu hai cột qr_nhanh_ten / qr_nhanh_sdt; lỗi báo qua toast ở nơi gọi */
+  onLuu: (dong: { qr_nhanh_ten: string; qr_nhanh_sdt: string }) => Promise<void>;
 }
 
 type NguonSo = 'di_dong' | 'co_quan' | 'khac';
@@ -47,8 +47,6 @@ export function MaLuuNhanh({ cb, dangLuu, phu, onLuu }: Props) {
   });
   const [soKhac, setSoKhac] = useState<string>(cb.qr_nhanh_sdt ?? '');
   const [dang, setDang] = useState<DangSo>(cb.qr_nhanh_sdt?.startsWith('+') ? 'quoc_te' : 'noi_dia');
-  const [dungEmail, setDungEmail] = useState<boolean>(!!cb.qr_nhanh_email);
-  const [email, setEmail] = useState<string>(cb.qr_nhanh_email ?? cb.email ?? '');
   const [mau, setMau] = useState<MauAnh>('qr_thuong_hieu');
   const [suKien, setSuKien] = useState(false);
   const [anhQr, setAnhQr] = useState<string | null>(null);
@@ -58,12 +56,10 @@ export function MaLuuNhanh({ cb, dangLuu, phu, onLuu }: Props) {
   const soGoc = nguon === 'di_dong' ? (cb.phone_mobile ?? '') : nguon === 'co_quan' ? (cb.phone_office ?? '') : soKhac;
   const sdt = chuanHoaSoTheoDang(soGoc, dang);
   const tenSach = ten.replace(/\s+/g, ' ').trim();
-  // Email KHÔNG vào mã (mã chỉ tên + số để thưa, quét nhanh) — chỉ in lên name card
-  const emailSach = dungEmail ? email.trim() : '';
-  const hopLe = tenSach.length >= 3 && soHopLe(sdt) && (!dungEmail || emailHopLe(emailSach));
+  const hopLe = tenSach.length >= 3 && soHopLe(sdt);
   const vcard = useMemo(() => (hopLe ? taoVcardNhanh({ ten: tenSach, sdt }) : ''), [hopLe, tenSach, sdt]);
   const soO = useMemo(() => (vcard ? soOMotCanh(vcard) : 0), [vcard]);
-  const daDoi = tenSach !== (cb.qr_nhanh_ten ?? '') || sdt !== (cb.qr_nhanh_sdt ?? '') || (emailSach || null) !== cb.qr_nhanh_email;
+  const daDoi = tenSach !== (cb.qr_nhanh_ten ?? '') || sdt !== (cb.qr_nhanh_sdt ?? '');
   const coDau = boDauGiuHoa(ten) !== ten.replace(/\s+/g, ' ').trim();
 
   // Mã trần cho ô xem trước nhỏ và chế độ sự kiện
@@ -80,22 +76,22 @@ export function MaLuuNhanh({ cb, dangLuu, phu, onLuu }: Props) {
     if (!vcard) { setAnhMau(null); return; }
     setDangVe(true);
     const t = setTimeout(() => {
-      veMauAnh(mau, { vcard, ten: tenSach, sdt, ...phu, email: emailSach || phu?.email })
+      veMauAnh(mau, { vcard, ten: tenSach, sdt, ...phu })
         .then((b) => { if (huy) return; cu = URL.createObjectURL(b); setAnhMau(cu); })
         .catch((e: Error) => { if (!huy) { setAnhMau(null); toast.error(e.message); } })
         .finally(() => { if (!huy) setDangVe(false); });
     }, 300);
     return () => { huy = true; clearTimeout(t); if (cu) URL.revokeObjectURL(cu); };
-  }, [vcard, mau, tenSach, sdt, phu, emailSach]);
+  }, [vcard, mau, tenSach, sdt, phu]);
 
   const luu = async () => {
-    if (!hopLe) { toast.error('Cần tên từ 3 ký tự, số điện thoại 9–15 chữ số, và email đúng dạng nếu in lên name card'); return; }
-    await onLuu({ qr_nhanh_ten: tenSach, qr_nhanh_sdt: sdt, qr_nhanh_email: emailSach || null });
+    if (!hopLe) { toast.error('Cần tên từ 3 ký tự và số điện thoại 9–15 chữ số'); return; }
+    await onLuu({ qr_nhanh_ten: tenSach, qr_nhanh_sdt: sdt });
   };
 
   const taiPng = async () => {
     try {
-      taiTepVeMay(await veMauAnh(mau, { vcard, ten: tenSach, sdt, ...phu, email: emailSach || phu?.email }), tenTepMau(mau, boDauGiuHoa(tenSach)));
+      taiTepVeMay(await veMauAnh(mau, { vcard, ten: tenSach, sdt, ...phu }), tenTepMau(mau, boDauGiuHoa(tenSach)));
     } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
   };
 
@@ -161,20 +157,6 @@ export function MaLuuNhanh({ cb, dangLuu, phu, onLuu }: Props) {
               </label>
             </div>
 
-            <div>
-              <label className="flex items-center gap-3 text-sm">
-                <Switch checked={dungEmail} onCheckedChange={setDungEmail} />
-                <span>
-                  In email lên name card
-                  <span className="block text-xs text-muted-foreground">Chỉ hiện trên mẫu name card. Mã QR vẫn chỉ có tên và số để thưa, quét nhanh.</span>
-                </span>
-              </label>
-              {dungEmail && (
-                <Input inputMode="email" placeholder="ten@vietinbank.vn" value={email} onChange={(e) => setEmail(e.target.value)}
-                  className={`mt-2 max-w-sm ${email.trim() && !emailHopLe(email) ? 'border-destructive' : ''}`} />
-              )}
-            </div>
-
             <div className="flex flex-wrap gap-2">
               <Button onClick={luu} disabled={!hopLe || !daDoi || dangLuu}>Lưu nội dung mã</Button>
               <Button variant="outline" onClick={() => setSuKien(true)} disabled={!anhQr}><Expand className="mr-1.5 h-4 w-4" /> Chế độ sự kiện</Button>
@@ -218,8 +200,8 @@ export function MaLuuNhanh({ cb, dangLuu, phu, onLuu }: Props) {
                 : <span className="text-sm text-muted-foreground">{dangVe ? 'Đang vẽ mẫu…' : 'Nhập tên và số để xem mẫu'}</span>}
             </div>
             <Button onClick={taiPng} disabled={!vcard || dangVe}><Download className="mr-1.5 h-4 w-4" /> Tải PNG — {TEN_MAU[mau].ten}</Button>
-            {mau === 'name_card' && !phu?.chucDanh && (
-              <p className="text-center text-xs text-muted-foreground">Chức danh và đơn vị trên name card lấy từ danh thiếp online — chưa có thì để trống.</p>
+            {mau === 'name_card' && (
+              <p className="text-center text-xs text-muted-foreground">Trước mắt name card chỉ in tên và số; mã Zalo tự có khi bạn đã khai kênh Zalo ở tab Danh thiếp online.</p>
             )}
           </div>
         </CardContent>

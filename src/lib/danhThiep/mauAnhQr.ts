@@ -22,7 +22,7 @@ export const CAC_MAU: MauAnh[] = ['qr_tron', 'qr_thuong_hieu', 'name_card', 'bie
 export const TEN_MAU: Record<MauAnh, { ten: string; dung: string; coIn: string }> = {
   qr_tron: { ten: 'Mã QR trần', dung: 'Dán vào tài liệu, chữ ký email, in sticker', coIn: 'in ≥ 3 cm' },
   qr_thuong_hieu: { ten: 'Mã có thương hiệu', dung: 'Gửi Zalo cho khách, in A6 phát tại quầy', coIn: 'in A6 hoặc lớn hơn' },
-  name_card: { ten: 'Name card một mặt', dung: 'Theo mẫu thẻ giấy của Chi nhánh: nền xanh nhạt, logo góc phải, thông tin song ngữ, mã lưu số và mã Zalo', coIn: 'in đúng 90×51 mm' },
+  name_card: { ten: 'Name card một mặt', dung: 'Theo mẫu thẻ giấy của Chi nhánh: nền xanh nhạt, logo góc phải, tên và số, mã lưu số và mã Zalo', coIn: 'in đúng 90×51 mm' },
   bien_ban: { ten: 'Biển để bàn / bảng tên', dung: 'Đặt bàn tư vấn, đeo cổ ở hội trường đền bù', coIn: 'in A6 đứng, ép plastic' },
 };
 
@@ -214,11 +214,6 @@ function veSongDay(ctx: CanvasRenderingContext2D, W: number, H: number) {
   ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
 }
 
-/** Dòng song ngữ «VI | EN» — bỏ phần thiếu, không để dấu | lơ lửng. */
-function songNgu(vi?: string, en?: string): string {
-  return [vi, en].filter((x) => x && x.trim()).join('  |  ');
-}
-
 /**
  * Tên trên name card: thử một dòng ở cỡ lớn, không vừa thì hạ cỡ; xuống tới
  * cỡ sàn vẫn không vừa thì bẻ hai dòng. Trả về toạ độ y của dòng cuối.
@@ -273,33 +268,19 @@ async function veNameCard(d: DuLieuMau): Promise<HTMLCanvasElement> {
   const rongDuoi = xGioiHanDuoi - xTrai;
   const rongTai = (yy: number) => (yy > yQr - 10 ? rongDuoi : rongTren);
 
-  let y = 96;
+  // Trước mắt (13/09/2026) thẻ chỉ in tên và số như nội dung mã; chức danh, đơn vị,
+  // địa chỉ, email, đường dẫn tạm bỏ — mở lại khi từ điển đã duyệt xong bản dịch.
+  let y = 130;
   const tenThe = d.hoTen || d.ten;
   const dongTen = d.tenCjk ? `${d.tenCjk} - ${tenThe}` : tenThe;
-  y = veTenNameCard(ctx, dongTen, xTrai, y, rongTai(y), 50, 34) + 56;
+  y = veTenNameCard(ctx, dongTen, xTrai, y, rongTai(y), 54, 36) + 70;
 
-  const cd = songNgu(d.chucDanh, d.chucDanhEn);
-  if (cd) { veChuVua(ctx, cd, xTrai, y, rongTai(y), 28, 600, NAVY, 'left', 20); y += 52; }
-  const dv = songNgu(d.donVi, d.donViEn);
-  if (dv) { y = veNhieuDong(ctx, dv, xTrai, y, rongTai(y), 22, 500, NAVY, 2) + 40; }
-  const dc = songNgu(d.diaChi, d.diaChiEn);
-  if (dc) { y = veNhieuDong(ctx, dc, xTrai, y, rongTai(y), 20, 500, NAVY, 2) + 40; }
-
-  // E / M / W với nhãn đỏ như thẻ giấy
-  const veNhan = (nhan: string, giaTri: string, x: number, yy: number, coChu: number): number => {
-    ctx.font = `700 ${coChu}px ${FONT}`; ctx.fillStyle = DO_VTB; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-    ctx.fillText(nhan, x, yy);
-    const rongNhan = ctx.measureText(nhan).width + 12;
-    ctx.font = `600 ${coChu}px ${FONT}`; ctx.fillStyle = NAVY;
-    ctx.fillText(giaTri, x + rongNhan, yy);
-    return x + rongNhan + ctx.measureText(giaTri).width;
-  };
-  let xDong = xTrai;
-  if (d.email) xDong = veNhan('E', d.email, xDong, y, 24) + 36;
-  if (xDong + 220 > xTrai + rongTai(y)) { xDong = xTrai; y += 40; }
-  veNhan('M', d.sdt, xDong, y, 24);
-  y += 42;
-  if (d.web) veNhan('W', d.web, xTrai, y, 22);
+  // M số điện thoại với nhãn đỏ như thẻ giấy (13/09/2026: không in email)
+  ctx.font = `700 34px ${FONT}`; ctx.fillStyle = DO_VTB; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.fillText('M', xTrai, y);
+  const rongNhan = ctx.measureText('M').width + 14;
+  ctx.font = `600 34px ${FONT}`; ctx.fillStyle = NAVY;
+  ctx.fillText(d.sdt, xTrai + rongNhan, y);
   return c;
 }
 
