@@ -35,3 +35,11 @@ Dựng từ tệp thiết kế gốc (PDF hai trang, 09/2026): trang 1 là logo 
 đỏ → xanh, trang 2 là logo nền trong. Hiển thị ở đầu trang `/one/bhy-connect`; hoạ tiết
 lưới đa giác quanh logo KHÔNG phải ảnh mà vẽ bằng SVG (`HoaTietMangLuoi`) để đổi màu
 theo nền. Đổi logo thì thay đúng hai tệp này, giữ nền trong suốt cho bản không nền.
+
+## Logo Chi nhánh cho danh thiếp số
+
+| File | Nội dung | Dùng ở |
+|---|---|---|
+| `logo-cn-bhy.svg` | Logo VietinBank + «Chi Nhánh Bắc Hưng Yên» trên nền xanh nhạt bo góc (vector, ~10 KB, tách từ tệp PDF logo do Chi nhánh cung cấp) | Trang danh thiếp số công khai (`/card/<slug>`, chỉ mẫu thẻ cán bộ) và chèn giữa mã QR |
+
+Đổi logo: thay đúng tên tệp, giữ tỉ lệ khung 144 × 88 (hằng số `KHUNG_LOGO` trong `src/lib/danhThiep/qr.ts` tính vùng trắng giữa mã QR theo tỉ lệ này).

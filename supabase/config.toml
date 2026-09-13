@@ -76,6 +76,17 @@ project_id = "whlysprzsguehxmrjwha"
   [functions.doi-mat-khau]
     verify_jwt = true
 
+  # Trả tệp .vcf cho KHÁCH quét danh thiếp số — công khai theo thiết kế: dữ liệu
+  # đã được nc_resolve_card() lọc theo ma trận quyền hiển thị và anon vốn gọi
+  # được hàm đó. Bật verify_jwt là khách (không có phiên) tải không được.
+  [functions.danh-thiep-vcard]
+    verify_jwt = false
+
+  # Nút «Thêm vào Google Wallet»: cũng phải công khai vì khách quét thẻ không
+  # đăng nhập. Hàm tự kiểm cờ wallet trong payload trước khi ký.
+  [functions.danh-thiep-wallet]
+    verify_jwt = false
+
   # Cửa duy nhất nói chuyện với Zalo OA (đổi mã, gia hạn token, gửi tin vào nhóm GMF).
   # Cron gọi bằng service_role JWT từ Vault; quản trị chạy tay bằng JWT của họ.
   [functions.zalo-oa]

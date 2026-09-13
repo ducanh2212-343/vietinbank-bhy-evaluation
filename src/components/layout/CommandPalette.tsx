@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Command as CommandPrimitive } from 'cmdk';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
-import { Clock, CornerDownLeft, LogOut, Moon, Search, Sun, User } from 'lucide-react';
+import { IdCard, Clock, CornerDownLeft, LogOut, Moon, Search, Sun, User } from 'lucide-react';
 import {
   CommandEmpty,
   CommandGroup,
@@ -208,6 +208,14 @@ export function CommandPalette({ open, onOpenChange }: Props) {
               >
                 <User className="mr-2 h-4 w-4 shrink-0 opacity-60" aria-hidden />
                 Hồ sơ cá nhân
+              </CommandItem>
+              <CommandItem
+                value="danh thiep vcard cua toi name card qr"
+                keywords={['danh thiếp', 'vcard', 'name card', 'qr']}
+                onSelect={() => di('/vcard')}
+              >
+                <IdCard className="mr-2 h-4 w-4 shrink-0 opacity-60" aria-hidden />
+                Danh thiếp VCard của tôi
               </CommandItem>
               <CommandItem
                 value="doi giao dien sang toi dark mode"

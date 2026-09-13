@@ -226,6 +226,40 @@ thiếu là bấm vào tin rơi về Kanban. Migration
 vốn đang chờ deploy, vô hại vì migration lịch sử phiên bản chưa áp nên chưa có
 tin `PHIEN_BAN` nào phát sinh.
 
+## Bắc Hưng Yên VCard — danh thiếp số đa ngôn ngữ (09/2026)
+
+Mỗi cán bộ một danh thiếp số tại `bachungyenone.com/card/<slug>`, hiện đúng ngôn ngữ của
+khách (VI/EN/ZH giản–phồn/KO/JA), bấm một nút là lưu danh bạ. Thẻ được **ghép** từ tên
+cán bộ + từ điển chức danh + từ điển đơn vị (bảng `nc_*`), chức danh nội bộ không bao giờ
+lên thẻ, nhân sự thuê ngoài dùng mẫu riêng — mọi luật thực thi ở CSDL qua
+`nc_resolve_card()`. Tiện ích cá nhân: nút «Danh thiếp VCard của tôi» cạnh Hồ sơ cá nhân trong ngăn «Thêm» / menu tài khoản (không thuộc Ways). Quản trị: `/quan-tri-vcard`
+(TCTH + Giám đốc duyệt chức danh riêng); thẻ của tôi: `/vcard`. Trang công khai là entry riêng `card.html`
+(~58 KB gzip, LCP < 1 s trên 4G), ánh xạ `/card/*` bằng `public/_redirects`.
+
+**Trạng thái (04/09/2026):** cả ba migration `20261004090000_danh_thiep_so_nen_tang.sql`,
+`20261004090100_danh_thiep_so_du_lieu_moi.sql` và `20261004090200_danh_thiep_so_tu_tao_ban_nhap.sql`
+**đã áp** vào project `whlysprzsguehxmrjwha` (04/09/2026) — 12 đơn vị, 19 chức danh đối
+ngoại, 15 chức danh nội bộ, tất cả ở trạng thái `draft` chờ rà bản dịch rồi duyệt. Chạy
+khô `nc_dong_bo_hang_loat_tu_343()` trên dữ liệu thật rồi rollback: 100/100 hồ sơ dựng
+được bản nháp, 0 lỗi, 0 người thiếu chức danh đối ngoại.
+Migration `20261005090000_danh_thiep_google_wallet.sql` (cấu hình Google Wallet + cờ
+`wallet_ready` trong `nc_resolve_card`) **đã áp** (04/09/2026). Hai edge function
+`danh-thiep-vcard` và `danh-thiep-wallet` **đã deploy** (04/09/2026, `verify_jwt = false`).
+Migration `20261013090000_danh_thiep_ma_luu_nhanh.sql` (hai cột `qr_nhanh_ten`, `qr_nhanh_sdt`
+cho mã QR nhúng thẳng danh bạ, không cần mạng) **đã áp** (13/09/2026); chạy khô: cán bộ
+thường tự sửa được hai cột này, vẫn bị chặn sửa đơn vị. Migration
+`20261013090100_danh_thiep_ma_luu_nhanh_email.sql` (cột `qr_nhanh_email`, tuỳ chọn đưa email
+vào mã) **đã áp** (13/09/2026) — sau đó làm rõ: email **không** vào mã, chỉ in lên name card
+(`20261013090200_danh_thiep_email_chi_in_name_card.sql`, **đã áp** 13/09/2026). Cùng ngày
+Giám đốc chốt name card **chỉ in tên và số**: cột `qr_nhanh_email` giữ nguyên nhưng giao diện
+không còn dùng.
+
+Còn lại: địa chỉ và số điện thoại Chi nhánh (`CN_BHY`) mới có tên đường, **chưa có số nhà
+và hotline**; Google Wallet **chưa dùng được** cho tới khi có Issuer ID (nhập ở nút Cấu
+hình màn Quản trị VCard) và ba biến bí mật `GOOGLE_WALLET_SA_EMAIL`,
+`GOOGLE_WALLET_SA_KEY`, `GOOGLE_WALLET_ORIGIN` — chưa có thì nút Wallet tự ẩn.
+Checklist triển khai và các điểm cần Giám đốc quyết: `docs/danh-thiep-so-2026-09.md`.
+
 ## Rà soát bảo mật & chống bot đăng nhập (24/08/2026)
 
 Báo cáo đầy đủ, viết cho người không chuyên: `docs/kiem-tra-bao-mat-toan-dien-2026-08.md`.
