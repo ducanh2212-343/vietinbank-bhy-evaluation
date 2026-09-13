@@ -22,6 +22,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { CAC_O_MAU, MAU_MAC_DINH, soanTinSao, type PhieuSao } from '../../supabase/functions/_shared/zaloSaoMau';
 
 interface TongQuan {
   token: {
@@ -175,6 +176,7 @@ export default function QuanTriZaloPage() {
   const [phieuChon, setPhieuChon] = useState('');
   const [xemTruoc, setXemTruoc] = useState<string | null>(null);
   const [caiDatTin, setCaiDatTin] = useState<CauHinh>({});
+  const [mauForm, setMauForm] = useState<{ ca_nhan: string; tap_the: string } | null>(null);
   const [tinThu, setTinThu] = useState('');
   const [dsNhom, setDsNhom] = useState<{ group_id: string; group_name: string }[] | null>(null);
   const [goiCuoc, setGoiCuoc] = useState<CauHinh>({});
@@ -208,6 +210,7 @@ export default function QuanTriZaloPage() {
         goi_cuoc_ky_han: m.goi_cuoc_ky_han ?? '',
         goi_cuoc_tin_nhom_mien_phi_den: m.goi_cuoc_tin_nhom_mien_phi_den ?? '',
       });
+      setMauForm({ ca_nhan: m.mau_tin_ca_nhan ?? MAU_MAC_DINH.ca_nhan, tap_the: m.mau_tin_tap_the ?? MAU_MAC_DINH.tap_the });
       setCaiDatTin({
         gom_phut: m.gom_phut ?? '2', toi_da_dong_mot_tin: m.toi_da_dong_mot_tin ?? '10',
         link_chan_tin: m.link_chan_tin ?? '', ly_do_toi_da_ky_tu: m.ly_do_toi_da_ky_tu ?? '300',
@@ -377,6 +380,43 @@ export default function QuanTriZaloPage() {
     if (error) toast({ title: 'Không gửi lại được', description: error.message, variant: 'destructive' });
     else { toast({ title: `Đã xếp lại ${data} tin lỗi vào hàng đợi` }); load(); }
   };
+  // Phiếu mẫu để xem trước NGAY khi gõ, không cần gọi máy chủ
+  const PHIEU_MAU_CA_NHAN: PhieuSao = {
+    id: 'mau', name: 'Nguyễn Thị Lan Anh', department: 'Phòng Ân Thi', sub_unit: null, stars: 1,
+    reason: 'Chủ động tư vấn, phối hợp tốt tăng trưởng nguồn vốn trong tháng 8', result: 'Tăng trưởng nguồn vốn cho Phòng',
+    awarded_on: new Date().toISOString().slice(0, 10), sender: 'Lý Văn Tám', is_collective: false, recipient_profile_id: 'x',
+  };
+  const PHIEU_MAU_TAP_THE: PhieuSao = {
+    ...PHIEU_MAU_CA_NHAN, id: 'mau2', name: 'Tập thể PGD Ocean City', department: 'PGD Ocean City', is_collective: true, recipient_profile_id: null,
+    sender: 'Phạm Minh Hải', reason: 'Nỗ lực trong công tác chuyển địa điểm Phòng giao dịch', result: 'Khai trương thành công, an toàn',
+  };
+  const xemTruocMau = useMemo(() => {
+    if (!mauForm) return { ca_nhan: '', tap_the: '' };
+    const bc = { linkChanTin: caiDatTin.link_chan_tin ?? '', toiDaDong: 10, lyDoToiDaKyTu: Number(caiDatTin.ly_do_toi_da_ky_tu) || 300 };
+    return {
+      ca_nhan: soanTinSao([PHIEU_MAU_CA_NHAN], 'moi_nguoi_mot_tin', { ...bc, tichLuy: 5, mocQua: 'Còn 1 Sao nữa tới mốc 6 Sao — Voucher Siêu thị / Quà tặng tiện ích' }, mauForm),
+      tap_the: soanTinSao([PHIEU_MAU_TAP_THE], 'moi_nguoi_mot_tin', { ...bc, tichLuy: 3, mocQua: null }, mauForm),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mauForm, caiDatTin.link_chan_tin, caiDatTin.ly_do_toi_da_ky_tu]);
+
+  const luuMau = async () => {
+    if (!mauForm) return;
+    setDangChay('mau');
+    for (const [khoa, gt] of [['mau_tin_ca_nhan', mauForm.ca_nhan], ['mau_tin_tap_the', mauForm.tap_the]] as const) {
+      const macDinh = khoa === 'mau_tin_ca_nhan' ? MAU_MAC_DINH.ca_nhan : MAU_MAC_DINH.tap_the;
+      // Trùng mặc định thì lưu NULL — sau này đổi mặc định trong mã là theo luôn
+      const giaTri = gt.trim() === macDinh ? null : gt.replace(/\r/g, '').trimEnd();
+      const { error } = await (supabase as any).from('zalo_cau_hinh')
+        .update({ gia_tri: giaTri, cap_nhat_luc: new Date().toISOString() }).eq('khoa', khoa);
+      if (error) { toast({ title: 'Không lưu được mẫu', description: error.message, variant: 'destructive' }); setDangChay(null); return; }
+    }
+    setDangChay(null);
+    toast({ title: 'Đã lưu mẫu tin', description: 'Phiếu Sao tiếp theo sẽ dùng mẫu này.' });
+    load();
+  };
+  const khoiPhucMau = () => setMauForm({ ...MAU_MAC_DINH });
+
   const luuCaiDatTin = async () => {
     setDangChay('cai_dat_tin');
     for (const [khoa, giaTri] of Object.entries(caiDatTin)) {
@@ -850,6 +890,52 @@ export default function QuanTriZaloPage() {
               {xemTruoc && (
                 <pre className="whitespace-pre-wrap rounded-md border bg-muted/40 p-3 text-sm font-sans">{xemTruoc}</pre>
               )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-base">Sửa mẫu tin</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Mỗi dòng một đề mục. Ô trong ngoặc nhọn sẽ được thay bằng dữ liệu của phiếu; dòng nào có ô trống (ví dụ phiếu không ghi Kết quả) thì tự bỏ.
+                Biểu tượng đầu dòng đổi tùy ý — Zalo hiện được mọi emoji. Xem trước bên phải đổi ngay khi gõ.
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {CAC_O_MAU.map((o) => (
+                  <span key={o.o} className="inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs" title={o.nghia}>
+                    <code className="font-mono">{o.o}</code><span className="text-muted-foreground hidden sm:inline">· {o.nghia}</span>
+                  </span>
+                ))}
+              </div>
+              {mauForm && (
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="mau1">Mẫu sao cá nhân</Label>
+                      <Textarea id="mau1" rows={8} className="font-mono text-sm" value={mauForm.ca_nhan} onChange={(e) => setMauForm({ ...mauForm, ca_nhan: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label htmlFor="mau2">Mẫu sao tập thể</Label>
+                      <Textarea id="mau2" rows={9} className="font-mono text-sm" value={mauForm.tap_the} onChange={(e) => setMauForm({ ...mauForm, tap_the: e.target.value })} />
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <Label>Xem trước — cá nhân</Label>
+                      <pre className="whitespace-pre-wrap rounded-md border bg-muted/40 p-3 text-sm font-sans min-h-[9rem]">{xemTruocMau.ca_nhan}</pre>
+                    </div>
+                    <div>
+                      <Label>Xem trước — tập thể</Label>
+                      <pre className="whitespace-pre-wrap rounded-md border bg-muted/40 p-3 text-sm font-sans min-h-[9rem]">{xemTruocMau.tap_the}</pre>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div className="flex gap-2 flex-wrap">
+                <Button onClick={luuMau} disabled={!mauForm || dangChay === 'mau'}>Lưu mẫu tin</Button>
+                <Button variant="outline" onClick={khoiPhucMau}>Khôi phục mẫu mặc định</Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Một người nhận nhiều phiếu trong cửa sổ gom, hoặc chế độ gộp theo người tặng, dùng bố cục liệt kê cố định với cùng bộ biểu tượng.</p>
             </CardContent>
           </Card>
 

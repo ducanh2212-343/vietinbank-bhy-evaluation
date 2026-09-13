@@ -1,9 +1,11 @@
 // Mẫu tin Sao Xứng Đáng gửi vào nhóm Zalo — HÀM THUẦN, không phụ thuộc Deno hay
-// Supabase, để kiểm thử được từ vitest (src/pages/__tests__/zaloSaoMau.test.ts).
+// Supabase, để kiểm thử được từ vitest và dùng lại ở trang Quản trị Zalo (xem trước
+// ngay khi gõ). Import từ src: '../../../supabase/functions/_shared/zaloSaoMau'.
 //
 // Giám đốc chốt 12/09/2026: lý do nguyên văn (không che), kèm sao tích lũy và
 // mốc quà kế tiếp, mỗi người nhận một tin riêng, chân tin là đường dẫn về cổng.
-// Chuẩn hình thức push 09/08: mỗi dòng một nhãn, không nối bằng «·» trong thân.
+// 13/09: mẫu SỬA ĐƯỢC trên trang (zalo_cau_hinh.mau_tin_ca_nhan / mau_tin_tap_the),
+// mỗi đề mục có biểu tượng riêng để nhìn là phân biệt được Người tặng / Vì đã / Kết quả.
 
 export interface PhieuSao {
   id: string;
@@ -31,6 +33,76 @@ export interface BoiCanhTin {
 }
 
 export type CheDoGop = 'moi_nguoi_mot_tin' | 'gop_theo_nguoi_tang';
+
+/** Mẫu tin: mỗi dòng một đề mục; dòng nào có ô trống thì tự bỏ. */
+export interface MauTin {
+  ca_nhan: string;
+  tap_the: string;
+}
+
+/**
+ * Mẫu mặc định (13/09/2026, tham khảo tin cán bộ tự đăng tay trên nhóm nhưng
+ * KHÔNG chép nguyên: cách một dòng trống giữa các mục để lướt nhanh trên điện
+ * thoại; lý do dài nên xuống dòng riêng).
+ *
+ * Bộ biểu tượng, mỗi đầu mục một nghĩa, không trùng nhau:
+ *   ⭐ tiêu đề chương trình        🎉 chúc mừng người/tập thể nhận
+ *   🎁 người tặng (món quà từ ai)  💬 lý do — lời ghi nhận
+ *   🏆 kết quả — thành quả          📈 tích lũy & mốc quà kế tiếp
+ *   🤝 tập thể                      👉 đường dẫn
+ * Chỉ dùng biểu tượng đơn sắc phổ thông — hiện giống nhau trên iOS/Android/Zalo PC.
+ */
+export const MAU_MAC_DINH: MauTin = {
+  ca_nhan: [
+    '⭐ SAO XỨNG ĐÁNG · {ngay}',
+    '',
+    '🎉 Chúc mừng {ten_phong} vừa nhận {so_sao}!',
+    '',
+    '🎁 Người tặng: {nguoi_tang}',
+    '',
+    '💬 Ghi nhận vì:',
+    '{ly_do}',
+    '',
+    '🏆 Kết quả: {ket_qua}',
+    '',
+    '📈 Tích lũy: {tich_luy} · {moc_qua}',
+    '',
+    '👉 {link}',
+  ].join('\n'),
+  tap_the: [
+    '⭐ SAO TẬP THỂ · {ngay}',
+    '',
+    '🎉 Chúc mừng {ten} vừa nhận {so_sao}!',
+    '',
+    '🎁 Người tặng: {nguoi_tang}',
+    '',
+    '💬 Ghi nhận vì:',
+    '{ly_do}',
+    '',
+    '🏆 Kết quả: {ket_qua}',
+    '',
+    '📈 Tập thể đã có {tich_luy} tích lũy',
+    '',
+    '🤝 Chúc mừng cả tập thể!',
+    '',
+    '👉 {link}',
+  ].join('\n'),
+};
+
+/** Các ô có thể dùng trong mẫu — hiện trên trang quản trị để người sửa biết. */
+export const CAC_O_MAU: { o: string; nghia: string }[] = [
+  { o: '{ngay}', nghia: 'Ngày trao (dd/mm/yyyy)' },
+  { o: '{ten}', nghia: 'Tên người / tập thể trên phiếu' },
+  { o: '{phong}', nghia: 'Phòng / đơn vị' },
+  { o: '{ten_phong}', nghia: 'Tên — Phòng (cá nhân); tên tập thể (tập thể)' },
+  { o: '{so_sao}', nghia: 'Số sao vừa nhận, ví dụ «2 Sao»' },
+  { o: '{nguoi_tang}', nghia: 'Người tặng' },
+  { o: '{ly_do}', nghia: 'Lý do (nguyên văn, cắt ở ngưỡng ký tự)' },
+  { o: '{ket_qua}', nghia: 'Kết quả (bỏ nếu trống hoặc chỉ là số)' },
+  { o: '{tich_luy}', nghia: 'Sao tích lũy, ví dụ «5 Sao» (tập thể: chỉ khi đã có sao trước đó)' },
+  { o: '{moc_qua}', nghia: 'Câu nhắc mốc quà kế tiếp; đã chạm mốc cao nhất thì «Đã chạm mốc cao nhất 🏆»' },
+  { o: '{link}', nghia: 'Đường dẫn chân tin (cài ở ô «Dòng cuối tin»)' },
+];
 
 /** Khóa gom: cùng khóa → cùng một tin. */
 export function khoaGom(p: PhieuSao, cheDo: CheDoGop): string {
@@ -66,59 +138,109 @@ function tenNguoi(p: PhieuSao): string {
   return phong ? `${p.name.trim()} — ${phong}` : p.name.trim();
 }
 
+/** «Kết quả» ở phiếu cũ đôi khi chỉ là «1» — bỏ qua thứ không phải câu chữ hoặc trùng lý do. */
+function ketQuaDangDung(p: PhieuSao, max: number): string {
+  const kq = cat(p.result, max);
+  const lyDo = cat(p.reason, max);
+  return kq && kq.length > 3 && kq !== lyDo ? kq : '';
+}
+
+/** Giá trị các ô cho MỘT phiếu. Ô trống → dòng chứa nó bị bỏ. */
+export function giaTriCacO(p: PhieuSao, bc: BoiCanhTin, tongSao = Number(p.stars)): Record<string, string> {
+  const tichLuy = bc.tichLuy;
+  return {
+    ngay: ngayVn(p.awarded_on),
+    ten: p.name.trim(),
+    phong: (p.department ?? '').trim(),
+    ten_phong: tenNguoi(p),
+    so_sao: soSao(tongSao),
+    nguoi_tang: (p.sender ?? '').trim(),
+    ly_do: cat(p.reason, bc.lyDoToiDaKyTu),
+    ket_qua: ketQuaDangDung(p, bc.lyDoToiDaKyTu),
+    // Cá nhân: luôn hiện tích lũy khi biết. Tập thể: chỉ khi đã có sao từ trước —
+    // «Tập thể đã có 1 Sao tích lũy» ngay sau phiếu 1 Sao đầu tiên là thừa.
+    tich_luy: tichLuy == null ? '' : (p.is_collective && tichLuy <= tongSao ? '' : soSao(tichLuy)),
+    moc_qua: p.is_collective || tichLuy == null ? '' : (bc.mocQua ?? 'Đã chạm mốc cao nhất 🏆'),
+    link: bc.linkChanTin.trim(),
+  };
+}
+
+/**
+ * Điền mẫu: thay {o} bằng giá trị. Mẫu chia thành KHỐI bởi dòng trống; một khối
+ * có dòng nào chứa ô trống (hoặc ô không tồn tại) thì bỏ CẢ khối — nhờ vậy
+ * «💬 Ghi nhận vì:» không đứng mồ côi khi phiếu không ghi lý do. Dòng trống
+ * giữa các khối giữ nguyên, không bao giờ dồn thành hai dòng trống.
+ */
+export function dienMau(mau: string, o: Record<string, string>): string {
+  const khoi: string[] = [];
+  for (const khoiGoc of mau.replace(/\r/g, '').split(/\n[ \t]*\n/)) {
+    const dongRa: string[] = [];
+    let bo = false;
+    for (const dongGoc of khoiGoc.split('\n')) {
+      let thieu = false;
+      const dong = dongGoc.replace(/\{([a-z_]+)\}/g, (_, k: string) => {
+        const v = o[k];
+        if (!v) thieu = true;
+        return v ?? '';
+      });
+      if (thieu) { bo = true; break; }
+      if (dong.trim() !== '') dongRa.push(dong.trimEnd());
+    }
+    if (!bo && dongRa.length) khoi.push(dongRa.join('\n'));
+  }
+  return khoi.join('\n\n');
+}
+
 /**
  * Soạn MỘT tin cho một nhóm phiếu đã gom (cùng khóa). Phiếu đầu tiên quyết định
  * người/tập thể; các phiếu sau chỉ thêm dòng.
  */
-export function soanTinSao(nhom: PhieuSao[], cheDo: CheDoGop, bc: BoiCanhTin): string {
+export function soanTinSao(nhom: PhieuSao[], cheDo: CheDoGop, bc: BoiCanhTin, mau: MauTin = MAU_MAC_DINH): string {
   if (nhom.length === 0) return '';
-  const ngay = ngayVn(nhom[0].awarded_on);
+  const p0 = nhom[0];
+  const ngay = ngayVn(p0.awarded_on);
   const tongSao = nhom.reduce((s, p) => s + Number(p.stars || 0), 0);
-  const dong: string[] = [];
 
-  if (cheDo === 'gop_theo_nguoi_tang' && nhom.length > 1) {
+  // Một phiếu — dùng mẫu quản trị sửa được
+  if (nhom.length === 1) {
+    const mauDung = (p0.is_collective ? mau.tap_the : mau.ca_nhan) || (p0.is_collective ? MAU_MAC_DINH.tap_the : MAU_MAC_DINH.ca_nhan);
+    return dienMau(mauDung, giaTriCacO(p0, bc));
+  }
+
+  // Nhiều phiếu — dựng theo cấu trúc, giữ cùng bộ biểu tượng
+  const dong: string[] = [];
+  if (cheDo === 'gop_theo_nguoi_tang') {
     // Mẫu 3 — nhiều người, cùng người tặng
-    dong.push(`⭐ ${soSao(tongSao).toUpperCase()} XỨNG ĐÁNG VỪA ĐƯỢC TRAO · ${ngay}`);
-    if (nhom[0].sender) dong.push(`Người tặng: ${nhom[0].sender.trim()}`);
+    dong.push(`⭐ ${soSao(tongSao).toUpperCase()} XỨNG ĐÁNG VỪA ĐƯỢC TRAO · ${ngay}`, '');
+    if (p0.sender) dong.push(`🎁 Người tặng: ${p0.sender.trim()}`, '');
     const hien = nhom.slice(0, bc.toiDaDong);
     hien.forEach((p, i) => {
       const lyDo = cat(p.reason, bc.lyDoToiDaKyTu);
-      dong.push(`${i + 1}. ${tenNguoi(p)} · ${soSao(Number(p.stars))}${lyDo ? ` — ${lyDo}` : ''}`);
+      dong.push(`${i + 1}. 🎉 ${tenNguoi(p)} · ${soSao(Number(p.stars))}${lyDo ? ` — ${lyDo}` : ''}`);
     });
     if (nhom.length > hien.length) {
       const conLai = nhom.slice(hien.length).reduce((s, p) => s + Number(p.stars || 0), 0);
       dong.push(`… và ${soSao(conLai)} nữa cho ${nhom.length - hien.length} cán bộ khác`);
     }
   } else {
-    const p0 = nhom[0];
+    // Một người nhận nhiều phiếu trong cửa sổ gom
     dong.push(p0.is_collective ? `⭐ SAO TẬP THỂ · ${ngay}` : `⭐ SAO XỨNG ĐÁNG · ${ngay}`);
-    dong.push(`${tenNguoi(p0)} vừa nhận ${soSao(tongSao)}`);
-    if (nhom.length === 1) {
-      // Mẫu 1 / Mẫu 2
-      if (p0.sender) dong.push(`Người tặng: ${p0.sender.trim()}`);
-      const lyDo = cat(p0.reason, bc.lyDoToiDaKyTu);
-      if (lyDo) dong.push(`Vì đã: ${lyDo}`);
-      const kq = cat(p0.result, bc.lyDoToiDaKyTu);
-      // «Kết quả» ở phiếu cũ đôi khi chỉ là «1» — bỏ qua thứ không phải câu chữ
-      if (kq && kq.length > 3 && kq !== lyDo) dong.push(`Kết quả: ${kq}`);
-    } else {
-      // Một người nhận nhiều phiếu trong cửa sổ gom
-      const hien = nhom.slice(0, bc.toiDaDong);
-      hien.forEach((p, i) => {
-        const lyDo = cat(p.reason, bc.lyDoToiDaKyTu);
-        const nt = p.sender ? ` (${p.sender.trim()} tặng)` : '';
-        dong.push(`${i + 1}. ${soSao(Number(p.stars))}${nt}${lyDo ? ` — ${lyDo}` : ''}`);
-      });
-      if (nhom.length > hien.length) dong.push(`… và ${nhom.length - hien.length} phiếu nữa`);
-    }
+    dong.push('', `🎉 Chúc mừng ${tenNguoi(p0)} vừa nhận ${soSao(tongSao)}!`, '');
+    const hien = nhom.slice(0, bc.toiDaDong);
+    hien.forEach((p, i) => {
+      const lyDo = cat(p.reason, bc.lyDoToiDaKyTu);
+      const nt = p.sender ? ` (🎁 ${p.sender.trim()} tặng)` : '';
+      dong.push(`${i + 1}. ${soSao(Number(p.stars))}${nt}${lyDo ? ` — 💬 ${lyDo}` : ''}`);
+    });
+    if (nhom.length > hien.length) dong.push(`… và ${nhom.length - hien.length} phiếu nữa`);
+    const o = giaTriCacO(p0, bc, tongSao);
     if (p0.is_collective) {
-      if (bc.tichLuy != null && bc.tichLuy > tongSao) dong.push(`Tập thể đã có ${soSao(bc.tichLuy)} tích lũy`);
-      dong.push('🎉 Chúc mừng cả tập thể!');
-    } else if (bc.tichLuy != null) {
-      dong.push(`Tích lũy: ${soSao(bc.tichLuy)}${bc.mocQua ? ` · ${bc.mocQua}` : ' · Đã chạm mốc cao nhất 🏆'}`);
+      if (o.tich_luy) dong.push('', `📈 Tập thể đã có ${o.tich_luy} tích lũy`);
+      dong.push('', '🤝 Chúc mừng cả tập thể!');
+    } else if (o.tich_luy) {
+      dong.push('', `📈 Tích lũy: ${o.tich_luy} · ${o.moc_qua}`);
     }
   }
-
-  if (bc.linkChanTin) dong.push(`👉 ${bc.linkChanTin}`);
-  return dong.join('\n');
+  if (bc.linkChanTin.trim()) dong.push('', `👉 ${bc.linkChanTin.trim()}`);
+  return dong.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
