@@ -573,6 +573,111 @@ như máy Mac**. Migration `20261020090000_tin_hoan_thanh_ngan_gon.sql` **đã �
 đã báo mà **không sinh tin nào**, để nút «Công bố» sau này chỉ gửi đúng mục mới.
 Chi tiết: mục 18 của tài liệu trên.
 
+## Kênh Zalo OA & Quản trị Push (09/2026)
+
+**Mục tiêu:** đẩy tin Sao Xứng Đáng từ cổng vào nhóm Zalo GMF «343 - Bắc Hưng Yên
+One» qua Zalo Official Account «VietinBank Bắc Hưng Yên» (App ID 298836022005112891,
+OA ID 3852871198450053653, gói Tăng trưởng, 100 request/phút). Zalo là kênh cả
+chi nhánh đọc; push của cổng chỉ một phần cán bộ bật.
+
+**Đợt 1 — nền kết nối + hai trang quản trị (12/09/2026):**
+
+- Bảng `zalo_token` (một dòng, chỉ service_role — KHÔNG policy nào cho cán bộ),
+  `zalo_cau_hinh` (OA ID, nhóm GMF, công tắc, gói cước — quản trị đọc/sửa),
+  `zalo_nhat_ky` (mọi lần gọi Zalo). Secret Key nằm ở Vault `zalo_app_secret_key`,
+  nạp từ trang Quản trị Zalo (RPC `zalo_dat_bi_mat`, chỉ system_admin).
+- Edge function **`zalo-oa`** (v2, đã deploy, đã gọi thử `trang_thai` bằng
+  service_role qua pg_net) — cửa duy nhất nói chuyện với Zalo: `doi_ma` (kèm
+  `code_verifier` vì Zalo dùng PKCE), `nap_token` (dán refresh token lấy từ API
+  Explorer — cách 2 trong tài liệu Zalo; hệ thống đổi ngay lấy cặp mới của riêng
+  nó), `gia_han`, `trang_thai`, `liet_ke_nhom`, `luu_nhom`, `gui_thu`. Thư viện
+  `supabase/functions/_shared/zalo.ts`. Trang Quản trị Zalo tự tạo cặp PKCE
+  (verifier 43 ký tự, challenge = base64url(SHA-256)) và nhận `?code=` khi Zalo
+  gọi về callback `/quan-tri-zalo`.
+- **Refresh token của Zalo chỉ dùng được MỘT lần**: mỗi lần gia hạn nhận cặp mới
+  và ghi đè ngay xuống `zalo_token`; khóa mềm `zalo_giu_khoa_gia_han()` chặn hai
+  lần gia hạn song song; lỗi 2 lần liên tiếp → `zalo_canh_bao_quan_tri` đẩy tin
+  `ZALO_LOI` (mức DO: push + chuông + email) tới TCTH/quản trị hệ thống.
+- Cron `zalo-gia-han-token` `0 */6 * * *` (đã đăng ký) — hàm chỉ gọi Zalo khi
+  access token còn dưới 7 giờ; cron tự bỏ qua khi chưa có token.
+- Trang **Quản trị Push** `/quan-tri-push` (RPC `push_thong_ke`, chỉ số đếm — không
+  đọc nội dung/người nhận tin) và **Quản trị Zalo** `/quan-tri-zalo` (RPC
+  `zalo_tong_quan`, `zalo_co_bi_mat`), cả hai trong khu Hệ thống, minRole admin.
+- Migration `20261024090000_zalo_oa_ket_noi.sql` **đã áp** vào `whlysprzsguehxmrjwha`
+  (12/09/2026, tên `zalo_oa_ket_noi`; kiểm sau áp: 3 bảng, 7 hàm, 1 cron). File gỡ:
+  `supabase/rollbacks/20261024090000_zalo_oa_ket_noi_down.sql`.
+
+**Đợt 3 — tab Kết nối (13/09/2026):** App ID và callback URL vào `zalo_cau_hinh`
+(migration `20261027090000_zalo_app_id_va_callback.sql` **đã áp**, chỉ nạp dữ
+liệu; callback mặc định `https://bachungyenone.com` — trước đó trang lấy domain
+đang chạy, mở từ workers.dev là Zalo báo -14003). **Cách 3** dán đường dẫn Zalo
+trả về (tự tách `code`/`oa_id`, che mã, chặn khi sai OA), nút «Mở trang cấp quyền»
+dựng từ cấu hình. Lỗi OAuth dịch tiếng Việt kèm cách sửa (`dienGiaiLoiOAuth`
+trong `_shared/zalo.ts`). Nhật ký ghi người thực hiện + 4 ký tự đầu của mã.
+`HomeRedirect` ở `/` giữ `?code=&oa_id=` chuyển sang `/quan-tri-zalo`. Khối
+«Hướng dẫn vận hành» thu gọn ở đầu tab. `zalo-oa` v3, `zalo-gui-sao` v2 (cùng
+`_shared/zalo.ts`).
+
+**Sự cố đầu tiên khi chạy thật (13/09/2026, 09:52–09:58):** ba lần «Nạp và đổi
+lấy cặp mới» đều bị Zalo trả `-14004 Invalid secret key`. Tra Vault (chỉ độ dài,
+không đọc giá trị): chuỗi nạp vào ô Secret key dài 427 ký tự — Giám đốc đã dán
+**Access token** từ API Explorer vào ô Secret key. Sửa: ô Secret key chặn chuỗi
+dài hơn 64 ký tự hoặc có ký tự lạ; `zalo_co_bi_mat()` nay trả jsonb (đã nạp,
+độ dài, có thuần chữ-số không — migration `20261028090000_zalo_bi_mat_do_dai.sql`
+**đã áp**) để trang cảnh báo đỏ khi chuỗi đang nạp không phải Secret key;
+`nap_token` trả đúng câu lỗi Zalo thay vì «loi»; -14004 ánh xạ về Secret key.
+Secret key thật lấy ở developers.zalo.me → ứng dụng → Cài đặt → «Khóa bí mật
+của ứng dụng» → Hiện → copy (~20 ký tự). `zalo-oa` v4.
+
+**Bước 1–4 hoàn tất (13/09/2026, 10:20):** Secret key nạp đúng, Refresh token
+từ API Explorer đổi thành công, API thông tin OA trả về đúng «VietinBank Bắc
+Hưng Yên». Đường liệt kê nhóm trong tài liệu cũ (`group/listgroup`) đã bị Zalo
+gỡ — 15 biến thể đều 404; đường đúng lấy từ API Explorer:
+`GET /v3.0/oa/group/getgroupsofoa?offset&count`. Nhóm «343 - Bắc Hưng Yên One»
+group_id `4a9bada229cec09099df` (5 thành viên) đã lưu vào cấu hình. Gửi tin:
+`POST /v3.0/oa/group/message` — tin thử đã lên nhóm (message_id
+`705efa85665a0d03544c`). `zalo-oa` v5 (`zalo-gui-sao` v2 giữ nguyên — hàm này không liệt kê nhóm, đường gửi tin đã đúng). GĐ xác nhận tin thử đã
+lên nhóm lúc 10:25 → công tắc `bat_sao_xung_dang` **đã BẬT** (13/09/2026, qua SQL,
+có dòng nhật ký `cong_tac`). Ngay sau đó GĐ yêu cầu
+đẩy tức thì: thêm công tắc `tiet_kiem_tin` (migration
+`20261029090000_zalo_cong_tac_tiet_kiem_tin.sql` **đã áp**, file gỡ cùng tên) —
+**đang TẮT**: trigger xếp hàng với mốc sẵn sàng = ngay và gọi luôn `zalo-gui-sao`
+qua pg_net (`zalo_kich_hoat_gui_sao`), cron mỗi phút chỉ còn là lưới vớt. Bật lên
+thì quay về gom `gom_phut` (2). Switch ở tab Tin Sao.
+
+**Gói cước (bảng giá Zalo OA áp dụng 01/06/2026, gồm VAT — migration
+`20261025090000_zalo_goi_cuoc_bang_gia.sql` **đã áp**, chỉ nạp dữ liệu vào
+`zalo_cau_hinh`, file gỡ cùng tên trong `supabase/rollbacks/`):** Gói Tăng
+trưởng 1.400.000đ/6 tháng hoặc 2.500.000đ/năm; **tin OA → nhóm chat miễn phí tới
+31/12/2026** (trang quản trị nhắc trước 45 ngày); 1 nhóm GMF-100 kèm gói (thêm
+nhóm: 75.000đ/tháng); API 100 request/phút; **OA chỉ ủy quyền được 1 ứng dụng** —
+ủy quyền app khác là BHY ONE mất token; 500 tin tư vấn 1-1/tháng (không liên
+quan tin nhóm). Hết hạn gói không gia hạn → OA về gói Cơ bản, API ngừng.
+
+**Đợt 2 — tin Sao Xứng Đáng lên nhóm (12/09/2026, mẫu tin GĐ duyệt cùng ngày):**
+lý do nguyên văn (cắt 300 ký tự), kèm sao tích lũy + mốc quà, **mỗi người nhận
+một tin riêng** (chế độ gộp theo người tặng để trong cấu hình), chân tin là link
+về cổng. Cơ chế: trigger `sao_xep_hang_zalo` sau khi ghi phiếu chỉ xếp vào
+`zalo_hang_doi` với mốc sẵn sàng = lúc ghi + `gom_phut` (2); cron `zalo-gui-sao`
+mỗi phút (chỉ gọi khi có dòng tới mốc) → edge function **`zalo-gui-sao`** (v1,
+đã deploy) gom theo người nhận, soạn tin bằng hàm thuần
+`_shared/zaloSaoMau.ts` (có kiểm thử), gửi, đóng dấu; lỗi thì lùi dần 2/4/8/16
+phút, quá 5 lần → đánh dấu lỗi + cảnh báo quản trị. Phiếu gỡ trước khi gửi thì
+rút khỏi hàng; phiếu nhập bù không vào hàng. Tab **Tin Sao** trên Quản trị Zalo:
+xem trước/gửi thử với phiếu thật, cài đặt gom, hàng đợi, gửi lại tin lỗi.
+Migration `20261026090000_zalo_tin_sao_xung_dang.sql` **đã áp** (bảng
+`zalo_hang_doi`, 2 trigger, 4 hàm, 1 cron; file gỡ cùng tên). Công tắc
+`bat_sao_xung_dang` **đang tắt** — bật trên tab Nhóm sau khi tin thử lên nhóm.
+Không đưa tên khách hàng, số tài khoản, dữ liệu tín dụng vào tin Zalo.
+
+**Chạy lần đầu (trên cổng, không cần kỹ thuật):** Quản trị Zalo → tab Kết nối →
+(1) dán Secret Key → (2) **cách nhanh:** API Explorer trên Zalo for Developers →
+OA Access Token → chép refresh token → dán vào «Cách 2» (hoặc cách 1: «Tạo mã
+PKCE», dán code_challenge + callback `https://bachungyenone.com/quan-tri-zalo`
+vào phần thiết lập đường dẫn cấp quyền của ứng dụng, mở đường dẫn, «Cho phép»,
+quay về trang là mã tự điền, bấm «Đổi mã lấy token») → tab Nhóm → (3) «Tìm và
+lưu nhóm» → (4) «Gửi tin thử» rồi xác nhận trên Zalo.
+
 ## Chiêu thức 2 — Kanban 5W2H + PDCA (08/2026)
 
 Trang `/one/chieu-thuc-2` được dựng lại theo đặc tả đầy đủ
