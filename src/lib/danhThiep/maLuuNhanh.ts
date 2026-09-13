@@ -15,16 +15,18 @@
  * đời máy; để cán bộ chọn theo thực tế địa bàn.
  */
 
-import { boDau } from '@/lib/vietnamese';
-
-/** Tiền tố chuẩn trước tên, để khách gõ «Viet» trong danh bạ là ra. */
+/**
+ * Tiền tố GỢI Ý trước tên, để khách gõ «Viet» trong danh bạ là ra. Chỉ là gợi
+ * ý ban đầu — cán bộ gõ lại toàn bộ tên tuỳ ý (quyết định 13/09/2026: không
+ * ép cứng, vì có cán bộ muốn «VietinBank BHY - Tên», «NH Công Thương - Tên»…).
+ */
 export const TIEN_TO = 'VietinBank - ';
 
 /** Dạng số điện thoại trong mã. */
 export type DangSo = 'noi_dia' | 'quoc_te';
 
 export interface NoiDungMaNhanh {
-  /** Tên hiện trong danh bạ khách, đã gồm tiền tố, ví dụ «VietinBank - Trần Văn Khái». */
+  /** Tên hiện trong danh bạ khách, đúng như cán bộ gõ, ví dụ «VietinBank - Trần Văn Khái». */
   ten: string;
   /** Số điện thoại đúng như sẽ lưu vào máy khách. */
   sdt: string;
@@ -41,7 +43,7 @@ export function boDauGiuHoa(s: string): string {
     .trim();
 }
 
-/** Tên mặc định cho cán bộ: tiền tố + họ tên trong hồ sơ. */
+/** Gợi ý tên ban đầu: tiền tố + họ tên trong hồ sơ. */
 export function tenMacDinh(hoTen: string, khongDau: boolean): string {
   const t = (hoTen ?? '').replace(/\s+/g, ' ').trim();
   return TIEN_TO + (khongDau ? boDauGiuHoa(t) : t);

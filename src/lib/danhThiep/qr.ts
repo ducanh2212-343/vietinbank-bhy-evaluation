@@ -51,6 +51,24 @@ function veHinhChuNhatBo(ctx: CanvasRenderingContext2D, x: number, y: number, w:
   ctx.closePath();
 }
 
+/** Logo Chi nhánh dạng ảnh đã nạp — dùng cho các mẫu ảnh in (mauAnhQr.ts). */
+export async function napLogoAnh(): Promise<HTMLImageElement> {
+  return napAnh(svgSangDataUri(await napLogoSvg()));
+}
+
+/** Tỉ lệ khung của logo (rộng / cao) — để đặt logo vào mẫu ảnh không méo. */
+export const TI_LE_KHUNG_LOGO = KHUNG_LOGO;
+
+/** Vẽ mã QR mức M, không logo, lên một canvas tạm; trả canvas để mẫu ảnh ghép vào. */
+export async function veQrThuanRaCanvas(noiDung: string, canh: number): Promise<HTMLCanvasElement> {
+  const c = document.createElement('canvas');
+  await QRCode.toCanvas(c, noiDung, {
+    errorCorrectionLevel: 'M', margin: VUNG_TRONG, width: canh,
+    color: { dark: '#000000FF', light: '#FFFFFFFF' },
+  });
+  return c;
+}
+
 export interface TuyChonQr {
   /** Chèn logo VietinBank giữa mã — chỉ cho mẫu thẻ chính thức và khi logo_enabled */
   logo?: boolean;

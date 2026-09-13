@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useCauHinhDanhThiep, useDanhThiepCuaToi, useLamTuoiDanhThiep } from '@/hooks/useDanhThiep';
@@ -24,7 +25,9 @@ import { db, goiRpc, laChuaKichHoat, urlAnhDanhThiep } from '@/lib/danhThiep/db'
 import {
   CAC_KENH, HUONG_DAN_KENH, TEN_KENH, TEN_LOAI_NHAN_SU, kenhCanQr, mauTheTheoLoai, type Kenh, type LoaiKenh,
 } from '@/lib/danhThiep/kieu';
-import { TEN_NGON_NGU } from '@/lib/danhThiep/ngonNgu';
+import { TEN_NGON_NGU, chonBanDich } from '@/lib/danhThiep/ngonNgu';
+import { thuLaiNc } from '@/lib/danhThiep/db';
+import type { KetQuaResolve } from '@/lib/danhThiep/kieu';
 import { taiTepVeMay, taoQrPng } from '@/lib/danhThiep/qr';
 import { HuyHieuTrangThai } from '@/components/danh-thiep/HuyHieuTrangThai';
 import { GIA_TRI_6_TRONG, NhapSauNgonNgu, raCotTen, type GiaTri6 } from '@/components/danh-thiep/NhapSauNgonNgu';
@@ -75,6 +78,23 @@ export default function DanhThiepCuaToiPage() {
   // Nút Google Wallet chỉ hiện khi Chi nhánh đã đăng ký Issuer với Google —
   // nút bấm vào chỉ để báo lỗi còn tệ hơn là không có nút
   const walletBat = walletSanSang(cauHinh as Record<string, unknown>);
+
+  // Cùng khoá truy vấn với khung xem thẻ → không tốn thêm lượt gọi; chỉ để vẽ name card
+  const { data: payloadThe } = useQuery({
+    queryKey: ['nc', 'the', cb?.slug ?? null],
+    enabled: !!cb,
+    retry: thuLaiNc,
+    queryFn: () => goiRpc<KetQuaResolve>('nc_resolve_card', { _slug: cb!.slug, _xem_truoc: true }),
+  });
+  const phuNameCard = useMemo(() => {
+    if (!payloadThe || (payloadThe.status !== 'ok' && payloadThe.status !== 'preview')) return undefined;
+    const donVi = payloadThe.units.map((u) => chonBanDich(u.name, 'vi')).filter(Boolean);
+    return {
+      chucDanh: chonBanDich(payloadThe.title, 'vi') || undefined,
+      donVi: donVi.length >= 2 ? donVi.slice(1).join(' · ') : donVi[0],
+      email: payloadThe.email,
+    };
+  }, [payloadThe]);
 
   const { data: luotQuet } = useQuery({
     queryKey: ['nc', 'luot-quet', cb?.id],
@@ -227,10 +247,25 @@ export default function DanhThiepCuaToiPage() {
       <div>
         <p className="text-xs font-semibold uppercase tracking-wider text-[#A8763E]">Bắc Hưng Yên VCard</p>
         <h1 className="page-header">Danh thiếp số của tôi</h1>
-        <p className="page-subtitle">Khách quét QR sẽ thấy thẻ đúng ngôn ngữ của họ và lưu được liên hệ trong vài giây.</p>
+        <p className="page-subtitle">Hai cách để khách lưu liên hệ của bạn: mã quét là lưu (không cần mạng) và danh thiếp online đa ngôn ngữ.</p>
       </div>
 
-      {/* Thẻ hiện NGAY ở đầu trang — đúng thứ khách sẽ thấy, kể cả khi còn nháp */}
+      {/* Hai phần tách hẳn vì hai cảnh dùng khác nhau: QR offline cho hội trường
+          đông người, sóng yếu, khách có tuổi; danh thiếp online cho khách cao cấp
+          và khách nước ngoài. Trộn chung một màn từng khiến cán bộ đưa nhầm mã. */}
+      <Tabs defaultValue="offline" className="space-y-4">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="offline">QR offline — quét là lưu</TabsTrigger>
+          <TabsTrigger value="online">Danh thiếp online</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="offline" className="space-y-4">
+          <MaLuuNhanh cb={cb} dangLuu={dangLuu} phu={phuNameCard}
+            onLuu={(dong) => luuTuPhucVu(dong, 'Đã lưu nội dung mã — dùng được trên mọi máy đăng nhập')} />
+        </TabsContent>
+
+        <TabsContent value="online" className="space-y-5">
+      {/* Thẻ hiện NGAY ở đầu phần — đúng thứ khách sẽ thấy, kể cả khi còn nháp */}
       <section className="rounded-2xl bg-[#12202E] p-4 sm:p-6">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm text-white/80">
           <span>{hoatDong ? 'Thẻ của bạn — đúng như khách thấy khi quét' : 'Xem trước thẻ của bạn (chưa công khai)'}</span>
@@ -290,10 +325,6 @@ export default function DanhThiepCuaToiPage() {
           )}
         </CardContent>
       </Card>
-
-      {/* Mã lưu nhanh: đặt ngay dưới thẻ vì đây là thứ cán bộ dùng nhiều nhất ở hội trường */}
-      <MaLuuNhanh cb={cb} dangLuu={dangLuu}
-        onLuu={(dong) => luuTuPhucVu(dong, 'Đã lưu mã lưu nhanh — dùng được trên mọi máy đăng nhập')} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
@@ -387,6 +418,8 @@ export default function DanhThiepCuaToiPage() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={!!kenhMoi} onOpenChange={(o) => { if (!o) setKenhMoi(null); }}>
         <DialogContent>
