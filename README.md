@@ -618,6 +618,17 @@ trong `_shared/zalo.ts`). Nhật ký ghi người thực hiện + 4 ký tự đ�
 «Hướng dẫn vận hành» thu gọn ở đầu tab. `zalo-oa` v3, `zalo-gui-sao` v2 (cùng
 `_shared/zalo.ts`).
 
+**Sự cố đầu tiên khi chạy thật (13/09/2026, 09:52–09:58):** ba lần «Nạp và đổi
+lấy cặp mới» đều bị Zalo trả `-14004 Invalid secret key`. Tra Vault (chỉ độ dài,
+không đọc giá trị): chuỗi nạp vào ô Secret key dài 427 ký tự — Giám đốc đã dán
+**Access token** từ API Explorer vào ô Secret key. Sửa: ô Secret key chặn chuỗi
+dài hơn 64 ký tự hoặc có ký tự lạ; `zalo_co_bi_mat()` nay trả jsonb (đã nạp,
+độ dài, có thuần chữ-số không — migration `20261028090000_zalo_bi_mat_do_dai.sql`
+**đã áp**) để trang cảnh báo đỏ khi chuỗi đang nạp không phải Secret key;
+`nap_token` trả đúng câu lỗi Zalo thay vì «loi»; -14004 ánh xạ về Secret key.
+Secret key thật lấy ở developers.zalo.me → ứng dụng → Cài đặt → «Khóa bí mật
+của ứng dụng» → Hiện → copy (~20 ký tự). `zalo-oa` v4.
+
 **Gói cước (bảng giá Zalo OA áp dụng 01/06/2026, gồm VAT — migration
 `20261025090000_zalo_goi_cuoc_bang_gia.sql` **đã áp**, chỉ nạp dữ liệu vào
 `zalo_cau_hinh`, file gỡ cùng tên trong `supabase/rollbacks/`):** Gói Tăng

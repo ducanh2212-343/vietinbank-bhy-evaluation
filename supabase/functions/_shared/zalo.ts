@@ -147,10 +147,11 @@ export function dienGiaiLoiOAuth(ct: { http?: number; ma_loi?: unknown; ten_loi?
   if (ma === -14003 || /redirect_uri|callback/.test(chu)) {
     return 'Callback URL không khớp giá trị khai trên Zalo Developers tại mục «Thiết lập đường dẫn yêu cầu cấp quyền», hoặc domain chưa xác thực. Sửa callback ở mục Cấu hình ứng dụng cho khớp từng ký tự rồi lấy mã mới.' + goc;
   }
-  if (/secret|app_id|application|invalid app|unauthorized/.test(chu) || ct.http === 401 || ct.http === 403) {
-    return 'Secret Key sai hoặc chưa nạp, hoặc App ID không đúng. Kiểm tra mục 1.' + goc;
+  // -14004 «Invalid secret key» — xác nhận từ nhật ký thật ngày 13/09/2026
+  if (ma === -14004 || /secret|app_id|application|invalid app|unauthorized/.test(chu) || ct.http === 401 || ct.http === 403) {
+    return 'Zalo không nhận Secret key đang nạp. Trên Zalo Developers → ứng dụng «Bắc Hưng Yên One» → Cài đặt → ô «Secret key»: bấm «Hiện» rồi copy (đừng copy dãy dấu chấm), dán lại ở mục 1, thử lại.' + goc;
   }
-  if (ct.grant_type === 'authorization_code' && (/code|expire|invalid_grant|used/.test(chu) || ma === -14004 || ma === -14005 || ma === -14010)) {
+  if (ct.grant_type === 'authorization_code' && (/code|expire|invalid_grant|used/.test(chu) || ma === -14005 || ma === -14010)) {
     return 'Mã đã hết hạn hoặc đã dùng. Bấm «Mở trang cấp quyền» lấy mã mới, dán ngay.' + goc;
   }
   if (ct.grant_type === 'refresh_token' && (/refresh|token|expire|invalid_grant/.test(chu) || ma === -14020 || ma === -14019)) {

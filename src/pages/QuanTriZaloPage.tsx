@@ -153,6 +153,7 @@ export default function QuanTriZaloPage() {
   const [tq, setTq] = useState<TongQuan | null>(null);
   const [ch, setCh] = useState<CauHinh>({});
   const [coBiMat, setCoBiMat] = useState<boolean | null>(null);
+  const [biMatInfo, setBiMatInfo] = useState<{ do_dai: number; chu_so_thuan: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
   const [dangChay, setDangChay] = useState<string | null>(null);
 
@@ -213,7 +214,11 @@ export default function QuanTriZaloPage() {
         so_lan_thu_toi_da: m.so_lan_thu_toi_da ?? '5',
       });
     }
-    if (!bmRes.error) setCoBiMat(bmRes.data === true);
+    if (!bmRes.error) {
+      const bm = bmRes.data as { co: boolean; do_dai?: number; chu_so_thuan?: boolean } | boolean | null;
+      if (typeof bm === 'boolean') { setCoBiMat(bm); setBiMatInfo(null); }
+      else { setCoBiMat(!!bm?.co); setBiMatInfo(bm?.co ? { do_dai: bm.do_dai ?? 0, chu_so_thuan: !!bm.chu_so_thuan } : null); }
+    }
     setLoading(false);
   }, [toast]);
 
@@ -248,7 +253,15 @@ export default function QuanTriZaloPage() {
     }
   }, [load, toast]);
 
+  // Secret key của ứng dụng Zalo là chuỗi ngắn (~20 ký tự chữ-số). Sáng 13/09 một
+  // token dài 427 ký tự đã bị dán nhầm vào đây và Zalo trả «Invalid secret key» ba
+  // lần — chặn ngay tại ô để không lặp lại.
+  const secretTrongGiongToken = secretKey.trim().length > 64 || /[^A-Za-z0-9_-]/.test(secretKey.trim());
   const napSecretKey = async () => {
+    if (secretTrongGiongToken) {
+      toast({ title: 'Đây không phải Secret key', description: 'Chuỗi vừa dán quá dài hoặc có ký tự lạ — trông giống Access/Refresh token. Secret key nằm ở Zalo Developers → ứng dụng → Cài đặt → ô «Secret key» (bấm Hiện rồi copy), khoảng 20 ký tự.', variant: 'destructive' });
+      return;
+    }
     setDangChay('bi_mat');
     const { error } = await (supabase as any).rpc('zalo_dat_bi_mat', { _gia_tri: secretKey });
     setDangChay(null);
@@ -590,15 +603,30 @@ export default function QuanTriZaloPage() {
               <p className="text-sm text-muted-foreground">
                 App ID <span className="font-mono">298836022005112891</span> · OA ID <span className="font-mono">{ch.oa_id}</span>.
                 Secret Key nằm trong kho bí mật của máy chủ, không hiện lại ở đây. Trạng thái:{' '}
-                {coBiMat === null ? '…' : coBiMat ? <Badge className="bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-300">Đã nạp</Badge> : <Badge className="bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-300">Chưa nạp</Badge>}
+                {coBiMat === null ? '…' : coBiMat ? <Badge className="bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-300">Đã nạp{biMatInfo ? ` · ${biMatInfo.do_dai} ký tự` : ''}</Badge> : <Badge className="bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-300">Chưa nạp</Badge>}
               </p>
+              {biMatInfo && (biMatInfo.do_dai > 64 || !biMatInfo.chu_so_thuan) && (
+                <Alert variant="destructive">
+                  <CircleAlert className="h-4 w-4" />
+                  <AlertTitle>Chuỗi đang nạp không phải Secret key</AlertTitle>
+                  <AlertDescription>
+                    Dài {biMatInfo.do_dai} ký tự{!biMatInfo.chu_so_thuan ? ', có ký tự đặc biệt' : ''} — trông giống Access token hoặc Refresh token. Secret key thật chỉ khoảng 20 ký tự chữ-số.
+                    Lấy đúng ở Zalo Developers → ứng dụng «Bắc Hưng Yên One» → Cài đặt → ô «Secret key» → bấm «Hiện» → copy → dán vào ô dưới để ghi đè.
+                  </AlertDescription>
+                </Alert>
+              )}
               {laSystemAdmin ? (
                 <div className="flex gap-2 flex-wrap items-end">
                   <div className="flex-1 min-w-[240px]">
                     <Label htmlFor="secret">Secret key {coBiMat ? '(dán để ghi đè)' : ''}</Label>
-                    <Input id="secret" type="password" autoComplete="off" value={secretKey} onChange={(e) => setSecretKey(e.target.value)} placeholder="Zalo Developers → ứng dụng → Cài đặt → ô «Secret key»" />
+                    <Input id="secret" type="password" autoComplete="off" value={secretKey} onChange={(e) => setSecretKey(e.target.value)} placeholder="Zalo Developers → ứng dụng → Cài đặt → ô «Secret key» (bấm Hiện rồi copy)" />
+                    {secretKey.trim() && (
+                      <p className={`text-xs mt-1 ${secretTrongGiongToken ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>
+                        {secretKey.trim().length} ký tự{secretTrongGiongToken ? ' — quá dài hoặc có ký tự lạ, đây là token chứ không phải Secret key' : ''}
+                      </p>
+                    )}
                   </div>
-                  <Button onClick={napSecretKey} disabled={secretKey.trim().length < 8 || dangChay === 'bi_mat'}>Nạp vào kho bí mật</Button>
+                  <Button onClick={napSecretKey} disabled={secretKey.trim().length < 8 || secretTrongGiongToken || dangChay === 'bi_mat'}>Nạp vào kho bí mật</Button>
                 </div>
               ) : <p className="text-xs text-muted-foreground">Chỉ quản trị hệ thống mới nạp được Secret Key.</p>}
             </CardContent>

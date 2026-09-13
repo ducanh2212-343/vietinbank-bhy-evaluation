@@ -67,7 +67,12 @@ Deno.serve(async (req) => {
         const rt = String(body.refresh_token ?? '').trim();
         if (rt.length < 20) throw new HttpError('refresh_token không hợp lệ', 400);
         const kq = await napRefreshToken(admin, rt, { nguoi });
-        if (!kq.da_gia_han) return jsonResponse({ ok: false, loi: 'Zalo không đổi được refresh token vừa dán: ' + kq.ly_do, ...kq }, 502);
+        if (!kq.da_gia_han) {
+          // Trả đúng câu Zalo nói (đã dịch kèm cách sửa) — «loi» chung chung làm
+          // Giám đốc mất một buổi sáng 13/09 mà không biết tại Secret key.
+          const t = await docToken(admin);
+          return jsonResponse({ ok: false, loi: t?.loi_gan_nhat ?? ('Zalo không đổi được Refresh token vừa dán: ' + kq.ly_do), ...kq }, 502);
+        }
         return jsonResponse({ ok: true, ...kq });
       }
       case 'gia_han': {
