@@ -22,7 +22,7 @@ export const CAC_MAU: MauAnh[] = ['qr_tron', 'qr_thuong_hieu', 'name_card', 'bie
 export const TEN_MAU: Record<MauAnh, { ten: string; dung: string; coIn: string }> = {
   qr_tron: { ten: 'Mã QR trần', dung: 'Dán vào tài liệu, chữ ký email, in sticker', coIn: 'in ≥ 3 cm' },
   qr_thuong_hieu: { ten: 'Mã có thương hiệu', dung: 'Gửi Zalo cho khách, in A6 phát tại quầy', coIn: 'in A6 hoặc lớn hơn' },
-  name_card: { ten: 'Name card một mặt', dung: 'Tên, chức danh, đơn vị, số và mã trên một mặt 90×51 mm', coIn: 'in đúng 90×51 mm' },
+  name_card: { ten: 'Name card một mặt', dung: 'Nền xanh VietinBank; tên, chức danh, đơn vị, số và mã trên một mặt 90×51 mm', coIn: 'in đúng 90×51 mm' },
   bien_ban: { ten: 'Biển để bàn / bảng tên', dung: 'Đặt bàn tư vấn, đeo cổ ở hội trường đền bù', coIn: 'in A6 đứng, ép plastic' },
 };
 
@@ -40,8 +40,11 @@ export interface DuLieuMau {
 }
 
 const NAVY = '#12202E';
+/** Xanh VietinBank — đúng màu trong tệp logo public/brand/logo-cn-bhy.svg */
+const XANH_VTB = '#0E5A94';
 const DONG = '#A8763E';
 const XAM = '#5B6874';
+const TRANG_MO = 'rgba(255,255,255,0.82)';
 const FONT = 'Inter, "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif';
 
 /** Chờ font Inter sẵn sàng để chữ trên canvas không rơi về font hệ thống nửa chừng. */
@@ -170,33 +173,57 @@ async function veQrThuongHieu(d: DuLieuMau): Promise<HTMLCanvasElement> {
 }
 
 // ---------------------------------------------------------------------------
-// Mẫu 3: name card một mặt — 1063×602 (90×51 mm ở 300 dpi)
+// Mẫu 3: name card một mặt — 1063×602 (90×51 mm ở 300 dpi), tông xanh VietinBank
+//
+// Nền xanh, chữ trắng. Mã QR và logo đặt trong KHUNG TRẮNG vì hai lý do thật:
+// camera cần vùng lặng sáng quanh mã (mã đen trên nền xanh quét kém hẳn), và
+// logo vốn màu xanh VietinBank nên đặt thẳng lên nền xanh là chìm mất.
 // ---------------------------------------------------------------------------
+function veKhungTrang(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+  ctx.fill();
+}
+
 async function veNameCard(d: DuLieuMau): Promise<HTMLCanvasElement> {
   const W = 1063; const H = 602;
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const ctx = c.getContext('2d')!;
-  ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = NAVY; ctx.fillRect(0, 0, 18, H);
+  ctx.fillStyle = XANH_VTB; ctx.fillRect(0, 0, W, H);
+  // Dải đồng mảnh dưới đáy — điểm nhấn thương hiệu Chi nhánh, không át mã
+  ctx.fillStyle = DONG; ctx.fillRect(0, H - 10, W, 10);
 
+  // Logo trong khung trắng góc trên trái
   const logo = await napLogoAnToan();
-  veLogo(ctx, logo, 60, 44, 72, 'trai', 0);
+  const caoLogo = 64;
+  const rongLogo = caoLogo * TI_LE_KHUNG_LOGO;
+  veKhungTrang(ctx, 48, 40, rongLogo + 36, caoLogo + 24, 14);
+  veLogo(ctx, logo, 66, 52, caoLogo, 'trai', 0);
 
-  // Cột trái rộng tới 560 px; mã ở cột phải
+  // Cột trái chữ trắng
   const rongTrai = 520;
-  let y = 190;
-  const coTen = veChuVua(ctx, d.ten, 60, y, rongTrai, 44, 700, NAVY, 'left', 26);
+  let y = 214;
+  const coTen = veChuVua(ctx, d.ten, 60, y, rongTrai, 44, 700, '#FFFFFF', 'left', 26);
   y += Math.round(coTen * 0.4) + 34;
-  if (d.chucDanh) { veChuVua(ctx, d.chucDanh, 60, y, rongTrai, 28, 500, DONG); y += 42; }
-  if (d.donVi) { y = veNhieuDong(ctx, d.donVi, 60, y, rongTrai, 24, 400, XAM, 2) + 44; }
-  veChuVua(ctx, d.sdt, 60, y, rongTrai, 30, 600, NAVY); y += 42;
-  if (d.email) veChuVua(ctx, d.email, 60, y, rongTrai, 22, 400, XAM);
+  if (d.chucDanh) { veChuVua(ctx, d.chucDanh, 60, y, rongTrai, 28, 500, '#FFFFFF'); y += 42; }
+  if (d.donVi) { y = veNhieuDong(ctx, d.donVi, 60, y, rongTrai, 24, 400, TRANG_MO, 2) + 44; }
+  veChuVua(ctx, d.sdt, 60, y, rongTrai, 32, 600, '#FFFFFF'); y += 42;
+  if (d.email) veChuVua(ctx, d.email, 60, y, rongTrai, 22, 400, TRANG_MO);
 
-  const canhQr = 460;
+  // Mã trong khung trắng bên phải; thư viện đã chừa 4 ô lặng, khung thêm 16 px cho chắc
+  const canhQr = 440;
   const qr = await veQrThuanRaCanvas(d.vcard, canhQr);
   kiemCoO(qr, canhQr, soOTuVcard(d.vcard));
-  ctx.drawImage(qr, W - canhQr - 40, (H - canhQr) / 2);
-  veChuVua(ctx, 'Quét để lưu số', W - 40 - canhQr / 2, H - 30, canhQr, 20, 500, XAM, 'center');
+  const xQr = W - canhQr - 56; const yQr = (H - canhQr) / 2 - 6;
+  veKhungTrang(ctx, xQr - 16, yQr - 16, canhQr + 32, canhQr + 32, 18);
+  ctx.drawImage(qr, xQr, yQr);
+  veChuVua(ctx, 'Quét để lưu số', xQr + canhQr / 2, H - 34, canhQr, 20, 500, '#FFFFFF', 'center');
   return c;
 }
 

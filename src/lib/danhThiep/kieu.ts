@@ -167,6 +167,8 @@ export interface CanBo {
   /** Mã lưu nhanh (vCard nhúng thẳng) — cán bộ tự đặt; null = chưa tạo */
   qr_nhanh_ten: string | null;
   qr_nhanh_sdt: string | null;
+  /** Email đưa vào mã lưu nhanh; null = không đưa */
+  qr_nhanh_email: string | null;
   status: TrangThaiDuyet;
   approved_by: string | null;
   approved_at: string | null;

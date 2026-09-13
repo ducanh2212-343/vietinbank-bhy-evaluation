@@ -21,7 +21,7 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import type { CanBo } from '@/lib/danhThiep/kieu';
 import {
-  boDauGiuHoa, chuanHoaSoTheoDang, soHopLe, taoVcardNhanh, tenMacDinh, type DangSo,
+  boDauGiuHoa, chuanHoaSoTheoDang, emailHopLe, soHopLe, taoVcardNhanh, tenMacDinh, type DangSo,
 } from '@/lib/danhThiep/maLuuNhanh';
 import { CAC_MAU, TEN_MAU, tenTepMau, veMauAnh, type MauAnh } from '@/lib/danhThiep/mauAnhQr';
 import { soOMotCanh, taiTepVeMay, taoQrPngThuan } from '@/lib/danhThiep/qr';
@@ -31,17 +31,11 @@ interface Props {
   dangLuu: boolean;
   /** Chức danh / đơn vị / email lấy từ thẻ online — chỉ vẽ lên mẫu name card, không vào mã */
   phu?: { chucDanh?: string; donVi?: string; email?: string };
-  /** Lưu hai cột qr_nhanh_ten / qr_nhanh_sdt; lỗi báo qua toast ở nơi gọi */
-  onLuu: (dong: { qr_nhanh_ten: string; qr_nhanh_sdt: string }) => Promise<void>;
+  /** Lưu ba cột qr_nhanh_ten / qr_nhanh_sdt / qr_nhanh_email; lỗi báo qua toast ở nơi gọi */
+  onLuu: (dong: { qr_nhanh_ten: string; qr_nhanh_sdt: string; qr_nhanh_email: string | null }) => Promise<void>;
 }
 
 type NguonSo = 'di_dong' | 'co_quan' | 'khac';
-
-function dinhDangDeDoc(sdt: string): string {
-  // 0966503279 → 0966 503 279 ; +84966503279 → +84 966 503 279
-  const m = /^(\+84|0)(\d{3})(\d{3})(\d{3,4})$/.exec(sdt);
-  return m ? `${m[1]} ${m[2]} ${m[3]} ${m[4]}` : sdt;
-}
 
 export function MaLuuNhanh({ cb, dangLuu, phu, onLuu }: Props) {
   const [ten, setTen] = useState<string>(cb.qr_nhanh_ten ?? tenMacDinh(cb.full_name, false));
@@ -53,6 +47,8 @@ export function MaLuuNhanh({ cb, dangLuu, phu, onLuu }: Props) {
   });
   const [soKhac, setSoKhac] = useState<string>(cb.qr_nhanh_sdt ?? '');
   const [dang, setDang] = useState<DangSo>(cb.qr_nhanh_sdt?.startsWith('+') ? 'quoc_te' : 'noi_dia');
+  const [dungEmail, setDungEmail] = useState<boolean>(!!cb.qr_nhanh_email);
+  const [email, setEmail] = useState<string>(cb.qr_nhanh_email ?? cb.email ?? '');
   const [mau, setMau] = useState<MauAnh>('qr_thuong_hieu');
   const [suKien, setSuKien] = useState(false);
   const [anhQr, setAnhQr] = useState<string | null>(null);
@@ -62,10 +58,14 @@ export function MaLuuNhanh({ cb, dangLuu, phu, onLuu }: Props) {
   const soGoc = nguon === 'di_dong' ? (cb.phone_mobile ?? '') : nguon === 'co_quan' ? (cb.phone_office ?? '') : soKhac;
   const sdt = chuanHoaSoTheoDang(soGoc, dang);
   const tenSach = ten.replace(/\s+/g, ' ').trim();
-  const hopLe = tenSach.length >= 3 && soHopLe(sdt);
-  const vcard = useMemo(() => (hopLe ? taoVcardNhanh({ ten: tenSach, sdt }) : ''), [hopLe, tenSach, sdt]);
+  const emailSach = dungEmail ? email.trim() : '';
+  const hopLe = tenSach.length >= 3 && soHopLe(sdt) && (!dungEmail || emailHopLe(emailSach));
+  const vcard = useMemo(
+    () => (hopLe ? taoVcardNhanh({ ten: tenSach, sdt, email: emailSach || undefined }) : ''),
+    [hopLe, tenSach, sdt, emailSach],
+  );
   const soO = useMemo(() => (vcard ? soOMotCanh(vcard) : 0), [vcard]);
-  const daDoi = tenSach !== (cb.qr_nhanh_ten ?? '') || sdt !== (cb.qr_nhanh_sdt ?? '');
+  const daDoi = tenSach !== (cb.qr_nhanh_ten ?? '') || sdt !== (cb.qr_nhanh_sdt ?? '') || (emailSach || null) !== cb.qr_nhanh_email;
   const coDau = boDauGiuHoa(ten) !== ten.replace(/\s+/g, ' ').trim();
 
   // Mã trần cho ô xem trước nhỏ và chế độ sự kiện
@@ -82,22 +82,22 @@ export function MaLuuNhanh({ cb, dangLuu, phu, onLuu }: Props) {
     if (!vcard) { setAnhMau(null); return; }
     setDangVe(true);
     const t = setTimeout(() => {
-      veMauAnh(mau, { vcard, ten: tenSach, sdt: dinhDangDeDoc(sdt), ...phu })
+      veMauAnh(mau, { vcard, ten: tenSach, sdt, ...phu, email: emailSach || phu?.email })
         .then((b) => { if (huy) return; cu = URL.createObjectURL(b); setAnhMau(cu); })
         .catch((e: Error) => { if (!huy) { setAnhMau(null); toast.error(e.message); } })
         .finally(() => { if (!huy) setDangVe(false); });
     }, 300);
     return () => { huy = true; clearTimeout(t); if (cu) URL.revokeObjectURL(cu); };
-  }, [vcard, mau, tenSach, sdt, phu]);
+  }, [vcard, mau, tenSach, sdt, phu, emailSach]);
 
   const luu = async () => {
-    if (!hopLe) { toast.error('Cần tên từ 3 ký tự và số điện thoại 9–15 chữ số'); return; }
-    await onLuu({ qr_nhanh_ten: tenSach, qr_nhanh_sdt: sdt });
+    if (!hopLe) { toast.error('Cần tên từ 3 ký tự, số điện thoại 9–15 chữ số, và email đúng dạng nếu bật'); return; }
+    await onLuu({ qr_nhanh_ten: tenSach, qr_nhanh_sdt: sdt, qr_nhanh_email: emailSach || null });
   };
 
   const taiPng = async () => {
     try {
-      taiTepVeMay(await veMauAnh(mau, { vcard, ten: tenSach, sdt: dinhDangDeDoc(sdt), ...phu }), tenTepMau(mau, boDauGiuHoa(tenSach)));
+      taiTepVeMay(await veMauAnh(mau, { vcard, ten: tenSach, sdt, ...phu, email: emailSach || phu?.email }), tenTepMau(mau, boDauGiuHoa(tenSach)));
     } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
   };
 
@@ -163,6 +163,20 @@ export function MaLuuNhanh({ cb, dangLuu, phu, onLuu }: Props) {
               </label>
             </div>
 
+            <div>
+              <label className="flex items-center gap-3 text-sm">
+                <Switch checked={dungEmail} onCheckedChange={setDungEmail} />
+                <span>
+                  Đưa email vào mã
+                  <span className="block text-xs text-muted-foreground">Mã dày thêm khoảng một bậc. Bật khi hay gặp khách cần gửi hồ sơ qua thư.</span>
+                </span>
+              </label>
+              {dungEmail && (
+                <Input inputMode="email" placeholder="ten@vietinbank.vn" value={email} onChange={(e) => setEmail(e.target.value)}
+                  className={`mt-2 max-w-sm ${email.trim() && !emailHopLe(email) ? 'border-destructive' : ''}`} />
+              )}
+            </div>
+
             <div className="flex flex-wrap gap-2">
               <Button onClick={luu} disabled={!hopLe || !daDoi || dangLuu}>Lưu nội dung mã</Button>
               <Button variant="outline" onClick={() => setSuKien(true)} disabled={!anhQr}><Expand className="mr-1.5 h-4 w-4" /> Chế độ sự kiện</Button>
@@ -219,7 +233,7 @@ export function MaLuuNhanh({ cb, dangLuu, phu, onLuu }: Props) {
           <div className="flex flex-col items-center gap-4">
             {anhQr && <img src={anhQr} alt="Mã lưu nhanh" className="w-full max-w-[22rem]" />}
             <p className="text-center text-xl font-bold leading-tight">{tenSach}</p>
-            <p className="font-mono text-lg tracking-wide">{dinhDangDeDoc(sdt)}</p>
+            <p className="font-mono text-lg tracking-wide">{sdt}</p>
             <p className="text-center text-sm text-muted-foreground">
               Mời bác mở <b>Máy ảnh</b>, chĩa vào mã, bấm vào dòng chữ hiện lên rồi bấm <b>Lưu</b>.
             </p>

@@ -213,7 +213,9 @@ Migration `20261005090000_danh_thiep_google_wallet.sql` (cấu hình Google Wall
 `danh-thiep-vcard` và `danh-thiep-wallet` **đã deploy** (04/09/2026, `verify_jwt = false`).
 Migration `20261013090000_danh_thiep_ma_luu_nhanh.sql` (hai cột `qr_nhanh_ten`, `qr_nhanh_sdt`
 cho mã QR nhúng thẳng danh bạ, không cần mạng) **đã áp** (13/09/2026); chạy khô: cán bộ
-thường tự sửa được hai cột này, vẫn bị chặn sửa đơn vị.
+thường tự sửa được hai cột này, vẫn bị chặn sửa đơn vị. Migration
+`20261013090100_danh_thiep_ma_luu_nhanh_email.sql` (cột `qr_nhanh_email`, tuỳ chọn đưa email
+vào mã) **đã áp** (13/09/2026).
 
 Còn lại: địa chỉ và số điện thoại Chi nhánh (`CN_BHY`) mới có tên đường, **chưa có số nhà
 và hotline**; Google Wallet **chưa dùng được** cho tới khi có Issuer ID (nhập ở nút Cấu

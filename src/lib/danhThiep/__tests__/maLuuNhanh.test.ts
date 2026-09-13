@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import QRCode from 'qrcode';
 import {
-  boDauGiuHoa, chuanHoaSoTheoDang, soHopLe, taoVcardNhanh, tenMacDinh, tenTepMaNhanh,
+  boDauGiuHoa, chuanHoaSoTheoDang, emailHopLe, soHopLe, taoVcardNhanh, tenMacDinh, tenTepMaNhanh,
 } from '../maLuuNhanh';
 
 describe('tên trong mã lưu nhanh', () => {
@@ -43,6 +43,13 @@ describe('vCard nhúng thẳng', () => {
   it('mã có dấu không quá 49×49 ô ở mức M — ngưỡng quét nhanh cho khách có tuổi', () => {
     // Tên xuất hiện hai lần (N và FN) vì một số máy Android rẻ không nhận vCard thiếu N
     expect(QRCode.create(v, { errorCorrectionLevel: 'M' }).modules.size).toBeLessThanOrEqual(49);
+  });
+  it('có email thì thêm dòng EMAIL, không có thì không', () => {
+    const co = taoVcardNhanh({ ten: 'VietinBank - Trần Văn Khái', sdt: '0966503279', email: 'khai.tv@vietinbank.vn' });
+    expect(co).toContain('\r\nEMAIL;TYPE=INTERNET:khai.tv@vietinbank.vn\r\nEND:VCARD');
+    expect(v).not.toContain('EMAIL');
+    expect(emailHopLe('khai.tv@vietinbank.vn')).toBe(true);
+    expect(emailHopLe('khai.tv@')).toBe(false);
   });
   it('tên tệp in không dấu', () => {
     expect(tenTepMaNhanh('VietinBank - Trần Văn Khái')).toBe('VietinBankTranVanKhai-luu-nhanh.png');
