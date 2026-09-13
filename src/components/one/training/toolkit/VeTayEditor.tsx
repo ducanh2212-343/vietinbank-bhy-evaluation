@@ -1,11 +1,13 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
 import { getStroke } from 'perfect-freehand';
-import { Eraser, PenLine, Redo2, Trash2, Undo2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { Eraser, PenLine, Redo2, Shapes, Trash2, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DO_DAY_BUT, MAU_BUT, rutGonDiem, taiDiem, themNet, xoaHet,
   type DuLieuVeTay, type NetVe,
 } from '@/lib/toolkit/veTay';
+import { TEN_HINH, nhanHinh, type HinhNhan } from '@/lib/toolkit/nhanHinh';
 import { useLichSu } from './useLichSu';
 
 /**
@@ -18,7 +20,16 @@ import { useLichSu } from './useLichSu';
  *
  * Nét đang vẽ được vẽ lên một canvas phủ riêng để không phải vẽ lại toàn bộ
  * bản ở mỗi lần di chuột — bản vẽ 100 nét vẫn mượt trên máy yếu.
+ *
+ * NHẬN HÌNH kiểu Freeform / Notes của Apple: vẽ xong mà GIỮ BÚT YÊN nửa giây
+ * (chưa nhấc) thì nét đang vẽ được thử nhận hình; nhận được thì hiện hình chuẩn
+ * đè lên nét mờ, nhấc bút là chốt; di bút tiếp thì bỏ nhận và vẽ tay tiếp.
+ * Cách này không cần chuyển chế độ và không bao giờ «sửa» chữ viết tay —
+ * chữ không ai dừng bút giữa chừng. Nút «Thành hình» dành cho nét đã vẽ xong.
  */
+
+/** Giữ bút yên bấy nhiêu mili giây thì thử nhận hình — Apple dùng ~0,5 s */
+const GIU_YEN_MS = 450;
 
 export interface VeTayEditorRef {
   /** PNG của cả bảng vẽ (nền + nét) */
@@ -43,6 +54,8 @@ export const VeTayEditor = forwardRef<VeTayEditorRef, {
   const nenRef = useRef<HTMLCanvasElement>(null);
   const phuRef = useRef<HTMLCanvasElement>(null);
   const netDang = useRef<{ diem: number[]; pointerId: number } | null>(null);
+  const hoGiuYen = useRef<number | null>(null);
+  const hinhXemTruoc = useRef<HinhNhan | null>(null);
 
   useEffect(() => { onDoi?.(d); }, [d, onDoi]);
 
@@ -79,23 +92,69 @@ export const VeTayEditor = forwardRef<VeTayEditorRef, {
     (e.currentTarget as Element).setPointerCapture(e.pointerId);
     netDang.current = { diem: [...toaDo(e)], pointerId: e.pointerId };
   };
-  const onDi = (e: React.PointerEvent) => {
-    const n = netDang.current;
-    if (!n || n.pointerId !== e.pointerId) return;
-    n.diem.push(...toaDo(e));
+  const veXemTruoc = (diem: number[], hinh: HinhNhan | null) => {
     const ctx = phuRef.current?.getContext('2d');
     if (!ctx) return;
     ctx.clearRect(0, 0, d.rong, d.cao);
-    veNet(ctx, { id: '_', mau, do_day: doDay, diem: n.diem, ...(congCu === 'TAY' ? { tay: true } : {}) }, d.nen, true);
+    const tay = congCu === 'TAY';
+    if (hinh) {
+      // Nét tay mờ đi, hình chuẩn hiện rõ — người vẽ thấy ngay «nhấc bút là được hình này»
+      ctx.globalAlpha = 0.25;
+      veNet(ctx, { id: '_', mau, do_day: doDay, diem }, d.nen, true);
+      ctx.globalAlpha = 1;
+      veNet(ctx, { id: '_', mau, do_day: doDay, diem: hinh.diem, hinh: true }, d.nen, true);
+    } else {
+      veNet(ctx, { id: '_', mau, do_day: doDay, diem, ...(tay ? { tay: true } : {}) }, d.nen, true);
+    }
+  };
+  const huyGiuYen = () => {
+    if (hoGiuYen.current !== null) { window.clearTimeout(hoGiuYen.current); hoGiuYen.current = null; }
+  };
+  const onDi = (e: React.PointerEvent) => {
+    const n = netDang.current;
+    if (!n || n.pointerId !== e.pointerId) return;
+    const [x, y, ap] = toaDo(e);
+    const L = n.diem.length;
+    // Bút rung tại chỗ (< 2 px) không tính là «di» — nếu không thì không bao giờ giữ yên được
+    const yen = L >= 3 && Math.hypot(x - n.diem[L - 3], y - n.diem[L - 2]) < 2;
+    if (yen && hinhXemTruoc.current) return;
+    n.diem.push(x, y, ap);
+    if (!yen) {
+      if (hinhXemTruoc.current) hinhXemTruoc.current = null;
+      huyGiuYen();
+      if (congCu === 'BUT') {
+        hoGiuYen.current = window.setTimeout(() => {
+          hoGiuYen.current = null;
+          if (netDang.current !== n) return;
+          const h = nhanHinh(n.diem);
+          if (h) { hinhXemTruoc.current = h; veXemTruoc(n.diem, h); }
+        }, GIU_YEN_MS);
+      }
+    }
+    veXemTruoc(n.diem, hinhXemTruoc.current);
   };
   const onNha = (e: React.PointerEvent) => {
     const n = netDang.current;
     if (!n || n.pointerId !== e.pointerId) return;
     netDang.current = null;
+    huyGiuYen();
+    const hinh = hinhXemTruoc.current;
+    hinhXemTruoc.current = null;
     phuRef.current?.getContext('2d')?.clearRect(0, 0, d.rong, d.cao);
+    if (hinh) { dat((c) => themNet(c, { mau, do_day: doDay, diem: hinh.diem, hinh: true })); return; }
     // Chấm một điểm cũng là một nét (dấu chấm) — nhân đôi điểm để perfect-freehand có gì mà vẽ
     const diem = n.diem.length >= 6 ? rutGonDiem(n.diem) : [...n.diem, n.diem[0] + 0.1, n.diem[1] + 0.1, n.diem[2]];
     dat((c) => themNet(c, { mau, do_day: doDay, diem, ...(congCu === 'TAY' ? { tay: true } : {}) }));
+  };
+
+  /** Nét cuối đã vẽ xong → thử thành hình (cho người không quen giữ bút yên) */
+  const netCuoiThanhHinh = () => {
+    const cuoi = d.net[d.net.length - 1];
+    if (!cuoi || cuoi.tay || cuoi.hinh) return;
+    const h = nhanHinh(cuoi.diem);
+    if (!h) { toast.message('Nét cuối chưa giống hình nào đủ rõ — vẽ khép kín hơn hoặc thẳng hơn rồi thử lại.'); return; }
+    dat((c) => ({ ...c, net: c.net.map((n) => n.id === cuoi.id ? { ...n, diem: h.diem, hinh: true } : n) }));
+    toast.success(`Đã thành ${TEN_HINH[h.loai]}.`);
   };
 
   const onPhim = (e: React.KeyboardEvent) => {
@@ -114,6 +173,8 @@ export const VeTayEditor = forwardRef<VeTayEditorRef, {
   }), []);
 
   useImperativeHandle(ref, () => ({ layDuLieu: () => d, xuatPng }), [d, xuatPng]);
+  useEffect(() => huyGiuYen, []);
+  const netCuoi = d.net[d.net.length - 1];
 
   return (
     <div ref={khungRef} tabIndex={0} onKeyDown={onPhim} className="flex h-full w-full flex-col overflow-hidden rounded-xl bg-slate-100 outline-none">
@@ -150,7 +211,9 @@ export const VeTayEditor = forwardRef<VeTayEditorRef, {
           <span className="mx-1 h-6 w-px bg-slate-200" />
           <Button type="button" size="sm" variant="ghost" className="h-9 px-2" title="Hoàn tác (Ctrl+Z)" disabled={!coHoanTac} onClick={hoanTac}><Undo2 className="h-4 w-4" /></Button>
           <Button type="button" size="sm" variant="ghost" className="h-9 px-2" title="Làm lại (Ctrl+Y)" disabled={!coLamLai} onClick={lamLai}><Redo2 className="h-4 w-4" /></Button>
+          <Button type="button" size="sm" variant="ghost" className="h-9 gap-1 px-2 text-xs" title="Nét cuối thành hình chuẩn (đường thẳng, tròn, chữ nhật, tam giác)" disabled={!netCuoi || !!netCuoi.tay || !!netCuoi.hinh} onClick={netCuoiThanhHinh}><Shapes className="h-4 w-4" /><span className="hidden sm:inline">Thành hình</span></Button>
           <Button type="button" size="sm" variant="ghost" className="h-9 px-2" title="Xoá hết" disabled={d.net.length === 0} onClick={() => dat((c) => xoaHet(c))}><Trash2 className="h-4 w-4 text-red-600" /></Button>
+          <p className="basis-full text-center text-2xs text-slate-400">Vẽ xong giữ bút yên nửa giây, nét tự thành đường thẳng · tròn · chữ nhật · tam giác (như Freeform).</p>
         </div>
       )}
     </div>
@@ -161,10 +224,11 @@ export const VeTayEditor = forwardRef<VeTayEditorRef, {
 function veNet(ctx: CanvasRenderingContext2D, n: NetVe, nen: string, dangVe = false) {
   const vien = getStroke(taiDiem(n.diem), {
     size: n.tay ? n.do_day * 3 : n.do_day,
-    thinning: n.tay ? 0 : 0.55,
+    // Nét hình đã nhận: dày đều, không thon đầu — hình tròn mà đầu nhọn đuôi tù thì lại thành nét tay
+    thinning: n.tay || n.hinh ? 0 : 0.55,
     smoothing: 0.5,
-    streamline: 0.45,
-    simulatePressure: n.diem.length > 2 && n.diem[2] === 0.5,
+    streamline: n.hinh ? 0 : 0.45,
+    simulatePressure: !n.hinh && n.diem.length > 2 && n.diem[2] === 0.5,
     last: !dangVe,
   });
   if (vien.length === 0) return;

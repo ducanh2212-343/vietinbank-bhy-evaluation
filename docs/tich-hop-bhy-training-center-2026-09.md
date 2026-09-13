@@ -1161,6 +1161,25 @@ nền vẫn đặc. `rutGonDiem` bỏ điểm cách nhau dưới 1,5 px — bút
 điểm/giây, không rút thì một gạch nặng 5 KB. Điện thoại cầm dọc thì bản mới là
 khổ dọc 1000×1600.
 
+**Nhận hình từ nét tay — «giữ bút yên» như Freeform / Notes của Apple** (Giám
+đốc bổ sung cùng ngày: «tự động bo tròn đường viết tay, tự tạo hình tròn, hình
+vuông… tự làm thẳng đường vẽ tay»). Cơ chế: vẽ xong mà giữ bút yên 450 ms
+(chưa nhấc) thì nét đang vẽ được thử nhận hình; nhận được thì hình chuẩn hiện
+đè lên nét mờ, nhấc bút là chốt, di bút tiếp là bỏ. Không cần chuyển chế độ và
+không bao giờ «sửa» chữ viết tay — chữ không ai dừng bút giữa chừng. Nút
+«Thành hình» làm việc đó cho nét đã vẽ xong. Bộ nhận (`src/lib/toolkit/nhanHinh.ts`)
+thuần hình học, không học máy, chạy tức thì trên điện thoại: lấy mẫu lại 64
+điểm cách đều; **đường thẳng** khi hai đầu xa nhau ≥ 80 % chiều dài và mọi điểm
+lệch < 6 % (gần ngang/dọc ±7° thì ép thẳng hàng); nét **khép kín** (đầu cuối
+< 25 % chiều dài) thì rút gọn Douglas–Peucker đếm góc — 3 góc tam giác, 4 góc
+chữ nhật (cạnh lệch trục < 12° thì ép vào khung bao, không thì giữ tứ giác), ≥ 5
+góc mà bán kính chuẩn hoá theo khung bao lệch < 14 % thì elip (hai bán trục
+lệch < 15 % thì tròn hẳn); không khớp trả null — thà giữ nét tay còn hơn biến
+chữ ký thành hình tròn. Nét hình lưu cờ `hinh` để vẽ dày đều, không thon đầu.
+Bảy test với nét mô phỏng có nhiễu cố định hạt; chụp Chromium: vòng méo giữ
+yên → tròn, vòng méo không giữ → vẫn nét tay, bốn cạnh xiêu → chữ nhật, gạch
+run → đường ngang, ba cạnh → tam giác, nút «Thành hình» → elip.
+
 ### 19.3 Quyền và đường đi của tệp
 
 RLS `ttc_toolkit`: **xem** = thành viên chương trình chứa đầu việc
@@ -1182,7 +1201,7 @@ Ba policy kho chỉ gác cấp 1–2 nên không cần policy mới.
 | --- | --- |
 | `20261021090000_ttc_toolkit.sql` | **đã áp** 13/09/2026 — bảng có, RLS bật, 4 policy, `anon` không có quyền, 0 dòng |
 
-Kiểm thử: 29 test mới (`src/lib/toolkit/__tests__/`), toàn bộ 1 415 test xanh,
+Kiểm thử: 36 test mới (`src/lib/toolkit/__tests__/`), toàn bộ 1 422 test xanh,
 `tsc` sạch, `vite build` xong. Ba editor đã chụp bằng Chromium ở 1280×800 và
 390×760 với thao tác thật (thêm ý con bằng Tab, gõ thẻ rồi xếp vào ô, vẽ ba nét
 và tẩy) — sửa sau lần chụp đầu: nhãn trục dọc bị lật và phình cột, thanh công cụ

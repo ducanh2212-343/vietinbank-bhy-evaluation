@@ -17,6 +17,8 @@ export interface NetVe {
   do_day: number;
   /** Tẩy: nét này xoá thay vì tô */
   tay?: boolean;
+  /** Nét hình đã nhận (đường thẳng, tròn, chữ nhật…): vẽ độ dày đều, không thon theo áp lực */
+  hinh?: boolean;
   /** [x, y, p, x, y, p, …] — p là áp lực 0–1 (chuột thì 0.5) */
   diem: number[];
 }
@@ -56,6 +58,7 @@ export function docVeTay(json: unknown): DuLieuVeTay {
       mau: typeof r.mau === 'string' && /^#[0-9a-fA-F]{6}$/.test(r.mau) ? r.mau : MAU_BUT[0],
       do_day: so(r.do_day, DO_DAY_BUT[1], 1, 40),
       ...(r.tay === true ? { tay: true } : {}),
+      ...(r.hinh === true ? { hinh: true } : {}),
       // Cắt về bội của 3 — một điểm thiếu toạ độ là cả nét vẽ lệch
       diem: diem.slice(0, diem.length - (diem.length % 3)),
     }];

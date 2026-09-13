@@ -16,6 +16,7 @@ const muc: MucLichSu = {
     'Sơ đồ tư duy: gõ Tab thêm ý con, Enter thêm ý cùng cấp, máy tự xếp hai bên và tô màu từng nhánh; kéo nhánh thả sang ý khác để dời cả nhánh.',
     'Mô hình 4 hộp: hai trục và bốn ô đặt tên tuỳ ý, gõ thẻ việc rồi kéo (điện thoại: chạm thẻ rồi chạm ô); đổi mẫu không mất thẻ đã xếp.',
     'Bảng vẽ tay: nét bút mượt theo áp lực, tám màu, ba độ dày, tẩy, hoàn tác từng nét; điện thoại cầm dọc thì bảng dọc.',
+    'Vẽ xong giữ bút yên nửa giây (như Freeform của Apple): nét run tay tự thành đường thẳng, hình tròn, elip, chữ nhật, tam giác; nút «Thành hình» làm việc đó cho nét vừa vẽ.',
     'Mọi bản vẽ lưu trên hệ thống, mở lại sửa tiếp; người hướng dẫn và BGĐ xem được bản của học viên trong lớp.',
     '«Tải ảnh» lấy PNG nét cao về máy; «Nộp thành tệp» đưa ảnh vào phần tệp đã nộp của đầu việc để người chấm xem như tệp thường.',
   ],

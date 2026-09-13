@@ -613,7 +613,9 @@ nút **«Toolkit»** mở hộp thoại toàn màn hình với ba công cụ: **
 cha mới), **mô hình 4 hộp** (hai trục và bốn ô tự đặt tên, thẻ việc kéo thả, năm
 mẫu sẵn: Eisenhower, Tự làm – Giao việc của ngày 5, Nỗ lực – Tác động, SWOT,
 trống) và **bảng vẽ tay** (canvas + `perfect-freehand`, nét theo áp lực bút, tẩy,
-hoàn tác từng nét). Bản vẽ lưu ở bảng `ttc_toolkit` (jsonb tự mô tả theo công cụ,
+hoàn tác từng nét; **giữ bút yên nửa giây** là nét tự thành đường thẳng / tròn /
+elip / chữ nhật / tam giác như Freeform — bộ nhận hình học thuần trong
+`src/lib/toolkit/nhanHinh.ts`). Bản vẽ lưu ở bảng `ttc_toolkit` (jsonb tự mô tả theo công cụ,
 trần 512 KB, một dòng mỗi bản vẽ; thành viên lớp xem, chủ bản sửa/xoá). «Tải ảnh»
 xuất PNG 2×; «Nộp thành tệp» đẩy PNG lên kho `bhy-training` tại
 `<ct>/<user>/<đầu việc>/toolkit-<id>.png` rồi nối vào `ttc_tien_do.tep` — người
