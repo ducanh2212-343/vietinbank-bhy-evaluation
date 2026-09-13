@@ -11,7 +11,7 @@ import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { requireRole, HttpError } from '../_shared/auth.ts';
 import { corsHeaders, jsonResponse } from '../_shared/cors.ts';
 import { LoiZalo, docCauHinh, ghiNhatKy, guiVanBanVaoNhom } from '../_shared/zalo.ts';
-import { khoaGom, soanTinSao, type BoiCanhTin, type CheDoGop, type PhieuSao } from '../_shared/zaloSaoMau.ts';
+import { MAU_MAC_DINH, khoaGom, soanTinSao, type BoiCanhTin, type CheDoGop, type MauTin, type PhieuSao } from '../_shared/zaloSaoMau.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -45,6 +45,14 @@ async function boiCanhCua(admin: SupabaseClient, p: PhieuSao, ch: Record<string,
   };
 }
 
+/** Mẫu quản trị sửa trên trang; ô trống thì về mặc định trong mã. */
+function mauCua(ch: Record<string, string | null>): MauTin {
+  return {
+    ca_nhan: (ch.mau_tin_ca_nhan ?? '').trim() || MAU_MAC_DINH.ca_nhan,
+    tap_the: (ch.mau_tin_tap_the ?? '').trim() || MAU_MAC_DINH.tap_the,
+  };
+}
+
 function cheDoCua(ch: Record<string, string | null>): CheDoGop {
   return ch.che_do_gop === 'gop_theo_nguoi_tang' ? 'gop_theo_nguoi_tang' : 'moi_nguoi_mot_tin';
 }
@@ -60,7 +68,7 @@ async function docPhieu(admin: SupabaseClient, ids: string[]): Promise<Map<strin
 /** Gửi một nhóm phiếu đã gom thành một tin; trả về message_id. */
 async function guiNhom(admin: SupabaseClient, nhom: PhieuSao[], cheDo: CheDoGop, ch: Record<string, string | null>, groupId: string) {
   const bc = await boiCanhCua(admin, nhom[0], ch);
-  const noiDung = soanTinSao(nhom, cheDo, bc);
+  const noiDung = soanTinSao(nhom, cheDo, bc, mauCua(ch));
   const messageId = await guiVanBanVaoNhom(admin, groupId, noiDung);
   return { noiDung, messageId };
 }
@@ -86,7 +94,7 @@ Deno.serve(async (req) => {
       const p = phieu.get(id);
       if (!p) throw new HttpError('Không có phiếu này', 404);
       const bc = await boiCanhCua(admin, p, ch);
-      const noiDung = soanTinSao([p], cheDo, bc);
+      const noiDung = soanTinSao([p], cheDo, bc, mauCua(ch));
       if (hanhDong === 'xem_truoc') return jsonResponse({ ok: true, noi_dung: noiDung, che_do: cheDo });
       if (!ch.gmf_group_id) throw new HttpError('Chưa có gmf_group_id — nối nhóm trước', 400);
       try {
@@ -147,7 +155,7 @@ Deno.serve(async (req) => {
       const ids = g.dong.map((d) => d.id);
       if (dryRun) {
         const bc = await boiCanhCua(admin, g.phieu[0], ch);
-        xemTruoc.push(soanTinSao(g.phieu, cheDo, bc));
+        xemTruoc.push(soanTinSao(g.phieu, cheDo, bc, mauCua(ch)));
         continue;
       }
       // Khóa dòng: chỉ tiến trình nào đổi được 'cho' → 'dang_gui' mới được gửi,

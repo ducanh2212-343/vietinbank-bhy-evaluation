@@ -645,6 +645,15 @@ có dòng nhật ký `cong_tac`). Ngay sau đó GĐ yêu cầu
 qua pg_net (`zalo_kich_hoat_gui_sao`), cron mỗi phút chỉ còn là lưới vớt. Bật lên
 thì quay về gom `gom_phut` (2). Switch ở tab Tin Sao.
 
+**Đợt 4 — mẫu tin sửa được, biểu tượng từng đề mục (13/09/2026, sau khi GĐ xem
+tin thật trên nhóm):** mẫu sao cá nhân / tập thể lưu ở `zalo_cau_hinh.mau_tin_*`
+(NULL = mặc định trong `_shared/zaloSaoMau.ts`; migration
+`20261030090000_zalo_mau_tin_sua_duoc.sql` **đã áp**, file gỡ cùng tên). Mẫu chia
+KHỐI bởi dòng trống; khối có ô trống thì bỏ cả khối (tiêu đề «Ghi nhận vì:» không
+mồ côi). Bộ biểu tượng: ⭐ tiêu đề · 🎉 chúc mừng · 🎁 người tặng · 💬 ghi nhận vì ·
+🏆 kết quả · 📈 tích lũy · 🤝 tập thể · 👉 link. Tab Tin Sao có khối «Sửa mẫu tin»
+với xem trước tức thì (hàm thuần dùng chung với edge function). `zalo-gui-sao` v3.
+
 **Gói cước (bảng giá Zalo OA áp dụng 01/06/2026, gồm VAT — migration
 `20261025090000_zalo_goi_cuoc_bang_gia.sql` **đã áp**, chỉ nạp dữ liệu vào
 `zalo_cau_hinh`, file gỡ cùng tên trong `supabase/rollbacks/`):** Gói Tăng
