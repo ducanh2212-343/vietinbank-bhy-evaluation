@@ -638,7 +638,12 @@ group_id `4a9bada229cec09099df` (5 thành viên) đã lưu vào cấu hình. G�
 `POST /v3.0/oa/group/message` — tin thử đã lên nhóm (message_id
 `705efa85665a0d03544c`). `zalo-oa` v5 (`zalo-gui-sao` v2 giữ nguyên — hàm này không liệt kê nhóm, đường gửi tin đã đúng). GĐ xác nhận tin thử đã
 lên nhóm lúc 10:25 → công tắc `bat_sao_xung_dang` **đã BẬT** (13/09/2026, qua SQL,
-có dòng nhật ký `cong_tac`). Từ đây mọi phiếu Sao mới tự lên nhóm sau ~2 phút.
+có dòng nhật ký `cong_tac`). Ngay sau đó GĐ yêu cầu
+đẩy tức thì: thêm công tắc `tiet_kiem_tin` (migration
+`20261029090000_zalo_cong_tac_tiet_kiem_tin.sql` **đã áp**, file gỡ cùng tên) —
+**đang TẮT**: trigger xếp hàng với mốc sẵn sàng = ngay và gọi luôn `zalo-gui-sao`
+qua pg_net (`zalo_kich_hoat_gui_sao`), cron mỗi phút chỉ còn là lưới vớt. Bật lên
+thì quay về gom `gom_phut` (2). Switch ở tab Tin Sao.
 
 **Gói cước (bảng giá Zalo OA áp dụng 01/06/2026, gồm VAT — migration
 `20261025090000_zalo_goi_cuoc_bang_gia.sql` **đã áp**, chỉ nạp dữ liệu vào

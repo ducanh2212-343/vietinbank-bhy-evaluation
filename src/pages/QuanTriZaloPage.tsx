@@ -863,8 +863,15 @@ export default function QuanTriZaloPage() {
                 </div>
                 <Switch checked={(ch.che_do_gop ?? 'moi_nguoi_mot_tin') === 'moi_nguoi_mot_tin'} onCheckedChange={(v) => doiCauHinh('che_do_gop', v ? 'moi_nguoi_mot_tin' : 'gop_theo_nguoi_tang')} />
               </div>
+              <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                <div>
+                  <div className="font-medium text-sm">Tiết kiệm tin (gom {caiDatTin.gom_phut || '2'} phút)</div>
+                  <p className="text-xs text-muted-foreground">Bật: phiếu chờ vài phút để phiếu nhập liền nhau đi chung một tin. Tắt (đang dùng lúc mới chuyển đổi): phiếu ghi xong là tin lên nhóm ngay.</p>
+                </div>
+                <Switch checked={ch.tiet_kiem_tin === 'true'} onCheckedChange={(v) => doiCauHinh('tiet_kiem_tin', v ? 'true' : 'false')} />
+              </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <div><Label>Cửa sổ gom (phút)</Label><Input inputMode="numeric" value={caiDatTin.gom_phut ?? ''} onChange={(e) => setCaiDatTin({ ...caiDatTin, gom_phut: e.target.value.replace(/[^\d]/g, '') })} /></div>
+                <div><Label>Cửa sổ gom khi bật tiết kiệm (phút)</Label><Input inputMode="numeric" value={caiDatTin.gom_phut ?? ''} onChange={(e) => setCaiDatTin({ ...caiDatTin, gom_phut: e.target.value.replace(/[^\d]/g, '') })} /></div>
                 <div><Label>Tối đa phiếu liệt kê trong một tin</Label><Input inputMode="numeric" value={caiDatTin.toi_da_dong_mot_tin ?? ''} onChange={(e) => setCaiDatTin({ ...caiDatTin, toi_da_dong_mot_tin: e.target.value.replace(/[^\d]/g, '') })} /></div>
                 <div><Label>Lý do tối đa (ký tự)</Label><Input inputMode="numeric" value={caiDatTin.ly_do_toi_da_ky_tu ?? ''} onChange={(e) => setCaiDatTin({ ...caiDatTin, ly_do_toi_da_ky_tu: e.target.value.replace(/[^\d]/g, '') })} /></div>
                 <div><Label>Số lần thử lại khi lỗi</Label><Input inputMode="numeric" value={caiDatTin.so_lan_thu_toi_da ?? ''} onChange={(e) => setCaiDatTin({ ...caiDatTin, so_lan_thu_toi_da: e.target.value.replace(/[^\d]/g, '') })} /></div>
