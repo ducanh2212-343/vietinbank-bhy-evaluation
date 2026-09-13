@@ -51,9 +51,16 @@ function veHinhChuNhatBo(ctx: CanvasRenderingContext2D, x: number, y: number, w:
   ctx.closePath();
 }
 
-/** Logo Chi nhánh dạng ảnh đã nạp — dùng cho các mẫu ảnh in (mauAnhQr.ts). */
-export async function napLogoAnh(): Promise<HTMLImageElement> {
-  return napAnh(svgSangDataUri(await napLogoSvg()));
+/**
+ * Logo Chi nhánh dạng ảnh đã nạp — dùng cho các mẫu ảnh in (mauAnhQr.ts).
+ * `nen = 'xanh'`: bản đặt trên nền xanh VietinBank — chữ xanh trong tệp gốc đổi
+ * thành trắng, giữ nguyên biểu tượng đỏ và xanh nhạt (đúng cách VietinBank in
+ * logo trên nền màu). Đặt bản gốc lên nền xanh là chữ chìm mất.
+ */
+export async function napLogoAnh(nen: 'sang' | 'xanh' = 'sang'): Promise<HTMLImageElement> {
+  let svg = await napLogoSvg();
+  if (nen === 'xanh') svg = svg.replace(/#0e5a94/gi, '#FFFFFF');
+  return napAnh(svgSangDataUri(svg));
 }
 
 /** Tỉ lệ khung của logo (rộng / cao) — để đặt logo vào mẫu ảnh không méo. */

@@ -215,7 +215,8 @@ Migration `20261013090000_danh_thiep_ma_luu_nhanh.sql` (hai cột `qr_nhanh_ten`
 cho mã QR nhúng thẳng danh bạ, không cần mạng) **đã áp** (13/09/2026); chạy khô: cán bộ
 thường tự sửa được hai cột này, vẫn bị chặn sửa đơn vị. Migration
 `20261013090100_danh_thiep_ma_luu_nhanh_email.sql` (cột `qr_nhanh_email`, tuỳ chọn đưa email
-vào mã) **đã áp** (13/09/2026).
+vào mã) **đã áp** (13/09/2026) — sau đó làm rõ: email **không** vào mã, chỉ in lên name card
+(`20261013090200_danh_thiep_email_chi_in_name_card.sql`, **đã áp** 13/09/2026).
 
 Còn lại: địa chỉ và số điện thoại Chi nhánh (`CN_BHY`) mới có tên đường, **chưa có số nhà
 và hotline**; Google Wallet **chưa dùng được** cho tới khi có Issuer ID (nhập ở nút Cấu

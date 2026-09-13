@@ -44,10 +44,9 @@ describe('vCard nhúng thẳng', () => {
     // Tên xuất hiện hai lần (N và FN) vì một số máy Android rẻ không nhận vCard thiếu N
     expect(QRCode.create(v, { errorCorrectionLevel: 'M' }).modules.size).toBeLessThanOrEqual(49);
   });
-  it('có email thì thêm dòng EMAIL, không có thì không', () => {
-    const co = taoVcardNhanh({ ten: 'VietinBank - Trần Văn Khái', sdt: '0966503279', email: 'khai.tv@vietinbank.vn' });
-    expect(co).toContain('\r\nEMAIL;TYPE=INTERNET:khai.tv@vietinbank.vn\r\nEND:VCARD');
+  it('mã chỉ có tên và số — không bao giờ chứa email (email chỉ in lên name card)', () => {
     expect(v).not.toContain('EMAIL');
+    expect(v.split('\r\n').filter(Boolean)).toHaveLength(6);
     expect(emailHopLe('khai.tv@vietinbank.vn')).toBe(true);
     expect(emailHopLe('khai.tv@')).toBe(false);
   });

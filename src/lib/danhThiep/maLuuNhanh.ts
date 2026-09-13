@@ -30,8 +30,6 @@ export interface NoiDungMaNhanh {
   ten: string;
   /** Số điện thoại đúng như sẽ lưu vào máy khách. */
   sdt: string;
-  /** Email — tuỳ chọn; thêm vào là mã dày thêm khoảng một bậc */
-  email?: string;
 }
 
 /** Bỏ dấu nhưng GIỮ chữ hoa/thường: «Trần Văn Khái» → «Tran Van Khai». */
@@ -73,7 +71,7 @@ export function chuanHoaSoTheoDang(raw: string, dang: DangSo): string {
   return s.startsWith('+84') ? '0' + s.slice(3) : s;
 }
 
-/** Email đủ hợp lệ để đưa vào mã. */
+/** Email đủ hợp lệ để in lên name card (KHÔNG vào mã — mã chỉ có tên và số). */
 export function emailHopLe(raw: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((raw ?? '').trim());
 }
@@ -102,10 +100,8 @@ export function taoVcardNhanh(nd: NoiDungMaNhanh): string {
     `N:;${thoat(ten)};;;`,
     `FN:${thoat(ten)}`,
     `TEL;TYPE=CELL:${chiSo(nd.sdt)}`,
+    'END:VCARD',
   ];
-  const email = (nd.email ?? '').trim();
-  if (email) dong.push(`EMAIL;TYPE=INTERNET:${thoat(email)}`);
-  dong.push('END:VCARD');
   return dong.join('\r\n') + '\r\n';
 }
 

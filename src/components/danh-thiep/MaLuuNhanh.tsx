@@ -31,7 +31,7 @@ interface Props {
   dangLuu: boolean;
   /** Chức danh / đơn vị / email lấy từ thẻ online — chỉ vẽ lên mẫu name card, không vào mã */
   phu?: { chucDanh?: string; donVi?: string; email?: string };
-  /** Lưu ba cột qr_nhanh_ten / qr_nhanh_sdt / qr_nhanh_email; lỗi báo qua toast ở nơi gọi */
+  /** Lưu ba cột qr_nhanh_ten / qr_nhanh_sdt / qr_nhanh_email (email chỉ in name card); lỗi báo qua toast ở nơi gọi */
   onLuu: (dong: { qr_nhanh_ten: string; qr_nhanh_sdt: string; qr_nhanh_email: string | null }) => Promise<void>;
 }
 
@@ -58,12 +58,10 @@ export function MaLuuNhanh({ cb, dangLuu, phu, onLuu }: Props) {
   const soGoc = nguon === 'di_dong' ? (cb.phone_mobile ?? '') : nguon === 'co_quan' ? (cb.phone_office ?? '') : soKhac;
   const sdt = chuanHoaSoTheoDang(soGoc, dang);
   const tenSach = ten.replace(/\s+/g, ' ').trim();
+  // Email KHÔNG vào mã (mã chỉ tên + số để thưa, quét nhanh) — chỉ in lên name card
   const emailSach = dungEmail ? email.trim() : '';
   const hopLe = tenSach.length >= 3 && soHopLe(sdt) && (!dungEmail || emailHopLe(emailSach));
-  const vcard = useMemo(
-    () => (hopLe ? taoVcardNhanh({ ten: tenSach, sdt, email: emailSach || undefined }) : ''),
-    [hopLe, tenSach, sdt, emailSach],
-  );
+  const vcard = useMemo(() => (hopLe ? taoVcardNhanh({ ten: tenSach, sdt }) : ''), [hopLe, tenSach, sdt]);
   const soO = useMemo(() => (vcard ? soOMotCanh(vcard) : 0), [vcard]);
   const daDoi = tenSach !== (cb.qr_nhanh_ten ?? '') || sdt !== (cb.qr_nhanh_sdt ?? '') || (emailSach || null) !== cb.qr_nhanh_email;
   const coDau = boDauGiuHoa(ten) !== ten.replace(/\s+/g, ' ').trim();
@@ -91,7 +89,7 @@ export function MaLuuNhanh({ cb, dangLuu, phu, onLuu }: Props) {
   }, [vcard, mau, tenSach, sdt, phu, emailSach]);
 
   const luu = async () => {
-    if (!hopLe) { toast.error('Cần tên từ 3 ký tự, số điện thoại 9–15 chữ số, và email đúng dạng nếu bật'); return; }
+    if (!hopLe) { toast.error('Cần tên từ 3 ký tự, số điện thoại 9–15 chữ số, và email đúng dạng nếu in lên name card'); return; }
     await onLuu({ qr_nhanh_ten: tenSach, qr_nhanh_sdt: sdt, qr_nhanh_email: emailSach || null });
   };
 
@@ -167,8 +165,8 @@ export function MaLuuNhanh({ cb, dangLuu, phu, onLuu }: Props) {
               <label className="flex items-center gap-3 text-sm">
                 <Switch checked={dungEmail} onCheckedChange={setDungEmail} />
                 <span>
-                  Đưa email vào mã
-                  <span className="block text-xs text-muted-foreground">Mã dày thêm khoảng một bậc. Bật khi hay gặp khách cần gửi hồ sơ qua thư.</span>
+                  In email lên name card
+                  <span className="block text-xs text-muted-foreground">Chỉ hiện trên mẫu name card. Mã QR vẫn chỉ có tên và số để thưa, quét nhanh.</span>
                 </span>
               </label>
               {dungEmail && (
