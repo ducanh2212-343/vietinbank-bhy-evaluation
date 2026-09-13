@@ -1107,3 +1107,86 @@ cán bộ sẽ thấy.
 
 Việc đóng sổ **không có migration**: đó là thao tác dữ liệu một lần, chạy trực
 tiếp và đã đối chiếu bằng câu đếm ở trên.
+
+## 19. Đợt 13 — Training Center Toolkit: sơ đồ tư duy, mô hình 4 hộp, bảng vẽ tay
+
+Yêu cầu của Giám đốc (13/09/2026): «Xây dựng tính năng Training Center Toolkit
+như phần mềm tạo mindmap trực quan, có màu sắc… Nếu từng lịch học, bài tập cụ
+thể, học viên ấn nút dùng Training Center Toolkit sau đó chọn mindmap, sẽ hiện
+ra. Phần 2 thêm toolkit mô hình 4 hộp (các trục có thể tuỳ chọn), thêm công cụ vẽ
+hình đào tạo trực quan, sẽ dùng bút vẽ.»
+
+### 19.1 Vì sao một bảng, ba công cụ, jsonb tự mô tả
+
+Ba công cụ có vòng đời giống nhau (tạo – sửa nhiều lần – xuất ảnh – nộp) và cùng
+gắn với **một đầu việc + một người**, nên dùng chung bảng `ttc_toolkit`
+(`loai` = `MINDMAP` / `BON_HOP` / `VE_TAY`, `du_lieu` jsonb). Không nhét vào
+`ttc_tien_do.tep` vì một đầu việc có thể nhiều bản vẽ, bản vẽ sửa tiếp được, và
+BGĐ cần xem bản «sống» chứ không phải ảnh chụp.
+
+Mỗi công cụ có mô-đun riêng đọc/ghi khuôn của mình (`src/lib/toolkit/mindmap.ts`,
+`bonHop.ts`, `veTay.ts`) với hàm `doc*` chịu được jsonb hỏng (thiếu trường lấy mặc
+định, nút/thẻ/nét sai thì bỏ, cây mindmap cắt ở độ sâu 30). Trigger
+`f_ttc_toolkit_truoc_ghi` chặn jsonb không phải object và trên 512 KB — một bản
+vẽ tay 100 nét khoảng 60 KB, mindmap 200 nút khoảng 20 KB, nên trần này rộng
+nhưng chặn được lỗi lặp vô hạn phía client.
+
+### 19.2 Quyết định thiết kế từng công cụ
+
+**Sơ đồ tư duy — SVG, máy xếp vị trí.** Theo cách của XMind/MindNode: người dùng
+chỉ gõ nội dung, `xepMindmap` tự chia nhánh cấp 1 sang hai bên (tham lam cân
+chiều cao, nhánh đầu bên phải), xếp dọc, nối bằng Bezier. Không dùng thư viện
+đồ thị (reactflow ~ 200 KB) vì ta không cần nút tự do; SVG chứ không canvas vì
+chữ tiếng Việt sắc ở mọi độ phóng và xuất ảnh chỉ là sao chép cây DOM. Đo chữ
+bằng canvas `measureText` (`doChu.ts`) để hộp khít nội dung — cùng một font ở ba
+nơi đo/vẽ/xuất, lệch một nơi là chữ tràn hộp lúc xuất ảnh. Phím: Tab ý con, Enter
+cùng cấp, gõ thẳng chữ vào nút đang chọn, Delete xoá, Space gập; kéo nút thả lên
+nút khác để dời nhánh (`doiCha` chặn thả vào chính hậu duệ). Nút vừa thêm mà ra
+ngoài khung thì nền tự kéo vừa đủ. Trên điện thoại «vừa khung» có sàn 60 % và
+đưa ý chính vào giữa — vừa hết sơ đồ thì chữ còn 24 %, không đọc nổi.
+
+**Mô hình 4 hộp — HTML grid, ảnh xuất dựng lại từ dữ liệu.** Bốn ô đánh số cố
+định theo vị trí (0 trái trên … 3 phải dưới) để đổi mẫu không lệch thẻ; `apMau`
+chỉ thay trục và tên ô, **giữ thẻ và vị trí thẻ**. Kéo thả bằng HTML5 drag trên
+máy tính; điện thoại chạm thẻ rồi chạm ô. Mẫu «Tự làm – Giao việc» đặt đúng hai
+câu kiểm chứng của Bảng việc ngày 5 (tôi làm tốt nhất? / ai khác làm được?) để
+học viên xếp việc ngay trong bài. Ảnh xuất là SVG 1400×1000 dựng từ dữ liệu
+(`veSvg`) chứ không chụp DOM, nên không lệ thuộc màn hình.
+
+**Bảng vẽ tay — lưu nét, không lưu ảnh.** Một nét là dãy `[x, y, áp lực, …]`
+phẳng; vẽ bằng `perfect-freehand` (thuật toán nét bút của tldraw) với thinning
+theo áp lực. Nét đang vẽ đi lên canvas phủ riêng để không vẽ lại cả bản mỗi lần
+di chuột. Tẩy là nét tô màu nền (không dùng `destination-out`) để PNG xuất ra
+nền vẫn đặc. `rutGonDiem` bỏ điểm cách nhau dưới 1,5 px — bút cảm ứng bắn 200
+điểm/giây, không rút thì một gạch nặng 5 KB. Điện thoại cầm dọc thì bản mới là
+khổ dọc 1000×1600.
+
+### 19.3 Quyền và đường đi của tệp
+
+RLS `ttc_toolkit`: **xem** = thành viên chương trình chứa đầu việc
+(`ttc_la_thanh_vien(ttc_ct_cua_dau_viec(dau_viec_id))`); **tạo** = thành viên và
+`nguoi = get_my_profile_id()` — PGĐ/TCTH vẽ mẫu được; **sửa/xoá** = chủ bản.
+`anon` bị thu hồi toàn bộ. Tám kịch bản đã chạy trên cụm cục bộ: học viên tạo
+bản của mình ✓, tạo hộ người khác ✗, người ngoài lớp không thấy ✗, PGĐ trong lớp
+xem ✓ sửa ✗, jsonb 600 KB bị chặn với thông báo tiếng Việt, tieu_de cắt 120.
+
+«Nộp thành tệp» đi qua đúng đường của tệp học viên tự tải: PNG lên kho
+`bhy-training` tại `<ct>/<user>/<đầu việc>/toolkit-<id>.png` (**upsert** — nộp
+lại bao nhiêu lần vẫn một tệp), rồi `luuNopDauViec` nối vào `ttc_tien_do.tep`
+(cùng `path` thì thay dòng cũ, không làm danh sách dài ra; vẫn giữ trần 5 tệp).
+Ba policy kho chỉ gác cấp 1–2 nên không cần policy mới.
+
+### 19.4 Đã áp và đã kiểm
+
+| Migration | Trạng thái |
+| --- | --- |
+| `20261021090000_ttc_toolkit.sql` | **đã áp** 13/09/2026 — bảng có, RLS bật, 4 policy, `anon` không có quyền, 0 dòng |
+
+Kiểm thử: 29 test mới (`src/lib/toolkit/__tests__/`), toàn bộ 1 415 test xanh,
+`tsc` sạch, `vite build` xong. Ba editor đã chụp bằng Chromium ở 1280×800 và
+390×760 với thao tác thật (thêm ý con bằng Tab, gõ thẻ rồi xếp vào ô, vẽ ba nét
+và tẩy) — sửa sau lần chụp đầu: nhãn trục dọc bị lật và phình cột, thanh công cụ
+nổi bị giới hạn nửa khung nên gãy dòng, bảng vẽ trên điện thoại cao 240 px.
+
+Chưa làm (chờ Giám đốc quyết): chấm điểm trực tiếp trên bản vẽ; nhiều người cùng
+sửa một bản; chia sẻ bản mẫu của TCTH sang chương trình khác khi nhân bản.

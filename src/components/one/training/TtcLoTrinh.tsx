@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
-  BellRing, BookOpen, CheckCircle2, Clock, Eye, FileText, Laptop, Link2, Mail, Monitor, Paperclip, Pencil, PenLine, Plus, Star, Trash2, X,
+  BellRing, BookOpen, CheckCircle2, Clock, Eye, FileText, Laptop, Link2, Mail, Monitor, Paperclip, Pencil, PenLine, Plus, Shapes, Star, Trash2, X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -27,6 +27,7 @@ import { TTC_TEP_ACCEPT, TTC_TEP_TOI_DA, kichThuocDoc, taiTepTrainingCenter, xoa
 import { TtcChamBloom } from './TtcChamBloom';
 import { FormDauViec, FormNgay } from './TtcFormLoTrinh';
 import { TtcTaiLieuNgay } from './TtcTaiLieuNgay';
+import { ToolkitDialog } from './toolkit/ToolkitDialog';
 
 /**
  * LỘ TRÌNH — dải ngày, lịch chi tiết theo giờ của ngày đang chọn, ô tích hoàn
@@ -269,6 +270,7 @@ export function TtcLoTrinh({ bc }: { bc: TtcBoiCanh }) {
                   onTich={(x) => tich(v, x)}
                   laHocVien={bc.laHocVien}
                   nopDuoc={bc.laHocVien && !!ctId && !!profileId && !!user && tichDuoc(ngayHien!, homNay)}
+                  toolkitDuoc={!!bc.vai && !!ctId && !!profileId && !!user}
                   ctId={ctId ?? ''}
                   profileId={profileId ?? ''}
                   userId={user?.id ?? ''}
@@ -299,13 +301,17 @@ export function TtcLoTrinh({ bc }: { bc: TtcBoiCanh }) {
 }
 
 function DongDauViec({
-  v, ngay, tienDo, daCham, coTheTich, homNay, onTich, laHocVien, nopDuoc, ctId, profileId, userId, suaDuoc, onSua, onXoa,
+  v, ngay, tienDo, daCham, coTheTich, homNay, onTich, laHocVien, nopDuoc, toolkitDuoc, ctId, profileId, userId, suaDuoc, onSua, onXoa,
 }: {
   v: TtcDauViec; ngay: TtcNgay; tienDo: TtcTienDo | undefined; daCham: boolean;
   coTheTich: boolean; homNay: string; onTich: (x: boolean) => void;
-  laHocVien: boolean; nopDuoc: boolean; ctId: string; profileId: string; userId: string;
+  laHocVien: boolean; nopDuoc: boolean;
+  /** Thành viên chương trình (mọi vai) đều mở được Toolkit — PGĐ/TCTH vẽ mẫu, học viên vẽ bài */
+  toolkitDuoc: boolean;
+  ctId: string; profileId: string; userId: string;
   suaDuoc: boolean; onSua: () => void; onXoa: () => void;
 }) {
+  const [moToolkit, setMoToolkit] = useState(false);
   const tt = trangThaiViec(ngay, tienDo, daCham, homNay);
   const IconTb = v.thiet_bi === 'MAY_CO_QUAN' ? Monitor : v.thiet_bi === 'LAPTOP' ? Laptop : v.thiet_bi === 'GIAY' ? PenLine : null;
   const coTinhNang = v.tinh_nang.length > 0;
@@ -342,6 +348,11 @@ function DongDauViec({
           </div>
         </div>
         <div className="flex shrink-0 items-start gap-1 pt-0.5">
+          {toolkitDuoc && (
+            <Button size="sm" variant="outline" onClick={() => setMoToolkit(true)} className="h-7 gap-1 border-[#1F4E79]/30 px-2 text-2xs font-semibold text-[#1F4E79] hover:bg-[#1F4E79]/5" title="Training Center Toolkit: sơ đồ tư duy, mô hình 4 hộp, bảng vẽ tay">
+              <Shapes className="h-3.5 w-3.5" /><span className="hidden sm:inline">Toolkit</span>
+            </Button>
+          )}
           {suaDuoc && (
             <>
               <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-500" onClick={onSua} aria-label="Sửa đầu việc"><Pencil className="h-3.5 w-3.5" /></Button>
@@ -371,6 +382,19 @@ function DongDauViec({
           profileId={profileId}
           userId={userId}
           thieu={laHocVien && !tienDo?.hoan_thanh ? thieu : []}
+        />
+      )}
+
+      {toolkitDuoc && moToolkit && (
+        <ToolkitDialog
+          mo={moToolkit}
+          onDong={() => setMoToolkit(false)}
+          v={v}
+          tienDo={laHocVien ? tienDo : undefined}
+          ctId={ctId}
+          profileId={profileId}
+          userId={userId}
+          nopDuoc={nopDuoc}
         />
       )}
     </div>

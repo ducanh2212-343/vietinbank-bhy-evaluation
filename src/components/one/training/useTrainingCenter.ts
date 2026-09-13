@@ -6,6 +6,7 @@ import type { Ct2DauViec } from '@/lib/ct2';
 import { LoiViTri } from '@/lib/quyenViTri';
 import { ghiCauHinhBao } from '@/lib/trainingCenter';
 import { kyTepTrainingCenter } from './tepTrainingCenter';
+import { TOOLKIT_DU_LIEU_TOI_DA, kichThuocJson, type ToolkitLoai, type TtcToolkit } from '@/lib/toolkit';
 import type { KetQuaDiemDanh, TtcCauHinhDiemDanh, TtcDiemDanh, TtcQrNgay, TtcThuDinhVi } from '@/lib/diemDanh';
 import type {
   TtcChuongTrinh, TtcDauViec, TtcDiemBloom, TtcDiemKiem, TtcKetQuaNghiemThu, TtcLichSuChuan, TtcMucGiao,
@@ -688,4 +689,38 @@ export function useTtcPhongCua(profileId: string | null) {
       return (data?.department_id as string | null) ?? null;
     },
   });
+}
+
+// ---------------------------------------------------------------------------
+// Training Center Toolkit — bản vẽ (sơ đồ tư duy / 4 hộp / vẽ tay) theo đầu việc
+// ---------------------------------------------------------------------------
+
+/** Mọi bản vẽ của một đầu việc mà tôi thấy được (RLS: thành viên chương trình) — của tôi và của người khác */
+export function useTtcToolkit(dauViecId: string | null) {
+  return useQuery({
+    queryKey: ['ttc', 'toolkit', dauViecId],
+    enabled: !!dauViecId,
+    staleTime: NUA_PHUT,
+    queryFn: async () => {
+      const data = nemNeuLoi(await db.from('ttc_toolkit').select('*')
+        .eq('dau_viec_id', dauViecId!).order('updated_at', { ascending: false })) as TtcToolkit[];
+      return data ?? [];
+    },
+  });
+}
+
+export async function luuToolkit(p: {
+  id?: string; dau_viec_id: string; nguoi: string; loai: ToolkitLoai; tieu_de: string; du_lieu: unknown; anh_xem_truoc?: string | null;
+}): Promise<TtcToolkit> {
+  const { id, ...phan } = p;
+  if (kichThuocJson(phan.du_lieu) > TOOLKIT_DU_LIEU_TOI_DA) throw new Error('Bản vẽ quá lớn (trên 512 KB). Hãy tách thành hai bản.');
+  const row = id
+    ? nemNeuLoi(await db.from('ttc_toolkit').update(phan).eq('id', id).select('*').maybeSingle())
+    : nemNeuLoi(await db.from('ttc_toolkit').insert(phan).select('*').maybeSingle());
+  if (!row) throw new Error('Không lưu được bản vẽ');
+  return row as TtcToolkit;
+}
+
+export async function xoaToolkit(id: string) {
+  nemNeuLoi(await db.from('ttc_toolkit').delete().eq('id', id));
 }

@@ -607,6 +607,19 @@ như máy Mac**. Migration `20261020090000_tin_hoan_thanh_ngan_gon.sql` **đã �
 đã báo mà **không sinh tin nào**, để nút «Công bố» sau này chỉ gửi đúng mục mới.
 Chi tiết: mục 18 của tài liệu trên.
 
+**Training Center Toolkit (13/09/2026, đợt 13):** mỗi đầu việc trong Lộ trình có
+nút **«Toolkit»** mở hộp thoại toàn màn hình với ba công cụ: **sơ đồ tư duy**
+(SVG, máy tự xếp nhánh hai bên và tô màu, Tab/Enter thêm ý, kéo nhánh thả sang
+cha mới), **mô hình 4 hộp** (hai trục và bốn ô tự đặt tên, thẻ việc kéo thả, năm
+mẫu sẵn: Eisenhower, Tự làm – Giao việc của ngày 5, Nỗ lực – Tác động, SWOT,
+trống) và **bảng vẽ tay** (canvas + `perfect-freehand`, nét theo áp lực bút, tẩy,
+hoàn tác từng nét). Bản vẽ lưu ở bảng `ttc_toolkit` (jsonb tự mô tả theo công cụ,
+trần 512 KB, một dòng mỗi bản vẽ; thành viên lớp xem, chủ bản sửa/xoá). «Tải ảnh»
+xuất PNG 2×; «Nộp thành tệp» đẩy PNG lên kho `bhy-training` tại
+`<ct>/<user>/<đầu việc>/toolkit-<id>.png` rồi nối vào `ttc_tien_do.tep` — người
+chấm xem như tệp thường. Migration `20261021090000_ttc_toolkit.sql` **đã áp**.
+Chi tiết: mục 19 của tài liệu trên.
+
 ## Kênh Zalo OA & Quản trị Push (09/2026)
 
 **Mục tiêu:** đẩy tin Sao Xứng Đáng từ cổng vào nhóm Zalo GMF «343 - Bắc Hưng Yên
