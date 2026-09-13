@@ -37,26 +37,82 @@ nguyên ở các mục sau để tra cứu.
 1. **Thử đổi mật khẩu bằng một tài khoản thử.** Luồng này đang chạy thật và **chưa ai
    kiểm**. Đây là thứ duy nhất không kiểm tự động từ xa được, vì cần một phiên đăng nhập
    thật. Làm trước khi cấp tài khoản mới cho ai.
-2. **Bật MFA (2 lớp) cho nhóm quản trị.** Biện pháp lợi ích cao nhất còn lại: CAPTCHA
+2. **Chuyển sang khoá ký JWT kiểu mới — CHỦ ĐỘNG, vào cuối tuần.** Sáng 27/08 nền
+   tảng đã tự chuyển và gây sự cố trắng màn hình toàn Chi nhánh (biên bản ở Mục 0-B).
+   Ta đã quay về khoá cũ — nhưng đó là **hoãn, không phải thoát**: khoá cũ nằm trong lộ
+   trình khai tử của Supabase và nền tảng có thể tự chuyển lần nữa vào một đêm bất kỳ.
+   Trình tự an toàn: (1) làm ngoài giờ; (2) tạo **Standby Key** và chờ mọi thành phần
+   nhận; (3) kiểm 21 hàm máy chủ mà hộp thoại rotate liệt kê (chúng xác minh bằng khoá
+   cũ); (4) rotate; (5) đo lại như biên bản 0-B; hỏng thì rotate ngược — thao tác này
+   đã chứng minh là an toàn.
+3. **Bật MFA (2 lớp) cho nhóm quản trị.** Biện pháp lợi ích cao nhất còn lại: CAPTCHA
    chặn máy, nhưng **không cứu được khi mật khẩu quản trị đã bị lộ** — lúc đó kẻ gian
    đăng nhập bằng mật khẩu đúng.
-3. **Bật "Leaked password protection"** trong Supabase Auth (chặn mật khẩu đã từng lộ
+4. **Bật "Leaked password protection"** trong Supabase Auth (chặn mật khẩu đã từng lộ
    trên Internet).
-4. **Tắt tự đăng ký** ở tầng Supabase Auth. Rủi ro thực tế đã thấp vì cửa đăng ký cũng
+5. **Tắt tự đăng ký** ở tầng Supabase Auth. Rủi ro thực tế đã thấp vì cửa đăng ký cũng
    được captcha bảo vệ (đã đo: trả về `captcha_failed`) và `anon` không ghi được vào
    cơ sở dữ liệu — nhưng khoá cả tầng dưới vẫn sạch hơn.
-5. **`ai-advisor`** — chưa deploy, có chủ ý. Bản mới chỉ thêm hiển thị 4 số cuối khóa
+6. **`ai-advisor`** — chưa deploy, có chủ ý. Bản mới chỉ thêm hiển thị 4 số cuối khóa
    API và tránh ghi dòng rác vào `ai_usage_log`; **không phải vá bảo mật**. Deploy bằng
    `supabase functions deploy ai-advisor --project-ref whlysprzsguehxmrjwha`.
-6. **`send-transactional-email`** — chưa deploy. Phát hiện khi triển khai: hàm này
+7. **`send-transactional-email`** — chưa deploy. Phát hiện khi triển khai: hàm này
    **chưa từng được deploy**, nên thư duyệt/từ chối đăng ký lâu nay âm thầm không gửi
    được. Deploy nó là **bật một đường gửi email đang tắt** — quyết định nghiệp vụ, không
    phải kỹ thuật. Vì hàm không tồn tại nên hiện **không có** rủi ro gửi thư tới địa chỉ
    tuỳ ý; bản trong repo đã siết sẵn cho ngày bật lên.
-7. **`A2` — khóa API của dịch vụ AI**: chiều ĐỌC đã bịt (không còn gửi khóa về trình
+8. **`A2` — khóa API của dịch vụ AI**: chiều ĐỌC đã bịt (không còn gửi khóa về trình
    duyệt), nhưng chiều GHI vẫn đi thẳng từ client vào bảng và RLS vẫn cho admin
    `SELECT` cả dòng. Việc còn lại cần một migration riêng: chuyển khóa sang Vault hoặc
    thu hồi quyền của `authenticated` trên cột `api_key`.
+
+---
+
+## 0-B. BIÊN BẢN SỰ CỐ SÁNG 27/08/2026 — «đăng nhập được nhưng mọi tab trắng»
+
+Ghi lại đầy đủ vì triệu chứng này **rất dễ chẩn đoán nhầm thành mất dữ liệu**. Lần sau
+ai gặp đúng triệu chứng thì đọc mục này trước, 5 phút là khoanh xong thay vì mất một
+buổi sáng.
+
+### Chuyện gì xảy ra
+
+- Đêm 26 rạng 27/08, nền tảng Supabase **tự chuyển dự án sang khoá ký token kiểu mới
+  (ES256)** — không ai ở Chi nhánh thao tác. Đăng nhập vẫn chạy (cửa Auth cấp token ký
+  bằng khoá mới), nhưng **cổng dữ liệu và các hàm máy chủ vẫn soi bằng khoá cũ** nên từ
+  chối toàn bộ token → mọi truy vấn chết trước cửa.
+- Hệ quả nhìn thấy: **mọi tab trống, với mọi người, trên mọi mạng** (kể cả 5G), số liệu
+  hiện toàn 0. Không một dòng dữ liệu nào bị mất — chỉ là không lấy ra được.
+- Gián đoạn ~1 giờ đầu giờ làm việc. Khắc phục lúc 07:53.
+
+### Cách đã khoanh đúng bệnh (để lần sau làm lại được)
+
+1. **Đọc thẳng cơ sở dữ liệu** bằng quyền quản trị: dữ liệu còn nguyên → loại «mất dữ liệu».
+2. **Mô phỏng đúng truy vấn của trang** dưới quyền `authenticated` với JWT của người
+   báo lỗi: đọc đủ → loại «RLS chặn».
+3. **Đo bộ đếm đọc bảng** (`pg_stat_user_tables`) hai lần cách 56 giây đúng giờ cao
+   điểm: **đứng im tuyệt đối** → truy vấn không hề chạm tới cơ sở dữ liệu → chỗ nghẽn
+   nằm ở cổng, không phải trong nhà.
+4. Máy chủ **tự gọi cổng REST của chính nó** qua `pg_net` bằng anon key: trả 200 →
+   cổng sống, anon key hợp lệ → thứ bị từ chối chỉ có thể là **token người dùng**.
+5. Đọc sổ khoá công khai `/auth/v1/.well-known/jwks.json`: lộ ra khoá ES256 mới đang
+   là khoá ký hiện hành → khớp toàn bộ triệu chứng.
+
+### Cách chữa (đã làm, giữ lại làm quy trình lùi)
+
+Supabase → **Project Settings → JWT Keys**: hàng khoá cũ *Legacy HS256* (đang ở
+«Previously used») → menu ⋮ → **Move to standby** → **Rotate keys** → tick 3 ô xác
+nhận. Sau đó cán bộ **đăng xuất → đăng nhập lại** là vào được ngay (không đăng xuất thì
+≤1 giờ tự hồi). **Không Revoke khoá nào** — cả hai khoá phải còn để token cũ hết hạn êm.
+
+Xác nhận khỏi bệnh bằng chính phép đo số 3: bộ đếm chạy lại (+1.542 lượt đọc bảng
+Chiêu thức 2 trong vài phút) và cán bộ xác nhận vào bình thường.
+
+### Bài học ghim lại
+
+- «Đăng nhập được + mọi tab trắng + không có gì mới lên hệ thống» = **nghĩ ngay tới tầng
+  xác thực token**, không phải dữ liệu, không phải RLS, không phải bản phát hành.
+- Chuyển khoá ký là việc **phải chủ động làm có kế hoạch** (mục 2 danh sách CÒN LẠI),
+  vì để nền tảng tự làm thì nó rơi vào đêm bất kỳ và hỏng theo đúng kịch bản trên.
 
 ---
 

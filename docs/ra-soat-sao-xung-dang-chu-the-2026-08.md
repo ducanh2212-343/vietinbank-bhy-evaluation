@@ -145,7 +145,100 @@ này vì ngoài phạm vi yêu cầu — chờ chủ chương trình quyết.
 
 ---
 
-## 4. Việc đã làm
+## 4. Màn hình nhập sao: bỏ ô nhập, dẫn sang form Lark
+
+### Hiện trạng
+
+Đường ghi nhận thật của chi nhánh: **Lãnh đạo phòng / Ban Giám đốc nhập trên form
+Lark → Lark tự đẩy sang Zalo OA của group toàn Chi nhánh** để vinh danh ngay.
+
+Form nhập trên cổng (`StarRecognitionForm`) ghi thẳng vào `star_records` với
+`source='form'`. Đối chiếu dữ liệu: **0 phiếu `source='form'`** — toàn bộ 141
+phiếu / 146 sao đều là `source='import'`. Không ai từng dùng ô nhập này. Giữ lại
+chỉ tạo ra một đường ghi nhận thứ hai, lệch với dữ liệu Lark mà Phòng TCTH dùng
+để đối soát, và trái nguyên tắc "một chức năng một cửa" của cổng.
+
+### Đã sửa
+
+Khối "Ghi Nhận Sao Xứng Đáng" nay còn hai việc, đều là việc cổng làm tốt hơn Lark:
+
+1. **Trợ giúp soạn đúng cấu trúc** "Cảm ơn … / vì đã … / đem lại …" (mục 3 văn
+   bản triển khai), có nút **Copy lời ghi nhận** để dán sang form Lark.
+2. **Dẫn thẳng sang form Lark**, kèm sơ đồ luồng
+   `Form Lark → Zalo OA Chi nhánh → Phòng TCTH đối soát → Bảng tổng hợp trên cổng`
+   và nêu rõ quyền phát Sao: Trưởng phòng cho cán bộ phòng mình, Ban Giám đốc cho
+   toàn Chi nhánh; phiếu phải ghi nhận trên form **trước khi** tổ chức trao Sao.
+
+Cán bộ không thuộc nhóm được phân quyền thấy thêm dòng hướng dẫn gửi đề xuất tới
+Trưởng phòng phụ trách.
+
+Link form Lark đặt ở hằng số `LARK_STAR_FORM_URL` trong `StarRecognitionForm.tsx`
+— đổi link chỉ sửa một chỗ. Đã gỡ `submitFormRecord` khỏi `useStarRecords` (không
+còn nơi gọi). Cột `source` và chính sách RLS cho `source='form'` vẫn giữ nguyên,
+phòng khi sau này nối API Lark đẩy thẳng vào cổng.
+
+---
+
+## 5. Đối chiếu cổng với văn bản triển khai chính thức
+
+Đọc lại toàn văn *"Thông báo triển khai chương trình ghi nhận Sao xứng đáng năm
+2026"* (TB-CNBHY-TCTH, 5 trang).
+
+### Khớp đúng
+
+- Bảng phân bổ 412 Sao (32/24/20 theo quy mô phòng, GĐ 48, mỗi PGĐ 40).
+- 8 mốc quà 1 → 20 Sao và giá trị tối đa từng mốc: khớp 100% `STAR_REWARD_TIERS`.
+- 0,5 điểm KPI / 1 sao; ngân sách tủ quà 500 triệu; Phòng TCTH là đầu mối.
+- Cấu trúc lời ghi nhận "Cảm ơn / vì đã / đem lại".
+- **Xác nhận mục 2:** văn bản ghi rõ tập thể nhận Sao là chủ thể riêng, có KPI
+  riêng và giá trị quy đổi quà riêng → cách xếp hạng mới là đúng quy chế.
+
+### Đã sửa cho khớp văn bản
+
+| Chỗ lệch | Trước | Nay |
+|---|---|---|
+| Hạn giao Sao quý | "Họp quý giao trước mồng 5" | Thêm ngoại lệ **Quý 1: trước 10/03/2026** |
+| Nhãn cột 412 sao | "Cả năm" | "Sao **phát ra** / năm" + ghi chú đây không phải chỉ tiêu phải nhận về |
+| Quy mô nhân sự | Chỉ ghi TCTH (16), KHDN (14) | Đủ 10 phòng: DVKH (13), Văn Lâm (12), Khoái Châu (10), Văn Giang (10), Yên Mỹ (10), Bán lẻ (9), Ân Thi (8), HTTD (7) |
+| Ghi chú tập thể phân bổ Sao | "có thể phân bổ lại cho cá nhân tham gia trực tiếp thương vụ" | Nêu đủ: tối đa bằng số Sao được nhận; đã phân bổ thì **giữ KPI nhưng mất giá trị quy đổi quà** phần đã chia |
+| Nguồn Sao ngoài phân bổ | Không nhắc | Nêu rõ còn Sao từ các chương trình/chiến dịch có gắn cơ chế Sao Xứng Đáng |
+
+### Còn lệch — cần chủ chương trình quyết
+
+**a) Công thức quy đổi quà so với chú thích mốc 8 Sao.** Chú thích 1 của văn bản:
+mốc 1–6 Sao đổi thưởng vẫn tích lũy tiếp; **từ mốc 08 Sao trở lên, khi đổi quà
+đóng dấu "ĐÃ ĐỔI QUÀ" và không tích lũy lên mốc cao hơn**. Trang tủ quà trên cổng
+đã ghi đúng câu này, nhưng `getRewardBreakdown` lại cộng dồn đủ (gốc + mọi mốc 3
+Sao + mốc 6 Sao + mốc cao nhất ≥ 8) — chữ và số trên cùng một trang đang nói khác
+nhau. Ghi chú trong `starMath.ts` đã treo vấn đề này từ trước, chờ chủ chương
+trình quyết.
+
+Chênh lệch trên dữ liệu hiện tại (146 sao, chưa ai chạm mốc 8):
+
+| Nhóm | Sao | Theo công thức đang chạy | Nếu chỉ tính 1 mốc cao nhất |
+|---|---:|---:|---:|
+| 70 cá nhân | 123 | 15.900.000 đ | 9.400.000 đ |
+| 9 tập thể | 23 | 3.800.000 đ | 1.900.000 đ |
+
+Chênh khoảng 1,7 lần và sẽ giãn rất nhanh khi có cán bộ vượt mốc 8–20 Sao (ví dụ
+20 Sao: 49,3 triệu theo công thức đang chạy, 45 triệu nếu chỉ 1 mốc cao nhất).
+Ngân sách trần là 500 triệu nên cách đọc nào cũng còn dư ở thời điểm này, nhưng
+nên chốt trước khi có người tới mốc cao. **Chưa tự ý đổi** vì đây là con số tiền.
+
+**b) Điểm KPI chưa được theo dõi trên cổng.** Văn bản quy định 0,5 điểm KPI/sao,
+**trần 10 điểm/cá nhân hoặc tập thể/năm**. Cổng mới hiện "+0.5 Điểm KPI / 1 Sao"
+ở phần giới thiệu, chưa cộng dồn và chưa cảnh báo khi chạm trần (20 sao là chạm
+trần KPI). Chưa làm vì ngoài phạm vi yêu cầu.
+
+**c) Sao tập thể đã phân bổ lại cho cá nhân chưa được mô hình hóa.** Đây là cơ
+chế có thật trong văn bản và ảnh hưởng trực tiếp giá trị quy đổi quà của tập thể.
+Hiện `star_records` không có trường nào ghi "sao này là sao tập thể chia lại", nên
+không tính được phần tập thể bị trừ giá trị quy đổi. Cần thêm một cột đánh dấu ở
+form Lark trước, rồi cổng mới xử lý được.
+
+---
+
+## 6. Việc đã làm
 
 | Tệp | Thay đổi |
 |---|---|
@@ -154,6 +247,9 @@ này vì ngoài phạm vi yêu cầu — chờ chủ chương trình quyết.
 | `src/components/one/star/starParser.ts` | Sửa thứ tự nhận diện phòng giao dịch; xuất `standardizeDepartment` |
 | `src/components/one/star/StarAnalytics.tsx` | Dùng hàm tổng hợp mới; bảng + sheet Excel "Thi đua Phòng ban" theo sao tập thể |
 | `src/pages/one/OneHomePage.tsx` | "Tôi được ghi nhận" lọc theo họ tên **và** phòng |
+| `src/components/one/star/StarRecognitionForm.tsx` | Bỏ ô nhập ghi vào DB; còn trợ giúp soạn lời ghi nhận + nút mở form Lark |
+| `src/components/one/star/useStarRecords.ts` | Gỡ `submitFormRecord` (không còn nơi gọi) |
+| `src/components/one/StarWorthy2026.tsx` | Bảng 412 Sao và ghi chú khớp văn bản triển khai |
 | `src/components/one/star/__tests__/starStats.test.ts` | **Mới.** 15 ca kiểm thử |
 | `src/components/one/star/__tests__/starParser.test.ts` | Thêm 4 ca cho nhận diện phòng giao dịch |
 

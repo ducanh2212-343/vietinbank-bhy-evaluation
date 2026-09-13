@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { UploadedItem, ProgramCategory } from '@/data/one/types';
 import { signOnePaths, uploadOneImage } from '@/lib/oneStorage';
+import { chuanHoaChuyenMuc, chuanHoaPhongBan } from '@/lib/chuyenMuc';
 
 // Kho tư liệu BHY one — bảng portal_uploads + bucket private bhy-one.
 // API giữ nguyên như bản localStorage cũ để các trang /one không phải đổi.
@@ -49,9 +50,10 @@ export function useOneUploads() {
         return {
           id: r.id,
           title: r.title,
-          category: r.category as ProgramCategory,
+          // Bản ghi cũ có thể mang chuyên mục/phòng ban dạng chuỗi JSON hỏng — xem src/lib/chuyenMuc.ts
+          category: chuanHoaChuyenMuc(r.category) as ProgramCategory,
           author: r.author_name,
-          department: (r.department_name ?? 'Phòng TCTH') as UploadedItem['department'],
+          department: (chuanHoaPhongBan(r.department_name) || 'Phòng TCTH') as UploadedItem['department'],
           date: formatDate(r.created_at),
           imageUrl: imageUrls[0] ?? (r.image_path ? signed[r.image_path] : undefined),
           imageUrls,

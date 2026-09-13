@@ -112,3 +112,51 @@ export const getMilestoneInfo = (totalStars: number): MilestoneInfo => {
 /** Định dạng tiền VND theo locale vi-VN, ví dụ 3.400.000 ₫ */
 export const formatVnd = (n: number): string =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
+
+// ---- Điểm KPI (văn bản triển khai mục 5.1) ----
+// 0,5 điểm KPI cho mỗi sao hợp lệ, cộng dồn cuối năm; TRẦN 10 điểm cho mỗi
+// cá nhân / tập thể.
+
+export const KPI_PER_STAR = 0.5;
+export const KPI_CAP = 10;
+
+/** Điểm KPI tích lũy từ số sao, đã áp trần 10 điểm */
+export const getKpiPoints = (stars: number): number =>
+  Math.min(Math.max(stars, 0) * KPI_PER_STAR, KPI_CAP);
+
+/** Hiển thị điểm KPI kiểu Việt Nam: 0,5 / 1 / 1,5 … */
+export const formatKpi = (points: number): string =>
+  points.toLocaleString('vi-VN', { maximumFractionDigits: 1 });
+
+// ---- Nhắc mốc quà kế tiếp (kích thích nhận sao — yêu cầu 04/09/2026) ----
+//
+// Cùng một câu chữ dùng ở ba nơi: thẻ trang chủ, tab Tổng hợp, và thân tin push khi
+// cán bộ vừa nhận sao. Vì vậy để một chỗ soạn câu, đừng viết lại ở từng màn.
+//
+// ⚠ BẢN SQL SONG SINH: `sao_moc_qua_ke_tiep()` trong migration
+// 20260904150000_thong_bao_sao_xung_dang.sql soạn đúng câu này cho trigger push.
+// Sửa mốc hay chữ ở đây thì phải sửa cả bên đó — hai bên lệch là cán bộ đọc push
+// một đằng, mở cổng ra thấy một nẻo.
+
+export interface NhacMocQua {
+  /** Số sao còn thiếu để chạm mốc kế tiếp */
+  conThieu: number;
+  moc: StarRewardTier;
+  /** Câu hiển thị, ví dụ «Còn 2 Sao nữa tới mốc 8 Sao — Loa / Tai nghe Bluetooth» */
+  cau: string;
+}
+
+/**
+ * Mốc quà gần nhất chưa đạt và còn thiếu mấy sao. Trả null khi đã chạm mốc cao nhất
+ * (20 sao) — lúc đó treo thêm mốc là chế nhạo, không phải khích lệ.
+ */
+export const nhacMocQuaKeTiep = (stars: number): NhacMocQua | null => {
+  const { nextTier } = getMilestoneInfo(stars);
+  if (!nextTier) return null;
+  const conThieu = nextTier.stars - stars;
+  return {
+    conThieu,
+    moc: nextTier,
+    cau: `Còn ${conThieu} Sao nữa tới mốc ${nextTier.stars} Sao — ${nextTier.name}`,
+  };
+};

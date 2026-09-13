@@ -86,3 +86,13 @@ project_id = "whlysprzsguehxmrjwha"
   # đăng nhập. Hàm tự kiểm cờ wallet trong payload trước khi ký.
   [functions.danh-thiep-wallet]
     verify_jwt = false
+
+  # Cửa duy nhất nói chuyện với Zalo OA (đổi mã, gia hạn token, gửi tin vào nhóm GMF).
+  # Cron gọi bằng service_role JWT từ Vault; quản trị chạy tay bằng JWT của họ.
+  [functions.zalo-oa]
+    verify_jwt = true
+
+  # Đẩy tin Sao Xứng Đáng từ hàng đợi zalo_hang_doi vào nhóm Zalo GMF. Cron mỗi
+  # phút gọi bằng service_role JWT; quản trị xem trước/gửi thử bằng JWT của họ.
+  [functions.zalo-gui-sao]
+    verify_jwt = true

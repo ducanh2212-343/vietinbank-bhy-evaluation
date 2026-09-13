@@ -421,6 +421,17 @@ describe('Thông báo — bấm vào phải mở đúng thứ nó nói tới', (
       .toBe('/one/chieu-thuc-2?the=x1');
   });
 
+  it('tin Sao Xứng Đáng mở tab Tổng hợp — nơi có bảng cá nhân và mốc quà kế tiếp', () => {
+    // Người NHẬN sao thường không phải người được quyền ghi, nên không mở màn
+    // Ghi nhận Sao. Quy tắc này trùng với duongDan() trong notify-ct2.
+    expect(duongDanThongBao({ ma_su_kien: 'SAO_NHAN', dau_viec_id: null }))
+      .toBe('/one/ghi-nhan/tong-hop');
+    expect(duongDanThongBao({ ma_su_kien: 'SAO_CHUNG_VUI', dau_viec_id: null }))
+      .toBe('/one/ghi-nhan/tong-hop');
+    expect(duongDanThongBao({ ma_su_kien: 'SAO_BAN_TIN', dau_viec_id: null }))
+      .toBe('/one/ghi-nhan/tong-hop');
+  });
+
   it('tin gắn hồ sơ tín dụng thì mở THẲNG hồ sơ đó — không bắt tự tìm giữa 48 hồ sơ', () => {
     expect(duongDanThongBao({ ma_su_kien: 'HS_TRINH', dau_viec_id: null, ho_so_id: 'hs-9' }))
       .toBe('/one/chieu-thuc-2?ho_so=hs-9');
@@ -765,5 +776,15 @@ describe('Bằng chứng tuần của dấu ấn cũng phải nằm trên dòng 
     expect(dongTuBangChungDauAn([])).toEqual([]);
     expect(dongTuBangChungDauAn([{ ...mau, phan_star: null }])[0].tieu_de)
       .toBe('Bằng chứng tuần 17/08');
+  });
+});
+
+describe('Đường dẫn tin BHY Ideas', () => {
+  it('ý tưởng bị trả về mở thẳng bảng tra cứu — thẻ ý tưởng tự hiện dải «cần bổ sung»', () => {
+    // Không có mã thẻ/hồ sơ nào để trỏ sâu hơn; thiếu nhánh riêng là rơi về CT2
+    expect(duongDanThongBao({ ma_su_kien: 'IDEA_TRA_VE', dau_viec_id: null })).toBe('/one/y-tuong/gui');
+  });
+  it('tin tiến trình (trình GĐ, công nhận, chưa đạt, nuôi dưỡng…) cũng mở bảng tra cứu', () => {
+    expect(duongDanThongBao({ ma_su_kien: 'IDEA_TIEN_TRINH', dau_viec_id: null })).toBe('/one/y-tuong/gui');
   });
 });

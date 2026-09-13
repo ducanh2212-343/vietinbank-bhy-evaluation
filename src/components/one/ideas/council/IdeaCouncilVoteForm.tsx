@@ -11,6 +11,7 @@ import {
   type TieuChiKey,
   type XungDotLoiIch,
 } from '@/lib/ideaCouncil';
+import { NutXacNhanCham } from '../NutXacNhanCham';
 import type { CouncilVote, PhieuGui } from './useIdeaCouncil';
 
 // Phiếu chấm điểm của thành viên Hội đồng — đúng bộ câu hỏi Phụ lục 06:
@@ -18,6 +19,13 @@ import type { CouncilVote, PhieuGui } from './useIdeaCouncil';
 // thị từ dữ liệu TCTH trình — thành viên chỉ nhập A4, C1-C5, D1, D2.
 // HAI PHA như Hội đồng đầu mối: «Lưu nháp» giữ dở dang (không vào tổng hợp,
 // không cần đủ câu), «Gửi phiếu» mới validate đủ Phụ lục 06.
+//
+// 11/09/2026: nút «Gửi phiếu» có thêm nhịp xác nhận 3 giây (NutXacNhanCham).
+// Ngồi họp, điện thoại trong tay, 20 thẻ ý tưởng trông na ná nhau — bấm gửi
+// nhầm sang thẻ bên cạnh là chuyện đã xảy ra, mà phiếu gửi rồi thì đã vào
+// tổng hợp. Ba giây đủ để liếc lại tên ý tưởng trên đầu thẻ.
+// Bấm nhịp một vẫn kiểm tra đủ câu trước (truocKhiMo): thiếu câu thì báo lỗi
+// ngay, không bắt người dùng đếm ngược xong mới biết mình thiếu.
 
 interface IdeaCouncilVoteFormProps {
   /** Phiếu đã lưu trước đó (nháp hoặc đã gửi — đổ sẵn để sửa) */
@@ -47,11 +55,16 @@ export const IdeaCouncilVoteForm: React.FC<IdeaCouncilVoteFormProps> = ({ myVote
     setLoi([]);
   }, [myVote]);
 
+  /** Đủ câu chưa — chạy trước khi mở nhịp xác nhận 3 giây */
+  const kiemTraDuCau = (): boolean => {
+    const errs = loiPhieu({ xungDot, diem, deXuat, gopY });
+    setLoi(errs);
+    return errs.length === 0;
+  };
+
   const handleLuu = async (trangThai: 'draft' | 'submitted') => {
     if (trangThai === 'submitted') {
-      const errs = loiPhieu({ xungDot, diem, deXuat, gopY });
-      setLoi(errs);
-      if (errs.length > 0) return;
+      if (!kiemTraDuCau()) return;
     } else {
       setLoi([]);
     }
@@ -64,7 +77,7 @@ export const IdeaCouncilVoteForm: React.FC<IdeaCouncilVoteFormProps> = ({ myVote
   };
 
   return (
-    <form onSubmit={e => { e.preventDefault(); void handleLuu('submitted'); }} className="space-y-4 text-xs">
+    <form onSubmit={e => e.preventDefault()} className="space-y-4 text-xs">
       {myVote && myVote.status === 'submitted' && (
         <div className="flex items-center gap-2 p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 font-semibold">
           <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
@@ -214,18 +227,25 @@ export const IdeaCouncilVoteForm: React.FC<IdeaCouncilVoteFormProps> = ({ myVote
             )}
             <span>Lưu nháp</span>
           </button>
-          <button
-            type="submit"
-            disabled={dangGui !== null}
-            className={`flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold shadow transition-all flex items-center justify-center gap-2 cursor-pointer ${dangGui ? 'opacity-70 cursor-not-allowed' : ''}`}
-          >
+          <div className="flex-1">
             {dangGui === 'submitted' ? (
-              <span className="inline-block animate-spin border-2 border-white border-t-transparent rounded-full w-4 h-4" />
+              <div className="w-full py-2.5 rounded-xl bg-amber-500 text-white font-bold shadow flex items-center justify-center gap-2 opacity-70">
+                <span className="inline-block animate-spin border-2 border-white border-t-transparent rounded-full w-4 h-4" />
+                <span>Đang gửi phiếu…</span>
+              </div>
             ) : (
-              <Send className="w-4 h-4" />
+              <NutXacNhanCham
+                cach="khoi"
+                icon={Send}
+                nhan={myVote?.status === 'submitted' ? 'CẬP NHẬT PHIẾU ĐÃ GỬI' : 'GỬI PHIẾU CHẤM ĐIỂM'}
+                nhanCho="Xem lại tên ý tưởng…"
+                lop="bg-amber-500 hover:bg-amber-600 text-white"
+                disabled={dangGui !== null}
+                truocKhiMo={kiemTraDuCau}
+                onXacNhan={() => handleLuu('submitted')}
+              />
             )}
-            <span>{myVote?.status === 'submitted' ? 'CẬP NHẬT PHIẾU ĐÃ GỬI' : 'GỬI PHIẾU CHẤM ĐIỂM'}</span>
-          </button>
+          </div>
         </div>
       )}
     </form>

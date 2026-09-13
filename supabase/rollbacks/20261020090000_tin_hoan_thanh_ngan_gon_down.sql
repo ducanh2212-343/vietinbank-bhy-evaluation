@@ -1,0 +1,8 @@
+-- GỠ: trả tin «tích hoàn thành» về bản liệt kê từng đầu việc.
+--
+-- Nguyên văn bản đó nằm ở mục 2 của
+-- supabase/migrations/20261018090000_sua_tich_khi_da_nop_va_liet_ke_viec.sql.
+-- Không chép lại ở đây để chỉ có một bản duy nhất của mỗi đoạn mã.
+--
+-- Lưu ý trước khi chạy: bản liệt kê làm thân tin dài tới mức màn hình khoá điện
+-- thoại cắt mất dòng mang con số N/M — đó là lý do nó bị thay.

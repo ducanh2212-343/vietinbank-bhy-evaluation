@@ -1,6 +1,8 @@
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Sparkles, Zap, Star, ArrowRight, Upload, Lightbulb, ShieldAlert, Layers, ClipboardList,
+  Trophy,
 } from 'lucide-react';
 import { OnePageShell } from '@/components/one/OnePageShell';
 import { CultureTree } from '@/components/one/CultureTree';
@@ -14,6 +16,9 @@ import { useOneUploads } from '@/components/one/useOneUploads';
 import { useAuth } from '@/hooks/useAuth';
 import { useMyFullName } from '@/components/one/useMyFullName';
 import { useMyStars } from '@/components/one/star/useMyStars';
+import { useStarRecords } from '@/components/one/star/useStarRecords';
+import { saoCuaThang, thangHienTai } from '@/components/one/star/starStats';
+import { nhacMocQuaKeTiep } from '@/components/one/star/starMath';
 import { useAdminEditable, EditableText } from '@/components/one/AdminEditableContext';
 import { BHY_WAYS, BHY_WAYS_DINH_NGHIA } from '@/data/one/bhyWays';
 import { MAN_HINH_KHACH } from '@/lib/manHinhKhach';
@@ -59,6 +64,13 @@ function HomeContent() {
   // họ tên (hai chị Nguyễn Thị Phượng, Phòng TCTH và Phòng Ân Thi), lọc theo mỗi
   // tên thì mỗi chị nhìn thấy cả sao của người kia.
   const { myRecords, myStars } = useMyStars();
+  // Sao của tháng + mốc quà kế tiếp — cùng đặt TRONG thẻ «Tôi được ghi nhận» sẵn có
+  // để không đẩy các khối khác xuống. Dùng lại đúng bộ phiếu useMyStars đã tải nên
+  // không thêm một lượt gọi mạng nào.
+  const { records: tatCaPhieu } = useStarRecords();
+  const thang = thangHienTai();
+  const saoThang = useMemo(() => saoCuaThang(tatCaPhieu, thang), [tatCaPhieu, thang]);
+  const mocKeTiep = nhacMocQuaKeTiep(myStars);
 
   const treeImage = siteContent['culture.tree_image']?.trim() || 'https://i.ibb.co/kV5cgsbp/c-y-k-c.jpg';
   const soSkill = MOVE3_SKILL_GROUPS.reduce((s, g) => s + g.skills.length, 0);
@@ -130,6 +142,14 @@ function HomeContent() {
                   <span className="text-4xl font-bold tabular-nums text-amber-600">{myStars}</span>
                   <span className="mt-0.5 block text-2xs font-semibold text-slate-500">Sao Xứng Đáng tích lũy</span>
                 </div>
+                {/* Mốc quà gần nhất — câu này soạn ở nhacMocQuaKeTiep, dùng chung với
+                    thân tin push khi cán bộ vừa nhận sao, để hai nơi không nói lệch nhau. */}
+                {mocKeTiep && (
+                  <p className="mb-3 rounded-lg bg-amber-100/70 px-2.5 py-1.5 text-center text-2xs font-semibold leading-snug text-amber-800">
+                    {mocKeTiep.cau}
+                  </p>
+                )}
+
                 <div className="space-y-2">
                   {myRecords.slice(0, 3).map(r => (
                     <div key={r.id} className="flex items-start gap-2">
@@ -143,6 +163,32 @@ function HomeContent() {
                     <p className="text-center text-slate-400">Chưa có phiếu sao ghi tên bạn — hãy tỏa sáng!</p>
                   )}
                 </div>
+
+                {/* SAO CỦA THÁNG — vinh danh người, nên chỉ lấy phiếu cá nhân. Nằm gọn
+                    trong thẻ sẵn có và cắt còn 5 tên: yêu cầu 04/09 nói rõ phải ngắn
+                    để không chèn lên các khối khác của trang chủ. */}
+                {saoThang.length > 0 && (
+                  <div className="mt-3 border-t border-amber-100 pt-3">
+                    <div className="mb-1.5 flex items-center gap-1 text-2xs font-bold uppercase text-amber-700">
+                      <Trophy className="h-3 w-3" />
+                      Sao của tháng {thang.slice(5)}
+                    </div>
+                    <ol className="space-y-1">
+                      {saoThang.slice(0, 5).map((s, i) => (
+                        <li key={`${s.name}-${s.department}`} className="flex items-baseline gap-1.5 leading-snug">
+                          <span className="w-3 shrink-0 text-right font-bold tabular-nums text-slate-400">{i + 1}</span>
+                          <span className="truncate font-semibold text-slate-700">{s.name}</span>
+                          <span className="ml-auto inline-flex shrink-0 items-center gap-0.5 font-bold text-amber-600">
+                            {s.stars}<Star className="h-3 w-3 fill-amber-500" />
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                    {saoThang.length > 5 && (
+                      <p className="mt-1 text-2xs text-slate-400">và {saoThang.length - 5} cán bộ nữa</p>
+                    )}
+                  </div>
+                )}
               </div>
               <Link to="/one/ghi-nhan" className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 hover:underline">
                 Xem bảng Sao Xứng Đáng <ArrowRight className="h-3.5 w-3.5" />

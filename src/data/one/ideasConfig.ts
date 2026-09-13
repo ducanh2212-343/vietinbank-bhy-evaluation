@@ -35,6 +35,10 @@ export const HO_SO_PHONG_SANG_IDEAS: Record<string, IdeaDepartment> = {
   'Phòng giao dịch Văn Giang': 'PGD Văn Giang',
   'Phòng giao dịch Ân Thi': 'PGD Ân Thi',
   'Phòng giao dịch Yên Mỹ': 'PGD Yên Mỹ',
+  // Danh bạ đổi tên Phòng giao dịch Yên Mỹ → Phòng giao dịch Ocean City
+  // (08/2026). Nhãn Ideas lưu trong dữ liệu vẫn là 'PGD Yên Mỹ'; đổi nhãn
+  // hiển thị Ideas là việc riêng vì đụng phiếu đã lưu + cấu hình site.
+  'Phòng giao dịch Ocean City': 'PGD Yên Mỹ',
 };
 
 export const IDEA_LEVELS = ['Nội bộ CN', 'Đề xuất TSC'] as const;

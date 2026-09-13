@@ -5,7 +5,7 @@ import { EditableText } from '@/components/one/AdminEditableContext';
 import { IdeaHero, IdeaTabs } from '@/components/one/ideas/IdeaNav';
 import { IdeaStatsPanel } from '@/components/one/ideas/IdeaStatsPanel';
 import { BucTranhLinhVuc } from '@/components/one/ideas/BucTranhLinhVuc';
-import { useViecCuaGiamDoc } from '@/components/one/ideas/useBenRe';
+import { useHoSoBenReCuaToi, useViecCuaGiamDoc } from '@/components/one/ideas/useBenRe';
 import { useCauHinhIdeas, useLaGiamDoc } from '@/components/one/ideas/useUomMamPicker';
 import { useIdeaCouncilAccess } from '@/components/one/ideas/council/useIdeaCouncil';
 import { usePortalIdeas } from '@/components/one/ideas/usePortalIdeas';
@@ -26,6 +26,50 @@ export default function OneIdeasPage() {
     <OnePageShell>
       <NoiDungIdeas />
     </OnePageShell>
+  );
+}
+
+/**
+ * Dải «Ý tưởng của bạn» — màn hình chính của chủ ý tưởng.
+ *
+ * Yêu cầu 03/09/2026: mọi bước đổi cấp hay từ chối đều phải hiện ở màn hình
+ * chính của chủ sở hữu để cán bộ biết ý tưởng mình đang được xem xét tới đâu.
+ * Tin đẩy có thể bị trần/ngoài giờ, nên dải này là chỗ CHẮC CHẮN nhìn thấy.
+ */
+function DaiNhacChuYTuong() {
+  const { hoSo } = useHoSoBenReCuaToi();
+  if (hoSo.length === 0) return null;
+  const dem = (t: string) => hoSo.filter(h => h.trangThai === t).length;
+  const canLam = dem('tra_ve');
+  const muc = [
+    canLam > 0 && { so: canLam, nhan: 'cần bổ sung', lop: 'bg-orange-100 text-orange-800' },
+    dem('nuoi_duong') > 0 && { so: dem('nuoi_duong'), nhan: 'đang nuôi dưỡng — mời góp ý', lop: 'bg-teal-100 text-teal-800' },
+    dem('da_bo_sung') > 0 && { so: dem('da_bo_sung'), nhan: 'đã bổ sung, TCTH chấm lại', lop: 'bg-violet-100 text-violet-800' },
+    dem('cho_gd_duyet') > 0 && { so: dem('cho_gd_duyet'), nhan: 'chờ Giám đốc', lop: 'bg-sky-100 text-sky-800' },
+    dem('da_ghi_nhan') > 0 && { so: dem('da_ghi_nhan'), nhan: 'đã công nhận Bén rễ', lop: 'bg-emerald-100 text-emerald-800' },
+    dem('tu_choi') > 0 && { so: dem('tu_choi'), nhan: 'chưa đạt', lop: 'bg-slate-200 text-slate-700' },
+    dem('dung') > 0 && { so: dem('dung'), nhan: 'dừng ươm mầm', lop: 'bg-slate-200 text-slate-700' },
+  ].filter((m): m is { so: number; nhan: string; lop: string } => !!m);
+  if (muc.length === 0) return null;
+
+  return (
+    <Link
+      to="/one/y-tuong/gui"
+      className={`group flex flex-wrap items-center gap-2 rounded-2xl border-2 p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${
+        canLam > 0 ? 'border-orange-300 bg-orange-50/60' : 'border-slate-200 bg-white'
+      }`}
+    >
+      <Lightbulb className={`h-5 w-5 shrink-0 ${canLam > 0 ? 'text-orange-600' : 'text-amber-500'}`} />
+      <span className="text-sm font-black text-slate-800">Ý tưởng của bạn:</span>
+      {muc.map(m => (
+        <span key={m.nhan} className={`rounded-full px-2.5 py-1 text-2xs font-bold ${m.lop}`}>
+          {m.so} {m.nhan}
+        </span>
+      ))}
+      <span className="ml-auto flex items-center gap-1 text-2xs font-bold text-slate-500">
+        {canLam > 0 ? 'Bấm để sửa & gửi lại' : 'Xem chi tiết'} <ArrowRight className="h-4 w-4" />
+      </span>
+    </Link>
   );
 }
 
@@ -133,6 +177,7 @@ function NoiDungIdeas() {
 
         {!isGuest && <IdeaTabs />}
         {!isGuest && <DaiNhacGiamDoc />}
+        {!isGuest && <DaiNhacChuYTuong />}
 
         <div className="flex justify-center">
           <span className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-4 py-1.5 text-xs font-bold text-amber-800">

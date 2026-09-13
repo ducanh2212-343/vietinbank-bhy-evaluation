@@ -39,7 +39,22 @@ describe('standardizeDepartment — tên phòng giao dịch phải thắng cụm
     expect(standardizeDepartment('Phòng giao dịch Khoái Châu')).toBe('Phòng Khoái Châu');
     expect(standardizeDepartment('Phòng giao dịch Văn Giang')).toBe('Phòng Văn Giang');
     expect(standardizeDepartment('Phòng giao dịch Văn Lâm')).toBe('Phòng Văn Lâm');
-    expect(standardizeDepartment('Phòng giao dịch Yên Mỹ')).toBe('Phòng Yên Mỹ');
+    expect(standardizeDepartment('Phòng giao dịch Yên Mỹ')).toBe('PGD Ocean City');
+  });
+
+  it('Ban Giám đốc là tập thể trong chương trình Sao; chức danh "Phó giám đốc …" không bị bắt nhầm', () => {
+    expect(standardizeDepartment('Ban Giám đốc')).toBe('Ban Giám đốc');
+    expect(standardizeDepartment('BGĐ')).toBe('Ban Giám đốc');
+    expect(standardizeDepartment('bgd')).toBe('Ban Giám đốc');
+    // "Phó giám đốc phụ trách KHDN" là chức danh, chứa "giám đốc" nhưng không phải Ban Giám đốc
+    expect(standardizeDepartment('Phó giám đốc phụ trách KHDN')).toBe('Phòng KHDN');
+  });
+
+  it('Phòng Yên Mỹ đổi tên thành PGD Ocean City — mọi cách viết cũ/mới về một phòng', () => {
+    expect(standardizeDepartment('Phòng giao dịch Ocean City')).toBe('PGD Ocean City');
+    expect(standardizeDepartment('PGD Ocean City')).toBe('PGD Ocean City');
+    expect(standardizeDepartment('Phòng Yên Mỹ')).toBe('PGD Ocean City');
+    expect(standardizeDepartment('ocean city')).toBe('PGD Ocean City');
   });
 
   it('vẫn nhận Phòng DVKH qua cụm chung khi không có tên phòng giao dịch riêng', () => {
@@ -55,7 +70,8 @@ describe('standardizeDepartment — tên phòng giao dịch phải thắng cụm
     expect(standardizeDepartment('Phòng Hỗ trợ tín dụng')).toBe('Phòng HTTD');
     expect(standardizeDepartment('Phòng Bán lẻ')).toBe('Phòng Bán lẻ');
     expect(standardizeDepartment('')).toBeNull();
-    expect(standardizeDepartment('Ban Giám đốc')).toBeNull();
+    // Từ 04/09/2026 Ban Giám đốc là tập thể trong chương trình Sao (xem test riêng bên dưới)
+    expect(standardizeDepartment('Ban Giám đốc')).toBe('Ban Giám đốc');
   });
 });
 

@@ -93,15 +93,23 @@ describe('Cấu trúc cây điều hướng', () => {
     const mucLe = (ways.items ?? []).filter((e) => !isFolder(e));
     const thuMuc = (ways.items ?? []).filter(isFolder);
 
+    // FDI Hub (09/2026) là một trang chín tab (?tab=), không phải chín màn
+    // hình — nên là mục lẻ, không phải thư mục.
     expect(mucLe.map((e) => (e as { label: string }).label)).toEqual([
       'Bắc Hưng Yên Sharing',
       'Bắc Hưng Yên Connect',
-      'Sao Xứng Đáng',
+      'Bắc Hưng Yên FDI Hub',
       'Bắc Hưng Yên Credit 360',
     ]);
+    // Sao Xứng Đáng thành thư mục từ 04/09/2026: chương trình tách làm bốn màn
+    // (giới thiệu / ghi nhận / tổng hợp / quản lý) nên không còn là mục lẻ.
+    // Training Center (09/2026) có năm màn (trang chủ, lộ trình, bảng việc,
+    // tự soi, lịch BGĐ) nên vào cổng là một thư mục ngay từ đầu.
     expect(thuMuc.map((f) => f.folder)).toEqual([
+      'Sao Xứng Đáng',
       'Bắc Hưng Yên Ideas',
       'Bắc Hưng Yên Quizzi',
+      'Bắc Hưng Yên Training Center',
     ]);
   });
 
@@ -122,11 +130,17 @@ describe('Cấu trúc cây điều hướng', () => {
     expect(moiDuongDan(quanTri)).toContain('/quan-tri-vcard');
   });
 
-  it('mọi màn hình của Ideas và Quizzi đều có mục menu riêng', () => {
+  it('mọi màn hình của Sao Xứng Đáng, Ideas và Quizzi đều có mục menu riêng', () => {
     const ways = NAV_SECTIONS.find((s) => s.id === 'bhy-ways')!;
     const trongThuMuc = (ten: string) =>
       (ways.items ?? []).filter(isFolder).find((f) => f.folder === ten)!.items.map((l) => l.path);
 
+    expect(trongThuMuc('Sao Xứng Đáng')).toEqual([
+      '/one/ghi-nhan',
+      '/one/ghi-nhan/tang-sao',
+      '/one/ghi-nhan/tong-hop',
+      '/one/ghi-nhan/quan-ly',
+    ]);
     expect(trongThuMuc('Bắc Hưng Yên Ideas')).toEqual([
       '/one/y-tuong',
       '/one/y-tuong/gui',
@@ -138,6 +152,22 @@ describe('Cấu trúc cây điều hướng', () => {
       '/quizzi/chien-dich',
       '/quan-tri-quizzi',
     ]);
+    expect(trongThuMuc('Bắc Hưng Yên Training Center')).toEqual([
+      '/one/training-center',
+      '/one/training-center/quan-tri',
+    ]);
+  });
+
+  it('Training Center: danh mục mở cho mọi cán bộ, quản trị chỉ TCTH, đóng với khách', () => {
+    // Vai trong chương trình đọc từ bảng thành viên nên danh mục không gác bằng
+    // minRole; màn quản trị là việc của Phòng TCTH. Khách đối tác không có màn
+    // nào trong danh mục màn hình khách → fail-closed.
+    expect(moiDuongDan(canBoThuong)).toContain('/one/training-center');
+    expect(moiDuongDan(canBoThuong)).not.toContain('/one/training-center/quan-tri');
+    expect(moiDuongDan(quanTri)).toContain('/one/training-center/quan-tri');
+    expect(moiDuongDan(khachMoRong)).not.toContain('/one/training-center');
+    // Màn của từng chương trình (mang id) tô sáng mục danh mục
+    expect(resolveLocation('/one/training-center/chuong-trinh/abc/lo-trinh').leaf?.path).toBe('/one/training-center');
   });
 
   it('mọi mục con của Ways đều dẫn thẳng tới nơi làm việc thật', () => {
@@ -146,7 +176,11 @@ describe('Cấu trúc cây điều hướng', () => {
       '/one/hoc-hoi',
       // Connect không có màn hình nghiệp vụ nên có trang riêng của nó
       '/one/bhy-connect',
+      '/one/fdi-hub',
       '/one/ghi-nhan',
+      '/one/ghi-nhan/tang-sao',
+      '/one/ghi-nhan/tong-hop',
+      '/one/ghi-nhan/quan-ly',
       '/one/credit-360',
       '/one/y-tuong',
       '/one/y-tuong/gui',
@@ -155,6 +189,8 @@ describe('Cấu trúc cây điều hướng', () => {
       '/quizzi',
       '/quizzi/chien-dich',
       '/quan-tri-quizzi',
+      '/one/training-center',
+      '/one/training-center/quan-tri',
     ]);
   });
 
@@ -168,6 +204,12 @@ describe('Cấu trúc cây điều hướng', () => {
     // «Danh thiếp của tôi» mở cho mọi cán bộ nhưng không phải một mục menu riêng:
     // nó là đường phụ của Hồ sơ cá nhân (xem test «Bắc Hưng Yên VCard» ở trên)
     expect(resolveLocation('/vcard').leaf?.label).toBe('Hồ sơ cá nhân');
+    // Khu quản lý kho sao & bàn giao cũng là việc của Phòng TCTH
+    expect(moiDuongDan(canBoThuong)).not.toContain('/one/ghi-nhan/quan-ly');
+    expect(moiDuongDan(quanTri)).toContain('/one/ghi-nhan/quan-ly');
+    // Ghi nhận Sao và bảng tổng hợp thì cán bộ thường vẫn vào được
+    expect(moiDuongDan(canBoThuong)).toContain('/one/ghi-nhan/tang-sao');
+    expect(moiDuongDan(canBoThuong)).toContain('/one/ghi-nhan/tong-hop');
     // Cán bộ thường vẫn vào được hai màn dùng chung của cùng thương hiệu
     expect(moiDuongDan(canBoThuong)).toContain('/one/y-tuong/gui');
     expect(moiDuongDan(canBoThuong)).toContain('/one/y-tuong/hoi-dong');

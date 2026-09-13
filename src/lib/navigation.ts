@@ -6,6 +6,7 @@ import {
   CalendarClock, Timer, MessagesSquare, Mail, ShieldAlert, Route, ArrowLeftRight, Newspaper, Flag, GitBranch,
   ListChecks, Building2, Gavel, TrendingUp, Zap, Lightbulb,
   Home, BookOpen, Compass, Layers, Share2, CalendarDays, NotebookPen, Sprout, TreeDeciduous,
+  Boxes, Globe, BellRing, MessageSquareText,
   Sparkles as SparklesIcon, IdCard,
   type LucideIcon,
 } from 'lucide-react';
@@ -238,12 +239,64 @@ export const NAV_SECTIONS: NavSection[] = [
         keywords: ['connect', 'hoi nghi khach hang', 'ket noi', 'he sinh thai doanh nghiep'],
       },
       {
-        label: 'Sao Xứng Đáng',
-        icon: Star,
-        path: '/one/ghi-nhan',
+        // FDI Hub (09/2026): cẩm nang + kho công cụ tiếp cận khách hàng FDI của
+        // Phòng KHDN – Tổ FDI, trước là tệp HTML gửi tay. MỘT trang chín tab
+        // (?tab=) chứ không phải thư mục nhiều màn: chín tab là chín chương của
+        // một cẩm nang, không tab nào có dữ liệu nghiệp vụ riêng. Mở cho MỌI cán
+        // bộ (không minRole) — RM bán lẻ, giao dịch viên gặp khách FDI cũng cần;
+        // KHÔNG mở cho khách đối tác vì có giá quà, số điện thoại nhà cung cấp,
+        // quy trình đón tiếp nội bộ.
+        label: 'Bắc Hưng Yên FDI Hub',
+        icon: Globe,
+        path: '/one/fdi-hub',
         bleed: true,
-        guestScreen: 'ghi-nhan',
-        keywords: ['sao xung dang', 'khen thuong', 'vinh danh', 'tu qua', 'ghi nhan'],
+        keywords: ['fdi', 'fdi hub', 'khach hang fdi', 'cam nang', 'rm fdi', 'hoa ngu', 'tieng trung',
+          'qua tang', 'wechat', 'checklist', 'bao cao nhanh', 'kich ban', 'efast', 'salekit'],
+      },
+      {
+        id: 'ways-sao',
+        folder: 'Sao Xứng Đáng',
+        icon: Star,
+        items: [
+          {
+            // Trang đầu của thương hiệu: giới thiệu chương trình, phân bổ sao và
+            // tủ quà — không nhúng form/dữ liệu (một chức năng một cửa)
+            label: 'Giới thiệu chương trình',
+            icon: Compass,
+            path: '/one/ghi-nhan',
+            end: true,
+            bleed: true,
+            // Chỉ TRANG GIỚI THIỆU nằm trong danh mục mở được cho khách, và vẫn
+            // phải Phòng TCTH bật cho đúng tài khoản. Ba màn còn lại là nghiệp vụ
+            // nội bộ — manHinhKhach.ts khớp đường dẫn chính xác nên tự đóng.
+            guestScreen: 'ghi-nhan',
+            keywords: ['sao xung dang', 'khen thuong', 'vinh danh', 'tu qua', 'ghi nhan', 'gioi thieu'],
+          },
+          {
+            label: 'Ghi nhận Sao',
+            icon: Star,
+            path: '/one/ghi-nhan/tang-sao',
+            bleed: true,
+            // Không gác bằng minRole: cán bộ thường vào vẫn có ích — màn hiện cấu
+            // trúc ba vế và quyền phát sao để họ đề xuất với Trưởng phòng.
+            keywords: ['tang sao', 'ghi nhan sao', 'trao sao', 'serial', 'cam on'],
+          },
+          {
+            label: 'Bảng tổng hợp & thi đua',
+            icon: BarChart3,
+            path: '/one/ghi-nhan/tong-hop',
+            bleed: true,
+            keywords: ['tong hop sao', 'thi dua', 'bang xep hang', 'kpi', 'moc qua', 'doi soat'],
+          },
+          {
+            label: 'Quản lý & bàn giao (TCTH)',
+            icon: Boxes,
+            path: '/one/ghi-nhan/quan-ly',
+            bleed: true,
+            minRole: 'admin',
+            keywords: ['quan ly sao', 'ban giao', 'kho sao', 'lo in', 'so serial', 'to fdi', 'ton kho'],
+          },
+        ],
       },
       {
         label: 'Bắc Hưng Yên Credit 360',
@@ -331,6 +384,40 @@ export const NAV_SECTIONS: NavSection[] = [
             path: '/quan-tri-quizzi',
             minRole: 'admin',
             keywords: ['quan tri quiz', 'ngan hang cau hoi'],
+          },
+        ],
+      },
+      {
+        // Training Center (09/2026) — TRUNG TÂM nhiều chương trình đào tạo; chương
+        // trình 10 ngày của Trưởng phòng KHDN chỉ là một mục trong danh mục. Vai đọc
+        // từ BẢNG THÀNH VIÊN chương trình chứ không từ vai trò đăng nhập, nên danh
+        // mục mở cho mọi cán bộ (trang tự hiện giới thiệu cho người ngoài chương
+        // trình, RLS là hàng rào thật). Các màn của từng chương trình mang id trên
+        // đường dẫn nên không có mục menu riêng — gắn vào mục danh mục qua extraPaths.
+        // Không mở cho khách đối tác — không có guestScreen.
+        id: 'ways-training',
+        folder: 'Bắc Hưng Yên Training Center',
+        icon: GraduationCap,
+        items: [
+          {
+            label: 'Danh mục chương trình',
+            icon: GraduationCap,
+            path: '/one/training-center',
+            end: true,
+            bleed: true,
+            keywords: ['training center', 'dao tao', 'ren luyen', 'vun goc vuon canh', 'chuong trinh 10 ngay',
+              'hoc vien', 'hoi nhap', 'chuyen de', 'quy hoach', 'lo trinh', 'bang viec', 'tu soi', 'lich ban giam doc'],
+            // /lo-trinh là đích của push TTC_* — trang chuyển hướng sang chương trình đang chạy
+            extraPaths: ['/one/training-center/chuong-trinh/', '/one/training-center/lo-trinh', '/one/training-center/diem-danh'],
+          },
+          {
+            label: 'Quản trị chương trình',
+            icon: ClipboardList,
+            path: '/one/training-center/quan-tri',
+            bleed: true,
+            // admin = bgd + tcth_admin + system_admin: BGĐ sửa nội dung, TCTH xếp thành viên
+            minRole: 'admin',
+            keywords: ['quan tri chuong trinh', 'tao chuong trinh', 'nhan ban', 'thanh vien', 'soan ngay', 'dau viec', 'sua noi dung chuong trinh', 'diem danh', 'ma qr', 'in qr'],
           },
         ],
       },
@@ -646,6 +733,11 @@ export const NAV_SECTIONS: NavSection[] = [
         items: [
           // Hàng đợi email của cả hệ thống: nhắc nộp phiếu, thông báo, quiz…
           { label: 'Quản trị Email', icon: Mail, path: '/quan-tri-email', minRole: 'admin', keywords: ['hang doi', 'gui mail'] },
+          // Thống kê thông báo đẩy của cả cổng: ai bật, loại nào nhiều, mở đọc
+          // bao nhiêu — để «thêm một loại tin mới» là quyết định có số liệu
+          { label: 'Quản trị Push', icon: BellRing, path: '/quan-tri-push', minRole: 'admin', keywords: ['thong bao', 'push', 'thong ke', 'bat push'] },
+          // Kênh Zalo OA → nhóm GMF: token, nhóm nhận tin, gói cước, nhật ký gửi
+          { label: 'Quản trị Zalo', icon: MessageSquareText, path: '/quan-tri-zalo', minRole: 'admin', keywords: ['zalo', 'oa', 'gmf', 'token', 'goi cuoc'] },
           // Lịch nghỉ lễ + mốc giờ nhịp: mọi đồng hồ đếm ngày làm việc của chi
           // nhánh đọc từ đây (tuổi thẻ Kanban, tuổi hồ sơ tín dụng, số ngày im
           // lặng, mốc phát thông báo) — dùng chung, không riêng phân hệ nào

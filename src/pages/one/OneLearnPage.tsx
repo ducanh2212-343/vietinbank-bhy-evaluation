@@ -28,8 +28,11 @@ export default function OneLearnPage() {
 
   // Liên kết cũ /one/hoc-hoi?action=chia-se vẫn phải mở được hộp đăng bài:
   // bookmark và tin nhắn nội bộ đã phát tán đường dẫn này
+  // `chuyen-muc` đi kèm để trang Connect mời đăng thẳng vào đúng chuyên mục
   useEffect(() => {
     if (searchParams.get('action') === 'chia-se' && !isGuest) {
+      const chuyenMuc = searchParams.get('chuyen-muc');
+      if (chuyenMuc) setUploadCategory(chuyenMuc);
       setIsUploadOpen(true);
       setSearchParams({}, { replace: true });
     }

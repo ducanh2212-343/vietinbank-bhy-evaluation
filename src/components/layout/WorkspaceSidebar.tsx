@@ -5,6 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useNavTree } from '@/hooks/useNavTree';
 import { useMoThuMuc } from '@/hooks/useMoThuMuc';
 import { isFolder, matchesLeaf, type NavFolder, type NavLeaf, type NavSection } from '@/lib/navigation';
+import { TieuDeDauMuc, lopKhungDauMuc, lopTieuDeDauMuc } from '@/components/layout/KhungDauMuc';
 import { cn } from '@/lib/utils';
 
 function MucLa({ leaf, onDieuHuong }: { leaf: NavLeaf; onDieuHuong?: () => void }) {
@@ -20,11 +21,38 @@ function MucLa({ leaf, onDieuHuong }: { leaf: NavLeaf; onDieuHuong?: () => void 
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-0',
         dangXem
           ? 'bg-white/[0.14] font-semibold text-white shadow-[inset_2px_0_0_0_hsl(var(--brand-gold))]'
-          : 'text-sidebar-foreground/85 hover:bg-white/[0.07] hover:text-white',
+          // Nền khung đầu mục đã sáng hơn nền menu nên chữ mục con phải đậm
+          // lên theo, để tối thiểu 90% — mức /85 cũ đọc trên khung bị nhòe
+          : 'text-sidebar-foreground/95 hover:bg-white/[0.1] hover:text-white',
       )}
     >
       <leaf.icon className="h-[15px] w-[15px] shrink-0 opacity-75" />
       <span className="truncate">{leaf.label}</span>
+    </NavLink>
+  );
+}
+
+/** Mục lẻ cấp 1 của một khu có nhiều nhóm — cả khung là liên kết. */
+function DauMucLa({ leaf, onDieuHuong }: { leaf: NavLeaf; onDieuHuong?: () => void }) {
+  const { pathname } = useLocation();
+  const dangXem = matchesLeaf(pathname, leaf);
+  return (
+    <NavLink
+      to={leaf.path}
+      end={leaf.end}
+      onClick={onDieuHuong}
+      aria-current={dangXem ? 'page' : undefined}
+      className={lopKhungDauMuc('toi', { bamDuoc: true, dangXem })}
+    >
+      <span className={lopTieuDeDauMuc('toi')}>
+        <TieuDeDauMuc
+          icon={leaf.icon}
+          nhan={leaf.label}
+          tong="toi"
+          dangXem={dangXem}
+          duoi={<ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-white/70" />}
+        />
+      </span>
     </NavLink>
   );
 }
@@ -48,29 +76,34 @@ function ThuMuc({
   const mo = !!banDo[folder.id];
 
   return (
-    <li>
+    /* Đầu mục lớn: khung bo góc viền xanh, cùng ngôn ngữ với bảng menu bung
+       xuống — menu dọc và menu ngang phải phân bậc giống nhau thì cán bộ mới
+       không phải học lại cách đọc khi chuyển từ máy tính sang điện thoại */
+    <li className={lopKhungDauMuc('toi', { dangXem: chuaTrangHienTai })}>
       <button
         type="button"
         onClick={() => dao(folder.id)}
         aria-expanded={mo}
         aria-controls={`thu-muc-${folder.id}`}
-        className={cn(
-          'flex min-h-[38px] w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm font-semibold transition-colors duration-fast',
-          'text-sidebar-foreground hover:bg-white/[0.06]',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
-        )}
+        className={lopTieuDeDauMuc('toi', { bamDuoc: true })}
       >
-        <folder.icon className="h-[15px] w-[15px] shrink-0 opacity-75" />
-        <span className="flex-1 truncate text-left">{folder.folder}</span>
-        <ChevronRight
-          aria-hidden
-          className={cn('h-3.5 w-3.5 shrink-0 text-sidebar-muted transition-transform duration-normal', mo && 'rotate-90')}
+        <TieuDeDauMuc
+          icon={folder.icon}
+          nhan={folder.folder}
+          tong="toi"
+          dangXem={chuaTrangHienTai}
+          duoi={
+            <ChevronRight
+              aria-hidden
+              className={cn('h-4 w-4 shrink-0 text-white/70 transition-transform duration-normal', mo && 'rotate-90')}
+            />
+          }
         />
       </button>
       {mo && (
         <ul
           id={`thu-muc-${folder.id}`}
-          className="ml-3 mt-0.5 space-y-0.5 border-l border-dashed border-white/15 pl-2"
+          className="mt-1 space-y-0.5 border-t border-white/15 pt-1"
         >
           {folder.items.map((leaf) => (
             <li key={leaf.path}>
@@ -99,17 +132,27 @@ export function NoiDungKhu({
   onDieuHuong?: () => void;
   anTieuDe?: boolean;
 }) {
+  const coThuMuc = (section.items ?? []).some(isFolder);
   return (
     <div className="space-y-0.5">
       {!anTieuDe && (
-        <div className="px-2.5 pb-1 pt-3 text-2xs font-semibold uppercase tracking-wider text-sidebar-muted">
-          {section.label}
+        <div className="flex items-center gap-2 px-1 pb-2 pt-3">
+          <span aria-hidden className="h-4 w-1 shrink-0 rounded-full bg-brand-gold" />
+          <span className="min-w-0 truncate text-sm font-bold tracking-tight text-white">{section.label}</span>
         </div>
       )}
-      <ul className="space-y-0.5">
+      <ul className="space-y-1.5">
         {(section.items ?? []).map((entry) =>
           isFolder(entry) ? (
             <ThuMuc key={entry.id} folder={entry} onDieuHuong={onDieuHuong} />
+          ) : coThuMuc ? (
+            // Khu vừa có thư mục vừa có mục lẻ (Bắc Hưng Yên Ways: 3 thương hiệu
+            // một-màn, 3 thương hiệu nhiều-màn): mục lẻ vẫn là ĐẦU MỤC LỚN nên
+            // phải mang khung như thư mục. Để nó thành dòng chữ trần thì sáu
+            // thương hiệu hiện ra hai hạng khác nhau, đếm mãi không ra sáu.
+            <li key={entry.path}>
+              <DauMucLa leaf={entry} onDieuHuong={onDieuHuong} />
+            </li>
           ) : (
             <li key={entry.path}>
               <MucLa leaf={entry} onDieuHuong={onDieuHuong} />
@@ -162,8 +205,8 @@ function ThanhBieuTuong({ sections }: { sections: NavSection[] }) {
                 </span>
               </PopoverTrigger>
               <PopoverContent side="right" align="start" className="w-64 border-sidebar-border bg-sidebar p-2">
-                <div className="px-2 pb-1.5 text-2xs font-semibold uppercase tracking-wider text-sidebar-muted">
-                  {folder.folder}
+                <div className={cn(lopTieuDeDauMuc('toi'), 'mb-1 border-b border-white/15 pb-2')}>
+                  <TieuDeDauMuc icon={folder.icon} nhan={folder.folder} tong="toi" dangXem={dangXem} />
                 </div>
                 <ul className="space-y-0.5">
                   {folder.items.map((leaf) => (

@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { getRewardBreakdown, getMilestoneInfo, calculateRewardValue } from '../starMath';
+import {
+  calculateRewardValue, getMilestoneInfo, getRewardBreakdown, nhacMocQuaKeTiep,
+} from '../starMath';
 
 // Bảng kỳ vọng tính tay theo đúng công thức bản deploy:
 //   100k×sao + ⌊sao/3⌋×300k + (sao>=6 ? 500k : 0) + mốc cao nhất (>=8)
@@ -67,5 +69,31 @@ describe('getMilestoneInfo — mốc đã đạt / mốc kế tiếp', () => {
     const m = getMilestoneInfo(25);
     expect(m.achievedTier?.stars).toBe(20);
     expect(m.nextTier).toBeNull();
+  });
+});
+
+describe('nhacMocQuaKeTiep — treo mốc quà gần nhất để kích thích nhận sao', () => {
+  it('chưa có sao nào thì mốc kế tiếp là mốc 1 sao', () => {
+    const n = nhacMocQuaKeTiep(0);
+    expect(n?.conThieu).toBe(1);
+    expect(n?.moc.stars).toBe(1);
+  });
+
+  it('đếm đúng số sao còn thiếu ở từng mốc trong văn bản', () => {
+    expect(nhacMocQuaKeTiep(1)?.conThieu).toBe(2);   // 1 → 3
+    expect(nhacMocQuaKeTiep(5)?.conThieu).toBe(1);   // 5 → 6
+    expect(nhacMocQuaKeTiep(6)?.conThieu).toBe(2);   // 6 → 8
+    expect(nhacMocQuaKeTiep(13)?.conThieu).toBe(2);  // 13 → 15
+    expect(nhacMocQuaKeTiep(19)?.conThieu).toBe(1);  // 19 → 20
+  });
+
+  it('câu nhắc nêu đủ số sao còn thiếu, mốc, và tên quà', () => {
+    expect(nhacMocQuaKeTiep(6)?.cau)
+      .toBe('Còn 2 Sao nữa tới mốc 8 Sao — Loa / Tai nghe Bluetooth chính hãng');
+  });
+
+  it('chạm mốc cao nhất thì KHÔNG treo mốc nữa — treo thêm là chế nhạo', () => {
+    expect(nhacMocQuaKeTiep(20)).toBeNull();
+    expect(nhacMocQuaKeTiep(25)).toBeNull();
   });
 });

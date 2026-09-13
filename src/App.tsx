@@ -112,9 +112,12 @@ const BehaviorJournalPage = lazyWithRetry(() => import("./pages/BehaviorJournalP
 const MyBehaviorPage = lazyWithRetry(() => import("./pages/MyBehaviorPage"));
 const OneHomePage = lazyWithRetry(() => import("./pages/one/OneHomePage"));
 const OneConnectPage = lazyWithRetry(() => import("./pages/one/OneConnectPage"));
+const OneFdiHubPage = lazyWithRetry(() => import("./pages/one/OneFdiHubPage"));
 const One3806Page = lazyWithRetry(() => import("./pages/one/One3806Page"));
 const OneMove2Page = lazyWithRetry(() => import("./pages/one/OneMove2Page"));
 const LichNghiAdminPage = lazyWithRetry(() => import("./pages/LichNghiAdminPage"));
+const QuanTriPushPage = lazyWithRetry(() => import("./pages/QuanTriPushPage"));
+const QuanTriZaloPage = lazyWithRetry(() => import("./pages/QuanTriZaloPage"));
 const OneLearnPage = lazyWithRetry(() => import("./pages/one/OneLearnPage"));
 const OneNewsPage = lazyWithRetry(() => import("./pages/one/OneNewsPage"));
 const OneIdeasPage = lazyWithRetry(() => import("./pages/one/OneIdeasPage"));
@@ -122,7 +125,19 @@ const OneIdeaCouncilPage = lazyWithRetry(() => import("./pages/one/OneIdeaCounci
 const OneIdeaOpsPage = lazyWithRetry(() => import("./pages/one/OneIdeaOpsPage"));
 const OneIdeaSubmitPage = lazyWithRetry(() => import("./pages/one/OneIdeaSubmitPage"));
 const OneCreditPage = lazyWithRetry(() => import("./pages/one/OneCreditPage"));
+const OneTrainingPage = lazyWithRetry(() => import("./pages/one/OneTrainingPage"));
+const OneTrainingQuanTriPage = lazyWithRetry(() => import("./pages/one/OneTrainingQuanTriPage"));
+const OneTrainingChuongTrinhPage = lazyWithRetry(() => import("./pages/one/OneTrainingChuongTrinhPage"));
+const OneTrainingLoTrinhPage = lazyWithRetry(() => import("./pages/one/OneTrainingLoTrinhPage"));
+const OneTrainingLoTrinhHomNayPage = lazyWithRetry(() => import("./pages/one/OneTrainingLoTrinhHomNayPage"));
+const OneTrainingDiemDanhPage = lazyWithRetry(() => import("./pages/one/OneTrainingDiemDanhPage"));
+const OneTrainingBangViecPage = lazyWithRetry(() => import("./pages/one/OneTrainingBangViecPage"));
+const OneTrainingTuSoiPage = lazyWithRetry(() => import("./pages/one/OneTrainingTuSoiPage"));
+const OneTrainingLichBgdPage = lazyWithRetry(() => import("./pages/one/OneTrainingLichBgdPage"));
 const OneRecognitionPage = lazyWithRetry(() => import("./pages/one/OneRecognitionPage"));
+const OneStarAwardPage = lazyWithRetry(() => import("./pages/one/OneStarAwardPage"));
+const OneStarStatsPage = lazyWithRetry(() => import("./pages/one/OneStarStatsPage"));
+const OneStarAdminPage = lazyWithRetry(() => import("./pages/one/OneStarAdminPage"));
 const OneKyYeuPage = lazyWithRetry(() => import("./pages/one/OneKyYeuPage"));
 const KyYeuAdminPage = lazyWithRetry(() => import("./pages/KyYeuAdminPage"));
 const GuestAccessAdminPage = lazyWithRetry(() => import("./pages/GuestAccessAdminPage"));
@@ -168,6 +183,12 @@ function LoginRoute() {
 }
 
 function HomeRedirect() {
+  // Callback của Zalo OA khai là gốc domain (https://bachungyenone.com) — Zalo
+  // đưa admin về đây kèm ?code=…&oa_id=…. Mã chỉ sống vài phút nên phải chuyển
+  // thẳng tới trang Quản trị Zalo, giữ nguyên tham số, thay vì rơi vào /one.
+  const tham = typeof window !== 'undefined' ? window.location.search : '';
+  const q = new URLSearchParams(tham);
+  if (q.get('code') && q.get('oa_id')) return <Navigate to={`/quan-tri-zalo${tham}`} replace />;
   return <Navigate to="/one" replace />;
 }
 
@@ -253,6 +274,7 @@ const App = () => (
               {/* Cổng BHY ONE — cấu trúc 6 menu đã duyệt (docs/so-do-site-bhy-one.md) */}
               <Route path="/one" element={<OneHomePage />} />
               <Route path="/one/bhy-connect" element={<OneConnectPage />} />
+              <Route path="/one/fdi-hub" element={<OneFdiHubPage />} />
               <Route path="/one/bhy-3806" element={<One3806Page />} />
               <Route path="/one/chieu-thuc-2" element={<OneMove2Page />} />
               <Route path="/one/hoc-hoi" element={<OneLearnPage />} />
@@ -265,7 +287,25 @@ const App = () => (
               {/* Vận hành & phê duyệt Ideas — BGĐ duyệt Bén rễ, TCTH chốt hạn mức/SMP/ngân sách; trang tự gác quyền */}
               <Route path="/one/y-tuong/van-hanh" element={<OneIdeaOpsPage />} />
               <Route path="/one/credit-360" element={<OneCreditPage />} />
+              {/* Bắc Hưng Yên Training Center — trung tâm NHIỀU chương trình: danh mục + quản trị
+                  (TCTH) ở tầng trung tâm, năm màn của từng chương trình theo /chuong-trinh/:id.
+                  Trang tự gác theo bảng thành viên chương trình, RLS là lớp chặn chính. Không mở
+                  cho khách đối tác. */}
+              <Route path="/one/training-center" element={<OneTrainingPage />} />
+              <Route path="/one/training-center/quan-tri" element={<OneTrainingQuanTriPage />} />
+              {/* Đích của push TTC_* — tự chuyển sang Lộ trình chương trình đang chạy của người đọc */}
+              <Route path="/one/training-center/lo-trinh" element={<OneTrainingLoTrinhHomNayPage />} />
+              {/* Đích của tấm QR in ra — học viên quét bằng camera điện thoại */}
+              <Route path="/one/training-center/diem-danh" element={<OneTrainingDiemDanhPage />} />
+              <Route path="/one/training-center/chuong-trinh/:id" element={<OneTrainingChuongTrinhPage />} />
+              <Route path="/one/training-center/chuong-trinh/:id/lo-trinh" element={<OneTrainingLoTrinhPage />} />
+              <Route path="/one/training-center/chuong-trinh/:id/bang-viec" element={<OneTrainingBangViecPage />} />
+              <Route path="/one/training-center/chuong-trinh/:id/tu-soi" element={<OneTrainingTuSoiPage />} />
+              <Route path="/one/training-center/chuong-trinh/:id/lich-bgd" element={<OneTrainingLichBgdPage />} />
               <Route path="/one/ghi-nhan" element={<OneRecognitionPage />} />
+              <Route path="/one/ghi-nhan/tang-sao" element={<OneStarAwardPage />} />
+              <Route path="/one/ghi-nhan/tong-hop" element={<OneStarStatsPage />} />
+              <Route path="/one/ghi-nhan/quan-ly" element={<OneStarAdminPage />} />
               {/* Cây Ký Ức — kỷ yếu số 20 năm dạng flipbook, đọc PDF từ bucket ky-yeu */}
               <Route path="/one/cay-ky-uc" element={<OneKyYeuPage />} />
               {/* Tên cũ "Kỷ yếu số" — giữ để không gãy link đã gửi cho cán bộ */}
@@ -323,6 +363,8 @@ const App = () => (
                 <Route path="/duyet-yeu-cau-user" element={<ApproveRegistrations />} />
                 <Route path="/quan-tri-ai" element={<AIPromptsAdmin />} />
                 <Route path="/quan-tri-email" element={<EmailAdmin />} />
+                <Route path="/quan-tri-push" element={<QuanTriPushPage />} />
+                <Route path="/quan-tri-zalo" element={<QuanTriZaloPage />} />
                 <Route path="/quan-tri-khoa-hoc-vtb" element={<VtbCoursesAdminPage />} />
                 <Route path="/tong-hop-nhu-cau-dao-tao" element={<TrainingNeedsPage />} />
                 <Route path="/quan-ly-ky-danh-gia" element={<CycleManagementPage />} />
