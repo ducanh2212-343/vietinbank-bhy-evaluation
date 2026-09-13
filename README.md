@@ -636,7 +636,7 @@ gỡ — 15 biến thể đều 404; đường đúng lấy từ API Explorer:
 `GET /v3.0/oa/group/getgroupsofoa?offset&count`. Nhóm «343 - Bắc Hưng Yên One»
 group_id `4a9bada229cec09099df` (5 thành viên) đã lưu vào cấu hình. Gửi tin:
 `POST /v3.0/oa/group/message` — tin thử đã lên nhóm (message_id
-`705efa85665a0d03544c`). `zalo-oa` v5, `zalo-gui-sao` v3. Còn lại: bật công tắc
+`705efa85665a0d03544c`). `zalo-oa` v5 (`zalo-gui-sao` v2 giữ nguyên — hàm này không liệt kê nhóm, đường gửi tin đã đúng). Còn lại: bật công tắc
 `bat_sao_xung_dang` sau khi GĐ duyệt tin thử trên nhóm.
 
 **Gói cước (bảng giá Zalo OA áp dụng 01/06/2026, gồm VAT — migration
