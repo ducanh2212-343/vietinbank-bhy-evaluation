@@ -32,6 +32,7 @@ import { KhungXemThe } from '@/components/danh-thiep/XemTruocThe';
 import { chuanBiAnhQr } from '@/lib/danhThiep/anhQrKenh';
 import { walletSanSang } from '@/lib/danhThiep/googleWallet';
 import { MaQrCuaThe } from '@/components/danh-thiep/MaQrCuaThe';
+import { MaLuuNhanh } from '@/components/danh-thiep/MaLuuNhanh';
 
 const SUPABASE_URL: string = import.meta.env.VITE_SUPABASE_URL ?? 'https://whlysprzsguehxmrjwha.supabase.co';
 
@@ -289,6 +290,10 @@ export default function DanhThiepCuaToiPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Mã lưu nhanh: đặt ngay dưới thẻ vì đây là thứ cán bộ dùng nhiều nhất ở hội trường */}
+      <MaLuuNhanh cb={cb} dangLuu={dangLuu}
+        onLuu={(dong) => luuTuPhucVu(dong, 'Đã lưu mã lưu nhanh — dùng được trên mọi máy đăng nhập')} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>

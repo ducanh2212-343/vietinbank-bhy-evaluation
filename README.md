@@ -211,6 +211,9 @@ khô `nc_dong_bo_hang_loat_tu_343()` trên dữ liệu thật rồi rollback: 10
 Migration `20261005090000_danh_thiep_google_wallet.sql` (cấu hình Google Wallet + cờ
 `wallet_ready` trong `nc_resolve_card`) **đã áp** (04/09/2026). Hai edge function
 `danh-thiep-vcard` và `danh-thiep-wallet` **đã deploy** (04/09/2026, `verify_jwt = false`).
+Migration `20261013090000_danh_thiep_ma_luu_nhanh.sql` (hai cột `qr_nhanh_ten`, `qr_nhanh_sdt`
+cho mã QR nhúng thẳng danh bạ, không cần mạng) **đã áp** (13/09/2026); chạy khô: cán bộ
+thường tự sửa được hai cột này, vẫn bị chặn sửa đơn vị.
 
 Còn lại: địa chỉ và số điện thoại Chi nhánh (`CN_BHY`) mới có tên đường, **chưa có số nhà
 và hotline**; Google Wallet **chưa dùng được** cho tới khi có Issuer ID (nhập ở nút Cấu

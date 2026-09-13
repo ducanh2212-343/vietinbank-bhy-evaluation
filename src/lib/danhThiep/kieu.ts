@@ -164,6 +164,9 @@ export interface CanBo {
   slug: string;
   card_enabled: boolean;
   wallet_override: boolean;
+  /** Mã lưu nhanh (vCard nhúng thẳng) — cán bộ tự đặt; null = chưa tạo */
+  qr_nhanh_ten: string | null;
+  qr_nhanh_sdt: string | null;
   status: TrangThaiDuyet;
   approved_by: string | null;
   approved_at: string | null;

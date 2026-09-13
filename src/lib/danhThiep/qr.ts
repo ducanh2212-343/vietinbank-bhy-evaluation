@@ -56,6 +56,25 @@ export interface TuyChonQr {
   logo?: boolean;
 }
 
+/**
+ * PNG cho MÃ LƯU NHANH (vCard nhúng thẳng): KHÔNG logo, mức sửa lỗi M.
+ * Mức H + logo làm mã dày gấp rưỡi (57×57 thay vì 45×45 ô cùng nội dung) —
+ * với khách có tuổi cầm máy rung, mã thưa quét nhanh hơn nhiều so với mã đẹp.
+ */
+export async function taoQrPngThuan(noiDung: string): Promise<Blob> {
+  const canvas = document.createElement('canvas');
+  await QRCode.toCanvas(canvas, noiDung, {
+    errorCorrectionLevel: 'M', margin: VUNG_TRONG, width: KICH_THUOC,
+    color: { dark: '#000000FF', light: '#FFFFFFFF' },
+  });
+  return new Promise((ok, loi) => canvas.toBlob((b) => (b ? ok(b) : loi(new Error('Không tạo được PNG'))), 'image/png'));
+}
+
+/** Số ô một cạnh của mã — để màn hình báo «mã thưa / mã dày» cho cán bộ. */
+export function soOMotCanh(noiDung: string, muc: 'M' | 'H' = 'M'): number {
+  return QRCode.create(noiDung, { errorCorrectionLevel: muc }).modules.size;
+}
+
 /** PNG 1024×1024 (Blob) — in name card, chữ ký email. */
 export async function taoQrPng(url: string, tuyChon: TuyChonQr = {}): Promise<Blob> {
   const canvas = document.createElement('canvas');
