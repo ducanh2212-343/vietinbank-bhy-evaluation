@@ -4,7 +4,7 @@
 // đổi mã ủy quyền lấy token, gia hạn tay, chọn nhóm GMF, gửi tin thử, theo dõi
 // gói cước và nhật ký. Mọi lệnh đi qua edge function zalo-oa (token không bao giờ
 // xuống trình duyệt); trang chỉ thấy mốc giờ và kết quả.
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   BookOpen, CheckCircle2, ChevronDown, CircleAlert, Copy, ExternalLink, KeyRound, MessageSquareText, RefreshCw, Send, Users, Wallet, XCircle,
@@ -23,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { CAC_O_MAU, MAU_MAC_DINH, soanTinSao, type PhieuSao } from '../../supabase/functions/_shared/zaloSaoMau';
+import { NHAN_KIEU, apDungKieu, demChuCoDau, type KieuChu } from '../../supabase/functions/_shared/zaloDinhDang';
 
 interface TongQuan {
   token: {
@@ -146,6 +147,32 @@ export function phiMoiTin(phiThang: number | null, soTin: number): number | null
 const dinhDangTien = (n: number) => n.toLocaleString('vi-VN') + ' đ';
 const gio = (s: string | null | undefined) => (s ? new Date(s).toLocaleString('vi-VN') : '—');
 
+/** Thanh nút Đậm / Nghiêng / Gạch chân… cho ô soạn mẫu tin. */
+function ThanhDinhDang({ onChon }: { onChon: (kieu: KieuChu) => void }) {
+  return (
+    <div className="flex flex-wrap gap-1 mb-1">
+      {NHAN_KIEU.map((k) => (
+        <Button
+          key={k.kieu}
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-7 px-2 text-xs"
+          title={k.goiY}
+          onClick={() => onChon(k.kieu)}
+        >
+          <span className={
+            k.kieu === 'dam' ? 'font-bold'
+              : k.kieu === 'nghieng' ? 'italic'
+                : k.kieu === 'gach_chan' ? 'underline'
+                  : k.kieu === 'gach_ngang' ? 'line-through' : ''
+          }>{k.nhan}</span>
+        </Button>
+      ))}
+    </div>
+  );
+}
+
 export default function QuanTriZaloPage() {
   const { toast } = useToast();
   const { roles } = useAuth();
@@ -177,6 +204,8 @@ export default function QuanTriZaloPage() {
   const [xemTruoc, setXemTruoc] = useState<string | null>(null);
   const [caiDatTin, setCaiDatTin] = useState<CauHinh>({});
   const [mauForm, setMauForm] = useState<{ ca_nhan: string; tap_the: string } | null>(null);
+  const oMauCaNhan = useRef<HTMLTextAreaElement>(null);
+  const oMauTapThe = useRef<HTMLTextAreaElement>(null);
   const [tinThu, setTinThu] = useState('');
   const [dsNhom, setDsNhom] = useState<{ group_id: string; group_name: string }[] | null>(null);
   const [goiCuoc, setGoiCuoc] = useState<CauHinh>({});
@@ -399,6 +428,34 @@ export default function QuanTriZaloPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mauForm, caiDatTin.link_chan_tin, caiDatTin.ly_do_toi_da_ky_tu]);
+
+  /**
+   * Áp kiểu chữ cho phần đang bôi đen trong ô soạn mẫu. Zalo chỉ nhận văn bản
+   * thuần nên «đậm» là thay chữ cái bằng ký tự Unicode có sẵn nét đậm; ô {ten}
+   * thì gắn hậu tố kiểu để giữ nguyên tên ô (xem zaloDinhDang.apDungKieu).
+   */
+  const dinhDang = (loai: 'ca_nhan' | 'tap_the', kieu: KieuChu) => {
+    const o = (loai === 'ca_nhan' ? oMauCaNhan : oMauTapThe).current;
+    if (!o || !mauForm) return;
+    const { selectionStart: tu, selectionEnd: den } = o;
+    if (tu === den) {
+      toast({ title: 'Chưa chọn chữ nào', description: 'Bôi đen đoạn chữ cần định dạng rồi bấm lại.' });
+      return;
+    }
+    const goc = mauForm[loai];
+    const doan = goc.slice(tu, den);
+    if ((kieu === 'dam' || kieu === 'nghieng') && demChuCoDau(doan) > 0) {
+      toast({
+        title: `${demChuCoDau(doan)} chữ có dấu sẽ không đổi nét`,
+        description: 'Unicode không có bản đậm/nghiêng cho chữ tiếng Việt có dấu. Muốn nổi bật hẳn thì dùng VIẾT HOA.',
+      });
+    }
+    const moi = goc.slice(0, tu) + apDungKieu(doan, kieu) + goc.slice(den);
+    setMauForm({ ...mauForm, [loai]: moi });
+    // Giữ vùng bôi đen sau khi React vẽ lại, để bấm tiếp kiểu khác không phải chọn lại
+    const dai = apDungKieu(doan, kieu).length;
+    requestAnimationFrame(() => { o.focus(); o.setSelectionRange(tu, tu + dai); });
+  };
 
   const luuMau = async () => {
     if (!mauForm) return;
@@ -899,6 +956,8 @@ export default function QuanTriZaloPage() {
               <p className="text-sm text-muted-foreground">
                 Mỗi dòng một đề mục. Ô trong ngoặc nhọn sẽ được thay bằng dữ liệu của phiếu; dòng nào có ô trống (ví dụ phiếu không ghi Kết quả) thì tự bỏ.
                 Biểu tượng đầu dòng đổi tùy ý — Zalo hiện được mọi emoji. Xem trước bên phải đổi ngay khi gõ.
+                Muốn in đậm: bôi đen đoạn chữ rồi bấm nút trên ô. Zalo không có chữ đậm thật, cổng thay bằng ký tự Unicode nét đậm —
+                <strong> chữ tiếng Việt có dấu (ễ, ị, Ứ) không có bản đậm nên giữ nét thường</strong>; muốn nổi bật chắc chắn thì dùng VIẾT HOA.
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {CAC_O_MAU.map((o) => (
@@ -912,11 +971,13 @@ export default function QuanTriZaloPage() {
                   <div className="space-y-3">
                     <div>
                       <Label htmlFor="mau1">Mẫu sao cá nhân</Label>
-                      <Textarea id="mau1" rows={8} className="font-mono text-sm" value={mauForm.ca_nhan} onChange={(e) => setMauForm({ ...mauForm, ca_nhan: e.target.value })} />
+                      <ThanhDinhDang onChon={(k) => dinhDang('ca_nhan', k)} />
+                      <Textarea ref={oMauCaNhan} id="mau1" rows={8} className="font-mono text-sm" value={mauForm.ca_nhan} onChange={(e) => setMauForm({ ...mauForm, ca_nhan: e.target.value })} />
                     </div>
                     <div>
                       <Label htmlFor="mau2">Mẫu sao tập thể</Label>
-                      <Textarea id="mau2" rows={9} className="font-mono text-sm" value={mauForm.tap_the} onChange={(e) => setMauForm({ ...mauForm, tap_the: e.target.value })} />
+                      <ThanhDinhDang onChon={(k) => dinhDang('tap_the', k)} />
+                      <Textarea ref={oMauTapThe} id="mau2" rows={9} className="font-mono text-sm" value={mauForm.tap_the} onChange={(e) => setMauForm({ ...mauForm, tap_the: e.target.value })} />
                     </div>
                   </div>
                   <div className="space-y-3">

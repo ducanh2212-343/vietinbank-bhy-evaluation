@@ -18,10 +18,10 @@ const bc: BoiCanhTin = {
 };
 
 describe('soanTinSao — sao cá nhân (Mẫu 1)', () => {
-  it('bảy khối theo thứ tự đã duyệt, cách nhau một dòng trống, mỗi đầu mục một biểu tượng', () => {
+  it('bảy khối theo thứ tự đã duyệt, cách nhau một dòng trống, biểu tượng riêng, tiêu đề và tên in đậm', () => {
     expect(soanTinSao([phieu()], 'moi_nguoi_mot_tin', bc)).toBe([
-      '⭐ SAO XỨNG ĐÁNG · 12/09/2026',
-      '🎉 Chúc mừng Nguyễn Thị Lan Anh — Phòng Ân Thi vừa nhận 1 Sao!',
+      '⭐ 𝐒𝐀𝐎 𝐗Ứ𝐍𝐆 ĐÁ𝐍𝐆 · 12/09/2026',
+      '🎉 Chúc mừng 𝐍𝐠𝐮𝐲ễ𝐧 𝐓𝐡ị 𝐋𝐚𝐧 𝐀𝐧𝐡 — 𝐏𝐡ò𝐧𝐠 Â𝐧 𝐓𝐡𝐢 vừa nhận 𝟏 𝐒𝐚𝐨!',
       '🎁 Người tặng: Lý Văn Tám',
       '💬 Ghi nhận vì:\nChủ động tư vấn, phối hợp tốt tăng trưởng nguồn vốn trong tháng 8',
       '🏆 Kết quả: Tăng trưởng nguồn vốn cho Phòng',
@@ -55,8 +55,8 @@ describe('soanTinSao — sao tập thể (Mẫu 2)', () => {
   it('tiêu đề SAO TẬP THỂ, tên nguyên phiếu, câu chúc, không có mốc quà', () => {
     const tin = soanTinSao([tt], 'moi_nguoi_mot_tin', { ...bc, tichLuy: 1, mocQua: null });
     expect(tin).toBe([
-      '⭐ SAO TẬP THỂ · 12/09/2026',
-      '🎉 Chúc mừng Tập thể PGD Ocean City vừa nhận 1 Sao!',
+      '⭐ 𝐒𝐀𝐎 𝐓Ậ𝐏 𝐓𝐇Ể · 12/09/2026',
+      '🎉 Chúc mừng 𝐓ậ𝐩 𝐭𝐡ể 𝐏𝐆𝐃 𝐎𝐜𝐞𝐚𝐧 𝐂𝐢𝐭𝐲 vừa nhận 𝟏 𝐒𝐚𝐨!',
       '🎁 Người tặng: Phạm Minh Hải',
       '💬 Ghi nhận vì:\nNỗ lực trong công tác chuyển địa điểm PGD',
       '🤝 Chúc mừng cả tập thể!',
@@ -121,5 +121,20 @@ describe('mẫu sửa được', () => {
   it('mẫu rỗng thì về mặc định', () => {
     const tin = soanTinSao([phieu()], 'moi_nguoi_mot_tin', bc, { ca_nhan: '', tap_the: '' });
     expect(tin).toBe(soanTinSao([phieu()], 'moi_nguoi_mot_tin', bc));
+  });
+});
+
+describe('in đậm trong mẫu', () => {
+  it('hậu tố :dam áp kiểu cho GIÁ TRỊ, không làm hỏng tên ô', () => {
+    expect(dienMau('Chúc mừng {ten:dam}!', { ten: 'Lan Anh' })).toBe('Chúc mừng 𝐋𝐚𝐧 𝐀𝐧𝐡!');
+  });
+  it('chữ tiếng Việt có dấu giữ nét thường vì Unicode không có bản đậm', () => {
+    expect(dienMau('{ten:dam}', { ten: 'Nguyễn' })).toBe('𝐍𝐠𝐮𝐲ễ𝐧');
+  });
+  it(':hoa dùng được cho mọi chữ tiếng Việt — cách nổi bật an toàn', () => {
+    expect(dienMau('{ten:hoa}', { ten: 'Nguyễn Thị Lan Anh' })).toBe('NGUYỄN THỊ LAN ANH');
+  });
+  it('ô rỗng vẫn bỏ cả khối dù có hậu tố kiểu', () => {
+    expect(dienMau('A\n\n{ket_qua:dam}', { ket_qua: '' })).toBe('A');
   });
 });

@@ -7,6 +7,8 @@
 // 13/09: mẫu SỬA ĐƯỢC trên trang (zalo_cau_hinh.mau_tin_ca_nhan / mau_tin_tap_the),
 // mỗi đề mục có biểu tượng riêng để nhìn là phân biệt được Người tặng / Vì đã / Kết quả.
 
+import { O_MAU_REGEX, doiKieu, type KieuChu } from './zaloDinhDang.ts';
+
 export interface PhieuSao {
   id: string;
   name: string;
@@ -54,9 +56,9 @@ export interface MauTin {
  */
 export const MAU_MAC_DINH: MauTin = {
   ca_nhan: [
-    '⭐ SAO XỨNG ĐÁNG · {ngay}',
+    '⭐ 𝐒𝐀𝐎 𝐗Ứ𝐍𝐆 ĐÁ𝐍𝐆 · {ngay}',
     '',
-    '🎉 Chúc mừng {ten_phong} vừa nhận {so_sao}!',
+    '🎉 Chúc mừng {ten_phong:dam} vừa nhận {so_sao:dam}!',
     '',
     '🎁 Người tặng: {nguoi_tang}',
     '',
@@ -70,9 +72,9 @@ export const MAU_MAC_DINH: MauTin = {
     '👉 {link}',
   ].join('\n'),
   tap_the: [
-    '⭐ SAO TẬP THỂ · {ngay}',
+    '⭐ 𝐒𝐀𝐎 𝐓Ậ𝐏 𝐓𝐇Ể · {ngay}',
     '',
-    '🎉 Chúc mừng {ten} vừa nhận {so_sao}!',
+    '🎉 Chúc mừng {ten:dam} vừa nhận {so_sao:dam}!',
     '',
     '🎁 Người tặng: {nguoi_tang}',
     '',
@@ -102,6 +104,7 @@ export const CAC_O_MAU: { o: string; nghia: string }[] = [
   { o: '{tich_luy}', nghia: 'Sao tích lũy, ví dụ «5 Sao» (tập thể: chỉ khi đã có sao trước đó)' },
   { o: '{moc_qua}', nghia: 'Câu nhắc mốc quà kế tiếp; đã chạm mốc cao nhất thì «Đã chạm mốc cao nhất 🏆»' },
   { o: '{link}', nghia: 'Đường dẫn chân tin (cài ở ô «Dòng cuối tin»)' },
+  { o: '{ten:dam}', nghia: 'Thêm «:dam» sau tên ô để in đậm giá trị — cũng có :nghieng, :gach_chan, :hoa' },
 ];
 
 /** Khóa gom: cùng khóa → cùng một tin. */
@@ -178,10 +181,12 @@ export function dienMau(mau: string, o: Record<string, string>): string {
     let bo = false;
     for (const dongGoc of khoiGoc.split('\n')) {
       let thieu = false;
-      const dong = dongGoc.replace(/\{([a-z_]+)\}/g, (_, k: string) => {
+      // Ô có thể kèm kiểu chữ: {ten_phong:dam}. Kiểu áp cho GIÁ TRỊ lúc điền,
+      // không áp cho tên ô — xem zaloDinhDang.apDungKieu.
+      const dong = dongGoc.replace(O_MAU_REGEX, (_, k: string, kieu?: string) => {
         const v = o[k];
-        if (!v) thieu = true;
-        return v ?? '';
+        if (!v) { thieu = true; return ''; }
+        return kieu ? doiKieu(v, kieu as KieuChu) : v;
       });
       if (thieu) { bo = true; break; }
       if (dong.trim() !== '') dongRa.push(dong.trimEnd());
