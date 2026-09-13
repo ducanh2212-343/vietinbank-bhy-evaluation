@@ -3,7 +3,7 @@ import { ChevronDown, ChevronUp, Presentation, ShieldCheck } from 'lucide-react'
 import { OnePageShell } from '@/components/one/OnePageShell';
 import { IdeaHero, IdeaTabs } from '@/components/one/ideas/IdeaNav';
 import { useAuth } from '@/hooks/useAuth';
-import { TRANG_THAI_DOT_LABELS, TANG_DE_XUAT_INFO } from '@/lib/ideaCouncil';
+import { TRANG_THAI_DOT_LABELS, TANG_DE_XUAT_INFO, suyA4TheoPhong } from '@/lib/ideaCouncil';
 import {
   useCouncilMutations,
   useCouncilRoundItems,
@@ -36,9 +36,11 @@ import { IdeaCouncilAdmin } from '@/components/one/ideas/council/IdeaCouncilAdmi
 type Tab = 'cham-diem' | 'tong-hop' | 'quan-tri';
 
 /** Thẻ một ý tưởng trong danh sách chấm: thông tin B1-B4 + nội dung + phiếu */
-function ItemCard({ item, readOnly, biChanTuCham, tenPhien, onSubmit }: {
+function ItemCard({ item, readOnly, biChanTuCham, tenPhien, phongCuaToi, onSubmit }: {
   item: CouncilItem;
   readOnly: boolean;
+  /** Phòng của người đang đăng nhập theo danh bạ — để máy tự trả lời câu A4 */
+  phongCuaToi: string | null;
   /** Người xem là chủ/đồng đề xuất ý tưởng — RLS chặn chấm, UI báo trước */
   biChanTuCham: boolean;
   /** Tên phiên trình bày chứa ý tưởng này (nếu đã xếp phiên) */
@@ -132,6 +134,8 @@ function ItemCard({ item, readOnly, biChanTuCham, tenPhien, onSubmit }: {
           <IdeaCouncilVoteForm
             myVote={item.myVote}
             readOnly={readOnly}
+            a4={suyA4TheoPhong(phongCuaToi, item.idea.departmentName)}
+            phongDeXuat={item.idea.departmentName}
             onSubmit={(phieu, trangThai) => onSubmit(item.id, phieu, trangThai)}
           />
         )}
@@ -380,6 +384,7 @@ export default function OneIdeaCouncilPage() {
                       readOnly={selectedRound?.status !== 'open'}
                       biChanTuCham={biChan(item)}
                       tenPhien={item.sessionId ? tenPhienTheoId.get(item.sessionId) ?? null : null}
+                      phongCuaToi={me?.department ?? null}
                       onSubmit={guiPhieu}
                     />
                   ))

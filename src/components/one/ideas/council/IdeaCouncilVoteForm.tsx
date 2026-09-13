@@ -6,7 +6,9 @@ import {
   TIEU_CHI_HOI_DONG,
   XUNG_DOT_LABELS,
   canGopY,
+  chotA4,
   loiPhieu,
+  type A4TuDong,
   type DeXuatHoiDong,
   type TieuChiKey,
   type XungDotLoiIch,
@@ -32,13 +34,17 @@ interface IdeaCouncilVoteFormProps {
   myVote: CouncilVote | null;
   /** Đợt còn mở mới cho lưu/gửi */
   readOnly: boolean;
+  /** A4 suy sẵn từ danh bạ — xem suyA4TheoPhong ở src/lib/ideaCouncil.ts */
+  a4: A4TuDong;
+  /** Phòng đề xuất ý tưởng, để nói rõ máy đang so với cái gì */
+  phongDeXuat: string;
   onSubmit: (phieu: PhieuGui, trangThai: 'draft' | 'submitted') => Promise<boolean>;
 }
 
 const XUNG_DOT_OPTIONS = Object.keys(XUNG_DOT_LABELS) as XungDotLoiIch[];
 const DE_XUAT_OPTIONS = Object.keys(DE_XUAT_LABELS) as DeXuatHoiDong[];
 
-export const IdeaCouncilVoteForm: React.FC<IdeaCouncilVoteFormProps> = ({ myVote, readOnly, onSubmit }) => {
+export const IdeaCouncilVoteForm: React.FC<IdeaCouncilVoteFormProps> = ({ myVote, readOnly, a4, phongDeXuat, onSubmit }) => {
   const [xungDot, setXungDot] = useState<XungDotLoiIch | null>(null);
   const [diem, setDiem] = useState<Partial<Record<TieuChiKey, number>>>({});
   const [deXuat, setDeXuat] = useState<DeXuatHoiDong | null>(null);
@@ -55,9 +61,13 @@ export const IdeaCouncilVoteForm: React.FC<IdeaCouncilVoteFormProps> = ({ myVote
     setLoi([]);
   }, [myVote]);
 
+  // Máy khẳng định cùng phòng thì ghi 'cung_phong' bất kể ô nào đang chọn —
+  // dữ kiện hành chính, không phải ý kiến của người chấm
+  const xungDotChot = chotA4(a4, xungDot);
+
   /** Đủ câu chưa — chạy trước khi mở nhịp xác nhận 3 giây */
   const kiemTraDuCau = (): boolean => {
-    const errs = loiPhieu({ xungDot, diem, deXuat, gopY });
+    const errs = loiPhieu({ xungDot: xungDotChot, diem, deXuat, gopY });
     setLoi(errs);
     return errs.length === 0;
   };
@@ -70,7 +80,7 @@ export const IdeaCouncilVoteForm: React.FC<IdeaCouncilVoteFormProps> = ({ myVote
     }
     setDangGui(trangThai);
     try {
-      await onSubmit({ xungDot, diem, deXuat, gopY }, trangThai);
+      await onSubmit({ xungDot: xungDotChot, diem, deXuat, gopY }, trangThai);
     } finally {
       setDangGui(null);
     }
@@ -97,27 +107,53 @@ export const IdeaCouncilVoteForm: React.FC<IdeaCouncilVoteFormProps> = ({ myVote
         </div>
       )}
 
-      {/* A4 — xung đột lợi ích */}
+      {/* A4 — máy trả lời nhánh «cùng phòng» theo danh bạ; người chấm chỉ còn
+          khai nhánh «phối hợp trực tiếp» (xem suyA4TheoPhong) */}
       <div className="space-y-1.5">
         <p className="font-bold text-slate-700">
           A4. Thành viên có thuộc phòng/đơn vị đề xuất ý tưởng này không? <span className="text-red-500">*</span>
         </p>
-        <div className="flex flex-col gap-1.5">
-          {XUNG_DOT_OPTIONS.map(opt => (
-            <label key={opt} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all ${xungDot === opt ? 'bg-amber-50 border-amber-300 font-bold text-slate-800' : 'border-slate-200 hover:border-amber-200'}`}>
-              <input
-                type="radio"
-                name="xung-dot"
-                checked={xungDot === opt}
-                onChange={() => setXungDot(opt)}
-                disabled={readOnly}
-                className="accent-amber-500"
-              />
-              <span>{XUNG_DOT_LABELS[opt]}</span>
-            </label>
-          ))}
-        </div>
-        {xungDot && xungDot !== 'khong' && (
+
+        {a4.kieu === 'cung_phong' ? (
+          <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 font-semibold">
+            ⚠ <b>Có — thuộc phòng/đơn vị đề xuất.</b> Hệ thống xác định theo danh bạ: bạn thuộc
+            <b> {a4.phong}</b>, đúng đơn vị đề xuất ý tưởng này. Mục này không phải khai.
+          </div>
+        ) : (
+          <>
+            {a4.kieu === 'khac_phong' && (
+              <p className="text-2xs text-slate-500">
+                Hệ thống xác định bạn thuộc <b className="text-slate-700">{a4.phong}</b>, không phải
+                đơn vị đề xuất (<b className="text-slate-700">{phongDeXuat}</b>). Chỉ còn khai phần
+                phối hợp — việc này danh bạ không biết được.
+              </p>
+            )}
+            {a4.kieu === 'chua_ro' && (
+              <p className="text-2xs text-slate-500">
+                Hồ sơ cán bộ của bạn chưa gắn phòng nên hệ thống không tự xác định được — khai giúp đủ ba nhánh.
+              </p>
+            )}
+            <div className="flex flex-col gap-1.5">
+              {XUNG_DOT_OPTIONS
+                .filter(opt => a4.kieu === 'chua_ro' || opt !== 'cung_phong')
+                .map(opt => (
+                  <label key={opt} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all ${xungDot === opt ? 'bg-amber-50 border-amber-300 font-bold text-slate-800' : 'border-slate-200 hover:border-amber-200'}`}>
+                    <input
+                      type="radio"
+                      name="xung-dot"
+                      checked={xungDot === opt}
+                      onChange={() => setXungDot(opt)}
+                      disabled={readOnly}
+                      className="accent-amber-500"
+                    />
+                    <span>{XUNG_DOT_LABELS[opt]}</span>
+                  </label>
+                ))}
+            </div>
+          </>
+        )}
+
+        {xungDotChot && xungDotChot !== 'khong' && (
           <p className="text-2xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
             Khai báo của bạn được ghi vào phiếu (ẩn danh) và được đánh dấu trong bản tổng hợp
             để Hội đồng cân nhắc khi kết luận theo nguyên tắc xử lý xung đột lợi ích (mục VI.4).

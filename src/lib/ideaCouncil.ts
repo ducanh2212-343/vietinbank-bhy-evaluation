@@ -121,6 +121,57 @@ export const NGUONG_LAN_TOA = { diemTbChung: 4.0, diemNhanRong: 4, diemAnToan: 3
 // từ client là phép chia số thực) — tránh 3.4999999 < 3.5 oan.
 const EPS = 1e-9;
 
+/**
+ * A4 — XUNG ĐỘT LỢI ÍCH SUY TỪ DANH BẠ, KHÔNG HỎI LẠI NGƯỜI CHẤM.
+ *
+ * VÌ SAO TỰ ĐỘNG
+ *
+ * Đợt Hội đồng đầu tiên (11–13/09/2026) cho thấy hỏi tay không đáng tin: đối
+ * chiếu 252 phiếu với danh bạ thì có 2 phiếu khai SÓT — Phó phòng TCTH chấm ý
+ * tưởng của chính Phòng TCTH mà khai «Không», Trưởng phòng Bán lẻ chấm ý tưởng
+ * Phòng KHBL mà khai «phối hợp» — và Giám đốc Chi nhánh bấm nhầm «có liên quan»
+ * cho 14 ý tưởng liền. Đây là dữ kiện HÀNH CHÍNH: phòng của người chấm và phòng
+ * đề xuất đều nằm sẵn trong hệ thống, nên hỏi người dùng vừa thừa vừa sinh lỗi.
+ *
+ * Nay máy tự trả lời nhánh «thuộc phòng/đơn vị đề xuất». Nhánh «liên quan phối
+ * hợp trực tiếp» VẪN để người chấm tự khai — đó là phán đoán về công việc, danh
+ * bạ không biết được.
+ *
+ * PHẠM VI: chỉ so PHÒNG TRÊN HỒ SƠ (chốt 13/09/2026). Phó giám đốc phụ trách
+ * khối KHÔNG bị tính là thuộc đơn vị đề xuất, dù thực tế các anh chị vẫn tự khai
+ * như vậy; muốn tính thì phải khai báo phân công phụ trách — là việc riêng.
+ *
+ * Hai vế đã ở cùng một hệ nhãn nên so sánh thẳng: phòng của cán bộ đi qua
+ * HO_SO_PHONG_SANG_IDEAS (src/data/one/ideasConfig.ts — đối xứng với hàm SQL
+ * bhy_phong_ideas_sang_ho_so), còn phiếu ý tưởng lưu thẳng nhãn Ideas.
+ */
+export type A4TuDong =
+  /** Danh bạ khẳng định cùng phòng — không hỏi nữa */
+  | { kieu: 'cung_phong'; phong: string }
+  /** Danh bạ khẳng định khác phòng — chỉ còn hỏi «có phối hợp trực tiếp không» */
+  | { kieu: 'khac_phong'; phong: string }
+  /** Hồ sơ chưa gắn phòng → không suy được, hỏi tay đủ ba nhánh như cũ */
+  | { kieu: 'chua_ro' };
+
+export function suyA4TheoPhong(
+  phongNguoiCham: string | null | undefined,
+  phongDeXuat: string | null | undefined,
+): A4TuDong {
+  const ta = (phongNguoiCham ?? '').trim();
+  const de = (phongDeXuat ?? '').trim();
+  if (!ta || !de) return { kieu: 'chua_ro' };
+  return ta === de ? { kieu: 'cung_phong', phong: ta } : { kieu: 'khac_phong', phong: ta };
+}
+
+/**
+ * Giá trị A4 ghi vào phiếu: máy khẳng định cùng phòng thì ghi 'cung_phong' bất
+ * kể người chấm bấm gì; các trường hợp còn lại giữ nguyên lời khai.
+ */
+export function chotA4(tuDong: A4TuDong, nguoiKhai: XungDotLoiIch | null): XungDotLoiIch | null {
+  if (tuDong.kieu === 'cung_phong') return 'cung_phong';
+  return nguoiKhai;
+}
+
 /** D2 bắt buộc khi thành viên đề xuất Không xét thưởng / Cần bổ sung */
 export function canGopY(deXuat: DeXuatHoiDong): boolean {
   return deXuat === 'khong_xet' || deXuat === 'can_bo_sung';
