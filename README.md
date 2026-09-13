@@ -654,6 +654,25 @@ mồ côi). Bộ biểu tượng: ⭐ tiêu đề · 🎉 chúc mừng · 🎁 n
 🏆 kết quả · 📈 tích lũy · 🤝 tập thể · 👉 link. Tab Tin Sao có khối «Sửa mẫu tin»
 với xem trước tức thì (hàm thuần dùng chung với edge function). `zalo-gui-sao` v3.
 
+**Đợt 5 — định dạng chữ trong tin (13/09/2026):** Zalo OA chỉ nhận VĂN BẢN
+THUẦN — `<b>`, `**đậm**` đều hiện nguyên ký tự (đã gửi tin thử vào nhóm và đối
+chiếu ảnh chụp Android để xác nhận). Nên «đậm/nghiêng» được làm bằng cách thay
+chữ cái sang ký tự Unicode có sẵn nét đậm (`_shared/zaloDinhDang.ts`). **Ràng
+buộc không vượt được: khối Unicode đó chỉ có A–Z, a–z, 0–9 — chữ tiếng Việt có
+dấu (ễ, ị, Ứ, Đ) không có bản đậm, giữ nét thường.** Từ ảnh chụp thật: bản
+**serif** (U+1D400) nhìn đều hơn hẳn bản sans (U+1D5D4) nên chọn serif làm mặc
+định; gạch chân/gạch ngang (ký tự tổ hợp) áp được cho mọi chữ kể cả có dấu; VIẾT
+HOA là cách nổi bật an toàn nhất cho tiếng Việt. Mẫu tin hỗ trợ hậu tố kiểu
+`{ten_phong:dam}` — kiểu áp cho GIÁ TRỊ lúc điền, không áp cho tên ô (đổi chữ
+trong ngoặc là mất luôn dòng đó). Tab Tin Sao có thanh Đậm · Nghiêng · Gạch chân
+· Gạch ngang · VIẾT HOA · Xoá định dạng, cảnh báo số chữ có dấu trước khi đổi.
+**Sau khi xem tin thật, GĐ yêu cầu đồng bộ phông: mẫu mặc định BỎ HẲN chữ đậm
+Unicode** — vì đó là bộ chữ serif riêng, Zalo vẽ bằng phông khác phần còn lại nên
+một tin lẫn hai kiểu chữ. Thay bằng ô `{ten_noi_bat}`: VIẾT HOA tên người, giữ
+nguyên tên phòng (hoa cả cụm thì cả dòng hét lên, mắt không bám vào tên ai). Hai
+nút Đậm/Nghiêng vẫn còn trên thanh công cụ cho ai cần, kèm cảnh báo đổi phông.
+`zalo-gui-sao` v5.
+
 **Gói cước (bảng giá Zalo OA áp dụng 01/06/2026, gồm VAT — migration
 `20261025090000_zalo_goi_cuoc_bang_gia.sql` **đã áp**, chỉ nạp dữ liệu vào
 `zalo_cau_hinh`, file gỡ cùng tên trong `supabase/rollbacks/`):** Gói Tăng

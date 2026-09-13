@@ -18,10 +18,10 @@ const bc: BoiCanhTin = {
 };
 
 describe('soanTinSao — sao cá nhân (Mẫu 1)', () => {
-  it('bảy khối theo thứ tự đã duyệt, cách nhau một dòng trống, mỗi đầu mục một biểu tượng', () => {
+  it('bảy khối theo thứ tự đã duyệt, cách nhau một dòng trống, biểu tượng riêng, tên người VIẾT HOA', () => {
     expect(soanTinSao([phieu()], 'moi_nguoi_mot_tin', bc)).toBe([
       '⭐ SAO XỨNG ĐÁNG · 12/09/2026',
-      '🎉 Chúc mừng Nguyễn Thị Lan Anh — Phòng Ân Thi vừa nhận 1 Sao!',
+      '🎉 Chúc mừng NGUYỄN THỊ LAN ANH — Phòng Ân Thi vừa nhận 1 Sao!',
       '🎁 Người tặng: Lý Văn Tám',
       '💬 Ghi nhận vì:\nChủ động tư vấn, phối hợp tốt tăng trưởng nguồn vốn trong tháng 8',
       '🏆 Kết quả: Tăng trưởng nguồn vốn cho Phòng',
@@ -56,7 +56,7 @@ describe('soanTinSao — sao tập thể (Mẫu 2)', () => {
     const tin = soanTinSao([tt], 'moi_nguoi_mot_tin', { ...bc, tichLuy: 1, mocQua: null });
     expect(tin).toBe([
       '⭐ SAO TẬP THỂ · 12/09/2026',
-      '🎉 Chúc mừng Tập thể PGD Ocean City vừa nhận 1 Sao!',
+      '🎉 Chúc mừng TẬP THỂ PGD OCEAN CITY vừa nhận 1 Sao!',
       '🎁 Người tặng: Phạm Minh Hải',
       '💬 Ghi nhận vì:\nNỗ lực trong công tác chuyển địa điểm PGD',
       '🤝 Chúc mừng cả tập thể!',
@@ -84,7 +84,7 @@ describe('gom trong cửa sổ', () => {
   });
   it('một người nhận 2 phiếu liền: tổng sao ở đầu, mỗi phiếu một dòng kèm người tặng', () => {
     const tin = soanTinSao([a, { ...a, id: 'a2', sender: 'Mai Hải Quân', reason: 'Tận tâm với khách hàng' }], 'moi_nguoi_mot_tin', bc);
-    expect(tin).toContain('🎉 Chúc mừng Vũ Đức Thắng — Phòng Ân Thi vừa nhận 2 Sao!');
+    expect(tin).toContain('🎉 Chúc mừng VŨ ĐỨC THẮNG — Phòng Ân Thi vừa nhận 2 Sao!');
     expect(tin).toContain('1. 1 Sao (🎁 Lý Văn Tám tặng) — 💬 Đầu mối huy động vốn GPMB');
     expect(tin).toContain('2. 1 Sao (🎁 Mai Hải Quân tặng) — 💬 Tận tâm với khách hàng');
   });
@@ -93,7 +93,7 @@ describe('gom trong cửa sổ', () => {
     const ds = Array.from({ length: 12 }, (_, i) => phieu({ id: `p${i}`, name: `Cán bộ ${i}`, recipient_profile_id: `u${i}` }));
     const tin = soanTinSao(ds, 'gop_theo_nguoi_tang', bc);
     expect(tin.split('\n')[0]).toBe('⭐ 12 SAO XỨNG ĐÁNG VỪA ĐƯỢC TRAO · 12/09/2026');
-    expect(tin).toContain('10. 🎉 Cán bộ 9 — Phòng Ân Thi · 1 Sao');
+    expect(tin).toContain('10. 🎉 CÁN BỘ 9 — Phòng Ân Thi · 1 Sao');
     expect(tin).toContain('… và 2 Sao nữa cho 2 cán bộ khác');
     expect(tin).not.toContain('Tích lũy:');
   });
@@ -121,5 +121,40 @@ describe('mẫu sửa được', () => {
   it('mẫu rỗng thì về mặc định', () => {
     const tin = soanTinSao([phieu()], 'moi_nguoi_mot_tin', bc, { ca_nhan: '', tap_the: '' });
     expect(tin).toBe(soanTinSao([phieu()], 'moi_nguoi_mot_tin', bc));
+  });
+});
+
+describe('in đậm trong mẫu', () => {
+  it('hậu tố :dam áp kiểu cho GIÁ TRỊ, không làm hỏng tên ô', () => {
+    expect(dienMau('Chúc mừng {ten:dam}!', { ten: 'Lan Anh' })).toBe('Chúc mừng 𝐋𝐚𝐧 𝐀𝐧𝐡!');
+  });
+  it('chữ tiếng Việt có dấu giữ nét thường vì Unicode không có bản đậm', () => {
+    expect(dienMau('{ten:dam}', { ten: 'Nguyễn' })).toBe('𝐍𝐠𝐮𝐲ễ𝐧');
+  });
+  it(':hoa dùng được cho mọi chữ tiếng Việt — cách nổi bật an toàn', () => {
+    expect(dienMau('{ten:hoa}', { ten: 'Nguyễn Thị Lan Anh' })).toBe('NGUYỄN THỊ LAN ANH');
+  });
+  it('ô rỗng vẫn bỏ cả khối dù có hậu tố kiểu', () => {
+    expect(dienMau('A\n\n{ket_qua:dam}', { ket_qua: '' })).toBe('A');
+  });
+});
+
+describe('tên nổi bật — quyết định 13/09 sau khi xem tin thật', () => {
+  it('VIẾT HOA tên người nhưng GIỮ NGUYÊN tên phòng, để mắt bám vào tên', () => {
+    const tin = soanTinSao([phieu()], 'moi_nguoi_mot_tin', bc);
+    expect(tin).toContain('NGUYỄN THỊ LAN ANH — Phòng Ân Thi');
+    expect(tin).not.toContain('PHÒNG ÂN THI');
+  });
+  it('tập thể thì viết hoa cả tên vì đó là chủ thể được khen', () => {
+    const tt = phieu({ name: 'Tập thể PGD Ocean City', department: 'PGD Ocean City', is_collective: true, recipient_profile_id: null });
+    expect(soanTinSao([tt], 'moi_nguoi_mot_tin', bc)).toContain('TẬP THỂ PGD OCEAN CITY vừa nhận');
+  });
+  it('phiếu không ghi phòng vẫn có dòng chúc mừng, không mất cả khối', () => {
+    const tin = soanTinSao([phieu({ department: '' })], 'moi_nguoi_mot_tin', bc);
+    expect(tin).toContain('🎉 Chúc mừng NGUYỄN THỊ LAN ANH vừa nhận 1 Sao!');
+  });
+  it('mẫu mặc định KHÔNG còn ký tự Unicode đổi phông — tin chỉ một kiểu chữ', () => {
+    const tin = soanTinSao([phieu()], 'moi_nguoi_mot_tin', bc);
+    expect(tin).not.toMatch(/[\u{1D400}-\u{1D7FF}]/u);
   });
 });
