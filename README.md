@@ -629,6 +629,16 @@ dài hơn 64 ký tự hoặc có ký tự lạ; `zalo_co_bi_mat()` nay trả jso
 Secret key thật lấy ở developers.zalo.me → ứng dụng → Cài đặt → «Khóa bí mật
 của ứng dụng» → Hiện → copy (~20 ký tự). `zalo-oa` v4.
 
+**Bước 1–4 hoàn tất (13/09/2026, 10:20):** Secret key nạp đúng, Refresh token
+từ API Explorer đổi thành công, API thông tin OA trả về đúng «VietinBank Bắc
+Hưng Yên». Đường liệt kê nhóm trong tài liệu cũ (`group/listgroup`) đã bị Zalo
+gỡ — 15 biến thể đều 404; đường đúng lấy từ API Explorer:
+`GET /v3.0/oa/group/getgroupsofoa?offset&count`. Nhóm «343 - Bắc Hưng Yên One»
+group_id `4a9bada229cec09099df` (5 thành viên) đã lưu vào cấu hình. Gửi tin:
+`POST /v3.0/oa/group/message` — tin thử đã lên nhóm (message_id
+`705efa85665a0d03544c`). `zalo-oa` v5, `zalo-gui-sao` v3. Còn lại: bật công tắc
+`bat_sao_xung_dang` sau khi GĐ duyệt tin thử trên nhóm.
+
 **Gói cước (bảng giá Zalo OA áp dụng 01/06/2026, gồm VAT — migration
 `20261025090000_zalo_goi_cuoc_bang_gia.sql` **đã áp**, chỉ nạp dữ liệu vào
 `zalo_cau_hinh`, file gỡ cùng tên trong `supabase/rollbacks/`):** Gói Tăng

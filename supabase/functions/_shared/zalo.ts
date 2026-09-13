@@ -353,11 +353,16 @@ export async function goiZalo(
 
 export interface NhomGmf { group_id: string; group_name: string; [k: string]: unknown }
 
-/** Danh sách nhóm GMF mà OA đang là thành viên. */
+/**
+ * Danh sách nhóm GMF mà OA đang là thành viên.
+ * Đường dẫn lấy từ API Explorer của Zalo (13/09/2026): GET /v3.0/oa/group/getgroupsofoa
+ * ?offset&count — «listgroup» trong tài liệu cũ đã bị Zalo gỡ, trả 404 «empty or invalid API».
+ * Gửi tin: POST /v3.0/oa/group/message {recipient:{group_id},message:{text}} — đã gửi thử thành công.
+ */
 export async function lietKeNhom(admin: SupabaseClient): Promise<NhomGmf[]> {
   const ds: NhomGmf[] = [];
   for (let offset = 0; offset < 500; offset += 50) {
-    const kq = await goiZalo(admin, `/group/listgroup?offset=${offset}&count=50`);
+    const kq = await goiZalo(admin, `/group/getgroupsofoa?offset=${offset}&count=50`);
     const data = (kq.data ?? {}) as Record<string, unknown>;
     const trang = (Array.isArray(data.groups) ? data.groups : Array.isArray(data) ? data : []) as NhomGmf[];
     ds.push(...trang);
