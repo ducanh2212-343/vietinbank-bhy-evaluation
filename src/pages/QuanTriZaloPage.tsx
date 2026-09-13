@@ -463,14 +463,14 @@ export default function QuanTriZaloPage() {
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><KeyRound className="w-4 h-4" /> Access token</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><KeyRound className="w-4 h-4" /> Access token (sống 25 giờ)</CardTitle></CardHeader>
           <CardContent>
             <Badge className={ttAccess.mau}>{ttAccess.nhan}</Badge>
             <p className="text-xs text-muted-foreground mt-1">Hết hạn: {gio(token?.access_het_han_luc)}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><RefreshCw className="w-4 h-4" /> Refresh token</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><RefreshCw className="w-4 h-4" /> Refresh token (sống 3 tháng, dùng 1 lần)</CardTitle></CardHeader>
           <CardContent>
             <Badge className={ttRefresh.mau}>{ttRefresh.ma === 'tot' || ttRefresh.ma === 'sap_het' ? `Còn ${Math.round((new Date(token!.refresh_het_han_luc!).getTime() - Date.now()) / 86400000)} ngày` : ttRefresh.nhan}</Badge>
             <p className="text-xs text-muted-foreground mt-1">Đã gia hạn {token?.so_lan_gia_han ?? 0} lần · gần nhất {gio(token?.gia_han_luc)}</p>
@@ -536,7 +536,7 @@ export default function QuanTriZaloPage() {
                   <div>
                     <div className="font-medium">3. Đường đi trên Zalo Developers, từng cú bấm</div>
                     <ul className="list-disc pl-5 text-muted-foreground space-y-0.5 mt-1">
-                      <li><strong>API Explorer (Cách 2):</strong> developers.zalo.me → Công cụ &amp; Hỗ trợ → API Explorer → chọn ứng dụng «Bắc Hưng Yên One» → loại «OA Access Token» → chọn OA «VietinBank Bắc Hưng Yên» → Cho phép → copy <em>refresh token</em> → dán vào ô Cách 2 → «Nạp và đổi lấy cặp mới».</li>
+                      <li><strong>API Explorer (Cách 2):</strong> developers.zalo.me → Công cụ &amp; Hỗ trợ → API Explorer → «Chọn ứng dụng» = Bắc Hưng Yên One → «Loại access token» = <strong>OA Access Token</strong> (không phải User Access Token) → chọn OA «VietinBank Bắc Hưng Yên» → Cho phép → màn hình hiện hai ô: <strong>Access token</strong> (ô trên) và <strong>Refresh token</strong> (ô dưới). Bấm nút copy ở ô <strong>Refresh token</strong> → dán vào ô «Refresh token» của Cách 2 trên trang này → «Nạp và đổi lấy cặp mới». Ô Access token không cần dán.</li>
                       <li><strong>Đường dẫn cấp quyền (Cách 3 và Cách 1):</strong> developers.zalo.me → ứng dụng → Official Account → «Thiết lập đường dẫn yêu cầu cấp quyền» → khối «Đường dẫn yêu cầu cấp quyền» có sẵn link, bấm copy. Hoặc bấm «Mở trang cấp quyền» ngay trên trang này — hai link phải giống nhau. Bấm Cho phép bằng tài khoản admin OA; trình duyệt chuyển tới callback kèm <em>code</em> — copy cả thanh địa chỉ dán vào ô Cách 3.</li>
                     </ul>
                   </div>
@@ -585,7 +585,7 @@ export default function QuanTriZaloPage() {
           </Card>
 
           <Card>
-            <CardHeader className="pb-3"><CardTitle className="text-base">1. Secret Key của ứng dụng Zalo</CardTitle></CardHeader>
+            <CardHeader className="pb-3"><CardTitle className="text-base">1. Secret key của ứng dụng Zalo</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <p className="text-sm text-muted-foreground">
                 App ID <span className="font-mono">298836022005112891</span> · OA ID <span className="font-mono">{ch.oa_id}</span>.
@@ -595,8 +595,8 @@ export default function QuanTriZaloPage() {
               {laSystemAdmin ? (
                 <div className="flex gap-2 flex-wrap items-end">
                   <div className="flex-1 min-w-[240px]">
-                    <Label htmlFor="secret">Dán Secret Key {coBiMat ? '(ghi đè)' : ''}</Label>
-                    <Input id="secret" type="password" autoComplete="off" value={secretKey} onChange={(e) => setSecretKey(e.target.value)} placeholder="Secret Key từ Zalo Developers" />
+                    <Label htmlFor="secret">Secret key {coBiMat ? '(dán để ghi đè)' : ''}</Label>
+                    <Input id="secret" type="password" autoComplete="off" value={secretKey} onChange={(e) => setSecretKey(e.target.value)} placeholder="Zalo Developers → ứng dụng → Cài đặt → ô «Secret key»" />
                   </div>
                   <Button onClick={napSecretKey} disabled={secretKey.trim().length < 8 || dangChay === 'bi_mat'}>Nạp vào kho bí mật</Button>
                 </div>
@@ -608,7 +608,7 @@ export default function QuanTriZaloPage() {
             <CardHeader className="pb-3"><CardTitle className="text-base">2. Lấy token lần đầu — chọn một trong ba cách</CardTitle></CardHeader>
             <CardContent className="space-y-5">
               <div className="space-y-3 rounded-md border p-3">
-                <div className="font-medium text-sm">Cách 1 · Đổi mã ủy quyền (PKCE)</div>
+                <div className="font-medium text-sm">Cách 1 · Authorization code + PKCE (Zalo tự đưa mã về trang này)</div>
                 <ol className="text-sm text-muted-foreground list-decimal pl-5 space-y-1">
                   <li>Bấm «Tạo mã PKCE», chép <em>code_challenge</em>.</li>
                   <li>Trên Zalo for Developers → ứng dụng → Official Account API → «Thiết lập đường dẫn yêu cầu cấp quyền»: dán code_challenge,
@@ -620,18 +620,18 @@ export default function QuanTriZaloPage() {
                   <Button variant="outline" onClick={taoMaPkce}>Tạo mã PKCE</Button>
                   {codeChallenge && (
                     <div className="flex-1 min-w-[240px]">
-                      <Label>code_challenge (dán vào Zalo)</Label>
+                      <Label>Code challenge — dán vào ô «Code challenge» trên Zalo Developers</Label>
                       <Input readOnly value={codeChallenge} onFocus={(e) => e.currentTarget.select()} className="font-mono text-xs" />
                     </div>
                   )}
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">
                   <div>
-                    <Label htmlFor="code">oauth_code</Label>
-                    <Input id="code" autoComplete="off" value={oauthCode} onChange={(e) => setOauthCode(e.target.value)} placeholder="Dán mã ủy quyền (hoặc tự điền từ callback)" />
+                    <Label htmlFor="code">Authorization code (mã ủy quyền — Zalo gọi là «code»)</Label>
+                    <Input id="code" autoComplete="off" value={oauthCode} onChange={(e) => setOauthCode(e.target.value)} placeholder="Tự điền khi Zalo đưa về trang này; hoặc dán tay" />
                   </div>
                   <div>
-                    <Label htmlFor="verifier">code_verifier (để trống nếu Zalo không đặt code_challenge)</Label>
+                    <Label htmlFor="verifier">Code verifier (tự giữ từ lúc bấm «Tạo mã PKCE»; để trống nếu Zalo không đặt Code challenge)</Label>
                     <Input id="verifier" autoComplete="off" value={codeVerifier} onChange={(e) => setCodeVerifier(e.target.value)} placeholder="43 ký tự, tự giữ từ lúc tạo PKCE" className="font-mono text-xs" />
                   </div>
                 </div>
@@ -641,15 +641,20 @@ export default function QuanTriZaloPage() {
               </div>
 
               <div className="space-y-3 rounded-md border p-3">
-                <div className="font-medium text-sm">Cách 2 · Dán refresh token từ API Explorer (nhanh hơn, dành cho admin OA)</div>
-                <p className="text-sm text-muted-foreground">
-                  Zalo for Developers → Công cụ &amp; Hỗ trợ → API Explorer → chọn ứng dụng, loại «OA Access Token», chọn OA, «Cho phép» → chép <em>refresh token</em> dán vào đây.
-                  Cổng dùng nó đổi ngay lấy cặp mới của riêng hệ thống; chuỗi vừa dán hết tác dụng ngay sau đó.
+                <div className="font-medium text-sm">Cách 2 · Dán Refresh token từ API Explorer (nhanh nhất — thử trước)</div>
+                <ol className="text-sm text-muted-foreground list-decimal pl-5 space-y-1">
+                  <li>Zalo for Developers → Công cụ &amp; Hỗ trợ → <strong>API Explorer</strong>.</li>
+                  <li>Góc phải «Chọn ứng dụng» = <strong>Bắc Hưng Yên One</strong>. Ô «Loại access token» = <strong>OA Access Token</strong> (mặc định là «User Access Token» — phải đổi, nếu không token là của tài khoản cá nhân và không gửi được tin vào nhóm).</li>
+                  <li>Chọn OA «VietinBank Bắc Hưng Yên» → Cho phép → bấm «Lấy Access Token».</li>
+                  <li>Màn hình hiện hai ô. Ô <strong>Access token</strong> (ô trên): KHÔNG cần dán — cổng tự lấy. Ô <strong>Refresh token</strong> (ô dưới): bấm nút copy cạnh ô rồi dán vào ô bên dưới.</li>
+                </ol>
+                <p className="text-xs text-muted-foreground">
+                  Cổng dùng Refresh token vừa dán để đổi ngay lấy cặp Access token + Refresh token mới của riêng hệ thống; chuỗi anh dán hết tác dụng ngay sau đó, có lộ cũng vô hại.
                 </p>
                 <div className="flex gap-2 flex-wrap items-end">
                   <div className="flex-1 min-w-[240px]">
-                    <Label htmlFor="rt">refresh_token</Label>
-                    <Input id="rt" type="password" autoComplete="off" value={refreshTokenDan} onChange={(e) => setRefreshTokenDan(e.target.value)} placeholder="Dán refresh token" />
+                    <Label htmlFor="rt">Refresh token (ô DƯỚI trên API Explorer)</Label>
+                    <Input id="rt" type="password" autoComplete="off" value={refreshTokenDan} onChange={(e) => setRefreshTokenDan(e.target.value)} placeholder="Dán Refresh token — không dán Access token vào đây" />
                   </div>
                   <Button onClick={napRefreshToken} disabled={refreshTokenDan.trim().length < 20 || dangChay === 'nap_token' || coBiMat === false}>
                     {dangChay === 'nap_token' ? 'Đang nạp…' : 'Nạp và đổi lấy cặp mới'}
@@ -658,7 +663,7 @@ export default function QuanTriZaloPage() {
               </div>
 
               <div className="space-y-3 rounded-md border p-3">
-                <div className="font-medium text-sm">Cách 3 · Dán đường dẫn Zalo trả về (dự phòng — không PKCE, không cần callback trỏ về đúng trang)</div>
+                <div className="font-medium text-sm">Cách 3 · Dán đường dẫn Zalo trả về sau khi Cho phép (dự phòng — không PKCE, không cần callback trỏ về đúng trang)</div>
                 <ol className="text-sm text-muted-foreground list-decimal pl-5 space-y-1">
                   <li>Bấm «Mở trang cấp quyền» (tab mới), chọn OA «VietinBank Bắc Hưng Yên», bấm Cho phép.</li>
                   <li>Trình duyệt chuyển tới callback kèm <em>code</em>. Copy TOÀN BỘ thanh địa chỉ (hoặc chỉ mã) dán vào ô dưới.</li>
@@ -675,7 +680,7 @@ export default function QuanTriZaloPage() {
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="dan3">Dán đường dẫn hoặc mã</Label>
+                  <Label htmlFor="dan3">Dán cả thanh địa chỉ Zalo trả về (có «code=…&amp;oa_id=…») hoặc chỉ mã «code»</Label>
                   <Textarea id="dan3" rows={2} value={dauVaoCach3} onChange={(e) => { setDauVaoCach3(e.target.value); setLoiCach3(null); }} placeholder="https://bachungyenone.com/?code=…&oa_id=… hoặc chỉ mã" className="font-mono text-xs" />
                   {dauVaoCach3.trim() && (
                     <p className="text-xs mt-1">
