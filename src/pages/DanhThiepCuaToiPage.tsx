@@ -89,10 +89,21 @@ export default function DanhThiepCuaToiPage() {
   const phuNameCard = useMemo(() => {
     if (!payloadThe || (payloadThe.status !== 'ok' && payloadThe.status !== 'preview')) return undefined;
     const donVi = payloadThe.units.map((u) => chonBanDich(u.name, 'vi')).filter(Boolean);
+    const donViEn = payloadThe.units.map((u) => chonBanDich(u.name, 'en')).filter(Boolean);
+    const zalo = payloadThe.channels.find((k) => k.type === 'zalo')?.value;
     return {
+      hoTen: payloadThe.name.vi,
+      tenCjk: payloadThe.name.zh,
       chucDanh: chonBanDich(payloadThe.title, 'vi') || undefined,
-      donVi: donVi.length >= 2 ? donVi.slice(1).join(' · ') : donVi[0],
+      chucDanhEn: chonBanDich(payloadThe.title, 'en') || undefined,
+      // Đơn vị: thương hiệu + đơn vị của cán bộ, như dòng trên thẻ giấy
+      donVi: donVi.length >= 2 ? `VietinBank - ${donVi[donVi.length - 1]}` : donVi[0],
+      donViEn: donViEn.length >= 2 ? donViEn[donViEn.length - 1] : undefined,
+      diaChi: chonBanDich(payloadThe.addr, 'vi') || undefined,
+      diaChiEn: chonBanDich(payloadThe.addr, 'en') || undefined,
       email: payloadThe.email,
+      zalo,
+      web: payloadThe.card_url.replace(/^https?:\/\//, ''),
     };
   }, [payloadThe]);
 

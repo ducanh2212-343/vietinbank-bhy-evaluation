@@ -23,14 +23,14 @@ import type { CanBo } from '@/lib/danhThiep/kieu';
 import {
   boDauGiuHoa, chuanHoaSoTheoDang, emailHopLe, soHopLe, taoVcardNhanh, tenMacDinh, type DangSo,
 } from '@/lib/danhThiep/maLuuNhanh';
-import { CAC_MAU, TEN_MAU, tenTepMau, veMauAnh, type MauAnh } from '@/lib/danhThiep/mauAnhQr';
+import { CAC_MAU, TEN_MAU, tenTepMau, veMauAnh, type DuLieuMau, type MauAnh } from '@/lib/danhThiep/mauAnhQr';
 import { soOMotCanh, taiTepVeMay, taoQrPngThuan } from '@/lib/danhThiep/qr';
 
 interface Props {
   cb: CanBo;
   dangLuu: boolean;
   /** Chức danh / đơn vị / email lấy từ thẻ online — chỉ vẽ lên mẫu name card, không vào mã */
-  phu?: { chucDanh?: string; donVi?: string; email?: string };
+  phu?: Omit<DuLieuMau, 'vcard' | 'ten' | 'sdt'>;
   /** Lưu ba cột qr_nhanh_ten / qr_nhanh_sdt / qr_nhanh_email (email chỉ in name card); lỗi báo qua toast ở nơi gọi */
   onLuu: (dong: { qr_nhanh_ten: string; qr_nhanh_sdt: string; qr_nhanh_email: string | null }) => Promise<void>;
 }

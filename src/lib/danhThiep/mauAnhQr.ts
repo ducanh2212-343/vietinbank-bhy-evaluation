@@ -22,7 +22,7 @@ export const CAC_MAU: MauAnh[] = ['qr_tron', 'qr_thuong_hieu', 'name_card', 'bie
 export const TEN_MAU: Record<MauAnh, { ten: string; dung: string; coIn: string }> = {
   qr_tron: { ten: 'Mã QR trần', dung: 'Dán vào tài liệu, chữ ký email, in sticker', coIn: 'in ≥ 3 cm' },
   qr_thuong_hieu: { ten: 'Mã có thương hiệu', dung: 'Gửi Zalo cho khách, in A6 phát tại quầy', coIn: 'in A6 hoặc lớn hơn' },
-  name_card: { ten: 'Name card một mặt', dung: 'Nền xanh VietinBank; tên, chức danh, đơn vị, số và mã trên một mặt 90×51 mm', coIn: 'in đúng 90×51 mm' },
+  name_card: { ten: 'Name card một mặt', dung: 'Theo mẫu thẻ giấy của Chi nhánh: nền xanh nhạt, logo góc phải, thông tin song ngữ, mã lưu số và mã Zalo', coIn: 'in đúng 90×51 mm' },
   bien_ban: { ten: 'Biển để bàn / bảng tên', dung: 'Đặt bàn tư vấn, đeo cổ ở hội trường đền bù', coIn: 'in A6 đứng, ép plastic' },
 };
 
@@ -37,14 +37,27 @@ export interface DuLieuMau {
   chucDanh?: string;
   donVi?: string;
   email?: string;
+  // --- chỉ mẫu name card dùng, lấy từ danh thiếp online ---
+  /** Họ tên đầy đủ có dấu in trên thẻ (khác «tên trong danh bạ» của mã) */
+  hoTen?: string;
+  /** Tên Hán tự nếu cán bộ đã khai — in trước tên Việt như thẻ giấy đang dùng */
+  tenCjk?: string;
+  chucDanhEn?: string;
+  donViEn?: string;
+  diaChi?: string;
+  diaChiEn?: string;
+  /** Số Zalo → mã QR thứ hai góc phải dưới */
+  zalo?: string;
+  /** Đường dẫn thẻ online, in dạng chữ */
+  web?: string;
 }
 
 const NAVY = '#12202E';
-/** Xanh VietinBank theo bộ nhận diện thương hiệu (Ocean, #005992). */
-const XANH_VTB = '#005992';
 const DONG = '#A8763E';
 const XAM = '#5B6874';
-const TRANG_MO = 'rgba(255,255,255,0.82)';
+/** Xanh nhạt nền name card — đúng màu xanh nhạt trong logo và trên thẻ giấy Chi nhánh đang dùng */
+const XANH_NHAT = '#7ED3F7';
+const DO_VTB = '#D71049';
 const FONT = 'Inter, "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif';
 
 /** Chờ font Inter sẵn sàng để chữ trên canvas không rơi về font hệ thống nửa chừng. */
@@ -114,10 +127,14 @@ function canvasRaPng(c: HTMLCanvasElement): Promise<Blob> {
   return new Promise((ok, loi) => c.toBlob((b) => (b ? ok(b) : loi(new Error('Không tạo được PNG'))), 'image/png'));
 }
 
-/** Số ô mã mỗi px: kiểm mẫu có đủ lớn cho camera không (≥ 8 px/ô). */
+/**
+ * Kiểm mã có đủ lớn cho camera không: mọi mẫu vẽ ở 300 dpi nên 4 px/ô = 0,34 mm
+ * mỗi ô — bằng mã WeChat/Zalo 14 mm trên thẻ giấy Chi nhánh đang in và vẫn quét
+ * tốt. Ngưỡng 8 px trước đây từng làm name card không vẽ nổi mã 20 mm.
+ */
 function kiemCoO(qr: HTMLCanvasElement, canhVe: number, soO: number): void {
   const pxMoiO = canhVe / (soO + 8); // +8: vùng lặng 4 ô mỗi bên
-  if (pxMoiO < 8) throw new Error('Mã quá dày cho mẫu này — rút ngắn tên để mã thưa hơn');
+  if (pxMoiO < 4) throw new Error('Mã quá dày cho mẫu này — rút ngắn tên để mã thưa hơn');
   void qr;
 }
 
@@ -173,74 +190,116 @@ async function veQrThuongHieu(d: DuLieuMau): Promise<HTMLCanvasElement> {
 }
 
 // ---------------------------------------------------------------------------
-// Mẫu 3: name card một mặt — 1063×602 (90×51 mm ở 300 dpi), tông xanh VietinBank
+// Mẫu 3: name card một mặt — 1063×602 (90×51 mm ở 300 dpi)
 //
-// Nền xanh thương hiệu, chữ trắng, logo bản chữ trắng đặt thẳng lên nền. Mã QR
-// đặt trong KHUNG TRẮNG vì camera cần vùng lặng sáng quanh mã — mã đen trên nền
-// xanh quét kém hẳn. Mã và khung vẽ TRƯỚC, chữ vẽ SAU trong vùng cắt của cột
-// trái: có bản từng bị tên dài đè lên mã, mà mã bị đè là mã không quét được.
+// Bố cục chép theo thẻ giấy Chi nhánh đang in (mẫu Trần Văn Khái, 09/2026): nền
+// xanh nhạt VietinBank, logo góc phải trên, tên Hán tự – tên Việt chữ lớn, chức
+// danh và đơn vị song ngữ, địa chỉ, E / M / W với nhãn đỏ, hai mã QR góc phải
+// dưới (lưu số, Zalo), dải sóng xanh – đỏ ở đáy. Mã vẽ thẳng lên nền xanh nhạt
+// như thẻ thật: nền đủ sáng (tương phản ~12:1 với ô đen) nên camera quét tốt.
 // ---------------------------------------------------------------------------
-function veKhungTrang(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  ctx.fillStyle = '#FFFFFF';
+function veSongDay(ctx: CanvasRenderingContext2D, W: number, H: number) {
+  const g = ctx.createLinearGradient(0, 0, W, 0);
+  g.addColorStop(0, '#0B6FB0'); g.addColorStop(0.6, '#1B8AD1'); g.addColorStop(1, '#5AB8EA');
+  ctx.fillStyle = g;
   ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-  ctx.fill();
+  ctx.moveTo(0, H - 62);
+  ctx.bezierCurveTo(W * 0.25, H - 92, W * 0.55, H - 30, W, H - 70);
+  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
+
+  ctx.fillStyle = DO_VTB;
+  ctx.beginPath();
+  ctx.moveTo(W * 0.42, H);
+  ctx.bezierCurveTo(W * 0.6, H - 78, W * 0.82, H - 20, W, H - 48);
+  ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+}
+
+/** Dòng song ngữ «VI | EN» — bỏ phần thiếu, không để dấu | lơ lửng. */
+function songNgu(vi?: string, en?: string): string {
+  return [vi, en].filter((x) => x && x.trim()).join('  |  ');
 }
 
 /**
  * Tên trên name card: thử một dòng ở cỡ lớn, không vừa thì hạ cỡ; xuống tới
  * cỡ sàn vẫn không vừa thì bẻ hai dòng. Trả về toạ độ y của dòng cuối.
  */
-function veTenNameCard(ctx: CanvasRenderingContext2D, ten: string, x: number, y: number, rong: number): number {
-  for (let co = 44; co >= 30; co -= 2) {
+function veTenNameCard(ctx: CanvasRenderingContext2D, ten: string, x: number, y: number, rong: number, coDau: number, coSan: number): number {
+  for (let co = coDau; co >= coSan; co -= 2) {
     ctx.font = `700 ${co}px ${FONT}`;
     if (ctx.measureText(ten).width <= rong) {
-      ctx.fillStyle = '#FFFFFF'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+      ctx.fillStyle = NAVY; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
       ctx.fillText(ten, x, y);
       return y;
     }
   }
-  return veNhieuDong(ctx, ten, x, y, rong, 32, 700, '#FFFFFF', 2);
+  return veNhieuDong(ctx, ten, x, y, rong, coSan, 700, NAVY, 2);
 }
 
 async function veNameCard(d: DuLieuMau): Promise<HTMLCanvasElement> {
   const W = 1063; const H = 602;
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const ctx = c.getContext('2d')!;
-  ctx.fillStyle = XANH_VTB; ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = DONG; ctx.fillRect(0, H - 10, W, 10);
+  ctx.fillStyle = XANH_NHAT; ctx.fillRect(0, 0, W, H);
+  veSongDay(ctx, W, H);
 
-  // Mã trước: khung trắng + mã bên phải
-  const canhQr = 420;
-  const qr = await veQrThuanRaCanvas(d.vcard, canhQr);
-  kiemCoO(qr, canhQr, soOTuVcard(d.vcard));
-  const xQr = W - canhQr - 48; const yQr = (H - canhQr) / 2 - 10;
-  const xKhung = xQr - 14;
-  veKhungTrang(ctx, xKhung, yQr - 14, canhQr + 28, canhQr + 28, 18);
-  ctx.drawImage(qr, xQr, yQr);
-  veChuVua(ctx, 'Quét để lưu số', xQr + canhQr / 2, H - 30, canhQr, 20, 500, '#FFFFFF', 'center');
+  // Logo góc phải trên (bản gốc chữ xanh — nền sáng)
+  const logo = await napLogoAnToan('sang');
+  const caoLogo = 118;
+  const rongLogo = caoLogo * TI_LE_KHUNG_LOGO;
+  veLogo(ctx, logo, W - rongLogo - 40, 30, caoLogo, 'trai', 0);
 
-  // Cột trái: mọi chữ vẽ trong vùng cắt kết thúc trước khung mã 24 px
+  // Hai mã QR góc phải dưới: lưu số (bắt buộc) và Zalo (nếu có)
+  const canhQr = 232; // ≈ 20 mm — to hơn mã 14 mm trên thẻ giấy để khách có tuổi quét dễ
+  const yQr = H - 62 - canhQr - 40;
+  const cotQr: { anh: HTMLCanvasElement; nhan: string }[] = [];
+  const qrLuu = await veQrThuanRaCanvas(d.vcard, canhQr, XANH_NHAT);
+  kiemCoO(qrLuu, canhQr, soOTuVcard(d.vcard));
+  cotQr.push({ anh: qrLuu, nhan: 'Lưu số' });
+  if (d.zalo) {
+    const soZalo = d.zalo.replace(/[^0-9]/g, '');
+    if (soZalo.length >= 9) cotQr.push({ anh: await veQrThuanRaCanvas(`https://zalo.me/${soZalo}`, canhQr, XANH_NHAT), nhan: 'Zalo' });
+  }
+  let xQr = W - 40 - canhQr;
+  for (const q of [...cotQr].reverse()) {
+    ctx.drawImage(q.anh, xQr, yQr);
+    veChuVua(ctx, q.nhan, xQr + canhQr / 2, yQr + canhQr + 30, canhQr, 22, 600, NAVY, 'center');
+    xQr -= canhQr + 16;
+  }
+  const xGioiHanDuoi = xQr + canhQr + 16 - 24; // mép trái của cụm mã, trừ khoảng thở
+
+  // Cột trái: phần trên rộng tới trước logo, phần ngang mã rộng tới trước cụm mã
   const xTrai = 56;
-  const rongTrai = xKhung - 24 - xTrai;
-  ctx.save();
-  ctx.beginPath(); ctx.rect(0, 0, xKhung - 12, H); ctx.clip();
+  const rongTren = W - rongLogo - 40 - 24 - xTrai;
+  const rongDuoi = xGioiHanDuoi - xTrai;
+  const rongTai = (yy: number) => (yy > yQr - 10 ? rongDuoi : rongTren);
 
-  const logo = await napLogoAnToan('xanh');
-  veLogo(ctx, logo, xTrai, 44, 76, 'trai', 0);
+  let y = 96;
+  const tenThe = d.hoTen || d.ten;
+  const dongTen = d.tenCjk ? `${d.tenCjk} - ${tenThe}` : tenThe;
+  y = veTenNameCard(ctx, dongTen, xTrai, y, rongTai(y), 50, 34) + 56;
 
-  let y = 226;
-  y = veTenNameCard(ctx, d.ten, xTrai, y, rongTrai) + 48;
-  if (d.chucDanh) { veChuVua(ctx, d.chucDanh, xTrai, y, rongTrai, 28, 500, '#FFFFFF', 'left', 20); y += 42; }
-  if (d.donVi) { y = veNhieuDong(ctx, d.donVi, xTrai, y, rongTrai, 24, 400, TRANG_MO, 2) + 46; }
-  veChuVua(ctx, d.sdt, xTrai, y, rongTrai, 34, 600, '#FFFFFF', 'left', 22); y += 44;
-  if (d.email) veChuVua(ctx, d.email, xTrai, y, rongTrai, 22, 400, TRANG_MO, 'left', 16);
-  ctx.restore();
+  const cd = songNgu(d.chucDanh, d.chucDanhEn);
+  if (cd) { veChuVua(ctx, cd, xTrai, y, rongTai(y), 28, 600, NAVY, 'left', 20); y += 52; }
+  const dv = songNgu(d.donVi, d.donViEn);
+  if (dv) { y = veNhieuDong(ctx, dv, xTrai, y, rongTai(y), 22, 500, NAVY, 2) + 40; }
+  const dc = songNgu(d.diaChi, d.diaChiEn);
+  if (dc) { y = veNhieuDong(ctx, dc, xTrai, y, rongTai(y), 20, 500, NAVY, 2) + 40; }
+
+  // E / M / W với nhãn đỏ như thẻ giấy
+  const veNhan = (nhan: string, giaTri: string, x: number, yy: number, coChu: number): number => {
+    ctx.font = `700 ${coChu}px ${FONT}`; ctx.fillStyle = DO_VTB; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.fillText(nhan, x, yy);
+    const rongNhan = ctx.measureText(nhan).width + 12;
+    ctx.font = `600 ${coChu}px ${FONT}`; ctx.fillStyle = NAVY;
+    ctx.fillText(giaTri, x + rongNhan, yy);
+    return x + rongNhan + ctx.measureText(giaTri).width;
+  };
+  let xDong = xTrai;
+  if (d.email) xDong = veNhan('E', d.email, xDong, y, 24) + 36;
+  if (xDong + 220 > xTrai + rongTai(y)) { xDong = xTrai; y += 40; }
+  veNhan('M', d.sdt, xDong, y, 24);
+  y += 42;
+  if (d.web) veNhan('W', d.web, xTrai, y, 22);
   return c;
 }
 

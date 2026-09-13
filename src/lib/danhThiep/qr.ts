@@ -67,11 +67,11 @@ export async function napLogoAnh(nen: 'sang' | 'xanh' = 'sang'): Promise<HTMLIma
 export const TI_LE_KHUNG_LOGO = KHUNG_LOGO;
 
 /** Vẽ mã QR mức M, không logo, lên một canvas tạm; trả canvas để mẫu ảnh ghép vào. */
-export async function veQrThuanRaCanvas(noiDung: string, canh: number): Promise<HTMLCanvasElement> {
+export async function veQrThuanRaCanvas(noiDung: string, canh: number, nen = '#FFFFFFFF'): Promise<HTMLCanvasElement> {
   const c = document.createElement('canvas');
   await QRCode.toCanvas(c, noiDung, {
     errorCorrectionLevel: 'M', margin: VUNG_TRONG, width: canh,
-    color: { dark: '#000000FF', light: '#FFFFFFFF' },
+    color: { dark: '#000000FF', light: nen },
   });
   return c;
 }
