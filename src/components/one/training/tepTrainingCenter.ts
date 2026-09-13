@@ -70,3 +70,15 @@ export function kichThuocDoc(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
+
+/**
+ * Ảnh PNG của một bản vẽ Toolkit — đường dẫn cố định theo id bản vẽ và ghi đè
+ * (upsert) để xuất lại bao nhiêu lần cũng chỉ một tệp trong kho, không rác.
+ * Vẫn nằm ở cấp 3 (`<chương trình>/<chủ tệp>/<đầu việc>/`) để policy kho áp y như tệp nộp.
+ */
+export async function taiAnhToolkit(blob: Blob, ctId: string, userId: string, dauViecId: string, toolkitId: string, ten: string): Promise<TtcTep> {
+  const path = `${ctId}/${userId}/${dauViecId}/toolkit-${toolkitId}.png`;
+  const { error } = await supabase.storage.from(BUCKET).upload(path, blob, { contentType: 'image/png', upsert: true });
+  if (error) throw new Error(error.message);
+  return { path, ten, kich_thuoc: blob.size, luc: new Date().toISOString() };
+}
