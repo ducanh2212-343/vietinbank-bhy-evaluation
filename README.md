@@ -811,9 +811,10 @@ STAR (mỗi phần ≥ 50 ký tự, máy chủ chặn lần cuối bằng trigge
 dấu ấn ẩn khỏi kỳ hiện hành, thẻ Kanban tự lưu trữ (`archived_reason =
 mark_chot`), vẫn xem lại ở mục gập «Dấu ấn đã chốt». Dấu ấn mới mặc định hạn
 31/10/2026 cho kỳ kế tiếp. Migration `20261031090000_chot_dau_an_bhy_mark.sql`
-(+ file gỡ cùng tên trong `supabase/rollbacks/`) **chưa áp** — áp thủ công vào
-project `whlysprzsguehxmrjwha` trước khi deploy, vì trang `/dau-an` đọc hai cột
-mới `chot_yeu_cau_luc`, `chot_luc`.
+(+ file gỡ cùng tên trong `supabase/rollbacks/`) **đã áp** vào project
+`whlysprzsguehxmrjwha` ngày 14/09/2026 (tên đợt `chot_dau_an_bhy_mark`, nội dung
+trùng file trong repo). Lúc áp có 9 dấu ấn active, 2 confirmed, 1 archived —
+migration chỉ cộng thêm, không đụng dữ liệu cũ.
 
 ## Kỳ Quý II/2026 — BM02 đánh giá lại từ đầu (07/2026)
 
