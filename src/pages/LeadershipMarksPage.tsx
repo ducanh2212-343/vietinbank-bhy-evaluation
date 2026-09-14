@@ -186,6 +186,9 @@ export default function LeadershipMarksPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    // Ghép «profiles» phải chỉ rõ khóa: từ 14/09 bảng có thêm chot_yeu_cau_boi cũng
+    // trỏ về profiles, không chỉ rõ thì Supabase báo «more than one relationship»
+    // và trang trắng toàn bộ dấu ấn.
     const [marksRes, compRes, cvRes, profRes] = await Promise.all([
       sb.from('leadership_marks')
         .select(`
@@ -193,7 +196,7 @@ export default function LeadershipMarksPage() {
           star_situation, star_task, star_action, star_result, deliverable,
           chot_yeu_cau_luc, chot_luc,
           leadership_competency_id, core_value_id,
-          profiles ( full_name ),
+          profiles!leadership_marks_profile_id_fkey ( full_name ),
           leadership_competencies ( name ),
           core_values ( name ),
           leadership_mark_skills ( sort_order, skill_id, skill_catalog ( code, name ) )
