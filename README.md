@@ -803,6 +803,18 @@ Thiết kế rút từ board Miro thật của Phòng KHDN (47 hồ sơ) — ph�
 liệu và cách khắc phục: `docs/kanban-phe-duyet-tin-dung-2026-08.md`. Migration
 `20260808090000_ct2_kanban_phe_duyet_tin_dung.sql` **đã áp**.
 
+**Chốt dấu ấn BHY Mark — kết kỳ (09/2026):** trước đây STAR của dấu ấn là tùy
+chọn nên cuối kỳ nhiều dấu ấn khép lại với STAR trống. Nay hai bước: Giám đốc
+bấm «Chốt dấu ấn» (từng dấu ấn hoặc «Chốt cả kỳ» của một PGĐ) → trạng thái
+`cho_chot`, thẻ Kanban vẫn giữ để PGĐ đọc lại mạch tuần; PGĐ nộp đủ 5 phần
+STAR (mỗi phần ≥ 50 ký tự, máy chủ chặn lần cuối bằng trigger) → `da_chot`,
+dấu ấn ẩn khỏi kỳ hiện hành, thẻ Kanban tự lưu trữ (`archived_reason =
+mark_chot`), vẫn xem lại ở mục gập «Dấu ấn đã chốt». Dấu ấn mới mặc định hạn
+31/10/2026 cho kỳ kế tiếp. Migration `20261031090000_chot_dau_an_bhy_mark.sql`
+(+ file gỡ cùng tên trong `supabase/rollbacks/`) **chưa áp** — áp thủ công vào
+project `whlysprzsguehxmrjwha` trước khi deploy, vì trang `/dau-an` đọc hai cột
+mới `chot_yeu_cau_luc`, `chot_luc`.
+
 ## Kỳ Quý II/2026 — BM02 đánh giá lại từ đầu (07/2026)
 
 - Quý I/2026 thực hiện BM01 trên **bản Word/PDF** (không nhập app). Các kế hoạch
