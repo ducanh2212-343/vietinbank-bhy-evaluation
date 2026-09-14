@@ -3,6 +3,9 @@
 //   giá trị cốt lõi, tối đa 2 Skill, hạn, trạng thái) → thẻ Kanban tự sinh cho PGĐ.
 // - PGĐ: xem dấu ấn của mình, cập nhật STAR + sản phẩm quản trị để lại
 //   (tiến độ hằng tuần cập nhật trên thẻ Kanban như mọi thẻ khác).
+// - Kết kỳ: GĐ bấm «Chốt dấu ấn» → dấu ấn chờ PGĐ nộp STAR ĐẦY ĐỦ (bắt buộc,
+//   mỗi phần tối thiểu 50 ký tự) → đã chốt thì ẩn khỏi kỳ hiện hành, nhường chỗ
+//   cho kỳ mới (dự kiến hạn 31/10/2026).
 // - Xuất "hành trình tạo dấu ấn" theo năng lực & skill ra Word.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -21,7 +24,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Award, Download, Pencil, Plus, Sparkles, Archive, CalendarCheck, AlertTriangle, History } from 'lucide-react';
+import { Award, Download, Pencil, Plus, Sparkles, Archive, CalendarCheck, AlertTriangle, History, Lock, Undo2, ChevronDown, ChevronRight } from 'lucide-react';
 // exportLeadershipJourney nạp lúc bấm nút — nó kéo theo docx + file-saver
 // (~106 kB gzip), không đáng tải chỉ để mở trang xem danh sách dấu ấn.
 import { fetchWeeklyUpdateMap, isWeeklyTracked, type KanbanCard, type WeeklyUpdateMap } from '@/lib/kanban';
@@ -42,6 +45,14 @@ const STAR_SUGGESTIONS = [
   'Vướng mắc cần Giám đốc hỗ trợ:',
   'Sản phẩm quản trị để lại:',
 ];
+/**
+ * Mỗi phần STAR phải có ít nhất chừng này ký tự mới được nộp để chốt — trùng với
+ * hàm dau_an_star_du_de_chot ở migration 20261031090000 (máy chủ chặn lần cuối).
+ * Trước đây STAR là tùy chọn nên cuối kỳ nhiều dấu ấn kết thúc với STAR trống.
+ */
+const SO_KY_TU_TOI_THIEU_STAR = 50;
+/** Kỳ dấu ấn kế tiếp dự kiến kết thúc 31/10/2026 — hạn mặc định khi thêm dấu ấn mới */
+const HAN_KY_MOI = '2026-10-31';
 const STAR_HINT = 'Viết theo khung STAR: Bối cảnh → Nhiệm vụ → Hành động lãnh đạo cá nhân → Kết quả. Mỗi cập nhật là một mốc trên dòng thời gian minh chứng cho dấu ấn cuối kỳ.';
 
 const LOG_LABEL: Record<string, string> = {
@@ -83,6 +94,10 @@ interface MarkRow {
   star_action: string | null;
   star_result: string | null;
   deliverable: string | null;
+  /** Lúc GĐ bấm «Chốt dấu ấn» — có giá trị là PGĐ phải nộp STAR đầy đủ */
+  chot_yeu_cau_luc: string | null;
+  /** Lúc PGĐ nộp STAR đủ, dấu ấn rời kỳ hiện hành */
+  chot_luc: string | null;
   leadership_competency_id: string | null;
   core_value_id: string | null;
   profiles: { full_name: string } | null;
@@ -93,13 +108,32 @@ interface MarkRow {
 
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Nháp', active: 'Đang thực hiện', confirmed: 'Đã ghi nhận', archived: 'Đã lưu trữ',
+  cho_chot: 'GĐ đã chốt — chờ nộp STAR', da_chot: 'Đã chốt',
 };
 const STATUS_TONE: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground',
   active: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
   confirmed: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
   archived: 'bg-muted text-muted-foreground',
+  cho_chot: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
+  da_chot: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
 };
+
+type StarForm = { star_situation: string; star_task: string; star_action: string; star_result: string; deliverable: string };
+const STAR_NHAN: Array<{ khoa: keyof StarForm; nhan: string; dong: number }> = [
+  { khoa: 'star_situation', nhan: 'Bối cảnh (Situation)', dong: 2 },
+  { khoa: 'star_task', nhan: 'Nhiệm vụ (Task)', dong: 2 },
+  { khoa: 'star_action', nhan: 'Hành động lãnh đạo của cá nhân (Action)', dong: 3 },
+  { khoa: 'star_result', nhan: 'Kết quả (Result)', dong: 3 },
+  { khoa: 'deliverable', nhan: 'Sản phẩm quản trị để lại (công cụ, phương thức, dashboard, quy trình…)', dong: 2 },
+];
+/** Những phần STAR còn thiếu hoặc quá ngắn để chốt */
+function phanStarThieu(f: StarForm): string[] {
+  return STAR_NHAN.filter(({ khoa }) => f[khoa].trim().length < SO_KY_TU_TOI_THIEU_STAR).map(({ nhan }) => nhan);
+}
+function ngayVn(iso: string | null | undefined): string {
+  return iso ? new Date(iso).toLocaleDateString('vi-VN') : '';
+}
 
 interface FrameForm {
   id: string | null;
@@ -119,7 +153,7 @@ interface FrameForm {
 const EMPTY_FRAME: FrameForm = {
   id: null, profile_id: '', title: '', description: '', role_focus: '',
   leadership_competency_id: '', core_value_id: '', skill1: '', skill2: '',
-  deadline: '', status: 'active', sort_order: 1,
+  deadline: HAN_KY_MOI, status: 'active', sort_order: 1,
 };
 
 export default function LeadershipMarksPage() {
@@ -145,8 +179,10 @@ export default function LeadershipMarksPage() {
   // Dialog khung (admin) & dialog STAR (chủ dấu ấn)
   const [frame, setFrame] = useState<FrameForm | null>(null);
   const [starMark, setStarMark] = useState<MarkRow | null>(null);
-  const [starForm, setStarForm] = useState({ star_situation: '', star_task: '', star_action: '', star_result: '', deliverable: '' });
+  const [starForm, setStarForm] = useState<StarForm>({ star_situation: '', star_task: '', star_action: '', star_result: '', deliverable: '' });
   const [saving, setSaving] = useState(false);
+  // Dấu ấn đã chốt gập lại — kỳ mới cần màn hình sạch, nhưng vẫn phải mở ra xem được
+  const [moDaChot, setMoDaChot] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -155,6 +191,7 @@ export default function LeadershipMarksPage() {
         .select(`
           id, profile_id, title, description, role_focus, status, deadline, sort_order,
           star_situation, star_task, star_action, star_result, deliverable,
+          chot_yeu_cau_luc, chot_luc,
           leadership_competency_id, core_value_id,
           profiles ( full_name ),
           leadership_competencies ( name ),
@@ -242,10 +279,21 @@ export default function LeadershipMarksPage() {
 
   const byProfile = useMemo(() => {
     const map = new Map<string, { name: string; roleFocus: string | null; marks: MarkRow[] }>();
-    marks.filter(m => m.status !== 'archived').forEach(m => {
+    // Đã chốt thì rời kỳ hiện hành (xem ở mục gập «Đã chốt» phía dưới)
+    marks.filter(m => m.status !== 'archived' && m.status !== 'da_chot').forEach(m => {
       const entry = map.get(m.profile_id) || { name: m.profiles?.full_name || '—', roleFocus: m.role_focus, marks: [] };
       entry.marks.push(m);
       if (!entry.roleFocus && m.role_focus) entry.roleFocus = m.role_focus;
+      map.set(m.profile_id, entry);
+    });
+    return map;
+  }, [marks]);
+
+  const daChot = useMemo(() => {
+    const map = new Map<string, { name: string; marks: MarkRow[] }>();
+    marks.filter(m => m.status === 'da_chot').forEach(m => {
+      const entry = map.get(m.profile_id) || { name: m.profiles?.full_name || '—', marks: [] };
+      entry.marks.push(m);
       map.set(m.profile_id, entry);
     });
     return map;
@@ -335,6 +383,27 @@ export default function LeadershipMarksPage() {
     if (error) toast.error(error.message); else { toast.success('Đã ghi nhận dấu ấn'); load(); }
   };
 
+  // GĐ chốt: một dấu ấn hoặc cả kỳ của một PGĐ. Chỉ chuyển trạng thái — mốc giờ,
+  // người chốt do máy chủ tự ghi (trigger kiem_tra_chot_dau_an).
+  const chotDauAn = async (list: MarkRow[], tenPgd?: string) => {
+    const canChot = list.filter(m => m.status === 'active' || m.status === 'confirmed');
+    if (!canChot.length) return;
+    const hoi = tenPgd
+      ? `Chốt ${canChot.length} dấu ấn của ${tenPgd}? PGĐ sẽ phải nộp khung STAR đầy đủ cho từng dấu ấn; nộp xong dấu ấn ẩn khỏi kỳ này.`
+      : `Chốt dấu ấn "${canChot[0].title}"? PGĐ sẽ phải nộp khung STAR đầy đủ; nộp xong dấu ấn ẩn khỏi kỳ này.`;
+    if (!window.confirm(hoi)) return;
+    const { error } = await sb.from('leadership_marks').update({ status: 'cho_chot' }).in('id', canChot.map(m => m.id));
+    if (error) { toast.error('Không chốt được: ' + error.message); return; }
+    toast.success(`Đã chốt ${canChot.length} dấu ấn — chờ PGĐ nộp STAR`);
+    load();
+  };
+
+  const rutLenhChot = async (m: MarkRow) => {
+    if (!window.confirm(`Rút lệnh chốt dấu ấn "${m.title}" để PGĐ tiếp tục cập nhật tuần?`)) return;
+    const { error } = await sb.from('leadership_marks').update({ status: 'active' }).eq('id', m.id);
+    if (error) toast.error(error.message); else { toast.success('Đã mở lại dấu ấn'); load(); }
+  };
+
   const openStarDialog = (m: MarkRow) => {
     setStarMark(m);
     setStarForm({
@@ -346,8 +415,20 @@ export default function LeadershipMarksPage() {
     });
   };
 
-  const saveStar = async () => {
+  /**
+   * Lưu STAR. `nopDeChot` = PGĐ nộp để kết thúc dấu ấn đã bị GĐ chốt: bắt đủ
+   * năm phần, mỗi phần ≥ 50 ký tự, rồi chuyển da_chot trong cùng một lệnh để
+   * không có khoảnh khắc "đã chốt mà STAR trống". Lưu thường vẫn cho dở dang.
+   */
+  const saveStar = async (nopDeChot = false) => {
     if (!starMark) return;
+    if (nopDeChot) {
+      const thieu = phanStarThieu(starForm);
+      if (thieu.length) {
+        toast.error(`Chưa đủ để chốt — cần viết đủ (≥ ${SO_KY_TU_TOI_THIEU_STAR} ký tự) các phần: ${thieu.join('; ')}`);
+        return;
+      }
+    }
     setSaving(true);
     const { error } = await sb.from('leadership_marks').update({
       star_situation: starForm.star_situation.trim() || null,
@@ -355,10 +436,11 @@ export default function LeadershipMarksPage() {
       star_action: starForm.star_action.trim() || null,
       star_result: starForm.star_result.trim() || null,
       deliverable: starForm.deliverable.trim() || null,
+      ...(nopDeChot ? { status: 'da_chot' } : {}),
     }).eq('id', starMark.id);
     setSaving(false);
     if (error) { toast.error('Lỗi lưu STAR: ' + error.message); return; }
-    toast.success('Đã lưu STAR & sản phẩm để lại');
+    toast.success(nopDeChot ? 'Đã nộp STAR — dấu ấn đã chốt và rời kỳ hiện hành' : 'Đã lưu STAR & sản phẩm để lại');
     setStarMark(null);
     load();
   };
@@ -397,6 +479,12 @@ export default function LeadershipMarksPage() {
             <span className="text-destructive font-medium"> báo đỏ</span>. Cập nhật viết theo khung STAR và
             tự xếp thành dòng thời gian của dấu ấn.
           </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            <span className="font-medium text-foreground">Kết kỳ:</span> Giám đốc bấm
+            <span className="font-medium"> Chốt dấu ấn</span> → PGĐ phải nộp khung STAR đầy đủ
+            (Bối cảnh, Nhiệm vụ, Hành động, Kết quả, Sản phẩm để lại) → dấu ấn ẩn khỏi kỳ này,
+            sang kỳ mới (dự kiến hạn {ngayVn(HAN_KY_MOI)}).
+          </p>
         </div>
         {isAdmin && (
           <Button onClick={() => openFrameDialog(null)}>
@@ -425,6 +513,11 @@ export default function LeadershipMarksPage() {
               </span>
               <span className="flex items-center gap-2">
                 <Badge variant="secondary">{group.marks.length} dấu ấn</Badge>
+                {isAdmin && group.marks.some(m => m.status === 'active' || m.status === 'confirmed') && (
+                  <Button size="sm" variant="secondary" onClick={() => chotDauAn(group.marks, group.name)}>
+                    <Lock className="w-4 h-4 mr-1" /> Chốt cả kỳ
+                  </Button>
+                )}
                 <Button size="sm" variant="outline" disabled={exporting === pid}
                         onClick={() => doExport(pid, group.name)}>
                   <Download className="w-4 h-4 mr-1" />
@@ -440,7 +533,9 @@ export default function LeadershipMarksPage() {
               const isOwner = m.profile_id === profileId;
               const card = cardByMark[m.id];
               // Nhịp hằng tuần: cùng quy tắc isWeeklyTracked với bảng Kanban cá nhân
-              const needsWeekly = !!card && isWeeklyTracked(card);
+              // Đã chốt thì không còn nhịp tuần — việc còn lại là nộp STAR
+              const choChot = m.status === 'cho_chot';
+              const needsWeekly = !!card && !choChot && isWeeklyTracked(card);
               // Tuần này coi là ĐÃ cập nhật nếu ghi bằng BẤT KỲ cửa nào: nhịp thẻ
               // Kanban (cách cũ) hoặc bằng chứng tuần ở màn Điều hành BGĐ (cách
               // mới). Trước 26/08 chỉ đếm cách cũ, nên PGĐ chuyển sang cách mới
@@ -454,7 +549,7 @@ export default function LeadershipMarksPage() {
               const canUpdate = !!card && m.status === 'active' && (isOwner || roles.includes('system_admin'));
               return (
                 <div key={m.id}
-                     className={`rounded-lg border p-3 space-y-2 ${weeklyRed ? 'border-destructive/60 bg-destructive/5' : ''}`}>
+                     className={`rounded-lg border p-3 space-y-2 ${weeklyRed ? 'border-destructive/60 bg-destructive/5' : choChot ? 'border-amber-400/70 bg-amber-50/60 dark:bg-amber-950/20' : ''}`}>
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <p className="font-medium">{m.sort_order}. {m.title}</p>
                     <span className="flex items-center gap-1.5">
@@ -493,6 +588,18 @@ export default function LeadershipMarksPage() {
                   {m.description && (
                     <p className="text-xs text-muted-foreground whitespace-pre-wrap">{m.description}</p>
                   )}
+                  {choChot && (
+                    <div className="rounded-md border border-amber-300 dark:border-amber-500/40 bg-amber-100/60 dark:bg-amber-950/40 px-3 py-2 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2">
+                      <Lock className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                      <span>
+                        Giám đốc đã chốt dấu ấn này{m.chot_yeu_cau_luc ? ` ngày ${ngayVn(m.chot_yeu_cau_luc)}` : ''}.
+                        {isOwner
+                          ? ` Bạn cần nộp khung STAR đầy đủ (mỗi phần tối thiểu ${SO_KY_TU_TOI_THIEU_STAR} ký tự, viết càng đầy đủ càng tốt) — nộp xong dấu ấn sẽ ẩn khỏi kỳ này.`
+                          : ' Đang chờ PGĐ nộp khung STAR đầy đủ.'}
+                        {' '}STAR hiện có: {starDone}/4{m.deliverable ? ' + sản phẩm để lại' : ''}.
+                      </span>
+                    </div>
+                  )}
                   <div className="flex flex-wrap items-center gap-2 pt-1">
                     <Badge variant={starDone === 4 ? 'default' : 'secondary'} className="text-[10px]">
                       STAR {starDone}/4{m.deliverable ? ' · có sản phẩm để lại' : ''}
@@ -509,8 +616,10 @@ export default function LeadershipMarksPage() {
                       </Button>
                     )}
                     {(isOwner || isAdmin) && (
-                      <Button size="sm" variant="outline" onClick={() => openStarDialog(m)}>
-                        <Sparkles className="w-3.5 h-3.5 mr-1" /> Cập nhật STAR
+                      <Button size="sm" variant={choChot ? 'default' : 'outline'}
+                              className={choChot ? 'bg-amber-600 hover:bg-amber-700 text-white' : ''}
+                              onClick={() => openStarDialog(m)}>
+                        <Sparkles className="w-3.5 h-3.5 mr-1" /> {choChot ? 'Nộp STAR để chốt' : 'Cập nhật STAR'}
                       </Button>
                     )}
                     {/* Luôn hiện — thẻ chưa có log vẫn phải mở được để TRAO ĐỔI */}
@@ -528,6 +637,16 @@ export default function LeadershipMarksPage() {
                           <Button size="sm" variant="outline" className="text-emerald-700 dark:text-emerald-300"
                                   onClick={() => confirmMark(m)}>
                             Ghi nhận
+                          </Button>
+                        )}
+                        {(m.status === 'active' || m.status === 'confirmed') && (
+                          <Button size="sm" variant="secondary" onClick={() => chotDauAn([m])}>
+                            <Lock className="w-3.5 h-3.5 mr-1" /> Chốt dấu ấn
+                          </Button>
+                        )}
+                        {choChot && (
+                          <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => rutLenhChot(m)}>
+                            <Undo2 className="w-3.5 h-3.5 mr-1" /> Rút lệnh chốt
                           </Button>
                         )}
                         <Button size="sm" variant="ghost" className="text-muted-foreground"
@@ -593,6 +712,53 @@ export default function LeadershipMarksPage() {
           </CardContent>
         </Card>
       ))}
+
+      {/* ── Dấu ấn đã chốt: rời kỳ hiện hành, gập lại nhưng vẫn tra cứu được ── */}
+      {daChot.size > 0 && (
+        <Card className="border-dashed">
+          <CardHeader className="pb-2">
+            <button type="button" className="flex items-center gap-2 text-sm font-medium text-left"
+                    onClick={() => setMoDaChot(v => !v)}>
+              {moDaChot ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              <Lock className="w-4 h-4 text-emerald-600" />
+              Dấu ấn đã chốt ({Array.from(daChot.values()).reduce((n, g) => n + g.marks.length, 0)}) — kỳ trước
+            </button>
+          </CardHeader>
+          {moDaChot && (
+            <CardContent className="space-y-4">
+              {Array.from(daChot.entries()).map(([pid, group]) => (
+                <div key={pid} className="space-y-2">
+                  <p className="text-sm font-medium">{group.name}</p>
+                  {group.marks.map(m => (
+                    <div key={m.id} className="rounded-lg border p-3 space-y-1.5 bg-muted/30">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <p className="text-sm font-medium">{m.sort_order}. {m.title}</p>
+                        <span className="text-[11px] text-muted-foreground">
+                          Chốt {ngayVn(m.chot_luc)}{m.deadline ? ` · hạn ${ngayVn(m.deadline)}` : ''}
+                        </span>
+                      </div>
+                      <dl className="grid gap-1 text-xs">
+                        {STAR_NHAN.map(({ khoa, nhan }) => m[khoa] ? (
+                          <div key={khoa}>
+                            <dt className="font-medium text-muted-foreground">{nhan}</dt>
+                            <dd className="whitespace-pre-wrap">{m[khoa]}</dd>
+                          </div>
+                        ) : null)}
+                      </dl>
+                      {isAdmin && (
+                        <Button size="sm" variant="ghost" className="text-muted-foreground h-7 px-2"
+                                onClick={() => rutLenhChot(m)}>
+                          <Undo2 className="w-3.5 h-3.5 mr-1" /> Mở lại dấu ấn
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </CardContent>
+          )}
+        </Card>
+      )}
 
       {/* ── Dialog cập nhật tuần (tái dùng cơ chế Kanban, gợi ý STAR) ───── */}
       {updateCard && (
@@ -716,42 +882,55 @@ export default function LeadershipMarksPage() {
       <Dialog open={!!starMark} onOpenChange={(o) => !o && setStarMark(null)}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>STAR — {starMark?.title}</DialogTitle>
+            <DialogTitle>
+              {starMark?.status === 'cho_chot' ? 'Nộp STAR để chốt — ' : 'STAR — '}{starMark?.title}
+            </DialogTitle>
           </DialogHeader>
           <p className="text-xs text-muted-foreground -mt-2">
             Chuẩn đầu ra cuối kỳ: chỉ rõ hành động lãnh đạo cá nhân, đối tượng chịu tác động và
             mối liên hệ hành động → kết quả; kèm sản phẩm quản trị để lại.
           </p>
+          {starMark?.status === 'cho_chot' && (
+            <p className="text-xs rounded-md border border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-amber-900 dark:text-amber-200">
+              Giám đốc đã chốt dấu ấn này. Cả năm phần dưới đây là <span className="font-medium">bắt buộc</span>,
+              mỗi phần tối thiểu {SO_KY_TU_TOI_THIEU_STAR} ký tự — hãy viết đầy đủ nhất có thể, đây là bản
+              ghi cuối cùng của dấu ấn. Có thể «Lưu nháp» rồi quay lại; bấm «Nộp & chốt» khi đã hoàn chỉnh.
+            </p>
+          )}
           <div className="space-y-3">
-            <div>
-              <Label>Bối cảnh (Situation)</Label>
-              <Textarea rows={2} value={starForm.star_situation}
-                        onChange={e => setStarForm({ ...starForm, star_situation: e.target.value })} />
-            </div>
-            <div>
-              <Label>Nhiệm vụ (Task)</Label>
-              <Textarea rows={2} value={starForm.star_task}
-                        onChange={e => setStarForm({ ...starForm, star_task: e.target.value })} />
-            </div>
-            <div>
-              <Label>Hành động lãnh đạo của cá nhân (Action)</Label>
-              <Textarea rows={3} value={starForm.star_action}
-                        onChange={e => setStarForm({ ...starForm, star_action: e.target.value })} />
-            </div>
-            <div>
-              <Label>Kết quả (Result)</Label>
-              <Textarea rows={3} value={starForm.star_result}
-                        onChange={e => setStarForm({ ...starForm, star_result: e.target.value })} />
-            </div>
-            <div>
-              <Label>Sản phẩm quản trị để lại (công cụ, phương thức, dashboard, quy trình…)</Label>
-              <Textarea rows={2} value={starForm.deliverable}
-                        onChange={e => setStarForm({ ...starForm, deliverable: e.target.value })} />
-            </div>
+            {STAR_NHAN.map(({ khoa, nhan, dong }) => {
+              const soKyTu = starForm[khoa].trim().length;
+              const thieu = starMark?.status === 'cho_chot' && soKyTu < SO_KY_TU_TOI_THIEU_STAR;
+              return (
+                <div key={khoa}>
+                  <div className="flex items-baseline justify-between gap-2">
+                    <Label>{nhan}{starMark?.status === 'cho_chot' && <span className="text-destructive"> *</span>}</Label>
+                    <span className={`text-[10px] ${thieu ? 'text-destructive' : 'text-muted-foreground'}`}>
+                      {soKyTu}{starMark?.status === 'cho_chot' ? ` / tối thiểu ${SO_KY_TU_TOI_THIEU_STAR}` : ''} ký tự
+                    </span>
+                  </div>
+                  <Textarea rows={dong} value={starForm[khoa]}
+                            className={thieu ? 'border-destructive/60' : ''}
+                            onChange={e => setStarForm({ ...starForm, [khoa]: e.target.value })} />
+                </div>
+              );
+            })}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setStarMark(null)}>Hủy</Button>
-            <Button onClick={saveStar} disabled={saving}>{saving ? 'Đang lưu…' : 'Lưu STAR'}</Button>
+            {starMark?.status === 'cho_chot' ? (
+              <>
+                <Button variant="secondary" onClick={() => saveStar(false)} disabled={saving}>
+                  {saving ? 'Đang lưu…' : 'Lưu nháp'}
+                </Button>
+                <Button className="bg-amber-600 hover:bg-amber-700 text-white" onClick={() => saveStar(true)}
+                        disabled={saving || phanStarThieu(starForm).length > 0}>
+                  <Lock className="w-3.5 h-3.5 mr-1" /> {saving ? 'Đang nộp…' : 'Nộp & chốt dấu ấn'}
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => saveStar(false)} disabled={saving}>{saving ? 'Đang lưu…' : 'Lưu STAR'}</Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
