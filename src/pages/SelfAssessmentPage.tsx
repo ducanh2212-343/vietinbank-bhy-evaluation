@@ -39,6 +39,8 @@ import {
 } from '@/lib/evaluationPersistence';
 import { validateSubmissionDetailed } from '@/lib/evaluationValidation';
 import { isSelfReviewProfile } from '@/lib/reviewerScope';
+import { buildPlanChangePayload } from '@/lib/planTransfer';
+import { PlanAmendmentBlock } from '@/components/evaluation/PlanAmendmentBlock';
 import { useCycleOneOnOneQuestions } from '@/hooks/useCycleOneOnOneQuestions';
 import { SubmissionChecklist } from '@/components/evaluation/SubmissionChecklist';
 import { useHistoricalSkillLevels, mergeAssessedLevels } from '@/hooks/useHistoricalSkillLevels';
@@ -864,7 +866,7 @@ export default function SelfAssessmentPage() {
     }
     const detailed = validateSubmissionDetailed({
       coreAssessments, attitudeAssessments,
-      skillPriorities, skillActions,
+      skillPriorities, skillActions, aiActions,
       supplementaryAssessments: suppAssessments,
     });
     if (detailed.errors.length > 0) {
@@ -905,10 +907,10 @@ export default function SelfAssessmentPage() {
   const checklist = useMemo(
     () => validateSubmissionDetailed({
       coreAssessments, attitudeAssessments,
-      skillPriorities, skillActions,
+      skillPriorities, skillActions, aiActions,
       supplementaryAssessments: suppAssessments,
     }),
-    [coreAssessments, attitudeAssessments, skillPriorities, skillActions, suppAssessments],
+    [coreAssessments, attitudeAssessments, skillPriorities, skillActions, aiActions, suppAssessments],
   );
 
   const carryLevelUpIds = useMemo(
@@ -1100,6 +1102,17 @@ export default function SelfAssessmentPage() {
       </div>
 
       <AIActionsBlock aiActions={aiActions} onChange={setAiActions} skillPriorities={skillPriorities} attitudePriorities={attitudePriorities} quarterLabel="quý này" />
+
+      {/* Phiếu đã duyệt: kế hoạch chỉ đổi được qua ĐỀ XUẤT SỬA chờ người đánh giá duyệt
+          (GĐ chốt 27/07) — cán bộ chỉnh D/E/F phía trên rồi gửi kèm lý do. */}
+      {formId && (formStatus === 'approved' || formStatus === 'closed') && (
+        <PlanAmendmentBlock
+          formId={formId}
+          mode="employee"
+          buildPayload={() => buildPlanChangePayload({ skillPriorities, skillActions, attitudePriorities, attitudeActions, aiActions })}
+          onApplied={loadData}
+        />
+      )}
 
       <EvalSectionReviewer
         name={actualReviewer?.name || reviewerOptions.find(o => o.id === selectedReviewerId)?.name}
