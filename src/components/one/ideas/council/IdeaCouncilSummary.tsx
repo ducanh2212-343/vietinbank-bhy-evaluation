@@ -19,28 +19,35 @@ import { useCouncilMutations, useCouncilSummary, type CouncilRound } from './use
 const KET_LUAN_CHIP_CLASS: Record<Exclude<KetLuanTang, null>, string> = {
   vuon_canh: 'bg-emerald-100 text-emerald-700',
   lan_toa_them: 'bg-rose-100 text-rose-700',
-  lan_toa_truc_tiep: 'bg-violet-100 text-violet-700 border border-violet-300',
 };
 
+/**
+ * Kết luận hiển thị lấy từ MÁY CHỦ (ket_luan của bhy_ideas_hd_tinh_item) — đó
+ * chính là cái ghi sổ khi công bố, nên màn hình không được nói khác. Hàm
+ * ketLuanDeXuat ở client chỉ dùng để lấy nhãn/mức thưởng cho đúng chữ.
+ */
 const KetLuanChip: React.FC<{ dong: DongTongHopRpc }> = ({ dong }) => {
   const kq = ketLuanDeXuat(dong.tongHop, dong.proposedTier);
-  if (kq.ketLuan) {
+  const ketLuan: KetLuanTang = dong.ketLuanMayChu === 'vuon_canh' ? 'vuon_canh'
+    : dong.ketLuanMayChu === 'lan_toa' ? 'lan_toa_them' : null;
+  if (ketLuan) {
     return (
       <div className="space-y-0.5">
-        <span className={`inline-block px-2 py-0.5 rounded-full text-2xs font-black ${KET_LUAN_CHIP_CLASS[kq.ketLuan]}`}>
-          {kq.nhan}
+        <span className={`inline-block px-2 py-0.5 rounded-full text-2xs font-black ${KET_LUAN_CHIP_CLASS[ketLuan]}`}>
+          {ketLuan === 'vuon_canh' ? 'Đạt Cấp độ Vươn cành' : 'Đạt nâng lên Cấp độ Lan tỏa'}
         </span>
-        {kq.thuong && <p className="text-2xs text-slate-500 font-semibold">{kq.thuong}</p>}
+        <p className="text-2xs text-slate-500 font-semibold">
+          {TANG_DE_XUAT_INFO[ketLuan === 'vuon_canh' ? 'Vươn cành' : 'Lan tỏa'].thuong}
+        </p>
       </div>
     );
   }
-  const lyDo = dong.proposedTier === 'Vươn cành' ? kq.vuonCanh.lyDo : kq.lanToa.lyDo;
   return (
     <div className="space-y-0.5">
       <span className="inline-block px-2 py-0.5 rounded-full text-2xs font-black bg-slate-100 text-slate-600">
-        {kq.nhan}
+        {dong.tongHop.soPhieuHopLe === 0 ? 'Chưa có phiếu chấm hợp lệ' : kq.nhan}
       </span>
-      {lyDo.map(l => (
+      {dong.lyDoChuaDat.map(l => (
         <p key={l} className="text-2xs text-slate-500">• {l}</p>
       ))}
     </div>
@@ -63,8 +70,10 @@ export const IdeaCouncilSummary: React.FC<IdeaCouncilSummaryProps> = ({ roundId,
       type="button"
       onClick={() => {
         const canhBao = round.resultsPublished
-          ? 'Khóa kết quả lại? Thành viên Hội đồng và TCTH sẽ không xem được bản tổng hợp nữa.'
-          : 'Công bố kết quả cho toàn bộ Hội đồng (gồm cả Admin TCTH)? Nên công bố sau khi đợt chấm đã chốt.';
+          ? 'Khóa kết quả lại? Thành viên Hội đồng và TCTH sẽ không xem được bản tổng hợp nữa. Thưởng đã ghi sổ KHÔNG bị thu hồi.'
+          : round.ghiSoLuc
+            ? 'Mở lại kết quả cho Hội đồng? Sổ thưởng đã ghi từ lần công bố trước, lần này không ghi trùng.'
+            : `Công bố kết quả đợt «${round.name}»?\n\nHệ thống sẽ NGAY LẬP TỨC: ghi sổ thưởng cho các ý tưởng đạt, nâng cấp độ ý tưởng, và gửi thông báo tới chủ ý tưởng (cả đạt lẫn chưa đạt). Việc này chỉ làm một lần.`;
         if (window.confirm(canhBao)) void congBoKetQua(round.id, !round.resultsPublished);
       }}
       className={`ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-2xs shadow-sm transition-all cursor-pointer ${round.resultsPublished ? 'bg-slate-600 hover:bg-slate-700 text-white' : 'bg-emerald-600 hover:bg-emerald-700 text-white'}`}
@@ -103,10 +112,16 @@ export const IdeaCouncilSummary: React.FC<IdeaCouncilSummaryProps> = ({ roundId,
       <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
         <BarChart3 className="w-4 h-4 text-amber-500" />
         <span>
-          Kết quả tổng hợp đợt <b className="text-slate-700">{summary.round.name}</b> — điểm trung bình
-          tính trên phiếu đã gửi; kết luận dưới đây là <b>gợi ý theo ngưỡng</b> (yêu cầu đủ 100%
-          thành viên chấm), quyết định cuối cùng thuộc Hội đồng.
+          Kết quả tổng hợp đợt <b className="text-slate-700">{summary.round.name}</b> ({summary.round.capXet === 'Lan tỏa' ? 'xét Lan tỏa' : 'xét Vươn cành'}) —
+          điểm trung bình tính trên phiếu <b>hợp lệ</b>: phiếu của thành viên cùng phòng / liên phòng
+          với ý tưởng bị loại, người vắng có phép rút khỏi mẫu số. Kết luận theo ngưỡng mục VI.3
+          (yêu cầu đủ 100% mẫu số) — <b>công bố là ghi sổ thưởng</b>.
         </span>
+        {summary.round.ghiSoLuc && (
+          <span className="px-2 py-0.5 rounded-full text-2xs font-black bg-emerald-50 text-emerald-700 border border-emerald-200">
+            💰 Đã ghi sổ {new Date(summary.round.ghiSoLuc).toLocaleDateString('vi-VN')}
+          </span>
+        )}
         <span className={`px-2 py-0.5 rounded-full text-2xs font-black ${summary.round.resultsPublished ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>
           {summary.round.resultsPublished ? '🔓 Đã công bố cho Hội đồng' : '🔒 Chưa công bố — chỉ Chủ tịch & QT hệ thống thấy'}
         </span>
@@ -155,6 +170,16 @@ export const IdeaCouncilSummary: React.FC<IdeaCouncilSummaryProps> = ({ roundId,
                   </td>
                   <td className="p-2 text-center font-bold text-slate-700">
                     {dong.tongHop.soPhieuHopLe}/{dong.tongHop.tongThanhVien}
+                    {(dong.tongHop.soPhieuBiLoai ?? 0) > 0 && (
+                      <span className="block text-2xs text-red-600 font-semibold" title="Phiếu của thành viên cùng phòng / liên phòng — loại khỏi điểm và mẫu số">
+                        ✖ {dong.tongHop.soPhieuBiLoai} loại cùng phòng
+                      </span>
+                    )}
+                    {(dong.tongHop.soVang ?? 0) > 0 && (
+                      <span className="block text-2xs text-slate-500 font-semibold" title="Thành viên vắng có phép — đã rút khỏi mẫu số">
+                        {dong.tongHop.soVang} vắng có phép
+                      </span>
+                    )}
                     {dong.tongHop.soPhieuXungDot > 0 && (
                       <span
                         className="block text-2xs text-amber-600 font-semibold"

@@ -12,6 +12,9 @@ import {
   tongHopPhieu,
   xetLanToa,
   xetVuonCanh,
+  NGAY_TOI_THIEU_LAN_TOA,
+  TANG_DE_XUAT_INFO,
+  type TangDeXuat,
   type PhieuCham,
   type TieuChiKey,
 } from './ideaCouncil';
@@ -209,16 +212,10 @@ describe('ketLuanDeXuat — gợi ý theo tầng TCTH trình (mô hình thưởn
     expect(kq.thuong).toBeNull();
   });
 
-  it('xét thẳng Lan tỏa đạt → lan_toa_truc_tiep, thưởng GỘP cả hai mức', () => {
-    const kq = ketLuanDeXuat(tongHopPhieu(phieuLanToaDat, 3), 'Lan tỏa trực tiếp');
-    expect(kq.ketLuan).toBe('lan_toa_truc_tiep');
-    expect(kq.thuong).toContain('Cộng cả hai mức');
-  });
-
-  it('xét thẳng Lan tỏa hụt ngưỡng nhưng đủ Vươn cành → hạ về Vươn cành (1M)', () => {
-    const kq = ketLuanDeXuat(tongHopPhieu(phieuChiDatVuonCanh, 2), 'Lan tỏa trực tiếp');
-    expect(kq.ketLuan).toBe('vuon_canh');
-    expect(kq.thuong).toContain('1.000.000');
+  it('KHÔNG còn tầng xét thẳng Lan tỏa — quy chế không cho vượt cấp (chốt 16/09/2026)', () => {
+    const tang: TangDeXuat[] = ['Vươn cành', 'Lan tỏa'];
+    expect(Object.keys(TANG_DE_XUAT_INFO).sort()).toEqual([...tang].sort());
+    expect(NGAY_TOI_THIEU_LAN_TOA).toBe(30);
   });
 
   it('không phiếu hợp lệ → chưa kết luận, nêu lý do', () => {
@@ -366,5 +363,42 @@ describe('chotA4 — máy khẳng định cùng phòng thì ghi đè lời khai'
     expect(chotA4(suyA4TheoPhong('Phòng TCTH', 'Phòng KHDN'), 'phoi_hop')).toBe('phoi_hop');
     expect(chotA4(suyA4TheoPhong('Phòng TCTH', 'Phòng KHDN'), 'khong')).toBe('khong');
     expect(chotA4(suyA4TheoPhong(null, 'Phòng KHDN'), null)).toBeNull();
+  });
+});
+
+// Chốt 16/09/2026: điểm và mẫu số do MÁY CHỦ tính (loại phiếu cùng phòng, trừ
+// vắng); client chỉ đọc. Khóa việc docTongHopRpc không làm rơi các trường đó.
+describe('docTongHopRpc — đọc đủ trường loại phiếu / vắng / kết luận máy chủ', () => {
+  it('đọc so_phieu_bi_loai, so_vang, ket_luan, ly_do_chua_dat và cấp xét của đợt', () => {
+    const kq = docTongHopRpc({
+      round: { id: 'r', name: 'Tháng 6,7,8', status: 'closed', results_published: false, cap_xet: 'Vươn cành', ghi_so_luc: null },
+      items: [{
+        item_id: 'i', idea_id: 'y', idea_code: 'BHYI-2026-018', proposed_tier: 'Vươn cành',
+        idea_title: 'x', department_name: 'Phòng KHBL', idea_level: 'Nội bộ CN', proposer: 'a',
+        total_votes: 11, eligible_members: 11, so_phieu_bi_loai: 3, so_vang: 1, conflict_votes: 1,
+        avg_problem: 3.6, avg_impact: 3.6, avg_feasible: 3.6, avg_safety: 3.82, avg_scale: 3.6, avg_overall: 3.6,
+        agree_vuon_canh: 9, agree_lan_toa: 0, rec_khong_xet: 0, rec_can_bo_sung: 2, rec_vuon_canh: 9, rec_lan_toa: 0,
+        gop_y: [], ket_luan: 'vuon_canh', ly_do_chua_dat: [],
+      }],
+    });
+    expect(kq.round.capXet).toBe('Vươn cành');
+    expect(kq.round.ghiSoLuc).toBeNull();
+    const d = kq.items[0];
+    expect(d.tongHop.soPhieuBiLoai).toBe(3);
+    expect(d.tongHop.soVang).toBe(1);
+    expect(d.ketLuanMayChu).toBe('vuon_canh');
+    expect(d.lyDoChuaDat).toEqual([]);
+  });
+
+  it('đợt Lan tỏa: ket_luan lan_toa; thiếu trường mới thì về 0 / null chứ không vỡ', () => {
+    const kq = docTongHopRpc({
+      round: { id: 'r', name: 'Q4', status: 'open', cap_xet: 'Lan tỏa' },
+      items: [{ item_id: 'i', idea_id: 'y', idea_code: 'BHYI-2026-001', proposed_tier: 'Lan tỏa',
+        total_votes: 0, eligible_members: 12, ket_luan: null, ly_do_chua_dat: ['Chưa có phiếu chấm hợp lệ'] }],
+    });
+    expect(kq.round.capXet).toBe('Lan tỏa');
+    expect(kq.items[0].tongHop.soPhieuBiLoai).toBe(0);
+    expect(kq.items[0].ketLuanMayChu).toBeNull();
+    expect(kq.items[0].lyDoChuaDat).toEqual(['Chưa có phiếu chấm hợp lệ']);
   });
 });

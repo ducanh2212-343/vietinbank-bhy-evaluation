@@ -2693,6 +2693,66 @@ export type Database = {
           },
         ]
       }
+      portal_idea_council_vang: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          ly_do: string | null
+          phien_id: string | null
+          profile_id: string
+          round_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          ly_do?: string | null
+          phien_id?: string | null
+          profile_id: string
+          round_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          ly_do?: string | null
+          phien_id?: string | null
+          profile_id?: string
+          round_id?: string
+        }
+        Relationships: []
+      }
+      portal_idea_council_rut: {
+        Row: {
+          id: string
+          idea_code: string
+          idea_id: string
+          ly_do: string
+          nguoi_rut: string
+          round_id: string
+          rut_luc: string
+        }
+        Insert: {
+          id?: string
+          idea_code: string
+          idea_id: string
+          ly_do: string
+          nguoi_rut?: string
+          round_id: string
+          rut_luc?: string
+        }
+        Update: {
+          id?: string
+          idea_code?: string
+          idea_id?: string
+          ly_do?: string
+          nguoi_rut?: string
+          round_id?: string
+          rut_luc?: string
+        }
+        Relationships: []
+      }
       portal_idea_council_sessions: {
         Row: {
           bat_dau_luc: string | null
@@ -2887,6 +2947,8 @@ export type Database = {
           status: string
           updated_at: string
           voting_deadline: string | null
+          cap_xet: string
+          ghi_so_luc: string | null
         }
         Insert: {
           created_at?: string
@@ -2898,6 +2960,8 @@ export type Database = {
           status?: string
           updated_at?: string
           voting_deadline?: string | null
+          cap_xet?: string
+          ghi_so_luc?: string | null
         }
         Update: {
           created_at?: string
@@ -2909,6 +2973,8 @@ export type Database = {
           status?: string
           updated_at?: string
           voting_deadline?: string | null
+          cap_xet?: string
+          ghi_so_luc?: string | null
         }
         Relationships: []
       }
@@ -3029,6 +3095,7 @@ export type Database = {
           seed_unlikes: number
           title: string
           updated_at: string
+          phong_id: string | null
         }
         Insert: {
           applicability: string
@@ -3055,6 +3122,7 @@ export type Database = {
           seed_unlikes?: number
           title: string
           updated_at?: string
+          phong_id?: string | null
         }
         Update: {
           applicability?: string
@@ -3081,6 +3149,7 @@ export type Database = {
           seed_unlikes?: number
           title?: string
           updated_at?: string
+          phong_id?: string | null
         }
         Relationships: []
       }
@@ -5518,6 +5587,42 @@ export type Database = {
         Args: { _phong_ideas: string }
         Returns: number
       }
+      bhy_ideas_hd_ly_do_khong_cham: {
+        Args: { _user_id: string; _item_id: string }
+        Returns: string | null
+      }
+      bhy_ideas_hd_phieu_hop_le: {
+        Args: { _user_id: string; _item_id: string }
+        Returns: boolean
+      }
+      bhy_ideas_hd_vang: {
+        Args: { _profile_id: string; _item_id: string }
+        Returns: boolean
+      }
+      bhy_ideas_hd_toi_duoc_cham: {
+        Args: { _round_id: string }
+        Returns: { item_id: string; ly_do: string | null }[]
+      }
+      bhy_ideas_hd_ung_vien: {
+        Args: { _round_id: string }
+        Returns: {
+          idea_id: string; title: string; department_name: string; proposer: string;
+          development_level: string; cong_nhan_vc_luc: string | null;
+          du_dieu_kien_tu: string | null; du_dieu_kien: boolean; ly_do: string | null
+        }[]
+      }
+      bhy_ideas_hd_rut_y_tuong: {
+        Args: { _item_id: string; _ly_do: string }
+        Returns: Json
+      }
+      bhy_ideas_hd_ngay_toi_thieu_lan_toa: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      bhy_ideas_phong_lien_quan: {
+        Args: { _idea_id: string }
+        Returns: string[]
+      }
       bhy_ideas_hd_mo_phien: {
         Args: { _phien_id: string }
         Returns: Json
@@ -5528,7 +5633,7 @@ export type Database = {
       }
       bhy_ideas_hd_cong_bo: {
         Args: { _published: boolean; _round_id: string }
-        Returns: undefined
+        Returns: Json
       }
       bhy_ideas_hd_la_chu_tich: {
         Args: { _user_id: string }

@@ -1,22 +1,25 @@
 import React, { useMemo, useState } from 'react';
 import { CalendarPlus, ChevronDown, ChevronUp, Gavel, Trash2, UserRound } from 'lucide-react';
 import {
+  CAP_XET_LABELS,
   DE_XUAT_LABELS,
+  NGAY_TOI_THIEU_LAN_TOA,
   TANG_DE_XUAT_INFO,
   TIEU_CHI_HOI_DONG,
   TRANG_THAI_DOT_LABELS,
   XUNG_DOT_LABELS,
   goiYMaYTuong,
-  type TangDeXuat,
+  type CapXet,
   type TrangThaiDot,
 } from '@/lib/ideaCouncil';
 import { useIdeaOwnerProfiles } from '../useIdeaOwnerProfiles';
 import {
+  LY_DO_KHONG_CHAM_LABELS,
   useAnonBallots,
-  useCouncilCandidates,
   useCouncilMutations,
   useIdeaCouncilAccess,
   usePhienTrinhBay,
+  useUngVien,
   type CouncilItem,
   type CouncilRound,
 } from './useIdeaCouncil';
@@ -25,7 +28,12 @@ import { IdeaCouncilPhienPanel } from './IdeaCouncilPhienPanel';
 import { IdeaCouncilProgress } from './IdeaCouncilProgress';
 
 // Khung quản trị của Phòng TCTH: tạo/mở/chốt đợt chấm, trình ý tưởng lên Hội
-// đồng (cấp mã + tầng đề xuất) và tổng hợp phiếu.
+// đồng (cấp mã) và tổng hợp phiếu.
+//
+// HAI CẤP HỌP (16/09/2026): mỗi đợt mang một cấp xét — Vươn cành hoặc Lan tỏa.
+// Đợt Lan tỏa chỉ nhận ý tưởng đã được Hội đồng công nhận Vươn cành tối thiểu
+// 30 ngày; không còn tầng «xét thẳng Lan tỏa». Ứng viên do máy chủ lọc
+// (bhy_ideas_hd_ung_vien), CSDL chặn lần nữa khi trình.
 //
 // Chốt ẩn danh 08/2026: phiếu hiển thị ở đây là bản ẨN DANH (RPC
 // bhy_ideas_hd_phieu_an_danh) — TCTH/BGĐ không thấy ai chấm bao nhiêu; danh
@@ -48,9 +56,9 @@ const CHUYEN_TRANG_THAI: Record<TrangThaiDot, { next: TrangThaiDot; label: strin
 
 export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, selectedRound, items, onSelectRound }) => {
   const { isSystemAdmin } = useIdeaCouncilAccess();
-  const { taoDot, doiTrangThaiDot, datHanChot, themYTuong, goYTuong } = useCouncilMutations(selectedRound?.id ?? null);
+  const { taoDot, doiTrangThaiDot, datHanChot, themYTuong, rutYTuong } = useCouncilMutations(selectedRound?.id ?? null);
   const { phien } = usePhienTrinhBay(selectedRound?.id ?? null, !!selectedRound);
-  const { candidates } = useCouncilCandidates(true);
+  const { ungVien } = useUngVien(selectedRound?.id ?? null, !!selectedRound);
   // Phiếu ẩn danh chỉ mở sau khi đợt CHỐT (System Admin xem mọi lúc) — RPC gác;
   // đang mở thì không gọi, hiển thị ghi chú khóa thay vì "chưa có phiếu"
   const phieuBiKhoa = !!selectedRound && !isSystemAdmin && selectedRound.status !== 'closed';
@@ -64,9 +72,9 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
   const [tenDot, setTenDot] = useState('');
   const [ghiChuDot, setGhiChuDot] = useState('');
   const [hanChot, setHanChot] = useState('');
+  const [capXetMoi, setCapXetMoi] = useState<CapXet>('Vươn cành');
   const [ideaId, setIdeaId] = useState('');
   const [maYTuong, setMaYTuong] = useState('');
-  const [tang, setTang] = useState<TangDeXuat>('Vươn cành');
   const [openBallots, setOpenBallots] = useState<Record<string, boolean>>({});
 
   // Danh tính người chấm — chỉ System Admin dựng được map này: RLS chỉ trả
@@ -80,22 +88,12 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
     return m;
   }, [isSystemAdmin, items, owners]);
 
-  // Ứng viên theo tầng đang chọn (đã bật cờ Hội đồng, chưa nằm trong đợt):
-  // - Xét nâng lên Lan tỏa: CHỈ ý tưởng đã đạt Vươn cành (kỳ xét riêng).
-  // - Xét Vươn cành / xét thẳng Lan tỏa: ý tưởng chưa đạt Vươn cành/Lan tỏa.
-  const ungVien = useMemo(() => {
-    const daCo = new Set(items.map(it => it.idea.id));
-    const chuaTrinh = candidates.filter(c => !daCo.has(c.id));
-    if (tang === 'Lan tỏa') return chuaTrinh.filter(c => c.development_level === 'Vươn cành');
-    return chuaTrinh.filter(c => c.development_level !== 'Vươn cành' && c.development_level !== 'Lan tỏa');
-  }, [candidates, items, tang]);
-
   const maGoiY = goiYMaYTuong(items, new Date().getFullYear());
 
   const handleTaoDot = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!tenDot.trim()) return;
-    if (await taoDot(tenDot, ghiChuDot, hanChot ? new Date(hanChot).toISOString() : null)) {
+    if (await taoDot(tenDot, ghiChuDot, hanChot ? new Date(hanChot).toISOString() : null, capXetMoi)) {
       setTenDot('');
       setGhiChuDot('');
       setHanChot('');
@@ -105,7 +103,7 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
   const handleThemYTuong = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedRound || !ideaId) return;
-    if (await themYTuong(selectedRound.id, ideaId, maYTuong.trim() || maGoiY, tang)) {
+    if (await themYTuong(selectedRound.id, ideaId, maYTuong.trim() || maGoiY, selectedRound.capXet)) {
       setIdeaId('');
       setMaYTuong('');
     }
@@ -134,6 +132,19 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
             placeholder="Không bắt buộc"
             className="w-full p-2 bg-white border border-slate-200 rounded-lg outline-none focus:border-amber-500 font-medium"
           />
+        </div>
+        <div className="space-y-1">
+          <label className="font-bold text-slate-700 block" title="Hai cấp họp tách bạch — đợt Lan tỏa chỉ nhận ý tưởng đã Vươn cành tối thiểu 30 ngày">
+            Cấp xét
+          </label>
+          <select
+            value={capXetMoi}
+            onChange={e => setCapXetMoi(e.target.value as CapXet)}
+            className="p-2 bg-white border border-slate-200 rounded-lg outline-none focus:border-amber-500 font-semibold"
+          >
+            <option value="Vươn cành">🌳 Xét Vươn cành</option>
+            <option value="Lan tỏa">⭐ Xét Lan tỏa</option>
+          </select>
         </div>
         <div className="space-y-1">
           <label className="font-bold text-slate-700 block" title="Quá hạn hệ thống tự chốt đợt; còn ≤3 ngày sẽ tự nhắc push thành viên chưa gửi phiếu">
@@ -178,9 +189,18 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
                     : 'Chưa đặt hạn gửi phiếu'}
                 </span>
               </button>
+              <span className={`px-2 py-0.5 rounded text-2xs font-bold ${TANG_DE_XUAT_INFO[r.capXet].badgeClass}`} title={CAP_XET_LABELS[r.capXet]}>
+                {r.capXet === 'Lan tỏa' ? '⭐ Lan tỏa' : '🌳 Vươn cành'}
+              </span>
               <span className={`px-2 py-0.5 rounded-full text-2xs font-black ${r.status === 'open' ? 'bg-emerald-100 text-emerald-700' : r.status === 'closed' ? 'bg-slate-200 text-slate-600' : 'bg-amber-100 text-amber-700'}`}>
                 {TRANG_THAI_DOT_LABELS[r.status]}
               </span>
+              {r.ghiSoLuc && (
+                <span className="px-2 py-0.5 rounded-full text-2xs font-black bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  title={`Thưởng đã ghi sổ lúc công bố ${new Date(r.ghiSoLuc).toLocaleString('vi-VN')}`}>
+                  💰 Đã ghi sổ
+                </span>
+              )}
               <span className={`px-2 py-0.5 rounded-full text-2xs font-black ${r.resultsPublished ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-500'}`}
                 title="Công bố/khóa kết quả do Chủ tịch Hội đồng hoặc Quản trị hệ thống bấm ở tab Kết quả tổng hợp">
                 {r.resultsPublished ? '🔓 Đã công bố' : '🔒 Chưa công bố'}
@@ -239,25 +259,11 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
               Trình ý tưởng vào đợt «{selectedRound.name}»
             </p>
             <p className="text-2xs text-slate-500">
-              Chỉ liệt kê ý tưởng đã bật cờ «Đề xuất Hội đồng» ở bảng theo dõi BHY Ideas.
-              Chọn tầng xét trước — danh sách ý tưởng lọc theo tầng.
+              {selectedRound.capXet === 'Vươn cành'
+                ? 'Đợt xét Vươn cành — chỉ liệt kê ý tưởng đã bật cờ «Đề xuất Hội đồng» và chưa lên cấp Vươn cành.'
+                : `Đợt xét Lan tỏa — chỉ liệt kê ý tưởng ĐÃ được Hội đồng công nhận Vươn cành; đủ điều kiện sau ${NGAY_TOI_THIEU_LAN_TOA} ngày triển khai. Không xét vượt cấp.`}
             </p>
             <div className="flex flex-wrap items-end gap-2">
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700 block">Tầng xét</label>
-                <select
-                  value={tang}
-                  onChange={e => {
-                    setTang(e.target.value as TangDeXuat);
-                    setIdeaId('');
-                  }}
-                  className="p-2 bg-white border border-slate-200 rounded-lg outline-none focus:border-violet-500 font-semibold"
-                >
-                  <option value="Vươn cành">Xét Vươn cành 🌳 (kỳ quý)</option>
-                  <option value="Lan tỏa">Xét nâng lên Lan tỏa ⭐ (kỳ xét riêng)</option>
-                  <option value="Lan tỏa trực tiếp">⚡ Xét thẳng Lan tỏa (đặc biệt)</option>
-                </select>
-              </div>
               <div className="flex-1 min-w-[220px] space-y-1">
                 <label className="font-bold text-slate-700 block">Ý tưởng</label>
                 <select
@@ -267,8 +273,11 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
                 >
                   <option value="">-- Chọn ý tưởng --</option>
                   {ungVien.map(c => (
-                    <option key={c.id} value={c.id}>
-                      [{c.development_level}] {c.title} — {c.department_name}
+                    <option key={c.ideaId} value={c.ideaId} disabled={!c.duDieuKien}>
+                      [{c.developmentLevel}] {c.title} — {c.departmentName}
+                      {!c.duDieuKien && c.duDieuKienTu
+                        ? ` (đủ điều kiện từ ${new Date(c.duDieuKienTu).toLocaleDateString('vi-VN')})`
+                        : ''}
                     </option>
                   ))}
                 </select>
@@ -292,20 +301,14 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
               </button>
             </div>
             <p className="text-2xs text-slate-500">
-              {TANG_DE_XUAT_INFO[tang].moTa} <b className="text-slate-600">Thưởng: {TANG_DE_XUAT_INFO[tang].thuong}.</b>
+              {TANG_DE_XUAT_INFO[selectedRound.capXet].moTa} <b className="text-slate-600">Thưởng: {TANG_DE_XUAT_INFO[selectedRound.capXet].thuong}.</b>
             </p>
-            {tang === 'Lan tỏa' && ungVien.length === 0 && (
+            {ungVien.length === 0 && (
               <p className="text-2xs text-slate-500 italic">
-                Chưa có ý tưởng nào ở Cấp độ Vươn cành để xét nâng — cập nhật cấp độ phát triển
-                ở bảng theo dõi BHY Ideas trước khi trình kỳ xét Lan tỏa.
+                {selectedRound.capXet === 'Lan tỏa'
+                  ? 'Chưa có ý tưởng nào ở cấp Vươn cành ngoài đợt này — cần một đợt xét Vươn cành công bố trước.'
+                  : 'Không còn ý tưởng nào đã bật cờ «Đề xuất Hội đồng» ngoài đợt này.'}
               </p>
-            )}
-            {TANG_DE_XUAT_INFO[tang].trucTiep && (
-              <div className="p-2.5 rounded-lg bg-violet-100 border border-violet-300 text-2xs text-violet-900 font-semibold">
-                ⚡ Cảnh báo: xét thẳng Lan tỏa khi chưa qua Vươn cành là trường hợp đặc biệt.
-                Ý tưởng sẽ mang dấu hiệu nhận diện riêng trên phiếu chấm của Hội đồng; nếu đạt,
-                thưởng cộng cả hai mức Vươn cành + Lan tỏa.
-              </div>
             )}
           </form>
 
@@ -339,12 +342,14 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
                     <button
                       type="button"
                       onClick={() => {
-                        if (window.confirm('Gỡ ý tưởng khỏi đợt chấm? Toàn bộ phiếu đã chấm cho ý tưởng này sẽ bị xóa.')) {
-                          void goYTuong(it.id);
-                        }
+                        const lyDo = window.prompt(
+                          `Rút «${it.ideaCode}» khỏi đợt? Phiếu đã chấm cho ý tưởng này sẽ bị xóa; chủ ý tưởng nhận thông báo kèm lý do bên dưới.\n\nLý do rút:`,
+                          'Xin rút để hoàn thiện thêm',
+                        );
+                        if (lyDo && lyDo.trim()) void rutYTuong(it.id, lyDo);
                       }}
                       className="p-1.5 rounded text-red-500 hover:bg-red-50 transition-all cursor-pointer"
-                      title="Gỡ khỏi đợt chấm"
+                      title="Rút khỏi đợt chấm (có lý do, báo chủ ý tưởng)"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -356,8 +361,8 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
                         {isSystemAdmin
                           ? 'Bạn là Quản trị hệ thống nên thấy danh tính; với Admin TCTH và Ban Giám đốc, phiếu hiển thị ẩn danh.'
                           : 'Phiếu hiển thị ẨN DANH — không ai ngoài Quản trị hệ thống biết ai chấm bao nhiêu.'}
-                        {' '}Mọi phiếu đều tính vào điểm; phiếu có khai xung đột lợi ích (A4) được đánh dấu
-                        để Hội đồng cân nhắc khi kết luận theo mục VI.4.
+                        {' '}Phiếu của thành viên cùng phòng / liên phòng với ý tưởng <b>bị loại khỏi điểm và mẫu số</b> (chốt 16/09/2026,
+                        đánh dấu ✖); các phiếu còn lại đều tính. Khai xung đột lợi ích (A4) chỉ đánh dấu để Hội đồng cân nhắc theo mục VI.4.
                       </p>
                       {phieuBiKhoa ? (
                         <p className="text-slate-500 italic">
@@ -375,6 +380,12 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
                             <UserRound className="w-3 h-3 text-slate-400" />
                             {tenTheoVoteId.get(v.voteId) ?? `Phiếu ẩn danh #${i + 1}`}
                           </span>
+                          {v.lyDoLoai && (
+                            <span className="text-2xs font-black text-red-600 bg-red-50 border border-red-200 rounded px-1.5 py-0.5"
+                              title={LY_DO_KHONG_CHAM_LABELS[v.lyDoLoai]}>
+                              ✖ Loại — {v.lyDoLoai === 'cung_phong' ? 'cùng phòng' : v.lyDoLoai === 'lien_phong' ? 'liên phòng' : 'tự đề xuất'}
+                            </span>
+                          )}
                           <span className={`text-2xs ${v.xungDot !== 'khong' ? 'font-bold text-amber-700' : 'text-slate-500'}`}>
                             {v.xungDot !== 'khong' && '⚠ '}{XUNG_DOT_LABELS[v.xungDot]}
                           </span>

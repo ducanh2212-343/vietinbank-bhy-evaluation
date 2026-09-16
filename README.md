@@ -198,7 +198,15 @@ trần 10MB cho bucket `bhy-one` vốn đang để không giới hạn.
   hai cột `phien_id`/`thu_tu` trên `portal_idea_council_items`, hàm `bhy_ideas_hd_mo_phien` /
   `bhy_ideas_hd_dong_phien`). Đợt «Tháng 6,7,8» đang chấm dở lúc áp nên migration này **chỉ cộng thêm**:
   không sửa, không xóa dòng nào; phiếu chấm, điểm tổng hợp và quorum giữ nguyên. `notify-ct2`
-  **đã deploy lại** (04/09/2026, bản 16). Tên file mang số thứ tự tăng dần
+  **đã deploy lại** (04/09/2026, bản 16). `20261032090000_bhy_ideas_hd_hai_cap_hop_va_loai_phieu_cung_phong`
+  **đã áp** (16/09/2026) — Hội đồng: `portal_ideas.phong_id` (khớp danh mục phòng, backfill 188/188),
+  bảng điểm danh `portal_idea_council_vang`, nhật ký rút `portal_idea_council_rut`, đợt có `cap_xet`
+  (Vươn cành / Lan tỏa) + `ghi_so_luc`; bỏ tầng «Lan tỏa trực tiếp»; trigger `f_pici_gac_cap_xet`
+  (≥ 30 ngày sau Vươn cành mới xét Lan tỏa); hàm gốc `bhy_ideas_hd_tinh_item` (loại phiếu cùng
+  phòng/liên phòng, mẫu số trừ vắng) nuôi `tong_hop` / `tien_do` / `phieu_an_danh`; `bhy_ideas_hd_cong_bo`
+  nay **ghi sổ thưởng + nâng cấp độ + báo chủ ý tưởng** (idempotent). Cùng ngày đã chỉnh dữ liệu:
+  14 phiếu A4 khai nhầm của Giám đốc về «Không»; anh Đỗ Việt Anh bật lại «Hoạt động» và ghi vắng có
+  phép cả đợt; BHYI-017 ghi nhật ký rút + báo tác giả. Tên file mang số thứ tự tăng dần
   chứ không phải ngày lịch (chuỗi Ideas đã vượt quá ngày thật từ 08/2026); mỗi file đều có
   bản gỡ ở `supabase/rollbacks/`.
 
