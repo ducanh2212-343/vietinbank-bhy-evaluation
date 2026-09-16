@@ -7,6 +7,7 @@ import { LoiViTri } from '@/lib/quyenViTri';
 import { ghiCauHinhBao } from '@/lib/trainingCenter';
 import { kyTepTrainingCenter } from './tepTrainingCenter';
 import { TOOLKIT_DU_LIEU_TOI_DA, kichThuocJson, type ToolkitLoai, type TtcToolkit } from '@/lib/toolkit';
+import type { KetQuaXemMa, KetQuaXinGhiDanh, NguoiDanhBa, TtcGhiDanh } from '@/lib/ttcGhiDanh';
 import type { KetQuaDiemDanh, TtcCauHinhDiemDanh, TtcDiemDanh, TtcQrNgay, TtcThuDinhVi } from '@/lib/diemDanh';
 import type {
   TtcChuongTrinh, TtcDauViec, TtcDiemBloom, TtcDiemKiem, TtcKetQuaNghiemThu, TtcLichSuChuan, TtcMucGiao,
@@ -723,4 +724,80 @@ export async function luuToolkit(p: {
 
 export async function xoaToolkit(id: string) {
   nemNeuLoi(await db.from('ttc_toolkit').delete().eq('id', id));
+}
+
+// ---------------------------------------------------------------------------
+// Đợt 14 — thêm học viên nhanh: danh bạ đủ cột để khớp, thêm hàng loạt, ghi danh
+// ---------------------------------------------------------------------------
+
+/**
+ * Danh bạ cán bộ đang làm việc, kèm email và mã cán bộ để khớp danh sách dán.
+ * Riêng cho Training Center (useCt2NhanSu chỉ lấy tên) — cache dài vì đổi hiếm.
+ */
+export function useTtcDanhBa() {
+  return useQuery({
+    queryKey: ['ttc', 'danh-ba'],
+    staleTime: NAM_PHUT,
+    queryFn: async () => {
+      const data = nemNeuLoi(await db.from('profiles').select('id, full_name, department_id, email, employee_code')
+        .eq('status', 'active').order('full_name')) as NguoiDanhBa[];
+      return data ?? [];
+    },
+  });
+}
+
+/** Thêm nhiều người một lần — máy chủ bỏ qua người đã có và tài khoản khách; trả số người thêm được */
+export async function themThanhVienHangLoat(ctId: string, nguoi: string[], vai: TtcVai = 'hoc_vien'): Promise<number> {
+  if (nguoi.length === 0) return 0;
+  return nemNeuLoi(await db.rpc('ttc_them_thanh_vien_hang_loat', { _ct: ctId, _nguoi: nguoi, _vai: vai })) as number;
+}
+
+/** Mở / đóng ghi danh bằng mã lớp; trả mã (null khi đóng) */
+export async function moGhiDanh(ctId: string, mo: boolean, capLai = false): Promise<string | null> {
+  return nemNeuLoi(await db.rpc('ttc_mo_ghi_danh', { _ct: ctId, _mo: mo, _cap_lai: capLai })) as string | null;
+}
+
+export async function datGhiDanhTuDuyet(ctId: string, tuDuyet: boolean) {
+  nemNeuLoi(await db.from('ttc_chuong_trinh').update({ ghi_danh_tu_duyet: tuDuyet }).eq('id', ctId));
+}
+
+export async function xemMaGhiDanh(ma: string): Promise<KetQuaXemMa> {
+  return nemNeuLoi(await db.rpc('ttc_xem_ma_ghi_danh', { _ma: ma })) as KetQuaXemMa;
+}
+
+export async function xinGhiDanh(ma: string): Promise<KetQuaXinGhiDanh> {
+  return nemNeuLoi(await db.rpc('ttc_xin_ghi_danh', { _ma: ma })) as KetQuaXinGhiDanh;
+}
+
+export async function duyetGhiDanh(id: string, dongY: boolean, lyDo?: string) {
+  nemNeuLoi(await db.rpc('ttc_duyet_ghi_danh', { _id: id, _dong_y: dongY, _ly_do: lyDo ?? null }));
+}
+
+/** Yêu cầu ghi danh của một lớp (TCTH / BGĐ của lớp thấy hết; RLS lọc) */
+export function useTtcGhiDanh(ctId: string | null) {
+  return useQuery({
+    queryKey: ['ttc', 'ghi-danh', ctId],
+    enabled: !!ctId,
+    staleTime: NUA_PHUT,
+    queryFn: async () => {
+      const rows = nemNeuLoi(await db.from('ttc_ghi_danh')
+        .select('*, profiles:nguoi(full_name, avatar_url)')
+        .eq('chuong_trinh_id', ctId!).order('created_at', { ascending: false })) as Array<TtcGhiDanh & { profiles?: { full_name: string; avatar_url: string | null } | null }>;
+      return (rows ?? []).map((r) => ({ ...r, full_name: r.profiles?.full_name, avatar_url: r.profiles?.avatar_url ?? null, profiles: undefined }));
+    },
+  });
+}
+
+/** Yêu cầu ghi danh của CHÍNH tôi — để danh mục hiện «đang chờ duyệt» */
+export function useTtcGhiDanhCuaToi() {
+  const { profileId } = useAuth();
+  return useQuery({
+    queryKey: ['ttc', 'ghi-danh-cua-toi', profileId],
+    enabled: !!profileId,
+    staleTime: NUA_PHUT,
+    queryFn: async () => {
+      const rows = nemNeuLoi(await db.from('ttc_ghi_danh').select('*').eq('nguoi', profileId!)) as TtcGhiDanh[];
+      return rows ?? [];
+    },
+  });
 }

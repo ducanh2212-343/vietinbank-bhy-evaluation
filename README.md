@@ -632,6 +632,22 @@ xuất PNG 2×; «Nộp thành tệp» đẩy PNG lên kho `bhy-training` tại
 chấm xem như tệp thường. Migration `20261021090000_ttc_toolkit.sql` **đã áp**.
 Chi tiết: mục 19 của tài liệu trên.
 
+**Thêm học viên nhanh (16/09/2026, đợt 14):** màn Quản trị thay ô xổ xuống
+150 tên bằng hộp thoại **«Thêm nhiều người»** — tìm tên không dấu, lọc theo
+phòng, tick cả phòng, hoặc **dán danh sách** từ Excel / Zalo (khớp theo tên bỏ
+dấu, email, mã cán bộ; trùng tên phải chỉ tay, không đoán) — gọi
+`ttc_them_thanh_vien_hang_loat` (chỉ quản trị lớp; bỏ qua người đã có và tài
+khoản khách). Cách thứ ba: **mã lớp / QR ghi danh** — `ttc_chuong_trinh.ma_ghi_danh`
+(6 ký tự, `ttc_mo_ghi_danh` cấp / đóng / cấp lại), cán bộ vào
+`/one/training-center/ghi-danh?ma=` xin vào (`ttc_xin_ghi_danh`), TCTH/BGĐ duyệt
+(`ttc_duyet_ghi_danh`) hoặc bật `ghi_danh_tu_duyet`; bảng `ttc_ghi_danh` chỉ
+đọc qua RLS, mọi ghi đi qua RPC; **`is_staff` gác ở máy chủ nên khách đối tác
+không có cửa**. Cùng migration vá lỗ hổng có sẵn: bốn hàm `ttc_la_quan_tri` /
+`ttc_sua_duoc_noi_dung` / `ttc_la_nguoi_cham` / `ttc_la_bgd` trả NULL cho cán bộ
+ngoài lớp nên `IF NOT …` trong plpgsql không chặn (cấp QR ngày, ghi hộ) — nay
+bọc `coalesce(…, false)`. Migration `20261031090000_ttc_ghi_danh.sql` **đã áp**.
+Chi tiết: mục 20 của tài liệu trên.
+
 ## Kênh Zalo OA & Quản trị Push (09/2026)
 
 **Mục tiêu:** đẩy tin Sao Xứng Đáng từ cổng vào nhóm Zalo GMF «343 - Bắc Hưng Yên

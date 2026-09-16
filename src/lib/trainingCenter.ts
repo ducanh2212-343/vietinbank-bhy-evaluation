@@ -119,6 +119,10 @@ export interface TtcChuongTrinh {
   nhac: unknown;
   /** Cấu hình điểm danh — đọc bằng docCauHinhDiemDanh() ở src/lib/diemDanh.ts */
   diem_danh: unknown;
+  /** Mã lớp 6 ký tự để cán bộ nội bộ tự ghi danh; null = đóng ghi danh (đợt 14) */
+  ma_ghi_danh?: string | null;
+  /** Quét mã là vào lớp ngay, không chờ TCTH duyệt */
+  ghi_danh_tu_duyet?: boolean;
 }
 
 export interface TtcThanhVien {
