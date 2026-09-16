@@ -5,12 +5,15 @@ import { IdeaHero, IdeaTabs } from '@/components/one/ideas/IdeaNav';
 import { useAuth } from '@/hooks/useAuth';
 import { TRANG_THAI_DOT_LABELS, TANG_DE_XUAT_INFO } from '@/lib/ideaCouncil';
 import {
+  LY_DO_KHONG_CHAM_LABELS,
   useCouncilMutations,
   useCouncilRoundItems,
   useCouncilRounds,
   useIdeaCouncilAccess,
   usePhienTrinhBay,
+  useToiDuocCham,
   type CouncilItem,
+  type LyDoKhongCham,
   type PhieuGui,
 } from '@/components/one/ideas/council/useIdeaCouncil';
 import { IdeaCouncilBoLoc } from '@/components/one/ideas/council/IdeaCouncilBoLoc';
@@ -23,7 +26,6 @@ import {
   type BoLocCham,
   type PhienTrinhBay,
 } from '@/lib/ideaCouncilPhien';
-import { useStaffDirectory } from '@/components/one/ideas/useStaffDirectory';
 import { IdeaCouncilVoteForm } from '@/components/one/ideas/council/IdeaCouncilVoteForm';
 import { IdeaCouncilSummary } from '@/components/one/ideas/council/IdeaCouncilSummary';
 import { IdeaCouncilAdmin } from '@/components/one/ideas/council/IdeaCouncilAdmin';
@@ -36,11 +38,11 @@ import { IdeaCouncilAdmin } from '@/components/one/ideas/council/IdeaCouncilAdmi
 type Tab = 'cham-diem' | 'tong-hop' | 'quan-tri';
 
 /** Thẻ một ý tưởng trong danh sách chấm: thông tin B1-B4 + nội dung + phiếu */
-function ItemCard({ item, readOnly, biChanTuCham, tenPhien, onSubmit }: {
+function ItemCard({ item, readOnly, lyDoKhongCham, tenPhien, onSubmit }: {
   item: CouncilItem;
   readOnly: boolean;
-  /** Người xem là chủ/đồng đề xuất ý tưởng — RLS chặn chấm, UI báo trước */
-  biChanTuCham: boolean;
+  /** Máy chủ bảo người xem KHÔNG chấm ý tưởng này (tự đề xuất / cùng phòng / liên phòng) — RLS chặn, UI báo trước */
+  lyDoKhongCham: LyDoKhongCham | null;
   /** Tên phiên trình bày chứa ý tưởng này (nếu đã xếp phiên) */
   tenPhien: string | null;
   onSubmit: (itemId: string, phieu: PhieuGui, trangThai: 'draft' | 'submitted') => Promise<boolean>;
@@ -85,14 +87,6 @@ function ItemCard({ item, readOnly, biChanTuCham, tenPhien, onSubmit }: {
             <span className="px-2 py-0.5 rounded-md text-2xs font-black bg-emerald-50 text-emerald-700 border border-emerald-200">🧪 Có Demo</span>
           )}
         </div>
-        {/* Dấu hiệu nhận diện riêng cho trường hợp xét thẳng Lan tỏa (yêu cầu vận hành) */}
-        {TANG_DE_XUAT_INFO[item.proposedTier].trucTiep && (
-          <div className="p-2.5 rounded-lg bg-violet-50 border border-violet-300 text-2xs text-violet-800 font-semibold">
-            ⚡ Trường hợp đặc biệt: ý tưởng được trình <b>xét thẳng Cấp độ Lan tỏa</b> khi chưa qua
-            Vươn cành. Nếu Hội đồng thông qua, ý tưởng được thưởng gộp cả hai mức
-            (1.000.000đ Vươn cành + 2.000.000–3.000.000đ Lan tỏa).
-          </div>
-        )}
         <p className="text-2xs text-slate-500 font-semibold">💰 {TANG_DE_XUAT_INFO[item.proposedTier].thuong}</p>
         <h3 className="font-black text-slate-800 text-sm sm:text-base leading-snug">{item.idea.title}</h3>
         <p className="text-2xs text-slate-500">
@@ -122,11 +116,11 @@ function ItemCard({ item, readOnly, biChanTuCham, tenPhien, onSubmit }: {
       </div>
 
       <div className="p-4 sm:p-5">
-        {biChanTuCham ? (
+        {lyDoKhongCham ? (
           <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 font-semibold">
-            ⚖️ Bạn là người đề xuất/đồng đề xuất ý tưởng này nên <b>không chấm điểm</b> ý tưởng
-            của chính mình (nguyên tắc xử lý xung đột lợi ích — hệ thống chặn tự động, phiếu của
-            bạn không tính vào mẫu số quorum của ý tưởng này).
+            ⚖️ {LY_DO_KHONG_CHAM_LABELS[lyDoKhongCham]} nên <b>không chấm điểm</b> ý tưởng này
+            (nguyên tắc xử lý xung đột lợi ích — hệ thống xác định theo danh bạ; bạn không tính vào
+            mẫu số quorum của ý tưởng này).
           </div>
         ) : (
           <IdeaCouncilVoteForm
@@ -187,7 +181,6 @@ function DaiDangTrinh({ phien, soYTuong, dangBamTheo, onBamTheo, onXemCaDot }: {
 export default function OneIdeaCouncilPage() {
   const { user } = useAuth();
   const { loading, isMember, isChair, isAdmin, isSystemAdmin } = useIdeaCouncilAccess();
-  const { me } = useStaffDirectory();
   const { rounds, isLoading: loadingRounds } = useCouncilRounds(isMember || isAdmin);
   const [roundId, setRoundId] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('cham-diem');
@@ -229,11 +222,11 @@ export default function OneIdeaCouncilPage() {
     datLoc(l => ({ ...l, phienId: id }));
   }, [dangTrinh, phienDaBam]);
 
-  // Chặn tự chấm — cùng logic với policy INSERT (tài khoản + họ tên trong nhóm đề xuất)
-  const tenChuan = (me?.fullName ?? '').toLowerCase().trim();
-  const biChan = (item: CouncilItem): boolean =>
-    item.idea.createdBy === user?.id
-    || (!!tenChuan && item.idea.proposer.split(',').map(x => x.toLowerCase().trim()).includes(tenChuan));
+  // Ai không được chấm ý tưởng nào — MÁY CHỦ quyết theo danh bạ (tự đề xuất,
+  // cùng phòng, liên phòng), cùng hàm với RLS và với phép tính điểm. Client
+  // không tự suy nữa để không có hai luật lệch nhau.
+  const { lyDoKhongCham } = useToiDuocCham(roundId, isMember || isAdmin);
+  const biChan = (item: CouncilItem): boolean => lyDoKhongCham.has(item.id);
 
   const duocCham = items.filter(i => !biChan(i));
   const daGui = duocCham.filter(i => i.myVote?.status === 'submitted').length;
@@ -378,7 +371,7 @@ export default function OneIdeaCouncilPage() {
                       key={item.id}
                       item={item}
                       readOnly={selectedRound?.status !== 'open'}
-                      biChanTuCham={biChan(item)}
+                      lyDoKhongCham={lyDoKhongCham.get(item.id) ?? null}
                       tenPhien={item.sessionId ? tenPhienTheoId.get(item.sessionId) ?? null : null}
                       onSubmit={guiPhieu}
                     />

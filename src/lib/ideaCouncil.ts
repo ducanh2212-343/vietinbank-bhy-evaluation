@@ -6,16 +6,32 @@
 export type XungDotLoiIch = 'khong' | 'cung_phong' | 'phoi_hop';
 export type DeXuatHoiDong = 'khong_xet' | 'can_bo_sung' | 'vuon_canh' | 'lan_toa';
 /**
- * Tầng TCTH trình Hội đồng — mô hình thưởng CỘNG DỒN (chốt vận hành 08/2026,
- * văn bản chương trình sẽ cập nhật sau):
- * - 'Vươn cành': xét công nhận Vươn cành ở kỳ quý — thưởng 1M.
- * - 'Lan tỏa': KỲ XÉT LAN TỎA RIÊNG (đầu/cuối quý IV) cho ý tưởng ĐÃ đạt
- *   Vươn cành, xem quá trình triển khai — nếu đạt được thưởng THÊM 2-3M.
- * - 'Lan tỏa trực tiếp': trường hợp đặc biệt xét thẳng Lan tỏa khi chưa qua
- *   Vươn cành — phải mang dấu hiệu nhận diện riêng; nếu đạt, thưởng GỘP 1M + 2-3M.
+ * HAI CẤP HỌP tách bạch (chốt Giám đốc 16/09/2026, theo quy chế):
+ * - 'Vươn cành': đợt xét công nhận Vươn cành — thưởng 1M.
+ * - 'Lan tỏa': đợt XÉT LAN TỎA RIÊNG cho ý tưởng ĐÃ được Hội đồng công nhận
+ *   Vươn cành và đã triển khai tối thiểu NGAY_TOI_THIEU_LAN_TOA ngày — đạt thì
+ *   thưởng THÊM 2–3M. Thời điểm mở đợt do Chủ tịch Hội đồng quyết, TCTH mở.
+ *
+ * Tầng «Lan tỏa trực tiếp» (xét thẳng khi chưa qua Vươn cành) ĐÃ BỎ: quy chế
+ * không cho xét vượt cấp khi chưa qua Hội đồng đánh giá. Cấp xét là thuộc tính
+ * của ĐỢT (cap_xet); tầng của từng ý tưởng suy thẳng từ đợt, giao diện không
+ * chọn nữa và CSDL (trigger f_pici_gac_cap_xet) chặn ý tưởng không hợp cấp.
  */
-export type TangDeXuat = 'Vươn cành' | 'Lan tỏa' | 'Lan tỏa trực tiếp';
+export type TangDeXuat = 'Vươn cành' | 'Lan tỏa';
+export type CapXet = TangDeXuat;
 export type TrangThaiDot = 'draft' | 'open' | 'closed';
+
+/**
+ * Số ngày tối thiểu triển khai sau khi được công nhận Vươn cành mới được trình
+ * xét Lan tỏa. Trùng hàm SQL bhy_ideas_hd_ngay_toi_thieu_lan_toa() — đổi thì
+ * đổi cả hai.
+ */
+export const NGAY_TOI_THIEU_LAN_TOA = 30;
+
+export const CAP_XET_LABELS: Record<CapXet, string> = {
+  'Vươn cành': 'Đợt xét Vươn cành',
+  'Lan tỏa': 'Đợt xét Lan tỏa',
+};
 
 export type TieuChiKey = 'problem' | 'impact' | 'feasible' | 'safety' | 'scale';
 
@@ -59,7 +75,7 @@ export const MUC_DIEM: { diem: number; yNghia: string }[] = [
   { diem: 5, yNghia: 'Rất tốt, nên ưu tiên' },
 ];
 
-/** A4 — khai báo xung đột lợi ích */
+/** A4 cũ — chỉ còn để hiển thị phiếu đã lưu trước 16/09/2026 */
 export const XUNG_DOT_LABELS: Record<XungDotLoiIch, string> = {
   khong: 'Không',
   cung_phong: 'Có — thuộc phòng/đơn vị đề xuất ý tưởng',
@@ -86,8 +102,6 @@ export interface TangDeXuatInfo {
   moTa: string;
   thuong: string;
   badgeClass: string;
-  /** Trường hợp đặc biệt xét thẳng Lan tỏa — cần cảnh báo/dấu hiệu riêng */
-  trucTiep?: boolean;
 }
 
 export const TANG_DE_XUAT_INFO: Record<TangDeXuat, TangDeXuatInfo> = {
@@ -99,21 +113,17 @@ export const TANG_DE_XUAT_INFO: Record<TangDeXuat, TangDeXuatInfo> = {
   },
   'Lan tỏa': {
     nhan: 'Xét nâng lên Lan tỏa',
-    moTa: 'Kỳ xét Lan tỏa riêng (đầu/cuối quý IV) cho ý tưởng ĐÃ đạt Vươn cành — đánh giá quá trình triển khai sau khi được công nhận.',
-    thuong: 'Thưởng thêm 2.000.000–3.000.000đ (ngoài 1.000.000đ Vươn cành đã nhận)',
+    moTa: `Đợt xét Lan tỏa riêng cho ý tưởng ĐÃ được Hội đồng công nhận Vươn cành và đã triển khai tối thiểu ${NGAY_TOI_THIEU_LAN_TOA} ngày — đánh giá quá trình triển khai sau khi được công nhận.`,
+    thuong: 'Thưởng thêm 2.000.000đ/ý tưởng (ngoài 1.000.000đ Vươn cành đã nhận)',
     badgeClass: 'bg-rose-100 text-rose-700',
-  },
-  'Lan tỏa trực tiếp': {
-    nhan: '⚡ Xét thẳng Lan tỏa',
-    moTa: 'Trường hợp đặc biệt: ý tưởng chưa qua Vươn cành được xét thẳng Cấp độ Lan tỏa — mang dấu hiệu nhận diện riêng trên phiếu chấm.',
-    thuong: 'Cộng cả hai mức 3.000.000–4.000.000đ (1.000.000đ Vươn cành + 2.000.000–3.000.000đ Lan tỏa)',
-    badgeClass: 'bg-violet-100 text-violet-700 border border-violet-300',
-    trucTiep: true,
   },
 };
 
-// Ngưỡng xét thưởng (mục VI.3). Tỷ lệ đồng ý so trên số phiếu hợp lệ
-// (số thành viên đã tham gia chấm — mọi phiếu đều tính).
+// Ngưỡng xét thưởng (mục VI.3). Tỷ lệ đồng ý so trên số phiếu HỢP LỆ.
+// Chốt 16/09/2026: phiếu của thành viên thuộc phòng đề xuất, hoặc thuộc phòng
+// có cán bộ đồng đề xuất (ý tưởng liên phòng), BỊ LOẠI khỏi cả điểm lẫn mẫu
+// số — luật này nằm ở SQL (bhy_ideas_hd_phieu_hop_le) vì điểm do CSDL tính;
+// client chỉ hiển thị số phiếu bị loại.
 export const NGUONG_VUON_CANH = { diemTbChung: 3.5, diemAnToan: 3 } as const;
 export const NGUONG_LAN_TOA = { diemTbChung: 4.0, diemNhanRong: 4, diemAnToan: 3 } as const;
 
@@ -121,13 +131,23 @@ export const NGUONG_LAN_TOA = { diemTbChung: 4.0, diemNhanRong: 4, diemAnToan: 3
 // từ client là phép chia số thực) — tránh 3.4999999 < 3.5 oan.
 const EPS = 1e-9;
 
+/*
+ * CÂU A4 (tự khai xung đột lợi ích) ĐÃ BỎ — chốt Giám đốc 16/09/2026.
+ * Ai liên quan tới ý tưởng (tự đề xuất, cùng phòng, phòng có cán bộ đồng đề
+ * xuất) thì MÁY nhận diện theo danh bạ (bhy_ideas_hd_ly_do_khong_cham) và
+ * người đó không chấm — không hỏi, không tích chọn. Ban Giám đốc phụ trách chung
+ * nên không áp nguyên tắc phòng, chỉ không tự chấm ý tưởng mình đề xuất.
+ * XungDotLoiIch chỉ còn để đọc phiếu cũ.
+ */
+
 /** D2 bắt buộc khi thành viên đề xuất Không xét thưởng / Cần bổ sung */
 export function canGopY(deXuat: DeXuatHoiDong): boolean {
   return deXuat === 'khong_xet' || deXuat === 'can_bo_sung';
 }
 
 export interface PhieuChamInput {
-  xungDot: XungDotLoiIch | null;
+  /** A4 cũ — không còn hỏi, giữ để đọc phiếu cũ */
+  xungDot?: XungDotLoiIch | null;
   diem: Partial<Record<TieuChiKey, number>>;
   deXuat: DeXuatHoiDong | null;
   gopY: string;
@@ -136,7 +156,6 @@ export interface PhieuChamInput {
 /** Kiểm tra phiếu trước khi gửi — trả danh sách lỗi theo thứ tự trên form */
 export function loiPhieu(phieu: PhieuChamInput): string[] {
   const loi: string[] = [];
-  if (!phieu.xungDot) loi.push('Chưa khai báo xung đột lợi ích (A4)');
   for (const tc of TIEU_CHI_HOI_DONG) {
     const d = phieu.diem[tc.key];
     if (typeof d !== 'number' || d < 1 || d > 5) {
@@ -152,7 +171,7 @@ export function loiPhieu(phieu: PhieuChamInput): string[] {
 
 /** Một phiếu chấm đã lưu — đầu vào của phép tổng hợp phía admin */
 export interface PhieuCham {
-  xungDot: XungDotLoiIch;
+  xungDot?: XungDotLoiIch | null;
   diem: Record<TieuChiKey, number>;
   deXuat: DeXuatHoiDong;
 }
@@ -163,13 +182,17 @@ export interface PhieuCham {
  * kết luận, không tự loại phiếu nào.
  */
 export interface TongHopYTuong {
-  /** Số phiếu hợp lệ = số thành viên đã GỬI phiếu (nháp không tính) */
+  /** Số phiếu hợp lệ = phiếu đã GỬI của thành viên không bị loại (nháp không tính) */
   soPhieuHopLe: number;
   /**
-   * Tổng thành viên Hội đồng đủ điều kiện chấm ý tưởng này (đang hoạt động,
-   * trừ người bị chặn tự chấm) — mẫu số của quorum
+   * Tổng thành viên đủ điều kiện chấm ý tưởng này — đang hoạt động, không tự
+   * chấm, không cùng/liên phòng, không vắng (điểm danh) — mẫu số của quorum
    */
   tongThanhVien: number;
+  /** Phiếu đã gửi nhưng bị loại vì cùng phòng / liên phòng — chỉ để hiển thị */
+  soPhieuBiLoai?: number;
+  /** Thành viên đủ điều kiện nhưng vắng có phép (đã rút khỏi mẫu số) */
+  soVang?: number;
   /** Số phiếu khai A4 ≠ «Không» — Hội đồng cân nhắc theo mục VI.4 */
   soPhieuXungDot: number;
   /** Điểm TB từng tiêu chí; null khi chưa có phiếu */
@@ -198,7 +221,7 @@ export function tongHopPhieu(phieu: PhieuCham[], tongThanhVien: number): TongHop
   return {
     soPhieuHopLe: phieu.length,
     tongThanhVien,
-    soPhieuXungDot: phieu.filter(p => p.xungDot !== 'khong').length,
+    soPhieuXungDot: phieu.filter(p => !!p.xungDot && p.xungDot !== 'khong').length,
     diemTieuChi,
     diemTbChung,
     soDongYVuonCanh: deXuatDem.vuon_canh + deXuatDem.lan_toa,
@@ -277,8 +300,8 @@ export function xetLanToa(t: TongHopYTuong): KetQuaNguong {
   return { dat: lyDo.length === 0, lyDo };
 }
 
-/** Kết luận gợi ý — phân biệt Lan tỏa "thưởng thêm" và Lan tỏa trực tiếp "thưởng gộp" */
-export type KetLuanTang = 'vuon_canh' | 'lan_toa_them' | 'lan_toa_truc_tiep' | null;
+/** Kết luận theo ngưỡng — Vươn cành (1M) hoặc Lan tỏa thưởng thêm (2–3M) */
+export type KetLuanTang = 'vuon_canh' | 'lan_toa_them' | null;
 
 export interface KetLuanDeXuat {
   ketLuan: KetLuanTang;
@@ -290,14 +313,13 @@ export interface KetLuanDeXuat {
 }
 
 /**
- * Kết luận HỆ THỐNG GỢI Ý theo ngưỡng — quyết định cuối cùng vẫn thuộc Hội
- * đồng (quy chế cho Hội đồng cân nhắc xung đột lợi ích, ngân sách…).
- * Theo tầng TCTH trình:
- * - 'Vươn cành': đạt/không đạt ngưỡng Vươn cành, không gợi ý vượt tầng.
- * - 'Lan tỏa' (kỳ xét nâng cấp): ý tưởng ĐÃ là Vươn cành — đạt thì thưởng
- *   THÊM mức Lan tỏa; không đạt thì GIỮ Vươn cành (không thưởng lại 1M).
- * - 'Lan tỏa trực tiếp': đạt Lan tỏa thì thưởng GỘP hai mức; hụt Lan tỏa
- *   nhưng đủ ngưỡng Vươn cành thì hạ về công nhận Vươn cành (1M).
+ * Kết luận theo ngưỡng — cùng luật với bhy_ideas_hd_tinh_item ở SQL, là hàm
+ * thật sự ghi sổ khi công bố. Bản client này để hiển thị và để test luật; khi
+ * tổng hợp từ máy chủ có sẵn ket_luan thì màn hình ưu tiên giá trị đó.
+ * Theo cấp xét của đợt:
+ * - 'Vươn cành': đạt/không đạt ngưỡng Vươn cành.
+ * - 'Lan tỏa': ý tưởng ĐÃ là Vươn cành — đạt thì thưởng THÊM mức Lan tỏa;
+ *   không đạt thì GIỮ Vươn cành (không thưởng lại 1M).
  */
 export function ketLuanDeXuat(t: TongHopYTuong, tangDeXuat: TangDeXuat): KetLuanDeXuat {
   const vuonCanh = xetVuonCanh(t);
@@ -318,21 +340,10 @@ export function ketLuanDeXuat(t: TongHopYTuong, tangDeXuat: TangDeXuat): KetLuan
     return nhanChuaDat('Chưa đạt ngưỡng Vươn cành');
   }
 
-  if (tangDeXuat === 'Lan tỏa') {
-    if (lanToa.dat) {
-      return { ketLuan: 'lan_toa_them', nhan: 'Đạt nâng lên Cấp độ Lan tỏa', thuong: TANG_DE_XUAT_INFO['Lan tỏa'].thuong, vuonCanh, lanToa };
-    }
-    return nhanChuaDat('Chưa đạt Lan tỏa — giữ Cấp độ Vươn cành');
-  }
-
-  // Lan tỏa trực tiếp
   if (lanToa.dat) {
-    return { ketLuan: 'lan_toa_truc_tiep', nhan: 'Đạt xét thẳng Cấp độ Lan tỏa', thuong: TANG_DE_XUAT_INFO['Lan tỏa trực tiếp'].thuong, vuonCanh, lanToa };
+    return { ketLuan: 'lan_toa_them', nhan: 'Đạt nâng lên Cấp độ Lan tỏa', thuong: TANG_DE_XUAT_INFO['Lan tỏa'].thuong, vuonCanh, lanToa };
   }
-  if (vuonCanh.dat) {
-    return { ketLuan: 'vuon_canh', nhan: 'Hụt Lan tỏa — đạt Cấp độ Vươn cành', thuong: TANG_DE_XUAT_INFO['Vươn cành'].thuong, vuonCanh, lanToa };
-  }
-  return nhanChuaDat('Chưa đạt ngưỡng xét thưởng');
+  return nhanChuaDat('Chưa đạt Lan tỏa — giữ Cấp độ Vươn cành');
 }
 
 /** Gợi ý mã kế tiếp TCTH cấp trong đợt: BHYI-<năm>-NNN theo số lớn nhất đã cấp */
@@ -366,15 +377,24 @@ export interface DongTongHopRpc {
   proposer: string;
   tongHop: TongHopYTuong;
   gopY: string[];
+  /** Kết luận do MÁY CHỦ tính (chính là cái ghi sổ khi công bố); null = chưa đạt */
+  ketLuanMayChu: 'vuon_canh' | 'lan_toa' | null;
+  lyDoChuaDat: string[];
 }
 
 /** Đọc payload jsonb của RPC về cấu trúc TongHopYTuong dùng chung với client */
 export function docTongHopRpc(payload: unknown): {
-  round: { id: string; name: string; status: TrangThaiDot; resultsPublished: boolean };
+  round: {
+    id: string; name: string; status: TrangThaiDot; resultsPublished: boolean;
+    capXet: CapXet; ghiSoLuc: string | null;
+  };
   items: DongTongHopRpc[];
 } {
   const raw = payload as {
-    round: { id: string; name: string; status: TrangThaiDot; results_published?: boolean };
+    round: {
+      id: string; name: string; status: TrangThaiDot; results_published?: boolean;
+      cap_xet?: string; ghi_so_luc?: string | null;
+    };
     items: Array<Record<string, unknown>>;
   };
   const num = (v: unknown): number | null =>
@@ -386,6 +406,8 @@ export function docTongHopRpc(payload: unknown): {
       name: raw.round.name,
       status: raw.round.status,
       resultsPublished: raw.round.results_published ?? false,
+      capXet: (raw.round.cap_xet === 'Lan tỏa' ? 'Lan tỏa' : 'Vươn cành'),
+      ghiSoLuc: raw.round.ghi_so_luc ?? null,
     },
     items: (raw.items ?? []).map((r): DongTongHopRpc => {
       const deXuatDem: Record<DeXuatHoiDong, number> = {
@@ -406,6 +428,8 @@ export function docTongHopRpc(payload: unknown): {
         tongHop: {
           soPhieuHopLe: int(r.total_votes),
           tongThanhVien: int(r.eligible_members),
+          soPhieuBiLoai: int(r.so_phieu_bi_loai),
+          soVang: int(r.so_vang),
           soPhieuXungDot: int(r.conflict_votes),
           diemTieuChi: {
             problem: num(r.avg_problem),
@@ -420,6 +444,8 @@ export function docTongHopRpc(payload: unknown): {
           deXuatDem,
         },
         gopY: Array.isArray(r.gop_y) ? (r.gop_y as string[]) : [],
+        ketLuanMayChu: r.ket_luan === 'vuon_canh' || r.ket_luan === 'lan_toa' ? r.ket_luan : null,
+        lyDoChuaDat: Array.isArray(r.ly_do_chua_dat) ? (r.ly_do_chua_dat as string[]) : [],
       };
     }),
   };

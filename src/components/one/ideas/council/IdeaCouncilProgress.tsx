@@ -1,11 +1,16 @@
 import React, { useState } from 'react';
-import { BellRing, Crown, ListChecks } from 'lucide-react';
-import { useCouncilMutations, useCouncilProgress, type CouncilRound } from './useIdeaCouncil';
+import { BellRing, Crown, ListChecks, UserMinus, UserPlus } from 'lucide-react';
+import { useCouncilMutations, useCouncilProgress, useDiemDanh, type CouncilRound } from './useIdeaCouncil';
 
 // Tiến độ chấm để ĐÔN ĐỐC (TCTH + Chủ tịch) — học CouncilProgressTab của Hội
 // đồng đầu mối: hiển thị TÊN THẬT + trạng thái gửi/nháp/thiếu, TUYỆT ĐỐI không
 // điểm số (tách «ai đã nộp» khỏi «ai chấm bao nhiêu»). Nhắc bằng PUSH, không
 // email (chốt 08/2026).
+//
+// ĐIỂM DANH (16/09/2026): người vắng CẢ ĐỢT đánh dấu ở đây (vắng một phiên thì
+// đánh dấu ở khung Phiên trình bày). Thay cho cách cũ tắt «Hoạt động» rồi bật
+// lại — đợt đầu đã có ca một người vắng khóa 11 ý tưởng, và tắt xong dễ quên
+// bật. Người vắng rút khỏi mẫu số quorum; đã gửi phiếu thì không tính vắng.
 
 export const IdeaCouncilProgress: React.FC<{ round: CouncilRound | null }> = ({ round }) => {
   const { progress, isLoading, error } = useCouncilProgress(
@@ -13,10 +18,15 @@ export const IdeaCouncilProgress: React.FC<{ round: CouncilRound | null }> = ({ 
     !!round,
     round?.status === 'open',
   );
-  const { nhacPush } = useCouncilMutations(round?.id ?? null);
+  const { nhacPush, ghiVang, boVang } = useCouncilMutations(round?.id ?? null);
+  const { vang } = useDiemDanh(round?.id ?? null, !!round);
   const [dangNhac, setDangNhac] = useState<string | null>(null);
 
   if (!round) return null;
+
+  // Chỉ dòng vắng CẢ ĐỢT (phienId null) — vắng phiên hiện ở khung Phiên trình bày
+  const vangCaDot = new Map(vang.filter(v => !v.phienId).map(v => [v.profileId, v]));
+  const dangKhoa = round.status === 'closed' && !!round.ghiSoLuc;
 
   const nhac = async (profileIds?: string[]) => {
     setDangNhac(profileIds?.[0] ?? 'all');
@@ -91,10 +101,56 @@ export const IdeaCouncilProgress: React.FC<{ round: CouncilRound | null }> = ({ 
                 {m.draft > 0 && (
                   <span className="text-2xs font-bold text-slate-500">✏️ {m.draft} nháp</span>
                 )}
+                {m.khongCham > 0 && (
+                  <span className="text-2xs font-bold text-slate-400" title="Không chấm vì tự đề xuất / cùng phòng / liên phòng — đã trừ khỏi số phải chấm">
+                    ⚖️ {m.khongCham} không chấm
+                  </span>
+                )}
+                {vangCaDot.has(m.profileId) ? (
+                  <span className="text-2xs font-black text-rose-700 bg-rose-50 border border-rose-200 rounded px-1.5 py-0.5"
+                    title={vangCaDot.get(m.profileId)?.lyDo ?? 'Vắng có phép cả đợt'}>
+                    Vắng có phép cả đợt
+                  </span>
+                ) : m.vang > 0 ? (
+                  <span className="text-2xs font-bold text-rose-600" title="Vắng một số phiên — đánh dấu ở khung Phiên trình bày">
+                    vắng {m.vang} ý tưởng
+                  </span>
+                ) : null}
                 {m.pendingCodes.length > 0 && (
                   <span className="text-2xs text-slate-400 flex-1 min-w-[120px]" title="Ý tưởng còn thiếu phiếu">
                     Thiếu: {m.pendingCodes.join(', ')}
                   </span>
+                )}
+                {!dangKhoa && (
+                  vangCaDot.has(m.profileId) ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm(`Bỏ đánh dấu vắng cả đợt của ${m.fullName}? Người này sẽ quay lại mẫu số quorum.`)) {
+                          void boVang(vangCaDot.get(m.profileId)!.id);
+                        }
+                      }}
+                      className="p-1.5 rounded text-slate-500 hover:bg-slate-100 transition-all cursor-pointer"
+                      title="Bỏ đánh dấu vắng cả đợt"
+                    >
+                      <UserPlus className="w-3.5 h-3.5" />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const lyDo = window.prompt(
+                          `Đánh dấu ${m.fullName} VẮNG CÓ PHÉP cả đợt «${round.name}»?\nNgười này rút khỏi mẫu số quorum của mọi ý tưởng trong đợt (phiếu đã gửi vẫn tính). Vắng một phiên thì đánh dấu ở khung Phiên trình bày.\n\nLý do (ghi vào biên bản):`,
+                          'Vắng có phép — công tác',
+                        );
+                        if (lyDo !== null) void ghiVang(round.id, m.profileId, null, lyDo);
+                      }}
+                      className="p-1.5 rounded text-rose-500 hover:bg-rose-50 transition-all cursor-pointer"
+                      title="Đánh dấu vắng có phép cả đợt"
+                    >
+                      <UserMinus className="w-3.5 h-3.5" />
+                    </button>
+                  )
                 )}
                 {round.status === 'open' && !du && (
                   <button

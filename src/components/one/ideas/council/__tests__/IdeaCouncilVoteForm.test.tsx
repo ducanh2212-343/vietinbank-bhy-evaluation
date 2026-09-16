@@ -74,3 +74,15 @@ describe('Phiếu chấm của Hội đồng — nhịp xác nhận 3 giây', ()
     expect(onSubmit.mock.calls[0][1]).toBe('draft');
   });
 });
+
+describe('Câu A4 đã bỏ (16/09/2026) — ai liên quan thì không chấm, không hỏi', () => {
+  it('phiếu không còn câu A4, gửi đủ C1–C5 + D1 là được', () => {
+    const onSubmit = vi.fn().mockResolvedValue(true);
+    render(<IdeaCouncilVoteForm myVote={PHIEU_DU} readOnly={false} onSubmit={onSubmit} />);
+    expect(screen.queryByText(/A4\./)).toBeNull();
+    expect(screen.queryByText('Có — thuộc phòng/đơn vị đề xuất ý tưởng')).toBeNull();
+    fireEvent.click(screen.getByText('Lưu nháp'));
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onSubmit.mock.calls[0][0].xungDot).toBeNull();
+  });
+});

@@ -4,19 +4,19 @@ import {
   DE_XUAT_LABELS,
   MUC_DIEM,
   TIEU_CHI_HOI_DONG,
-  XUNG_DOT_LABELS,
   canGopY,
   loiPhieu,
   type DeXuatHoiDong,
   type TieuChiKey,
-  type XungDotLoiIch,
 } from '@/lib/ideaCouncil';
 import { NutXacNhanCham } from '../NutXacNhanCham';
 import type { CouncilVote, PhieuGui } from './useIdeaCouncil';
 
 // Phiếu chấm điểm của thành viên Hội đồng — đúng bộ câu hỏi Phụ lục 06:
 // A1-A3 (danh tính) lấy từ tài khoản đăng nhập, B1-B4 (thông tin ý tưởng) hiển
-// thị từ dữ liệu TCTH trình — thành viên chỉ nhập A4, C1-C5, D1, D2.
+// thị từ dữ liệu TCTH trình — thành viên chỉ nhập C1-C5, D1, D2.
+// Câu A4 (tự khai xung đột lợi ích) ĐÃ BỎ 16/09/2026: ai liên quan thì máy nhận
+// diện theo danh bạ và không được chấm ngay từ đầu — xem OneIdeaCouncilPage.
 // HAI PHA như Hội đồng đầu mối: «Lưu nháp» giữ dở dang (không vào tổng hợp,
 // không cần đủ câu), «Gửi phiếu» mới validate đủ Phụ lục 06.
 //
@@ -35,11 +35,9 @@ interface IdeaCouncilVoteFormProps {
   onSubmit: (phieu: PhieuGui, trangThai: 'draft' | 'submitted') => Promise<boolean>;
 }
 
-const XUNG_DOT_OPTIONS = Object.keys(XUNG_DOT_LABELS) as XungDotLoiIch[];
 const DE_XUAT_OPTIONS = Object.keys(DE_XUAT_LABELS) as DeXuatHoiDong[];
 
 export const IdeaCouncilVoteForm: React.FC<IdeaCouncilVoteFormProps> = ({ myVote, readOnly, onSubmit }) => {
-  const [xungDot, setXungDot] = useState<XungDotLoiIch | null>(null);
   const [diem, setDiem] = useState<Partial<Record<TieuChiKey, number>>>({});
   const [deXuat, setDeXuat] = useState<DeXuatHoiDong | null>(null);
   const [gopY, setGopY] = useState('');
@@ -48,7 +46,6 @@ export const IdeaCouncilVoteForm: React.FC<IdeaCouncilVoteFormProps> = ({ myVote
 
   // Đổ sẵn phiếu đã lưu để thành viên sửa trong thời gian đợt còn mở
   useEffect(() => {
-    setXungDot(myVote?.xungDot ?? null);
     setDiem(myVote ? { ...myVote.diem } : {});
     setDeXuat(myVote?.deXuat ?? null);
     setGopY(myVote?.gopY ?? '');
@@ -57,7 +54,7 @@ export const IdeaCouncilVoteForm: React.FC<IdeaCouncilVoteFormProps> = ({ myVote
 
   /** Đủ câu chưa — chạy trước khi mở nhịp xác nhận 3 giây */
   const kiemTraDuCau = (): boolean => {
-    const errs = loiPhieu({ xungDot, diem, deXuat, gopY });
+    const errs = loiPhieu({ diem, deXuat, gopY });
     setLoi(errs);
     return errs.length === 0;
   };
@@ -70,7 +67,7 @@ export const IdeaCouncilVoteForm: React.FC<IdeaCouncilVoteFormProps> = ({ myVote
     }
     setDangGui(trangThai);
     try {
-      await onSubmit({ xungDot, diem, deXuat, gopY }, trangThai);
+      await onSubmit({ xungDot: null, diem, deXuat, gopY }, trangThai);
     } finally {
       setDangGui(null);
     }
@@ -96,35 +93,6 @@ export const IdeaCouncilVoteForm: React.FC<IdeaCouncilVoteFormProps> = ({ myVote
           </span>
         </div>
       )}
-
-      {/* A4 — xung đột lợi ích */}
-      <div className="space-y-1.5">
-        <p className="font-bold text-slate-700">
-          A4. Thành viên có thuộc phòng/đơn vị đề xuất ý tưởng này không? <span className="text-red-500">*</span>
-        </p>
-        <div className="flex flex-col gap-1.5">
-          {XUNG_DOT_OPTIONS.map(opt => (
-            <label key={opt} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all ${xungDot === opt ? 'bg-amber-50 border-amber-300 font-bold text-slate-800' : 'border-slate-200 hover:border-amber-200'}`}>
-              <input
-                type="radio"
-                name="xung-dot"
-                checked={xungDot === opt}
-                onChange={() => setXungDot(opt)}
-                disabled={readOnly}
-                className="accent-amber-500"
-              />
-              <span>{XUNG_DOT_LABELS[opt]}</span>
-            </label>
-          ))}
-        </div>
-        {xungDot && xungDot !== 'khong' && (
-          <p className="text-2xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
-            Khai báo của bạn được ghi vào phiếu (ẩn danh) và được đánh dấu trong bản tổng hợp
-            để Hội đồng cân nhắc khi kết luận theo nguyên tắc xử lý xung đột lợi ích (mục VI.4).
-            Phiếu vẫn được tính vào kết quả như các phiếu khác.
-          </p>
-        )}
-      </div>
 
       {/* C1-C5 — 5 tiêu chí thang 1-5 */}
       <div className="space-y-3">
