@@ -10,6 +10,7 @@ import { usePortalIdeas, type PortalIdea } from '@/components/one/ideas/usePorta
 import { IdeaForm } from '@/components/one/ideas/IdeaForm';
 import { IdeaList } from '@/components/one/ideas/IdeaList';
 import { useBenReActions, useHoSoBenReCuaToi } from '@/components/one/ideas/useBenRe';
+import { useYKienHoiDongCuaToi } from '@/components/one/ideas/council/useIdeaCouncil';
 import { IdeaStatsPanel } from '@/components/one/ideas/IdeaStatsPanel';
 import { khopTimKiem } from '@/lib/vietnamese';
 import { IDEA_LINH_VUC, IDEA_LINH_VUC_INFO, type IdeaLevel, type IdeaLinhVuc } from '@/data/one/ideasConfig';
@@ -94,6 +95,7 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
   const myName = useMyFullName();
   // Hồ sơ Bén rễ của chính mình — để thẻ ý tưởng hiện «cần bổ sung» và nút gửi lại
   const { theoIdea: hoSoBenRe } = useHoSoBenReCuaToi();
+  const { theoIdea: yKienHoiDong } = useYKienHoiDongCuaToi();
   const { guiLaiBoSung } = useBenReActions();
   const [boSungCho, setBoSungCho] = useState<PortalIdea | null>(null);
 
@@ -282,6 +284,7 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
         <IdeaList
           ideas={filteredIdeas}
           hoSoBenRe={hoSoBenRe}
+          yKienHoiDong={yKienHoiDong}
           onGuiLai={handleGuiLai}
           isFiltered={!!yTuongChon || !!search.trim() || filterLevel !== 'all' || filterNhom !== 'all'}
           isLoading={isLoading}

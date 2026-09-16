@@ -208,7 +208,9 @@ trần 10MB cho bucket `bhy-one` vốn đang để không giới hạn.
   14 phiếu A4 khai nhầm của Giám đốc về «Không»; anh Đỗ Việt Anh bật lại «Hoạt động» và ghi vắng có
   phép cả đợt; BHYI-017 ghi nhật ký rút + báo tác giả. `20261033090000_bhy_ideas_hd_bo_a4_va_bgd_khong_ap_cung_phong`
   **đã áp** (16/09/2026) — Ban Giám đốc không áp nguyên tắc cùng phòng; bỏ câu A4 (phiếu gửi không
-  cần `conflict_status`); thưởng Lan tỏa chốt 2.000.000đ. Tên file mang số thứ tự tăng dần
+  cần `conflict_status`); thưởng Lan tỏa chốt 2.000.000đ. `20261034090000_bhy_ideas_hd_y_kien_hoi_dong_cho_chu_y_tuong`
+  **đã áp** (16/09/2026) — hàm `bhy_ideas_hd_y_kien_hoi_dong()`: chủ ý tưởng / lãnh đạo phòng / BGĐ / TCTH
+  đọc góp ý ẩn danh của Hội đồng cho đợt đã công bố. Tên file mang số thứ tự tăng dần
   chứ không phải ngày lịch (chuỗi Ideas đã vượt quá ngày thật từ 08/2026); mỗi file đều có
   bản gỡ ở `supabase/rollbacks/`.
 

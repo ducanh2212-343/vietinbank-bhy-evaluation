@@ -22,9 +22,14 @@ interface AdminPatch {
   councilProposal?: boolean;
 }
 
+import { YKienHoiDong } from './council/YKienHoiDong';
+import type { YKienHoiDongYTuong } from './council/useIdeaCouncil';
+
 interface IdeaListProps {
   /** Hồ sơ Bén rễ của chính người xem, tra theo id ý tưởng — để hiện «cần bổ sung» */
   hoSoBenRe?: Record<string, HoSoBenReCuaToi>;
+  /** Ý kiến Hội đồng (ẩn danh, đợt đã công bố) — chỉ những ý tưởng người xem được đọc */
+  yKienHoiDong?: Record<string, YKienHoiDongYTuong[]>;
   /** Cán bộ bấm «Sửa & gửi lại» trên ý tưởng bị trả về */
   onGuiLai?: (idea: PortalIdea) => void;
   /** Danh sách đã lọc theo cấp đề xuất (Tất cả / Nội bộ CN / Đề xuất TSC) và ô tìm kiếm */
@@ -135,6 +140,7 @@ const IdeaCommentsBlock: React.FC<{ ideaId: string; myName: string }> = ({ ideaI
 interface IdeaCardProps {
   idea: PortalIdea;
   hoSo?: HoSoBenReCuaToi;
+  yKienHoiDong?: YKienHoiDongYTuong[];
   onGuiLai?: (idea: PortalIdea) => void;
   isContentAdmin: boolean;
   myName: string;
@@ -144,7 +150,7 @@ interface IdeaCardProps {
   onAdminUpdate: (ideaId: string, patch: AdminPatch) => void;
 }
 
-const IdeaCard: React.FC<IdeaCardProps> = ({ idea, hoSo, onGuiLai, isContentAdmin, myName, onEdit, onDelete, onVote, onAdminUpdate }) => {
+const IdeaCard: React.FC<IdeaCardProps> = ({ idea, hoSo, yKienHoiDong, onGuiLai, isContentAdmin, myName, onEdit, onDelete, onVote, onAdminUpdate }) => {
   const [detailOpen, setDetailOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const canManage = isContentAdmin || idea.isMine;
@@ -221,6 +227,10 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, hoSo, onGuiLai, isContentAdmi
             <b>Giám đốc kết luận chưa đạt Bén rễ{hoSo.duyetLuc ? ` (${new Date(hoSo.duyetLuc).toLocaleDateString('vi-VN')})` : ''}</b>
             {hoSo.yKienGd ? <span className="block">Ý kiến: «{hoSo.yKienGd}»</span> : null}
           </p>
+        )}
+        {/* Ý kiến Hội đồng — chủ ý tưởng, lãnh đạo phòng, BGĐ, TCTH đọc được sau công bố (16/09/2026) */}
+        {yKienHoiDong && yKienHoiDong.length > 0 && (
+          <YKienHoiDong danhSach={yKienHoiDong} />
         )}
         {/* Lớp 1: hàng badge */}
         <div className="flex flex-wrap gap-1.5 items-center justify-between">
@@ -447,7 +457,7 @@ const OTHER_DEPT_KEY = 'Bộ phận khác';
  */
 const SO_THE_HIEN_SAN = 6;
 
-export const IdeaList: React.FC<IdeaListProps> = ({ ideas, hoSoBenRe, onGuiLai, isFiltered = false, isLoading, isContentAdmin, myName, onEdit, onDelete, onVote, onAdminUpdate }) => {
+export const IdeaList: React.FC<IdeaListProps> = ({ ideas, hoSoBenRe, yKienHoiDong, onGuiLai, isFiltered = false, isLoading, isContentAdmin, myName, onEdit, onDelete, onVote, onAdminUpdate }) => {
   // Mặc định THU GỌN mọi nhóm: bảng có hơn trăm ý tưởng, mở sẵn hết thì trang
   // dài mấy chục màn và người tra cứu phải cuộn qua phòng khác mới tới phòng
   // mình. Riêng khi đang lọc/tìm kiếm thì mở sẵn — lúc đó danh sách đã hẹp và
@@ -523,6 +533,7 @@ export const IdeaList: React.FC<IdeaListProps> = ({ ideas, hoSoBenRe, onGuiLai, 
                   {dsHien.map(idea => (
                     <IdeaCard
                       hoSo={hoSoBenRe?.[idea.id]}
+                      yKienHoiDong={yKienHoiDong?.[idea.id]}
                       onGuiLai={onGuiLai}
                       key={idea.id}
                       idea={idea}

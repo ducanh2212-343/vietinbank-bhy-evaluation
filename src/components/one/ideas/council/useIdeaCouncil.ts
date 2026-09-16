@@ -891,3 +891,64 @@ export function useDiemDanh(roundId: string | null, enabled: boolean) {
   });
   return { vang, isLoading };
 }
+
+// ---- Ý kiến Hội đồng cho người NGOÀI Hội đồng (16/09/2026) ----
+
+export type VaiDocYKien = 'chu_y_tuong' | 'tcth' | 'ban_giam_doc' | 'lanh_dao_phong';
+
+export interface YKienHoiDongYTuong {
+  ideaId: string;
+  roundId: string;
+  roundName: string;
+  capXet: CapXet;
+  congBoLuc: string | null;
+  /** 'vuon_canh' | 'lan_toa' | null (chưa đạt) — đúng cái đã ghi sổ */
+  ketLuan: 'vuon_canh' | 'lan_toa' | null;
+  diemTbChung: number | null;
+  soPhieu: number;
+  tongThanhVien: number;
+  soDongY: number;
+  soKhongXet: number;
+  soCanBoSung: number;
+  /** Góp ý D2 ẩn danh — không tên, không mốc giờ */
+  gopY: string[];
+  vai: VaiDocYKien | null;
+}
+
+const yKienKey = ['idea-council-y-kien-cua-toi'];
+
+/**
+ * Chủ ý tưởng, lãnh đạo phòng có ý tưởng, Ban Giám đốc, TCTH đọc được góp ý của
+ * Hội đồng cho ý tưởng — ẩn danh, chỉ đợt đã công bố. Ai được xem gì do RPC
+ * quyết theo danh bạ; client chỉ ghép vào thẻ ý tưởng.
+ */
+export function useYKienHoiDongCuaToi(enabled = true) {
+  const { data = [], isLoading } = useQuery({
+    queryKey: yKienKey,
+    enabled,
+    staleTime: 60 * 1000,
+    queryFn: async (): Promise<YKienHoiDongYTuong[]> => {
+      const { data: rows, error } = await supabase.rpc('bhy_ideas_hd_y_kien_hoi_dong');
+      if (error) throw error;
+      return (rows ?? []).map(r => ({
+        ideaId: r.idea_id,
+        roundId: r.round_id,
+        roundName: r.round_name,
+        capXet: (r.cap_xet === 'Lan tỏa' ? 'Lan tỏa' : 'Vươn cành') as CapXet,
+        congBoLuc: r.cong_bo_luc,
+        ketLuan: r.ket_luan === 'vuon_canh' || r.ket_luan === 'lan_toa' ? r.ket_luan : null,
+        diemTbChung: typeof r.avg_overall === 'number' ? r.avg_overall : r.avg_overall == null ? null : Number(r.avg_overall),
+        soPhieu: r.total_votes,
+        tongThanhVien: r.eligible_members,
+        soDongY: r.agree,
+        soKhongXet: r.rec_khong_xet,
+        soCanBoSung: r.rec_can_bo_sung,
+        gopY: Array.isArray(r.gop_y) ? (r.gop_y as unknown[]).filter((g): g is string => typeof g === 'string') : [],
+        vai: (r.vai as VaiDocYKien | null) ?? null,
+      }));
+    },
+  });
+  const theoIdea: Record<string, YKienHoiDongYTuong[]> = {};
+  for (const y of data) (theoIdea[y.ideaId] ??= []).push(y);
+  return { yKien: data, theoIdea, isLoading };
+}
