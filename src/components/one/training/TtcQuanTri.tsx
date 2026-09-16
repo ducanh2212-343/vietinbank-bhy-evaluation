@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ArrowRight, Copy, Pencil, Plus, Trash2, Users } from 'lucide-react';
+import { ArrowRight, Copy, Pencil, Plus, Trash2, UserPlus, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -18,13 +18,14 @@ import {
   type TtcChuongTrinh, type TtcDauViec, type TtcNgay, type TtcNhomDoiTuong, type TtcVai,
 } from '@/lib/trainingCenter';
 import { docCauHinhDiemDanh, nhanLuong } from '@/lib/diemDanh';
-import { useCt2NhanSu } from '@/components/one/move2/useCt2Data';
 import { TtcLoi } from './TrainingNav';
 import { FormDauViec, FormNgay } from './TtcFormLoTrinh';
 import { TtcCauHinhBao } from './TtcCauHinhBao';
 import { TtcDiemDanhQuanTri } from './TtcDiemDanhQuanTri';
+import { TtcThemThanhVien } from './TtcThemThanhVien';
+import { TtcGhiDanhQuanTri } from './TtcGhiDanhQuanTri';
 import {
-  luuChuongTrinh, nhanBanChuongTrinh, themThanhVien, xoaDauViec, xoaNgay, xoaThanhVien,
+  luuChuongTrinh, nhanBanChuongTrinh, xoaDauViec, xoaNgay, xoaThanhVien,
   useTtcBoiCanh, useTtcDanhMuc, useTtcDauViec, useTtcDiemDanh, useTtcLamTuoi, useTtcNgay, useTtcQrNgay,
   useTtcQuyenSoan, useTtcThuDinhVi,
   type TtcChuongTrinhForm,
@@ -227,7 +228,6 @@ function ChiTietChuongTrinh({ ctId, suaDuoc, xepDuoc, onNhanBan }: {
 }) {
   const bc = useTtcBoiCanh(ctId);
   const lamTuoi = useTtcLamTuoi();
-  const { data: nhanSu = [] } = useCt2NhanSu();
   const { data: dsNgay = [] } = useTtcNgay(ctId);
   const ngayIds = useMemo(() => dsNgay.map((n) => n.id), [dsNgay]);
   const { data: dsViec = [] } = useTtcDauViec(ctId, ngayIds);
@@ -236,8 +236,7 @@ function ChiTietChuongTrinh({ ctId, suaDuoc, xepDuoc, onNhanBan }: {
   const { data: dsThu = [] } = useTtcThuDinhVi(ctId, true);
 
   const [moSua, setMoSua] = useState(false);
-  const [nguoiMoi, setNguoiMoi] = useState('');
-  const [vaiMoi, setVaiMoi] = useState<TtcVai>('hoc_vien');
+  const [moThem, setMoThem] = useState(false);
   const [ngaySua, setNgaySua] = useState<Partial<TtcNgay> | null>(null);
   const [viecSua, setViecSua] = useState<Partial<TtcDauViec> | null>(null);
   const [ngayMo, setNgayMo] = useState<string | null>(null);
@@ -246,11 +245,6 @@ function ChiTietChuongTrinh({ ctId, suaDuoc, xepDuoc, onNhanBan }: {
   if (bc.isLoading) return <Skeleton className="h-64 rounded-2xl" />;
   if (!ct) return <TtcLoi error={bc.error} />;
 
-  const them = async () => {
-    if (!nguoiMoi) return;
-    try { await themThanhVien(ctId, nguoiMoi, vaiMoi); lamTuoi(); setNguoiMoi(''); toast.success('Đã thêm thành viên.'); }
-    catch (e) { toast.error(e instanceof Error ? e.message : 'Không thêm được'); }
-  };
   const bo = async (id: string) => {
     try { await xoaThanhVien(id); lamTuoi(); }
     catch (e) { toast.error(e instanceof Error ? e.message : 'Không bỏ được'); }
@@ -299,28 +293,16 @@ function ChiTietChuongTrinh({ ctId, suaDuoc, xepDuoc, onNhanBan }: {
           ))}
         </ul>
         {xepDuoc && (
-          <div className="mt-3 flex flex-wrap items-end gap-2">
-            <div className="min-w-[14rem] flex-1">
-              <Label className="text-xs">Cán bộ</Label>
-              <Select value={nguoiMoi || 'KHONG'} onValueChange={(v) => setNguoiMoi(v === 'KHONG' ? '' : v)}>
-                <SelectTrigger className="h-9"><SelectValue placeholder="Chọn cán bộ" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="KHONG">— Chọn cán bộ —</SelectItem>
-                  {nhanSu.filter((n) => !bc.thanhVien.some((t) => t.nguoi === n.id)).map((n) => <SelectItem key={n.id} value={n.id}>{n.full_name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="w-44">
-              <Label className="text-xs">Vai</Label>
-              <Select value={vaiMoi} onValueChange={(v) => setVaiMoi(v as TtcVai)}>
-                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>{(Object.keys(TTC_TEN_VAI) as TtcVai[]).map((v) => <SelectItem key={v} value={v}>{TTC_TEN_VAI[v]}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <Button size="sm" onClick={them} disabled={!nguoiMoi}><Plus className="mr-1 h-3.5 w-3.5" /> Thêm</Button>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Button size="sm" onClick={() => setMoThem(true)} className="bg-brand-navy hover:bg-brand-navy/90"><UserPlus className="mr-1 h-3.5 w-3.5" /> Thêm nhiều người</Button>
+            <span className="text-2xs text-slate-500">Tìm theo tên, tick cả phòng, hoặc dán danh sách từ Excel / Zalo.</span>
           </div>
         )}
+        <TtcThemThanhVien mo={moThem} onDong={() => setMoThem(false)} ctId={ctId} daCo={new Set(bc.thanhVien.map((t) => t.nguoi))} />
       </div>
+
+      {/* Ghi danh bằng mã lớp / QR — cán bộ nội bộ tự xin vào, TCTH duyệt */}
+      {suaDuoc && <TtcGhiDanhQuanTri ct={ct} />}
 
       {/* Nhắc trước giờ — báo cho ai trong lần đào tạo này */}
       <TtcCauHinhBao ct={ct} thanhVien={bc.thanhVien} suaDuoc={suaDuoc} />

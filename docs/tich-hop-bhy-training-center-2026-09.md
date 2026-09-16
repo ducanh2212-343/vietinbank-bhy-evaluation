@@ -1209,3 +1209,78 @@ nổi bị giới hạn nửa khung nên gãy dòng, bảng vẽ trên điện t
 
 Chưa làm (chờ Giám đốc quyết): chấm điểm trực tiếp trên bản vẽ; nhiều người cùng
 sửa một bản; chia sẻ bản mẫu của TCTH sang chương trình khác khi nhân bản.
+
+## 20. Đợt 14 — Thêm học viên nhanh: chọn nhiều, dán danh sách, mã lớp / QR
+
+Giám đốc (16/09/2026) hỏi «phương án add học viên nhanh nhất», chọn làm cả ba
+phương án 1, 2, 4 với lưu ý: **mã lớp chỉ cho thành viên Bắc Hưng Yên ONE
+(nội bộ)**.
+
+### 20.1 Hiện trạng và mục tiêu đo được
+
+Trước đợt này màn Quản trị thêm **từng người** bằng ô xổ xuống ~150 tên không
+có tìm kiếm; lớp 25 học viên mất khoảng 10 phút và dễ nhầm người trùng tên.
+Mục tiêu: thêm 25 học viên **dưới một phút**, không nhầm người.
+
+### 20.2 Ba cách thêm và vì sao làm như vậy
+
+**Chọn từ danh bạ** (`TtcThemThanhVien`, tab 1): ô gõ tên dùng cùng hàm chuẩn
+hoá bỏ dấu với cách dán, lọc theo phòng, danh sách nhóm theo phòng có ô tick
+«cả phòng», một nút «Thêm N người». Người đã trong lớp ẩn khỏi danh sách để
+không tick lại.
+
+**Dán danh sách** (tab 2): TCTH đã có danh sách cử đi học dạng Excel / Zalo.
+`tachDanhSach` bỏ số thứ tự đầu dòng và lấy ô đầu của dòng Excel; `khopDanhSach`
+khớp theo thứ tự email hoặc mã cán bộ → tên chuẩn hoá đúng → tên thiếu họ đệm
+(chỉ khi duy nhất và ≥ 4 ký tự). **Trùng tên không tự chọn**: đưa ra ô chọn
+từng dòng, vì thêm nhầm người là để lộ tài liệu và bảng điểm của lớp. Bảng xem
+trước hiện đủ bốn trạng thái (khớp / trùng / không có / đã có) rồi mới thêm.
+
+Cả hai đi qua một hàm máy chủ `ttc_them_thanh_vien_hang_loat(ct, uuid[], vai)`:
+cùng quyền với policy chèn từng dòng (quản trị lớp), lọc `status = 'active'`
+và `is_staff(user_id)` nên tài khoản khách không lọt, `ON CONFLICT DO NOTHING`
+nên người đã có giữ nguyên vai. Vai mặc định là học viên; chọn vai khác có
+cảnh báo vì đó là giao quyền chấm.
+
+**Mã lớp / QR** (`TtcGhiDanhQuanTri`, trang `/one/training-center/ghi-danh`):
+TCTH hoặc BGĐ của lớp bật ghi danh → `ttc_mo_ghi_danh` cấp mã 6 ký tự trên
+bảng 32 chữ (bỏ 0 O 1 I để đọc miệng không lẫn; ô nhập tự đổi 0→O, 1→I); QR
+và link in cùng khuôn `?ma=` với tấm QR điểm danh. Cán bộ mở trang, thấy tên
+lớp và ngày, bấm **«Xin vào lớp»** — không tự xin khi mở trang như điểm danh,
+vì vào nhầm lớp là thấy tài liệu của lớp đó. Mặc định **chờ duyệt**: TCTH thấy
+hàng chờ ngay trong khối, duyệt / từ chối (có lý do, người xin thấy) một chạm;
+bật «quét là vào lớp ngay» cho lớp mở rộng. Người bị từ chối xin lại được,
+dòng quay về chờ duyệt — TCTH từ chối nhầm không phải xoá tay.
+
+**Chỉ nội bộ**: `ttc_xem_ma_ghi_danh` và `ttc_xin_ghi_danh` kiểm
+`is_staff(auth.uid())` ở dòng đầu; tài khoản khách nhận thông điệp «chỉ dành
+cho cán bộ Bắc Hưng Yên ONE». Bảng `ttc_ghi_danh` chỉ có policy SELECT (người
+xin thấy dòng mình, TCTH/BGĐ lớp thấy cả), quyền INSERT/UPDATE/DELETE thu hồi
+khỏi `authenticated` — hai lớp chặn, client không tự chèn được dòng «đã duyệt».
+
+### 20.3 Lỗ hổng có sẵn phát hiện khi chạy kịch bản
+
+Kịch bản 7 (thêm hàng loạt) lúc đầu cho Hà thêm được 3 người vào lớp mà Hà
+**không** phải quản trị. Nguyên nhân: bốn hàm `ttc_la_quan_tri`,
+`ttc_sua_duoc_noi_dung`, `ttc_la_nguoi_cham`, `ttc_la_bgd` viết dạng
+`ttc_vai(_ct) = 'quan_tri'`; cán bộ ngoài lớp có `ttc_vai` = NULL nên biểu thức
+trả **NULL**, không phải false. Trong policy RLS thì NULL bị coi là false nên
+chặn đúng, nhưng trong plpgsql `IF NOT NULL THEN RAISE` **không chạy** — năm
+hàm có sẵn (`ttc_cap_ma_qr`, `ttc_diem_danh_ghi_ho`, …) để lọt cán bộ ngoài
+lớp. Đã kiểm trên máy chủ thật: mã nguồn bốn hàm y hệt. Vá bằng
+`coalesce(…, false)` ngay trong migration này; rollback **giữ** bản vá.
+
+### 20.4 Đã áp và đã kiểm
+
+| Migration | Trạng thái |
+| --- | --- |
+| `20261031090000_ttc_ghi_danh.sql` | **đã áp** 16/09/2026 — bảng có, RLS bật, 1 policy, `anon` không có quyền, `authenticated` chỉ SELECT, 5 hàm, 2 cột, bốn hàm kiểm quyền đã bọc coalesce |
+
+Tám kịch bản trên cụm cục bộ: cấp mã / giữ mã / cấp lại; hướng dẫn viên mở
+ghi danh bị chặn; cán bộ ngoài lớp quét thấy lớp, xin → chờ duyệt, xin lần
+hai không sinh dòng đúp, không tự chèn được; hướng dẫn viên không thấy hàng
+chờ, quản trị thấy; từ chối có lý do → xin lại → duyệt → thành học viên; khách
+đối tác bị chặn với thông điệp nội bộ; bật tự duyệt → quét là vào; thêm hàng
+loạt 4 người trong đó 1 khách → 3, thêm lại → 0, vai sai → lỗi, người không
+phải quản trị → chặn; đóng ghi danh → mã hết tác dụng. Tám test cho lib khớp
+danh sách (`src/lib/__tests__/ttcGhiDanh.test.ts`).

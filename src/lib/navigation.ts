@@ -406,9 +406,9 @@ export const NAV_SECTIONS: NavSection[] = [
             end: true,
             bleed: true,
             keywords: ['training center', 'dao tao', 'ren luyen', 'vun goc vuon canh', 'chuong trinh 10 ngay',
-              'hoc vien', 'hoi nhap', 'chuyen de', 'quy hoach', 'lo trinh', 'bang viec', 'tu soi', 'lich ban giam doc'],
+              'hoc vien', 'hoi nhap', 'chuyen de', 'quy hoach', 'lo trinh', 'bang viec', 'tu soi', 'lich ban giam doc', 'ma lop', 'ghi danh'],
             // /lo-trinh là đích của push TTC_* — trang chuyển hướng sang chương trình đang chạy
-            extraPaths: ['/one/training-center/chuong-trinh/', '/one/training-center/lo-trinh', '/one/training-center/diem-danh'],
+            extraPaths: ['/one/training-center/chuong-trinh/', '/one/training-center/lo-trinh', '/one/training-center/diem-danh', '/one/training-center/ghi-danh'],
           },
           {
             label: 'Quản trị chương trình',
@@ -417,7 +417,7 @@ export const NAV_SECTIONS: NavSection[] = [
             bleed: true,
             // admin = bgd + tcth_admin + system_admin: BGĐ sửa nội dung, TCTH xếp thành viên
             minRole: 'admin',
-            keywords: ['quan tri chuong trinh', 'tao chuong trinh', 'nhan ban', 'thanh vien', 'soan ngay', 'dau viec', 'sua noi dung chuong trinh', 'diem danh', 'ma qr', 'in qr'],
+            keywords: ['quan tri chuong trinh', 'tao chuong trinh', 'nhan ban', 'thanh vien', 'them hoc vien', 'dan danh sach', 'ma lop', 'ghi danh', 'soan ngay', 'dau viec', 'sua noi dung chuong trinh', 'diem danh', 'ma qr', 'in qr'],
           },
         ],
       },

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, CalendarDays, Copy, GraduationCap, Layers, Users } from 'lucide-react';
+import { ArrowRight, CalendarDays, Clock, Copy, GraduationCap, KeyRound, Layers, Users } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -9,7 +9,7 @@ import {
 } from '@/lib/trainingCenter';
 import { TtcLoi } from './TrainingNav';
 import { TtcGioiThieu } from './TtcGioiThieu';
-import { useTtcDanhMuc } from './useTrainingCenter';
+import { useTtcDanhMuc, useTtcGhiDanhCuaToi } from './useTrainingCenter';
 
 /**
  * TRANG CHỦ TRUNG TÂM — danh mục chương trình.
@@ -24,6 +24,7 @@ export function TtcDanhMuc() {
   const { roles } = useAuth();
   const laTcth = roles.includes('tcth_admin') || roles.includes('system_admin');
   const { data, isLoading, isError, error } = useTtcDanhMuc();
+  const { data: yeuCau = [] } = useTtcGhiDanhCuaToi();
 
   const vaiTheoCt = useMemo(() => new Map((data?.cuaToi ?? []).map((t) => [t.chuong_trinh_id, t])), [data]);
   const cuaToi = useMemo(
@@ -44,13 +45,33 @@ export function TtcDanhMuc() {
         </h2>
         {cuaToi.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500">
-            Anh/chị chưa thuộc chương trình nào. Khi được Phòng Tổng hợp xếp vào một chương trình, nó sẽ hiện ở đây với lộ trình và bảng việc.
+            Anh/chị chưa thuộc chương trình nào. Khi được Phòng Tổng hợp xếp vào một chương trình, nó sẽ hiện ở đây với lộ trình và bảng việc — hoặc nhập mã lớp ở dưới nếu được phát mã.
           </p>
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
             {cuaToi.map((c) => <TheChuongTrinh key={c.id} c={c} vai={vaiTheoCt.get(c.id)} noiBat />)}
           </div>
         )}
+
+        {/* Đang chờ TCTH duyệt — để cán bộ không xin lại lần hai */}
+        {yeuCau.filter((y) => y.trang_thai === 'cho_duyet').map((y) => {
+          const c = (data?.chuongTrinh ?? []).find((x) => x.id === y.chuong_trinh_id);
+          return (
+            <p key={y.id} className="mt-3 flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              <Clock className="h-4 w-4 shrink-0" /> Yêu cầu vào lớp «{c?.ten ?? 'đang tải'}» đang chờ Phòng Tổng hợp duyệt.
+            </p>
+          );
+        })}
+
+        {/* Ghi danh bằng mã lớp — chỉ cán bộ nội bộ (RLS/RPC chặn khách) */}
+        <Link to="/one/training-center/ghi-danh" className="mt-3 flex items-center gap-3 rounded-2xl border border-[#A8763E]/30 bg-[#A8763E]/5 px-4 py-3 text-sm transition hover:border-[#A8763E]/60">
+          <KeyRound className="h-5 w-5 shrink-0 text-[#8A5E2C]" />
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold text-[#8A5E2C]">Có mã lớp? Nhập mã để ghi danh</span>
+            <span className="block text-2xs text-slate-500">Phòng Tổng hợp phát mã 6 ký tự hoặc tấm QR khi mở lớp.</span>
+          </span>
+          <ArrowRight className="h-4 w-4 shrink-0 text-[#8A5E2C]" />
+        </Link>
       </section>
 
       {/* 2. Danh mục theo bốn nhóm đối tượng */}
