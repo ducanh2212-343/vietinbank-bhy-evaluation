@@ -3,7 +3,7 @@ import { ChevronDown, ChevronUp, Presentation, ShieldCheck } from 'lucide-react'
 import { OnePageShell } from '@/components/one/OnePageShell';
 import { IdeaHero, IdeaTabs } from '@/components/one/ideas/IdeaNav';
 import { useAuth } from '@/hooks/useAuth';
-import { TRANG_THAI_DOT_LABELS, TANG_DE_XUAT_INFO, suyA4TheoPhong } from '@/lib/ideaCouncil';
+import { TRANG_THAI_DOT_LABELS, TANG_DE_XUAT_INFO } from '@/lib/ideaCouncil';
 import {
   LY_DO_KHONG_CHAM_LABELS,
   useCouncilMutations,
@@ -26,7 +26,6 @@ import {
   type BoLocCham,
   type PhienTrinhBay,
 } from '@/lib/ideaCouncilPhien';
-import { useStaffDirectory } from '@/components/one/ideas/useStaffDirectory';
 import { IdeaCouncilVoteForm } from '@/components/one/ideas/council/IdeaCouncilVoteForm';
 import { IdeaCouncilSummary } from '@/components/one/ideas/council/IdeaCouncilSummary';
 import { IdeaCouncilAdmin } from '@/components/one/ideas/council/IdeaCouncilAdmin';
@@ -39,11 +38,9 @@ import { IdeaCouncilAdmin } from '@/components/one/ideas/council/IdeaCouncilAdmi
 type Tab = 'cham-diem' | 'tong-hop' | 'quan-tri';
 
 /** Thẻ một ý tưởng trong danh sách chấm: thông tin B1-B4 + nội dung + phiếu */
-function ItemCard({ item, readOnly, lyDoKhongCham, tenPhien, phongCuaToi, onSubmit }: {
+function ItemCard({ item, readOnly, lyDoKhongCham, tenPhien, onSubmit }: {
   item: CouncilItem;
   readOnly: boolean;
-  /** Phòng của người đang đăng nhập theo danh bạ — để máy tự trả lời câu A4 */
-  phongCuaToi: string | null;
   /** Máy chủ bảo người xem KHÔNG chấm ý tưởng này (tự đề xuất / cùng phòng / liên phòng) — RLS chặn, UI báo trước */
   lyDoKhongCham: LyDoKhongCham | null;
   /** Tên phiên trình bày chứa ý tưởng này (nếu đã xếp phiên) */
@@ -129,8 +126,6 @@ function ItemCard({ item, readOnly, lyDoKhongCham, tenPhien, phongCuaToi, onSubm
           <IdeaCouncilVoteForm
             myVote={item.myVote}
             readOnly={readOnly}
-            a4={suyA4TheoPhong(phongCuaToi, item.idea.departmentName)}
-            phongDeXuat={item.idea.departmentName}
             onSubmit={(phieu, trangThai) => onSubmit(item.id, phieu, trangThai)}
           />
         )}
@@ -186,7 +181,6 @@ function DaiDangTrinh({ phien, soYTuong, dangBamTheo, onBamTheo, onXemCaDot }: {
 export default function OneIdeaCouncilPage() {
   const { user } = useAuth();
   const { loading, isMember, isChair, isAdmin, isSystemAdmin } = useIdeaCouncilAccess();
-  const { me } = useStaffDirectory();
   const { rounds, isLoading: loadingRounds } = useCouncilRounds(isMember || isAdmin);
   const [roundId, setRoundId] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('cham-diem');
@@ -379,7 +373,6 @@ export default function OneIdeaCouncilPage() {
                       readOnly={selectedRound?.status !== 'open'}
                       lyDoKhongCham={lyDoKhongCham.get(item.id) ?? null}
                       tenPhien={item.sessionId ? tenPhienTheoId.get(item.sessionId) ?? null : null}
-                      phongCuaToi={me?.department ?? null}
                       onSubmit={guiPhieu}
                     />
                   ))

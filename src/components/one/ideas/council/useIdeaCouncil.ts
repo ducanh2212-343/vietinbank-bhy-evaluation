@@ -272,7 +272,8 @@ export function useCouncilRoundItems(roundId: string | null) {
 
 /** Nội dung phiếu đang soạn — nháp cho phép thiếu, gửi thật thì form đã validate đủ */
 export interface PhieuGui {
-  xungDot: XungDotLoiIch | null;
+  /** A4 cũ — đã bỏ 16/09/2026, phiếu mới gửi null */
+  xungDot?: XungDotLoiIch | null;
   diem: Partial<Record<TieuChiKey, number>>;
   deXuat: DeXuatHoiDong | null;
   gopY: string;
@@ -310,7 +311,7 @@ export function useCouncilMutations(roundId: string | null) {
       item_id: itemId,
       user_id: user.id,
       status: trangThai,
-      conflict_status: phieu.xungDot,
+      conflict_status: phieu.xungDot ?? null,
       score_problem: phieu.diem.problem ?? null,
       score_impact: phieu.diem.impact ?? null,
       score_feasible: phieu.diem.feasible ?? null,

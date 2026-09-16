@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { IdeaCouncilVoteForm } from '../IdeaCouncilVoteForm';
-import { suyA4TheoPhong } from '@/lib/ideaCouncil';
 import type { CouncilVote } from '../useIdeaCouncil';
 
 // Ca thật 11/09/2026: Hội đồng chấm 20 ý tưởng trên điện thoại giữa cuộc họp,
@@ -28,8 +27,7 @@ describe('Phiếu chấm của Hội đồng — nhịp xác nhận 3 giây', ()
 
   it('phiếu chưa đủ câu: bấm gửi báo lỗi ngay, KHÔNG mở đếm ngược', () => {
     const onSubmit = vi.fn().mockResolvedValue(true);
-    render(<IdeaCouncilVoteForm myVote={null} readOnly={false} onSubmit={onSubmit}
-      a4={suyA4TheoPhong('Phòng TCTH', 'Phòng KHDN')} phongDeXuat="Phòng KHDN" />);
+    render(<IdeaCouncilVoteForm myVote={null} readOnly={false} onSubmit={onSubmit} />);
 
     fireEvent.click(screen.getByText('GỬI PHIẾU CHẤM ĐIỂM'));
 
@@ -41,8 +39,7 @@ describe('Phiếu chấm của Hội đồng — nhịp xác nhận 3 giây', ()
 
   it('phiếu đủ câu: bấm lần một chỉ mở nút xác nhận đang khóa', () => {
     const onSubmit = vi.fn().mockResolvedValue(true);
-    render(<IdeaCouncilVoteForm myVote={PHIEU_DU} readOnly={false} onSubmit={onSubmit}
-      a4={suyA4TheoPhong('Phòng TCTH', 'Phòng KHDN')} phongDeXuat="Phòng KHDN" />);
+    render(<IdeaCouncilVoteForm myVote={PHIEU_DU} readOnly={false} onSubmit={onSubmit} />);
 
     fireEvent.click(screen.getByText('GỬI PHIẾU CHẤM ĐIỂM'));
     expect(onSubmit).not.toHaveBeenCalled();
@@ -57,8 +54,7 @@ describe('Phiếu chấm của Hội đồng — nhịp xác nhận 3 giây', ()
 
   it('hết 3 giây mới gửi được, và gửi đúng trạng thái submitted', () => {
     const onSubmit = vi.fn().mockResolvedValue(true);
-    render(<IdeaCouncilVoteForm myVote={PHIEU_DU} readOnly={false} onSubmit={onSubmit}
-      a4={suyA4TheoPhong('Phòng TCTH', 'Phòng KHDN')} phongDeXuat="Phòng KHDN" />);
+    render(<IdeaCouncilVoteForm myVote={PHIEU_DU} readOnly={false} onSubmit={onSubmit} />);
 
     fireEvent.click(screen.getByText('GỬI PHIẾU CHẤM ĐIỂM'));
     act(() => { vi.advanceTimersByTime(3000); });
@@ -70,8 +66,7 @@ describe('Phiếu chấm của Hội đồng — nhịp xác nhận 3 giây', ()
 
   it('«Lưu nháp» KHÔNG phải chờ — nháp chưa vào tổng hợp nên bấm nhầm không hại', () => {
     const onSubmit = vi.fn().mockResolvedValue(true);
-    render(<IdeaCouncilVoteForm myVote={null} readOnly={false} onSubmit={onSubmit}
-      a4={suyA4TheoPhong('Phòng TCTH', 'Phòng KHDN')} phongDeXuat="Phòng KHDN" />);
+    render(<IdeaCouncilVoteForm myVote={null} readOnly={false} onSubmit={onSubmit} />);
 
     fireEvent.click(screen.getByText('Lưu nháp'));
 
@@ -80,42 +75,14 @@ describe('Phiếu chấm của Hội đồng — nhịp xác nhận 3 giây', ()
   });
 });
 
-describe('A4 suy từ danh bạ — không hỏi lại người chấm', () => {
-  it('cùng phòng: không có ô chọn nào, hệ thống tự khẳng định', () => {
+describe('Câu A4 đã bỏ (16/09/2026) — ai liên quan thì không chấm, không hỏi', () => {
+  it('phiếu không còn câu A4, gửi đủ C1–C5 + D1 là được', () => {
     const onSubmit = vi.fn().mockResolvedValue(true);
-    render(<IdeaCouncilVoteForm myVote={null} readOnly={false} onSubmit={onSubmit}
-      a4={suyA4TheoPhong('Phòng KHDN', 'Phòng KHDN')} phongDeXuat="Phòng KHDN" />);
-
-    expect(screen.getByText(/Hệ thống xác định theo danh bạ/)).toBeTruthy();
-    expect(screen.queryByText('Không')).toBeNull();
-    expect(screen.queryByText('Có — liên quan phối hợp trực tiếp')).toBeNull();
-  });
-
-  it('cùng phòng: phiếu gửi đi mang cung_phong dù người chấm không bấm gì', async () => {
-    const onSubmit = vi.fn().mockResolvedValue(true);
-    render(<IdeaCouncilVoteForm myVote={PHIEU_DU} readOnly={false} onSubmit={onSubmit}
-      a4={suyA4TheoPhong('Phòng KHDN', 'Phòng KHDN')} phongDeXuat="Phòng KHDN" />);
-
-    fireEvent.click(screen.getByText('Lưu nháp'));
-    expect(onSubmit.mock.calls[0][0].xungDot).toBe('cung_phong');
-  });
-
-  it('khác phòng: bỏ hẳn nhánh «thuộc phòng đề xuất», chỉ còn hai lựa chọn', () => {
-    const onSubmit = vi.fn().mockResolvedValue(true);
-    render(<IdeaCouncilVoteForm myVote={null} readOnly={false} onSubmit={onSubmit}
-      a4={suyA4TheoPhong('Phòng TCTH', 'Phòng KHDN')} phongDeXuat="Phòng KHDN" />);
-
-    expect(screen.getByText('Không')).toBeTruthy();
-    expect(screen.getByText('Có — liên quan phối hợp trực tiếp')).toBeTruthy();
+    render(<IdeaCouncilVoteForm myVote={PHIEU_DU} readOnly={false} onSubmit={onSubmit} />);
+    expect(screen.queryByText(/A4\./)).toBeNull();
     expect(screen.queryByText('Có — thuộc phòng/đơn vị đề xuất ý tưởng')).toBeNull();
-  });
-
-  it('hồ sơ chưa gắn phòng: giữ nguyên đủ ba nhánh như cũ', () => {
-    const onSubmit = vi.fn().mockResolvedValue(true);
-    render(<IdeaCouncilVoteForm myVote={null} readOnly={false} onSubmit={onSubmit}
-      a4={suyA4TheoPhong(null, 'Phòng KHDN')} phongDeXuat="Phòng KHDN" />);
-
-    expect(screen.getByText('Có — thuộc phòng/đơn vị đề xuất ý tưởng')).toBeTruthy();
-    expect(screen.getByText(/chưa gắn phòng/)).toBeTruthy();
+    fireEvent.click(screen.getByText('Lưu nháp'));
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onSubmit.mock.calls[0][0].xungDot).toBeNull();
   });
 });

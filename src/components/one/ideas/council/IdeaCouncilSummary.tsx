@@ -180,14 +180,6 @@ export const IdeaCouncilSummary: React.FC<IdeaCouncilSummaryProps> = ({ roundId,
                         {dong.tongHop.soVang} vắng có phép
                       </span>
                     )}
-                    {dong.tongHop.soPhieuXungDot > 0 && (
-                      <span
-                        className="block text-2xs text-amber-600 font-semibold"
-                        title="Số phiếu có khai xung đột lợi ích (A4) — Hội đồng cân nhắc khi kết luận theo mục VI.4"
-                      >
-                        ⚠ {dong.tongHop.soPhieuXungDot} khai XĐLI
-                      </span>
-                    )}
                   </td>
                   {TIEU_CHI_HOI_DONG.map(tc => (
                     <td key={tc.key} className="p-2 text-center font-semibold text-slate-700">

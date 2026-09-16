@@ -75,7 +75,7 @@ export const MUC_DIEM: { diem: number; yNghia: string }[] = [
   { diem: 5, yNghia: 'Rất tốt, nên ưu tiên' },
 ];
 
-/** A4 — khai báo xung đột lợi ích */
+/** A4 cũ — chỉ còn để hiển thị phiếu đã lưu trước 16/09/2026 */
 export const XUNG_DOT_LABELS: Record<XungDotLoiIch, string> = {
   khong: 'Không',
   cung_phong: 'Có — thuộc phòng/đơn vị đề xuất ý tưởng',
@@ -114,7 +114,7 @@ export const TANG_DE_XUAT_INFO: Record<TangDeXuat, TangDeXuatInfo> = {
   'Lan tỏa': {
     nhan: 'Xét nâng lên Lan tỏa',
     moTa: `Đợt xét Lan tỏa riêng cho ý tưởng ĐÃ được Hội đồng công nhận Vươn cành và đã triển khai tối thiểu ${NGAY_TOI_THIEU_LAN_TOA} ngày — đánh giá quá trình triển khai sau khi được công nhận.`,
-    thuong: 'Thưởng thêm 2.000.000–3.000.000đ (ngoài 1.000.000đ Vươn cành đã nhận)',
+    thuong: 'Thưởng thêm 2.000.000đ/ý tưởng (ngoài 1.000.000đ Vươn cành đã nhận)',
     badgeClass: 'bg-rose-100 text-rose-700',
   },
 };
@@ -131,56 +131,14 @@ export const NGUONG_LAN_TOA = { diemTbChung: 4.0, diemNhanRong: 4, diemAnToan: 3
 // từ client là phép chia số thực) — tránh 3.4999999 < 3.5 oan.
 const EPS = 1e-9;
 
-/**
- * A4 — XUNG ĐỘT LỢI ÍCH SUY TỪ DANH BẠ, KHÔNG HỎI LẠI NGƯỜI CHẤM.
- *
- * VÌ SAO TỰ ĐỘNG
- *
- * Đợt Hội đồng đầu tiên (11–13/09/2026) cho thấy hỏi tay không đáng tin: đối
- * chiếu 252 phiếu với danh bạ thì có 2 phiếu khai SÓT — Phó phòng TCTH chấm ý
- * tưởng của chính Phòng TCTH mà khai «Không», Trưởng phòng Bán lẻ chấm ý tưởng
- * Phòng KHBL mà khai «phối hợp» — và Giám đốc Chi nhánh bấm nhầm «có liên quan»
- * cho 14 ý tưởng liền. Đây là dữ kiện HÀNH CHÍNH: phòng của người chấm và phòng
- * đề xuất đều nằm sẵn trong hệ thống, nên hỏi người dùng vừa thừa vừa sinh lỗi.
- *
- * Nay máy tự trả lời nhánh «thuộc phòng/đơn vị đề xuất». Nhánh «liên quan phối
- * hợp trực tiếp» VẪN để người chấm tự khai — đó là phán đoán về công việc, danh
- * bạ không biết được.
- *
- * PHẠM VI: chỉ so PHÒNG TRÊN HỒ SƠ (chốt 13/09/2026). Phó giám đốc phụ trách
- * khối KHÔNG bị tính là thuộc đơn vị đề xuất, dù thực tế các anh chị vẫn tự khai
- * như vậy; muốn tính thì phải khai báo phân công phụ trách — là việc riêng.
- *
- * Hai vế đã ở cùng một hệ nhãn nên so sánh thẳng: phòng của cán bộ đi qua
- * HO_SO_PHONG_SANG_IDEAS (src/data/one/ideasConfig.ts — đối xứng với hàm SQL
- * bhy_phong_ideas_sang_ho_so), còn phiếu ý tưởng lưu thẳng nhãn Ideas.
+/*
+ * CÂU A4 (tự khai xung đột lợi ích) ĐÃ BỎ — chốt Giám đốc 16/09/2026.
+ * Ai liên quan tới ý tưởng (tự đề xuất, cùng phòng, phòng có cán bộ đồng đề
+ * xuất) thì MÁY nhận diện theo danh bạ (bhy_ideas_hd_ly_do_khong_cham) và
+ * người đó không chấm — không hỏi, không tích chọn. Ban Giám đốc phụ trách chung
+ * nên không áp nguyên tắc phòng, chỉ không tự chấm ý tưởng mình đề xuất.
+ * XungDotLoiIch chỉ còn để đọc phiếu cũ.
  */
-export type A4TuDong =
-  /** Danh bạ khẳng định cùng phòng — không hỏi nữa */
-  | { kieu: 'cung_phong'; phong: string }
-  /** Danh bạ khẳng định khác phòng — chỉ còn hỏi «có phối hợp trực tiếp không» */
-  | { kieu: 'khac_phong'; phong: string }
-  /** Hồ sơ chưa gắn phòng → không suy được, hỏi tay đủ ba nhánh như cũ */
-  | { kieu: 'chua_ro' };
-
-export function suyA4TheoPhong(
-  phongNguoiCham: string | null | undefined,
-  phongDeXuat: string | null | undefined,
-): A4TuDong {
-  const ta = (phongNguoiCham ?? '').trim();
-  const de = (phongDeXuat ?? '').trim();
-  if (!ta || !de) return { kieu: 'chua_ro' };
-  return ta === de ? { kieu: 'cung_phong', phong: ta } : { kieu: 'khac_phong', phong: ta };
-}
-
-/**
- * Giá trị A4 ghi vào phiếu: máy khẳng định cùng phòng thì ghi 'cung_phong' bất
- * kể người chấm bấm gì; các trường hợp còn lại giữ nguyên lời khai.
- */
-export function chotA4(tuDong: A4TuDong, nguoiKhai: XungDotLoiIch | null): XungDotLoiIch | null {
-  if (tuDong.kieu === 'cung_phong') return 'cung_phong';
-  return nguoiKhai;
-}
 
 /** D2 bắt buộc khi thành viên đề xuất Không xét thưởng / Cần bổ sung */
 export function canGopY(deXuat: DeXuatHoiDong): boolean {
@@ -188,7 +146,8 @@ export function canGopY(deXuat: DeXuatHoiDong): boolean {
 }
 
 export interface PhieuChamInput {
-  xungDot: XungDotLoiIch | null;
+  /** A4 cũ — không còn hỏi, giữ để đọc phiếu cũ */
+  xungDot?: XungDotLoiIch | null;
   diem: Partial<Record<TieuChiKey, number>>;
   deXuat: DeXuatHoiDong | null;
   gopY: string;
@@ -197,7 +156,6 @@ export interface PhieuChamInput {
 /** Kiểm tra phiếu trước khi gửi — trả danh sách lỗi theo thứ tự trên form */
 export function loiPhieu(phieu: PhieuChamInput): string[] {
   const loi: string[] = [];
-  if (!phieu.xungDot) loi.push('Chưa khai báo xung đột lợi ích (A4)');
   for (const tc of TIEU_CHI_HOI_DONG) {
     const d = phieu.diem[tc.key];
     if (typeof d !== 'number' || d < 1 || d > 5) {
@@ -213,7 +171,7 @@ export function loiPhieu(phieu: PhieuChamInput): string[] {
 
 /** Một phiếu chấm đã lưu — đầu vào của phép tổng hợp phía admin */
 export interface PhieuCham {
-  xungDot: XungDotLoiIch;
+  xungDot?: XungDotLoiIch | null;
   diem: Record<TieuChiKey, number>;
   deXuat: DeXuatHoiDong;
 }
@@ -263,7 +221,7 @@ export function tongHopPhieu(phieu: PhieuCham[], tongThanhVien: number): TongHop
   return {
     soPhieuHopLe: phieu.length,
     tongThanhVien,
-    soPhieuXungDot: phieu.filter(p => p.xungDot !== 'khong').length,
+    soPhieuXungDot: phieu.filter(p => !!p.xungDot && p.xungDot !== 'khong').length,
     diemTieuChi,
     diemTbChung,
     soDongYVuonCanh: deXuatDem.vuon_canh + deXuatDem.lan_toa,

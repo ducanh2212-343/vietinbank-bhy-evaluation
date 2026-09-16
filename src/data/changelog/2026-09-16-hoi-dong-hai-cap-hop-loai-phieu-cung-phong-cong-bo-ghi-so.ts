@@ -13,8 +13,8 @@ const muc: MucLichSu = {
     + 'hệ thống tự xác định theo danh bạ. Đợt xét Vươn cành và đợt xét Lan tỏa tách riêng; không '
     + 'xét vượt cấp; Lan tỏa chỉ xét ý tưởng đã Vươn cành tối thiểu 30 ngày.',
   diemChinh: [
-    'Chủ tịch bấm «Công bố» là hệ thống ghi sổ thưởng (Vươn cành 1 triệu, Lan tỏa 2 triệu), nâng cấp độ, báo đạt/chưa đạt kèm lý do tới chủ ý tưởng — chỉ ghi một lần.',
-    'Thành viên cùng phòng / liên phòng với ý tưởng không chấm được ý tưởng đó; phiếu cũ nếu có thì bị loại và đánh dấu ✖ trên phiếu ẩn danh.',
+    'Chủ tịch bấm «Công bố» là hệ thống ghi sổ thưởng (Vươn cành 1.000.000đ, Lan tỏa 2.000.000đ/ý tưởng), nâng cấp độ, báo đạt/chưa đạt kèm lý do tới chủ ý tưởng — chỉ ghi một lần.',
+    'Thành viên cùng phòng / liên phòng với ý tưởng không chấm được ý tưởng đó (Ban Giám đốc không áp); máy nhận diện theo danh bạ nên bỏ hẳn câu A4 tự khai — phiếu cũ nếu có thì bị loại và đánh dấu ✖.',
     'Điểm danh thay cho bật/tắt «Hoạt động»: vắng cả đợt đánh dấu ở Tiến độ chấm, đến muộn/về sớm đánh dấu ở từng phiên trình bày — có lý do, rút khỏi mẫu số đúng chỗ.',
     'Rút ý tưởng khỏi đợt phải ghi lý do; chủ ý tưởng nhận thông báo.',
     'Ý tưởng gắn mã phòng theo danh mục phòng ban của BHY One.',

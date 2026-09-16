@@ -1,9 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   canGopY,
-  chotA4,
   datQuorum,
-  suyA4TheoPhong,
   datTyLe2Phan3,
   docTongHopRpc,
   goiYMaYTuong,
@@ -259,9 +257,10 @@ describe('loiPhieu — kiểm tra phiếu theo Phụ lục 06', () => {
     expect(canGopY('vuon_canh')).toBe(false);
   });
 
-  it('chưa khai A4 và chưa chọn D1 → báo cả hai', () => {
-    const loi = loiPhieu({ xungDot: null, diem: {}, deXuat: null, gopY: '' });
-    expect(loi[0]).toContain('A4');
+  it('không còn hỏi A4 (bỏ 16/09/2026): phiếu trống chỉ báo C1–C5 và D1', () => {
+    const loi = loiPhieu({ diem: {}, deXuat: null, gopY: '' });
+    expect(loi.some(l => l.includes('A4'))).toBe(false);
+    expect(loi[0]).toContain('C1');
     expect(loi[loi.length - 1]).toContain('D1');
   });
 });
@@ -322,47 +321,6 @@ describe('docTongHopRpc — đọc payload jsonb của RPC', () => {
 
     expect(b.tongHop.diemTbChung).toBeNull();
     expect(ketLuanDeXuat(b.tongHop, b.proposedTier).ketLuan).toBeNull();
-  });
-});
-
-// Ca thật đợt Hội đồng đầu tiên (13/09/2026): đối chiếu 252 phiếu với danh bạ
-// phát hiện 2 phiếu khai sót và 14 phiếu Giám đốc bấm nhầm. Bộ test này khóa
-// việc câu A4 được suy từ danh bạ chứ không hỏi lại người chấm.
-describe('suyA4TheoPhong — A4 suy từ danh bạ', () => {
-  it('cùng phòng với đơn vị đề xuất', () => {
-    expect(suyA4TheoPhong('Phòng TCTH', 'Phòng TCTH'))
-      .toEqual({ kieu: 'cung_phong', phong: 'Phòng TCTH' });
-  });
-
-  it('khác phòng', () => {
-    expect(suyA4TheoPhong('Phòng TCTH', 'Phòng KHDN'))
-      .toEqual({ kieu: 'khac_phong', phong: 'Phòng TCTH' });
-  });
-
-  it('hồ sơ chưa gắn phòng thì không suy bừa — trả «chưa rõ» để hỏi tay', () => {
-    expect(suyA4TheoPhong(null, 'Phòng KHDN')).toEqual({ kieu: 'chua_ro' });
-    expect(suyA4TheoPhong('  ', 'Phòng KHDN')).toEqual({ kieu: 'chua_ro' });
-    expect(suyA4TheoPhong('Phòng KHDN', '')).toEqual({ kieu: 'chua_ro' });
-  });
-
-  it('Phó giám đốc phụ trách khối KHÔNG tính là cùng phòng (chốt 13/09/2026)', () => {
-    // Anh Nguyễn Đức Thái Hoàng — PGĐ phụ trách KHDN, hồ sơ thuộc Ban Giám Đốc
-    expect(suyA4TheoPhong('Ban Giám Đốc', 'Phòng KHDN').kieu).toBe('khac_phong');
-  });
-});
-
-describe('chotA4 — máy khẳng định cùng phòng thì ghi đè lời khai', () => {
-  it('cùng phòng: bấm gì cũng ghi cung_phong', () => {
-    const a4 = suyA4TheoPhong('Phòng TCTH', 'Phòng TCTH');
-    expect(chotA4(a4, null)).toBe('cung_phong');
-    expect(chotA4(a4, 'khong')).toBe('cung_phong');
-    expect(chotA4(a4, 'phoi_hop')).toBe('cung_phong');
-  });
-
-  it('khác phòng hoặc chưa rõ: giữ nguyên lời khai của người chấm', () => {
-    expect(chotA4(suyA4TheoPhong('Phòng TCTH', 'Phòng KHDN'), 'phoi_hop')).toBe('phoi_hop');
-    expect(chotA4(suyA4TheoPhong('Phòng TCTH', 'Phòng KHDN'), 'khong')).toBe('khong');
-    expect(chotA4(suyA4TheoPhong(null, 'Phòng KHDN'), null)).toBeNull();
   });
 });
 

@@ -7,7 +7,6 @@ import {
   TANG_DE_XUAT_INFO,
   TIEU_CHI_HOI_DONG,
   TRANG_THAI_DOT_LABELS,
-  XUNG_DOT_LABELS,
   goiYMaYTuong,
   type CapXet,
   type TrangThaiDot,
@@ -362,7 +361,7 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
                           ? 'Bạn là Quản trị hệ thống nên thấy danh tính; với Admin TCTH và Ban Giám đốc, phiếu hiển thị ẩn danh.'
                           : 'Phiếu hiển thị ẨN DANH — không ai ngoài Quản trị hệ thống biết ai chấm bao nhiêu.'}
                         {' '}Phiếu của thành viên cùng phòng / liên phòng với ý tưởng <b>bị loại khỏi điểm và mẫu số</b> (chốt 16/09/2026,
-                        đánh dấu ✖); các phiếu còn lại đều tính. Khai xung đột lợi ích (A4) chỉ đánh dấu để Hội đồng cân nhắc theo mục VI.4.
+                        đánh dấu ✖ — máy nhận diện theo danh bạ; Ban Giám đốc không áp nguyên tắc phòng); các phiếu còn lại đều tính.
                       </p>
                       {phieuBiKhoa ? (
                         <p className="text-slate-500 italic">
@@ -375,7 +374,7 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
                         <p className="text-slate-400 italic">Chưa có phiếu nào.</p>
                       )}
                       {phieu.map((v, i) => (
-                        <div key={v.voteId} className={`flex flex-wrap items-center gap-x-3 gap-y-1 p-2 rounded-lg border ${v.xungDot !== 'khong' ? 'bg-amber-50/60 border-amber-200' : 'border-slate-100'}`}>
+                        <div key={v.voteId} className={`flex flex-wrap items-center gap-x-3 gap-y-1 p-2 rounded-lg border ${v.lyDoLoai ? 'bg-red-50/40 border-red-200' : 'border-slate-100'}`}>
                           <span className="font-bold text-slate-700 flex items-center gap-1">
                             <UserRound className="w-3 h-3 text-slate-400" />
                             {tenTheoVoteId.get(v.voteId) ?? `Phiếu ẩn danh #${i + 1}`}
@@ -386,9 +385,6 @@ export const IdeaCouncilAdmin: React.FC<IdeaCouncilAdminProps> = ({ rounds, sele
                               ✖ Loại — {v.lyDoLoai === 'cung_phong' ? 'cùng phòng' : v.lyDoLoai === 'lien_phong' ? 'liên phòng' : 'tự đề xuất'}
                             </span>
                           )}
-                          <span className={`text-2xs ${v.xungDot !== 'khong' ? 'font-bold text-amber-700' : 'text-slate-500'}`}>
-                            {v.xungDot !== 'khong' && '⚠ '}{XUNG_DOT_LABELS[v.xungDot]}
-                          </span>
                           <span className="text-2xs font-semibold text-slate-600">
                             {TIEU_CHI_HOI_DONG.map(tc => v.diem[tc.key]).join(' · ')}
                           </span>

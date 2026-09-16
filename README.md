@@ -206,7 +206,9 @@ trần 10MB cho bucket `bhy-one` vốn đang để không giới hạn.
   phòng/liên phòng, mẫu số trừ vắng) nuôi `tong_hop` / `tien_do` / `phieu_an_danh`; `bhy_ideas_hd_cong_bo`
   nay **ghi sổ thưởng + nâng cấp độ + báo chủ ý tưởng** (idempotent). Cùng ngày đã chỉnh dữ liệu:
   14 phiếu A4 khai nhầm của Giám đốc về «Không»; anh Đỗ Việt Anh bật lại «Hoạt động» và ghi vắng có
-  phép cả đợt; BHYI-017 ghi nhật ký rút + báo tác giả. Tên file mang số thứ tự tăng dần
+  phép cả đợt; BHYI-017 ghi nhật ký rút + báo tác giả. `20261033090000_bhy_ideas_hd_bo_a4_va_bgd_khong_ap_cung_phong`
+  **đã áp** (16/09/2026) — Ban Giám đốc không áp nguyên tắc cùng phòng; bỏ câu A4 (phiếu gửi không
+  cần `conflict_status`); thưởng Lan tỏa chốt 2.000.000đ. Tên file mang số thứ tự tăng dần
   chứ không phải ngày lịch (chuỗi Ideas đã vượt quá ngày thật từ 08/2026); mỗi file đều có
   bản gỡ ở `supabase/rollbacks/`.
 
