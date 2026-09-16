@@ -5587,6 +5587,15 @@ export type Database = {
         Args: { _phong_ideas: string }
         Returns: number
       }
+      bhy_ideas_hd_y_kien_hoi_dong: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          idea_id: string; round_id: string; round_name: string; cap_xet: string;
+          cong_bo_luc: string | null; ket_luan: string | null; avg_overall: number | null;
+          total_votes: number; eligible_members: number; agree: number;
+          rec_khong_xet: number; rec_can_bo_sung: number; gop_y: Json; vai: string | null
+        }[]
+      }
       bhy_ideas_hd_ly_do_khong_cham: {
         Args: { _user_id: string; _item_id: string }
         Returns: string | null

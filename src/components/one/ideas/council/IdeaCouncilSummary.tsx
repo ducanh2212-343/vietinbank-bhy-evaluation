@@ -10,6 +10,7 @@ import {
   type KetLuanTang,
 } from '@/lib/ideaCouncil';
 import { useCouncilMutations, useCouncilSummary, type CouncilRound } from './useIdeaCouncil';
+import { IdeaCouncilKetQua } from './IdeaCouncilKetQua';
 
 // Bảng tổng hợp kết quả chấm điểm — đúng các cột Phụ lục 07. Chỉ hiện số liệu
 // tổng hợp (điểm TB, tỷ lệ đồng ý, kết luận gợi ý), không lộ điểm cá nhân.
@@ -127,6 +128,9 @@ export const IdeaCouncilSummary: React.FC<IdeaCouncilSummaryProps> = ({ roundId,
         </span>
         {nutCongBo}
       </div>
+
+      {/* Nhìn-là-thấy: đạt / chưa đạt / tiền — trước bảng Phụ lục 07 14 cột */}
+      <IdeaCouncilKetQua capXet={summary.round.capXet} items={summary.items} />
 
       {summary.items.length === 0 ? (
         <p className="text-xs text-slate-500 italic py-6 text-center">Đợt này chưa có ý tưởng nào được trình.</p>
