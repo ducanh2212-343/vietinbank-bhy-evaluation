@@ -5632,6 +5632,17 @@ export type Database = {
         Args: { _idea_id: string }
         Returns: string[]
       }
+      bhy_ideas_tach_ten_de_xuat: {
+        Args: { _proposer: string }
+        Returns: string[]
+      }
+      bhy_ideas_y_tuong_cua_toi: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          idea_id: string; title: string; development_level: string; vai: string;
+          cong_nhan_luc: string | null; thuong_luy_ke: number
+        }[]
+      }
       bhy_ideas_hd_mo_phien: {
         Args: { _phien_id: string }
         Returns: Json

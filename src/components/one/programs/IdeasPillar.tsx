@@ -11,6 +11,8 @@ import { IdeaForm } from '@/components/one/ideas/IdeaForm';
 import { IdeaList } from '@/components/one/ideas/IdeaList';
 import { useBenReActions, useHoSoBenReCuaToi } from '@/components/one/ideas/useBenRe';
 import { useYKienHoiDongCuaToi } from '@/components/one/ideas/council/useIdeaCouncil';
+import { useYTuongCuaToi } from '@/components/one/ideas/useYTuongCuaToi';
+import { ChipCapDoCuaToi } from '@/components/one/ideas/ChipCapDoCuaToi';
 import { IdeaStatsPanel } from '@/components/one/ideas/IdeaStatsPanel';
 import { khopTimKiem } from '@/lib/vietnamese';
 import { IDEA_LINH_VUC, IDEA_LINH_VUC_INFO, type IdeaLevel, type IdeaLinhVuc } from '@/data/one/ideasConfig';
@@ -96,6 +98,8 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
   // Hồ sơ Bén rễ của chính mình — để thẻ ý tưởng hiện «cần bổ sung» và nút gửi lại
   const { theoIdea: hoSoBenRe } = useHoSoBenReCuaToi();
   const { theoIdea: yKienHoiDong } = useYKienHoiDongCuaToi();
+  // Cấp độ hiện tại của ý tưởng mình — thẻ nói «đã đạt Vươn cành» thay vì dòng sổ Bén rễ cũ
+  const { theoIdea: capDoCuaToi, dem: demCuaToi, yTuong: yTuongCuaToi } = useYTuongCuaToi();
   const { guiLaiBoSung } = useBenReActions();
   const [boSungCho, setBoSungCho] = useState<PortalIdea | null>(null);
 
@@ -204,6 +208,12 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
             <p className="text-xs text-slate-500">
               Tra cứu trước khi gửi để khỏi đề xuất trùng ý tưởng phòng khác đã có.
             </p>
+            {yTuongCuaToi.length > 0 && (
+              <p className="mt-2 flex flex-wrap items-center gap-1.5 text-2xs font-bold text-slate-600">
+                Của bạn ({yTuongCuaToi.length}):
+                <ChipCapDoCuaToi dem={demCuaToi} nho />
+              </p>
+            )}
 
             <div className="relative mt-3 max-w-md">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
@@ -284,6 +294,7 @@ export const IdeasPillar: React.FC<IdeasPillarProps> = ({ images, onImageUpload,
         <IdeaList
           ideas={filteredIdeas}
           hoSoBenRe={hoSoBenRe}
+          capDoCuaToi={capDoCuaToi}
           yKienHoiDong={yKienHoiDong}
           onGuiLai={handleGuiLai}
           isFiltered={!!yTuongChon || !!search.trim() || filterLevel !== 'all' || filterNhom !== 'all'}

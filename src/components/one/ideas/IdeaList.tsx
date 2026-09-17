@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { HoSoBenReCuaToi } from './useBenRe';
+import { laCapHoiDong, type YTuongCuaToi } from '@/lib/yTuongCuaToi';
 import { ChevronDown, ChevronUp, Edit, Lightbulb, MessageSquare, Send, ThumbsDown, ThumbsUp, Trash2 } from 'lucide-react';
 import {
   IDEA_DEPARTMENTS,
@@ -28,6 +29,8 @@ import type { YKienHoiDongYTuong } from './council/useIdeaCouncil';
 interface IdeaListProps {
   /** Hồ sơ Bén rễ của chính người xem, tra theo id ý tưởng — để hiện «cần bổ sung» */
   hoSoBenRe?: Record<string, HoSoBenReCuaToi>;
+  /** Cấp độ hiện tại + mốc lên cấp + thưởng lũy kế của ý tưởng CỦA CHÍNH người xem */
+  capDoCuaToi?: Record<string, YTuongCuaToi>;
   /** Ý kiến Hội đồng (ẩn danh, đợt đã công bố) — chỉ những ý tưởng người xem được đọc */
   yKienHoiDong?: Record<string, YKienHoiDongYTuong[]>;
   /** Cán bộ bấm «Sửa & gửi lại» trên ý tưởng bị trả về */
@@ -140,6 +143,7 @@ const IdeaCommentsBlock: React.FC<{ ideaId: string; myName: string }> = ({ ideaI
 interface IdeaCardProps {
   idea: PortalIdea;
   hoSo?: HoSoBenReCuaToi;
+  capDo?: YTuongCuaToi;
   yKienHoiDong?: YKienHoiDongYTuong[];
   onGuiLai?: (idea: PortalIdea) => void;
   isContentAdmin: boolean;
@@ -150,7 +154,7 @@ interface IdeaCardProps {
   onAdminUpdate: (ideaId: string, patch: AdminPatch) => void;
 }
 
-const IdeaCard: React.FC<IdeaCardProps> = ({ idea, hoSo, yKienHoiDong, onGuiLai, isContentAdmin, myName, onEdit, onDelete, onVote, onAdminUpdate }) => {
+const IdeaCard: React.FC<IdeaCardProps> = ({ idea, hoSo, capDo, yKienHoiDong, onGuiLai, isContentAdmin, myName, onEdit, onDelete, onVote, onAdminUpdate }) => {
   const [detailOpen, setDetailOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const canManage = isContentAdmin || idea.isMine;
@@ -214,7 +218,16 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ idea, hoSo, yKienHoiDong, onGuiLai,
             «{hoSo.lyDoKetLuan ?? '—'}»
           </p>
         )}
-        {hoSo?.trangThai === 'da_ghi_nhan' && (
+        {/* Đã qua Hội đồng: nói về cấp HIỆN TẠI, không lặp dòng sổ Bén rễ — dòng đó
+            vẫn «đã ghi nhận» nên trước 17/09/2026 thẻ khoe Bén rễ dù đã lên Vươn cành */}
+        {capDo && laCapHoiDong(capDo.capDo) && (
+          <p className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-2xs font-bold text-emerald-800">
+            🎉 Đã đạt cấp {capDo.capDo} {IDEA_DEV_LEVEL_EMOJI[capDo.capDo]}
+            {capDo.congNhanLuc ? ` ngày ${new Date(capDo.congNhanLuc).toLocaleDateString('vi-VN')}` : ''} — Hội đồng đánh giá
+            {capDo.thuongLuyKe > 0 ? ` · thưởng lũy kế ${capDo.thuongLuyKe.toLocaleString('vi-VN')}đ` : ''}
+          </p>
+        )}
+        {hoSo?.trangThai === 'da_ghi_nhan' && !(capDo && laCapHoiDong(capDo.capDo)) && (
           <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-2xs font-bold text-emerald-800">
             🎉 Đã công nhận Bén rễ{hoSo.duyetLuc ? ` ngày ${new Date(hoSo.duyetLuc).toLocaleDateString('vi-VN')}` : ''} —{' '}
             {hoSo.duyetCn && hoSo.duyetTsc ? 'Giám đốc và Trụ sở chính' : hoSo.duyetTsc ? 'Trụ sở chính đồng ý' : 'Giám đốc duyệt'}
@@ -457,7 +470,7 @@ const OTHER_DEPT_KEY = 'Bộ phận khác';
  */
 const SO_THE_HIEN_SAN = 6;
 
-export const IdeaList: React.FC<IdeaListProps> = ({ ideas, hoSoBenRe, yKienHoiDong, onGuiLai, isFiltered = false, isLoading, isContentAdmin, myName, onEdit, onDelete, onVote, onAdminUpdate }) => {
+export const IdeaList: React.FC<IdeaListProps> = ({ ideas, hoSoBenRe, capDoCuaToi, yKienHoiDong, onGuiLai, isFiltered = false, isLoading, isContentAdmin, myName, onEdit, onDelete, onVote, onAdminUpdate }) => {
   // Mặc định THU GỌN mọi nhóm: bảng có hơn trăm ý tưởng, mở sẵn hết thì trang
   // dài mấy chục màn và người tra cứu phải cuộn qua phòng khác mới tới phòng
   // mình. Riêng khi đang lọc/tìm kiếm thì mở sẵn — lúc đó danh sách đã hẹp và
@@ -533,6 +546,7 @@ export const IdeaList: React.FC<IdeaListProps> = ({ ideas, hoSoBenRe, yKienHoiDo
                   {dsHien.map(idea => (
                     <IdeaCard
                       hoSo={hoSoBenRe?.[idea.id]}
+                      capDo={capDoCuaToi?.[idea.id]}
                       yKienHoiDong={yKienHoiDong?.[idea.id]}
                       onGuiLai={onGuiLai}
                       key={idea.id}
