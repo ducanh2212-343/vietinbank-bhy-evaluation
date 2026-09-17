@@ -42,7 +42,8 @@ describe('TheDiemPanel', () => {
     // Trưởng phòng KHDN và Phó phòng (tạm tính như Trưởng phòng, cùng số liệu phòng) đều 130%
     expect(screen.getAllByText('Đạt 130%')).toHaveLength(2);
     expect(screen.getAllByText('Chưa đạt').length).toBeGreaterThan(0);
-    expect(screen.getByText(/tạm tính như Trưởng phòng/)).toBeTruthy();
+    // Dòng của Phó phòng ghi rõ đang tạm tính như Trưởng phòng (ô ghi chú cuối màn cũng nhắc)
+    expect(screen.getAllByText(/tạm tính như Trưởng phòng/).length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText(/KPI Đổi mới sáng tạo đang/)).toBeTruthy();
   });
 
