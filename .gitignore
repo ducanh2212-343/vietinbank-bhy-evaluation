@@ -28,3 +28,14 @@ dist-ssr
 !.env.example
 
 __pycache__/
+
+# Bộ skill Higgsfield cài qua `npx skills add higgsfield-ai/skills`.
+# Đây là công cụ cá nhân để sinh ảnh/video, không phải mã nguồn của cổng
+# Bắc Hưng Yên ONE — cài lại bằng một lệnh nên không cần nằm trong repo.
+# Bản gốc ở .agents/skills/, còn .claude/skills/higgsfield-* chỉ là symlink
+# trỏ sang; phải bỏ qua cả hai nơi thì git mới thực sự sạch.
+# Luật để hẹp ở tiền tố higgsfield- vì các bộ skill khác trong
+# .claude/skills/ (design, slides, ui-styling...) vẫn được theo dõi bình thường.
+.agents/
+.claude/skills/higgsfield-*
+skills-lock.json
