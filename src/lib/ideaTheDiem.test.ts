@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { demLuyKe, diemQuyDoiBenRe, datDieuKienPhong } from './ideaKpi';
+import { demGhiNhan, diemQuyDoiBenRe, datDieuKienPhong, soBenReTroLen } from './ideaKpi';
 import {
   docTongHopTheDiem,
-  nhomApCongThuc,
+  nhomTruongPhongCuaPhong,
   nhomViTriTuChucDanh,
   tinhDongTheDiem,
   tinhPhongTheDiem,
@@ -22,17 +22,18 @@ const canBo = (mot: Partial<CanBoTheDiem>): CanBoTheDiem => ({
   chucDanh: 'Cán bộ Phòng KHDN', khoanGon: false, dem: dem(0, 0, 0), ...mot,
 });
 
-describe('demLuyKe — ghi nhận lũy kế theo chốt 17/09/2026', () => {
-  it('10 ý tưởng, 2 Vươn cành, 1 trong đó Lan tỏa → 10 Ươm mầm · 2 Bén rễ · 2 Vươn cành · 1 Lan tỏa', () => {
-    // Đếm theo cấp cao nhất: 8 dừng ở Ươm mầm, 0 dừng ở Bén rễ, 1 dừng ở Vươn cành, 1 Lan tỏa
-    expect(demLuyKe(dem(8, 0, 1, 1))).toEqual(dem(10, 2, 2, 1));
+describe('demGhiNhan — cách ghi nhận chốt 17/09/2026', () => {
+  it('Trần Hà Trang 5 ý tưởng, 2 dừng ở Bén rễ, 1 Vươn cành → 5 Ươm mầm · 2 Bén rễ · 1 Vươn cành', () => {
+    expect(demGhiNhan(dem(2, 2, 1))).toEqual(dem(5, 2, 1));
   });
 
-  it('điểm quy đổi tính trên cấp cao nhất bằng Bén rễ + Vươn cành + Lan tỏa lũy kế', () => {
-    const d = dem(2, 2, 1, 0); // Trần Hà Trang
-    const lk = demLuyKe(d);
-    expect(diemQuyDoiBenRe(d)).toBe(4);
-    expect(lk['Bén rễ'] + lk['Vươn cành'] + lk['Lan tỏa']).toBe(4);
+  it('cấp trên Ươm mầm chỉ đếm ở cấp cao nhất — Lan tỏa không đếm lại ở Vươn cành', () => {
+    expect(demGhiNhan(dem(8, 0, 1, 1))).toEqual(dem(10, 0, 1, 1));
+  });
+
+  it('cán bộ A 5 ý tưởng (2 Bén rễ, 1 Vươn cành): quy đổi 2×1 + 1×2 = 4; đạt Bén rễ trở lên = 3', () => {
+    expect(diemQuyDoiBenRe(dem(2, 2, 1))).toBe(4);
+    expect(soBenReTroLen(dem(2, 2, 1))).toBe(3);
   });
 });
 
@@ -56,50 +57,70 @@ describe('nhomViTriTuChucDanh — chức danh danh bạ → nhóm Thẻ điểm'
     expect(nhomViTriTuChucDanh('Phó phòng Bán lẻ'.normalize('NFD'))).toBe('pho_phong');
   });
 
-  it('Phó phòng tạm tính như Trưởng phòng đơn vị: phòng chi nhánh → TP đầu mối, PGD → TP PGD', () => {
-    expect(nhomApCongThuc('pho_phong', 'KHDN')).toBe('tp_dau_moi');
-    expect(nhomApCongThuc('pho_phong', 'PHONG_GIAO_DICH_VAN_LAM')).toBe('tp_pgd');
-    expect(nhomApCongThuc('can_bo', 'KHDN')).toBe('can_bo');
-    expect(nhomApCongThuc('tp_pgd', 'PHONG_GIAO_DICH_VAN_LAM')).toBe('tp_pgd');
+  it('nhóm Trưởng phòng của đơn vị: phòng chi nhánh, PGD, Ban Giám đốc không có', () => {
+    expect(nhomTruongPhongCuaPhong('KHDN')).toBe('tp_dau_moi');
+    expect(nhomTruongPhongCuaPhong('PHONG_GIAO_DICH_VAN_LAM')).toBe('tp_pgd');
+    expect(nhomTruongPhongCuaPhong('BGD')).toBeNull();
   });
 });
 
 describe('tinhDongTheDiem — số liệu thật 17/09/2026', () => {
-  it('Trưởng phòng KHDN: phòng 6 Vươn cành, cá nhân 1 → đạt, 23/15 điểm chạm trần 130%', () => {
+  it('Trưởng phòng KHDN: phòng 6 Vươn cành, cá nhân 1 → đạt, quy đổi 23/15 chạm trần 130%', () => {
     const d = tinhDongTheDiem(canBo({ chucDanh: 'Trưởng phòng KHDN', dem: dem(1, 1, 1) }), phong({}));
-    expect(d.nhomApCongThuc).toBe('tp_dau_moi');
+    expect(d.nhom).toBe('tp_dau_moi');
     expect(d.chiTieuBenRe).toBe(15);
     expect(d.ketQua.dat).toBe(true);
     expect(d.ketQua.phanTramHoanThanh).toBe(130);
-    expect(d.luyKe).toEqual(dem(3, 2, 1));
+    expect(d.ghiNhan).toEqual(dem(3, 1, 1));
   });
 
-  it('Phó phòng KHDN có 2 Vươn cành: tính như Trưởng phòng KHDN → đạt', () => {
-    const d = tinhDongTheDiem(canBo({ chucDanh: 'Phó phòng KHDN', dem: dem(0, 4, 2) }), phong({}));
+  it('Trần Hà Trang, Phó phòng Bán lẻ: 3/8 Bén rễ của phòng không quy đổi → điều kiện đạt, ngưỡng chưa', () => {
+    const bl = phong({ phongId: 'p3', ma: 'BL', ten: 'Phòng Bán lẻ', soCanBo: 8, dem: dem(6, 2, 1) });
+    const d = tinhDongTheDiem(canBo({ phongId: 'p3', maPhong: 'BL', chucDanh: 'Phó phòng Bán lẻ', dem: dem(2, 2, 1) }), bl);
     expect(d.nhom).toBe('pho_phong');
-    expect(d.nhomApCongThuc).toBe('tp_dau_moi');
+    expect(d.chiTieuBenRe).toBe(8);
+    expect(d.ghiNhan).toEqual(dem(5, 2, 1));
+    expect(d.diemQuyDoi).toBe(4);
+    expect(d.ketQua.tyLeDatDuoc).toBe(37.5);
+    expect(d.ketQua.dat).toBe(false);
+    expect(d.ketQua.conThieu).toHaveLength(1);
+    expect(d.ketQua.conThieu[0]).toContain('3/8');
+  });
+
+  it('Phó phòng KHDN: phòng 17 ý tưởng đạt Bén rễ trở lên / 15 cán bộ, bản thân 2 Vươn cành → đạt 113,3%', () => {
+    const d = tinhDongTheDiem(canBo({ chucDanh: 'Phó phòng KHDN', dem: dem(0, 4, 2) }), phong({}));
     expect(d.ketQua.dat).toBe(true);
-    expect(d.diemQuyDoi).toBe(8);
+    expect(d.ketQua.phanTramHoanThanh).toBe(113.3);
+  });
+
+  it('Phó phòng giao dịch: mẫu số là số cán bộ phòng (không nhân đôi như Trưởng PGD)', () => {
+    const pgd = phong({ phongId: 'p2', ma: 'PHONG_GIAO_DICH_VAN_LAM', ten: 'PGD Văn Lâm', soCanBo: 10, dem: dem(25, 8, 0) });
+    const d = tinhDongTheDiem(canBo({ phongId: 'p2', maPhong: pgd.ma, chucDanh: 'Phó phòng giao dịch phụ trách quầy', dem: dem(1, 4, 0) }), pgd);
+    expect(d.chiTieuBenRe).toBe(10);
+    expect(d.ketQua.tyLeDatDuoc).toBe(80);
+    expect(d.ketQua.conThieu.join(' ')).toContain('Bản thân cần');
   });
 
   it('Trưởng PGD Văn Lâm: 8 điểm Bén rễ nhưng phòng chưa có Vươn cành (cần 4) → 0 điểm', () => {
     const pgd = phong({ phongId: 'p2', ma: 'PHONG_GIAO_DICH_VAN_LAM', ten: 'PGD Văn Lâm', soCanBo: 10, dem: dem(25, 8, 0) });
     const d = tinhDongTheDiem(canBo({ phongId: 'p2', maPhong: pgd.ma, chucDanh: 'Trưởng phòng giao dịch', dem: dem(1, 1, 0) }), pgd);
-    expect(d.nhomApCongThuc).toBe('tp_pgd');
+    expect(d.nhom).toBe('tp_pgd');
     expect(d.chiTieuBenRe).toBe(20);
     expect(d.ketQua.dat).toBe(false);
     expect(d.ketQua.phanTramHoanThanh).toBe(0);
+    expect(d.ketQua.tyLeDatDuoc).toBe(40);
     expect(d.ketQua.conThieu.join(' ')).toContain('≥ 4 ý tưởng Vươn cành');
   });
 
-  it('Cán bộ HTTD 6 Ươm mầm + 1 Bén rễ + 2 Vươn cành: đường Bén rễ 5/6, đường Ươm mầm 9/12 → chưa đạt', () => {
-    const d = tinhDongTheDiem(canBo({ maPhong: 'HTTD', chucDanh: 'Cán bộ Hỗ trợ tín dụng', dem: dem(6, 1, 2) }), null);
-    expect(d.nhomApCongThuc).toBe('can_bo');
+  it('Cán bộ A: 5 ý tưởng (2 Bén rễ, 1 Vươn cành) → 4/6 hoặc 5/12, lấy 66,7%', () => {
+    const d = tinhDongTheDiem(canBo({ dem: dem(2, 2, 1) }), phong({}));
+    expect(d.nhom).toBe('can_bo');
     expect(d.chiTieuBenRe).toBeNull();
-    expect(d.diemQuyDoi).toBe(5);
-    expect(d.luyKe).toEqual(dem(9, 3, 2));
+    expect(d.diemQuyDoi).toBe(4);
     expect(d.ketQua.dat).toBe(false);
-    expect(d.ketQua.phanTramHoanThanh).toBe(83.3);
+    expect(d.ketQua.phanTramHoanThanh).toBe(66.7);
+    expect(d.ketQua.dienGiai[0]).toContain('5/12');
+    expect(d.ketQua.dienGiai[1]).toContain('4/6');
   });
 
   it('Ban Giám đốc: chỉ hiện số, không giao chỉ tiêu', () => {
@@ -116,16 +137,17 @@ describe('tinhDongTheDiem — số liệu thật 17/09/2026', () => {
 });
 
 describe('tinhPhongTheDiem — bảng theo phòng', () => {
-  it('KHDN 15 cán bộ: chỉ tiêu 15, quy đổi 23 (153%), điều kiện phòng đạt', () => {
+  it('KHDN 15 cán bộ: chỉ tiêu 15, quy đổi 23 (153%), 17 đạt Bén rễ trở lên, điều kiện phòng đạt', () => {
     const r = tinhPhongTheDiem(phong({}));
     expect(r.chiTieuBenRe).toBe(15);
     expect(r.diemQuyDoi).toBe(23);
+    expect(r.soBenReTroLen).toBe(17);
     expect(r.tyLeBenRe).toBe(153.3);
     expect(r.datDieuKienPhong).toBe(true);
-    expect(r.luyKe).toEqual(dem(30, 17, 6));
+    expect(r.ghiNhan).toEqual(dem(30, 11, 6));
   });
 
-  it('PGD: chỉ tiêu gấp đôi số cán bộ, điều kiện ≥ 4 Vươn cành hoặc ≥ 2 Lan tỏa', () => {
+  it('PGD: chỉ tiêu Trưởng PGD gấp đôi số cán bộ, điều kiện ≥ 4 Vươn cành hoặc ≥ 2 Lan tỏa', () => {
     const r = tinhPhongTheDiem(phong({ ma: 'PHONG_GIAO_DICH_AN_THI', soCanBo: 8, dem: dem(2, 4, 0) }));
     expect(r.nhomTruongPhong).toBe('tp_pgd');
     expect(r.chiTieuBenRe).toBe(16);

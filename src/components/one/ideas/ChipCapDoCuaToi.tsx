@@ -16,7 +16,7 @@ export const ChipCapDoCuaToi: React.FC<{ dem: DemTheoCap; nho?: boolean }> = ({ 
         <span
           key={c.capDo}
           className={`rounded-full font-bold ${c.lop} ${nho ? 'px-2 py-0.5 text-2xs' : 'px-2.5 py-1 text-xs'}`}
-          title={`${c.so} ý tưởng của bạn đã đạt cấp ${c.capDo} (tính cả ý tưởng đã lên cấp cao hơn)`}
+          title={c.capDo === 'Ươm mầm' ? `Tổng số ý tưởng của bạn: ${c.so}` : `${c.so} ý tưởng của bạn đang ở cấp ${c.capDo}`}
         >
           {c.emoji} {c.so} {c.capDo}
         </span>

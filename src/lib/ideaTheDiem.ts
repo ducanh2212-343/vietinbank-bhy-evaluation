@@ -1,12 +1,13 @@
 import {
   chiTieuBenRe,
   datDieuKienPhong,
-  demLuyKe,
+  demGhiNhan,
   demRong,
   diemQuyDoiBenRe,
   DIEU_KIEN_PHONG,
   kpiCanBo,
   kpiLanhDao,
+  soBenReTroLen,
   tongSoYTuongDuocCongNhan,
   type DemTheoCap,
   type KetQuaKpi,
@@ -23,10 +24,12 @@ import {
 // Giám đốc chốt 17/09/2026:
 //   1. Đồng đề xuất: mỗi người tính TRỌN một ý tưởng.
 //   2. Mẫu số «số cán bộ của Phòng»: danh bạ hiện tại, trừ cán bộ khoán gọn.
-//   3. Phó phòng / Kiểm soát viên: TẠM tính như Trưởng phòng của đơn vị mình
-//      (chưa có phân công cán bộ phụ trách trên hệ thống; sẽ chỉnh sau).
-//   6. Ghi nhận LŨY KẾ: ý tưởng lên cấp cao vẫn được tính ở các cấp đã qua;
-//      điểm quy đổi vẫn tính trên cấp cao nhất (xem demLuyKe).
+//   3. Phó phòng / Kiểm soát viên: mẫu số lấy số cán bộ cả phòng như Trưởng
+//      phòng (chưa có phân công cán bộ phụ trách), còn đo theo bộ nguyên tắc
+//      của Phó phòng: Bén rễ của phòng KHÔNG quy đổi, bản thân ≥ 1 Vươn cành/
+//      Lan tỏa. Cán bộ thường vẫn quy đổi 1 Vươn cành = 2 Bén rễ.
+//   6. Cách ghi nhận: Ươm mầm là tổng số ý tưởng, các cấp trên chỉ đếm ý tưởng
+//      đang ở cấp đó (5 ý tưởng → 5 Ươm mầm, trong đó 2 Bén rễ, 1 Vươn cành).
 //   7. Kỳ tính: cả năm 2026 — mọi ý tưởng đã nhập.
 
 export interface PhongTheDiem {
@@ -129,17 +132,6 @@ export function nhomTruongPhongCuaPhong(maPhong: string): 'tp_dau_moi' | 'tp_pgd
   return laPhongGiaoDich(maPhong) ? 'tp_pgd' : 'tp_dau_moi';
 }
 
-/**
- * Nhóm ÁP CÔNG THỨC. Phó phòng / KSV tạm tính như Trưởng phòng đơn vị mình
- * (chốt 17/09/2026): cùng mẫu số, cùng điều kiện phòng, cùng điều kiện cá
- * nhân ≥ 1 Vươn cành/Lan tỏa. Khi danh bạ có phân công «cán bộ phụ trách»
- * thì đổi lại tại đây.
- */
-export function nhomApCongThuc(nhom: NhomViTriKpi, maPhong: string): NhomViTriKpi {
-  if (nhom !== 'pho_phong') return nhom;
-  return nhomTruongPhongCuaPhong(maPhong) ?? 'pho_phong';
-}
-
 export const NHOM_VI_TRI_NGAN: Record<NhomViTriKpi, string> = {
   ban_giam_doc: 'Ban Giám đốc',
   tp_dau_moi: 'Trưởng phòng',
@@ -148,6 +140,10 @@ export const NHOM_VI_TRI_NGAN: Record<NhomViTriKpi, string> = {
   can_bo: 'Cán bộ',
 };
 
+/** Nhóm có chỉ tiêu Bén rễ theo mẫu số cán bộ (lãnh đạo phòng) */
+const laLanhDaoPhong = (nhom: NhomViTriKpi): nhom is 'tp_dau_moi' | 'tp_pgd' | 'pho_phong' =>
+  nhom === 'tp_dau_moi' || nhom === 'tp_pgd' || nhom === 'pho_phong';
+
 /* ------------------------------------------------------------------ */
 /* Tính dòng                                                            */
 /* ------------------------------------------------------------------ */
@@ -155,15 +151,12 @@ export const NHOM_VI_TRI_NGAN: Record<NhomViTriKpi, string> = {
 export interface DongTheDiem {
   canBo: CanBoTheDiem;
   phong: PhongTheDiem | null;
-  /** Nhóm theo chức danh */
   nhom: NhomViTriKpi;
-  /** Nhóm áp công thức (Phó phòng → Trưởng phòng đơn vị) */
-  nhomApCongThuc: NhomViTriKpi;
-  /** Ghi nhận lũy kế để hiện bảng: 10 Ươm mầm · 3 Bén rễ · 2 Vươn cành · 1 Lan tỏa */
-  luyKe: DemTheoCap;
-  /** Điểm quy đổi Bén rễ (1 / 2 / 3) */
+  /** Cách ghi nhận để hiện bảng: 5 Ươm mầm · 2 Bén rễ · 1 Vươn cành */
+  ghiNhan: DemTheoCap;
+  /** Điểm quy đổi Bén rễ của CHÍNH người này (1 / 2 / 3) — đường Bén rễ của cán bộ */
   diemQuyDoi: number;
-  /** Chỉ tiêu Bén rễ quy đổi của lãnh đạo; null với cán bộ (hai đường) và Ban Giám đốc */
+  /** Chỉ tiêu Bén rễ của lãnh đạo phòng; null với cán bộ (hai đường) và Ban Giám đốc */
   chiTieuBenRe: number | null;
   ketQua: KetQuaKpi;
 }
@@ -173,34 +166,33 @@ const ketQuaKhoanGon = (nhom: NhomViTriKpi): KetQuaKpi => ({
   coGiaoChiTieu: false,
   dat: true,
   phanTramHoanThanh: 0,
+  tyLeDatDuoc: 0,
   dienGiai: ['Cán bộ khoán gọn — không giao chỉ tiêu Đổi mới sáng tạo, không tính vào mẫu số của phòng'],
   conThieu: [],
 });
 
 export function tinhDongTheDiem(cb: CanBoTheDiem, phong: PhongTheDiem | null): DongTheDiem {
   const nhom = nhomViTriTuChucDanh(cb.chucDanh);
-  const ap = nhomApCongThuc(nhom, cb.maPhong);
   const demPhong = phong?.dem ?? demRong();
   const soCanBo = phong?.soCanBo ?? 0;
   const ketQua = cb.khoanGon
     ? ketQuaKhoanGon(nhom)
-    : ap === 'can_bo'
+    : nhom === 'can_bo'
       ? kpiCanBo(cb.dem)
-      : kpiLanhDao(ap, { demPhong, demBanThan: cb.dem, soCanBo });
-  const chiTieu = !cb.khoanGon && (ap === 'tp_dau_moi' || ap === 'tp_pgd') ? chiTieuBenRe(ap, soCanBo) : null;
+      : kpiLanhDao(nhom, { demPhong, demBanThan: cb.dem, soCanBo });
+  const chiTieu = !cb.khoanGon && laLanhDaoPhong(nhom) ? chiTieuBenRe(nhom, soCanBo) : null;
   return {
     canBo: cb,
     phong,
     nhom,
-    nhomApCongThuc: ap,
-    luyKe: demLuyKe(cb.dem),
+    ghiNhan: demGhiNhan(cb.dem),
     diemQuyDoi: diemQuyDoiBenRe(cb.dem),
     chiTieuBenRe: chiTieu,
     ketQua,
   };
 }
 
-/** Xếp: có giao chỉ tiêu trước, %HT cao trước, rồi điểm quy đổi, rồi tên */
+/** Xếp: có giao chỉ tiêu trước, %HT cao trước, rồi tỷ lệ đạt được, rồi tên */
 export function tinhTheDiem(th: TongHopTheDiem): DongTheDiem[] {
   const theoId = new Map(th.phong.map(p => [p.phongId, p]));
   return th.canBo
@@ -208,19 +200,22 @@ export function tinhTheDiem(th: TongHopTheDiem): DongTheDiem[] {
     .sort((a, b) =>
       Number(b.ketQua.coGiaoChiTieu) - Number(a.ketQua.coGiaoChiTieu)
       || b.ketQua.phanTramHoanThanh - a.ketQua.phanTramHoanThanh
-      || b.diemQuyDoi - a.diemQuyDoi
+      || b.ketQua.tyLeDatDuoc - a.ketQua.tyLeDatDuoc
       || a.canBo.hoTen.localeCompare(b.canBo.hoTen, 'vi'));
 }
 
 export interface DongPhongTheDiem {
   phong: PhongTheDiem;
-  luyKe: DemTheoCap;
+  ghiNhan: DemTheoCap;
   tongYTuong: number;
+  /** Ý tưởng đạt Bén rễ trở lên, mỗi ý tưởng một lần — tử số của Phó phòng */
+  soBenReTroLen: number;
+  /** Điểm quy đổi 1/2/3 — tử số của Trưởng phòng */
   diemQuyDoi: number;
   nhomTruongPhong: 'tp_dau_moi' | 'tp_pgd' | null;
-  /** Chỉ tiêu Bén rễ quy đổi của Trưởng phòng (số cán bộ, PGD ×2); null với Ban Giám đốc */
+  /** Chỉ tiêu Bén rễ của Trưởng phòng (số cán bộ, PGD ×2); null với Ban Giám đốc */
   chiTieuBenRe: number | null;
-  /** % Bén rễ quy đổi / chỉ tiêu, chưa chặn trần — để nhìn phòng nào đang ở đâu */
+  /** % quy đổi / chỉ tiêu Trưởng phòng, chưa chặn trần */
   tyLeBenRe: number | null;
   datDieuKienPhong: boolean | null;
   moTaDieuKienPhong: string;
@@ -233,8 +228,9 @@ export function tinhPhongTheDiem(p: PhongTheDiem): DongPhongTheDiem {
   const nguong = nhomTp ? DIEU_KIEN_PHONG[nhomTp] : null;
   return {
     phong: p,
-    luyKe: demLuyKe(p.dem),
+    ghiNhan: demGhiNhan(p.dem),
     tongYTuong: tongSoYTuongDuocCongNhan(p.dem),
+    soBenReTroLen: soBenReTroLen(p.dem),
     diemQuyDoi: diem,
     nhomTruongPhong: nhomTp,
     chiTieuBenRe: chiTieu,

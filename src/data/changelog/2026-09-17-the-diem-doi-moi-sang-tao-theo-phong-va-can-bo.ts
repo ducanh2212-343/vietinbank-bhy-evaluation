@@ -11,7 +11,7 @@ const muc: MucLichSu = {
     + 'điểm quy đổi Bén rễ, chỉ tiêu theo vị trí, điều kiện cần và tỷ lệ hoàn thành; mỗi phòng một dòng '
     + 'với mẫu số và điều kiện phòng. Trước đây TCTH phải tự cộng tay từ sổ ghi nhận.',
   diemChinh: [
-    'Chức danh trong danh bạ tự nối vào nhóm thẻ điểm; Phó phòng tạm tính như Trưởng phòng.',
+    'Chức danh tự nối vào nhóm thẻ điểm; Phó phòng: mẫu số là số cán bộ phòng, Bén rễ không quy đổi.',
     'Lọc theo phòng, theo nhóm, tìm tên; kết xuất Excel ba sheet kèm cách tính.',
     'KPI đang tạm dừng nên số liệu là tham khảo — màn ghi rõ.',
   ],

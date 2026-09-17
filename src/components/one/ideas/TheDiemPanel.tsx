@@ -35,7 +35,7 @@ function KetQuaChip({ d }: { d: DongTheDiem }) {
   }
   return d.ketQua.dat
     ? <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-2xs font-black text-emerald-800">Đạt {d.ketQua.phanTramHoanThanh}%</span>
-    : <span className="rounded-full bg-orange-100 px-2 py-0.5 text-2xs font-black text-orange-800">Chưa đạt</span>;
+    : <span className="rounded-full bg-orange-100 px-2 py-0.5 text-2xs font-black text-orange-800" title="Dưới ngưỡng thì quy 0 điểm — số trong ngoặc là tỷ lệ đang đạt">Chưa đạt · {d.ketQua.tyLeDatDuoc}%</span>;
 }
 
 export const TheDiemPanel: React.FC = () => {
@@ -87,8 +87,8 @@ export const TheDiemPanel: React.FC = () => {
             Thẻ điểm Đổi mới sáng tạo — cả năm 2026
           </h3>
           <p className="mt-0.5 text-2xs text-slate-500">
-            Tính lúc {tongHop.tinhLuc ? new Date(tongHop.tinhLuc).toLocaleString('vi-VN') : '—'} · số ý tưởng ghi nhận
-            lũy kế theo từng cấp; điểm quy đổi 1 Vươn cành = 2 Bén rễ, 1 Lan tỏa = 3 Bén rễ.
+            Tính lúc {tongHop.tinhLuc ? new Date(tongHop.tinhLuc).toLocaleString('vi-VN') : '—'} · Ươm mầm là tổng số
+            ý tưởng, các cấp trên đếm ý tưởng đang ở cấp đó; quy đổi 1 Vươn cành = 2 Bén rễ, 1 Lan tỏa = 3 Bén rễ.
           </p>
         </div>
         <div className="flex gap-2">
@@ -138,9 +138,10 @@ export const TheDiemPanel: React.FC = () => {
                 <th className="px-2 py-2 text-left">Phòng</th>
                 <th className="px-2 py-2 text-right" title="Cán bộ đang làm việc, trừ khoán gọn — mẫu số chỉ tiêu Bén rễ">Cán bộ</th>
                 {IDEA_DEV_LEVELS.map(c => (
-                  <th key={c} className="px-2 py-2 text-right" title={`${c} — lũy kế`}>{IDEA_DEV_LEVEL_EMOJI[c]} {c}</th>
+                  <th key={c} className="px-2 py-2 text-right" title={c === 'Ươm mầm' ? 'Tổng số ý tưởng của phòng' : `Ý tưởng đang ở cấp ${c}`}>{IDEA_DEV_LEVEL_EMOJI[c]} {c}</th>
                 ))}
-                <th className="px-2 py-2 text-right">Quy đổi</th>
+                <th className="px-2 py-2 text-right" title="Ý tưởng đã đạt Bén rễ trở lên, mỗi ý tưởng một lần — tử số của Phó phòng">≥ Bén rễ</th>
+                <th className="px-2 py-2 text-right" title="Điểm quy đổi 1/2/3 — tử số của Trưởng phòng">Quy đổi</th>
                 <th className="px-2 py-2 text-right" title="Chỉ tiêu Bén rễ quy đổi của Trưởng phòng (PGD: 2 × số cán bộ)">Chỉ tiêu TP</th>
                 <th className="px-2 py-2 text-left">Điều kiện phòng</th>
               </tr>
@@ -151,8 +152,9 @@ export const TheDiemPanel: React.FC = () => {
                   <td className="px-2 py-1.5 font-bold text-slate-800">{r.phong.ten}</td>
                   <td className="px-2 py-1.5 text-right tabular-nums">{r.phong.soCanBo}</td>
                   {IDEA_DEV_LEVELS.map(c => (
-                    <td key={c} className="px-2 py-1.5 text-right tabular-nums">{r.luyKe[c]}</td>
+                    <td key={c} className="px-2 py-1.5 text-right tabular-nums">{r.ghiNhan[c]}</td>
                   ))}
+                  <td className="px-2 py-1.5 text-right tabular-nums">{r.soBenReTroLen}</td>
                   <td className="px-2 py-1.5 text-right font-bold tabular-nums">{r.diemQuyDoi}</td>
                   <td className="px-2 py-1.5 text-right tabular-nums">
                     {r.chiTieuBenRe === null ? '—' : (
@@ -216,9 +218,9 @@ export const TheDiemPanel: React.FC = () => {
                 <th className="px-2 py-2 text-left">Cán bộ</th>
                 <th className="px-2 py-2 text-left">Chức danh · nhóm</th>
                 {IDEA_DEV_LEVELS.map(c => (
-                  <th key={c} className="px-2 py-2 text-right" title={`${c} — lũy kế`}>{IDEA_DEV_LEVEL_EMOJI[c]}</th>
+                  <th key={c} className="px-2 py-2 text-right" title={c === 'Ươm mầm' ? 'Tổng số ý tưởng' : `Ý tưởng đang ở cấp ${c}`}>{IDEA_DEV_LEVEL_EMOJI[c]}</th>
                 ))}
-                <th className="px-2 py-2 text-right" title="Điểm quy đổi Bén rễ">Quy đổi</th>
+                <th className="px-2 py-2 text-right" title="Điểm quy đổi Bén rễ của chính người này (đường Bén rễ của cán bộ)">Quy đổi</th>
                 <th className="px-2 py-2 text-right">Chỉ tiêu</th>
                 <th className="px-2 py-2 text-left">Kết quả</th>
               </tr>
@@ -234,15 +236,15 @@ export const TheDiemPanel: React.FC = () => {
                     <div className="text-slate-700">{d.canBo.chucDanh || '—'}</div>
                     <div className="text-2xs text-slate-500" title={NHOM_VI_TRI_LABELS[d.nhom]}>
                       {NHOM_VI_TRI_NGAN[d.nhom]}
-                      {d.nhomApCongThuc !== d.nhom && ` · tạm tính như ${NHOM_VI_TRI_NGAN[d.nhomApCongThuc]}`}
+                      {d.nhom === 'pho_phong' && ' · Bén rễ của phòng, không quy đổi'}
                     </div>
                   </td>
                   {IDEA_DEV_LEVELS.map(c => (
-                    <td key={c} className={`px-2 py-1.5 text-right tabular-nums ${d.luyKe[c] === 0 ? 'text-slate-300' : ''}`}>{d.luyKe[c]}</td>
+                    <td key={c} className={`px-2 py-1.5 text-right tabular-nums ${d.ghiNhan[c] === 0 ? 'text-slate-300' : ''}`}>{d.ghiNhan[c]}</td>
                   ))}
                   <td className="px-2 py-1.5 text-right font-bold tabular-nums">{d.diemQuyDoi}</td>
                   <td className="px-2 py-1.5 text-right tabular-nums">
-                    {d.chiTieuBenRe !== null ? d.chiTieuBenRe : d.nhomApCongThuc === 'can_bo' ? '12 ƯM / 6 BR' : '—'}
+                    {d.chiTieuBenRe !== null ? d.chiTieuBenRe : d.nhom === 'can_bo' ? '12 ƯM / 6 BR' : '—'}
                   </td>
                   <td className="px-2 py-1.5">
                     <KetQuaChip d={d} />
@@ -265,9 +267,12 @@ export const TheDiemPanel: React.FC = () => {
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-2xs leading-relaxed text-slate-600">
         <b>Cách tính (chốt 17/09/2026):</b> kỳ tính cả năm 2026, mọi ý tưởng đã nhập. Ý tưởng của một
         người gồm ý tưởng tự gửi và ý tưởng có tên trong ô Người đề xuất — đồng đề xuất mỗi người tính
-        trọn. Ghi nhận lũy kế: ý tưởng lên Vươn cành vẫn tính đã đạt Bén rễ. Mẫu số của Trưởng phòng là
-        số cán bộ đang làm việc của phòng (trừ khoán gọn); Phó phòng và Kiểm soát viên tạm tính như
-        Trưởng phòng đơn vị mình cho tới khi có phân công cán bộ phụ trách. Ban Giám đốc không giao chỉ tiêu.
+        trọn. Ươm mầm là tổng số ý tưởng, các cấp trên đếm ý tưởng đang ở cấp đó. Cán bộ: 12 Ươm mầm
+        hoặc 6 Bén rễ quy đổi (1 Vươn cành = 2, 1 Lan tỏa = 3), lấy đường cao hơn. Trưởng phòng: Bén rễ
+        quy đổi của phòng trên số cán bộ đang làm việc (trừ khoán gọn; PGD nhân đôi), kèm điều kiện
+        phòng và cá nhân. Phó phòng / Kiểm soát viên: Bén rễ của phòng <b>không quy đổi</b> trên số cán
+        bộ phòng (tạm, chưa có phân công cán bộ phụ trách), bản thân có ≥ 1 Vươn cành/Lan tỏa. Dưới
+        ngưỡng 90% quy 0 điểm. Ban Giám đốc không giao chỉ tiêu.
       </div>
     </div>
   );

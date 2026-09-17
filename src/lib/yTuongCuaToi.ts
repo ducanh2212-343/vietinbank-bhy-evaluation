@@ -1,5 +1,5 @@
 import { IDEA_DEV_LEVELS, IDEA_DEV_LEVEL_EMOJI, type IdeaDevLevel } from '@/data/one/ideasConfig';
-import { demLuyKe, demRong, type DemTheoCap } from '@/lib/ideaKpi';
+import { demGhiNhan, demRong, type DemTheoCap } from '@/lib/ideaKpi';
 
 // Ý tưởng CỦA TÔI theo cấp độ hiện tại — nuôi dải «Ý tưởng của bạn» và thẻ
 // ý tưởng. Nguồn: hàm máy chủ `bhy_ideas_y_tuong_cua_toi` (migration
@@ -51,15 +51,16 @@ export const LOP_CHIP_CAP_DO: Record<IdeaDevLevel, string> = {
 
 /**
  * Chip theo thứ tự cấp tăng dần, chỉ hiện cấp có ý tưởng. Nhận đếm theo cấp
- * cao nhất và hiện LŨY KẾ (chốt 17/09/2026): «5 Ươm mầm · 3 Bén rễ · 1 Vươn
- * cành» — ý tưởng lên Vươn cành vẫn được ghi nhận đã đạt Bén rễ. Cùng cách
- * đếm với báo cáo Thẻ điểm của TCTH để cán bộ và TCTH không nhìn hai số khác nhau.
+ * cao nhất và hiện theo cách GHI NHẬN (chốt 17/09/2026): «5 Ươm mầm · 2 Bén
+ * rễ · 1 Vươn cành» — Ươm mầm là tổng số ý tưởng, các cấp trên chỉ đếm ý tưởng
+ * đang ở cấp đó. Cùng cách đếm với báo cáo Thẻ điểm của TCTH để cán bộ và
+ * TCTH không nhìn hai số khác nhau.
  */
 export function chipTheoCap(dem: DemTheoCap): ChipCapDo[] {
-  const luyKe = demLuyKe(dem);
+  const ghiNhan = demGhiNhan(dem);
   return IDEA_DEV_LEVELS
-    .filter(c => luyKe[c] > 0)
-    .map(c => ({ capDo: c, so: luyKe[c], emoji: IDEA_DEV_LEVEL_EMOJI[c], lop: LOP_CHIP_CAP_DO[c] }));
+    .filter(c => ghiNhan[c] > 0)
+    .map(c => ({ capDo: c, so: ghiNhan[c], emoji: IDEA_DEV_LEVEL_EMOJI[c], lop: LOP_CHIP_CAP_DO[c] }));
 }
 
 /** Cấp đã qua Hội đồng — thẻ ý tưởng nói về cấp này thay vì dòng sổ Bén rễ */

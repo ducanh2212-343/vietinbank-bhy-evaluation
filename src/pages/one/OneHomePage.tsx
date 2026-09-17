@@ -73,7 +73,7 @@ function HomeContent() {
   const thang = thangHienTai();
   const saoThang = useMemo(() => saoCuaThang(tatCaPhieu, thang), [tatCaPhieu, thang]);
   const mocKeTiep = nhacMocQuaKeTiep(myStars);
-  // BHY Ideas của tôi: số ý tưởng theo từng cấp (lũy kế), tự làm mới mỗi 30 giây
+  // BHY Ideas của tôi: số ý tưởng theo từng cấp (Ươm mầm là tổng số), tự làm mới mỗi 30 giây
   // — yêu cầu 17/09/2026: cán bộ thấy ngay trên trang chủ, không phải sang trang Ideas
   const { yTuong: yTuongCuaToi, dem: demYTuong } = useYTuongCuaToi(!isGuest && !!profileId);
 
@@ -169,7 +169,7 @@ function HomeContent() {
                   )}
                 </div>
 
-                {/* BHY IDEAS CỦA TÔI — cùng nguồn và cùng cách đếm lũy kế với trang Ideas
+                {/* BHY IDEAS CỦA TÔI — cùng nguồn và cùng cách đếm với trang Ideas
                     và báo cáo Thẻ điểm của TCTH, nên ba nơi không bao giờ nói ba số. */}
                 {yTuongCuaToi.length > 0 && (
                   <div className="mt-3 border-t border-amber-100 pt-3">

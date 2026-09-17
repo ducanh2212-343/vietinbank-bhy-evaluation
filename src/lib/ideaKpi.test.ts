@@ -232,9 +232,9 @@ describe('kpiLanhDao — dưới ngưỡng quy 0 điểm (không tính theo tỷ
     expect(diemKpiTheoTrongSo(kq)).toBe(39); // trọng số 30 × 130%
   });
 
-  it('quy đổi áp cho cả chỉ tiêu lãnh đạo: 1 Lan tỏa + 2 Bén rễ = 5 điểm', () => {
-    const kq = kpiLanhDao('pho_phong', {
-      demPhong: dem({ 'Lan tỏa': 1, 'Bén rễ': 2 }), // 3 + 2 = 5 điểm / chỉ tiêu 5
+  it('quy đổi áp cho chỉ tiêu Trưởng phòng: 1 Lan tỏa + 2 Bén rễ = 5 điểm', () => {
+    const kq = kpiLanhDao('tp_dau_moi', {
+      demPhong: dem({ 'Lan tỏa': 1, 'Bén rễ': 2 }), // 3 + 2 = 5 điểm / chỉ tiêu 5; 1 Lan tỏa đủ điều kiện phòng
       demBanThan: dem({ 'Lan tỏa': 1 }),
       soCanBo: 5,
     });
@@ -242,15 +242,62 @@ describe('kpiLanhDao — dưới ngưỡng quy 0 điểm (không tính theo tỷ
     expect(kq.phanTramHoanThanh).toBe(100);
   });
 
-  it('Vươn cành nhân đôi trên đường lãnh đạo — 3 Vươn cành = 6 điểm, vượt chỉ tiêu 5', () => {
-    // Cách đếm cũ (mỗi ý tưởng cấp cao = 1) chỉ ra 3/5 = 60% → 0 điểm; bản
-    // quy đổi ra 6/5 = 120% — khác biệt đủ lớn để khóa bằng test riêng.
-    const kq = kpiLanhDao('pho_phong', {
+  it('Vươn cành nhân đôi trên đường Trưởng phòng — 3 Vươn cành = 6 điểm, vượt chỉ tiêu 5', () => {
+    const kq = kpiLanhDao('tp_dau_moi', {
       demPhong: dem({ 'Vươn cành': 3 }),
       demBanThan: dem({ 'Vươn cành': 1 }),
       soCanBo: 5,
     });
     expect(kq.dat).toBe(true);
     expect(kq.phanTramHoanThanh).toBe(120);
+  });
+});
+
+describe('kpiLanhDao — Phó phòng KHÔNG quy đổi (chốt 17/09/2026)', () => {
+  it('Trần Hà Trang, Phó phòng Bán lẻ: phòng 2 Bén rễ + 1 Vươn cành = 3 ý tưởng đạt Bén rễ trở lên / 8 cán bộ', () => {
+    const kq = kpiLanhDao('pho_phong', {
+      demPhong: dem({ 'Ươm mầm': 6, 'Bén rễ': 2, 'Vươn cành': 1 }),
+      demBanThan: dem({ 'Ươm mầm': 2, 'Bén rễ': 2, 'Vươn cành': 1 }),
+      soCanBo: 8,
+    });
+    // Điều kiện cá nhân (1 Vươn cành) đạt; Bén rễ 3/8 = 37,5% dưới ngưỡng 90% → 0 điểm
+    expect(kq.conThieu).toHaveLength(1);
+    expect(kq.conThieu[0]).toContain('không quy đổi');
+    expect(kq.conThieu[0]).toContain('3/8');
+    expect(kq.tyLeDatDuoc).toBe(37.5);
+    expect(kq.dat).toBe(false);
+    expect(kq.phanTramHoanThanh).toBe(0);
+    expect(kq.dienGiai[1]).toBe('Điều kiện cần: ĐẠT');
+  });
+
+  it('3 Vươn cành của phòng chỉ tính 3 ý tưởng, không nhân đôi thành 6', () => {
+    const kq = kpiLanhDao('pho_phong', {
+      demPhong: dem({ 'Vươn cành': 3 }),
+      demBanThan: dem({ 'Vươn cành': 1 }),
+      soCanBo: 5,
+    });
+    expect(kq.tyLeDatDuoc).toBe(60);
+    expect(kq.dat).toBe(false);
+  });
+
+  it('phòng 5 ý tưởng đạt Bén rễ trở lên / 5 cán bộ và bản thân có Vươn cành → 100%', () => {
+    const kq = kpiLanhDao('pho_phong', {
+      demPhong: dem({ 'Bén rễ': 4, 'Lan tỏa': 1 }),
+      demBanThan: dem({ 'Vươn cành': 1 }),
+      soCanBo: 5,
+    });
+    expect(kq.dat).toBe(true);
+    expect(kq.phanTramHoanThanh).toBe(100);
+  });
+
+  it('phòng dư Bén rễ nhưng bản thân chưa có Vươn cành/Lan tỏa → 0 điểm', () => {
+    const kq = kpiLanhDao('pho_phong', {
+      demPhong: dem({ 'Bén rễ': 10 }),
+      demBanThan: dem({ 'Bén rễ': 2 }),
+      soCanBo: 5,
+    });
+    expect(kq.dat).toBe(false);
+    expect(kq.phanTramHoanThanh).toBe(0);
+    expect(kq.conThieu[0]).toContain('Bản thân cần');
   });
 });
