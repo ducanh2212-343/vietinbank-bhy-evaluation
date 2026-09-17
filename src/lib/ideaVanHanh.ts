@@ -22,7 +22,8 @@ export type MaViecVanHanh =
   | 'uom_mam'
   | 'phan_nhom'
   | 'doi_chieu_smp'
-  | 'ngan_sach';
+  | 'ngan_sach'
+  | 'the_diem';
 
 export interface QuyenVanHanh {
   /** Ban Giám đốc theo hàm gác CSDL bhy_ideas_la_giam_doc (bgd / system_admin) */
@@ -90,6 +91,15 @@ export const CAC_VIEC_VAN_HANH: readonly ViecVanHanh[] = [
     ma: 'ngan_sach',
     ten: 'Ngân sách & kết xuất',
     moTa: 'Theo dõi ngân sách khen thưởng của chu kỳ và kết xuất số liệu ra Excel.',
+    hien: q => q.laGiamDoc || q.laQuanTri,
+  },
+  {
+    // Báo cáo Thẻ điểm ĐMST theo phòng và theo cán bộ (chốt 17/09/2026): số ý
+    // tưởng từng cấp, quy đổi, tỷ lệ hoàn thành và điều kiện cần — TCTH và
+    // Ban Giám đốc cùng xem; cán bộ chỉ thấy số của mình ở trang chủ.
+    ma: 'the_diem',
+    ten: 'Thẻ điểm ĐMST',
+    moTa: 'Số ý tưởng từng cấp, điểm quy đổi và tỷ lệ hoàn thành chỉ tiêu Đổi mới sáng tạo theo từng phòng, từng cán bộ.',
     hien: q => q.laGiamDoc || q.laQuanTri,
   },
 ] as const;

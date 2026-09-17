@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { yTuongCuaToiKey } from '../useYTuongCuaToi';
 import type { PhienTrinhBay, TrangThaiPhien } from '@/lib/ideaCouncilPhien';
 import {
   docTongHopRpc,
@@ -286,6 +287,8 @@ export function useCouncilMutations(roundId: string | null) {
   const refresh = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ROUNDS_KEY });
     queryClient.invalidateQueries({ queryKey: MEMBERS_KEY });
+    // Công bố nâng cấp độ ý tưởng — số theo cấp của chủ ý tưởng phải đổi ngay
+    queryClient.invalidateQueries({ queryKey: yTuongCuaToiKey });
     if (roundId) {
       queryClient.invalidateQueries({ queryKey: itemsKey(roundId) });
       queryClient.invalidateQueries({ queryKey: summaryKey(roundId) });

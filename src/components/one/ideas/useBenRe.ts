@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { docPhieuBenRe, goiPhieuBenRe, type PhieuBenRe } from '@/lib/ideaBenRe';
+import { yTuongCuaToiKey } from './useYTuongCuaToi';
 import type { IdeaLevel } from '@/data/one/ideasConfig';
 
 // Luồng cấp BÉN RỄ — TCTH trình LIÊN TỤC, Giám đốc phê duyệt (chỉ đạo 08/2026).
@@ -494,6 +495,7 @@ export function useBenReActions() {
     queryClient.invalidateQueries({ queryKey: soBenReKey });
     queryClient.invalidateQueries({ queryKey: soDayDuKey });
     queryClient.invalidateQueries({ queryKey: hoSoCuaToiKey });
+    queryClient.invalidateQueries({ queryKey: yTuongCuaToiKey });
     queryClient.invalidateQueries({ queryKey: ['idea-comments'] });
     queryClient.invalidateQueries({ queryKey: ['idea-awards'] });
     queryClient.invalidateQueries({ queryKey: ['one-portal-ideas'] });

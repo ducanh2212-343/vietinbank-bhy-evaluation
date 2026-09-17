@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { yTuongCuaToiKey } from './useYTuongCuaToi';
 import { useAuth } from '@/hooks/useAuth';
 import type { IdeaApplicability, IdeaDevLevel, IdeaLevel, IdeaLinhVuc } from '@/data/one/ideasConfig';
 
@@ -141,10 +142,11 @@ export function usePortalIdeas() {
     staleTime: 30 * 1000,
   });
 
-  const refresh = useCallback(
-    () => queryClient.invalidateQueries({ queryKey: IDEAS_KEY }),
-    [queryClient],
-  );
+  const refresh = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: IDEAS_KEY });
+    // Số ý tưởng theo cấp trên trang chủ phải đổi ngay sau khi gửi/sửa
+    queryClient.invalidateQueries({ queryKey: yTuongCuaToiKey });
+  }, [queryClient]);
 
   const createIdea = useCallback(async (input: IdeaInput): Promise<boolean> => {
     const { error } = await supabase.from('portal_ideas').insert({

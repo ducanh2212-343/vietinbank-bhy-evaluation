@@ -5636,6 +5636,10 @@ export type Database = {
         Args: { _proposer: string }
         Returns: string[]
       }
+      bhy_ideas_tong_hop_the_diem: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       bhy_ideas_y_tuong_cua_toi: {
         Args: Record<PropertyKey, never>
         Returns: {

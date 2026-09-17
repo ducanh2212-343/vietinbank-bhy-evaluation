@@ -8,12 +8,21 @@ export const yTuongCuaToiKey = ['bhy-ideas-y-tuong-cua-toi'];
  * Ý tưởng của người đang đăng nhập (tự tạo hoặc có tên đồng đề xuất) kèm cấp
  * độ hiện tại. Máy chủ quyết «của tôi» theo cùng luật khớp tên với Hội đồng —
  * client không tự so tên để khỏi có hai luật.
+ *
+ * Yêu cầu 17/09/2026: số trên trang chủ phải đổi ngay khi có thay đổi. Dự án
+ * chưa bật Realtime của Supabase (không bảng nào trong publication, và 150 kết
+ * nối socket thường trực là rủi ro hạn mức), nên dùng cách chắc: hỏi lại mỗi
+ * 30 giây khi tab đang mở, hỏi ngay khi quay lại tab, và các nơi làm đổi cấp
+ * (gửi ý tưởng, Giám đốc duyệt Bén rễ, Hội đồng công bố) chủ động xóa cache.
  */
 export function useYTuongCuaToi(enabled = true) {
   const { data = [], isLoading } = useQuery({
     queryKey: yTuongCuaToiKey,
     enabled,
-    staleTime: 60 * 1000,
+    staleTime: 15 * 1000,
+    refetchInterval: 30 * 1000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
     queryFn: async (): Promise<YTuongCuaToi[]> => {
       const { data: rows, error } = await supabase.rpc('bhy_ideas_y_tuong_cua_toi');
       if (error) throw error;

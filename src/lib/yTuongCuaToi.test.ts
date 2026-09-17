@@ -16,10 +16,15 @@ describe('yTuongCuaToi — đếm ý tưởng của tôi theo cấp hiện tại
     expect(demTheoCap([])).toEqual({ 'Ươm mầm': 0, 'Bén rễ': 0, 'Vươn cành': 0, 'Lan tỏa': 0 });
   });
 
-  it('chip theo thứ tự cấp tăng dần và bỏ cấp không có ý tưởng', () => {
-    const chips = chipTheoCap({ 'Ươm mầm': 0, 'Bén rễ': 2, 'Vươn cành': 1, 'Lan tỏa': 0 });
-    expect(chips.map(c => `${c.so} ${c.capDo}`)).toEqual(['2 Bén rễ', '1 Vươn cành']);
-    expect(chips[1].emoji).toBe('🌳');
+  it('chip hiện LŨY KẾ: Trần Hà Trang 2+2+1 ý tưởng → 5 Ươm mầm · 3 Bén rễ · 1 Vươn cành', () => {
+    const chips = chipTheoCap({ 'Ươm mầm': 2, 'Bén rễ': 2, 'Vươn cành': 1, 'Lan tỏa': 0 });
+    expect(chips.map(c => `${c.so} ${c.capDo}`)).toEqual(['5 Ươm mầm', '3 Bén rễ', '1 Vươn cành']);
+    expect(chips[2].emoji).toBe('🌳');
+  });
+
+  it('chip bỏ cấp chưa có ý tưởng nào đi qua', () => {
+    const chips = chipTheoCap({ 'Ươm mầm': 3, 'Bén rễ': 0, 'Vươn cành': 0, 'Lan tỏa': 0 });
+    expect(chips.map(c => `${c.so} ${c.capDo}`)).toEqual(['3 Ươm mầm']);
   });
 
   it('đọc cấp/vai từ máy chủ có phòng hờ', () => {

@@ -214,7 +214,10 @@ trần 10MB cho bucket `bhy-one` vốn đang để không giới hạn.
   **đã áp** (17/09/2026) — hàm `bhy_ideas_y_tuong_cua_toi()`: ý tưởng của người đăng nhập theo cấp
   hiện tại (tự tạo + đồng đề xuất khớp đúng một hồ sơ), nuôi dải «Ý tưởng của bạn»; cách tách tên
   gom về `bhy_ideas_tach_ten_de_xuat` và `bhy_ideas_phong_lien_quan` dùng lại (đối chiếu 188/188
-  không đổi). Tên file mang số thứ tự tăng dần
+  không đổi). `20261036090000_bhy_ideas_tong_hop_the_diem` **đã áp** (17/09/2026) — hàm
+  `bhy_ideas_tong_hop_the_diem()` (chỉ TCTH/BGĐ): nguyên liệu Thẻ điểm ĐMST theo phòng (mẫu số =
+  cán bộ đang làm việc trừ khoán gọn) và theo cán bộ (đếm theo cấp cao nhất, đồng đề xuất tính trọn);
+  luật tính chỉ nằm ở `src/lib/ideaKpi.ts` + `ideaTheDiem.ts`. Tên file mang số thứ tự tăng dần
   chứ không phải ngày lịch (chuỗi Ideas đã vượt quá ngày thật từ 08/2026); mỗi file đều có
   bản gỡ ở `supabase/rollbacks/`.
 

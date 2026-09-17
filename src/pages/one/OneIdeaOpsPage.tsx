@@ -1,5 +1,5 @@
 import { Link, useSearchParams } from 'react-router-dom';
-import { BookOpen, ClipboardCheck, ClipboardPen, Globe, Lightbulb, ShieldCheck, Sprout, Tags, Wallet, type LucideIcon } from 'lucide-react';
+import { BarChart3, BookOpen, ClipboardCheck, ClipboardPen, Globe, Lightbulb, ShieldCheck, Sprout, Tags, Wallet, type LucideIcon } from 'lucide-react';
 import { OnePageShell } from '@/components/one/OnePageShell';
 import { chonViec, cacViecHienThi, quyenTuVaiTro, type MaViecVanHanh } from '@/lib/ideaVanHanh';
 import { useAuth } from '@/hooks/useAuth';
@@ -11,6 +11,7 @@ import { UomMamPicker } from '@/components/one/ideas/UomMamPicker';
 import { PhanNhomPanel } from '@/components/one/ideas/PhanNhomPanel';
 import { SmpTracker } from '@/components/one/ideas/SmpTracker';
 import { IdeaBudgetExport } from '@/components/one/ideas/IdeaBudgetExport';
+import { TheDiemPanel } from '@/components/one/ideas/TheDiemPanel';
 import { usePortalIdeas } from '@/components/one/ideas/usePortalIdeas';
 import { useUngVienBenRe, useViecCuaGiamDoc } from '@/components/one/ideas/useBenRe';
 import { useCauHinhIdeas, useLaGiamDoc } from '@/components/one/ideas/useUomMamPicker';
@@ -36,6 +37,7 @@ const HINH_VIEC: Record<MaViecVanHanh, { icon: LucideIcon; khung: string }> = {
   phan_nhom: { icon: Tags, khung: 'border-violet-200' },
   doi_chieu_smp: { icon: Globe, khung: 'border-slate-200' },
   ngan_sach: { icon: Wallet, khung: 'border-amber-200' },
+  the_diem: { icon: BarChart3, khung: 'border-indigo-200' },
 };
 
 function KhongCoViec() {
@@ -144,6 +146,7 @@ export default function OneIdeaOpsPage() {
               {viecDangChon === 'phan_nhom' && <PhanNhomPanel ideas={ideas} />}
               {viecDangChon === 'doi_chieu_smp' && <SmpTracker />}
               {viecDangChon === 'ngan_sach' && <IdeaBudgetExport ideas={ideas} />}
+              {viecDangChon === 'the_diem' && <TheDiemPanel />}
             </div>
           </div>
         )}

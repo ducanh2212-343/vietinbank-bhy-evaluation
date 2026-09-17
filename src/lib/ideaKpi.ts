@@ -98,6 +98,27 @@ export function tongSoYTuongDuocCongNhan(dem: DemTheoCap): number {
   return dem['Ươm mầm'] + dem['Bén rễ'] + dem['Vươn cành'] + dem['Lan tỏa'];
 }
 
+/**
+ * Đếm LŨY KẾ — cách «ghi nhận» Giám đốc chốt 17/09/2026: ý tưởng đã lên cấp
+ * cao vẫn được ghi nhận ở mọi cấp đã đi qua. Cán bộ có 10 ý tưởng, 2 lên Vươn
+ * cành, 1 trong đó lên Lan tỏa → ghi nhận 10 Ươm mầm · 2 Bén rễ · 2 Vươn cành
+ * · 1 Lan tỏa (Vươn cành đi qua Bén rễ, Lan tỏa đi qua Vươn cành).
+ *
+ * Lũy kế suy được từ đếm theo cấp cao nhất; chiều ngược lại thì không, nên
+ * máy chủ luôn trả đếm theo cấp cao nhất và client tự suy. Điểm quy đổi Bén rễ
+ * (`diemQuyDoiBenRe`, hệ số 1/2/3) tính trên cấp cao nhất; nhìn qua lũy kế thì
+ * đúng bằng Bén rễ + Vươn cành + Lan tỏa lũy kế — hai cách cho cùng một số,
+ * nên bảng có thể in cả hai mà không lệch.
+ */
+export function demLuyKe(dem: DemTheoCap): DemTheoCap {
+  return {
+    'Ươm mầm': tongSoYTuongDuocCongNhan(dem),
+    'Bén rễ': dem['Bén rễ'] + dem['Vươn cành'] + dem['Lan tỏa'],
+    'Vươn cành': dem['Vươn cành'] + dem['Lan tỏa'],
+    'Lan tỏa': dem['Lan tỏa'],
+  };
+}
+
 /** Điểm quy đổi ra "ý tưởng Bén rễ" theo hệ số Phụ lục 1B */
 export function diemQuyDoiBenRe(dem: DemTheoCap): number {
   return (Object.keys(HE_SO_QUY_DOI_BEN_RE) as IdeaDevLevel[])
@@ -202,20 +223,30 @@ export function chiTieuBenRe(nhom: NhomViTriKpi, soCanBo: number): number {
  *                VÀ cá nhân Trưởng phòng có ≥ 1 ý tưởng "Vươn cành"/"Lan tỏa".
  *  - pho_phong:  Bản thân có ≥ 1 ý tưởng "Vươn cành"/"Lan tỏa".
  */
+/** Ngưỡng điều kiện cần về PHÒNG của Trưởng phòng — nguyên văn Phụ lục 1B */
+export const DIEU_KIEN_PHONG: Record<'tp_dau_moi' | 'tp_pgd', { vuonCanh: number; lanToa: number }> = {
+  tp_dau_moi: { vuonCanh: 2, lanToa: 1 },
+  tp_pgd: { vuonCanh: 4, lanToa: 2 },
+};
+
+/**
+ * Phòng đã đủ điều kiện cần chưa (chỉ phần PHÒNG, chưa xét cá nhân) — tách
+ * riêng để bảng Thẻ điểm theo phòng dùng đúng ngưỡng này, không chép số.
+ */
+export function datDieuKienPhong(nhom: NhomViTriKpi, demPhong: DemTheoCap): boolean {
+  if (nhom !== 'tp_dau_moi' && nhom !== 'tp_pgd') return true;
+  const n = DIEU_KIEN_PHONG[nhom];
+  return demPhong['Vươn cành'] >= n.vuonCanh || demPhong['Lan tỏa'] >= n.lanToa;
+}
+
 export function kiemTraDieuKienCan(nhom: NhomViTriKpi, dv: DauVaoLanhDao): string[] {
   const thieu: string[] = [];
   const banThanCao = soVuonCanhTroLen(dv.demBanThan);
 
-  if (nhom === 'tp_dau_moi') {
-    const dukPhong = dv.demPhong['Vươn cành'] >= 2 || dv.demPhong['Lan tỏa'] >= 1;
-    if (!dukPhong) {
-      thieu.push(`Phòng cần ≥ 2 ý tưởng Vươn cành hoặc ≥ 1 Lan tỏa (hiện ${dv.demPhong['Vươn cành']} Vươn cành, ${dv.demPhong['Lan tỏa']} Lan tỏa)`);
-    }
-    if (banThanCao < 1) thieu.push('Cá nhân Trưởng phòng cần ≥ 1 ý tưởng đạt Vươn cành hoặc Lan tỏa');
-  } else if (nhom === 'tp_pgd') {
-    const dukPhong = dv.demPhong['Vươn cành'] >= 4 || dv.demPhong['Lan tỏa'] >= 2;
-    if (!dukPhong) {
-      thieu.push(`Phòng cần ≥ 4 ý tưởng Vươn cành hoặc ≥ 2 Lan tỏa (hiện ${dv.demPhong['Vươn cành']} Vươn cành, ${dv.demPhong['Lan tỏa']} Lan tỏa)`);
+  if (nhom === 'tp_dau_moi' || nhom === 'tp_pgd') {
+    if (!datDieuKienPhong(nhom, dv.demPhong)) {
+      const n = DIEU_KIEN_PHONG[nhom];
+      thieu.push(`Phòng cần ≥ ${n.vuonCanh} ý tưởng Vươn cành hoặc ≥ ${n.lanToa} Lan tỏa (hiện ${dv.demPhong['Vươn cành']} Vươn cành, ${dv.demPhong['Lan tỏa']} Lan tỏa)`);
     }
     if (banThanCao < 1) thieu.push('Cá nhân Trưởng phòng cần ≥ 1 ý tưởng đạt Vươn cành hoặc Lan tỏa');
   } else if (nhom === 'pho_phong') {
