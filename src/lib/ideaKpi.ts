@@ -98,6 +98,32 @@ export function tongSoYTuongDuocCongNhan(dem: DemTheoCap): number {
   return dem['Ươm mầm'] + dem['Bén rễ'] + dem['Vươn cành'] + dem['Lan tỏa'];
 }
 
+/**
+ * Đếm GHI NHẬN — cách hiển thị Giám đốc chốt 17/09/2026: Ươm mầm là TỔNG số ý
+ * tưởng đã nhập (mọi ý tưởng đều đi qua Ươm mầm), các cấp trên chỉ đếm ý tưởng
+ * đang ở đúng cấp đó. Trần Hà Trang có 5 ý tưởng, 2 dừng ở Bén rễ, 1 ở Vươn
+ * cành → ghi nhận 5 Ươm mầm · 2 Bén rễ · 1 Vươn cành.
+ *
+ * Máy chủ luôn trả đếm theo cấp cao nhất; client tự suy cách hiển thị này.
+ */
+export function demGhiNhan(dem: DemTheoCap): DemTheoCap {
+  return {
+    'Ươm mầm': tongSoYTuongDuocCongNhan(dem),
+    'Bén rễ': dem['Bén rễ'],
+    'Vươn cành': dem['Vươn cành'],
+    'Lan tỏa': dem['Lan tỏa'],
+  };
+}
+
+/**
+ * Số ý tưởng đã đạt Bén rễ TRỞ LÊN, mỗi ý tưởng đúng một lần — KHÔNG quy đổi.
+ * Là tử số đường Bén rễ của Phó phòng (chốt 17/09/2026): ý tưởng của phòng đã
+ * lên Vươn cành vẫn là một ý tưởng đạt Bén rễ, không nhân đôi.
+ */
+export function soBenReTroLen(dem: DemTheoCap): number {
+  return dem['Bén rễ'] + dem['Vươn cành'] + dem['Lan tỏa'];
+}
+
 /** Điểm quy đổi ra "ý tưởng Bén rễ" theo hệ số Phụ lục 1B */
 export function diemQuyDoiBenRe(dem: DemTheoCap): number {
   return (Object.keys(HE_SO_QUY_DOI_BEN_RE) as IdeaDevLevel[])
@@ -116,6 +142,8 @@ export interface KetQuaKpi {
   dat: boolean;
   /** % hoàn thành đã chặn trần 130; 0 khi dưới ngưỡng */
   phanTramHoanThanh: number;
+  /** % đạt được thực tế (chặn trần 130) — hiện cả khi dưới ngưỡng để biết đang ở đâu */
+  tyLeDatDuoc: number;
   /** Diễn giải để hiện trên báo cáo và đối chiếu khi TCTH nhập KPI */
   dienGiai: string[];
   /** Điều kiện chưa đạt — rỗng khi đã đạt */
@@ -164,6 +192,7 @@ export function kpiCanBo(dem: DemTheoCap): KetQuaKpi {
     coGiaoChiTieu: true,
     dat,
     phanTramHoanThanh: chuanHoaPhanTram(tyLe),
+    tyLeDatDuoc: chuanHoaPhanTram(tyLe),
     dienGiai,
     conThieu,
   };
@@ -182,7 +211,9 @@ export interface DauVaoLanhDao {
    * Số cán bộ làm mẫu số chỉ tiêu Bén rễ:
    *  - tp_dau_moi: số cán bộ của Phòng tại 31/05/2026
    *  - tp_pgd:     số cán bộ của Phòng tại 31/05/2026 (hàm tự nhân 2)
-   *  - pho_phong:  số cán bộ phụ trách, TÍNH CẢ BẢN THÂN
+   *  - pho_phong:  số cán bộ phụ trách, TÍNH CẢ BẢN THÂN — danh bạ chưa có
+   *                phân công nên TẠM lấy số cán bộ cả phòng như Trưởng phòng
+   *                (chốt 17/09/2026)
    */
   soCanBo: number;
 }
@@ -202,20 +233,30 @@ export function chiTieuBenRe(nhom: NhomViTriKpi, soCanBo: number): number {
  *                VÀ cá nhân Trưởng phòng có ≥ 1 ý tưởng "Vươn cành"/"Lan tỏa".
  *  - pho_phong:  Bản thân có ≥ 1 ý tưởng "Vươn cành"/"Lan tỏa".
  */
+/** Ngưỡng điều kiện cần về PHÒNG của Trưởng phòng — nguyên văn Phụ lục 1B */
+export const DIEU_KIEN_PHONG: Record<'tp_dau_moi' | 'tp_pgd', { vuonCanh: number; lanToa: number }> = {
+  tp_dau_moi: { vuonCanh: 2, lanToa: 1 },
+  tp_pgd: { vuonCanh: 4, lanToa: 2 },
+};
+
+/**
+ * Phòng đã đủ điều kiện cần chưa (chỉ phần PHÒNG, chưa xét cá nhân) — tách
+ * riêng để bảng Thẻ điểm theo phòng dùng đúng ngưỡng này, không chép số.
+ */
+export function datDieuKienPhong(nhom: NhomViTriKpi, demPhong: DemTheoCap): boolean {
+  if (nhom !== 'tp_dau_moi' && nhom !== 'tp_pgd') return true;
+  const n = DIEU_KIEN_PHONG[nhom];
+  return demPhong['Vươn cành'] >= n.vuonCanh || demPhong['Lan tỏa'] >= n.lanToa;
+}
+
 export function kiemTraDieuKienCan(nhom: NhomViTriKpi, dv: DauVaoLanhDao): string[] {
   const thieu: string[] = [];
   const banThanCao = soVuonCanhTroLen(dv.demBanThan);
 
-  if (nhom === 'tp_dau_moi') {
-    const dukPhong = dv.demPhong['Vươn cành'] >= 2 || dv.demPhong['Lan tỏa'] >= 1;
-    if (!dukPhong) {
-      thieu.push(`Phòng cần ≥ 2 ý tưởng Vươn cành hoặc ≥ 1 Lan tỏa (hiện ${dv.demPhong['Vươn cành']} Vươn cành, ${dv.demPhong['Lan tỏa']} Lan tỏa)`);
-    }
-    if (banThanCao < 1) thieu.push('Cá nhân Trưởng phòng cần ≥ 1 ý tưởng đạt Vươn cành hoặc Lan tỏa');
-  } else if (nhom === 'tp_pgd') {
-    const dukPhong = dv.demPhong['Vươn cành'] >= 4 || dv.demPhong['Lan tỏa'] >= 2;
-    if (!dukPhong) {
-      thieu.push(`Phòng cần ≥ 4 ý tưởng Vươn cành hoặc ≥ 2 Lan tỏa (hiện ${dv.demPhong['Vươn cành']} Vươn cành, ${dv.demPhong['Lan tỏa']} Lan tỏa)`);
+  if (nhom === 'tp_dau_moi' || nhom === 'tp_pgd') {
+    if (!datDieuKienPhong(nhom, dv.demPhong)) {
+      const n = DIEU_KIEN_PHONG[nhom];
+      thieu.push(`Phòng cần ≥ ${n.vuonCanh} ý tưởng Vươn cành hoặc ≥ ${n.lanToa} Lan tỏa (hiện ${dv.demPhong['Vươn cành']} Vươn cành, ${dv.demPhong['Lan tỏa']} Lan tỏa)`);
     }
     if (banThanCao < 1) thieu.push('Cá nhân Trưởng phòng cần ≥ 1 ý tưởng đạt Vươn cành hoặc Lan tỏa');
   } else if (nhom === 'pho_phong') {
@@ -233,10 +274,12 @@ export function kiemTraDieuKienCan(nhom: NhomViTriKpi, dv: DauVaoLanhDao): strin
  * Nên: thiếu điều kiện cần HOẶC Bén rễ < 90% chỉ tiêu → %HT = 0 (không phải
  * tính theo tỷ lệ đạt được).
  *
- * Số Bén rễ tính theo QUY ĐỔI của Phụ lục 1B — hệ số áp cho TOÀN BỘ văn bản
- * (chốt vận hành 16/08/2026): Bén rễ ×1, Vươn cành ×2, Lan tỏa ×3, Ươm mầm
- * không quy đổi. Bản trước đếm mỗi ý tưởng cấp cao chỉ bằng 1 «đã qua Bén rễ»
- * — đếm thiếu, thiệt cho lãnh đạo có ý tưởng được nhân rộng.
+ * Tử số đường Bén rễ:
+ *  - Trưởng phòng (tp_dau_moi, tp_pgd): theo QUY ĐỔI Phụ lục 1B (chốt vận hành
+ *    16/08/2026): Bén rễ ×1, Vươn cành ×2, Lan tỏa ×3, Ươm mầm không quy đổi.
+ *  - Phó phòng (pho_phong): KHÔNG quy đổi (chốt 17/09/2026) — số ý tưởng của
+ *    phòng đã đạt Bén rễ trở lên, mỗi ý tưởng một lần, chia cho số cán bộ của
+ *    phòng; điều kiện cần là bản thân có ≥ 1 Vươn cành/Lan tỏa.
  */
 export function kpiLanhDao(nhom: NhomViTriKpi, dv: DauVaoLanhDao): KetQuaKpi {
   if (nhom === 'ban_giam_doc') {
@@ -245,14 +288,18 @@ export function kpiLanhDao(nhom: NhomViTriKpi, dv: DauVaoLanhDao): KetQuaKpi {
       coGiaoChiTieu: false,
       dat: true,
       phanTramHoanThanh: 0,
+      tyLeDatDuoc: 0,
       dienGiai: ['Ban Giám đốc không được giao chỉ tiêu Đổi mới sáng tạo (Phụ lục 1B mục 1: Công tác đầu mối 40% · Phát triển đội ngũ kế cận 30% · Phát triển bản thân 30%)'],
       conThieu: [],
     };
   }
   if (nhom === 'can_bo') return kpiCanBo(dv.demPhong);
 
+  const quyDoi = nhom !== 'pho_phong';
   const chiTieu = chiTieuBenRe(nhom, dv.soCanBo);
-  const soBenRe = diemQuyDoiBenRe(dv.demPhong);
+  const soBenRe = quyDoi ? diemQuyDoiBenRe(dv.demPhong) : soBenReTroLen(dv.demPhong);
+  const nhanBenRe = quyDoi ? 'Bén rễ (đã quy đổi)' : 'Bén rễ của phòng (không quy đổi)';
+  const donVi = quyDoi ? 'điểm' : 'ý tưởng';
   const tyLe = chiTieu > 0 ? soBenRe / chiTieu : 0;
   const thieuDieuKien = kiemTraDieuKienCan(nhom, dv);
   const datNguongBenRe = chiTieu > 0 && tyLe >= NGUONG_BEN_RE;
@@ -260,7 +307,7 @@ export function kpiLanhDao(nhom: NhomViTriKpi, dv: DauVaoLanhDao): KetQuaKpi {
   const conThieu = [...thieuDieuKien];
   if (!datNguongBenRe) {
     const canCo = Math.ceil(chiTieu * NGUONG_BEN_RE);
-    conThieu.push(`Bén rễ (đã quy đổi) mới ${soBenRe}/${chiTieu} (${chuanHoaPhanTram(tyLe)}%) — cần tối thiểu ${canCo} điểm để đạt ngưỡng 90%`);
+    conThieu.push(`${nhanBenRe} mới ${soBenRe}/${chiTieu} (${chuanHoaPhanTram(tyLe)}%) — cần tối thiểu ${canCo} ${donVi} để đạt ngưỡng 90%`);
   }
 
   const dat = thieuDieuKien.length === 0 && datNguongBenRe;
@@ -270,8 +317,9 @@ export function kpiLanhDao(nhom: NhomViTriKpi, dv: DauVaoLanhDao): KetQuaKpi {
     dat,
     // Dưới ngưỡng quy 0 điểm — KHÔNG tính theo tỷ lệ đạt được
     phanTramHoanThanh: dat ? chuanHoaPhanTram(tyLe) : 0,
+    tyLeDatDuoc: chuanHoaPhanTram(tyLe),
     dienGiai: [
-      `Chỉ tiêu Bén rễ (đã quy đổi): ${soBenRe}/${chiTieu}${nhom === 'tp_pgd' ? ` (2 × ${dv.soCanBo} cán bộ)` : ` (theo ${dv.soCanBo} cán bộ)`}`,
+      `Chỉ tiêu ${nhanBenRe}: ${soBenRe}/${chiTieu}${nhom === 'tp_pgd' ? ` (2 × ${dv.soCanBo} cán bộ)` : ` (theo ${dv.soCanBo} cán bộ)`}`,
       `Điều kiện cần: ${thieuDieuKien.length === 0 ? 'ĐẠT' : 'CHƯA ĐẠT'}`,
     ],
     conThieu,

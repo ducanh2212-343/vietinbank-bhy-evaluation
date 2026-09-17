@@ -15,6 +15,8 @@ import { NewsRail } from '@/components/one/news/NewsRail';
 import { useOneUploads } from '@/components/one/useOneUploads';
 import { useAuth } from '@/hooks/useAuth';
 import { useMyFullName } from '@/components/one/useMyFullName';
+import { useYTuongCuaToi } from '@/components/one/ideas/useYTuongCuaToi';
+import { ChipCapDoCuaToi } from '@/components/one/ideas/ChipCapDoCuaToi';
 import { useMyStars } from '@/components/one/star/useMyStars';
 import { useStarRecords } from '@/components/one/star/useStarRecords';
 import { saoCuaThang, thangHienTai } from '@/components/one/star/starStats';
@@ -71,6 +73,9 @@ function HomeContent() {
   const thang = thangHienTai();
   const saoThang = useMemo(() => saoCuaThang(tatCaPhieu, thang), [tatCaPhieu, thang]);
   const mocKeTiep = nhacMocQuaKeTiep(myStars);
+  // BHY Ideas của tôi: số ý tưởng theo từng cấp (Ươm mầm là tổng số), tự làm mới mỗi 30 giây
+  // — yêu cầu 17/09/2026: cán bộ thấy ngay trên trang chủ, không phải sang trang Ideas
+  const { yTuong: yTuongCuaToi, dem: demYTuong } = useYTuongCuaToi(!isGuest && !!profileId);
 
   const treeImage = siteContent['culture.tree_image']?.trim() || 'https://i.ibb.co/kV5cgsbp/c-y-k-c.jpg';
   const soSkill = MOVE3_SKILL_GROUPS.reduce((s, g) => s + g.skills.length, 0);
@@ -163,6 +168,20 @@ function HomeContent() {
                     <p className="text-center text-slate-400">Chưa có phiếu sao ghi tên bạn — hãy tỏa sáng!</p>
                   )}
                 </div>
+
+                {/* BHY IDEAS CỦA TÔI — cùng nguồn và cùng cách đếm với trang Ideas
+                    và báo cáo Thẻ điểm của TCTH, nên ba nơi không bao giờ nói ba số. */}
+                {yTuongCuaToi.length > 0 && (
+                  <div className="mt-3 border-t border-amber-100 pt-3">
+                    <Link to="/one/y-tuong/gui" className="mb-1.5 flex items-center gap-1 text-2xs font-bold uppercase text-amber-700 hover:underline">
+                      <Lightbulb className="h-3 w-3" />
+                      BHY Ideas của tôi ({yTuongCuaToi.length})
+                    </Link>
+                    <div className="flex flex-wrap gap-1">
+                      <ChipCapDoCuaToi dem={demYTuong} nho />
+                    </div>
+                  </div>
+                )}
 
                 {/* SAO CỦA THÁNG — vinh danh người, nên chỉ lấy phiếu cá nhân. Nằm gọn
                     trong thẻ sẵn có và cắt còn 5 tên: yêu cầu 04/09 nói rõ phải ngắn
