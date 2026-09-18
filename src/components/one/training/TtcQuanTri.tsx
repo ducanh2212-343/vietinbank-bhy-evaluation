@@ -14,7 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import {
   TTC_NHOM_DOI_TUONG, TTC_TEN_NOI_NOP, TTC_TEN_PHU_TRACH, TTC_TEN_THIET_BI, TTC_TEN_TRANG_THAI_CT, TTC_TINH_NANG,
-  TTC_TEN_VAI, duongDanChuongTrinh, gioNgan, nhanNgay, xepChuongTrinhCuaToi,
+  TTC_MO_DUN, TTC_TEN_VAI, docMoDun, duongDanChuongTrinh, gioNgan, nhanNgay, xepChuongTrinhCuaToi,
   type TtcChuongTrinh, type TtcDauViec, type TtcNgay, type TtcNhomDoiTuong, type TtcVai,
 } from '@/lib/trainingCenter';
 import { docCauHinhDiemDanh, nhanLuong } from '@/lib/diemDanh';
@@ -107,6 +107,7 @@ export function TtcQuanTri() {
 
 const FORM_TRONG = (): TtcChuongTrinhForm => ({
   ten: '', mo_ta: '', ngay_bd: '', ngay_kt: '', trang_thai: 'CHUAN_BI', nhom_doi_tuong: 'CAN_BO_MOI', loai: '', khoi_nang_luc: '', la_mau: false,
+  mo_dun: docMoDun(null),
 });
 
 function FormChuongTrinh({ open, cu, onClose, onXong }: { open: boolean; cu?: TtcChuongTrinh | null; onClose: () => void; onXong: (id: string) => void }) {
@@ -118,6 +119,7 @@ function FormChuongTrinh({ open, cu, onClose, onXong }: { open: boolean; cu?: Tt
     setF(cu ? {
       ten: cu.ten, mo_ta: cu.mo_ta ?? '', ngay_bd: cu.ngay_bd, ngay_kt: cu.ngay_kt, trang_thai: cu.trang_thai,
       nhom_doi_tuong: cu.nhom_doi_tuong, loai: cu.loai ?? '', khoi_nang_luc: cu.khoi_nang_luc ?? '', la_mau: cu.la_mau,
+      mo_dun: docMoDun(cu.mo_dun),
     } : FORM_TRONG());
   }, [open, cu]);
   const dat = <K extends keyof TtcChuongTrinhForm>(k: K, v: TtcChuongTrinhForm[K]) => setF((c) => ({ ...c, [k]: v }));
@@ -167,6 +169,19 @@ function FormChuongTrinh({ open, cu, onClose, onXong }: { open: boolean; cu?: Tt
             <div><Label>Khối năng lực</Label><Input placeholder="Tầng 1 — Quản trị bản thân…" value={f.khoi_nang_luc ?? ''} onChange={(e) => dat('khoi_nang_luc', e.target.value)} /></div>
           </div>
           <label className="flex items-center gap-2 text-sm"><Switch checked={f.la_mau} onCheckedChange={(v) => dat('la_mau', v)} /> Là chương trình mẫu (nhân bản được)</label>
+          {/* Mô-đun bật/tắt (đợt 15): lớp một ngày tắt bớt để học viên không thấy tab thừa */}
+          <div className="rounded-xl bg-slate-50 p-3">
+            <p className="text-xs font-semibold text-brand-navy">Mô-đun của chương trình</p>
+            <p className="text-2xs text-slate-500">Tắt mô-đun nào thì tab và khối tương ứng ẩn với cả lớp. Lộ trình, điểm danh và Theo dõi lớp luôn có.</p>
+            <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
+              {TTC_MO_DUN.map((m) => (
+                <label key={m.ma} className="flex items-start gap-2 text-sm">
+                  <Switch checked={f.mo_dun?.[m.ma] ?? true} onCheckedChange={(v) => dat('mo_dun', { ...docMoDun(f.mo_dun), [m.ma]: v })} className="mt-0.5" />
+                  <span><span className="font-medium text-slate-800">{m.ten}</span><span className="block text-2xs text-slate-500">{m.mo}</span></span>
+                </label>
+              ))}
+            </div>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Huỷ</Button>

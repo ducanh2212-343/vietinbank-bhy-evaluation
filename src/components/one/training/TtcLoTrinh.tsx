@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
-  BellRing, BookOpen, CheckCircle2, Clock, Eye, FileText, Laptop, Link2, Mail, Monitor, Paperclip, Pencil, PenLine, Plus, Shapes, Star, Trash2, X,
+  BellRing, BookOpen, CheckCircle2, Clock, Eye, FileText, Flag, Laptop, Link2, Mail, Megaphone, Monitor, Paperclip, Pencil, PenLine, Plus, Shapes, Star, Trash2, X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -13,15 +13,17 @@ import { useAuth } from '@/hooks/useAuth';
 import { ngayVnChuoi } from '@/lib/lichNghi';
 import {
   TTC_PHAN, TTC_TEN_NOI_NOP, TTC_TEN_PHU_TRACH, TTC_TEN_THIET_BI, TTC_TEN_TRANG_THAI,
-  docCauHinhBao, moTaNguoiNhanBao, moTaThoiLuong, nhanNgay, ngayMacDinh, nhomTheoBuoi, thieuDeTich,
+  docCauHinhBao, docMoDun, docTruongGhiChu, ghepTraLoi, moTaNguoiNhanBao, moTaThoiLuong, nhanNgay, ngayMacDinh, nhomTheoBuoi, thieuDeTich,
   thoiLuongPhut, tichDuoc, tienDoNgay, trangThaiViec,
-  type TtcDauViec, type TtcNgay, type TtcTep, type TtcTienDo,
+  type TtcDauViec, type TtcMucCon, type TtcNgay, type TtcTep, type TtcTienDo, type TtcTienDoMuc,
 } from '@/lib/trainingCenter';
+import { gioVn } from '@/lib/diemDanh';
 import type { TtcBoiCanh } from './useTrainingCenter';
 import {
-  luuNopDauViec, luuSuyNgam, tichDauViec, xoaDauViec, xoaNgay,
-  useTtcDauViec, useTtcDiemBloom, useTtcDiemDanh, useTtcKyTep, useTtcLamTuoi, useTtcNgay, useTtcSuyNgam, useTtcTienDo,
+  luuNopDauViec, luuSuyNgam, tichDauViec, xoaDauViec, xoaNgay, xongDauViecLop,
+  useTtcDauViec, useTtcDiemBloom, useTtcDiemDanh, useTtcKyTep, useTtcLamTuoi, useTtcMucCon, useTtcNgay, useTtcSuyNgam, useTtcTienDo, useTtcTienDoMuc,
 } from './useTrainingCenter';
+import { TtcKhoiMucCon } from './TtcMucCon';
 import { TtcTheDiemDanh } from './TtcTheDiemDanh';
 import { TTC_TEP_ACCEPT, TTC_TEP_TOI_DA, kichThuocDoc, taiTepTrainingCenter, xoaTepTrainingCenter } from './tepTrainingCenter';
 import { TtcChamBloom } from './TtcChamBloom';
@@ -54,6 +56,9 @@ export function TtcLoTrinh({ bc }: { bc: TtcBoiCanh }) {
   const { data: dsViec = [] } = useTtcDauViec(ctId, ngayIds);
   const viecIds = useMemo(() => dsViec.map((v) => v.id), [dsViec]);
   const { data: tienDo = [] } = useTtcTienDo(ctId, hocVienId, viecIds);
+  const { data: dsMuc = [] } = useTtcMucCon(ctId, viecIds);
+  const mucIds = useMemo(() => dsMuc.map((m) => m.id), [dsMuc]);
+  const { data: tienDoMuc = [] } = useTtcTienDoMuc(ctId, hocVienId, mucIds);
   const { data: dsDiem = [] } = useTtcDiemBloom(ctId, ngayIds);
   const { data: dsDiemDanh = [] } = useTtcDiemDanh(ctId, ngayIds);
   const lamTuoi = useTtcLamTuoi();
@@ -75,17 +80,32 @@ export function TtcLoTrinh({ bc }: { bc: TtcBoiCanh }) {
     [dsViec, ngayHien],
   );
   const tienDoTheoViec = useMemo(() => new Map(tienDo.map((t) => [t.dau_viec_id, t])), [tienDo]);
+  const mucTheoViec = useMemo(() => {
+    const m = new Map<string, TtcMucCon[]>();
+    for (const x of dsMuc) m.set(x.dau_viec_id, [...(m.get(x.dau_viec_id) ?? []), x]);
+    return m;
+  }, [dsMuc]);
+  const tienDoMucTheoViec = useMemo(() => {
+    const cuaMuc = new Map(dsMuc.map((m) => [m.id, m.dau_viec_id]));
+    const m = new Map<string, TtcTienDoMuc[]>();
+    for (const t of tienDoMuc) { const dv = cuaMuc.get(t.muc_con_id); if (dv) m.set(dv, [...(m.get(dv) ?? []), t]); }
+    return m;
+  }, [dsMuc, tienDoMuc]);
+  const moDun = useMemo(() => docMoDun(ct?.mo_dun), [ct?.mo_dun]);
+  const tenNguoi = (id: string) => bc.thanhVien.find((t) => t.nguoi === id)?.full_name ?? 'Team đào tạo';
   const daCham = useMemo(() => new Set(dsDiem.map((d) => d.ngay_id)), [dsDiem]);
   const cauHinhBao = useMemo(() => docCauHinhBao(ct?.nhac), [ct?.nhac]);
 
   const tien = tienDoNgay(viecCuaNgay, tienDo);
   const coTheTich = bc.laHocVien && !!ngayHien && tichDuoc(ngayHien, homNay);
 
-  const tich = async (v: TtcDauViec, hoanThanh: boolean) => {
+  // boQuaMuc: khối mục con vừa ghi mục cuối và gọi lên — cache tiến độ mục ở đây
+  // còn cũ, máy chủ mới là nơi kiểm đủ mục (trigger)
+  const tich = async (v: TtcDauViec, hoanThanh: boolean, boQuaMuc = false) => {
     if (!profileId) return;
     const td = tienDoTheoViec.get(v.id);
     if (hoanThanh) {
-      const thieu = thieuDeTich(v, td);
+      const thieu = thieuDeTich(v, td, boQuaMuc ? undefined : { dsMuc: mucTheoViec.get(v.id) ?? [], dsTienDo: tienDoMucTheoViec.get(v.id) ?? [] });
       if (thieu.length) { toast.error(`Đầu việc này yêu cầu nộp trước khi tích hoàn thành. Còn thiếu: ${thieu.join(', ')}`); return; }
     }
     try {
@@ -267,10 +287,14 @@ export function TtcLoTrinh({ bc }: { bc: TtcBoiCanh }) {
                   daCham={daCham.has(ngayHien!.id)}
                   coTheTich={coTheTich}
                   homNay={homNay}
-                  onTich={(x) => tich(v, x)}
+                  onTich={(x, boQuaMuc) => tich(v, x, boQuaMuc)}
                   laHocVien={bc.laHocVien}
+                  laTeam={bc.laTeam}
+                  dsMuc={mucTheoViec.get(v.id) ?? []}
+                  tienDoMuc={tienDoMucTheoViec.get(v.id) ?? []}
+                  tenNguoi={tenNguoi}
                   nopDuoc={bc.laHocVien && !!ctId && !!profileId && !!user && tichDuoc(ngayHien!, homNay)}
-                  toolkitDuoc={!!bc.vai && !!ctId && !!profileId && !!user}
+                  toolkitDuoc={moDun.toolkit && !!bc.vai && !!ctId && !!profileId && !!user}
                   ctId={ctId ?? ''}
                   profileId={profileId ?? ''}
                   userId={user?.id ?? ''}
@@ -285,12 +309,12 @@ export function TtcLoTrinh({ bc }: { bc: TtcBoiCanh }) {
       </div>
 
       {/* Tự suy ngẫm của ngày — chỉ học viên */}
-      {bc.laHocVien && profileId && ngayHien && (
+      {moDun.tu_soi && bc.laHocVien && profileId && ngayHien && (
         <OTuSuyNgam ngay={ngayHien} nguoi={profileId} ngayIds={ngayIds} />
       )}
 
       {/* Phiếu chấm Bloom — người hướng dẫn / BGĐ chấm; học viên xem sau công bố */}
-      {ngayHien && hocVienId && (
+      {moDun.bloom && ngayHien && hocVienId && (
         <TtcChamBloom bc={bc} ngay={ngayHien} hocVienId={hocVienId} dsDiem={dsDiem.filter((d) => d.ngay_id === ngayHien.id)} />
       )}
 
@@ -301,22 +325,32 @@ export function TtcLoTrinh({ bc }: { bc: TtcBoiCanh }) {
 }
 
 function DongDauViec({
-  v, ngay, tienDo, daCham, coTheTich, homNay, onTich, laHocVien, nopDuoc, toolkitDuoc, ctId, profileId, userId, suaDuoc, onSua, onXoa,
+  v, ngay, tienDo, daCham, coTheTich, homNay, onTich, laHocVien, laTeam, dsMuc, tienDoMuc, tenNguoi, nopDuoc, toolkitDuoc, ctId, profileId, userId, suaDuoc, onSua, onXoa,
 }: {
   v: TtcDauViec; ngay: TtcNgay; tienDo: TtcTienDo | undefined; daCham: boolean;
-  coTheTich: boolean; homNay: string; onTich: (x: boolean) => void;
-  laHocVien: boolean; nopDuoc: boolean;
+  coTheTich: boolean; homNay: string; onTich: (x: boolean, boQuaMuc?: boolean) => void;
+  laHocVien: boolean; laTeam: boolean; nopDuoc: boolean;
+  dsMuc: TtcMucCon[]; tienDoMuc: TtcTienDoMuc[]; tenNguoi: (id: string) => string;
   /** Thành viên chương trình (mọi vai) đều mở được Toolkit — PGĐ/TCTH vẽ mẫu, học viên vẽ bài */
   toolkitDuoc: boolean;
   ctId: string; profileId: string; userId: string;
   suaDuoc: boolean; onSua: () => void; onXoa: () => void;
 }) {
   const [moToolkit, setMoToolkit] = useState(false);
-  const tt = trangThaiViec(ngay, tienDo, daCham, homNay);
+  const lamTuoi = useTtcLamTuoi();
+  const nguoiDanTich = v.ai_tich === 'NGUOI_DAN';
+  // Đầu việc người dẫn tích cho cả lớp: «hoàn thành» là giờ lớp xong, không phải ô của từng học viên
+  const tt = nguoiDanTich
+    ? trangThaiViec(ngay, { hoan_thanh: !!v.xong_luc }, daCham, homNay)
+    : trangThaiViec(ngay, tienDo, daCham, homNay);
+  const xongLop = async (x: boolean) => {
+    try { await xongDauViecLop(v.id, x); lamTuoi(); }
+    catch (e) { toast.error(e instanceof Error ? e.message : 'Không lưu được'); }
+  };
   const IconTb = v.thiet_bi === 'MAY_CO_QUAN' ? Monitor : v.thiet_bi === 'LAPTOP' ? Laptop : v.thiet_bi === 'GIAY' ? PenLine : null;
   const coTinhNang = v.tinh_nang.length > 0;
   const daNop = (tienDo?.tep?.length ?? 0) > 0 || !!tienDo?.ghi_chu || !!tienDo?.duong_dan;
-  const thieu = thieuDeTich(v, tienDo);
+  const thieu = thieuDeTich(v, tienDo, { dsMuc, dsTienDo: tienDoMuc });
   return (
     <div className={`rounded-2xl border bg-white p-3 shadow-sm ${v.trong_tam ? 'border-[#A8763E]/50' : 'border-slate-200'} ${tt === 'HOAN_THANH' || tt === 'DA_DANH_GIA' ? 'opacity-80' : ''}`}>
       <div className="flex gap-3">
@@ -332,7 +366,13 @@ function DongDauViec({
             {v.ten}
           </p>
           {v.dau_ra && <p className="mt-1 text-xs text-slate-600"><b>Đầu ra:</b> {v.dau_ra}</p>}
+          {laTeam && v.ghi_chu_nguoi_dan && (
+            <p className="mt-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-900">
+              <Megaphone className="mr-1 inline h-3 w-3" /><b>Lời dẫn (chỉ team thấy):</b> {v.ghi_chu_nguoi_dan}
+            </p>
+          )}
           <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-2xs text-slate-500">
+            {v.nguoi_dan_ten && <span className="rounded bg-[#1F4E79]/10 px-1.5 py-0.5 font-semibold text-[#1F4E79]">Dẫn: {v.nguoi_dan_ten}</span>}
             <span className="rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600">{TTC_PHAN.find((p) => p.ma === v.phan)?.ten ?? v.phan}</span>
             <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" /> {TTC_TEN_PHU_TRACH[v.nguoi_phu_trach]}</span>
             {IconTb && <span className="inline-flex items-center gap-1"><IconTb className="h-3 w-3" /> {TTC_TEN_THIET_BI[v.thiet_bi]}</span>}
@@ -342,6 +382,11 @@ function DongDauViec({
               </span>
             )}
             {v.tinh_nang.includes('NOP_TEP') && <span className="inline-flex items-center gap-1 font-semibold text-[#8A5E2C]"><Paperclip className="h-3 w-3" /> Nộp tệp</span>}
+            {nguoiDanTich && (
+              <span className="inline-flex items-center gap-1 font-semibold text-[#1F4E79]">
+                <Flag className="h-3 w-3" /> {v.xong_luc ? `Lớp xong ${gioVn(v.xong_luc)}${v.xong_boi ? ` · ${tenNguoi(v.xong_boi)}` : ''}` : 'Người dẫn tích cho cả lớp'}
+              </span>
+            )}
             <span className={`font-semibold ${tt === 'DA_DANH_GIA' ? 'text-emerald-700' : tt === 'HOAN_THANH' ? 'text-emerald-600' : tt === 'DANG_LAM' ? 'text-amber-700' : 'text-slate-400'}`}>
               {TTC_TEN_TRANG_THAI[tt]}
             </span>
@@ -359,7 +404,13 @@ function DongDauViec({
               <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-500" onClick={onXoa} aria-label="Xoá đầu việc"><Trash2 className="h-3.5 w-3.5" /></Button>
             </>
           )}
-          {coTheTich ? (
+          {nguoiDanTich ? (
+            laTeam && tichDuoc(ngay, homNay) ? (
+              <Button size="sm" variant={v.xong_luc ? 'outline' : 'default'} className="h-7 px-2 text-2xs" onClick={() => xongLop(!v.xong_luc)}>
+                {v.xong_luc ? 'Bỏ dấu xong' : 'Lớp đã xong'}
+              </Button>
+            ) : v.xong_luc ? <CheckCircle2 className="h-6 w-6 text-emerald-500" aria-label="Lớp đã xong" /> : null
+          ) : coTheTich ? (
             <Checkbox
               checked={!!tienDo?.hoan_thanh}
               onCheckedChange={(c) => onTich(c === true)}
@@ -371,6 +422,20 @@ function DongDauViec({
           ) : null}
         </div>
       </div>
+
+      {/* Mục con: điểm dừng / sản phẩm / tiêu chí — đủ mục bắt buộc thì đầu việc tự tích */}
+      {dsMuc.length > 0 && (
+        <TtcKhoiMucCon
+          dsMuc={dsMuc}
+          tienDo={tienDoMuc}
+          nopDuoc={nopDuoc}
+          ctId={ctId}
+          profileId={profileId}
+          userId={userId}
+          tenNguoi={tenNguoi}
+          onDuMuc={() => { if (!nguoiDanTich && coTheTich && !tienDo?.hoan_thanh && thieuDeTich(v, tienDo).length === 0) onTich(true, true); }}
+        />
+      )}
 
       {/* Nộp: tệp / ghi chú / đường dẫn — học viên nộp, người khác xem */}
       {(coTinhNang || daNop) && (
@@ -410,14 +475,19 @@ function ONop({ v, tienDo, nopDuoc, ctId, profileId, userId, thieu }: {
   const { data: url = {} } = useTtcKyTep(tep.map((t) => t.path));
   const [ghiChu, setGhiChu] = useState(tienDo?.ghi_chu ?? '');
   const [duongDan, setDuongDan] = useState(tienDo?.duong_dan ?? '');
+  const [traLoi, setTraLoi] = useState<Record<string, string>>(tienDo?.tra_loi ?? {});
   const [dangTai, setDangTai] = useState(false);
   const oTep = useRef<HTMLInputElement>(null);
-  useEffect(() => { setGhiChu(tienDo?.ghi_chu ?? ''); setDuongDan(tienDo?.duong_dan ?? ''); }, [tienDo?.id, tienDo?.ghi_chu, tienDo?.duong_dan]);
+  useEffect(() => { setGhiChu(tienDo?.ghi_chu ?? ''); setDuongDan(tienDo?.duong_dan ?? ''); setTraLoi(tienDo?.tra_loi ?? {}); }, [tienDo?.id, tienDo?.ghi_chu, tienDo?.duong_dan, tienDo?.tra_loi]);
 
   const canGhiChu = v.tinh_nang.includes('GHI_CHU');
   const canDuongDan = v.tinh_nang.includes('DUONG_DAN');
   const canTep = v.tinh_nang.includes('NOP_TEP');
-  const daDoi = (ghiChu !== (tienDo?.ghi_chu ?? '')) || (duongDan !== (tienDo?.duong_dan ?? ''));
+  // Mẫu ghi chú có nhãn (đợt 15): học viên điền theo trường, máy ghép thành ghi chú phẳng
+  const truong = useMemo(() => docTruongGhiChu(v.truong_ghi_chu), [v.truong_ghi_chu]);
+  const theoMau = canGhiChu && truong.length > 0;
+  const ghiChuGhep = theoMau ? ghepTraLoi(truong, traLoi) : ghiChu;
+  const daDoi = (ghiChuGhep !== (tienDo?.ghi_chu ?? '')) || (duongDan !== (tienDo?.duong_dan ?? ''));
 
   const chonTep = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -445,7 +515,10 @@ function ONop({ v, tienDo, nopDuoc, ctId, profileId, userId, thieu }: {
   };
   const luuChu = async () => {
     try {
-      await luuNopDauViec({ dau_viec_id: v.id, nguoi: profileId, ghi_chu: ghiChu.trim() || null, duong_dan: duongDan.trim() || null });
+      await luuNopDauViec({
+        dau_viec_id: v.id, nguoi: profileId, ghi_chu: ghiChuGhep.trim() || null, duong_dan: duongDan.trim() || null,
+        ...(theoMau ? { tra_loi: traLoi } : {}),
+      });
       lamTuoi(); toast.success('Đã lưu.');
     } catch (e) { toast.error(e instanceof Error ? e.message : 'Không lưu được'); }
   };
@@ -490,11 +563,23 @@ function ONop({ v, tienDo, nopDuoc, ctId, profileId, userId, thieu }: {
         <div className={`space-y-2 ${(canTep || tep.length > 0) ? 'mt-3' : ''}`}>
           {(canGhiChu || tienDo?.ghi_chu) && (
             nopDuoc ? (
-              <div>
-                <p className="text-2xs font-semibold uppercase tracking-wider text-slate-500">Ghi chú kết quả</p>
-                <Textarea rows={2} value={ghiChu} onChange={(e) => setGhiChu(e.target.value)} className="mt-1 bg-white" placeholder="Vài dòng: đã làm gì, kết quả ra sao, vướng ở đâu…" />
-              </div>
-            ) : tienDo?.ghi_chu ? <p className="text-slate-700"><b className="text-slate-500">Ghi chú:</b> {tienDo.ghi_chu}</p> : null
+              theoMau ? (
+                <div className="space-y-1.5">
+                  <p className="text-2xs font-semibold uppercase tracking-wider text-slate-500">Ghi chú kết quả — theo mẫu</p>
+                  {truong.map((t) => (
+                    <div key={t.ma}>
+                      <label className="text-xs font-medium text-slate-700">{t.nhan}</label>
+                      <Textarea rows={1} value={traLoi[t.ma] ?? ''} onChange={(e) => setTraLoi((c) => ({ ...c, [t.ma]: e.target.value }))} className="mt-0.5 min-h-[2.25rem] bg-white" placeholder={t.goi_y ?? ''} />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div>
+                  <p className="text-2xs font-semibold uppercase tracking-wider text-slate-500">Ghi chú kết quả</p>
+                  <Textarea rows={2} value={ghiChu} onChange={(e) => setGhiChu(e.target.value)} className="mt-1 bg-white" placeholder="Vài dòng: đã làm gì, kết quả ra sao, vướng ở đâu…" />
+                </div>
+              )
+            ) : tienDo?.ghi_chu ? <p className="whitespace-pre-line text-slate-700"><b className="text-slate-500">Ghi chú:</b> {tienDo.ghi_chu}</p> : null
           )}
           {(canDuongDan || tienDo?.duong_dan) && (
             nopDuoc ? (

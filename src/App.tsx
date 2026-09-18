@@ -135,6 +135,7 @@ const OneTrainingGhiDanhPage = lazyWithRetry(() => import("./pages/one/OneTraini
 const OneTrainingBangViecPage = lazyWithRetry(() => import("./pages/one/OneTrainingBangViecPage"));
 const OneTrainingTuSoiPage = lazyWithRetry(() => import("./pages/one/OneTrainingTuSoiPage"));
 const OneTrainingLichBgdPage = lazyWithRetry(() => import("./pages/one/OneTrainingLichBgdPage"));
+const OneTrainingTheoDoiLopPage = lazyWithRetry(() => import("./pages/one/OneTrainingTheoDoiLopPage"));
 const OneRecognitionPage = lazyWithRetry(() => import("./pages/one/OneRecognitionPage"));
 const OneStarAwardPage = lazyWithRetry(() => import("./pages/one/OneStarAwardPage"));
 const OneStarStatsPage = lazyWithRetry(() => import("./pages/one/OneStarStatsPage"));
@@ -304,6 +305,7 @@ const App = () => (
               <Route path="/one/training-center/chuong-trinh/:id/bang-viec" element={<OneTrainingBangViecPage />} />
               <Route path="/one/training-center/chuong-trinh/:id/tu-soi" element={<OneTrainingTuSoiPage />} />
               <Route path="/one/training-center/chuong-trinh/:id/lich-bgd" element={<OneTrainingLichBgdPage />} />
+              <Route path="/one/training-center/chuong-trinh/:id/theo-doi" element={<OneTrainingTheoDoiLopPage />} />
               <Route path="/one/ghi-nhan" element={<OneRecognitionPage />} />
               <Route path="/one/ghi-nhan/tang-sao" element={<OneStarAwardPage />} />
               <Route path="/one/ghi-nhan/tong-hop" element={<OneStarStatsPage />} />

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Crosshair, Lock, MapPin, QrCode, Ruler, Trash2, UserPlus } from 'lucide-react';
+import { Crosshair, Download, Lock, MapPin, QrCode, Ruler, Trash2, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -8,10 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { nhanNgay, type TtcChuongTrinh, type TtcNgay, type TtcThanhVien } from '@/lib/trainingCenter';
+import { ngayVnChuoi } from '@/lib/lichNghi';
 import {
-  SO_LAN_THU_TOI_THIEU, TTC_BAN_KINH_MAC_DINH, TTC_LUONG_CHON, chuKhoangCach, docCauHinhDiemDanh, duoiMa,
-  gioVn, ketLuanThuDinhVi, nhanDiemDanh, tomTatDiemDanh,
-  type TtcCauHinhDiemDanh, type TtcQrNgay, type TtcThuDinhVi,
+  SO_LAN_THU_TOI_THIEU, TTC_BAN_KINH_MAC_DINH, TTC_LUONG_CHON, chuKhoangCach, csvTongHopDiemDanh, docCauHinhDiemDanh, duoiMa,
+  gioVn, ketLuanThuDinhVi, nhanDiemDanh, tomTatDiemDanh, tongHopDiemDanh,
+  type ODiemDanh, type TtcCauHinhDiemDanh, type TtcQrNgay, type TtcThuDinhVi,
 } from '@/lib/diemDanh';
 import type { TtcDiemDanh } from '@/lib/diemDanh';
 import { LoiViTri } from '@/lib/quyenViTri';
@@ -319,7 +320,10 @@ export function TtcDiemDanhQuanTri({ ct, dsNgay, thanhVien, dsDiemDanh, dsQr, ds
         </div>
       )}
 
-      {/* 3. Theo dõi theo ngày */}
+      {/* 3. Bảng tổng hợp học viên × ngày (đợt 15) — nhìn một lượt ai vắng, ai hay muộn */}
+      <BangTongHopDiemDanh dsNgay={dsNgay} dsHocVien={dsHocVien} dsDiemDanh={dsDiemDanh} tenChuongTrinh={ct.ten} />
+
+      {/* 4. Theo dõi theo ngày */}
       <div className="mt-4 rounded-xl border border-slate-200 p-3">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-2xs font-semibold uppercase tracking-wider text-slate-500">Theo dõi</p>
@@ -382,6 +386,116 @@ export function TtcDiemDanhQuanTri({ ct, dsNgay, thanhVien, dsDiemDanh, dsQr, ds
       </div>
 
       <TtcTamQr ngay={ngayInQr} ct={ct} dangMo={!!ngayInQr} onDong={() => setNgayInQr(null)} />
+    </div>
+  );
+}
+
+/**
+ * Lưới học viên × ngày: ✓ xanh đúng giờ · vàng muộn (kèm phút) · đỏ vắng ·
+ * xám ngày chưa tới. Cột phải tổng theo người, hàng cuối tổng theo ngày; xếp
+ * học viên vắng/muộn nhiều lên đầu khi bật «xếp theo vắng». Tải CSV để đưa vào
+ * Excel báo cáo cuối đợt.
+ */
+function BangTongHopDiemDanh({ dsNgay, dsHocVien, dsDiemDanh, tenChuongTrinh }: {
+  dsNgay: TtcNgay[]; dsHocVien: TtcThanhVien[]; dsDiemDanh: TtcDiemDanh[]; tenChuongTrinh: string;
+}) {
+  const [xepTheoVang, setXepTheoVang] = useState(false);
+  const th = useMemo(
+    () => tongHopDiemDanh(dsNgay, dsHocVien.map((h) => ({ nguoi: h.nguoi, ten: h.full_name ?? h.nguoi })), dsDiemDanh, ngayVnChuoi(new Date())),
+    [dsNgay, dsHocVien, dsDiemDanh],
+  );
+  const dong = useMemo(
+    () => (xepTheoVang ? [...th.dong].sort((a, b) => b.vang - a.vang || b.muon - a.muon || a.ten.localeCompare(b.ten, 'vi')) : th.dong),
+    [th, xepTheoVang],
+  );
+  if (dsNgay.length === 0 || dsHocVien.length === 0) return null;
+  const tiLe = th.tong.oDaToi > 0 ? Math.round((th.tong.coMat / th.tong.oDaToi) * 100) : null;
+  const taiCsv = () => {
+    const blob = new Blob([csvTongHopDiemDanh(th)], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `diem-danh-${tenChuongTrinh.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase()}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+  const O = ({ o }: { o: ODiemDanh }) => {
+    if (o.trangThai === 'CHUA_TOI') return <td className="border-l border-slate-100 bg-slate-50 text-center text-slate-300">—</td>;
+    if (o.trangThai === 'VANG') return <td className="border-l border-slate-100 bg-red-50 text-center font-bold text-red-600" title="Vắng">✕</td>;
+    if (o.trangThai === 'MUON') {
+      return (
+        <td className="border-l border-slate-100 bg-amber-50 text-center text-amber-800" title={`Muộn ${o.muonPhut} phút · ${o.gio}${o.ghiHo ? ' · ghi hộ' : ''}`}>
+          <span className="font-bold">+{o.muonPhut}</span><span className="block text-2xs leading-none text-amber-600">{o.gio}</span>
+        </td>
+      );
+    }
+    return (
+      <td className="border-l border-slate-100 bg-emerald-50 text-center text-emerald-700" title={`Đúng giờ · ${o.gio}${o.ghiHo ? ' · ghi hộ' : ''}`}>
+        <span className="font-bold">✓</span><span className="block text-2xs leading-none text-emerald-600">{o.gio}</span>
+      </td>
+    );
+  };
+  return (
+    <div className="mt-4 rounded-xl border border-slate-200 p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-2xs font-semibold uppercase tracking-wider text-slate-500">Tổng hợp cả đợt</p>
+        <span className="text-xs text-slate-600">
+          {tiLe != null && <>Chuyên cần <b className="text-brand-navy">{tiLe}%</b> · </>}
+          có mặt <b className="text-emerald-700">{th.tong.coMat}</b>
+          {th.tong.muon > 0 && <> · muộn <b className="text-amber-700">{th.tong.muon}</b></>}
+          {th.tong.vang > 0 && <> · vắng <b className="text-red-600">{th.tong.vang}</b></>}
+          <span className="text-slate-400"> / {th.tong.oDaToi} lượt đã tới</span>
+        </span>
+        <label className="ml-auto flex items-center gap-1.5 text-xs text-slate-600"><Switch checked={xepTheoVang} onCheckedChange={setXepTheoVang} /> Xếp theo vắng</label>
+        <Button size="sm" variant="outline" className="h-8" onClick={taiCsv}><Download className="mr-1 h-3.5 w-3.5" /> CSV</Button>
+      </div>
+      <div className="mt-2 overflow-x-auto">
+        <table className="w-full min-w-[32rem] border-collapse text-sm">
+          <thead>
+            <tr className="text-2xs uppercase tracking-wider text-slate-500">
+              <th className="sticky left-0 bg-white py-1 pr-2 text-left font-semibold">Học viên</th>
+              {th.cot.map((c) => (
+                <th key={c.ngayId} className={`border-l border-slate-100 px-1 py-1 text-center font-semibold ${c.chuaToi ? 'text-slate-300' : ''}`} title={nhanNgay(c.ngay)}>
+                  N{c.soThuTu}<span className="block text-2xs font-normal normal-case">{c.ngay.slice(8, 10)}/{c.ngay.slice(5, 7)}</span>
+                </th>
+              ))}
+              <th className="border-l-2 border-slate-200 px-1 py-1 text-center font-semibold text-emerald-700" title="Có mặt">✓</th>
+              <th className="px-1 py-1 text-center font-semibold text-amber-700" title="Muộn">+</th>
+              <th className="px-1 py-1 text-center font-semibold text-red-600" title="Vắng">✕</th>
+            </tr>
+          </thead>
+          <tbody>
+            {dong.map((d) => (
+              <tr key={d.nguoi} className="border-t border-slate-100">
+                <td className="sticky left-0 max-w-[11rem] truncate bg-white py-1 pr-2 font-medium text-slate-800">{d.ten}</td>
+                {d.o.map((o, i) => <O key={i} o={o} />)}
+                <td className="border-l-2 border-slate-200 text-center tabular-nums text-emerald-700">{d.coMat}</td>
+                <td className={`text-center tabular-nums ${d.muon ? 'font-semibold text-amber-700' : 'text-slate-300'}`}>{d.muon || ''}</td>
+                <td className={`text-center tabular-nums ${d.vang ? 'font-bold text-red-600' : 'text-slate-300'}`}>{d.vang || ''}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-slate-200 text-xs font-semibold text-slate-600">
+              <td className="sticky left-0 bg-white py-1 pr-2">Theo ngày</td>
+              {th.cot.map((c) => (
+                <td key={c.ngayId} className="border-l border-slate-100 px-1 py-1 text-center tabular-nums">
+                  {c.chuaToi ? <span className="text-slate-300">—</span> : (
+                    <>
+                      <span className="text-emerald-700">{c.coMat}</span>
+                      {c.muon > 0 && <span className="text-amber-700"> · {c.muon}</span>}
+                      {c.vang > 0 && <span className="text-red-600"> · {c.vang}</span>}
+                    </>
+                  )}
+                </td>
+              ))}
+              <td className="border-l-2 border-slate-200 text-center text-emerald-700">{th.tong.coMat}</td>
+              <td className="text-center text-amber-700">{th.tong.muon || ''}</td>
+              <td className="text-center text-red-600">{th.tong.vang || ''}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <p className="mt-1.5 text-2xs text-slate-400">✓ đúng giờ (giờ vào) · +phút muộn · ✕ vắng · — ngày chưa tới. Ô có ghi hộ xem chi tiết ở «Theo dõi» theo ngày.</p>
     </div>
   );
 }

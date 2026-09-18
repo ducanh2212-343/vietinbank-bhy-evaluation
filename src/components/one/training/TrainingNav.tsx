@@ -1,10 +1,10 @@
 import React from 'react';
 import { Link, NavLink, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, CalendarDays, Compass, Columns3, GraduationCap, Pencil, Route, ScanFace, Users } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Compass, Columns3, GraduationCap, LayoutGrid, Pencil, Route, ScanFace, Users } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OnePageShell } from '@/components/one/OnePageShell';
 import {
-  TTC_DINH_VI, TTC_TEN, TTC_TEN_TRANG_THAI_CT, TTC_TEN_VAI, duongDanChuongTrinh, tenNhomDoiTuong,
+  TTC_DINH_VI, TTC_TEN, TTC_TEN_TRANG_THAI_CT, TTC_TEN_VAI, docMoDun, duongDanChuongTrinh, tenNhomDoiTuong,
 } from '@/lib/trainingCenter';
 import { chuaCaiCauPhan, useTtcBoiCanh } from './useTrainingCenter';
 
@@ -75,15 +75,20 @@ export const TtcTabsTrungTam: React.FC<{ soanDuoc: boolean }> = ({ soanDuoc }) =
   return <ThanhTab tabs={tabs} nhan="Các màn hình của Bắc Hưng Yên Training Center" />;
 };
 
-/** Tab tầng chương trình — chỉ hiện với thành viên; đường dẫn mang id chương trình */
-export const TtcTabsChuongTrinh: React.FC<{ ctId: string; hv?: string | null }> = ({ ctId, hv }) => {
+/**
+ * Tab tầng chương trình — chỉ hiện với thành viên; đường dẫn mang id chương trình.
+ * Tab theo mô-đun đã bật (đợt 15); «Theo dõi lớp» chỉ team đào tạo thấy.
+ */
+export const TtcTabsChuongTrinh: React.FC<{ ctId: string; hv?: string | null; moDun?: unknown; laTeam?: boolean }> = ({ ctId, hv, moDun, laTeam }) => {
   const duoi = hv ? `?hv=${hv}` : '';
+  const md = docMoDun(moDun);
   const tabs: MucTab[] = [
     { to: duongDanChuongTrinh(ctId) + duoi, label: 'Tổng quan', icon: Compass, end: true },
     { to: duongDanChuongTrinh(ctId, 'lo-trinh') + duoi, label: 'Lộ trình', icon: Route },
-    { to: duongDanChuongTrinh(ctId, 'bang-viec') + duoi, label: 'Bảng việc', icon: Columns3 },
-    { to: duongDanChuongTrinh(ctId, 'tu-soi') + duoi, label: 'Tự soi', icon: ScanFace },
-    { to: duongDanChuongTrinh(ctId, 'lich-bgd') + duoi, label: 'Lịch Ban Giám đốc', icon: CalendarDays },
+    ...(laTeam ? [{ to: duongDanChuongTrinh(ctId, 'theo-doi'), label: 'Theo dõi lớp', icon: LayoutGrid }] : []),
+    ...(md.bang_viec ? [{ to: duongDanChuongTrinh(ctId, 'bang-viec') + duoi, label: 'Bảng việc', icon: Columns3 }] : []),
+    ...(md.tu_soi ? [{ to: duongDanChuongTrinh(ctId, 'tu-soi') + duoi, label: 'Tự soi', icon: ScanFace }] : []),
+    ...(md.lich_bgd ? [{ to: duongDanChuongTrinh(ctId, 'lich-bgd') + duoi, label: 'Lịch Ban Giám đốc', icon: CalendarDays }] : []),
   ];
   return <ThanhTab tabs={tabs} nhan="Các màn hình của chương trình" />;
 };
@@ -138,7 +143,7 @@ export const TtcKhungChuongTrinh: React.FC<{
           )}
         </div>
 
-        {laThanhVien && id && <TtcTabsChuongTrinh ctId={id} hv={bc.laHocVien ? null : hv} />}
+        {laThanhVien && id && <TtcTabsChuongTrinh ctId={id} hv={bc.laHocVien ? null : hv} moDun={ct?.mo_dun} laTeam={bc.laTeam} />}
 
         {bc.isLoading ? (
           <Skeleton className="h-40 rounded-2xl" />

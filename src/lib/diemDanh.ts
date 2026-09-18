@@ -168,6 +168,72 @@ export function tomTatDiemDanh(soHocVien: number, ds: TtcDiemDanh[]): TomTatDiem
   };
 }
 
+/**
+ * Bảng tổng hợp học viên × ngày cho team đào tạo (đợt 15). Mỗi ô một trạng thái:
+ * CO_MAT (đúng giờ) · MUON (kèm số phút) · VANG (ngày đã tới mà không có dòng)
+ * · CHUA_TOI (ngày chưa diễn ra — không tính là vắng). Tổng theo ngày và theo
+ * người tính từ cùng một lưới để hai con số không lệch nhau.
+ */
+export type TtcTrangThaiODiemDanh = 'CO_MAT' | 'MUON' | 'VANG' | 'CHUA_TOI';
+
+export interface ODiemDanh { trangThai: TtcTrangThaiODiemDanh; muonPhut: number; gio: string | null; ghiHo: boolean }
+export interface DongTongHop { nguoi: string; ten: string; o: ODiemDanh[]; coMat: number; muon: number; vang: number }
+export interface CotTongHop { ngayId: string; soThuTu: number; ngay: string; coMat: number; muon: number; vang: number; chuaToi: boolean }
+export interface TongHopDiemDanh { cot: CotTongHop[]; dong: DongTongHop[]; tong: { coMat: number; muon: number; vang: number; oDaToi: number } }
+
+export function tongHopDiemDanh(
+  dsNgay: Array<{ id: string; so_thu_tu: number; ngay: string }>,
+  hocVien: Array<{ nguoi: string; ten: string }>,
+  dsDiemDanh: Array<Pick<TtcDiemDanh, 'ngay_id' | 'nguoi' | 'luc' | 'muon_phut' | 'luong'>>,
+  homNay: string = ngayVnChuoi(new Date()),
+): TongHopDiemDanh {
+  const ngay = [...dsNgay].sort((a, b) => a.so_thu_tu - b.so_thu_tu);
+  const theoKhoa = new Map(dsDiemDanh.map((d) => [`${d.ngay_id}|${d.nguoi}`, d]));
+  const cot: CotTongHop[] = ngay.map((n) => ({ ngayId: n.id, soThuTu: n.so_thu_tu, ngay: n.ngay, coMat: 0, muon: 0, vang: 0, chuaToi: n.ngay > homNay }));
+  const dong: DongTongHop[] = [...hocVien]
+    .sort((a, b) => a.ten.localeCompare(b.ten, 'vi'))
+    .map((hv) => {
+      const o = ngay.map((n, i) => {
+        const dd = theoKhoa.get(`${n.id}|${hv.nguoi}`);
+        let x: ODiemDanh;
+        if (dd) {
+          x = { trangThai: dd.muon_phut > 0 ? 'MUON' : 'CO_MAT', muonPhut: dd.muon_phut, gio: gioVn(dd.luc), ghiHo: dd.luong === 'BO_SUNG' };
+          cot[i].coMat += 1;
+          if (dd.muon_phut > 0) cot[i].muon += 1;
+        } else if (cot[i].chuaToi) {
+          x = { trangThai: 'CHUA_TOI', muonPhut: 0, gio: null, ghiHo: false };
+        } else {
+          x = { trangThai: 'VANG', muonPhut: 0, gio: null, ghiHo: false };
+          cot[i].vang += 1;
+        }
+        return x;
+      });
+      return {
+        nguoi: hv.nguoi, ten: hv.ten, o,
+        coMat: o.filter((x) => x.trangThai === 'CO_MAT' || x.trangThai === 'MUON').length,
+        muon: o.filter((x) => x.trangThai === 'MUON').length,
+        vang: o.filter((x) => x.trangThai === 'VANG').length,
+      };
+    });
+  const tong = cot.reduce((t, c) => ({ coMat: t.coMat + c.coMat, muon: t.muon + c.muon, vang: t.vang + c.vang, oDaToi: t.oDaToi + (c.chuaToi ? 0 : hocVien.length) }),
+    { coMat: 0, muon: 0, vang: 0, oDaToi: 0 });
+  return { cot, dong, tong };
+}
+
+/** Xuất lưới tổng hợp ra CSV (BOM để Excel đọc tiếng Việt), mỗi ô một chữ ngắn */
+export function csvTongHopDiemDanh(th: TongHopDiemDanh): string {
+  const chu = (o: ODiemDanh) => o.trangThai === 'CO_MAT' ? `Có mặt ${o.gio}` : o.trangThai === 'MUON' ? `Muộn ${o.muonPhut}p (${o.gio})` : o.trangThai === 'VANG' ? 'Vắng' : '';
+  const dau = ['Học viên', ...th.cot.map((c) => `Ngày ${c.soThuTu} (${ngayVnCuaIsoNgan(c.ngay)})`), 'Có mặt', 'Muộn', 'Vắng'];
+  const dong = th.dong.map((d) => [d.ten, ...d.o.map(chu), d.coMat, d.muon, d.vang]);
+  const bao = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
+  return '\ufeff' + [dau, ...dong].map((r) => r.map(bao).join(',')).join('\r\n');
+}
+
+function ngayVnCuaIsoNgan(iso: string): string {
+  const [, m, d] = iso.split('-');
+  return `${d}/${m}`;
+}
+
 // ---------------------------------------------------------------------------
 // Tấm QR in ra
 // ---------------------------------------------------------------------------
