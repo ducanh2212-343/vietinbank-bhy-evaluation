@@ -1284,3 +1284,80 @@ chờ, quản trị thấy; từ chối có lý do → xin lại → duyệt →
 loạt 4 người trong đó 1 khách → 3, thêm lại → 0, vai sai → lỗi, người không
 phải quản trị → chặn; đóng ghi danh → mã hết tác dụng. Tám test cho lib khớp
 danh sách (`src/lib/__tests__/ttcGhiDanh.test.ts`).
+
+## 21. Đợt 15 — Khung mục con, Theo dõi lớp, cấu hình theo chương trình
+
+Giám đốc (18/09/2026) đưa bản dẫn chương trình **«Chạm vào giấc mơ» V4** (một
+ngày, 24 học viên làm website cá nhân) và hỏi hệ thống cần sửa gì để đáp ứng,
+với yêu cầu **không fix vào một chương trình cụ thể**. Chốt làm Khung 1, 2, 4
+trước; Khung 3 (nhóm / thuộc tính học viên) để sau. Phần điểm danh QR cần
+«bảng tổng hợp dễ nhìn» — tự thiết kế.
+
+### 21.1 Vì sao là khung, không phải cột
+
+Bản dẫn có ba nhu cầu mà lộ trình hiện tại (một đầu việc = một ô tích) không
+tả được: (a) một đầu việc 150 phút có nhiều **điểm dừng** và sản phẩm trung
+gian (chọn mẫu → dán link → mở được trên điện thoại); (b) người dẫn muốn biết
+**cả lớp** đang ở đâu mà không đi hỏi từng bàn; (c) lớp một ngày không cần
+Tự soi / Bloom / Lịch BGĐ, học viên thấy tab thừa thì bỏ qua cả app. Nếu thêm
+cột `link_website`, `da_kiem_thu` thì lớp sau lại thêm cột khác. Vì vậy:
+
+- **Khung 1 — mục con của đầu việc** (`ttc_muc_con`): mỗi mục có kiểu
+  `DIEM_DUNG` / `SAN_PHAM` / `TIEU_CHI`, giờ gợi ý, bắt buộc hay không. Học
+  viên ghi `ttc_tien_do_muc` (tích, link, tệp, Đạt/Chưa + lý do). Cổng tích
+  hoàn thành đầu việc thêm điều kiện «đủ mục bắt buộc» ngay trong trigger
+  `f_ttc_tien_do_truoc_ghi`, câu báo `mục chưa tích: …` trùng từng chữ với
+  `thieuDeTich` ở client. Kết quả Đạt/Chưa **không** xét khi tích: kiểm thử ra
+  «chưa» vẫn là đã kiểm.
+- **Khung 2 — Theo dõi lớp** (`/chuong-trinh/:id/theo-doi`, chỉ team): lưới
+  học viên × (đầu việc + mục con) của ngày đang chọn. Ô có ba trạng thái và
+  **hai dấu tách riêng**: `xong` của học viên và `xac_nhan_boi / xac_nhan_luc`
+  của team. Trigger chặn học viên tự đặt cột xác nhận (kể cả qua upsert —
+  cùng bài học BEFORE INSERT đợt 10); team đặt qua RPC `ttc_xac_nhan_muc`
+  (xác nhận, tích hộ, rút xác nhận). Vai mới **trợ giảng** (`tro_giang`): là
+  team (`ttc_la_team`) nên xem lớp và xác nhận được; không phải người chấm,
+  không sửa nội dung, không đọc tự soi — người dẫn nhóm không nên mang vai
+  «hướng dẫn» chỉ để tích hộ.
+- **Khung 4 — cấu hình theo chương trình**: `ttc_chuong_trinh.mo_dun` (rỗng =
+  bật hết, chương trình cũ không đổi); tab ẩn theo mô-đun. Đầu việc thêm
+  `ai_tich` (`HOC_VIEN` / `NGUOI_DAN` — người dẫn bấm «Lớp đã xong», ghi
+  `xong_luc / xong_boi`, không đụng tiến độ từng người), `ghi_chu_nguoi_dan`
+  (lời dẫn, client chỉ hiện cho team; không phải bí mật — RLS đầu việc vẫn
+  cho thành viên đọc), `nguoi_dan_ten` (chữ tự do), `truong_ghi_chu` (mẫu ghi
+  chú có nhãn; học viên trả lời vào `ttc_tien_do.tra_loi`, client ghép thành
+  `ghi_chu` phẳng để cổng ≥ 10 ký tự và tin báo không đổi).
+
+Nhân bản chương trình chép cả `mo_dun`, các cột mới và mục con của từng đầu việc.
+
+### 21.2 Bảng tổng hợp điểm danh
+
+Thiết kế theo câu hỏi TCTH thực sự hỏi cuối đợt: *ai vắng, ai hay muộn, ngày
+nào lớp đến muộn nhiều?* Lưới **học viên × ngày** (`tongHopDiemDanh`): ✓ xanh
+đúng giờ kèm giờ vào · vàng `+phút` muộn · đỏ ✕ vắng · xám — ngày chưa tới
+(**không** tính vắng, nên tỉ lệ chuyên cần chỉ chia cho lượt đã tới). Cột
+phải tổng theo người, hàng cuối tổng theo ngày, công tắc «xếp theo vắng» đưa
+người cần nhắc lên đầu, nút CSV (có BOM để Excel đọc tiếng Việt). Khối
+«Theo dõi» theo ngày giữ nguyên cho việc ghi hộ / xoá dòng.
+
+### 21.3 Đã áp và đã kiểm
+
+| Migration | Trạng thái |
+| --- | --- |
+| `20261101090000_ttc_muc_con_theo_doi_lop.sql` | **đã áp** 18/09/2026 — 2 bảng mới (RLS bật, 5 policy, `anon` không có quyền), 4 hàm mới, 6 cột trên đầu việc, `mo_dun`, `tra_loi`, vai `tro_giang`, trigger và hàm nhân bản thay bản mới |
+
+Chín kịch bản trên cụm cục bộ (`kich_ban_muc_con.sql`): quản trị thêm trợ
+giảng và tạo mục con; hướng dẫn viên tạo mục con bị RLS chặn nhưng vẫn là
+team; học viên tích đầu việc khi thiếu 2 mục bắt buộc → chặn, câu báo nêu đúng
+tên hai mục; học viên tự đặt `xac_nhan_boi` → cột rỗng, `luc` tự điền; upsert
+chỉ gửi `xong` không xoá link đã dán; ghi hộ người khác → chặn; gọi RPC xác
+nhận → chặn; đủ mục bắt buộc (mục tuỳ chọn bỏ trống) → tích được, `tra_loi`
+giữ qua upsert; trợ giảng xác nhận / tích hộ Đạt / rút xác nhận, học viên sửa
+dòng không xoá được dấu xác nhận, xác nhận cho người không phải học viên và
+kết quả sai → chặn; trợ giảng không sửa nội dung, không chấm; «lớp đã xong»
+ghi giờ + người, học viên gọi → chặn; người ngoài lớp không thấy mục con,
+tiến độ, RPC chặn; nhân bản chép `mo_dun`, 4 cột mới, 3 mục con; xoá đầu việc
+cuốn theo tiến độ mục. Tám test lib (`mucConTheoDoiLop.test.ts`). Chụp thử
+bằng stub: Lộ trình học viên (desktop / điện thoại), Lộ trình team (lời dẫn,
+nút lớp xong), Theo dõi lớp, bảng điểm danh, form soạn mục con — không lỗi
+console. Một lỗi thật bắt được khi chụp: form đặt mặc định `= []` cho dữ liệu
+truy vấn làm effect chạy vô hạn khi hộp thoại đóng — đã sửa.

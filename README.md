@@ -657,6 +657,22 @@ ngoài lớp nên `IF NOT …` trong plpgsql không chặn (cấp QR ngày, ghi 
 bọc `coalesce(…, false)`. Migration `20261031090000_ttc_ghi_danh.sql` **đã áp**.
 Chi tiết: mục 20 của tài liệu trên.
 
+**Mục con, Theo dõi lớp, cấu hình theo chương trình (18/09/2026, đợt 15):**
+đầu việc chia thành **mục con** (`ttc_muc_con`: điểm dừng / sản phẩm / tiêu
+chí, bắt buộc hay không); học viên tích từng mục, dán link, ghi Đạt/Chưa vào
+`ttc_tien_do_muc`; đủ mục bắt buộc thì đầu việc tự tích (trigger chặn khi
+thiếu). Team đào tạo có tab **«Theo dõi lớp»** (`/chuong-trinh/:id/theo-doi`):
+lưới học viên × mục, bấm ô là xác nhận qua `ttc_xac_nhan_muc` — dấu xác nhận
+tách khỏi dấu tự tích, học viên không đặt được. Vai mới **`tro_giang`**
+(xem lớp + xác nhận, không chấm, không sửa nội dung). Đầu việc thêm `ai_tich`
+(người dẫn bấm «Lớp đã xong» → `xong_luc/xong_boi` qua `ttc_xong_dau_viec_lop`),
+`ghi_chu_nguoi_dan`, `nguoi_dan_ten`, `truong_ghi_chu` (mẫu ghi chú; trả lời
+vào `ttc_tien_do.tra_loi`); chương trình có `mo_dun` bật/tắt Tự soi, Bảng
+việc, Bloom, Lịch BGĐ, Toolkit (rỗng = bật hết). Điểm danh thêm **bảng tổng
+hợp cả đợt** học viên × ngày (đúng giờ / muộn / vắng / chưa tới, tổng hai
+chiều, CSV). Migration `20261101090000_ttc_muc_con_theo_doi_lop.sql` **đã áp**.
+Chi tiết: mục 21 của tài liệu trên.
+
 ## Kênh Zalo OA & Quản trị Push (09/2026)
 
 **Mục tiêu:** đẩy tin Sao Xứng Đáng từ cổng vào nhóm Zalo GMF «343 - Bắc Hưng Yên

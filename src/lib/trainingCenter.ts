@@ -29,14 +29,24 @@ export const TTC_DINH_VI = 'Vun gốc · Vươn cành';
  * chỉ là một trong ba PGĐ, Phòng TCTH có nhiều tài khoản tcth_admin nhưng chỉ
  * một người quản trị chương trình. Vai trò chung không tách được những chuyện đó.
  */
-export type TtcVai = 'hoc_vien' | 'huong_dan' | 'bgd' | 'quan_tri';
+export type TtcVai = 'hoc_vien' | 'huong_dan' | 'bgd' | 'quan_tri' | 'tro_giang';
 
 export const TTC_TEN_VAI: Record<TtcVai, string> = {
   hoc_vien: 'Học viên',
   huong_dan: 'Người hướng dẫn',
   bgd: 'Ban Giám đốc',
   quan_tri: 'Quản trị chương trình',
+  tro_giang: 'Trợ giảng',
 };
+
+/**
+ * «Team đào tạo» = mọi vai trừ học viên — trùng với ttc_la_team() ở máy chủ.
+ * Trợ giảng (đợt 15) là vai mới vì người dẫn nhóm cần xem cả lớp và xác nhận
+ * tiến độ, nhưng KHÔNG được chấm Bloom hay đọc tự soi như người hướng dẫn.
+ */
+export function laTeam(vai: TtcVai | null | undefined): boolean {
+  return !!vai && vai !== 'hoc_vien';
+}
 
 /** Năm phần của một ngày, theo thứ tự trên lịch */
 export type TtcPhan = 'KHOI_DONG' | 'VAN_BAN' | 'THUC_HANH' | 'TRINH_BAY' | 'TU_SUY_NGAM';
@@ -123,6 +133,30 @@ export interface TtcChuongTrinh {
   ma_ghi_danh?: string | null;
   /** Quét mã là vào lớp ngay, không chờ TCTH duyệt */
   ghi_danh_tu_duyet?: boolean;
+  /** Mô-đun bật/tắt theo chương trình — đọc bằng docMoDun() (đợt 15) */
+  mo_dun?: unknown;
+}
+
+/**
+ * Mô-đun của một chương trình. Cấu hình rỗng = bật hết như trước đợt 15, nên
+ * chương trình cũ không đổi gì; lớp một ngày kiểu «Chạm vào giấc mơ» tắt bớt
+ * để học viên không thấy tab thừa.
+ */
+export type TtcMoDun = 'tu_soi' | 'bang_viec' | 'bloom' | 'lich_bgd' | 'toolkit';
+
+export const TTC_MO_DUN: Array<{ ma: TtcMoDun; ten: string; mo: string }> = [
+  { ma: 'tu_soi', ten: 'Tự soi', mo: 'Học viên tự chấm 5 tiêu chí cuối ngày' },
+  { ma: 'bang_viec', ten: 'Bảng việc', mo: 'Phiếu giao việc bảy ô, kéo thả theo trạng thái' },
+  { ma: 'bloom', ten: 'Chấm Bloom', mo: 'Người hướng dẫn chấm sáu thang mỗi ngày' },
+  { ma: 'lich_bgd', ten: 'Lịch Ban Giám đốc', mo: 'Các phiên Giám đốc / Phó Giám đốc trực tiếp dẫn' },
+  { ma: 'toolkit', ten: 'Toolkit', mo: 'Mindmap, 4 hộp, bút vẽ nộp thành tệp' },
+];
+
+export function docMoDun(json: unknown): Record<TtcMoDun, boolean> {
+  const o = (json && typeof json === 'object' ? json : {}) as Record<string, unknown>;
+  const kq = {} as Record<TtcMoDun, boolean>;
+  for (const m of TTC_MO_DUN) kq[m.ma] = o[m.ma] !== false;
+  return kq;
 }
 
 export interface TtcThanhVien {
@@ -166,6 +200,96 @@ export interface TtcDauViec {
   trong_tam: boolean;
   /** Tính năng bật cho đầu việc — bật thì học viên phải nộp mới tích được */
   tinh_nang: TtcTinhNang[];
+  /** Ai tích: từng học viên, hay người dẫn tích một lần cho cả lớp (đợt 15) */
+  ai_tich?: TtcAiTich;
+  /** Giờ thực tế lớp xong đầu việc này — người dẫn bấm, không đụng tiến độ từng người */
+  xong_luc?: string | null;
+  xong_boi?: string | null;
+  /** Lời dẫn / lưu ý cho người dẫn — chỉ team thấy, học viên không thấy */
+  ghi_chu_nguoi_dan?: string | null;
+  /** Mẫu ghi chú có nhãn — đọc bằng docTruongGhiChu() */
+  truong_ghi_chu?: unknown;
+  /** Tên người dẫn hiển thị («Anh Hoàng») — chữ tự do, không ràng với thành viên */
+  nguoi_dan_ten?: string | null;
+}
+
+export type TtcAiTich = 'HOC_VIEN' | 'NGUOI_DAN';
+export const TTC_TEN_AI_TICH: Record<TtcAiTich, string> = {
+  HOC_VIEN: 'Từng học viên tự tích',
+  NGUOI_DAN: 'Người dẫn tích cho cả lớp',
+};
+
+/** Một trường trong mẫu ghi chú của đầu việc: học viên trả lời theo nhãn thay vì viết tự do */
+export interface TtcTruongGhiChu { ma: string; nhan: string; goi_y?: string }
+
+export function docTruongGhiChu(json: unknown): TtcTruongGhiChu[] {
+  if (!Array.isArray(json)) return [];
+  return json.filter((t): t is TtcTruongGhiChu =>
+    !!t && typeof t === 'object' && typeof (t as TtcTruongGhiChu).ma === 'string' && typeof (t as TtcTruongGhiChu).nhan === 'string'
+    && (t as TtcTruongGhiChu).ma.trim() !== '' && (t as TtcTruongGhiChu).nhan.trim() !== '');
+}
+
+/**
+ * Ghép câu trả lời theo mẫu thành một ghi chú phẳng để cổng tích GHI_CHU
+ * (≥ 10 ký tự) và tin báo hoàn thành đọc được như ghi chú tự do.
+ */
+export function ghepTraLoi(truong: TtcTruongGhiChu[], traLoi: Record<string, string>): string {
+  return truong
+    .map((t) => ({ nhan: t.nhan, gia: (traLoi[t.ma] ?? '').trim() }))
+    .filter((x) => x.gia)
+    .map((x) => `${x.nhan}: ${x.gia}`)
+    .join('\n');
+}
+
+/** Mục con của một đầu việc: điểm dừng / sản phẩm phải nộp / tiêu chí kiểm thử (đợt 15) */
+export type TtcKieuMucCon = 'DIEM_DUNG' | 'SAN_PHAM' | 'TIEU_CHI';
+
+export const TTC_KIEU_MUC_CON: Array<{ ma: TtcKieuMucCon; ten: string; mo: string }> = [
+  { ma: 'DIEM_DUNG', ten: 'Điểm dừng', mo: 'Đã làm tới đây — chỉ tích' },
+  { ma: 'SAN_PHAM', ten: 'Sản phẩm', mo: 'Có thứ để nộp: dán đường dẫn hoặc tệp' },
+  { ma: 'TIEU_CHI', ten: 'Tiêu chí kiểm thử', mo: 'Kiểm rồi ghi Đạt / Chưa, chưa thì nêu lý do' },
+];
+
+export interface TtcMucCon {
+  id: string;
+  dau_viec_id: string;
+  thu_tu: number;
+  ten: string;
+  kieu: TtcKieuMucCon;
+  /** 'HH:MM' gợi ý nên xong lúc mấy giờ — chỉ để hiện, không chặn */
+  gio_goi_y: string | null;
+  yeu_cau: string[];
+  bat_buoc: boolean;
+}
+
+export interface TtcTienDoMuc {
+  id: string;
+  muc_con_id: string;
+  nguoi: string;
+  xong: boolean;
+  luc: string | null;
+  ket_qua: 'DAT' | 'CHUA' | null;
+  ly_do: string | null;
+  duong_dan: string | null;
+  tep: TtcTep[];
+  ghi_chu: string | null;
+  /** Team xác nhận — tách khỏi dấu tự tích, học viên không đặt được */
+  xac_nhan_boi: string | null;
+  xac_nhan_luc: string | null;
+}
+
+/** Tên các mục con bắt buộc mà học viên chưa tích, theo thứ tự */
+export function mucConChuaTich(dsMuc: TtcMucCon[], dsTienDo: Array<Pick<TtcTienDoMuc, 'muc_con_id' | 'xong'>>): string[] {
+  const xong = new Set(dsTienDo.filter((t) => t.xong).map((t) => t.muc_con_id));
+  return [...dsMuc].sort((a, b) => a.thu_tu - b.thu_tu).filter((m) => m.bat_buoc && !xong.has(m.id)).map((m) => m.ten);
+}
+
+/** Trạng thái một ô trong lưới Theo dõi lớp (học viên × mục con) */
+export type TtcTrangThaiO = 'CHUA' | 'TU_TICH' | 'XAC_NHAN';
+export function trangThaiO(td: Pick<TtcTienDoMuc, 'xong' | 'xac_nhan_boi'> | null | undefined): TtcTrangThaiO {
+  if (!td) return 'CHUA';
+  if (td.xac_nhan_boi) return 'XAC_NHAN';
+  return td.xong ? 'TU_TICH' : 'CHUA';
 }
 
 /** Tính năng của một đầu việc trong lộ trình */
@@ -224,6 +348,8 @@ export interface TtcTienDo {
   file_url: string | null;
   tep: TtcTep[];
   duong_dan: string | null;
+  /** Câu trả lời theo mẫu ghi chú {ma: chữ} — đọc cùng docTruongGhiChu() */
+  tra_loi?: Record<string, string>;
 }
 
 /**
@@ -234,12 +360,17 @@ export interface TtcTienDo {
 export function thieuDeTich(
   v: Pick<TtcDauViec, 'tinh_nang'>,
   td: Partial<Pick<TtcTienDo, 'tep' | 'ghi_chu' | 'duong_dan'>> | null | undefined,
+  muc?: { dsMuc: TtcMucCon[]; dsTienDo: Array<Pick<TtcTienDoMuc, 'muc_con_id' | 'xong'>> },
 ): string[] {
   const thieu: string[] = [];
   const tn = v.tinh_nang ?? [];
   if (tn.includes('NOP_TEP') && (td?.tep ?? []).length === 0) thieu.push('tệp đính kèm');
   if (tn.includes('GHI_CHU') && (td?.ghi_chu ?? '').trim().length < 10) thieu.push('ghi chú kết quả (≥ 10 ký tự)');
   if (tn.includes('DUONG_DAN') && !(td?.duong_dan ?? '').trim()) thieu.push('đường dẫn');
+  if (muc) {
+    const chua = mucConChuaTich(muc.dsMuc, muc.dsTienDo);
+    if (chua.length > 0) thieu.push(`mục chưa tích: ${chua.join(', ')}`);
+  }
   return thieu;
 }
 
@@ -1079,7 +1210,7 @@ export function xepChuongTrinhCuaToi(ds: TtcChuongTrinh[]): TtcChuongTrinh[] {
 }
 
 /** Đường dẫn các màn của một chương trình — một nơi duy nhất, tab và thẻ cùng đọc */
-export function duongDanChuongTrinh(id: string, man: '' | 'lo-trinh' | 'bang-viec' | 'tu-soi' | 'lich-bgd' = ''): string {
+export function duongDanChuongTrinh(id: string, man: '' | 'lo-trinh' | 'theo-doi' | 'bang-viec' | 'tu-soi' | 'lich-bgd' = ''): string {
   return `/one/training-center/chuong-trinh/${id}${man ? `/${man}` : ''}`;
 }
 

@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type { Ct2DauViec } from '@/lib/ct2';
 import { LoiViTri } from '@/lib/quyenViTri';
-import { ghiCauHinhBao } from '@/lib/trainingCenter';
+import { ghiCauHinhBao, laTeam } from '@/lib/trainingCenter';
 import { kyTepTrainingCenter } from './tepTrainingCenter';
 import { TOOLKIT_DU_LIEU_TOI_DA, kichThuocJson, type ToolkitLoai, type TtcToolkit } from '@/lib/toolkit';
 import type { KetQuaXemMa, KetQuaXinGhiDanh, NguoiDanhBa, TtcGhiDanh } from '@/lib/ttcGhiDanh';
@@ -12,7 +12,7 @@ import type { KetQuaDiemDanh, TtcCauHinhDiemDanh, TtcDiemDanh, TtcQrNgay, TtcThu
 import type {
   TtcChuongTrinh, TtcDauViec, TtcDiemBloom, TtcDiemKiem, TtcKetQuaNghiemThu, TtcLichSuChuan, TtcMucGiao,
   TtcNgay, TtcPhieuForm, TtcSuyNgam, TtcThanhVien, TtcTienDo, TtcTrangThaiPhieu, TtcTuSoi, TtcVai, TtcViecGoiDau,
-  TtcTep, TtcCauHinhBao,
+  TtcTep, TtcCauHinhBao, TtcMucCon, TtcTienDoMuc, TtcMoDun,
 } from '@/lib/trainingCenter';
 
 /**
@@ -143,6 +143,8 @@ export interface TtcBoiCanh {
   laQuanTri: boolean;
   /** Sửa được nội dung chương trình (thông tin, ngày, đầu việc): quản trị, BGĐ, system_admin */
   laSuaDuocNoiDung: boolean;
+  /** Team đào tạo (mọi vai trừ học viên, kể cả trợ giảng): xem Theo dõi lớp, xác nhận mục con */
+  laTeam: boolean;
 }
 
 /**
@@ -199,6 +201,7 @@ export function useTtcBoiCanh(ctId: string | null, hocVienChon: string | null = 
     laBgd: vai === 'bgd',
     laQuanTri: vai === 'quan_tri',
     laSuaDuocNoiDung: vai === 'quan_tri' || vai === 'bgd' || laSystemAdmin,
+    laTeam: laTeam(vai),
     isLoading: ct.isLoading || (!!ct.data && tv.isLoading),
     isError: ct.isError || tv.isError,
     error: ct.error ?? tv.error,
@@ -210,7 +213,7 @@ export function useTtcBoiCanh(ctId: string | null, hocVienChon: string | null = 
 // ---------------------------------------------------------------------------
 
 export type TtcChuongTrinhForm = Pick<TtcChuongTrinh,
-  'ten' | 'mo_ta' | 'ngay_bd' | 'ngay_kt' | 'trang_thai' | 'nhom_doi_tuong' | 'loai' | 'khoi_nang_luc' | 'la_mau'>;
+  'ten' | 'mo_ta' | 'ngay_bd' | 'ngay_kt' | 'trang_thai' | 'nhom_doi_tuong' | 'loai' | 'khoi_nang_luc' | 'la_mau'> & { mo_dun?: Record<TtcMoDun, boolean> };
 
 export async function luuChuongTrinh(f: TtcChuongTrinhForm, id?: string): Promise<string> {
   if (id) {
@@ -243,10 +246,13 @@ export async function xoaNgay(id: string) {
   nemNeuLoi(await db.from('ttc_ngay').delete().eq('id', id));
 }
 
-export async function luuDauViec(p: Omit<TtcDauViec, 'id'> & { id?: string }) {
+/** Trả id để form soạn ghi tiếp mục con cho đầu việc vừa tạo (đợt 15) */
+export async function luuDauViec(p: Omit<TtcDauViec, 'id'> & { id?: string }): Promise<string> {
   const { id, ...phan } = p;
-  if (id) nemNeuLoi(await db.from('ttc_dau_viec').update(phan).eq('id', id));
-  else nemNeuLoi(await db.from('ttc_dau_viec').insert(phan));
+  if (id) { nemNeuLoi(await db.from('ttc_dau_viec').update(phan).eq('id', id)); return id; }
+  const row = nemNeuLoi(await db.from('ttc_dau_viec').insert(phan).select('id').maybeSingle()) as { id: string } | null;
+  if (!row) throw new Error('Không tạo được đầu việc');
+  return row.id;
 }
 
 export async function xoaDauViec(id: string) {
@@ -302,7 +308,7 @@ export function useTtcTienDo(ctId: string | null, hocVienId: string | null, dauV
  * Lưu phần nộp của học viên cho một đầu việc (tệp, ghi chú, đường dẫn) — không đổi
  * ô tích. Upsert theo (đầu việc, người); dòng chưa có thì tạo với hoan_thanh=false.
  */
-export async function luuNopDauViec(p: { dau_viec_id: string; nguoi: string; tep?: TtcTep[]; ghi_chu?: string | null; duong_dan?: string | null }) {
+export async function luuNopDauViec(p: { dau_viec_id: string; nguoi: string; tep?: TtcTep[]; ghi_chu?: string | null; duong_dan?: string | null; tra_loi?: Record<string, string> }) {
   const { data: cu } = await db.from('ttc_tien_do').select('id, hoan_thanh, thoi_diem')
     .eq('dau_viec_id', p.dau_viec_id).eq('nguoi', p.nguoi).maybeSingle();
   const dong = cu as { hoan_thanh: boolean; thoi_diem: string | null } | null;
@@ -312,6 +318,7 @@ export async function luuNopDauViec(p: { dau_viec_id: string; nguoi: string; tep
     ...(p.tep !== undefined ? { tep: p.tep } : {}),
     ...(p.ghi_chu !== undefined ? { ghi_chu: p.ghi_chu } : {}),
     ...(p.duong_dan !== undefined ? { duong_dan: p.duong_dan } : {}),
+    ...(p.tra_loi !== undefined ? { tra_loi: p.tra_loi } : {}),
   }, { onConflict: 'dau_viec_id,nguoi' }));
 }
 
@@ -800,4 +807,96 @@ export function useTtcGhiDanhCuaToi() {
       return rows ?? [];
     },
   });
+}
+
+// ---------------------------------------------------------------------------
+// Đợt 15 — mục con của đầu việc, theo dõi lớp, cấu hình mô-đun
+// ---------------------------------------------------------------------------
+
+export function useTtcMucCon(ctId: string | null, dauViecIds: string[]) {
+  const khoa = dauViecIds.join(',');
+  return useQuery({
+    queryKey: ['ttc', 'muc-con', ctId, khoa],
+    enabled: !!ctId && dauViecIds.length > 0,
+    staleTime: NAM_PHUT,
+    queryFn: async () => {
+      const data = nemNeuLoi(await db.from('ttc_muc_con').select('*')
+        .in('dau_viec_id', dauViecIds).order('thu_tu')) as TtcMucCon[];
+      return (data ?? []).map((m) => ({ ...m, gio_goi_y: m.gio_goi_y ? gioNgan(m.gio_goi_y) : null }));
+    },
+  });
+}
+
+/**
+ * Tiến độ mục con. `nguoi` = null → cả lớp (màn Theo dõi lớp của team; RLS chỉ
+ * cho thành viên chương trình thấy). Làm tươi 30 giây vì team nhìn màn này
+ * trong lúc lớp đang chạy.
+ */
+export function useTtcTienDoMuc(ctId: string | null, nguoi: string | null, mucConIds: string[]) {
+  const khoa = mucConIds.join(',');
+  return useQuery({
+    queryKey: ['ttc', 'tien-do-muc', ctId, nguoi, khoa],
+    enabled: !!ctId && mucConIds.length > 0,
+    staleTime: NUA_PHUT,
+    refetchInterval: nguoi ? false : NUA_PHUT,
+    queryFn: async () => {
+      let q = db.from('ttc_tien_do_muc').select('*').in('muc_con_id', mucConIds);
+      if (nguoi) q = q.eq('nguoi', nguoi);
+      const data = nemNeuLoi(await q) as TtcTienDoMuc[];
+      return data ?? [];
+    },
+  });
+}
+
+/** Tiến độ đầu việc của CẢ LỚP cho màn Theo dõi lớp — RLS: thành viên chương trình thấy nhau */
+export function useTtcTienDoLop(ctId: string | null, dauViecIds: string[]) {
+  const khoa = dauViecIds.join(',');
+  return useQuery({
+    queryKey: ['ttc', 'tien-do-lop', ctId, khoa],
+    enabled: !!ctId && dauViecIds.length > 0,
+    staleTime: NUA_PHUT,
+    refetchInterval: NUA_PHUT,
+    queryFn: async () => {
+      const data = nemNeuLoi(await db.from('ttc_tien_do').select('*').in('dau_viec_id', dauViecIds)) as TtcTienDo[];
+      return data ?? [];
+    },
+  });
+}
+
+export async function luuMucCon(p: Omit<TtcMucCon, 'id'> & { id?: string }) {
+  const { id, ...phan } = p;
+  if (id) nemNeuLoi(await db.from('ttc_muc_con').update(phan).eq('id', id));
+  else nemNeuLoi(await db.from('ttc_muc_con').insert(phan));
+}
+
+export async function xoaMucCon(id: string) {
+  nemNeuLoi(await db.from('ttc_muc_con').delete().eq('id', id));
+}
+
+/**
+ * Học viên ghi dòng của mình cho một mục: tích, link, tệp, Đạt/Chưa + lý do.
+ * Không gửi cột xác nhận — máy chủ bỏ qua nếu có gửi (trigger).
+ */
+export async function luuTienDoMuc(p: {
+  muc_con_id: string; nguoi: string; xong?: boolean; ket_qua?: 'DAT' | 'CHUA' | null; ly_do?: string | null;
+  duong_dan?: string | null; tep?: TtcTep[]; ghi_chu?: string | null;
+}) {
+  const { muc_con_id, nguoi, ...phan } = p;
+  nemNeuLoi(await db.from('ttc_tien_do_muc').upsert({ muc_con_id, nguoi, ...phan }, { onConflict: 'muc_con_id,nguoi' }));
+}
+
+/** Team xác nhận / tích hộ / rút xác nhận một mục cho một học viên — RPC kiểm vai ở máy chủ */
+export async function xacNhanMuc(p: { muc: string; nguoi: string; xong?: boolean | null; ket_qua?: 'DAT' | 'CHUA' | null; bo_xac_nhan?: boolean }) {
+  nemNeuLoi(await db.rpc('ttc_xac_nhan_muc', {
+    _muc: p.muc, _nguoi: p.nguoi, _xong: p.xong ?? null, _ket_qua: p.ket_qua ?? null, _bo_xac_nhan: p.bo_xac_nhan ?? false,
+  }));
+}
+
+/** Người dẫn đánh dấu đầu việc của cả lớp đã xong (giờ thực tế) */
+export async function xongDauViecLop(dauViecId: string, xong: boolean) {
+  nemNeuLoi(await db.rpc('ttc_xong_dau_viec_lop', { _dau_viec: dauViecId, _xong: xong }));
+}
+
+export async function luuMoDun(ctId: string, moDun: Record<TtcMoDun, boolean>) {
+  nemNeuLoi(await db.from('ttc_chuong_trinh').update({ mo_dun: moDun, updated_at: new Date().toISOString() }).eq('id', ctId));
 }
